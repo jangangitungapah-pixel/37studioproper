@@ -2812,3 +2812,39 @@
   }
 }
 /* === SETTINGS PRICING PAGE: END === */
+
+/* === SMART PRICING BREAKDOWN: START === */
+.booking-price-note {
+  margin: -2px 0 0;
+  border: 1px solid rgba(255, 138, 42, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 138, 42, 0.075);
+  padding: 9px 11px;
+  color: var(--auth-text-main);
+  font-size: 0.76rem;
+  font-weight: 360;
+  line-height: 1.45;
+}
+
+.booking-detail-panel.has-discount-row {
+  grid-template-columns: 1fr;
+}
+
+.booking-detail-panel.has-discount-row div:nth-child(2) strong {
+  color: #67e8a5;
+}
+
+@media (min-width: 768px) {
+  .booking-detail-panel.has-discount-row {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .booking-detail-panel.has-discount-row div {
+    min-width: 0;
+  }
+
+  .booking-detail-panel.has-discount-row strong {
+    font-size: 0.8rem !important;
+  }
+}
+/* === SMART PRICING BREAKDOWN: END === */

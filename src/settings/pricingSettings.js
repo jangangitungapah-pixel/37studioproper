@@ -172,3 +172,182 @@ export function getPackageOptions(settings = getPricingSettings()) {
     price: item.price,
   }));
 }
+
+export function getDiscountOptions(settings = getPricingSettings()) {
+  return normalizePricingSettings(settings).discounts.map((item) => ({
+    key: item.id,
+    label: formatRupiah(item.nominal),
+    description: item.durationHours + ' jam • ' + item.sessionId,
+    nominal: item.nominal,
+    durationHours: item.durationHours,
+    sessionId: item.sessionId,
+  }));
+}
+
+function findByKey(items, key) {
+  return items.find((item) => item.key === key) || items[0] || null;
+}
+
+function findPackage(settings, packageId) {
+  if (!packageId || packageId === 'none') return null;
+
+  return normalizePricingSettings(settings).packages.find((item) => item.id === packageId) || null;
+}
+
+function getApplicableDiscounts(settings, sessionId, durationHours, subtotal) {
+  if (!sessionId || !durationHours || !subtotal) return [];
+
+  return normalizePricingSettings(settings).discounts
+    .filter((discount) => {
+      const sameSession = discount.sessionId === sessionId;
+      const meetsDuration = Number(durationHours) >= Number(discount.durationHours);
+      const hasNominal = Number(discount.nominal) > 0;
+
+      return sameSession && meetsDuration && hasNominal;
+    })
+    .sort((first, second) => {
+      if (second.nominal !== first.nominal) return second.nominal - first.nominal;
+      return second.durationHours - first.durationHours;
+    });
+}
+
+function pickBestDiscount(settings, sessionId, durationHours, subtotal) {
+  const applicableDiscounts = getApplicableDiscounts(settings, sessionId, durationHours, subtotal);
+  const bestDiscount = applicableDiscounts[0] || null;
+
+  if (!bestDiscount) {
+    return {
+      discountAmount: 0,
+      appliedDiscounts: [],
+    };
+  }
+
+  const discountAmount = Math.min(Number(bestDiscount.nominal) || 0, Math.max(0, Number(subtotal) || 0));
+
+  return {
+    discountAmount,
+    appliedDiscounts: [
+      {
+        id: bestDiscount.id,
+        nominal: discountAmount,
+        originalNominal: bestDiscount.nominal,
+        durationHours: bestDiscount.durationHours,
+        sessionId: bestDiscount.sessionId,
+      },
+    ],
+  };
+}
+
+function getPaymentBreakdown(paymentStatus, dpAmount, finalTotal) {
+  const safeTotal = Math.max(0, Number(finalTotal) || 0);
+  const safeDp = Math.min(Math.max(0, Number(dpAmount) || 0), safeTotal);
+
+  if (paymentStatus === 'lunas') {
+    return {
+      paidAmount: safeTotal,
+      dpAmount: safeTotal,
+      invoiceAmount: 0,
+    };
+  }
+
+  if (paymentStatus === 'dp') {
+    return {
+      paidAmount: safeDp,
+      dpAmount: safeDp,
+      invoiceAmount: Math.max(0, safeTotal - safeDp),
+    };
+  }
+
+  return {
+    paidAmount: 0,
+    dpAmount: 0,
+    invoiceAmount: safeTotal,
+  };
+}
+
+export function resolveBookingPricing({
+  customDurationHours = 0,
+  durationHours = 0,
+  packageId = 'none',
+  paymentStatus = 'pending',
+  dpAmount = 0,
+  pricingSettings = getPricingSettings(),
+  recordingTypeId = 'none',
+  sessionId = 'rehearsal',
+} = {}) {
+  const settings = normalizePricingSettings(pricingSettings);
+  const sessionOptions = getSessionOptions(settings);
+  const recordingTypeOptions = getRecordingTypeOptions(settings);
+  const packageItem = findPackage(settings, packageId);
+
+  if (packageItem) {
+    const subtotal = Number(packageItem.price) || 0;
+    const finalTotal = subtotal;
+    const payment = getPaymentBreakdown(paymentStatus, dpAmount, finalTotal);
+
+    return {
+      mode: 'package',
+      packageItem: {
+        key: packageItem.id,
+        label: packageItem.name,
+        description: packageItem.detail,
+        durationHours: packageItem.durationHours,
+        price: packageItem.price,
+      },
+      session: {
+        key: 'package',
+        label: packageItem.name,
+        description: packageItem.detail,
+        rate: packageItem.price,
+        price: packageItem.price,
+      },
+      recordingType: null,
+      durationHours: Number(packageItem.durationHours) || 0,
+      subtotal,
+      discountAmount: 0,
+      appliedDiscounts: [],
+      total: finalTotal,
+      finalTotal,
+      ...payment,
+    };
+  }
+
+  const selectedSession = findByKey(sessionOptions, sessionId) || {
+    key: 'rehearsal',
+    label: 'Rehearsal',
+    description: 'Latihan studio reguler',
+    rate: 0,
+    price: 0,
+  };
+
+  const selectedRecordingType =
+    selectedSession.key === 'recording' && recordingTypeId !== 'none'
+      ? findByKey(recordingTypeOptions, recordingTypeId)
+      : null;
+
+  const resolvedDuration = selectedRecordingType
+    ? Number(selectedRecordingType.durationHours) || 0
+    : Number(customDurationHours) || Number(durationHours) || 0;
+
+  const subtotal = selectedRecordingType
+    ? Number(selectedRecordingType.price) || 0
+    : (Number(selectedSession.rate) || 0) * resolvedDuration;
+
+  const discount = pickBestDiscount(settings, selectedSession.key, resolvedDuration, subtotal);
+  const finalTotal = Math.max(0, subtotal - discount.discountAmount);
+  const payment = getPaymentBreakdown(paymentStatus, dpAmount, finalTotal);
+
+  return {
+    mode: selectedRecordingType ? 'recording-type' : 'session',
+    packageItem: null,
+    session: selectedSession,
+    recordingType: selectedRecordingType,
+    durationHours: resolvedDuration,
+    subtotal,
+    discountAmount: discount.discountAmount,
+    appliedDiscounts: discount.appliedDiscounts,
+    total: finalTotal,
+    finalTotal,
+    ...payment,
+  };
+}

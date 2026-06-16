@@ -16,10 +16,12 @@ import {
   paymentStatusOptions,
 } from '../../pages/admin/scheduleConfig.js';
 import {
+  formatRupiah,
   getPackageOptions,
   getPricingSettings,
   getRecordingTypeOptions,
   getSessionOptions,
+  resolveBookingPricing,
 } from '../../settings/pricingSettings.js';
 
 const initialForm = {
@@ -36,19 +38,6 @@ const initialForm = {
   paymentStatus: 'pending',
   dpAmount: '',
 };
-
-function toCurrency(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(Math.max(0, Number(value) || 0));
-}
-
-function clampCurrency(value, max) {
-  const numberValue = Math.max(0, Number(value) || 0);
-  return Math.min(numberValue, Math.max(0, Number(max) || 0));
-}
 
 function makeBookingId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -87,6 +76,10 @@ function getDurationHours(form) {
   return Math.max(0, Number(form.duration) || 0);
 }
 
+function getRecordingSessionKey(sessionOptions) {
+  return sessionOptions.find((item) => item.key === 'recording')?.key || 'recording';
+}
+
 export default function BookingFormModal({
   initialSlot,
   isOpen,
@@ -107,16 +100,16 @@ export default function BookingFormModal({
     [pricingSettings]
   );
 
+  const recordingSessionKey = getRecordingSessionKey(sessionTypeOptions);
   const isPackageSelected = form.packageId !== 'none';
-  const activePackage = isPackageSelected ? getSelectedOption(packageOptions, form.packageId) : null;
   const activeRecordingTypeKey =
     form.recordingTypeId !== 'none'
       ? form.recordingTypeId
       : recordingTypeOptions[0]?.key || 'none';
-  const shouldShowRecordingType = !isPackageSelected && form.sessionType === 'recording' && recordingTypeOptions.length > 0;
-  const activeRecordingType = shouldShowRecordingType
-    ? getSelectedOption(recordingTypeOptions, activeRecordingTypeKey)
-    : null;
+  const shouldShowRecordingType =
+    !isPackageSelected &&
+    form.sessionType === recordingSessionKey &&
+    recordingTypeOptions.length > 0;
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -151,40 +144,20 @@ export default function BookingFormModal({
     };
   }, [isOpen, onClose]);
 
-  const totals = useMemo(() => {
-    if (activePackage && activePackage.key !== 'none') {
-      const total = Number(activePackage.price) || 0;
-      const dpAmount = form.paymentStatus === 'dp' ? clampCurrency(form.dpAmount, total) : 0;
-      const paidAmount = form.paymentStatus === 'lunas' ? total : dpAmount;
-
-      return {
-        durationHours: Number(activePackage.durationHours) || 0,
-        total,
-        dpAmount: form.paymentStatus === 'lunas' ? total : dpAmount,
-        invoiceAmount: Math.max(0, total - paidAmount),
-        session: activePackage,
-        recordingType: null,
-        packageItem: activePackage,
-      };
-    }
-
-    const session = getSelectedOption(sessionTypeOptions, form.sessionType);
-    const recordingType = shouldShowRecordingType ? activeRecordingType : null;
-    const durationHours = recordingType ? Number(recordingType.durationHours) || 0 : getDurationHours(form);
-    const basePrice = recordingType ? Number(recordingType.price) || 0 : (Number(session.rate) || 0) * durationHours;
-    const dpAmount = form.paymentStatus === 'dp' ? clampCurrency(form.dpAmount, basePrice) : 0;
-    const paidAmount = form.paymentStatus === 'lunas' ? basePrice : dpAmount;
-
-    return {
-      durationHours,
-      total: basePrice,
-      dpAmount: form.paymentStatus === 'lunas' ? basePrice : dpAmount,
-      invoiceAmount: Math.max(0, basePrice - paidAmount),
-      session,
-      recordingType,
-      packageItem: null,
-    };
-  }, [activePackage, activeRecordingType, form, sessionTypeOptions, shouldShowRecordingType]);
+  const totals = useMemo(
+    () =>
+      resolveBookingPricing({
+        customDurationHours: form.customDuration,
+        durationHours: getDurationHours(form),
+        packageId: form.packageId,
+        paymentStatus: form.paymentStatus,
+        dpAmount: form.dpAmount,
+        pricingSettings,
+        recordingTypeId: shouldShowRecordingType ? activeRecordingTypeKey : 'none',
+        sessionId: form.sessionType,
+      }),
+    [activeRecordingTypeKey, form, pricingSettings, shouldShowRecordingType]
+  );
 
   if (!isOpen) return null;
 
@@ -211,8 +184,6 @@ export default function BookingFormModal({
 
         if (field === 'packageId') {
           if (nextValue !== 'none') {
-            next.sessionType = current.sessionType || sessionTypeOptions[0]?.key || 'rehearsal';
-            next.duration = current.duration || '1';
             next.customDuration = '';
             next.recordingTypeId = 'none';
           } else {
@@ -222,8 +193,8 @@ export default function BookingFormModal({
           }
         }
 
-        if (field === 'sessionType' && nextValue !== 'recording') {
-          next.recordingTypeId = 'none';
+        if (field === 'sessionType') {
+          next.recordingTypeId = nextValue === recordingSessionKey ? recordingTypeOptions[0]?.key || 'none' : 'none';
         }
 
         if (field === 'paymentStatus' && nextValue !== 'dp') {
@@ -280,6 +251,7 @@ export default function BookingFormModal({
       phone: cleanPhone,
       packageId: form.packageId,
       packageLabel: totals.packageItem?.label || '',
+      pricingMode: totals.mode,
       sessionType: totals.packageItem ? 'package' : form.sessionType,
       sessionLabel,
       recordingTypeId: totals.recordingType?.key || '',
@@ -291,6 +263,9 @@ export default function BookingFormModal({
       durationHours: totals.durationHours,
       paymentStatus: form.paymentStatus,
       status: form.paymentStatus,
+      subtotal: totals.subtotal,
+      discountAmount: totals.discountAmount,
+      appliedDiscounts: totals.appliedDiscounts,
       total: totals.total,
       dpAmount: totals.dpAmount,
       invoiceAmount: totals.invoiceAmount,
@@ -405,14 +380,14 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
-              disabled={isPackageSelected}
+              disabled={isPackageSelected || Boolean(totals.recordingType)}
               label="Durasi"
               options={durationOptions}
               selectedKey={form.duration}
               onChange={updateValue('duration')}
             />
 
-            {form.duration === 'custom' && !isPackageSelected ? (
+            {form.duration === 'custom' && !isPackageSelected && !totals.recordingType ? (
               <StudioTextField
                 helper="Jam"
                 icon={Clock3}
@@ -452,24 +427,38 @@ export default function BookingFormModal({
             ) : null}
           </div>
 
+          {totals.appliedDiscounts.length ? (
+            <p className="booking-price-note">
+              Discount aktif: {formatRupiah(totals.discountAmount)} untuk {totals.durationHours} jam {totals.session?.label}.
+            </p>
+          ) : null}
+
           {error ? (
             <p className="booking-form-error" role="alert">
               {error}
             </p>
           ) : null}
 
-          <section className="booking-detail-panel" aria-label="Detail pembayaran">
+          <section className="booking-detail-panel has-discount-row" aria-label="Detail pembayaran">
+            <div>
+              <span>Subtotal</span>
+              <strong>{formatRupiah(totals.subtotal)}</strong>
+            </div>
+            <div>
+              <span>Diskon</span>
+              <strong>{totals.discountAmount ? '-' : ''}{formatRupiah(totals.discountAmount)}</strong>
+            </div>
             <div>
               <span>Total</span>
-              <strong>{toCurrency(totals.total)}</strong>
+              <strong>{formatRupiah(totals.total)}</strong>
             </div>
             <div>
               <span>DP</span>
-              <strong>{toCurrency(totals.dpAmount)}</strong>
+              <strong>{formatRupiah(totals.dpAmount)}</strong>
             </div>
             <div>
               <span>Tagihan</span>
-              <strong>{toCurrency(totals.invoiceAmount)}</strong>
+              <strong>{formatRupiah(totals.invoiceAmount)}</strong>
             </div>
           </section>
 
