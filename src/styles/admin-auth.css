@@ -2173,3 +2173,64 @@
   }
 }
 /* === BOOKING MODAL SLIM TYPOGRAPHY: END === */
+
+/* === STUDIO SELECT SCROLL CONTAINER: START === */
+.studio-select-list {
+  max-height: min(292px, 42dvh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 138, 42, 0.54) rgba(255, 255, 255, 0.045);
+  touch-action: pan-y;
+}
+
+.studio-select-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.studio-select-list::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.studio-select-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 138, 42, 0.54);
+  background-clip: padding-box;
+}
+
+.studio-select-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 138, 42, 0.72);
+  background-clip: padding-box;
+}
+
+.booking-modal-panel .studio-select {
+  z-index: 5;
+}
+
+.booking-modal-panel .studio-select-list {
+  max-height: min(246px, 34dvh);
+  padding-right: 7px;
+}
+
+.booking-modal-panel .studio-select-list[data-option-count='13'] {
+  max-height: min(238px, 32dvh);
+}
+
+@media (max-width: 767px) {
+  .studio-select-list {
+    max-height: min(260px, 38dvh);
+  }
+
+  .booking-modal-panel .studio-select-list {
+    max-height: min(226px, 30dvh);
+  }
+
+  .booking-modal-panel .studio-select-list[data-option-count='13'] {
+    max-height: min(218px, 28dvh);
+  }
+}
+/* === STUDIO SELECT SCROLL CONTAINER: END === */

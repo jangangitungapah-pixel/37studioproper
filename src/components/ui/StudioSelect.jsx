@@ -106,6 +106,7 @@ export default function StudioSelect({
         <div
           aria-label={label}
           className="studio-select-list"
+          data-option-count={options.length}
           id={listboxId}
           role="listbox"
           aria-multiselectable={multiple || undefined}
