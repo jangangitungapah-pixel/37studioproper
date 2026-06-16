@@ -667,8 +667,8 @@ function CustomerDetail({ customer, onBack }) {
   return (
     <section className="customer-detail-page" aria-labelledby="customer-detail-title">
       <button className="customer-back-button" type="button" onClick={onBack}>
-        <ArrowLeft size={17} />
-        Kembali ke Customer
+        <ArrowLeft size={16} />
+        Kembali
       </button>
 
       <section className="customer-detail-hero">
@@ -677,7 +677,7 @@ function CustomerDetail({ customer, onBack }) {
         </div>
 
         <div className="customer-detail-title">
-          <p>Customer Detail</p>
+          <p>Detail Customer</p>
           <h2 id="customer-detail-title">{customer.name}</h2>
           <span>{formatPhoneLabel(customer.phone || customer.phoneKey)}</span>
         </div>
@@ -691,7 +691,7 @@ function CustomerDetail({ customer, onBack }) {
         <section className="customer-payment-alert" role="status">
           <AlertCircle size={18} />
           <span>
-            Customer ini masih punya {openBookings.length} booking pending/DP dengan estimasi tagihan {formatMoney(customer.openInvoiceAmount)}.
+            Masih ada {openBookings.length} booking pending/DP • {formatMoney(customer.openInvoiceAmount)} outstanding.
           </span>
         </section>
       ) : null}
