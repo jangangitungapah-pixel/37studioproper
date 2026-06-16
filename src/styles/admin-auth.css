@@ -2281,3 +2281,54 @@
   z-index: 1;
 }
 /* === STUDIO SELECT STACKING FIX: END === */
+
+/* === SCHEDULE PRIMARY CONTROLS ALIGNMENT: START === */
+.schedule-primary-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 0.42fr);
+  align-items: stretch;
+  gap: 10px;
+}
+
+.schedule-primary-controls .studio-select,
+.schedule-primary-controls .schedule-add-button {
+  min-width: 0;
+}
+
+.schedule-primary-controls .schedule-add-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .schedule-primary-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(98px, 0.38fr);
+    gap: 8px;
+  }
+
+  .schedule-primary-controls .schedule-add-button {
+    font-size: 0.76rem;
+    padding: 0 10px;
+  }
+}
+
+@media (min-width: 768px) {
+  .schedule-actions {
+    width: min(100%, 900px);
+    grid-template-columns: minmax(320px, 0.9fr) minmax(220px, 1fr) auto;
+    align-items: center;
+  }
+
+  .schedule-primary-controls {
+    grid-template-columns: minmax(180px, 1fr) auto;
+  }
+
+  .schedule-primary-controls .schedule-add-button {
+    min-height: 48px;
+    width: auto;
+    min-width: 116px;
+  }
+}
+/* === SCHEDULE PRIMARY CONTROLS ALIGNMENT: END === */

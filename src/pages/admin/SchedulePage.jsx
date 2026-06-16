@@ -269,12 +269,19 @@ export default function SchedulePage() {
         </div>
 
         <div className="schedule-actions" aria-label="Kontrol kalender">
-          <StudioSelect
-            label="View Mode"
-            options={viewModes}
-            selectedKey={viewMode}
-            onChange={setViewMode}
-          />
+          <div className="schedule-primary-controls">
+            <StudioSelect
+              label="View Mode"
+              options={viewModes}
+              selectedKey={viewMode}
+              onChange={setViewMode}
+            />
+
+            <button className="schedule-add-button" type="button" onClick={() => openBookingModal()}>
+              <Plus size={17} />
+              Tambah
+            </button>
+          </div>
 
           <StudioSelect
             label="Quick Filter"
@@ -285,11 +292,6 @@ export default function SchedulePage() {
             selectedKeys={activeStatuses}
             onChange={setActiveStatuses}
           />
-
-          <button className="schedule-add-button" type="button" onClick={() => openBookingModal()}>
-            <Plus size={17} />
-            Tambah
-          </button>
 
           <div className="schedule-nav">
             <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
