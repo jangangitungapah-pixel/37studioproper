@@ -3909,3 +3909,27 @@
   }
 }
 /* === BOOKING DETAIL TITLE DESCENDER FIX: END === */
+
+/* === BOOKING DETAIL EDIT ACTION: START === */
+.booking-detail-compact-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.booking-detail-compact-button.is-edit {
+  border-color: var(--auth-border-strong);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #fff;
+}
+
+@media (min-width: 520px) {
+  .booking-detail-compact-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .booking-detail-compact-button.is-edit {
+    order: 2;
+  }
+}
+/* === BOOKING DETAIL EDIT ACTION: END === */

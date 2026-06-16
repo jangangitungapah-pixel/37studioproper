@@ -56,7 +56,35 @@ function getTodayIsoDate() {
   return year + '-' + month + '-' + day;
 }
 
-function createInitialForm(initialSlot) {
+function getDurationFormValue(durationHours) {
+  const normalizedDuration = String(Number(durationHours) || 1);
+  const durationOption = durationOptions.find((option) => String(option.key) === normalizedDuration);
+
+  return durationOption ? durationOption.key : 'custom';
+}
+
+function createInitialForm(initialSlot, editingBooking) {
+  if (editingBooking) {
+    const durationValue = getDurationFormValue(editingBooking.durationHours);
+    const isPackageBooking = editingBooking.packageId && editingBooking.packageId !== 'none';
+
+    return {
+      ...initialForm,
+      name: editingBooking.customer || '',
+      bandName: editingBooking.bandName || '',
+      phone: editingBooking.phone || '',
+      packageId: editingBooking.packageId || 'none',
+      sessionType: isPackageBooking ? initialForm.sessionType : editingBooking.sessionType || initialForm.sessionType,
+      recordingTypeId: editingBooking.recordingTypeId || 'none',
+      date: editingBooking.date || getTodayIsoDate(),
+      startHour: String(editingBooking.startHour ?? '10'),
+      duration: durationValue,
+      customDuration: durationValue === 'custom' ? String(editingBooking.durationHours || '') : '',
+      paymentStatus: editingBooking.paymentStatus || editingBooking.status || 'pending',
+      dpAmount: editingBooking.dpAmount ? String(editingBooking.dpAmount) : '',
+    };
+  }
+
   return {
     ...initialForm,
     date: initialSlot?.date || getTodayIsoDate(),
@@ -81,12 +109,13 @@ function getRecordingSessionKey(sessionOptions) {
 }
 
 export default function BookingFormModal({
+  editingBooking,
   initialSlot,
   isOpen,
   onClose,
   onSave,
 }) {
-  const [form, setForm] = useState(() => createInitialForm(initialSlot));
+  const [form, setForm] = useState(() => createInitialForm(initialSlot, editingBooking));
   const [error, setError] = useState('');
 
   const pricingSettings = getPricingSettings();
@@ -115,14 +144,14 @@ export default function BookingFormModal({
     if (!isOpen) return undefined;
 
     const frameId = window.requestAnimationFrame(() => {
-      setForm(createInitialForm(initialSlot));
+      setForm(createInitialForm(initialSlot, editingBooking));
       setError('');
     });
 
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [initialSlot, isOpen]);
+  }, [editingBooking, initialSlot, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -245,7 +274,7 @@ export default function BookingFormModal({
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
 
     const didSave = onSave({
-      id: makeBookingId(),
+      id: editingBooking?.id || makeBookingId(),
       customer: cleanName,
       bandName: cleanBandName,
       phone: cleanPhone,
@@ -269,7 +298,8 @@ export default function BookingFormModal({
       total: totals.total,
       dpAmount: totals.dpAmount,
       invoiceAmount: totals.invoiceAmount,
-      createdAt: new Date().toISOString(),
+      createdAt: editingBooking?.createdAt || new Date().toISOString(),
+      updatedAt: editingBooking ? new Date().toISOString() : '',
     });
 
     if (didSave === false) {
@@ -293,8 +323,8 @@ export default function BookingFormModal({
       >
         <header className="booking-modal-head">
           <div>
-            <p>Booking Form</p>
-            <h2 id="booking-form-title">Tambah Booking</h2>
+            <p>{editingBooking ? 'Edit Booking' : 'Booking Form'}</p>
+            <h2 id="booking-form-title">{editingBooking ? 'Edit Booking' : 'Tambah Booking'}</h2>
           </div>
 
           <button
@@ -471,7 +501,7 @@ export default function BookingFormModal({
               Batal
             </button>
             <button className="booking-button is-primary" type="submit">
-              Simpan
+              {editingBooking ? 'Simpan Perubahan' : 'Simpan'}
             </button>
           </footer>
         </form>

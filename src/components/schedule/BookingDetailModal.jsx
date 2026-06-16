@@ -99,6 +99,7 @@ export default function BookingDetailModal({
   booking,
   isOpen,
   onClose,
+  onEdit,
 }) {
   const status = getBookingStatus(booking);
   const statusLabel = statusLabelMap[status] || status;
@@ -237,6 +238,9 @@ export default function BookingDetailModal({
         </div>
 
         <footer className="booking-detail-compact-actions">
+          <button className="booking-detail-compact-button is-edit" type="button" onClick={() => onEdit(booking)}>
+            Edit Booking
+          </button>
           <button className="booking-detail-compact-button" type="button" onClick={onClose}>
             Tutup
           </button>
