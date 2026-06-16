@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  CalendarClock,
-  ChevronLeft,
+ChevronLeft,
   ChevronRight,
   Clock3,
 } from 'lucide-react';
@@ -237,11 +236,7 @@ export default function SchedulePage() {
     <section className="schedule-page" aria-labelledby="schedule-calendar-title">
       <div className="schedule-toolbar">
         <div className="schedule-title-block">
-          <p>
-            <CalendarClock size={15} aria-hidden="true" />
-            Studio Calendar
-          </p>
-          <h2 id="schedule-calendar-title">{rangeLabel}</h2>
+<h2 id="schedule-calendar-title">{rangeLabel}</h2>
         </div>
 
         <div className="schedule-actions" aria-label="Kontrol kalender">

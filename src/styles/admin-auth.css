@@ -1733,3 +1733,13 @@
   }
 }
 /* === STUDIO CUSTOM SELECT: END === */
+
+/* === SCHEDULE TITLE CAPSULE REMOVAL: START === */
+.schedule-title-block {
+  gap: 0;
+}
+
+.schedule-title-block p {
+  display: none !important;
+}
+/* === SCHEDULE TITLE CAPSULE REMOVAL: END === */
