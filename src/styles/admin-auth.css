@@ -3123,3 +3123,50 @@
   }
 }
 /* === SCHEDULE SPANNING BOOKING BLOCKS: END === */
+
+/* === SCHEDULE GRID EXPLICIT PLACEMENT FIX: START === */
+.schedule-grid {
+  grid-auto-flow: row;
+  grid-auto-rows: minmax(48px, auto);
+  align-items: stretch;
+}
+
+.schedule-grid-corner,
+.schedule-day-head,
+.schedule-time-cell,
+.schedule-slot-cell {
+  min-width: 0;
+}
+
+.schedule-grid-corner {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 32;
+}
+
+.schedule-day-head {
+  z-index: 24;
+}
+
+.schedule-time-cell {
+  z-index: 22;
+}
+
+.schedule-slot-cell {
+  z-index: 1;
+}
+
+.schedule-booking-block {
+  z-index: 18;
+}
+
+.schedule-row-fragment {
+  display: contents;
+}
+
+@media (min-width: 768px) {
+  .schedule-grid {
+    grid-auto-rows: minmax(52px, auto);
+  }
+}
+/* === SCHEDULE GRID EXPLICIT PLACEMENT FIX: END === */

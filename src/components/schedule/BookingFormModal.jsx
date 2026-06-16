@@ -89,7 +89,7 @@ export default function BookingFormModal({
   const [form, setForm] = useState(() => createInitialForm(initialSlot));
   const [error, setError] = useState('');
 
-  const pricingSettings = useMemo(() => getPricingSettings(), [isOpen]);
+  const pricingSettings = getPricingSettings();
   const sessionTypeOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
   const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
   const packageOptions = useMemo(

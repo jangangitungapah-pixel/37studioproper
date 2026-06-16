@@ -315,17 +315,21 @@ function CalendarGrid({
           className={'schedule-grid schedule-grid--' + viewMode}
           style={{ gridTemplateColumns }}
         >
-          <div className="schedule-grid-corner">
+          <div
+            className="schedule-grid-corner"
+            style={{ gridColumn: '1', gridRow: '1' }}
+          >
             <span>{viewMode === 'month' ? monthNames[selectedDate.getMonth()] : 'Jam'}</span>
           </div>
 
-          {visibleDays.map((day) => {
+          {visibleDays.map((day, dayIndex) => {
             const isToday = isSameDay(day, today);
 
             return (
               <div
                 className={isToday ? 'schedule-day-head is-today' : 'schedule-day-head'}
                 key={toIsoDate(day)}
+                style={{ gridColumn: String(dayIndex + 2), gridRow: '1' }}
               >
                 <span>{dayNames[day.getDay()]}</span>
                 <strong>{day.getDate()}</strong>
@@ -333,18 +337,25 @@ function CalendarGrid({
             );
           })}
 
-          {businessHours.map((hour) => (
+          {businessHours.map((hour, hourIndex) => (
             <div className="schedule-row-fragment" key={hour.key}>
-              <div className="schedule-time-cell">
+              <div
+                className="schedule-time-cell"
+                style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
+              >
                 <Clock3 size={14} aria-hidden="true" />
                 <span>{hour.rangeLabel || hour.description || hour.label}</span>
               </div>
 
-              {visibleDays.map((day) => {
+              {visibleDays.map((day, dayIndex) => {
                 const cellKey = toIsoDate(day) + '-' + hour.key;
 
                 return (
-                  <div className="schedule-slot-cell" key={cellKey}>
+                  <div
+                    className="schedule-slot-cell"
+                    key={cellKey}
+                    style={{ gridColumn: String(dayIndex + 2), gridRow: String(hourIndex + 2) }}
+                  >
                     <button
                       aria-label={'Tambah booking ' + toIsoDate(day) + ' jam ' + hour.label}
                       className="schedule-slot-button"

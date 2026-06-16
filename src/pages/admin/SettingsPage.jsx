@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Edit3, PackagePlus, Plus, Save, Trash2 } from 'lucide-react';
+import { Edit3, Save, Trash2 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import {
