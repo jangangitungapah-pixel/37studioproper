@@ -4523,3 +4523,312 @@
   }
 }
 /* === CUSTOMER ADMIN PAGE: END === */
+
+/* === CUSTOMER MOBILE UI POLISH: START === */
+.customer-page,
+.customer-detail-page {
+  gap: 12px;
+}
+
+.customer-page-title {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .admin-shell {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+
+  .admin-stage {
+    padding: 14px 14px calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .admin-topbar {
+    margin: -14px -14px 12px;
+    padding: calc(12px + env(safe-area-inset-top)) 14px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+    background:
+      linear-gradient(180deg, rgba(10, 8, 7, 0.96), rgba(10, 8, 7, 0.88)),
+      color-mix(in srgb, var(--auth-bg-page) 88%, transparent);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(18px);
+  }
+
+  .admin-topbar p {
+    margin-bottom: 2px;
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    opacity: 0.78;
+  }
+
+  .admin-topbar h1 {
+    font-size: clamp(1.38rem, 8vw, 1.9rem);
+    letter-spacing: -0.052em;
+  }
+
+  .admin-shell-icon-button {
+    min-height: 40px;
+    border-radius: 999px;
+    padding: 0 13px;
+    font-size: 0.72rem;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+      0 10px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .customer-page {
+    gap: 12px;
+  }
+
+  .customer-hero-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .customer-hero-card {
+    min-height: 118px;
+    grid-template-columns: 1fr;
+    align-content: start;
+    gap: 9px;
+    border-radius: 20px;
+    padding: 11px;
+  }
+
+  .customer-hero-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 13px;
+  }
+
+  .customer-hero-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .customer-hero-copy {
+    gap: 3px;
+  }
+
+  .customer-hero-copy small {
+    min-height: 2.2em;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    line-height: 1.18;
+  }
+
+  .customer-hero-copy strong {
+    font-size: clamp(1rem, 5vw, 1.32rem);
+    letter-spacing: -0.04em;
+  }
+
+  .customer-hero-copy em {
+    display: -webkit-box;
+    min-height: 2.35em;
+    overflow: hidden;
+    font-size: 0.64rem;
+    line-height: 1.18;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .customer-toolbar {
+    gap: 9px;
+    border-radius: 22px;
+    padding: 10px;
+  }
+
+  .customer-search-shell {
+    min-height: 46px;
+    border-radius: 17px;
+  }
+
+  .customer-search-shell input {
+    font-size: 0.8rem;
+  }
+
+  .customer-filter-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+    margin-inline: -2px;
+    overflow-x: auto;
+    padding: 0 2px 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .customer-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .customer-filter-pill {
+    min-height: 38px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 0 12px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .customer-add-button {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 16px;
+    font-size: 0.78rem;
+  }
+
+  .customer-table-shell {
+    border-radius: 22px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+  }
+
+  .customer-table-head {
+    display: none;
+  }
+
+  .customer-table-body {
+    min-width: 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .customer-table-row {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main status"
+      "contact booking"
+      "date date";
+    gap: 9px 12px;
+    align-items: start;
+    border: 1px solid var(--auth-border);
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 52%),
+      var(--auth-bg-soft);
+    padding: 13px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  }
+
+  .customer-main-cell {
+    grid-area: main;
+  }
+
+  .customer-contact-cell {
+    grid-area: contact;
+  }
+
+  .customer-number-cell {
+    grid-area: booking;
+    align-items: end;
+    text-align: right;
+  }
+
+  .customer-table-row > .customer-status-pill {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .customer-date-cell {
+    grid-area: date;
+    width: 100%;
+    border-top: 1px solid var(--auth-border);
+    padding-top: 8px;
+    font-size: 0.7rem;
+  }
+
+  .customer-main-cell strong {
+    font-size: 0.92rem;
+  }
+
+  .customer-contact-cell strong,
+  .customer-number-cell strong {
+    font-size: 0.8rem;
+  }
+
+  .customer-main-cell small,
+  .customer-contact-cell small,
+  .customer-number-cell small {
+    font-size: 0.7rem;
+  }
+
+  .customer-status-pill {
+    padding: 6px 9px;
+    font-size: 0.62rem;
+  }
+
+  .admin-bottom-nav {
+    left: 14px;
+    right: 14px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 80;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 70%),
+      rgba(10, 10, 12, 0.94);
+    box-shadow:
+      0 18px 54px rgba(0, 0, 0, 0.44),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+    backdrop-filter: blur(24px);
+  }
+
+  .admin-bottom-item {
+    min-height: 58px;
+    gap: 5px;
+    border-radius: 18px;
+    font-size: 0.64rem;
+    line-height: 1;
+  }
+
+  .admin-bottom-item svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .admin-bottom-item.is-active {
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 138, 42, 0.26), transparent 62%),
+      rgba(255, 138, 42, 0.095);
+    box-shadow:
+      inset 0 0 0 1px var(--auth-border-strong),
+      0 8px 20px rgba(255, 104, 28, 0.1);
+  }
+
+  .customer-detail-page {
+    gap: 11px;
+  }
+
+  .customer-detail-hero {
+    border-radius: 22px;
+    padding: 12px;
+  }
+
+  .customer-detail-stat-grid {
+    gap: 8px;
+  }
+
+  .customer-detail-stat-grid article,
+  .customer-detail-card {
+    border-radius: 18px;
+    padding: 11px;
+  }
+}
+
+@media (min-width: 768px) {
+  .customer-page-title {
+    display: none;
+  }
+
+  .admin-bottom-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* === CUSTOMER MOBILE UI POLISH: END === */
