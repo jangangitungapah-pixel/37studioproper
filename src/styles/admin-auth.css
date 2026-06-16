@@ -3933,3 +3933,22 @@
   }
 }
 /* === BOOKING DETAIL EDIT ACTION: END === */
+
+/* === SCHEDULE GRID HEADER OPACITY 90: START === */
+.schedule-grid-corner {
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.16), rgba(255, 255, 255, 0.035)),
+    color-mix(in srgb, var(--auth-bg-elevated) 90%, transparent) !important;
+}
+
+.schedule-day-head {
+  background: color-mix(in srgb, var(--auth-bg-elevated) 90%, transparent) !important;
+}
+
+.schedule-day-head.is-today,
+.schedule-day-head.is-focus-target {
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.22), rgba(255, 255, 255, 0.035)),
+    color-mix(in srgb, var(--auth-bg-elevated) 90%, transparent) !important;
+}
+/* === SCHEDULE GRID HEADER OPACITY 90: END === */
