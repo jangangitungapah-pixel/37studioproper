@@ -9,6 +9,8 @@ import {
   Settings,
 } from 'lucide-react';
 import { clearAdminSession, getAdminSession, isAdminAuthenticated } from '../auth/adminAuth.js';
+import SchedulePage from './admin/SchedulePage.jsx';
+import SettingsPage from './admin/SettingsPage.jsx';
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
@@ -20,7 +22,6 @@ const navItems = [
     path: '/admin/schedule',
     icon: CalendarDays,
     title: 'Schedule',
-    description: 'Halaman schedule masih kosong. Nanti kalender, booking, dan jadwal studio masuk di sini.',
   },
   {
     key: 'settings',
@@ -28,7 +29,6 @@ const navItems = [
     path: '/admin/settings',
     icon: Settings,
     title: 'Settings',
-    description: 'Halaman settings masih kosong. Nanti pengaturan aplikasi dan profil admin masuk di sini.',
   },
 ];
 
@@ -40,6 +40,12 @@ function getInitialSidebarState() {
   } catch {
     return false;
   }
+}
+
+function renderAdminContent(activeKey) {
+  if (activeKey === 'settings') return <SettingsPage />;
+
+  return <SchedulePage />;
 }
 
 export default function AdminPage() {
@@ -182,14 +188,7 @@ export default function AdminPage() {
           </button>
         </header>
 
-        <section className="admin-empty-canvas" aria-label={activeItem.title}>
-          <div className="admin-empty-panel">
-            <span className="admin-empty-orb" aria-hidden="true" />
-            <p className="admin-page-kicker">{activeItem.label}</p>
-            <h2>{activeItem.title} masih kosong.</h2>
-            <p>{activeItem.description}</p>
-          </div>
-        </section>
+        {renderAdminContent(activeItem.key)}
       </section>
 
       <nav className="admin-bottom-nav" aria-label="Navigasi admin mobile">
