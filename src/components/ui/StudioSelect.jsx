@@ -78,8 +78,10 @@ export default function StudioSelect({
     return multiple ? selectedKeys.includes(optionKey) : selectedKey === optionKey;
   }
 
+  const rootClassName = isOpen ? 'studio-select is-open' : 'studio-select';
+
   return (
-    <div className="studio-select" ref={rootRef}>
+    <div className={rootClassName} ref={rootRef}>
       <button
         aria-expanded={isOpen}
         aria-haspopup="listbox"

@@ -2234,3 +2234,50 @@
   }
 }
 /* === STUDIO SELECT SCROLL CONTAINER: END === */
+
+/* === STUDIO SELECT STACKING FIX: START === */
+.studio-select {
+  isolation: isolate;
+  z-index: 1;
+}
+
+.studio-select.is-open {
+  z-index: 95;
+}
+
+.studio-select-list {
+  z-index: 120;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 42%),
+    #101010;
+  box-shadow:
+    0 26px 78px rgba(0, 0, 0, 0.64),
+    0 0 0 1px rgba(255, 138, 42, 0.16);
+}
+
+.booking-modal-panel .studio-select {
+  position: relative;
+  z-index: 2;
+}
+
+.booking-modal-panel .studio-select.is-open {
+  z-index: 240;
+}
+
+.booking-modal-panel .studio-select-list {
+  z-index: 260;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 40%),
+    #0b0b0d;
+  box-shadow:
+    0 28px 82px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(255, 138, 42, 0.22);
+}
+
+.booking-modal-panel .studio-field,
+.booking-modal-panel .booking-detail-panel,
+.booking-modal-panel .booking-form-actions {
+  position: relative;
+  z-index: 1;
+}
+/* === STUDIO SELECT STACKING FIX: END === */
