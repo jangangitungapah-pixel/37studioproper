@@ -3422,3 +3422,34 @@
   }
 }
 /* === SCHEDULE MOBILE PERFORMANCE BOOST: END === */
+
+/* === SCHEDULE GRID PAGE SCROLL CHAIN FIX: START === */
+.schedule-grid-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  touch-action: pan-x pan-y;
+}
+
+@media (max-width: 767px) {
+  .schedule-grid-shell {
+    overscroll-behavior-y: auto;
+  }
+
+  .schedule-grid-scroll {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-x pan-y !important;
+  }
+
+  .schedule-grid,
+  .schedule-slot-cell,
+  .schedule-slot-button,
+  .schedule-booking-block {
+    touch-action: manipulation;
+  }
+}
+/* === SCHEDULE GRID PAGE SCROLL CHAIN FIX: END === */
