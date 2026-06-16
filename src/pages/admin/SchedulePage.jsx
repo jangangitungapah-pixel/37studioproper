@@ -6,6 +6,7 @@ import {
   Plus,
 } from 'lucide-react';
 import BookingFormModal from '../../components/schedule/BookingFormModal.jsx';
+import BookingDetailModal from '../../components/schedule/BookingDetailModal.jsx';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import {
   businessHours,
@@ -401,7 +402,7 @@ function getBookingBlockStyle(block) {
   return style;
 }
 
-function CalendarBookingBlock({ block, onSlotClick }) {
+function CalendarBookingBlock({ block, onBookingClick }) {
   const booking = block.booking;
   const title = booking.title || booking.sessionLabel || 'Booking';
   const statusLabel = getStatusLabel(block.status);
@@ -415,7 +416,7 @@ function CalendarBookingBlock({ block, onSlotClick }) {
       className={'schedule-booking-block is-' + block.status}
       style={getBookingBlockStyle(block)}
       type="button"
-      onClick={() => onSlotClick({ date: booking.date, startHour: String(booking.startHour) })}
+      onClick={() => onBookingClick(booking)}
     >
       <span className="schedule-booking-glow" aria-hidden="true" />
       <span className="schedule-booking-topline">
@@ -435,6 +436,7 @@ function CalendarGrid({
   activeStatuses,
   bookings,
   onSlotClick,
+  onBookingClick,
   selectedDate,
   todayFocusDateIso,
   todayFocusRequest,
@@ -568,7 +570,7 @@ function CalendarGrid({
             <CalendarBookingBlock
               block={block}
               key={block.booking.id || block.dayKey + '-' + block.startIndex + '-' + block.booking.customer}
-              onSlotClick={onSlotClick}
+              onBookingClick={onBookingClick}
             />
           ))}
         </div>
@@ -584,6 +586,7 @@ export default function SchedulePage() {
   const [bookings, setBookings] = useState(readStoredBookings);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
+  const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
   const [scheduleToast, setScheduleToast] = useState(null);
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
 
@@ -651,6 +654,14 @@ export default function SchedulePage() {
 
   function closeBookingModal() {
     setIsBookingModalOpen(false);
+  }
+
+  function openBookingDetail(booking) {
+    setSelectedBookingDetail(booking);
+  }
+
+  function closeBookingDetail() {
+    setSelectedBookingDetail(null);
   }
 
   function saveBooking(booking) {
@@ -723,6 +734,7 @@ export default function SchedulePage() {
       <CalendarGrid
         activeStatuses={activeStatuses}
         bookings={bookings}
+        onBookingClick={openBookingDetail}
         selectedDate={selectedDate}
         todayFocusDateIso={todayIsoDate}
         todayFocusRequest={todayFocusRequest}
@@ -735,6 +747,12 @@ export default function SchedulePage() {
         isOpen={isBookingModalOpen}
         onClose={closeBookingModal}
         onSave={saveBooking}
+      />
+
+      <BookingDetailModal
+        booking={selectedBookingDetail}
+        isOpen={Boolean(selectedBookingDetail)}
+        onClose={closeBookingDetail}
       />
 
       {scheduleToast ? (
