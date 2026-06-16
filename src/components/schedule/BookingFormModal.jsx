@@ -3,8 +3,7 @@ import {
   CalendarDays,
   Clock3,
   CreditCard,
-  Music2,
-  Phone,
+Phone,
   UserRound,
   UsersRound,
   X,
@@ -91,10 +90,16 @@ export default function BookingFormModal({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
 
-    setForm(createInitialForm(initialSlot));
-    setError('');
+    const frameId = window.requestAnimationFrame(() => {
+      setForm(createInitialForm(initialSlot));
+      setError('');
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [initialSlot, isOpen]);
 
   useEffect(() => {
