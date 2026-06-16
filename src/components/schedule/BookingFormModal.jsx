@@ -244,7 +244,7 @@ export default function BookingFormModal({
     const hourOption = getSelectedOption(businessHours, form.startHour);
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
 
-    onSave({
+    const didSave = onSave({
       id: makeBookingId(),
       customer: cleanName,
       bandName: cleanBandName,
@@ -271,6 +271,10 @@ export default function BookingFormModal({
       invoiceAmount: totals.invoiceAmount,
       createdAt: new Date().toISOString(),
     });
+
+    if (didSave === false) {
+      return;
+    }
 
     onClose();
   }

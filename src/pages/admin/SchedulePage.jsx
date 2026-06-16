@@ -164,6 +164,144 @@ function formatShortCurrency(value) {
   return 'Rp ' + safeValue;
 }
 
+function getBookingDurationHours(booking) {
+  const duration = Number(booking.durationHours);
+
+  return Number.isFinite(duration) && duration > 0 ? duration : 1;
+}
+
+function getBookingStartHour(booking) {
+  const startHour = Number(booking.startHour);
+
+  return Number.isFinite(startHour) ? startHour : 0;
+}
+
+function getBookingEndHour(booking) {
+  return getBookingStartHour(booking) + getBookingDurationHours(booking);
+}
+
+function formatHourLabel(hourValue) {
+  const safeHour = Number(hourValue) || 0;
+  const wholeHour = Math.floor(safeHour);
+  const minutes = Math.round((safeHour - wholeHour) * 60);
+
+  return String(wholeHour).padStart(2, '0') + '.' + String(minutes).padStart(2, '0');
+}
+
+function getBookingWindowLabel(booking) {
+  return formatHourLabel(getBookingStartHour(booking)) + '-' + formatHourLabel(getBookingEndHour(booking));
+}
+
+function getStudioOpenHour() {
+  return businessHours[0]?.start ?? 0;
+}
+
+function getStudioCloseHour() {
+  return businessHours[businessHours.length - 1]?.end ?? 24;
+}
+
+function isBookingScheduleActive(booking) {
+  const status = String(getBookingStatus(booking)).toLowerCase();
+
+  return !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
+}
+
+function doBookingIntervalsOverlap(firstBooking, secondBooking) {
+  if (firstBooking.date !== secondBooking.date) return false;
+
+  const firstStart = getBookingStartHour(firstBooking);
+  const firstEnd = getBookingEndHour(firstBooking);
+  const secondStart = getBookingStartHour(secondBooking);
+  const secondEnd = getBookingEndHour(secondBooking);
+
+  return Math.max(firstStart, secondStart) < Math.min(firstEnd, secondEnd);
+}
+
+function getBookingConflictIssue(nextBooking, currentBookings) {
+  const startHour = getBookingStartHour(nextBooking);
+  const endHour = getBookingEndHour(nextBooking);
+  const durationHours = getBookingDurationHours(nextBooking);
+  const openHour = getStudioOpenHour();
+  const closeHour = getStudioCloseHour();
+
+  if (!nextBooking.date || !Number.isFinite(startHour) || !durationHours) {
+    return {
+      kind: 'warning',
+      title: 'Booking belum lengkap',
+      message: 'Tanggal, jam mulai, dan durasi harus valid sebelum booking disimpan.',
+      meta: 'Cek kembali form booking.',
+    };
+  }
+
+  if (startHour < openHour || endHour > closeHour) {
+    return {
+      kind: 'warning',
+      title: 'Di luar jam operasional',
+      message:
+        'Slot ' +
+        getBookingWindowLabel(nextBooking) +
+        ' melewati jam operasional studio ' +
+        formatHourLabel(openHour) +
+        '-' +
+        formatHourLabel(closeHour) +
+        '.',
+      meta: 'Booking tidak disimpan.',
+    };
+  }
+
+  const conflicts = currentBookings
+    .filter((existingBooking) => {
+      if (!isBookingScheduleActive(existingBooking)) return false;
+      if (existingBooking.id && nextBooking.id && existingBooking.id === nextBooking.id) return false;
+
+      return doBookingIntervalsOverlap(existingBooking, nextBooking);
+    })
+    .sort((first, second) => {
+      const startDiff = getBookingStartHour(first) - getBookingStartHour(second);
+      if (startDiff !== 0) return startDiff;
+
+      return getBookingEndHour(second) - getBookingEndHour(first);
+    });
+
+  if (!conflicts.length) return null;
+
+  const primaryConflict = conflicts[0];
+  const conflictName = primaryConflict.customer || primaryConflict.title || primaryConflict.sessionLabel || 'booking lain';
+  const conflictCount = conflicts.length;
+
+  return {
+    kind: 'warning',
+    title: 'Jadwal bentrok',
+    message:
+      'Slot ' +
+      getBookingWindowLabel(nextBooking) +
+      ' bentrok dengan ' +
+      conflictName +
+      ' pada ' +
+      getBookingWindowLabel(primaryConflict) +
+      '.',
+    meta:
+      conflictCount > 1
+        ? String(conflictCount) + ' booking bertabrakan di tanggal yang sama.'
+        : 'Back-to-back tetap aman, tapi overlap waktu tidak boleh.',
+  };
+}
+
+function getBookingSavedToast(booking) {
+  return {
+    kind: 'success',
+    title: 'Booking tersimpan',
+    message:
+      (booking.customer || 'Customer') +
+      ' masuk ke slot ' +
+      getBookingWindowLabel(booking) +
+      ' tanggal ' +
+      booking.date +
+      '.',
+    meta: booking.sessionLabel || booking.packageLabel || 'Schedule updated.',
+  };
+}
+
 function getSlotSpanRows(booking, startIndex) {
   const duration = Math.max(1, Math.ceil(Number(booking.durationHours) || 1));
   const availableRows = businessHours.length - startIndex;
@@ -390,6 +528,7 @@ export default function SchedulePage() {
   const [bookings, setBookings] = useState(readStoredBookings);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
+  const [scheduleToast, setScheduleToast] = useState(null);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(getBookingStatus(booking))).length;
@@ -405,6 +544,19 @@ export default function SchedulePage() {
   useEffect(() => {
     window.localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
   }, [bookings]);
+
+  useEffect(() => {
+    if (!scheduleToast) return undefined;
+
+    const toastTimerId = window.setTimeout(
+      () => setScheduleToast(null),
+      scheduleToast.kind === 'warning' ? 6500 : 3600
+    );
+
+    return () => {
+      window.clearTimeout(toastTimerId);
+    };
+  }, [scheduleToast]);
 
   function moveCalendar(direction) {
     setSelectedDate((current) => shiftDate(current, viewMode, direction));
@@ -424,7 +576,16 @@ export default function SchedulePage() {
   }
 
   function saveBooking(booking) {
+    const conflictIssue = getBookingConflictIssue(booking, bookings);
+
+    if (conflictIssue) {
+      setScheduleToast(conflictIssue);
+      return false;
+    }
+
     setBookings((current) => [booking, ...current]);
+    setScheduleToast(getBookingSavedToast(booking));
+    return true;
   }
 
   return (
@@ -495,6 +656,29 @@ export default function SchedulePage() {
         onClose={closeBookingModal}
         onSave={saveBooking}
       />
+
+      {scheduleToast ? (
+        <aside
+          aria-live={scheduleToast.kind === 'warning' ? 'assertive' : 'polite'}
+          className={scheduleToast ? 'schedule-toast is-' + scheduleToast.kind : 'schedule-toast'}
+          role={scheduleToast.kind === 'warning' ? 'alert' : 'status'}
+        >
+          <span className="schedule-toast-orb" aria-hidden="true" />
+          <span className="schedule-toast-copy">
+            <strong>{scheduleToast.title}</strong>
+            <span>{scheduleToast.message}</span>
+            {scheduleToast.meta ? <small>{scheduleToast.meta}</small> : null}
+          </span>
+          <button
+            aria-label="Tutup notifikasi"
+            className="schedule-toast-close"
+            type="button"
+            onClick={() => setScheduleToast(null)}
+          >
+            ×
+          </button>
+        </aside>
+      ) : null}
     </section>
   );
 }

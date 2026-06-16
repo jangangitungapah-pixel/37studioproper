@@ -3170,3 +3170,117 @@
   }
 }
 /* === SCHEDULE GRID EXPLICIT PLACEMENT FIX: END === */
+
+/* === SCHEDULE CONFLICT TOAST: START === */
+.schedule-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(112px + env(safe-area-inset-bottom));
+  z-index: 380;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid rgba(255, 138, 42, 0.32);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.13), rgba(255, 255, 255, 0.05)),
+    rgba(12, 12, 14, 0.94);
+  padding: 12px;
+  color: var(--auth-text-main);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.56),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(24px);
+  animation: schedule-toast-rise 220ms ease both;
+}
+
+.schedule-toast.is-warning {
+  border-color: rgba(255, 176, 32, 0.42);
+}
+
+.schedule-toast.is-success {
+  border-color: rgba(103, 232, 165, 0.34);
+}
+
+.schedule-toast-orb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--auth-accent);
+  box-shadow: 0 0 0 7px rgba(255, 138, 42, 0.11);
+}
+
+.schedule-toast.is-warning .schedule-toast-orb {
+  background: #ffb020;
+  box-shadow: 0 0 0 7px rgba(255, 176, 32, 0.12);
+}
+
+.schedule-toast.is-success .schedule-toast-orb {
+  background: #67e8a5;
+  box-shadow: 0 0 0 7px rgba(103, 232, 165, 0.12);
+}
+
+.schedule-toast-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.schedule-toast-copy strong {
+  color: var(--auth-text-strong);
+  font-size: 0.86rem;
+  font-weight: 560;
+  letter-spacing: -0.015em;
+}
+
+.schedule-toast-copy span {
+  color: var(--auth-text-main);
+  font-size: 0.78rem;
+  font-weight: 340;
+  line-height: 1.35;
+}
+
+.schedule-toast-copy small {
+  color: var(--auth-text-muted);
+  font-size: 0.68rem;
+  font-weight: 320;
+  line-height: 1.35;
+}
+
+.schedule-toast-close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--auth-text-main);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@keyframes schedule-toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (min-width: 768px) {
+  .schedule-toast {
+    left: auto;
+    right: 28px;
+    bottom: 28px;
+    width: min(420px, calc(100vw - 56px));
+  }
+}
+/* === SCHEDULE CONFLICT TOAST: END === */
