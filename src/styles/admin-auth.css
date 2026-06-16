@@ -3893,3 +3893,19 @@
   }
 }
 /* === BOOKING DETAIL MODAL COMPACT SOLID: END === */
+
+/* === BOOKING DETAIL TITLE DESCENDER FIX: START === */
+.booking-detail-compact-heading h2 {
+  line-height: 1.12 !important;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.04em;
+}
+
+@media (max-width: 380px) {
+  .booking-detail-compact-heading h2 {
+    line-height: 1.12 !important;
+    padding-bottom: 0.08em;
+    margin-bottom: -0.04em;
+  }
+}
+/* === BOOKING DETAIL TITLE DESCENDER FIX: END === */
