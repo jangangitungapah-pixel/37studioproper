@@ -2332,3 +2332,131 @@
   }
 }
 /* === SCHEDULE PRIMARY CONTROLS ALIGNMENT: END === */
+
+/* === SCHEDULE PAYMENT COUNTERS SOFT TYPE: START === */
+.schedule-payment-counters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 22px;
+  padding: 0 2px;
+  color: var(--auth-text-muted);
+}
+
+.schedule-payment-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--auth-text-muted);
+  font-size: 0.72rem;
+  font-weight: 360;
+  letter-spacing: 0.015em;
+}
+
+.schedule-payment-counter > span {
+  font-weight: 360;
+}
+
+.schedule-payment-counter strong {
+  color: var(--auth-text-main);
+  font-size: 0.74rem;
+  font-weight: 460;
+  letter-spacing: -0.01em;
+}
+
+.schedule-payment-counter i {
+  margin-left: 3px;
+  color: color-mix(in srgb, var(--auth-text-muted) 48%, transparent);
+  font-style: normal;
+  font-weight: 260;
+}
+
+.schedule-payment-counter.is-pending strong {
+  color: #ffb020;
+}
+
+.schedule-payment-counter.is-dp strong {
+  color: #5cc8ff;
+}
+
+.schedule-payment-counter.is-lunas strong {
+  color: #67e8a5;
+}
+
+.schedule-page .schedule-title-block h2 {
+  font-weight: 320 !important;
+}
+
+.schedule-page .studio-select-label {
+  font-weight: 500 !important;
+  letter-spacing: 0.105em !important;
+}
+
+.schedule-page .studio-select-copy strong {
+  font-weight: 520 !important;
+}
+
+.schedule-page .studio-select-helper {
+  font-weight: 440 !important;
+}
+
+.schedule-page .schedule-add-button {
+  font-weight: 620 !important;
+}
+
+.schedule-page .schedule-nav button {
+  font-weight: 500 !important;
+}
+
+.schedule-page .schedule-grid-corner {
+  font-weight: 560 !important;
+}
+
+.schedule-page .schedule-day-head span {
+  font-weight: 500 !important;
+}
+
+.schedule-page .schedule-day-head strong {
+  font-weight: 560 !important;
+}
+
+.schedule-page .schedule-time-cell {
+  font-weight: 470 !important;
+}
+
+.schedule-page .schedule-booking-pill strong {
+  font-weight: 520 !important;
+}
+
+.schedule-page .schedule-booking-pill span {
+  font-weight: 360 !important;
+}
+
+.admin-bottom-item {
+  font-weight: 560 !important;
+}
+
+.admin-topbar p {
+  font-weight: 500 !important;
+}
+
+.admin-topbar h1 {
+  font-weight: 330 !important;
+}
+
+@media (max-width: 767px) {
+  .schedule-payment-counters {
+    margin-top: -2px;
+    padding-left: 1px;
+  }
+
+  .schedule-payment-counter {
+    font-size: 0.7rem;
+  }
+
+  .schedule-payment-counter strong {
+    font-size: 0.72rem;
+  }
+}
+/* === SCHEDULE PAYMENT COUNTERS SOFT TYPE: END === */

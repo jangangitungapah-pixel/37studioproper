@@ -235,6 +235,14 @@ export default function SchedulePage() {
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(booking.status)).length;
+  const paymentStatusCounts = useMemo(
+    () =>
+      statusFilters.reduce((counts, item) => {
+        counts[item.key] = bookings.filter((booking) => (booking.paymentStatus || booking.status) === item.key).length;
+        return counts;
+      }, {}),
+    [bookings]
+  );
 
   useEffect(() => {
     window.localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
@@ -292,6 +300,16 @@ export default function SchedulePage() {
             selectedKeys={activeStatuses}
             onChange={setActiveStatuses}
           />
+
+          <div className="schedule-payment-counters" aria-label="Ringkasan status pembayaran">
+            {statusFilters.map((item, index) => (
+              <span className={'schedule-payment-counter is-' + item.key} key={item.key}>
+                <span>{item.label}</span>
+                <strong>{paymentStatusCounts[item.key] || 0}</strong>
+                {index < statusFilters.length - 1 ? <i aria-hidden="true">|</i> : null}
+              </span>
+            ))}
+          </div>
 
           <div className="schedule-nav">
             <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
