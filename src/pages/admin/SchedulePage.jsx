@@ -588,15 +588,32 @@ export default function SchedulePage() {
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
-  const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(getBookingStatus(booking))).length;
-  const paymentStatusCounts = useMemo(
-    () =>
-      statusFilters.reduce((counts, item) => {
-        counts[item.key] = bookings.filter((booking) => getBookingStatus(booking) === item.key).length;
-        return counts;
-      }, {}),
-    [bookings]
-  );
+  const scheduleStats = useMemo(() => {
+    const counts = statusFilters.reduce((nextCounts, item) => {
+      nextCounts[item.key] = 0;
+      return nextCounts;
+    }, {});
+    let visibleCount = 0;
+
+    bookings.forEach((booking) => {
+      const status = getBookingStatus(booking);
+
+      if (counts[status] !== undefined) {
+        counts[status] += 1;
+      }
+
+      if (activeStatuses.includes(status)) {
+        visibleCount += 1;
+      }
+    });
+
+    return {
+      counts,
+      visibleCount,
+    };
+  }, [activeStatuses, bookings]);
+  const visibleBookingCount = scheduleStats.visibleCount;
+  const paymentStatusCounts = scheduleStats.counts;
   const todayIsoDate = toIsoDate(startOfDay(new Date()));
 
   useEffect(() => {
