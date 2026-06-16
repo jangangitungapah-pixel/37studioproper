@@ -3,9 +3,9 @@ import {
   CalendarDays,
   Clock3,
   CreditCard,
-  PackageCheck,
   Phone,
   ReceiptText,
+  Tag,
   UserRound,
   UsersRound,
   X,
@@ -66,13 +66,20 @@ function getBookingStatus(booking) {
   return booking?.paymentStatus || booking?.status || 'pending';
 }
 
-function DetailRow({ icon: Icon, label, value }) {
+function getPaidAmount(booking, status) {
+  if (status === 'dp') return booking?.dpAmount;
+  if (status === 'lunas') return booking?.total;
+
+  return 0;
+}
+
+function DetailItem({ icon: Icon, label, value }) {
   return (
-    <div className="booking-detail-row">
-      <span className="booking-detail-row-icon">
+    <div className="booking-detail-v2-item">
+      <span className="booking-detail-v2-icon">
         <Icon size={15} aria-hidden="true" />
       </span>
-      <span>
+      <span className="booking-detail-v2-copy">
         <small>{label}</small>
         <strong>{value || '-'}</strong>
       </span>
@@ -80,9 +87,9 @@ function DetailRow({ icon: Icon, label, value }) {
   );
 }
 
-function MoneyRow({ label, value, tone }) {
+function MoneyItem({ label, value, tone }) {
   return (
-    <div className={tone ? 'booking-detail-money-row is-' + tone : 'booking-detail-money-row'}>
+    <div className={tone ? 'booking-detail-v2-money-item is-' + tone : 'booking-detail-v2-money-item'}>
       <span>{label}</span>
       <strong>{formatRupiah(value)}</strong>
     </div>
@@ -96,9 +103,10 @@ export default function BookingDetailModal({
 }) {
   const status = getBookingStatus(booking);
   const statusLabel = statusLabelMap[status] || status;
-  const title = booking?.title || booking?.sessionLabel || booking?.packageLabel || 'Detail Booking';
+  const title = booking?.title || booking?.bandName || booking?.sessionLabel || booking?.packageLabel || 'Detail Booking';
   const sessionLabel = booking?.packageLabel || booking?.recordingTypeLabel || booking?.sessionLabel || '-';
-  const hasPhone = Boolean(booking?.phone);
+  const paidAmount = getPaidAmount(booking, status);
+  const invoiceAmount = Number(booking?.invoiceAmount) || 0;
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -130,25 +138,25 @@ export default function BookingDetailModal({
 
   return (
     <div
-      className="booking-detail-backdrop"
+      className="booking-detail-v2-backdrop"
       role="presentation"
       onMouseDown={handleBackdropClick}
     >
       <section
         aria-labelledby="booking-detail-title"
         aria-modal="true"
-        className="booking-detail-panel"
+        className="booking-detail-v2-panel"
         role="dialog"
       >
-        <header className="booking-detail-head">
-          <div>
+        <header className="booking-detail-v2-head">
+          <div className="booking-detail-v2-heading">
             <p>Booking Detail</p>
             <h2 id="booking-detail-title">{title}</h2>
           </div>
 
           <button
             aria-label="Tutup detail booking"
-            className="booking-detail-close"
+            className="booking-detail-v2-close"
             type="button"
             onClick={onClose}
           >
@@ -156,58 +164,65 @@ export default function BookingDetailModal({
           </button>
         </header>
 
-        <div className={'booking-detail-status is-' + status}>
-          <span>Status Pembayaran</span>
+        <div className={'booking-detail-v2-status is-' + status}>
+          <span>Status pembayaran</span>
           <strong>{statusLabel}</strong>
         </div>
 
-        <div className="booking-detail-body">
-          <section className="booking-detail-card is-hero">
+        <div className="booking-detail-v2-body">
+          <section className="booking-detail-v2-hero">
             <div>
               <span>Customer</span>
               <h3>{booking.customer || '-'}</h3>
-              {booking.bandName ? <p>{booking.bandName}</p> : <p>{sessionLabel}</p>}
+              <p>{booking.bandName || sessionLabel}</p>
             </div>
 
-            {hasPhone ? (
-              <a className="booking-detail-phone" href={'tel:' + booking.phone}>
+            {booking.phone ? (
+              <a className="booking-detail-v2-phone" href={'tel:' + booking.phone}>
                 <Phone size={15} />
                 Hubungi
               </a>
             ) : null}
           </section>
 
-          <section className="booking-detail-grid" aria-label="Informasi booking">
-            <DetailRow icon={UserRound} label="Nama Customer" value={booking.customer} />
-            <DetailRow icon={UsersRound} label="Band / Project" value={booking.bandName || booking.title} />
-            <DetailRow icon={Phone} label="No HP" value={booking.phone} />
-            <DetailRow icon={CalendarDays} label="Tanggal" value={formatDateLabel(booking.date)} />
-            <DetailRow icon={Clock3} label="Jam Booking" value={getBookingWindowLabel(booking)} />
-            <DetailRow icon={PackageCheck} label="Session / Paket" value={sessionLabel} />
+          <section className="booking-detail-v2-section" aria-label="Informasi booking">
+            <div className="booking-detail-v2-section-head">
+              <UserRound size={16} aria-hidden="true" />
+              <span>Informasi Booking</span>
+            </div>
+
+            <div className="booking-detail-v2-list">
+              <DetailItem icon={UserRound} label="Nama Customer" value={booking.customer} />
+              <DetailItem icon={UsersRound} label="Band / Project" value={booking.bandName || booking.title} />
+              <DetailItem icon={Phone} label="No HP" value={booking.phone} />
+              <DetailItem icon={CalendarDays} label="Tanggal" value={formatDateLabel(booking.date)} />
+              <DetailItem icon={Clock3} label="Jam Booking" value={getBookingWindowLabel(booking)} />
+              <DetailItem icon={Tag} label="Session / Paket" value={sessionLabel} />
+            </div>
           </section>
 
-          <section className="booking-detail-card">
-            <div className="booking-detail-section-head">
+          <section className="booking-detail-v2-section" aria-label="Ringkasan harga">
+            <div className="booking-detail-v2-section-head">
               <ReceiptText size={16} aria-hidden="true" />
               <span>Ringkasan Harga</span>
             </div>
 
-            <div className="booking-detail-money">
-              <MoneyRow label="Subtotal" value={booking.subtotal} />
-              <MoneyRow label="Diskon" value={booking.discountAmount} tone="discount" />
-              <MoneyRow label="Total" value={booking.total} tone="total" />
-              <MoneyRow label={status === 'dp' ? 'DP Terbayar' : 'Terbayar'} value={status === 'dp' ? booking.dpAmount : booking.total} />
-              <MoneyRow label="Sisa Tagihan" value={booking.invoiceAmount} tone={Number(booking.invoiceAmount) > 0 ? 'warning' : 'paid'} />
+            <div className="booking-detail-v2-money">
+              <MoneyItem label="Subtotal" value={booking.subtotal} />
+              <MoneyItem label="Diskon" value={booking.discountAmount} tone="discount" />
+              <MoneyItem label="Total" value={booking.total} tone="total" />
+              <MoneyItem label={status === 'dp' ? 'DP Terbayar' : 'Terbayar'} value={paidAmount} />
+              <MoneyItem label="Sisa Tagihan" value={invoiceAmount} tone={invoiceAmount > 0 ? 'warning' : 'paid'} />
             </div>
           </section>
 
-          <section className="booking-detail-card">
-            <div className="booking-detail-section-head">
+          <section className="booking-detail-v2-section" aria-label="Metadata booking">
+            <div className="booking-detail-v2-section-head">
               <CreditCard size={16} aria-hidden="true" />
               <span>Metadata</span>
             </div>
 
-            <div className="booking-detail-meta-list">
+            <div className="booking-detail-v2-meta">
               <span>
                 <small>ID Booking</small>
                 <strong>{booking.id || '-'}</strong>
@@ -224,8 +239,8 @@ export default function BookingDetailModal({
           </section>
         </div>
 
-        <footer className="booking-detail-actions">
-          <button className="booking-detail-button" type="button" onClick={onClose}>
+        <footer className="booking-detail-v2-actions">
+          <button className="booking-detail-v2-button" type="button" onClick={onClose}>
             Tutup
           </button>
         </footer>
