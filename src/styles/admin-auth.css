@@ -3934,21 +3934,32 @@
 }
 /* === BOOKING DETAIL EDIT ACTION: END === */
 
-/* === SCHEDULE GRID HEADER OPACITY 90: START === */
+/* === SCHEDULE GRID HEADER SOLID: START === */
 .schedule-grid-corner {
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.16), rgba(255, 255, 255, 0.035)),
-    color-mix(in srgb, var(--auth-bg-elevated) 90%, transparent) !important;
+    linear-gradient(135deg, rgba(255, 138, 42, 0.12), rgba(255, 255, 255, 0.025)),
+    var(--auth-bg-elevated) !important;
+  backdrop-filter: none !important;
 }
 
 .schedule-day-head {
-  background: color-mix(in srgb, var(--auth-bg-elevated) 90%, transparent) !important;
+  background: var(--auth-bg-elevated) !important;
+  backdrop-filter: none !important;
 }
 
 .schedule-day-head.is-today,
 .schedule-day-head.is-focus-target {
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.22), rgba(255, 255, 255, 0.035)),
-    color-mix(in srgb, var(--auth-bg-elevated) 90%, transparent) !important;
+    linear-gradient(135deg, rgba(255, 138, 42, 0.16), rgba(255, 255, 255, 0.025)),
+    var(--auth-bg-elevated) !important;
+  backdrop-filter: none !important;
 }
-/* === SCHEDULE GRID HEADER OPACITY 90: END === */
+
+@media (max-width: 767px) {
+  .schedule-grid-corner,
+  .schedule-day-head {
+    background-color: var(--auth-bg-elevated) !important;
+    backdrop-filter: none !important;
+  }
+}
+/* === SCHEDULE GRID HEADER SOLID: END === */
