@@ -7,7 +7,6 @@ import {
   ReceiptText,
   Tag,
   UserRound,
-  UsersRound,
   X,
 } from 'lucide-react';
 
@@ -73,13 +72,13 @@ function getPaidAmount(booking, status) {
   return 0;
 }
 
-function DetailItem({ icon: Icon, label, value }) {
+function CompactItem({ icon: Icon, label, value }) {
   return (
-    <div className="booking-detail-v2-item">
-      <span className="booking-detail-v2-icon">
-        <Icon size={15} aria-hidden="true" />
+    <div className="booking-detail-compact-item">
+      <span className="booking-detail-compact-icon">
+        <Icon size={14} aria-hidden="true" />
       </span>
-      <span className="booking-detail-v2-copy">
+      <span className="booking-detail-compact-copy">
         <small>{label}</small>
         <strong>{value || '-'}</strong>
       </span>
@@ -89,7 +88,7 @@ function DetailItem({ icon: Icon, label, value }) {
 
 function MoneyItem({ label, value, tone }) {
   return (
-    <div className={tone ? 'booking-detail-v2-money-item is-' + tone : 'booking-detail-v2-money-item'}>
+    <div className={tone ? 'booking-detail-compact-money-row is-' + tone : 'booking-detail-compact-money-row'}>
       <span>{label}</span>
       <strong>{formatRupiah(value)}</strong>
     </div>
@@ -138,25 +137,25 @@ export default function BookingDetailModal({
 
   return (
     <div
-      className="booking-detail-v2-backdrop"
+      className="booking-detail-compact-backdrop"
       role="presentation"
       onMouseDown={handleBackdropClick}
     >
       <section
         aria-labelledby="booking-detail-title"
         aria-modal="true"
-        className="booking-detail-v2-panel"
+        className="booking-detail-compact-panel"
         role="dialog"
       >
-        <header className="booking-detail-v2-head">
-          <div className="booking-detail-v2-heading">
+        <header className="booking-detail-compact-head">
+          <div className="booking-detail-compact-heading">
             <p>Booking Detail</p>
             <h2 id="booking-detail-title">{title}</h2>
           </div>
 
           <button
             aria-label="Tutup detail booking"
-            className="booking-detail-v2-close"
+            className="booking-detail-compact-close"
             type="button"
             onClick={onClose}
           >
@@ -164,50 +163,48 @@ export default function BookingDetailModal({
           </button>
         </header>
 
-        <div className={'booking-detail-v2-status is-' + status}>
-          <span>Status pembayaran</span>
-          <strong>{statusLabel}</strong>
-        </div>
-
-        <div className="booking-detail-v2-body">
-          <section className="booking-detail-v2-hero">
-            <div>
+        <div className="booking-detail-compact-body">
+          <section className="booking-detail-compact-summary">
+            <div className="booking-detail-compact-customer">
               <span>Customer</span>
-              <h3>{booking.customer || '-'}</h3>
-              <p>{booking.bandName || sessionLabel}</p>
+              <strong>{booking.customer || '-'}</strong>
+              <small>{booking.bandName || sessionLabel}</small>
+            </div>
+
+            <div className={'booking-detail-compact-status is-' + status}>
+              <span>Status</span>
+              <strong>{statusLabel}</strong>
             </div>
 
             {booking.phone ? (
-              <a className="booking-detail-v2-phone" href={'tel:' + booking.phone}>
+              <a className="booking-detail-compact-phone" href={'tel:' + booking.phone}>
                 <Phone size={15} />
                 Hubungi
               </a>
             ) : null}
           </section>
 
-          <section className="booking-detail-v2-section" aria-label="Informasi booking">
-            <div className="booking-detail-v2-section-head">
-              <UserRound size={16} aria-hidden="true" />
+          <section className="booking-detail-compact-card" aria-label="Informasi booking">
+            <div className="booking-detail-compact-section-title">
+              <UserRound size={15} aria-hidden="true" />
               <span>Informasi Booking</span>
             </div>
 
-            <div className="booking-detail-v2-list">
-              <DetailItem icon={UserRound} label="Nama Customer" value={booking.customer} />
-              <DetailItem icon={UsersRound} label="Band / Project" value={booking.bandName || booking.title} />
-              <DetailItem icon={Phone} label="No HP" value={booking.phone} />
-              <DetailItem icon={CalendarDays} label="Tanggal" value={formatDateLabel(booking.date)} />
-              <DetailItem icon={Clock3} label="Jam Booking" value={getBookingWindowLabel(booking)} />
-              <DetailItem icon={Tag} label="Session / Paket" value={sessionLabel} />
+            <div className="booking-detail-compact-grid">
+              <CompactItem icon={Phone} label="No HP" value={booking.phone} />
+              <CompactItem icon={CalendarDays} label="Tanggal" value={formatDateLabel(booking.date)} />
+              <CompactItem icon={Clock3} label="Jam" value={getBookingWindowLabel(booking)} />
+              <CompactItem icon={Tag} label="Session" value={sessionLabel} />
             </div>
           </section>
 
-          <section className="booking-detail-v2-section" aria-label="Ringkasan harga">
-            <div className="booking-detail-v2-section-head">
-              <ReceiptText size={16} aria-hidden="true" />
+          <section className="booking-detail-compact-card" aria-label="Ringkasan harga">
+            <div className="booking-detail-compact-section-title">
+              <ReceiptText size={15} aria-hidden="true" />
               <span>Ringkasan Harga</span>
             </div>
 
-            <div className="booking-detail-v2-money">
+            <div className="booking-detail-compact-money">
               <MoneyItem label="Subtotal" value={booking.subtotal} />
               <MoneyItem label="Diskon" value={booking.discountAmount} tone="discount" />
               <MoneyItem label="Total" value={booking.total} tone="total" />
@@ -216,13 +213,13 @@ export default function BookingDetailModal({
             </div>
           </section>
 
-          <section className="booking-detail-v2-section" aria-label="Metadata booking">
-            <div className="booking-detail-v2-section-head">
-              <CreditCard size={16} aria-hidden="true" />
-              <span>Metadata</span>
-            </div>
+          <details className="booking-detail-compact-meta">
+            <summary>
+              <CreditCard size={15} aria-hidden="true" />
+              Metadata
+            </summary>
 
-            <div className="booking-detail-v2-meta">
+            <div className="booking-detail-compact-meta-list">
               <span>
                 <small>ID Booking</small>
                 <strong>{booking.id || '-'}</strong>
@@ -236,11 +233,11 @@ export default function BookingDetailModal({
                 <strong>{booking.pricingMode || '-'}</strong>
               </span>
             </div>
-          </section>
+          </details>
         </div>
 
-        <footer className="booking-detail-v2-actions">
-          <button className="booking-detail-v2-button" type="button" onClick={onClose}>
+        <footer className="booking-detail-compact-actions">
+          <button className="booking-detail-compact-button" type="button" onClick={onClose}>
             Tutup
           </button>
         </footer>
