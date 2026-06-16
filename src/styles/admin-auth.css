@@ -580,3 +580,57 @@
     transition: none;
   }
 }
+
+/* === LOGIN INPUT BLUE HIGHLIGHT FIX: START === */
+.auth-input-wrap input,
+.auth-input-wrap input:focus,
+.auth-input-wrap input:focus-visible,
+.auth-input-wrap input:active {
+  outline: none;
+  border: 0;
+  box-shadow: none;
+  background-color: transparent;
+  caret-color: var(--auth-accent);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-input-wrap input::selection {
+  color: var(--auth-text-strong);
+  background: color-mix(in srgb, var(--auth-accent) 34%, transparent);
+}
+
+.auth-input-wrap input::-moz-selection {
+  color: var(--auth-text-strong);
+  background: rgba(255, 138, 42, 0.34);
+}
+
+.auth-input-wrap input:-webkit-autofill,
+.auth-input-wrap input:-webkit-autofill:hover,
+.auth-input-wrap input:-webkit-autofill:focus,
+.auth-input-wrap input:-webkit-autofill:active {
+  border: 0;
+  outline: none;
+  box-shadow: 0 0 0 1000px color-mix(in srgb, var(--auth-bg-control) 92%, #101012) inset;
+  -webkit-box-shadow: 0 0 0 1000px color-mix(in srgb, var(--auth-bg-control) 92%, #101012) inset;
+  -webkit-text-fill-color: var(--auth-text-main);
+  caret-color: var(--auth-accent);
+  transition: background-color 999999s ease-in-out 0s;
+}
+
+[data-theme='light'] .auth-input-wrap input:-webkit-autofill,
+[data-theme='light'] .auth-input-wrap input:-webkit-autofill:hover,
+[data-theme='light'] .auth-input-wrap input:-webkit-autofill:focus,
+[data-theme='light'] .auth-input-wrap input:-webkit-autofill:active,
+.theme-light .auth-input-wrap input:-webkit-autofill,
+.theme-light .auth-input-wrap input:-webkit-autofill:hover,
+.theme-light .auth-input-wrap input:-webkit-autofill:focus,
+.theme-light .auth-input-wrap input:-webkit-autofill:active,
+.light .auth-input-wrap input:-webkit-autofill,
+.light .auth-input-wrap input:-webkit-autofill:hover,
+.light .auth-input-wrap input:-webkit-autofill:focus,
+.light .auth-input-wrap input:-webkit-autofill:active {
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.92) inset;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.92) inset;
+  -webkit-text-fill-color: var(--auth-text-main);
+}
+/* === LOGIN INPUT BLUE HIGHLIGHT FIX: END === */
