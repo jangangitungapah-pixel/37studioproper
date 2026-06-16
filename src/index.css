@@ -1,0 +1,104 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+
+  --ui-bg-page: #050506;
+  --ui-bg-elevated: rgba(14, 14, 16, 0.82);
+  --ui-surface-card: rgba(16, 16, 18, 0.78);
+  --ui-surface-soft: rgba(255, 255, 255, 0.055);
+  --ui-control: rgba(255, 255, 255, 0.075);
+
+  --ui-text-main: #f7f3ec;
+  --ui-text-strong: #ffffff;
+  --ui-text-muted: rgba(247, 243, 236, 0.66);
+
+  --ui-border: rgba(255, 255, 255, 0.11);
+  --ui-border-strong: rgba(255, 147, 64, 0.34);
+
+  --ui-accent: #ff8a2a;
+  --ui-accent-strong: #ff5f15;
+  --ui-accent-soft: rgba(255, 138, 42, 0.16);
+  --ui-danger: #ff6b6b;
+
+  --ui-shadow-soft: 0 24px 90px rgba(0, 0, 0, 0.52);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --ui-bg-page: #fff8f1;
+  --ui-bg-elevated: rgba(255, 255, 255, 0.86);
+  --ui-surface-card: rgba(255, 255, 255, 0.88);
+  --ui-surface-soft: rgba(20, 20, 24, 0.045);
+  --ui-control: rgba(20, 20, 24, 0.055);
+
+  --ui-text-main: #1b1714;
+  --ui-text-strong: #0b0908;
+  --ui-text-muted: rgba(27, 23, 20, 0.62);
+
+  --ui-border: rgba(24, 20, 16, 0.1);
+  --ui-border-strong: rgba(255, 118, 28, 0.28);
+
+  --ui-accent: #ff7c1f;
+  --ui-accent-strong: #ee570d;
+  --ui-accent-soft: rgba(255, 124, 31, 0.14);
+
+  --ui-shadow-soft: 0 24px 70px rgba(111, 66, 24, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--ui-bg-page);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 138, 42, 0.2), transparent 30%),
+    radial-gradient(circle at 82% 82%, rgba(255, 95, 21, 0.16), transparent 34%),
+    linear-gradient(145deg, var(--ui-bg-page), #0a0705 58%, #140804);
+  color: var(--ui-text-main);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  text-rendering: geometricPrecision;
+}
+
+[data-theme='light'] body {
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 138, 42, 0.2), transparent 30%),
+    radial-gradient(circle at 82% 82%, rgba(255, 95, 21, 0.12), transparent 34%),
+    linear-gradient(145deg, var(--ui-bg-page), #fff3e7 58%, #ffe4d0);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.theme-container {
+  min-height: 100dvh;
+  background: transparent;
+  color: var(--ui-text-main);
+}
