@@ -892,7 +892,7 @@
   padding: 16px 18px 12px;
   border-bottom: 1px solid var(--auth-border);
   background: color-mix(in srgb, var(--auth-bg-page) 78%, transparent);
-  backdrop-filter: blur(18px);
+  backdrop-filter: none;
 }
 
 .admin-topbar p {
@@ -996,7 +996,7 @@
   padding: 8px;
   border: 1px solid var(--auth-border);
   border-radius: 24px;
-  background: color-mix(in srgb, var(--auth-bg-elevated) 88%, transparent);
+  background: #101012;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(22px);
 }
@@ -1393,15 +1393,13 @@
   min-height: 64px;
   place-items: center;
   border-top-left-radius: 22px;
-  background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.16), rgba(255, 255, 255, 0.035)),
-    color-mix(in srgb, var(--auth-bg-elevated) 92%, transparent);
+  background: #15110d;
   color: var(--auth-text-strong);
   font-size: 0.78rem;
   font-weight: 820;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  backdrop-filter: blur(18px);
+  backdrop-filter: none;
 }
 
 .schedule-day-head {
@@ -1412,10 +1410,10 @@
   display: grid;
   place-items: center;
   gap: 2px;
-  background: color-mix(in srgb, var(--auth-bg-elevated) 92%, transparent);
+  background: #101012;
   color: var(--auth-text-muted);
   text-align: center;
-  backdrop-filter: blur(18px);
+  backdrop-filter: none;
 }
 
 .schedule-day-head span {
@@ -1430,9 +1428,7 @@
 }
 
 .schedule-day-head.is-today {
-  background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.22), rgba(255, 255, 255, 0.035)),
-    color-mix(in srgb, var(--auth-bg-elevated) 92%, transparent);
+  background: #18120d;
 }
 
 .schedule-row-fragment {
@@ -1452,7 +1448,7 @@
   padding: 0 10px;
   font-size: 0.7rem;
   font-weight: 720;
-  backdrop-filter: blur(14px);
+  backdrop-filter: none;
 }
 
 .schedule-slot-cell {
@@ -1795,7 +1791,7 @@
     radial-gradient(circle at 50% 12%, rgba(255, 138, 42, 0.16), transparent 34%),
     rgba(0, 0, 0, 0.66);
   padding: 14px;
-  backdrop-filter: blur(18px);
+  backdrop-filter: none;
 }
 
 .booking-modal-panel {
@@ -3934,32 +3930,41 @@
 }
 /* === BOOKING DETAIL EDIT ACTION: END === */
 
-/* === SCHEDULE GRID HEADER SOLID: START === */
+/* === SCHEDULE STICKY HEADER HARD SOLID: START === */
 .schedule-grid-corner {
-  background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.12), rgba(255, 255, 255, 0.025)),
-    var(--auth-bg-elevated) !important;
+  background: #15110d !important;
+  background-color: #15110d !important;
+  background-image: none !important;
+  opacity: 1 !important;
   backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .schedule-day-head {
-  background: var(--auth-bg-elevated) !important;
+  background: #101012 !important;
+  background-color: #101012 !important;
+  background-image: none !important;
+  opacity: 1 !important;
   backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .schedule-day-head.is-today,
 .schedule-day-head.is-focus-target {
-  background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.16), rgba(255, 255, 255, 0.025)),
-    var(--auth-bg-elevated) !important;
+  background: #18120d !important;
+  background-color: #18120d !important;
+  background-image: none !important;
+  opacity: 1 !important;
   backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-@media (max-width: 767px) {
-  .schedule-grid-corner,
-  .schedule-day-head {
-    background-color: var(--auth-bg-elevated) !important;
-    backdrop-filter: none !important;
-  }
+.schedule-time-cell {
+  background: #101012 !important;
+  background-color: #101012 !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
-/* === SCHEDULE GRID HEADER SOLID: END === */
+/* === SCHEDULE STICKY HEADER HARD SOLID: END === */
