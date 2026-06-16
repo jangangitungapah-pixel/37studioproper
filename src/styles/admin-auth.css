@@ -2848,3 +2848,278 @@
   }
 }
 /* === SMART PRICING BREAKDOWN: END === */
+
+/* === SCHEDULE SPANNING BOOKING BLOCKS: START === */
+.schedule-grid {
+  isolation: isolate;
+}
+
+.schedule-slot-cell {
+  position: relative;
+  padding: 0 !important;
+}
+
+.schedule-slot-button {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: transparent;
+  cursor: pointer;
+}
+
+.schedule-slot-add-hint {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 138, 42, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 138, 42, 0.08);
+  color: rgba(255, 138, 42, 0);
+  font-size: 0.86rem;
+  font-weight: 340;
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 160ms ease, transform 160ms ease, color 160ms ease;
+}
+
+.schedule-slot-button:hover .schedule-slot-add-hint,
+.schedule-slot-button:focus-visible .schedule-slot-add-hint {
+  color: var(--auth-accent);
+  opacity: 1;
+  transform: scale(1);
+}
+
+.schedule-booking-pill {
+  display: none;
+}
+
+.schedule-booking-block {
+  position: relative;
+  z-index: 12;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  align-self: stretch;
+  align-content: start;
+  gap: 4px;
+  margin: 5px 6px;
+  border: 1px solid rgba(255, 138, 42, 0.32);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.22), rgba(255, 255, 255, 0.045)),
+    rgba(15, 15, 17, 0.92);
+  color: var(--auth-text-strong);
+  padding: 9px 10px;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  isolation: isolate;
+}
+
+.schedule-booking-block::before {
+  content: '';
+  position: absolute;
+  inset: 7px auto 7px 7px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--auth-accent);
+  opacity: 0.95;
+}
+
+.schedule-booking-glow {
+  position: absolute;
+  inset: auto -26px -36px auto;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 138, 42, 0.26), transparent 68%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.schedule-booking-topline,
+.schedule-booking-title,
+.schedule-booking-meta {
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.schedule-booking-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.schedule-booking-topline strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.72rem;
+  font-weight: 560;
+  letter-spacing: -0.012em;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-booking-topline em {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--auth-text-main);
+  padding: 3px 6px;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 460;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.schedule-booking-title {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--auth-text-main) 86%, transparent);
+  font-size: 0.68rem;
+  font-weight: 330;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-booking-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: auto;
+  color: var(--auth-text-muted);
+  font-size: 0.58rem;
+  font-weight: 330;
+  line-height: 1.15;
+}
+
+.schedule-booking-meta span,
+.schedule-booking-meta b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-booking-meta b {
+  color: var(--auth-text-main);
+  font-weight: 520;
+}
+
+.schedule-booking-block.is-pending {
+  border-color: rgba(255, 176, 32, 0.38);
+  background:
+    linear-gradient(135deg, rgba(255, 176, 32, 0.22), rgba(255, 255, 255, 0.038)),
+    rgba(16, 15, 14, 0.94);
+}
+
+.schedule-booking-block.is-pending::before {
+  background: #ffb020;
+}
+
+.schedule-booking-block.is-pending .schedule-booking-glow {
+  background: radial-gradient(circle, rgba(255, 176, 32, 0.28), transparent 68%);
+}
+
+.schedule-booking-block.is-dp {
+  border-color: rgba(92, 200, 255, 0.36);
+  background:
+    linear-gradient(135deg, rgba(92, 200, 255, 0.18), rgba(255, 255, 255, 0.036)),
+    rgba(12, 16, 18, 0.94);
+}
+
+.schedule-booking-block.is-dp::before {
+  background: #5cc8ff;
+}
+
+.schedule-booking-block.is-dp .schedule-booking-glow {
+  background: radial-gradient(circle, rgba(92, 200, 255, 0.24), transparent 68%);
+}
+
+.schedule-booking-block.is-lunas {
+  border-color: rgba(103, 232, 165, 0.34);
+  background:
+    linear-gradient(135deg, rgba(103, 232, 165, 0.17), rgba(255, 255, 255, 0.035)),
+    rgba(12, 17, 15, 0.94);
+}
+
+.schedule-booking-block.is-lunas::before {
+  background: #67e8a5;
+}
+
+.schedule-booking-block.is-lunas .schedule-booking-glow {
+  background: radial-gradient(circle, rgba(103, 232, 165, 0.22), transparent 68%);
+}
+
+.schedule-booking-block:hover,
+.schedule-booking-block:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    0 20px 42px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 138, 42, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+}
+
+@media (max-width: 767px) {
+  .schedule-booking-block {
+    border-radius: 14px;
+    padding: 8px 8px;
+  }
+
+  .schedule-booking-topline,
+  .schedule-booking-title,
+  .schedule-booking-meta {
+    padding-left: 7px;
+  }
+
+  .schedule-booking-topline strong {
+    font-size: 0.68rem;
+  }
+
+  .schedule-booking-topline em {
+    display: none;
+  }
+
+  .schedule-booking-title {
+    font-size: 0.64rem;
+  }
+
+  .schedule-booking-meta {
+    display: grid;
+    gap: 2px;
+    justify-content: start;
+    font-size: 0.54rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .schedule-slot-button {
+    min-height: 52px;
+  }
+
+  .schedule-booking-block {
+    border-radius: 17px;
+    padding: 10px 11px;
+  }
+
+  .schedule-booking-topline strong {
+    font-size: 0.76rem;
+  }
+
+  .schedule-booking-title {
+    font-size: 0.7rem;
+  }
+}
+/* === SCHEDULE SPANNING BOOKING BLOCKS: END === */

@@ -121,17 +121,6 @@ function shiftDate(date, viewMode, direction) {
   return addMonths(date, direction);
 }
 
-function getBookingForSlot(bookings, day, hour, enabledStatuses) {
-  return bookings.find((booking) => {
-    const bookingDate = startOfDay(new Date(booking.date));
-    return (
-      isSameDay(bookingDate, day) &&
-      Number(booking.startHour) === hour &&
-      enabledStatuses.includes(booking.status)
-    );
-  });
-}
-
 function getGridTemplate(viewMode, visibleDayCount) {
   if (viewMode === 'day') return '112px minmax(280px, 1fr)';
   if (viewMode === 'week') return '112px repeat(' + visibleDayCount + ', minmax(126px, 1fr))';
@@ -152,6 +141,158 @@ function readStoredBookings() {
   }
 }
 
+function getBookingStatus(booking) {
+  return booking.paymentStatus || booking.status || 'pending';
+}
+
+function getStatusLabel(status) {
+  return statusFilters.find((item) => item.key === status)?.label || status;
+}
+
+function formatShortCurrency(value) {
+  const safeValue = Math.max(0, Number(value) || 0);
+
+  if (safeValue >= 1000000) {
+    const millionValue = safeValue / 1000000;
+    return 'Rp ' + millionValue.toFixed(millionValue % 1 === 0 ? 0 : 1).replace('.', ',') + 'jt';
+  }
+
+  if (safeValue >= 1000) {
+    return 'Rp ' + Math.round(safeValue / 1000) + 'rb';
+  }
+
+  return 'Rp ' + safeValue;
+}
+
+function getSlotSpanRows(booking, startIndex) {
+  const duration = Math.max(1, Math.ceil(Number(booking.durationHours) || 1));
+  const availableRows = businessHours.length - startIndex;
+
+  return Math.max(1, Math.min(duration, availableRows));
+}
+
+function getVisibleBookingBlocks(bookings, visibleDays, activeStatuses) {
+  const visibleDayKeys = visibleDays.map(toIsoDate);
+  const rawBlocks = bookings
+    .map((booking) => {
+      const status = getBookingStatus(booking);
+      const dayIndex = visibleDayKeys.indexOf(booking.date);
+      const startHour = Number(booking.startHour);
+      const startIndex = businessHours.findIndex((hour) => Number(hour.start) === startHour);
+
+      if (dayIndex === -1 || startIndex === -1 || !activeStatuses.includes(status)) {
+        return null;
+      }
+
+      const spanRows = getSlotSpanRows(booking, startIndex);
+      const rowStart = startIndex + 2;
+      const endIndex = startIndex + spanRows;
+
+      return {
+        booking,
+        dayIndex,
+        dayKey: booking.date,
+        endIndex,
+        rowStart,
+        spanRows,
+        startIndex,
+        status,
+      };
+    })
+    .filter(Boolean)
+    .sort((first, second) => {
+      if (first.dayIndex !== second.dayIndex) return first.dayIndex - second.dayIndex;
+      if (first.startIndex !== second.startIndex) return first.startIndex - second.startIndex;
+      return second.spanRows - first.spanRows;
+    });
+
+  const blocksByDay = rawBlocks.reduce((groups, block) => {
+    groups[block.dayKey] = groups[block.dayKey] || [];
+    groups[block.dayKey].push(block);
+    return groups;
+  }, {});
+
+  Object.values(blocksByDay).forEach((dayBlocks) => {
+    const laneEnds = [];
+
+    dayBlocks.forEach((block) => {
+      let laneIndex = laneEnds.findIndex((endIndex) => endIndex <= block.startIndex);
+
+      if (laneIndex === -1) {
+        laneIndex = laneEnds.length;
+        laneEnds.push(block.endIndex);
+      } else {
+        laneEnds[laneIndex] = block.endIndex;
+      }
+
+      block.laneIndex = laneIndex;
+    });
+
+    dayBlocks.forEach((block) => {
+      const overlappingBlocks = dayBlocks.filter(
+        (candidate) =>
+          candidate.startIndex < block.endIndex &&
+          candidate.endIndex > block.startIndex
+      );
+
+      const maxLaneIndex = overlappingBlocks.reduce(
+        (maxLane, candidate) => Math.max(maxLane, candidate.laneIndex || 0),
+        block.laneIndex || 0
+      );
+
+      block.laneCount = maxLaneIndex + 1;
+    });
+  });
+
+  return rawBlocks;
+}
+
+function getBookingBlockStyle(block) {
+  const style = {
+    gridColumn: String(block.dayIndex + 2),
+    gridRow: String(block.rowStart) + ' / span ' + String(block.spanRows),
+  };
+
+  if (block.laneCount > 1) {
+    const laneWidth = 100 / block.laneCount;
+    style.width = 'calc(' + laneWidth.toFixed(4) + '% - 8px)';
+    style.marginLeft = 'calc(' + (laneWidth * block.laneIndex).toFixed(4) + '% + 5px)';
+    style.marginRight = '3px';
+  }
+
+  return style;
+}
+
+function CalendarBookingBlock({ block, onSlotClick }) {
+  const booking = block.booking;
+  const title = booking.title || booking.sessionLabel || 'Booking';
+  const statusLabel = getStatusLabel(block.status);
+  const startLabel = booking.startTimeLabel || String(booking.startHour).padStart(2, '0') + '.00';
+  const durationLabel = (Number(booking.durationHours) || block.spanRows) + 'j';
+  const priceLabel = formatShortCurrency(booking.total || booking.subtotal || 0);
+
+  return (
+    <button
+      aria-label={'Booking ' + booking.customer + ' ' + startLabel + ' ' + durationLabel}
+      className={'schedule-booking-block is-' + block.status}
+      style={getBookingBlockStyle(block)}
+      type="button"
+      onClick={() => onSlotClick({ date: booking.date, startHour: String(booking.startHour) })}
+    >
+      <span className="schedule-booking-glow" aria-hidden="true" />
+      <span className="schedule-booking-topline">
+        <strong>{booking.customer}</strong>
+        <em>{statusLabel}</em>
+      </span>
+      <span className="schedule-booking-title">{title}</span>
+      <span className="schedule-booking-meta">
+        <span>{startLabel} • {durationLabel}</span>
+        <b>{priceLabel}</b>
+      </span>
+    </button>
+  );
+}
+
 function CalendarGrid({
   activeStatuses,
   bookings,
@@ -161,6 +302,10 @@ function CalendarGrid({
 }) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
+  const bookingBlocks = useMemo(
+    () => getVisibleBookingBlocks(bookings, visibleDays, activeStatuses),
+    [activeStatuses, bookings, visibleDays]
+  );
   const gridTemplateColumns = getGridTemplate(viewMode, visibleDays.length);
 
   return (
@@ -196,28 +341,30 @@ function CalendarGrid({
               </div>
 
               {visibleDays.map((day) => {
-                const booking = getBookingForSlot(bookings, day, hour.start, activeStatuses);
                 const cellKey = toIsoDate(day) + '-' + hour.key;
 
                 return (
                   <div className="schedule-slot-cell" key={cellKey}>
                     <button
                       aria-label={'Tambah booking ' + toIsoDate(day) + ' jam ' + hour.label}
-                      className={booking ? 'schedule-slot-button has-booking' : 'schedule-slot-button'}
+                      className="schedule-slot-button"
                       type="button"
                       onClick={() => onSlotClick({ date: toIsoDate(day), startHour: String(hour.start) })}
                     >
-                      {booking ? (
-                        <span className={'schedule-booking-pill is-' + booking.status}>
-                          <strong>{booking.customer}</strong>
-                          <span>{booking.title}</span>
-                        </span>
-                      ) : null}
+                      <span className="schedule-slot-add-hint" aria-hidden="true">+</span>
                     </button>
                   </div>
                 );
               })}
             </div>
+          ))}
+
+          {bookingBlocks.map((block) => (
+            <CalendarBookingBlock
+              block={block}
+              key={block.booking.id || block.dayKey + '-' + block.startIndex + '-' + block.booking.customer}
+              onSlotClick={onSlotClick}
+            />
           ))}
         </div>
       </div>
@@ -234,11 +381,11 @@ export default function SchedulePage() {
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
-  const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(booking.status)).length;
+  const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(getBookingStatus(booking))).length;
   const paymentStatusCounts = useMemo(
     () =>
       statusFilters.reduce((counts, item) => {
-        counts[item.key] = bookings.filter((booking) => (booking.paymentStatus || booking.status) === item.key).length;
+        counts[item.key] = bookings.filter((booking) => getBookingStatus(booking) === item.key).length;
         return counts;
       }, {}),
     [bookings]
