@@ -3284,3 +3284,45 @@
   }
 }
 /* === SCHEDULE CONFLICT TOAST: END === */
+
+/* === SCHEDULE TODAY AUTO FOCUS: START === */
+.schedule-day-head {
+  outline: none;
+  position: relative;
+}
+
+.schedule-day-head.is-focus-target {
+  scroll-margin-inline: 40px;
+}
+
+.schedule-day-head.is-focus-target:focus-visible,
+.schedule-day-head.is-today-focus-pulse {
+  border-color: rgba(255, 138, 42, 0.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 138, 42, 0.34),
+    0 0 0 1px rgba(255, 138, 42, 0.18),
+    0 18px 44px rgba(255, 104, 28, 0.12);
+}
+
+.schedule-day-head.is-today-focus-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 1px solid rgba(255, 138, 42, 0.46);
+  border-radius: 18px;
+  pointer-events: none;
+  animation: schedule-today-focus-pulse 950ms ease-out both;
+}
+
+@keyframes schedule-today-focus-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+/* === SCHEDULE TODAY AUTO FOCUS: END === */

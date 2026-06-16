@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -436,9 +436,13 @@ function CalendarGrid({
   bookings,
   onSlotClick,
   selectedDate,
+  todayFocusDateIso,
+  todayFocusRequest,
   viewMode,
 }) {
-  const today = useMemo(() => startOfDay(new Date()), []);
+  const gridScrollRef = useRef(null);
+  const focusDayRef = useRef(null);
+  const today = startOfDay(new Date());
   const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
   const bookingBlocks = useMemo(
     () => getVisibleBookingBlocks(bookings, visibleDays, activeStatuses),
@@ -446,9 +450,49 @@ function CalendarGrid({
   );
   const gridTemplateColumns = getGridTemplate(viewMode, visibleDays.length);
 
+  useEffect(() => {
+    if (!todayFocusRequest || !todayFocusDateIso) return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const scrollContainer = gridScrollRef.current;
+      const target = focusDayRef.current;
+
+      if (!scrollContainer || !target) return;
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const targetLeft =
+        scrollContainer.scrollLeft +
+        targetRect.left -
+        containerRect.left -
+        containerRect.width / 2 +
+        targetRect.width / 2;
+
+      scrollContainer.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      });
+
+      scrollContainer.scrollTo({
+        left: Math.max(0, targetLeft),
+        behavior: 'smooth',
+      });
+
+      target.focus({ preventScroll: true });
+      target.classList.remove('is-today-focus-pulse');
+      void target.offsetWidth;
+      target.classList.add('is-today-focus-pulse');
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [todayFocusDateIso, todayFocusRequest]);
+
   return (
     <section className="schedule-grid-shell" aria-label="Calendar grid">
-      <div className="schedule-grid-scroll">
+      <div className="schedule-grid-scroll" ref={gridScrollRef}>
         <div
           className={'schedule-grid schedule-grid--' + viewMode}
           style={{ gridTemplateColumns }}
@@ -461,13 +505,25 @@ function CalendarGrid({
           </div>
 
           {visibleDays.map((day, dayIndex) => {
+            const dayIso = toIsoDate(day);
             const isToday = isSameDay(day, today);
+            const isFocusDay = dayIso === todayFocusDateIso;
+            const dayHeadClassName = [
+              'schedule-day-head',
+              isToday ? 'is-today' : '',
+              isFocusDay ? 'is-focus-target' : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
 
             return (
               <div
-                className={isToday ? 'schedule-day-head is-today' : 'schedule-day-head'}
-                key={toIsoDate(day)}
+                className={dayHeadClassName}
+                data-today-focus={isFocusDay ? 'true' : undefined}
+                key={dayIso}
+                ref={isFocusDay ? focusDayRef : null}
                 style={{ gridColumn: String(dayIndex + 2), gridRow: '1' }}
+                tabIndex={isFocusDay ? -1 : undefined}
               >
                 <span>{dayNames[day.getDay()]}</span>
                 <strong>{day.getDate()}</strong>
@@ -529,6 +585,7 @@ export default function SchedulePage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
   const [scheduleToast, setScheduleToast] = useState(null);
+  const [todayFocusRequest, setTodayFocusRequest] = useState(0);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(getBookingStatus(booking))).length;
@@ -540,6 +597,7 @@ export default function SchedulePage() {
       }, {}),
     [bookings]
   );
+  const todayIsoDate = toIsoDate(startOfDay(new Date()));
 
   useEffect(() => {
     window.localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
@@ -563,7 +621,10 @@ export default function SchedulePage() {
   }
 
   function goToday() {
-    setSelectedDate(startOfDay(new Date()));
+    const todayDate = startOfDay(new Date());
+
+    setSelectedDate(todayDate);
+    setTodayFocusRequest((current) => current + 1);
   }
 
   function openBookingModal(slot) {
@@ -646,6 +707,8 @@ export default function SchedulePage() {
         activeStatuses={activeStatuses}
         bookings={bookings}
         selectedDate={selectedDate}
+        todayFocusDateIso={todayIsoDate}
+        todayFocusRequest={todayFocusRequest}
         viewMode={viewMode}
         onSlotClick={openBookingModal}
       />
@@ -660,7 +723,7 @@ export default function SchedulePage() {
       {scheduleToast ? (
         <aside
           aria-live={scheduleToast.kind === 'warning' ? 'assertive' : 'polite'}
-          className={scheduleToast ? 'schedule-toast is-' + scheduleToast.kind : 'schedule-toast'}
+          className={'schedule-toast is-' + scheduleToast.kind}
           role={scheduleToast.kind === 'warning' ? 'alert' : 'status'}
         >
           <span className="schedule-toast-orb" aria-hidden="true" />
