@@ -2460,3 +2460,89 @@
   }
 }
 /* === SCHEDULE PAYMENT COUNTERS SOFT TYPE: END === */
+
+/* === SCHEDULE PAYMENT COUNTERS FULL ROW: START === */
+.schedule-payment-counters {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  margin-top: 0;
+  padding: 2px 1px 4px;
+}
+
+.schedule-payment-counter {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  color: var(--auth-text-muted);
+  font-size: 0.84rem !important;
+  font-weight: 420 !important;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.schedule-payment-counter > span {
+  overflow: hidden;
+  font-weight: 420 !important;
+  text-overflow: ellipsis;
+}
+
+.schedule-payment-counter strong {
+  color: var(--auth-text-main);
+  font-size: 0.9rem !important;
+  font-weight: 560 !important;
+  letter-spacing: -0.018em;
+}
+
+.schedule-payment-counter i {
+  display: none !important;
+}
+
+.schedule-payment-counter.is-pending strong {
+  color: #ffb020;
+}
+
+.schedule-payment-counter.is-dp strong {
+  color: #5cc8ff;
+}
+
+.schedule-payment-counter.is-lunas strong {
+  color: #67e8a5;
+}
+
+@media (max-width: 380px) {
+  .schedule-payment-counters {
+    gap: 5px;
+  }
+
+  .schedule-payment-counter {
+    gap: 4px;
+    font-size: 0.78rem !important;
+  }
+
+  .schedule-payment-counter strong {
+    font-size: 0.84rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .schedule-payment-counters {
+    max-width: 520px;
+    justify-self: stretch;
+  }
+
+  .schedule-payment-counter {
+    justify-content: flex-start;
+    font-size: 0.86rem !important;
+  }
+
+  .schedule-payment-counter strong {
+    font-size: 0.92rem !important;
+  }
+}
+/* === SCHEDULE PAYMENT COUNTERS FULL ROW: END === */
