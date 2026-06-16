@@ -662,3 +662,71 @@
   box-shadow: none !important;
 }
 /* === LOGIN INPUT NATIVE HIGHLIGHT OVERRIDE: END === */
+
+/* === LOGIN CARD MOBILE FIRST COMPACT: START === */
+.auth-brand-mark,
+.auth-eyebrow {
+  display: none !important;
+}
+
+.auth-card {
+  width: min(100%, 410px);
+  padding: clamp(20px, 5vw, 30px);
+}
+
+.auth-copy {
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.auth-copy h1 {
+  font-size: clamp(1.82rem, 7vw, 2.38rem);
+  line-height: 1;
+}
+
+.auth-copy p:not(.auth-eyebrow) {
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 767px) {
+  .auth-page {
+    min-height: 100dvh;
+    padding: 16px;
+    place-items: center;
+  }
+
+  .auth-card {
+    width: min(100%, 380px);
+    padding: 20px;
+    border-radius: 26px;
+  }
+
+  .auth-copy {
+    margin-bottom: 16px;
+  }
+
+  .auth-copy h1 {
+    font-size: clamp(1.72rem, 9vw, 2.08rem);
+    letter-spacing: -0.052em;
+  }
+
+  .auth-field {
+    gap: 7px;
+  }
+
+  .auth-form {
+    gap: 14px;
+  }
+
+  .auth-input-wrap {
+    min-height: 50px;
+    border-radius: 16px;
+  }
+
+  .auth-submit {
+    min-height: 52px;
+    border-radius: 16px;
+  }
+}
+/* === LOGIN CARD MOBILE FIRST COMPACT: END === */

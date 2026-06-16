@@ -7,7 +7,6 @@ import {
   EyeOff,
   LoaderCircle,
   LockKeyhole,
-  Music2,
   ShieldCheck,
   UserRound,
 } from 'lucide-react';
@@ -34,10 +33,11 @@ export default function LoginPage() {
   }, [navigate]);
 
   function collapseNativeInputSelection(event) {
-    window.requestAnimationFrame(() => {
-      const input = event.currentTarget;
+    const input = event.currentTarget;
 
+    window.requestAnimationFrame(() => {
       if (
+        input &&
         input.value &&
         input.selectionStart === 0 &&
         input.selectionEnd === input.value.length &&
@@ -73,16 +73,8 @@ export default function LoginPage() {
   return (
     <main className="theme-container auth-page" data-auth-surface="login">
       <section className="auth-card" aria-labelledby="login-title">
-        <div className="auth-brand-mark" aria-hidden="true">
-          <Music2 size={28} strokeWidth={2.2} />
-        </div>
-
-        <div className="auth-copy">
-          <p className="auth-eyebrow">
-            <ShieldCheck size={16} />
-            Admin Access
-          </p>
-          <h1 id="login-title">37 Music Studio</h1>
+<div className="auth-copy">
+<h1 id="login-title">37 Music Studio</h1>
           <p>Masuk ke portal admin studio.</p>
         </div>
 
