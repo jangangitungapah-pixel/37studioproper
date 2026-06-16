@@ -192,7 +192,7 @@ function CalendarGrid({
             <div className="schedule-row-fragment" key={hour.key}>
               <div className="schedule-time-cell">
                 <Clock3 size={14} aria-hidden="true" />
-                <span>{hour.label}</span>
+                <span>{hour.rangeLabel || hour.description || hour.label}</span>
               </div>
 
               {visibleDays.map((day) => {

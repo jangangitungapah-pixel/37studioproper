@@ -41,7 +41,9 @@ export const businessHours = Array.from({ length: 13 }, (_, index) => {
     key: String(start),
     start,
     end,
-    label: String(start).padStart(2, '0') + '.00-' + String(end).padStart(2, '0') + '.00',
+    label: String(start).padStart(2, '0') + '.00',
+    description: String(start).padStart(2, '0') + '.00-' + String(end).padStart(2, '0') + '.00',
+    rangeLabel: String(start).padStart(2, '0') + '.00-' + String(end).padStart(2, '0') + '.00',
     shortLabel: String(start).padStart(2, '0') + '.00',
   };
 });
