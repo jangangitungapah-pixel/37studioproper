@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   CalendarDays,
   LogOut,
@@ -7,10 +7,12 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  LoaderCircle,
 } from 'lucide-react';
-import { clearAdminSession, getAdminSession, isAdminAuthenticated } from '../auth/adminAuth.js';
+import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
+
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
@@ -42,8 +44,8 @@ function getInitialSidebarState() {
   }
 }
 
-function renderAdminContent(activeKey) {
-  if (activeKey === 'settings') return <SettingsPage />;
+function renderAdminContent(activeKey, currentUser) {
+  if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
 
   return <SchedulePage />;
 }
@@ -51,8 +53,12 @@ function renderAdminContent(activeKey) {
 export default function AdminPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const session = getAdminSession();
+  const [authState, setAuthState] = useState({ isReady: false, isAuthenticated: false, user: null });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getInitialSidebarState);
+
+  useEffect(() => {
+    return adminAuthRepository.subscribeAdminAuth(setAuthState);
+  }, []);
 
   const routeItem = useMemo(
     () => navItems.find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/')),
@@ -62,33 +68,60 @@ export default function AdminPage() {
   const activeItem = routeItem || navItems[0];
 
   useEffect(() => {
-    function guard() {
-      if (!isAdminAuthenticated()) {
-        navigate('/login', { replace: true });
-      }
-    }
-
-    guard();
-    window.addEventListener('storage', guard);
-    window.addEventListener('admin-auth-change', guard);
-
-    return () => {
-      window.removeEventListener('storage', guard);
-      window.removeEventListener('admin-auth-change', guard);
-    };
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!isAdminAuthenticated()) return;
+    if (!authState.isReady || !authState.isAuthenticated) return;
 
     if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem) {
       navigate('/admin/schedule', { replace: true });
     }
-  }, [location.pathname, navigate, routeItem]);
+  }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated]);
 
-  function handleLogout() {
-    clearAdminSession();
+  async function handleLogout() {
+    await adminAuthRepository.signOutAdmin();
     navigate('/login', { replace: true });
+  }
+
+  if (!authState.isReady) {
+    return (
+      <div className="theme-container auth-page" style={{ display: 'grid', placeItems: 'center' }}>
+        <LoaderCircle className="auth-spin" size={36} style={{ color: 'var(--auth-accent)' }} />
+      </div>
+    );
+  }
+
+  if (!authState.isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!authState.user?.isApproved) {
+    return (
+      <main className="theme-container auth-page" data-auth-surface="pending">
+        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="pending-title">
+          <div className="auth-copy">
+            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
+              <LoaderCircle size={14} className="auth-spin" />
+              <span>Akses Tertunda</span>
+            </div>
+            <h1 id="pending-title" style={{ fontSize: '1.9rem', marginBottom: '12px' }}>Menunggu Persetujuan</h1>
+            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '20px' }}>
+              Akun Anda <strong>{authState.user?.email || authState.user?.phoneNumber || 'admin'}</strong> berhasil dibuat tetapi belum aktif.
+            </p>
+            <div className="auth-alert" style={{ textAlign: 'left', fontSize: '0.82rem', marginBottom: '24px' }}>
+              <span>
+                Harap hubungi pemilik studio di <strong>marsicprod@gmail.com</strong> untuk memberikan persetujuan akses bagi akun Anda. Halaman ini akan diperbarui secara otomatis setelah disetujui.
+              </span>
+            </div>
+          </div>
+          <button 
+            className="auth-google-btn" 
+            type="button" 
+            onClick={handleLogout}
+            style={{ marginTop: '0', width: '100%', borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}
+          >
+            <span>Keluar Akun</span>
+          </button>
+        </section>
+      </main>
+    );
   }
 
   function toggleSidebar() {
@@ -165,7 +198,7 @@ export default function AdminPage() {
         <div className="admin-sidebar-footer">
           <div className="admin-mini-session">
             <span>Login sebagai</span>
-            <strong>{session?.username || 'admin'}</strong>
+            <strong>{authState.user?.displayName || authState.user?.email || 'admin'}</strong>
           </div>
 
           <button className="admin-logout-button" type="button" onClick={handleLogout}>
@@ -188,7 +221,7 @@ export default function AdminPage() {
           </button>
         </header>
 
-        {renderAdminContent(activeItem.key)}
+        {renderAdminContent(activeItem.key, authState.user)}
       </section>
 
       <nav className="admin-bottom-nav" aria-label="Navigasi admin mobile">

@@ -13,6 +13,8 @@ import {
   statusFilters,
   viewModes,
 } from './scheduleConfig.js';
+import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+
 
 const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
 
@@ -583,13 +585,38 @@ export default function SchedulePage() {
   const [viewMode, setViewMode] = useState('month');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeStatuses, setActiveStatuses] = useState(() => statusFilters.map((item) => item.key));
-  const [bookings, setBookings] = useState(readStoredBookings);
+  const [bookings, setBookings] = useState([]);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
   const [editingBooking, setEditingBooking] = useState(null);
   const [scheduleToast, setScheduleToast] = useState(null);
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
+
+  // One-time local storage migration to Firestore
+  useEffect(() => {
+    const local = readStoredBookings();
+    if (local && local.length > 0) {
+      adminBookingRepository.migrateLocalBookingsToFirestore(local)
+        .catch((err) => console.error('Gagal melakukan migrasi data lokal:', err));
+    }
+  }, []);
+
+  // Subscribe to real-time Firestore bookings
+  useEffect(() => {
+    const unsubscribe = adminBookingRepository.subscribeManualBookings(
+      (data) => setBookings(data),
+      (err) => {
+        setScheduleToast({
+          kind: 'warning',
+          title: 'Database Terputus',
+          message: 'Gagal memuat data dari Firestore. Menampilkan cadangan lokal.'
+        });
+        setBookings(readStoredBookings());
+      }
+    );
+    return unsubscribe;
+  }, []);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const scheduleStats = useMemo(() => {
@@ -619,10 +646,6 @@ export default function SchedulePage() {
   const visibleBookingCount = scheduleStats.visibleCount;
   const paymentStatusCounts = scheduleStats.counts;
   const todayIsoDate = toIsoDate(startOfDay(new Date()));
-
-  useEffect(() => {
-    window.localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
-  }, [bookings]);
 
   useEffect(() => {
     if (!scheduleToast) return undefined;
@@ -674,7 +697,7 @@ export default function SchedulePage() {
     setIsBookingModalOpen(true);
   }
 
-  function saveBooking(booking) {
+  async function saveBooking(booking) {
     const conflictIssue = getBookingConflictIssue(booking, bookings);
 
     if (conflictIssue) {
@@ -682,17 +705,23 @@ export default function SchedulePage() {
       return false;
     }
 
-    setBookings((current) => {
-      const existingIndex = current.findIndex((item) => item.id === booking.id);
-
-      if (existingIndex === -1) {
-        return [booking, ...current];
+    try {
+      if (!booking.id) {
+        await adminBookingRepository.createManualBooking(booking);
+      } else {
+        await adminBookingRepository.updateManualBooking(booking);
       }
-
-      return current.map((item) => (item.id === booking.id ? booking : item));
-    });
-    setScheduleToast(getBookingSavedToast(booking));
-    return true;
+      setScheduleToast(getBookingSavedToast(booking));
+      return true;
+    } catch (err) {
+      console.error('Error saving booking to Firestore:', err);
+      setScheduleToast({
+        kind: 'warning',
+        title: 'Gagal Menyimpan',
+        message: 'Koneksi ke Firestore bermasalah.'
+      });
+      return false;
+    }
   }
 
   return (

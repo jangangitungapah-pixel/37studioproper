@@ -18,7 +18,7 @@ import {
 import {
   formatRupiah,
   getPackageOptions,
-  getPricingSettings,
+  usePricingSettings,
   getRecordingTypeOptions,
   getSessionOptions,
   resolveBookingPricing,
@@ -118,7 +118,7 @@ export default function BookingFormModal({
   const [form, setForm] = useState(() => createInitialForm(initialSlot, editingBooking));
   const [error, setError] = useState('');
 
-  const pricingSettings = getPricingSettings();
+  const pricingSettings = usePricingSettings();
   const sessionTypeOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
   const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
   const packageOptions = useMemo(

@@ -1,0 +1,184 @@
+/* === FIREBASE AUTH TABBED INTERFACE & CUSTOM CONTROLS === */
+
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-md);
+  background: var(--auth-bg-soft);
+}
+
+.auth-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--auth-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.auth-tab-btn:hover {
+  color: var(--auth-text-main);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.auth-tab-btn.is-active {
+  color: var(--auth-text-strong);
+  background: var(--auth-bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--auth-border), 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+/* Auth Subtitle Mode */
+.auth-mode-toggle {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  color: var(--auth-text-muted);
+}
+
+.auth-mode-link {
+  border: 0;
+  background: transparent;
+  color: var(--auth-accent);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 180ms ease;
+}
+
+.auth-mode-link:hover {
+  color: var(--auth-accent-strong);
+}
+
+/* Google Sign-in Button */
+.auth-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 52px;
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid var(--auth-border);
+  border-radius: 18px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--auth-text-strong);
+  background: var(--auth-bg-control);
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.auth-google-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--auth-border-strong);
+  transform: translateY(-1px);
+}
+
+.auth-google-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.auth-google-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0;
+  color: var(--auth-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--auth-border);
+}
+
+.auth-divider:not(:empty)::before {
+  margin-right: 12px;
+}
+
+.auth-divider:not(:empty)::after {
+  margin-left: 12px;
+}
+
+/* Recaptcha */
+#recaptcha-container {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+/* OTP Resend Timer */
+.auth-resend-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--auth-text-muted);
+}
+
+.auth-resend-btn {
+  border: 0;
+  background: transparent;
+  color: var(--auth-accent);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  transition: color 180ms ease;
+}
+
+.auth-resend-btn:disabled {
+  color: var(--auth-text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Theme adaptation for light mode */
+[data-theme='light'] .auth-tab-btn.is-active,
+.theme-light .auth-tab-btn.is-active,
+.light .auth-tab-btn.is-active {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--auth-border), 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='light'] .auth-google-btn,
+.theme-light .auth-google-btn,
+.light .auth-google-btn {
+  background: #ffffff;
+  border-color: rgba(24, 20, 16, 0.12);
+}
+
+[data-theme='light'] .auth-google-btn:hover:not(:disabled),
+.theme-light .auth-google-btn:hover:not(:disabled),
+.light .auth-google-btn:hover:not(:disabled) {
+  background: #fbf8f5;
+  border-color: var(--auth-border-strong);
+}

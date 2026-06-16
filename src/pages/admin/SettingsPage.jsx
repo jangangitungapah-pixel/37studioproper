@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Edit3, Save, Trash2 } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import {
@@ -7,17 +9,10 @@ import {
   getSessionOptions,
   makeSettingItemId,
   normalizePricingSettings,
-  getPricingSettings,
+  usePricingSettings,
   savePricingSettings,
 } from '../../settings/pricingSettings.js';
 
-const settingsSubpages = [
-  {
-    key: 'pricing',
-    label: 'Pricing and Session',
-    description: 'Harga session, discount, recording type, dan paket.',
-  },
-];
 
 const emptySessionForm = {
   id: '',
@@ -74,20 +69,100 @@ function EmptyState({ children }) {
   return <p className="settings-empty-text">{children}</p>;
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({ currentUser }) {
+  const subpages = useMemo(() => {
+    const pages = [
+      {
+        key: 'pricing',
+        label: 'Pricing and Session',
+        description: 'Harga session, discount, recording type, dan paket.',
+      }
+    ];
+    if (currentUser?.email?.toLowerCase() === 'marsicprod@gmail.com') {
+      pages.push({
+        key: 'approvals',
+        label: 'Persetujuan Admin',
+        description: 'Menyetujui atau menghapus akun admin pendaftaran baru.',
+      });
+    }
+    return pages;
+  }, [currentUser]);
+
   const [activeSubpage, setActiveSubpage] = useState('pricing');
-  const [settings, setSettings] = useState(() => getPricingSettings());
+  const remoteSettings = usePricingSettings();
+  const [settings, setSettings] = useState(() => remoteSettings);
+
+  useEffect(() => {
+    setSettings(remoteSettings);
+  }, [remoteSettings]);
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
   const [recordingForm, setRecordingForm] = useState(emptyRecordingForm);
   const [packageForm, setPackageForm] = useState(emptyPackageForm);
 
+  // Approvals State
+  const [registeredUsers, setRegisteredUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
   const sessionOptions = useMemo(() => getSessionOptions(settings), [settings]);
 
   useEffect(() => {
     savePricingSettings(settings);
   }, [settings]);
+
+  // Sync users list for approvals
+  useEffect(() => {
+    if (activeSubpage !== 'approvals' || currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com') return;
+
+    setUsersLoading(true);
+    const usersRef = collection(firestoreDb, 'users');
+    const q = query(usersRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.email?.toLowerCase() !== 'marsicprod@gmail.com') {
+            list.push({ id: doc.id, ...data });
+          }
+        });
+        setRegisteredUsers(list);
+        setUsersLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching users for approvals:', err);
+        setUsersLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [activeSubpage, currentUser]);
+
+  async function handleApproveUser(userId) {
+    try {
+      const docRef = doc(firestoreDb, 'users', userId);
+      await updateDoc(docRef, {
+        status: 'approved',
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Failed to approve user:', err);
+    }
+  }
+
+  async function handleDeleteUser(userId) {
+    if (window.confirm('Apakah Anda yakin ingin menghapus akun ini? Akun tersebut tidak akan dapat masuk.')) {
+      try {
+        const docRef = doc(firestoreDb, 'users', userId);
+        await deleteDoc(docRef);
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+      }
+    }
+  }
 
   function updateSettings(updater) {
     setSettings((current) => normalizePricingSettings(typeof updater === 'function' ? updater(current) : updater));
@@ -293,19 +368,23 @@ export default function SettingsPage() {
     return sessionOptions.find((item) => item.key === sessionId)?.label || 'Session';
   }
 
+  const activePageInfo = useMemo(() => {
+    return subpages.find((page) => page.key === activeSubpage) || subpages[0];
+  }, [subpages, activeSubpage]);
+
   return (
     <section className="settings-page" aria-labelledby="settings-title">
       <div className="settings-subnav-mobile">
         <StudioSelect
           label="Settings Page"
-          options={settingsSubpages}
+          options={subpages}
           selectedKey={activeSubpage}
           onChange={setActiveSubpage}
         />
       </div>
 
       <div className="settings-tabs-desktop" role="tablist" aria-label="Settings subpage">
-        {settingsSubpages.map((item) => (
+        {subpages.map((item) => (
           <button
             aria-selected={activeSubpage === item.key}
             className={activeSubpage === item.key ? 'settings-tab is-active' : 'settings-tab'}
@@ -321,12 +400,14 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-title-block">
-        <p>Pricing Settings</p>
-        <h2 id="settings-title">Pricing and Session</h2>
-        <span>Atur harga session, tipe recording, discount, dan paket booking studio.</span>
+        <p>{activePageInfo.label}</p>
+        <h2 id="settings-title">{activePageInfo.label}</h2>
+        <span>{activePageInfo.description}</span>
       </div>
 
-      <section className="settings-section">
+      {activeSubpage === 'pricing' && (
+        <>
+          <section className="settings-section">
         <div className="settings-section-head">
           <div>
             <h3>Session List</h3>
@@ -595,6 +676,68 @@ export default function SettingsPage() {
           <FormActions editing={Boolean(packageForm.id)} onCancel={() => setPackageForm(emptyPackageForm)} />
         </form>
       </section>
+      </>
+      )}
+
+      {activeSubpage === 'approvals' && (
+        <section className="settings-section">
+          <div className="settings-section-head">
+            <div>
+              <h3>Daftar Registrasi Admin</h3>
+              <p>Akun baru yang mendaftar melalui Email, Google, atau Nomor HP. Setujui untuk memberi akses atau hapus untuk menolak.</p>
+            </div>
+          </div>
+
+          <div className="settings-list">
+            {usersLoading ? (
+              <p className="settings-empty-text">Memuat daftar user...</p>
+            ) : registeredUsers.length ? (
+              registeredUsers.map((user) => (
+                <article className="settings-list-item" key={user.id}>
+                  <div>
+                    <strong>{user.displayName || 'User'}</strong>
+                    <span>
+                      {user.email && `Email: ${user.email}`}
+                      {user.email && user.phoneNumber && ' • '}
+                      {user.phoneNumber && `No HP: ${user.phoneNumber}`}
+                      {` (${user.provider})`}
+                    </span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginTop: '4px' }}>
+                      Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="settings-row-actions" style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                    {user.status !== 'approved' ? (
+                      <button 
+                        type="button" 
+                        onClick={() => handleApproveUser(user.id)}
+                        className="settings-mini-button is-primary"
+                        style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto', background: '#2ecc71', borderColor: '#27ae60', color: '#fff' }}
+                      >
+                        Setujui
+                      </button>
+                    ) : (
+                      <span style={{ color: '#2ecc71', fontSize: '0.78rem', fontWeight: 'bold', marginRight: '8px', display: 'flex', alignItems: 'center' }}>
+                        Aktif
+                      </span>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="settings-mini-button"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto', color: 'var(--auth-danger)', borderColor: 'rgba(255, 107, 107, 0.3)' }}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="settings-empty-text">Tidak ada registrasi admin lain saat ini.</p>
+            )}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

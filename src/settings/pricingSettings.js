@@ -1,3 +1,7 @@
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { useState, useEffect } from 'react';
+
 export const PRICING_SETTINGS_STORAGE_KEY = '37musicstudio.pricing.settings.v1';
 
 export const DEFAULT_PRICING_SETTINGS = {
@@ -118,7 +122,7 @@ export function normalizePricingSettings(settings) {
   };
 }
 
-export function getPricingSettings() {
+let cachedPricingSettings = (() => {
   if (typeof window === 'undefined') {
     return normalizePricingSettings(DEFAULT_PRICING_SETTINGS);
   }
@@ -131,15 +135,94 @@ export function getPricingSettings() {
   } catch {
     return normalizePricingSettings(DEFAULT_PRICING_SETTINGS);
   }
+})();
+
+export function getPricingSettings() {
+  return cachedPricingSettings;
 }
 
-export function savePricingSettings(settings) {
-  if (typeof window === 'undefined') return;
+export async function savePricingSettings(settings) {
+  const normalized = normalizePricingSettings(settings);
+  cachedPricingSettings = normalized;
 
-  window.localStorage.setItem(
-    PRICING_SETTINGS_STORAGE_KEY,
-    JSON.stringify(normalizePricingSettings(settings))
-  );
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(
+        PRICING_SETTINGS_STORAGE_KEY,
+        JSON.stringify(normalized)
+      );
+    } catch (_) {}
+  }
+
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const docRef = doc(firestoreDb, 'settings', 'pricing');
+      await setDoc(docRef, normalized);
+    } catch (err) {
+      console.error('Failed to save pricing settings to Firestore:', err);
+    }
+  }
+}
+
+let listeners = [];
+let isSubscribed = false;
+
+export function subscribePricingSettings(callback) {
+  listeners.push(callback);
+
+  // Trigger immediately with current cached value
+  callback(cachedPricingSettings);
+
+  if (!isSubscribed && isFirebaseConfigured && firestoreDb) {
+    isSubscribed = true;
+    const docRef = doc(firestoreDb, 'settings', 'pricing');
+
+    onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const remote = normalizePricingSettings(docSnap.data());
+          cachedPricingSettings = remote;
+
+          // Backup to localStorage
+          if (typeof window !== 'undefined') {
+            try {
+              window.localStorage.setItem(PRICING_SETTINGS_STORAGE_KEY, JSON.stringify(remote));
+            } catch (_) {}
+          }
+
+          // Notify all subscribers
+          listeners.forEach((cb) => {
+            try {
+              cb(remote);
+            } catch (err) {
+              console.error('Listener callback error:', err);
+            }
+          });
+        } else {
+          // Document does not exist in Firestore yet, initialize it
+          savePricingSettings(cachedPricingSettings);
+        }
+      },
+      (err) => {
+        console.error('Error in onSnapshot for pricing settings:', err);
+      }
+    );
+  }
+
+  return () => {
+    listeners = listeners.filter((cb) => cb !== callback);
+  };
+}
+
+export function usePricingSettings() {
+  const [settings, setSettings] = useState(cachedPricingSettings);
+
+  useEffect(() => {
+    return subscribePricingSettings(setSettings);
+  }, []);
+
+  return settings;
 }
 
 export function getSessionOptions(settings = getPricingSettings()) {
