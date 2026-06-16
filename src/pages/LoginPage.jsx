@@ -28,7 +28,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAdminAuthenticated()) {
-      navigate('/admin', { replace: true });
+      navigate('/admin/schedule', { replace: true });
     }
   }, [navigate]);
 
@@ -67,7 +67,7 @@ export default function LoginPage() {
       return;
     }
 
-    navigate('/admin', { replace: true });
+    navigate('/admin/schedule', { replace: true });
   }
 
   return (
