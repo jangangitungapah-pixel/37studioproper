@@ -741,14 +741,17 @@
 .auth-input-wrap input:-webkit-autofill:hover,
 .auth-input-wrap input:-webkit-autofill:focus,
 .auth-input-wrap input:-webkit-autofill:active {
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
   font-size: 0.84rem !important;
   line-height: 1.25 !important;
-  font-weight: 650 !important;
-  letter-spacing: -0.015em !important;
+  font-weight: 100 !important;
+  letter-spacing: 0.01em !important;
 }
 
 .auth-input-wrap input::placeholder {
   font-size: 0.82rem !important;
+  font-weight: 100 !important;
+  opacity: 0.72;
 }
 
 @media (max-width: 767px) {
@@ -763,10 +766,12 @@
   .auth-input-wrap input:-webkit-autofill:active {
     font-size: 0.8rem !important;
     line-height: 1.22 !important;
+    font-weight: 100 !important;
   }
 
   .auth-input-wrap input::placeholder {
     font-size: 0.78rem !important;
+    font-weight: 100 !important;
   }
 }
 /* === LOGIN INPUT FONT SIZE TUNE: END === */
