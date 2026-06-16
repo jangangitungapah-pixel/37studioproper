@@ -247,7 +247,7 @@ export default function BookingFormModal({
     }
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     const cleanName = form.name.trim();
@@ -273,7 +273,7 @@ export default function BookingFormModal({
     const hourOption = getSelectedOption(businessHours, form.startHour);
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
 
-    const didSave = onSave({
+    const didSave = await onSave({
       id: editingBooking?.id || makeBookingId(),
       customer: cleanName,
       bandName: cleanBandName,

@@ -151,7 +151,9 @@ export async function savePricingSettings(settings) {
         PRICING_SETTINGS_STORAGE_KEY,
         JSON.stringify(normalized)
       );
-    } catch (_) {}
+    } catch {
+          // Browser storage / verifier cleanup can fail in restricted contexts.
+        }
   }
 
   if (isFirebaseConfigured && firestoreDb) {
@@ -188,7 +190,9 @@ export function subscribePricingSettings(callback) {
           if (typeof window !== 'undefined') {
             try {
               window.localStorage.setItem(PRICING_SETTINGS_STORAGE_KEY, JSON.stringify(remote));
-            } catch (_) {}
+            } catch {
+          // Browser storage / verifier cleanup can fail in restricted contexts.
+        }
           }
 
           // Notify all subscribers

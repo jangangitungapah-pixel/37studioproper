@@ -144,6 +144,87 @@ function readStoredBookings() {
   }
 }
 
+
+function normalizeBookingCustomerPhone(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits) return '';
+
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = '62' + digits.slice(1);
+  if (digits.startsWith('8')) digits = '62' + digits;
+
+  return digits;
+}
+
+function cleanBookingCustomerName(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function hashBookingCustomerIdentity(value) {
+  let hash = 0;
+  const text = String(value || '');
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return Math.abs(hash).toString(36);
+}
+
+function makeBookingCustomerId(phoneKey, name, salt = '') {
+  const cleanName = cleanBookingCustomerName(name).replace(/[^a-z0-9]+/g, '-') || 'customer';
+
+  return 'cust_' + hashBookingCustomerIdentity((phoneKey || 'no-phone') + '|' + cleanName + '|' + String(salt || ''));
+}
+
+function resolveBookingCustomerIdentity(booking, currentBookings) {
+  const phoneKey = normalizeBookingCustomerPhone(booking.phone);
+  const customerName = booking.customer || booking.name || 'Customer';
+  const nameKey = cleanBookingCustomerName(customerName);
+  const samePhoneBookings = currentBookings.filter((item) => {
+    if (item.id && booking.id && item.id === booking.id) return false;
+
+    return normalizeBookingCustomerPhone(item.phone) === phoneKey;
+  });
+
+  const exactBooking = samePhoneBookings.find((item) => cleanBookingCustomerName(item.customer || item.name) === nameKey);
+
+  if (exactBooking) {
+    return {
+      customerId: exactBooking.customerId || makeBookingCustomerId(phoneKey, customerName),
+      existingCustomerName: exactBooking.customer || exactBooking.name || customerName,
+      mode: 'exact',
+      needsConfirmation: false,
+      newCustomerId: exactBooking.customerId || makeBookingCustomerId(phoneKey, customerName),
+      phoneKey,
+    };
+  }
+
+  if (samePhoneBookings.length) {
+    const existingBooking = samePhoneBookings[0];
+
+    return {
+      customerId: existingBooking.customerId || makeBookingCustomerId(phoneKey, existingBooking.customer || existingBooking.name || 'Customer'),
+      existingCustomerName: existingBooking.customer || existingBooking.name || 'Customer lama',
+      mode: 'same-phone-different-name',
+      needsConfirmation: true,
+      newCustomerId: makeBookingCustomerId(phoneKey, customerName, booking.id || Date.now()),
+      phoneKey,
+    };
+  }
+
+  return {
+    customerId: makeBookingCustomerId(phoneKey, customerName),
+    existingCustomerName: '',
+    mode: 'new',
+    needsConfirmation: false,
+    newCustomerId: makeBookingCustomerId(phoneKey, customerName),
+    phoneKey,
+  };
+}
+
 function getBookingStatus(booking) {
   return booking.paymentStatus || booking.status || 'pending';
 }
@@ -606,7 +687,7 @@ export default function SchedulePage() {
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
       (data) => setBookings(data),
-      (err) => {
+      (_err) => {
         setScheduleToast({
           kind: 'warning',
           title: 'Database Terputus',
@@ -705,13 +786,35 @@ export default function SchedulePage() {
       return false;
     }
 
+    const customerIdentity = resolveBookingCustomerIdentity(booking, bookings);
+    let nextBooking = {
+      ...booking,
+      customerId: customerIdentity.customerId,
+      customerPhoneKey: customerIdentity.phoneKey,
+    };
+
+    if (customerIdentity.needsConfirmation) {
+      const shouldMergeCustomer = window.confirm(
+        'Nomor WA ini sudah terdaftar atas nama ' +
+          customerIdentity.existingCustomerName +
+          '.\n\nOK = update/gabung ke customer lama.\nCancel = buat customer baru dengan nomor yang sama.'
+      );
+
+      nextBooking = {
+        ...nextBooking,
+        customerId: shouldMergeCustomer ? customerIdentity.customerId : customerIdentity.newCustomerId,
+        customerIdentityMode: shouldMergeCustomer ? 'merge-existing-phone' : 'same-phone-new-customer',
+      };
+    }
+
     try {
-      if (!booking.id) {
-        await adminBookingRepository.createManualBooking(booking);
+      if (editingBooking?.id) {
+        await adminBookingRepository.updateManualBooking(nextBooking);
       } else {
-        await adminBookingRepository.updateManualBooking(booking);
+        await adminBookingRepository.createManualBooking(nextBooking);
       }
-      setScheduleToast(getBookingSavedToast(booking));
+
+      setScheduleToast(getBookingSavedToast(nextBooking));
       return true;
     } catch (err) {
       console.error('Error saving booking to Firestore:', err);

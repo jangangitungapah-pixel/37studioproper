@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   CalendarDays,
+  UsersRound,
   LogOut,
   Music2,
   PanelLeftClose,
@@ -16,6 +17,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import SchedulePage from './admin/SchedulePage.jsx';
+import CustomerPage from './admin/CustomerPage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
 
 import '../styles/admin-auth.css';
@@ -29,6 +31,13 @@ const navItems = [
     path: '/admin/schedule',
     icon: CalendarDays,
     title: 'Schedule',
+  },
+  {
+    key: 'customers',
+    label: 'Customer',
+    path: '/admin/customers',
+    icon: UsersRound,
+    title: 'Customer',
   },
   {
     key: 'settings',
@@ -51,6 +60,7 @@ function getInitialSidebarState() {
 
 function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
+  if (activeKey === 'customers') return <CustomerPage />;
 
   return <SchedulePage />;
 }
@@ -67,15 +77,25 @@ function AutoApproveView({ currentUser, onLogout }) {
 
   useEffect(() => {
     if (!targetUid) {
-      setStatus('error');
-      setErrorMsg('Tautan persetujuan tidak lengkap (UID tidak ditemukan).');
-      return;
+      const missingUidFrameId = window.requestAnimationFrame(() => {
+        setStatus('error');
+        setErrorMsg('Tautan persetujuan tidak lengkap (UID tidak ditemukan).');
+      });
+
+      return () => {
+        window.cancelAnimationFrame(missingUidFrameId);
+      };
     }
 
     if (currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com') {
-      setStatus('error');
-      setErrorMsg('Hanya pemilik studio (marsicprod@gmail.com) yang diizinkan untuk menyetujui akun baru.');
-      return;
+      const ownerGuardFrameId = window.requestAnimationFrame(() => {
+        setStatus('error');
+        setErrorMsg('Hanya pemilik studio (marsicprod@gmail.com) yang diizinkan untuk menyetujui akun baru.');
+      });
+
+      return () => {
+        window.cancelAnimationFrame(ownerGuardFrameId);
+      };
     }
 
     async function approveUser() {

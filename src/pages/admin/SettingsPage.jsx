@@ -93,7 +93,13 @@ export default function SettingsPage({ currentUser }) {
   const [settings, setSettings] = useState(() => remoteSettings);
 
   useEffect(() => {
-    setSettings(remoteSettings);
+    const settingsFrameId = window.requestAnimationFrame(() => {
+      setSettings(remoteSettings);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(settingsFrameId);
+    };
   }, [remoteSettings]);
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
@@ -115,7 +121,10 @@ export default function SettingsPage({ currentUser }) {
   useEffect(() => {
     if (activeSubpage !== 'approvals' || currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com') return;
 
-    setUsersLoading(true);
+    const usersLoadingFrameId = window.requestAnimationFrame(() => {
+      setUsersLoading(true);
+    });
+
     const usersRef = collection(firestoreDb, 'users');
     const q = query(usersRef, orderBy('createdAt', 'desc'));
 
@@ -138,7 +147,10 @@ export default function SettingsPage({ currentUser }) {
       }
     );
 
-    return unsubscribe;
+    return () => {
+      window.cancelAnimationFrame(usersLoadingFrameId);
+      unsubscribe();
+    };
   }, [activeSubpage, currentUser]);
 
   async function handleApproveUser(userId) {

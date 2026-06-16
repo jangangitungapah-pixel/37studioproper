@@ -169,7 +169,9 @@ export default function LoginPage() {
         try {
           window.recaptchaVerifier.clear();
           window.recaptchaVerifier = null;
-        } catch (_) {}
+        } catch {
+          // Browser storage / verifier cleanup can fail in restricted contexts.
+        }
       }
     } finally {
       setIsSubmitting(false);
