@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Eye,
@@ -47,16 +47,20 @@ export default function LoginPage() {
   // Refs
   const recaptchaContainerRef = useRef(null);
 
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo');
+
   // Subscribe to Auth State
   useEffect(() => {
     const unsubscribe = adminAuthRepository.subscribeAdminAuth((authState) => {
       if (authState.isReady && authState.isAuthenticated) {
-        navigate('/admin/schedule', { replace: true });
+        const target = redirectTo ? redirectTo : '/admin/schedule';
+        navigate(target, { replace: true });
       }
     });
 
     return unsubscribe;
-  }, [navigate]);
+  }, [navigate, redirectTo]);
 
   // Resend Timer Effect
   useEffect(() => {

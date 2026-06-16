@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { sendNewUserNotificationEmail } from './emailService.js';
 
 function createUnauthenticatedState(errorMessage = '') {
   return {
@@ -120,6 +121,11 @@ export function subscribeAdminAuth(callback) {
             updatedAt: new Date().toISOString()
           };
           await setDoc(userDocRef, newDoc);
+          if (!isOwnerEmail) {
+            sendNewUserNotificationEmail(newDoc).catch((err) =>
+              console.error('Failed to trigger email notification:', err)
+            );
+          }
         }
       } catch (err) {
         console.error('Error in user doc check/create:', err);

@@ -37,6 +37,10 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

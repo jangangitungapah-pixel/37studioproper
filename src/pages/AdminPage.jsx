@@ -8,7 +8,12 @@ import {
   PanelLeftOpen,
   Settings,
   LoaderCircle,
+  ShieldCheck,
+  AlertCircle,
+  Home,
 } from 'lucide-react';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
@@ -50,6 +55,133 @@ function renderAdminContent(activeKey, currentUser) {
   return <SchedulePage />;
 }
 
+function AutoApproveView({ currentUser, onLogout }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
+  const [errorMsg, setErrorMsg] = useState('');
+  const [targetUser, setTargetUser] = useState(null);
+
+  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const targetUid = queryParams.get('uid');
+
+  useEffect(() => {
+    if (!targetUid) {
+      setStatus('error');
+      setErrorMsg('Tautan persetujuan tidak lengkap (UID tidak ditemukan).');
+      return;
+    }
+
+    if (currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com') {
+      setStatus('error');
+      setErrorMsg('Hanya pemilik studio (marsicprod@gmail.com) yang diizinkan untuk menyetujui akun baru.');
+      return;
+    }
+
+    async function approveUser() {
+      try {
+        const userRef = doc(firestoreDb, 'users', targetUid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          setStatus('error');
+          setErrorMsg('Akun user yang ingin disetujui tidak ditemukan di database.');
+          return;
+        }
+
+        const data = userSnap.data();
+        setTargetUser(data);
+
+        if (data.status === 'approved') {
+          setStatus('success');
+          return;
+        }
+
+        await updateDoc(userRef, {
+          status: 'approved',
+          updatedAt: new Date().toISOString()
+        });
+
+        setStatus('success');
+      } catch (err) {
+        console.error('Failed to approve user:', err);
+        setStatus('error');
+        setErrorMsg('Gagal menyetujui user di Firestore. Periksa koneksi atau database.');
+      }
+    }
+
+    approveUser();
+  }, [targetUid, currentUser]);
+
+  return (
+    <main className="theme-container auth-page" data-auth-surface="approve">
+      <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="approve-title">
+        {status === 'loading' && (
+          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <LoaderCircle size={36} className="auth-spin mb-4" style={{ color: 'var(--auth-accent)' }} />
+            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Memproses Persetujuan...</h1>
+            <p style={{ fontSize: '0.88rem', opacity: 0.8 }}>Sistem sedang memverifikasi dan menyetujui akun baru.</p>
+          </div>
+        )}
+
+        {status === 'success' && (
+          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[#2ecc71]/30 bg-[#2ecc71]/10 text-xs font-semibold uppercase tracking-[0.15em] text-[#2ecc71]">
+              <ShieldCheck size={14} />
+              <span>Sukses</span>
+            </div>
+            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Persetujuan Berhasil</h1>
+            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '24px' }}>
+              Akun <strong>{targetUser?.displayName || targetUser?.email || 'User'}</strong> ({targetUser?.email || targetUser?.phoneNumber || 'No HP'}) sekarang sudah aktif dan dapat mengakses Scheduler.
+            </p>
+            <button 
+              className="auth-google-btn" 
+              type="button" 
+              onClick={() => navigate('/admin/schedule')}
+              style={{ marginTop: '0', width: '100%', background: 'var(--auth-accent)', color: '#fff', borderColor: 'var(--auth-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              <Home size={16} />
+              <span>Ke Dashboard</span>
+            </button>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-danger)] bg-[var(--auth-danger)]/10 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-danger)]">
+              <AlertCircle size={14} />
+              <span>Gagal</span>
+            </div>
+            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Gagal Menyetujui</h1>
+            <p style={{ fontSize: '0.88rem', color: 'var(--auth-danger)', lineHeight: '1.6', marginBottom: '24px' }}>
+              {errorMsg}
+            </p>
+            {currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com' ? (
+              <button 
+                className="auth-google-btn" 
+                type="button" 
+                onClick={onLogout}
+                style={{ marginTop: '0', width: '100%', borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}
+              >
+                <span>Keluar & Login Sebagai Owner</span>
+              </button>
+            ) : (
+              <button 
+                className="auth-google-btn" 
+                type="button" 
+                onClick={() => navigate('/admin/schedule')}
+                style={{ marginTop: '0', width: '100%' }}
+              >
+                <span>Kembali ke Dashboard</span>
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -89,7 +221,14 @@ export default function AdminPage() {
   }
 
   if (!authState.isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    const redirectTo = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirectTo=${redirectTo}`} replace />;
+  }
+
+  // Handle URL-based approval redirect
+  const isApprovePath = location.pathname === '/admin/approve' || location.pathname === '/admin/approve/';
+  if (isApprovePath) {
+    return <AutoApproveView currentUser={authState.user} onLogout={handleLogout} />;
   }
 
   if (!authState.user?.isApproved) {
