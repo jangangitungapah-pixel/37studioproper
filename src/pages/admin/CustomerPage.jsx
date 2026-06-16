@@ -8,6 +8,8 @@ import {
   Mail,
   Music2,
   Phone,
+  PhoneCall,
+  Pencil,
   Plus,
   Search,
   Tag,
@@ -159,6 +161,31 @@ function formatMoney(value) {
     maximumFractionDigits: 0,
     style: 'currency',
   }).format(Math.max(0, Number(value) || 0));
+}
+
+function WhatsAppIcon({ size = 15 }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height={size}
+      viewBox="0 0 24 24"
+      width={size}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M4.2 20.1l1.08-3.94A8.35 8.35 0 1 1 12.48 20a8.26 8.26 0 0 1-3.98-1.02L4.2 20.1Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.85"
+      />
+      <path
+        d="M9.16 8.15c-.18-.4-.37-.41-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2.01 0 1.18.86 2.32.98 2.48.12.16 1.68 2.7 4.17 3.67 2.07.8 2.49.64 2.94.6.45-.04 1.45-.59 1.66-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28-.24-.12-1.45-.72-1.68-.8-.22-.08-.39-.12-.55.12-.16.24-.63.8-.77.96-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.1-.49.11-.1.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.52-1.3-.8-1.78Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }
 
 function getCustomerActionLinks(customer) {
@@ -717,19 +744,30 @@ function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
 
               <span className="customer-row-actions" aria-label={'Aksi customer ' + customer.name}>
                 {links.whatsappHref ? (
-                  <a href={links.whatsappHref} target="_blank" rel="noreferrer">
-                    WA
+                  <a
+                    aria-label={'Chat WhatsApp ' + customer.name}
+                    href={links.whatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="WhatsApp"
+                  >
+                    <WhatsAppIcon size={15} />
                   </a>
                 ) : null}
 
                 {links.callHref ? (
-                  <a href={links.callHref}>
-                    Call
+                  <a aria-label={'Telepon ' + customer.name} href={links.callHref} title="Telepon">
+                    <PhoneCall size={15} />
                   </a>
                 ) : null}
 
-                <button type="button" onClick={() => onEditCustomer(customer)}>
-                  Edit
+                <button
+                  aria-label={'Edit customer ' + customer.name}
+                  title="Edit customer"
+                  type="button"
+                  onClick={() => onEditCustomer(customer)}
+                >
+                  <Pencil size={15} />
                 </button>
               </span>
             </article>
@@ -786,20 +824,38 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
 
       <section className="customer-action-bar" aria-label="Aksi customer">
         {links.whatsappHref ? (
-          <a className="customer-action-button is-primary" href={links.whatsappHref} target="_blank" rel="noreferrer">
-            WhatsApp
+          <a
+            aria-label={'Chat WhatsApp ' + customer.name}
+            className="customer-action-button is-primary"
+            href={links.whatsappHref}
+            target="_blank"
+            rel="noreferrer"
+            title="WhatsApp"
+          >
+            <WhatsAppIcon size={16} />
           </a>
         ) : null}
 
         {links.callHref ? (
-          <a className="customer-action-button" href={links.callHref}>
-            Telepon
+          <a
+            aria-label={'Telepon ' + customer.name}
+            className="customer-action-button"
+            href={links.callHref}
+            title="Telepon"
+          >
+            <PhoneCall size={16} />
           </a>
         ) : null}
 
-        <button className="customer-action-button" type="button" onClick={() => onEditCustomer(customer)}>
-          Edit
-        </button>
+        <button
+            aria-label={'Edit customer ' + customer.name}
+            className="customer-action-button"
+            title="Edit customer"
+            type="button"
+            onClick={() => onEditCustomer(customer)}
+          >
+            <Pencil size={16} />
+          </button>
       </section>
 
       {customer.notes ? (

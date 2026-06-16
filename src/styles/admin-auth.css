@@ -5694,3 +5694,79 @@
   }
 }
 /* === CUSTOMER ACTIONS PHASE 1B: END === */
+
+/* === CUSTOMER ICON ACTIONS: START === */
+.customer-row-actions {
+  align-items: center;
+}
+
+.customer-row-actions a,
+.customer-row-actions button,
+.customer-action-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 12px;
+  padding: 0;
+  line-height: 1;
+}
+
+.customer-row-actions svg,
+.customer-action-button svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
+.customer-row-actions a[title='WhatsApp'],
+.customer-action-button[title='WhatsApp'] {
+  color: #31d366;
+}
+
+.customer-row-actions a[title='Telepon'],
+.customer-action-button[title='Telepon'] {
+  color: var(--auth-text-main);
+}
+
+.customer-row-actions button[title='Edit customer'],
+.customer-action-button[title='Edit customer'] {
+  color: var(--auth-accent);
+}
+
+.customer-action-bar {
+  align-items: center;
+}
+
+.customer-action-bar .customer-action-button {
+  flex: 0 0 34px;
+}
+
+@media (max-width: 767px) {
+  .customer-row-actions {
+    gap: 6px;
+  }
+
+  .customer-row-actions a,
+  .customer-row-actions button,
+  .customer-action-button {
+    width: 31px;
+    min-width: 31px;
+    height: 31px;
+    min-height: 31px;
+    border-radius: 11px;
+  }
+
+  .customer-row-actions svg,
+  .customer-action-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .customer-action-bar .customer-action-button {
+    flex: 0 0 31px;
+  }
+}
+/* === CUSTOMER ICON ACTIONS: END === */
