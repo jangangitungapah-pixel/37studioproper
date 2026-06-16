@@ -3787,3 +3787,199 @@
   }
 }
 /* === BOOKING DETAIL MODAL: END === */
+
+/* === BOOKING DETAIL MODAL MOBILE REPAIR: START === */
+.booking-detail-backdrop,
+.booking-detail-panel,
+.booking-detail-head,
+.booking-detail-status,
+.booking-detail-body,
+.booking-detail-card,
+.booking-detail-grid,
+.booking-detail-row,
+.booking-detail-actions {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.booking-detail-panel {
+  min-width: 0;
+}
+
+.booking-detail-head > div,
+.booking-detail-body,
+.booking-detail-card,
+.booking-detail-grid,
+.booking-detail-row,
+.booking-detail-row > span:last-child,
+.booking-detail-meta-list,
+.booking-detail-meta-list span {
+  min-width: 0;
+}
+
+.booking-detail-body {
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+}
+
+.booking-detail-head h2,
+.booking-detail-card.is-hero h3,
+.booking-detail-card.is-hero p,
+.booking-detail-row strong,
+.booking-detail-meta-list strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.booking-detail-row strong,
+.booking-detail-meta-list strong {
+  white-space: normal !important;
+}
+
+@media (max-width: 767px) {
+  .booking-detail-backdrop {
+    align-items: end;
+    justify-items: center;
+    padding: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .booking-detail-panel {
+    width: 100%;
+    max-height: min(82dvh, 720px);
+    border-radius: 24px;
+  }
+
+  .booking-detail-head {
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .booking-detail-head h2 {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: clamp(1.28rem, 7vw, 1.82rem);
+    line-height: 1.05;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .booking-detail-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .booking-detail-status {
+    padding: 10px 14px;
+  }
+
+  .booking-detail-body {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .booking-detail-card {
+    gap: 10px;
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .booking-detail-card.is-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch;
+  }
+
+  .booking-detail-card.is-hero h3 {
+    margin-top: 4px;
+    font-size: 1.04rem;
+    line-height: 1.14;
+  }
+
+  .booking-detail-card.is-hero p {
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+
+  .booking-detail-phone {
+    width: 100%;
+    min-height: 42px;
+    justify-self: stretch;
+    border-radius: 15px;
+  }
+
+  .booking-detail-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  .booking-detail-row {
+    width: 100%;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 10px;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .booking-detail-row-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .booking-detail-row small,
+  .booking-detail-meta-list small {
+    font-size: 0.63rem;
+    letter-spacing: 0.08em;
+  }
+
+  .booking-detail-row strong,
+  .booking-detail-meta-list strong {
+    font-size: 0.8rem;
+    line-height: 1.32;
+  }
+
+  .booking-detail-money-row {
+    align-items: flex-start;
+    font-size: 0.76rem;
+  }
+
+  .booking-detail-money-row strong {
+    max-width: 52%;
+    text-align: right;
+  }
+
+  .booking-detail-actions {
+    padding: 10px 12px 12px;
+  }
+
+  .booking-detail-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .booking-detail-panel {
+    max-height: min(80dvh, 680px);
+  }
+
+  .booking-detail-head h2 {
+    font-size: 1.3rem;
+  }
+
+  .booking-detail-status strong {
+    padding: 6px 9px;
+    font-size: 0.68rem;
+  }
+
+  .booking-detail-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .booking-detail-row-icon {
+    width: 34px;
+    height: 34px;
+  }
+}
+/* === BOOKING DETAIL MODAL MOBILE REPAIR: END === */
