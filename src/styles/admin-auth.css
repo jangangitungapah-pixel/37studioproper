@@ -730,3 +730,43 @@
   }
 }
 /* === LOGIN CARD MOBILE FIRST COMPACT: END === */
+
+/* === LOGIN INPUT FONT SIZE TUNE: START === */
+.auth-input-wrap input,
+.auth-input-wrap input:hover,
+.auth-input-wrap input:focus,
+.auth-input-wrap input:focus-visible,
+.auth-input-wrap input:active,
+.auth-input-wrap input:-webkit-autofill,
+.auth-input-wrap input:-webkit-autofill:hover,
+.auth-input-wrap input:-webkit-autofill:focus,
+.auth-input-wrap input:-webkit-autofill:active {
+  font-size: 0.84rem !important;
+  line-height: 1.25 !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.auth-input-wrap input::placeholder {
+  font-size: 0.82rem !important;
+}
+
+@media (max-width: 767px) {
+  .auth-input-wrap input,
+  .auth-input-wrap input:hover,
+  .auth-input-wrap input:focus,
+  .auth-input-wrap input:focus-visible,
+  .auth-input-wrap input:active,
+  .auth-input-wrap input:-webkit-autofill,
+  .auth-input-wrap input:-webkit-autofill:hover,
+  .auth-input-wrap input:-webkit-autofill:focus,
+  .auth-input-wrap input:-webkit-autofill:active {
+    font-size: 0.8rem !important;
+    line-height: 1.22 !important;
+  }
+
+  .auth-input-wrap input::placeholder {
+    font-size: 0.78rem !important;
+  }
+}
+/* === LOGIN INPUT FONT SIZE TUNE: END === */
