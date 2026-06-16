@@ -15,6 +15,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react';
+import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 
@@ -559,8 +560,6 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
 }
 
 function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearchChange, searchText }) {
-  const activeFilterLabel = filterOptions.find((item) => item.key === activeFilter)?.label || 'Semua';
-
   return (
     <section className="customer-toolbar" aria-label="Customer toolbar">
       <div className="customer-search-shell">
@@ -574,21 +573,14 @@ function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearch
         />
       </div>
 
-      <label className="customer-filter-select-shell">
-        <span>Filter</span>
-        <select
-          aria-label="Quick filter customer"
-          value={activeFilter}
-          onChange={(event) => onFilterChange(event.target.value)}
-        >
-          {filterOptions.map((item) => (
-            <option key={item.key} value={item.key}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <small>{activeFilterLabel}</small>
-      </label>
+      <div className="customer-filter-studio-select">
+        <StudioSelect
+          label="Filter"
+          options={filterOptions}
+          selectedKey={activeFilter}
+          onChange={onFilterChange}
+        />
+      </div>
 
       <button className="customer-add-button" type="button" onClick={onAddCustomer}>
         <Plus size={16} />

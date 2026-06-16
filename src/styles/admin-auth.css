@@ -4833,7 +4833,7 @@
 }
 /* === CUSTOMER MOBILE UI POLISH: END === */
 
-/* === CUSTOMER COMPACT UI V2: START === */
+/* === CUSTOMER STUDIO SELECT FILTER: START === */
 .customer-page,
 .customer-detail-page,
 .customer-toolbar,
@@ -4848,66 +4848,59 @@
   gap: 10px;
 }
 
-.customer-toolbar {
-  border-radius: 18px;
-}
-
+.customer-filter-row,
+.customer-filter-pill,
 .customer-filter-select-shell {
-  min-width: 0;
-  min-height: 42px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "label select"
-    "hint select";
-  align-items: center;
-  column-gap: 8px;
-  border: 1px solid var(--auth-border);
-  border-radius: 15px;
-  background: var(--auth-bg-control);
-  padding: 7px 11px;
+  display: none !important;
 }
 
-.customer-filter-select-shell span {
-  grid-area: label;
-  color: var(--auth-text-muted);
+.customer-filter-studio-select {
+  min-width: 0;
+}
+
+.customer-filter-studio-select .studio-select {
+  width: 100%;
+}
+
+.customer-filter-studio-select .studio-select-trigger {
+  min-height: 42px;
+  border-radius: 15px;
+}
+
+.customer-filter-studio-select .studio-select-copy {
+  min-width: 0;
+}
+
+.customer-filter-studio-select .studio-select-label {
   font-size: 0.58rem;
   font-weight: 720;
   letter-spacing: 0.12em;
-  line-height: 1;
-  text-transform: uppercase;
 }
 
-.customer-filter-select-shell small {
-  grid-area: hint;
-  max-width: 84px;
-  overflow: hidden;
-  color: var(--auth-text-strong);
-  font-size: 0.68rem;
-  font-weight: 680;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.customer-filter-studio-select .studio-select-copy strong {
+  font-size: 0.72rem;
+  font-weight: 650;
 }
 
-.customer-filter-select-shell select {
-  grid-area: select;
-  width: 100%;
-  min-width: 116px;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--auth-text-strong);
-  font-family: inherit;
+.customer-filter-studio-select .studio-select-list {
+  right: 0;
+  left: auto;
+  width: min(240px, calc(100vw - 32px));
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 58%),
+    #101012;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+}
+
+.customer-filter-studio-select .studio-select-option {
+  min-height: 42px;
+  border-radius: 13px;
+}
+
+.customer-filter-studio-select .studio-select-option-text strong {
   font-size: 0.76rem;
-  font-weight: 620;
-  text-align: right;
-  cursor: pointer;
-}
-
-.customer-filter-row,
-.customer-filter-pill {
-  display: none !important;
+  font-weight: 650;
 }
 
 .customer-hero-copy small,
@@ -5040,24 +5033,39 @@
     font-weight: 420;
   }
 
-  .customer-filter-select-shell {
+  .customer-filter-studio-select {
     grid-area: filter;
-    min-height: 38px;
-    border-radius: 13px;
-    padding: 6px 9px;
   }
 
-  .customer-filter-select-shell span {
+  .customer-filter-studio-select .studio-select-trigger {
+    min-height: 38px;
+    border-radius: 13px;
+    padding: 0 9px;
+  }
+
+  .customer-filter-studio-select .studio-select-label {
     font-size: 0.48rem;
   }
 
-  .customer-filter-select-shell small {
-    font-size: 0.58rem;
+  .customer-filter-studio-select .studio-select-copy strong {
+    max-width: 92px;
+    overflow: hidden;
+    font-size: 0.64rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .customer-filter-select-shell select {
-    min-width: 86px;
-    font-size: 0.68rem;
+  .customer-filter-studio-select .studio-select-chevron {
+    width: 14px;
+    height: 14px;
+  }
+
+  .customer-filter-studio-select .studio-select-list {
+    left: 0;
+    right: auto;
+    width: min(220px, calc(100vw - 32px));
+    max-height: 280px;
+    overflow: auto;
   }
 
   .customer-add-button {
@@ -5186,8 +5194,8 @@
     grid-template-columns: minmax(280px, 1fr) minmax(180px, 220px) auto;
   }
 
-  .customer-filter-select-shell {
+  .customer-filter-studio-select .studio-select-trigger {
     min-height: 44px;
   }
 }
-/* === CUSTOMER COMPACT UI V2: END === */
+/* === CUSTOMER STUDIO SELECT FILTER: END === */
