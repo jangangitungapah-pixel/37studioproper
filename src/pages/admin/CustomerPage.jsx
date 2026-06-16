@@ -27,6 +27,8 @@ const emptyCustomerForm = {
   phone: '',
   email: '',
   instagram: '',
+  notes: '',
+  followUpStatus: 'normal',
 };
 
 const filterOptions = [
@@ -36,6 +38,13 @@ const filterOptions = [
   { key: 'recording', label: 'Recording' },
   { key: 'rehearsal', label: 'Latihan' },
   { key: 'duplicate', label: 'Nomor Ganda' },
+];
+
+const customerStatusOptions = [
+  { key: 'normal', label: 'Normal', description: 'Tidak ada catatan khusus' },
+  { key: 'follow-up', label: 'Follow-up', description: 'Perlu dihubungi lagi' },
+  { key: 'vip', label: 'VIP / Loyal', description: 'Customer aktif dan potensial' },
+  { key: 'watchlist', label: 'Perlu perhatian', description: 'Pantau sebelum booking berikutnya' },
 ];
 
 function cleanText(value) {
@@ -152,6 +161,19 @@ function formatMoney(value) {
   }).format(Math.max(0, Number(value) || 0));
 }
 
+function getCustomerActionLinks(customer) {
+  const phoneKey = normalizePhone(customer?.phone || customer?.phoneKey);
+
+  return {
+    callHref: phoneKey ? 'tel:+' + phoneKey : '',
+    whatsappHref: phoneKey ? 'https://wa.me/' + phoneKey : '',
+  };
+}
+
+function getFollowUpLabel(status) {
+  return customerStatusOptions.find((item) => item.key === status)?.label || 'Normal';
+}
+
 function readManualCustomers() {
   if (typeof window === 'undefined') return [];
 
@@ -206,6 +228,8 @@ function buildCustomerDirectory(bookings, manualCustomers) {
         email: cleanText(seed.email),
         instagram: cleanText(seed.instagram).replace(/^@+/, ''),
         source: seed.source || 'booking',
+        notes: cleanText(seed.notes),
+        followUpStatus: seed.followUpStatus || 'normal',
         aliases: new Set(name ? [name] : []),
         bookings: [],
         bookingIds: new Set(),
@@ -300,6 +324,8 @@ function buildCustomerDirectory(bookings, manualCustomers) {
       bookings: customer.bookings.slice().sort((first, second) => getDateValue(second.date || second.createdAt) - getDateValue(first.date || first.createdAt)),
       bookingIds: Array.from(customer.bookingIds),
       hasOpenPayment: customer.pendingBookings > 0 || customer.dpBookings > 0,
+      notes: cleanText(customer.notes),
+      followUpStatus: customer.followUpStatus || 'normal',
     };
   });
 
@@ -341,13 +367,16 @@ function getCustomerRouteId(pathname) {
 
 function getCustomerStatusLabel(customer) {
   if (customer.hasOpenPayment) return 'Perlu follow-up';
+  if (customer.followUpStatus === 'follow-up') return 'Follow-up';
+  if (customer.followUpStatus === 'vip') return 'VIP';
+  if (customer.followUpStatus === 'watchlist') return 'Perlu perhatian';
   if (customer.paidBookings) return 'Lunas';
-  return 'Belum ada booking';
+  return 'Normal';
 }
 
 function getCustomerStatusClass(customer) {
-  if (customer.hasOpenPayment) return 'is-warning';
-  if (customer.paidBookings) return 'is-paid';
+  if (customer.hasOpenPayment || customer.followUpStatus === 'follow-up' || customer.followUpStatus === 'watchlist') return 'is-warning';
+  if (customer.followUpStatus === 'vip' || customer.paidBookings) return 'is-paid';
   return 'is-neutral';
 }
 
@@ -388,7 +417,7 @@ function CustomerHero({ customers }) {
   );
 }
 
-function CustomerFormModal({ customers, isOpen, onClose }) {
+function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
   const [form, setForm] = useState(emptyCustomerForm);
   const [error, setError] = useState('');
 
@@ -396,14 +425,22 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
     if (!isOpen) return undefined;
 
     const resetFrameId = window.requestAnimationFrame(() => {
-      setForm(emptyCustomerForm);
+      setForm({
+        ...emptyCustomerForm,
+        name: editingCustomer?.name || '',
+        phone: editingCustomer?.phone || '',
+        email: editingCustomer?.email || '',
+        instagram: editingCustomer?.instagram || '',
+        notes: editingCustomer?.notes || '',
+        followUpStatus: editingCustomer?.followUpStatus || 'normal',
+      });
       setError('');
     });
 
     return () => {
       window.cancelAnimationFrame(resetFrameId);
     };
-  }, [isOpen]);
+  }, [editingCustomer, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -436,6 +473,17 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
     };
   }
 
+  function updateValue(field) {
+    return (nextValue) => {
+      setForm((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
   function handleBackdropClick(event) {
     if (event.target === event.currentTarget) onClose();
   }
@@ -452,11 +500,11 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
       return;
     }
 
-    const samePhoneCustomers = customers.filter((customer) => customer.phoneKey === phoneKey);
+    const samePhoneCustomers = customers.filter((customer) => customer.phoneKey === phoneKey && customer.id !== editingCustomer?.id);
     const exactCustomer = samePhoneCustomers.find((customer) => cleanLower(customer.name) === cleanLower(cleanName));
-    let customerId = exactCustomer ? exactCustomer.id : makeCustomerId(phoneKey, cleanName, Date.now());
+    let customerId = editingCustomer?.id || exactCustomer?.id || makeCustomerId(phoneKey, cleanName, Date.now());
 
-    if (!exactCustomer && samePhoneCustomers.length) {
+    if (!editingCustomer && !exactCustomer && samePhoneCustomers.length) {
       const shouldMerge = window.confirm(
         'Nomor WA ini sudah terdaftar atas nama ' +
           samePhoneCustomers[0].name +
@@ -474,7 +522,9 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
       phoneKey,
       email: form.email.trim(),
       instagram: form.instagram.trim().replace(/^@+/, ''),
-      createdAt: exactCustomer?.createdAt || new Date().toISOString(),
+      notes: form.notes.trim(),
+      followUpStatus: form.followUpStatus || 'normal',
+      createdAt: editingCustomer?.createdAt || exactCustomer?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
@@ -493,7 +543,7 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
         <header className="customer-modal-head">
           <div>
             <p>Customer Form</p>
-            <h2 id="customer-form-title">Tambah Customer</h2>
+            <h2 id="customer-form-title">{editingCustomer ? 'Edit Customer' : 'Tambah Customer'}</h2>
           </div>
 
           <button className="booking-modal-close" type="button" aria-label="Tutup form customer" onClick={onClose}>
@@ -545,19 +595,42 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
               value={form.instagram}
               onChange={updateField('instagram')}
             />
+
+            <div className="customer-form-select">
+              <StudioSelect
+                label="Status"
+                options={customerStatusOptions}
+                selectedKey={form.followUpStatus}
+                onChange={updateValue('followUpStatus')}
+              />
+            </div>
+
+            <label className="customer-note-field" htmlFor="customer-notes">
+              <span className="studio-field-head">
+                <span>Catatan</span>
+                <span className="studio-field-helper">Opsional</span>
+              </span>
+              <textarea
+                id="customer-notes"
+                placeholder="Contoh: sering booking malam, perlu follow-up DP, prefer studio A..."
+                value={form.notes}
+                onChange={updateField('notes')}
+              />
+            </label>
           </div>
 
           {error ? <p className="booking-form-error" role="alert">{error}</p> : null}
 
           <footer className="booking-form-actions">
             <button className="booking-button is-secondary" type="button" onClick={onClose}>Batal</button>
-            <button className="booking-button is-primary" type="submit">Simpan Customer</button>
+            <button className="booking-button is-primary" type="submit">{editingCustomer ? 'Update Customer' : 'Simpan Customer'}</button>
           </footer>
         </form>
       </section>
     </div>
   );
 }
+
 
 function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearchChange, searchText }) {
   return (
@@ -590,7 +663,7 @@ function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearch
   );
 }
 
-function CustomerTable({ customers, onOpenCustomer }) {
+function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
   if (!customers.length) {
     return (
       <section className="customer-empty-state">
@@ -614,31 +687,52 @@ function CustomerTable({ customers, onOpenCustomer }) {
       <div className="customer-table-body">
         {customers.map((customer) => {
           const topBand = customer.bands[0];
+          const links = getCustomerActionLinks(customer);
 
           return (
-            <button className="customer-table-row" key={customer.id} type="button" onClick={() => onOpenCustomer(customer)}>
-              <span className="customer-main-cell">
-                <strong>{customer.name}</strong>
-                <small>{topBand ? topBand.name + ' • ' + topBand.count + 'x' : customer.aliasLabel || 'Belum ada band dominan'}</small>
-                {customer.hasDuplicatePhone ? <em>Nomor WA ganda</em> : null}
-              </span>
+            <article className="customer-table-row" key={customer.id}>
+              <button className="customer-row-main-button" type="button" onClick={() => onOpenCustomer(customer)}>
+                <span className="customer-main-cell">
+                  <strong>{customer.name}</strong>
+                  <small>{topBand ? topBand.name + ' • ' + topBand.count + 'x' : customer.aliasLabel || getFollowUpLabel(customer.followUpStatus)}</small>
+                  {customer.hasDuplicatePhone ? <em>Nomor WA ganda</em> : null}
+                </span>
 
-              <span className="customer-contact-cell">
-                <strong>{formatPhoneLabel(customer.phone || customer.phoneKey)}</strong>
-                <small>{customer.email || customer.instagram || '-'}</small>
-              </span>
+                <span className="customer-contact-cell">
+                  <strong>{formatPhoneLabel(customer.phone || customer.phoneKey)}</strong>
+                  <small>{customer.email || customer.instagram || '-'}</small>
+                </span>
 
-              <span className="customer-number-cell">
-                <strong>{customer.totalBookings}</strong>
-                <small>{customer.paidBookings} lunas</small>
-              </span>
+                <span className="customer-number-cell">
+                  <strong>{customer.totalBookings}</strong>
+                  <small>{customer.paidBookings} lunas</small>
+                </span>
 
-              <span className={'customer-status-pill ' + getCustomerStatusClass(customer)}>
-                {getCustomerStatusLabel(customer)}
-              </span>
+                <span className={'customer-status-pill ' + getCustomerStatusClass(customer)}>
+                  {getCustomerStatusLabel(customer)}
+                </span>
 
-              <span className="customer-date-cell">{formatDate(customer.latestActivityAt)}</span>
-            </button>
+                <span className="customer-date-cell">{formatDate(customer.latestActivityAt)}</span>
+              </button>
+
+              <span className="customer-row-actions" aria-label={'Aksi customer ' + customer.name}>
+                {links.whatsappHref ? (
+                  <a href={links.whatsappHref} target="_blank" rel="noreferrer">
+                    WA
+                  </a>
+                ) : null}
+
+                {links.callHref ? (
+                  <a href={links.callHref}>
+                    Call
+                  </a>
+                ) : null}
+
+                <button type="button" onClick={() => onEditCustomer(customer)}>
+                  Edit
+                </button>
+              </span>
+            </article>
           );
         })}
       </div>
@@ -646,7 +740,8 @@ function CustomerTable({ customers, onOpenCustomer }) {
   );
 }
 
-function CustomerDetail({ customer, onBack }) {
+
+function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDuplicate, onOpenCustomer }) {
   if (!customer) {
     return (
       <section className="customer-empty-state">
@@ -659,6 +754,8 @@ function CustomerDetail({ customer, onBack }) {
   }
 
   const topBand = customer.bands[0];
+  const links = getCustomerActionLinks(customer);
+  const duplicateCustomers = customers.filter((item) => item.id !== customer.id && item.phoneKey && item.phoneKey === customer.phoneKey);
   const openBookings = customer.bookings.filter((booking) => {
     const status = getBookingStatus(booking);
     return status === 'pending' || status === 'dp';
@@ -687,12 +784,58 @@ function CustomerDetail({ customer, onBack }) {
         </span>
       </section>
 
+      <section className="customer-action-bar" aria-label="Aksi customer">
+        {links.whatsappHref ? (
+          <a className="customer-action-button is-primary" href={links.whatsappHref} target="_blank" rel="noreferrer">
+            WhatsApp
+          </a>
+        ) : null}
+
+        {links.callHref ? (
+          <a className="customer-action-button" href={links.callHref}>
+            Telepon
+          </a>
+        ) : null}
+
+        <button className="customer-action-button" type="button" onClick={() => onEditCustomer(customer)}>
+          Edit
+        </button>
+      </section>
+
+      {customer.notes ? (
+        <section className="customer-note-card">
+          <strong>Catatan</strong>
+          <p>{customer.notes}</p>
+        </section>
+      ) : null}
+
       {customer.hasOpenPayment ? (
         <section className="customer-payment-alert" role="status">
           <AlertCircle size={18} />
           <span>
             Masih ada {openBookings.length} booking pending/DP • {formatMoney(customer.openInvoiceAmount)} outstanding.
           </span>
+        </section>
+      ) : null}
+
+      {duplicateCustomers.length ? (
+        <section className="customer-detail-card customer-duplicate-card">
+          <header><AlertCircle size={16} /><span>Kemungkinan Duplicate</span></header>
+
+          <div className="customer-duplicate-list">
+            {duplicateCustomers.map((duplicate) => (
+              <span className="customer-duplicate-item" key={duplicate.id}>
+                <button type="button" onClick={() => onOpenCustomer(duplicate)}>
+                  <strong>{duplicate.name}</strong>
+                  <small>{duplicate.totalBookings} booking • {formatPhoneLabel(duplicate.phone || duplicate.phoneKey)}</small>
+                </button>
+
+                <button type="button" onClick={() => onMergeDuplicate(duplicate, customer)}>
+                  Merge
+                </button>
+              </span>
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -739,7 +882,7 @@ function CustomerDetail({ customer, onBack }) {
             <span><small>Nomor WA</small><strong>{formatPhoneLabel(customer.phone || customer.phoneKey)}</strong></span>
             <span><small>Email</small><strong>{customer.email || '-'}</strong></span>
             <span><small>Instagram</small><strong>{customer.instagram ? '@' + customer.instagram : '-'}</strong></span>
-            <span><small>Alias Nama</small><strong>{customer.aliasLabel || '-'}</strong></span>
+            <span><small>Status</small><strong>{getFollowUpLabel(customer.followUpStatus)}</strong></span>
           </div>
         </article>
 
@@ -757,6 +900,7 @@ function CustomerDetail({ customer, onBack }) {
   );
 }
 
+
 export default function CustomerPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -765,6 +909,7 @@ export default function CustomerPage() {
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => subscribeManualCustomers(setManualCustomers), []);
@@ -827,8 +972,72 @@ export default function CustomerPage() {
   const detailId = getCustomerRouteId(location.pathname);
   const selectedCustomer = detailId ? customers.find((customer) => customer.id === detailId) : null;
 
+  function openCustomerForm(customer = null) {
+    setEditingCustomer(customer);
+    setIsCustomerModalOpen(true);
+  }
+
+  function closeCustomerForm() {
+    setIsCustomerModalOpen(false);
+    setEditingCustomer(null);
+  }
+
+  function openCustomer(customer) {
+    navigate('/admin/customers/' + encodeURIComponent(customer.id));
+  }
+
+  async function mergeDuplicateCustomer(sourceCustomer, targetCustomer) {
+    const confirmed = window.confirm(
+      'Gabungkan record ' +
+        sourceCustomer.name +
+        ' ke ' +
+        targetCustomer.name +
+        '?\\n\\nBooking milik duplicate akan diarahkan ke customer ini.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const updatedAt = new Date().toISOString();
+
+      await Promise.all(
+        sourceCustomer.bookings.map((booking) =>
+          adminBookingRepository.updateManualBooking({
+            ...booking,
+            customerId: targetCustomer.id,
+            customerPhoneKey: targetCustomer.phoneKey,
+            updatedAt,
+          })
+        )
+      );
+
+      const nextManualCustomers = readManualCustomers().filter((item) => item.id !== sourceCustomer.id);
+      writeManualCustomers(nextManualCustomers);
+
+      setToast({
+        title: 'Duplicate digabung',
+        message: sourceCustomer.name + ' sudah diarahkan ke ' + targetCustomer.name + '.',
+      });
+    } catch (error) {
+      console.error('Gagal merge duplicate customer:', error);
+      setToast({
+        title: 'Merge gagal',
+        message: 'Gagal menggabungkan duplicate customer. Coba ulangi lagi.',
+      });
+    }
+  }
+
   if (detailId) {
-    return <CustomerDetail customer={selectedCustomer} onBack={() => navigate('/admin/customers')} />;
+    return (
+      <CustomerDetail
+        customer={selectedCustomer}
+        customers={customers}
+        onBack={() => navigate('/admin/customers')}
+        onEditCustomer={openCustomerForm}
+        onMergeDuplicate={mergeDuplicateCustomer}
+        onOpenCustomer={openCustomer}
+      />
+    );
   }
 
   return (
@@ -843,20 +1052,22 @@ export default function CustomerPage() {
       <CustomerToolbar
         activeFilter={activeFilter}
         searchText={searchText}
-        onAddCustomer={() => setIsCustomerModalOpen(true)}
+        onAddCustomer={() => openCustomerForm()}
         onFilterChange={setActiveFilter}
         onSearchChange={setSearchText}
       />
 
       <CustomerTable
         customers={filteredCustomers}
-        onOpenCustomer={(customer) => navigate('/admin/customers/' + encodeURIComponent(customer.id))}
+        onEditCustomer={openCustomerForm}
+        onOpenCustomer={openCustomer}
       />
 
       <CustomerFormModal
         customers={customers}
+        editingCustomer={editingCustomer}
         isOpen={isCustomerModalOpen}
-        onClose={() => setIsCustomerModalOpen(false)}
+        onClose={closeCustomerForm}
       />
 
       {toast ? (
