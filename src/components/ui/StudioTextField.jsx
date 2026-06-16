@@ -19,11 +19,15 @@ export default function StudioTextField({
   helper,
   icon: Icon,
   id,
+  inputMode,
   label,
+  min,
   name,
   onChange,
   onFocus,
   placeholder,
+  required = false,
+  step,
   type = 'text',
   value,
 }) {
@@ -53,11 +57,15 @@ export default function StudioTextField({
           data-form-type="other"
           data-lpignore="true"
           id={id}
+          inputMode={inputMode}
+          min={min}
           name={name || id}
           onChange={onChange}
           onFocus={handleFocus}
           placeholder={placeholder}
+          required={required}
           spellCheck={false}
+          step={step}
           type={type}
           value={value}
         />

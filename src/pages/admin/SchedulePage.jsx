@@ -1,10 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-ChevronLeft,
+  ChevronLeft,
   ChevronRight,
   Clock3,
+  Plus,
 } from 'lucide-react';
+import BookingFormModal from '../../components/schedule/BookingFormModal.jsx';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
+import {
+  businessHours,
+  statusFilters,
+  viewModes,
+} from './scheduleConfig.js';
+
+const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
 
 const monthNames = [
   'Januari',
@@ -37,32 +46,6 @@ const shortMonthNames = [
 ];
 
 const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-
-const viewModes = [
-  { key: 'day', label: 'Day', description: 'Fokus satu tanggal' },
-  { key: 'week', label: 'Week', description: 'Tujuh hari aktif' },
-  { key: 'month', label: 'Month', description: 'Satu bulan penuh' },
-];
-
-const statusFilters = [
-  { key: 'pending', label: 'Pending', description: 'Belum konfirmasi', tone: 'pending' },
-  { key: 'dp', label: 'DP', description: 'Sudah bayar DP', tone: 'dp' },
-  { key: 'lunas', label: 'Lunas', description: 'Pembayaran selesai', tone: 'lunas' },
-];
-
-const businessHours = Array.from({ length: 13 }, (_, index) => {
-  const start = index + 10;
-  const end = start + 1;
-
-  return {
-    key: String(start).padStart(2, '0'),
-    start,
-    end,
-    label: `${String(start).padStart(2, '0')}.00-${String(end).padStart(2, '0')}.00`,
-  };
-});
-
-const bookings = [];
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -102,22 +85,22 @@ function toIsoDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
 
-  return `${year}-${month}-${day}`;
+  return year + '-' + month + '-' + day;
 }
 
 function formatRangeLabel(date, viewMode) {
   if (viewMode === 'day') {
-    return `${dayNames[date.getDay()]}, ${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    return dayNames[date.getDay()] + ', ' + date.getDate() + ' ' + monthNames[date.getMonth()] + ' ' + date.getFullYear();
   }
 
   if (viewMode === 'week') {
     const start = getWeekStart(date);
     const end = addDays(start, 6);
 
-    return `${start.getDate()} ${shortMonthNames[start.getMonth()]} - ${end.getDate()} ${shortMonthNames[end.getMonth()]} ${end.getFullYear()}`;
+    return start.getDate() + ' ' + shortMonthNames[start.getMonth()] + ' - ' + end.getDate() + ' ' + shortMonthNames[end.getMonth()] + ' ' + end.getFullYear();
   }
 
-  return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+  return monthNames[date.getMonth()] + ' ' + date.getFullYear();
 }
 
 function getVisibleDays(date, viewMode) {
@@ -138,12 +121,12 @@ function shiftDate(date, viewMode, direction) {
   return addMonths(date, direction);
 }
 
-function getBookingForSlot(day, hour, enabledStatuses) {
+function getBookingForSlot(bookings, day, hour, enabledStatuses) {
   return bookings.find((booking) => {
     const bookingDate = startOfDay(new Date(booking.date));
     return (
       isSameDay(bookingDate, day) &&
-      booking.startHour === hour &&
+      Number(booking.startHour) === hour &&
       enabledStatuses.includes(booking.status)
     );
   });
@@ -151,12 +134,31 @@ function getBookingForSlot(day, hour, enabledStatuses) {
 
 function getGridTemplate(viewMode, visibleDayCount) {
   if (viewMode === 'day') return '112px minmax(280px, 1fr)';
-  if (viewMode === 'week') return `112px repeat(${visibleDayCount}, minmax(126px, 1fr))`;
+  if (viewMode === 'week') return '112px repeat(' + visibleDayCount + ', minmax(126px, 1fr))';
 
-  return `112px repeat(${visibleDayCount}, minmax(92px, 1fr))`;
+  return '112px repeat(' + visibleDayCount + ', minmax(92px, 1fr))';
 }
 
-function CalendarGrid({ selectedDate, viewMode, activeStatuses }) {
+function readStoredBookings() {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(BOOKINGS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function CalendarGrid({
+  activeStatuses,
+  bookings,
+  onSlotClick,
+  selectedDate,
+  viewMode,
+}) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
   const gridTemplateColumns = getGridTemplate(viewMode, visibleDays.length);
@@ -165,7 +167,7 @@ function CalendarGrid({ selectedDate, viewMode, activeStatuses }) {
     <section className="schedule-grid-shell" aria-label="Calendar grid">
       <div className="schedule-grid-scroll">
         <div
-          className={`schedule-grid schedule-grid--${viewMode}`}
+          className={'schedule-grid schedule-grid--' + viewMode}
           style={{ gridTemplateColumns }}
         >
           <div className="schedule-grid-corner">
@@ -194,17 +196,24 @@ function CalendarGrid({ selectedDate, viewMode, activeStatuses }) {
               </div>
 
               {visibleDays.map((day) => {
-                const booking = getBookingForSlot(day, hour.start, activeStatuses);
-                const cellKey = `${toIsoDate(day)}-${hour.key}`;
+                const booking = getBookingForSlot(bookings, day, hour.start, activeStatuses);
+                const cellKey = toIsoDate(day) + '-' + hour.key;
 
                 return (
                   <div className="schedule-slot-cell" key={cellKey}>
-                    {booking ? (
-                      <div className={`schedule-booking-pill is-${booking.status}`}>
-                        <strong>{booking.customer}</strong>
-                        <span>{booking.title}</span>
-                      </div>
-                    ) : null}
+                    <button
+                      aria-label={'Tambah booking ' + toIsoDate(day) + ' jam ' + hour.label}
+                      className={booking ? 'schedule-slot-button has-booking' : 'schedule-slot-button'}
+                      type="button"
+                      onClick={() => onSlotClick({ date: toIsoDate(day), startHour: String(hour.start) })}
+                    >
+                      {booking ? (
+                        <span className={'schedule-booking-pill is-' + booking.status}>
+                          <strong>{booking.customer}</strong>
+                          <span>{booking.title}</span>
+                        </span>
+                      ) : null}
+                    </button>
                   </div>
                 );
               })}
@@ -220,9 +229,16 @@ export default function SchedulePage() {
   const [viewMode, setViewMode] = useState('month');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeStatuses, setActiveStatuses] = useState(() => statusFilters.map((item) => item.key));
+  const [bookings, setBookings] = useState(readStoredBookings);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(booking.status)).length;
+
+  useEffect(() => {
+    window.localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+  }, [bookings]);
 
   function moveCalendar(direction) {
     setSelectedDate((current) => shiftDate(current, viewMode, direction));
@@ -232,11 +248,24 @@ export default function SchedulePage() {
     setSelectedDate(startOfDay(new Date()));
   }
 
+  function openBookingModal(slot) {
+    setBookingInitialSlot(slot || { date: toIsoDate(selectedDate), startHour: '10' });
+    setIsBookingModalOpen(true);
+  }
+
+  function closeBookingModal() {
+    setIsBookingModalOpen(false);
+  }
+
+  function saveBooking(booking) {
+    setBookings((current) => [booking, ...current]);
+  }
+
   return (
     <section className="schedule-page" aria-labelledby="schedule-calendar-title">
       <div className="schedule-toolbar">
         <div className="schedule-title-block">
-<h2 id="schedule-calendar-title">{rangeLabel}</h2>
+          <h2 id="schedule-calendar-title">{rangeLabel}</h2>
         </div>
 
         <div className="schedule-actions" aria-label="Kontrol kalender">
@@ -249,13 +278,18 @@ export default function SchedulePage() {
 
           <StudioSelect
             label="Quick Filter"
-            helper={`${visibleBookingCount} tampil`}
+            helper={visibleBookingCount + ' tampil'}
             multiple
             options={statusFilters}
             placeholder="Tidak ada status"
             selectedKeys={activeStatuses}
             onChange={setActiveStatuses}
           />
+
+          <button className="schedule-add-button" type="button" onClick={() => openBookingModal()}>
+            <Plus size={17} />
+            Tambah
+          </button>
 
           <div className="schedule-nav">
             <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
@@ -271,8 +305,17 @@ export default function SchedulePage() {
 
       <CalendarGrid
         activeStatuses={activeStatuses}
+        bookings={bookings}
         selectedDate={selectedDate}
         viewMode={viewMode}
+        onSlotClick={openBookingModal}
+      />
+
+      <BookingFormModal
+        initialSlot={bookingInitialSlot}
+        isOpen={isBookingModalOpen}
+        onClose={closeBookingModal}
+        onSave={saveBooking}
       />
     </section>
   );

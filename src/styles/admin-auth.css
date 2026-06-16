@@ -1743,3 +1743,235 @@
   display: none !important;
 }
 /* === SCHEDULE TITLE CAPSULE REMOVAL: END === */
+
+/* === BOOKING FORM MODAL: START === */
+.schedule-add-button {
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #fff;
+  padding: 0 16px;
+  font-size: 0.82rem;
+  font-weight: 820;
+  cursor: pointer;
+  box-shadow: 0 16px 34px rgba(255, 104, 28, 0.22);
+}
+
+.schedule-slot-cell {
+  padding: 0;
+}
+
+.schedule-slot-button {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  place-items: stretch;
+  border: 0;
+  background: transparent;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.schedule-slot-button:hover {
+  background: rgba(255, 138, 42, 0.055);
+}
+
+.schedule-slot-button.has-booking {
+  place-items: stretch;
+}
+
+.booking-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: end center;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 138, 42, 0.16), transparent 34%),
+    rgba(0, 0, 0, 0.66);
+  padding: 14px;
+  backdrop-filter: blur(18px);
+}
+
+.booking-modal-panel {
+  width: min(100%, 760px);
+  max-height: min(92dvh, 860px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 32%),
+    color-mix(in srgb, var(--auth-bg-elevated) 96%, #050506);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58);
+  overflow: hidden;
+}
+
+.booking-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--auth-border);
+  padding: 18px;
+}
+
+.booking-modal-head p {
+  margin: 0 0 5px;
+  color: var(--auth-accent);
+  font-size: 0.7rem;
+  font-weight: 820;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.booking-modal-head h2 {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: clamp(1.35rem, 6vw, 2rem);
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.booking-modal-close {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  cursor: pointer;
+}
+
+.booking-form {
+  display: grid;
+  gap: 16px;
+  overflow: auto;
+  padding: 18px;
+}
+
+.booking-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.booking-form-error {
+  margin: 0;
+  border: 1px solid rgba(255, 107, 107, 0.32);
+  border-radius: 16px;
+  background: rgba(255, 107, 107, 0.09);
+  padding: 11px 12px;
+  color: var(--auth-danger);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.booking-detail-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.09), rgba(255, 255, 255, 0.026)),
+    rgba(255, 255, 255, 0.022);
+  padding: 10px;
+}
+
+.booking-detail-panel div {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.034);
+  padding: 0 12px;
+}
+
+.booking-detail-panel span {
+  color: var(--auth-text-muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.booking-detail-panel strong {
+  color: var(--auth-text-strong);
+  font-size: 0.95rem;
+  font-weight: 820;
+  letter-spacing: -0.025em;
+}
+
+.booking-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.booking-button {
+  min-height: 52px;
+  border: 0;
+  border-radius: 17px;
+  font-size: 0.86rem;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.booking-button.is-secondary {
+  border: 1px solid var(--auth-border);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+}
+
+.booking-button.is-primary {
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(255, 104, 28, 0.22);
+}
+
+@media (min-width: 768px) {
+  .schedule-actions {
+    width: min(100%, 900px);
+    grid-template-columns: minmax(170px, 0.72fr) minmax(220px, 1fr) auto auto;
+  }
+
+  .schedule-add-button {
+    min-height: 48px;
+    white-space: nowrap;
+  }
+
+  .booking-modal-backdrop {
+    place-items: center;
+    padding: 24px;
+  }
+
+  .booking-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .booking-detail-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .booking-detail-panel div {
+    display: grid;
+    justify-items: start;
+    align-content: center;
+  }
+
+  .booking-form-actions {
+    margin-left: auto;
+    width: min(100%, 340px);
+  }
+}
+/* === BOOKING FORM MODAL: END === */
