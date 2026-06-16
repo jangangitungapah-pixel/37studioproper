@@ -14,14 +14,21 @@ import {
   businessHours,
   durationOptions,
   paymentStatusOptions,
-  sessionTypeOptions,
 } from '../../pages/admin/scheduleConfig.js';
+import {
+  getPackageOptions,
+  getPricingSettings,
+  getRecordingTypeOptions,
+  getSessionOptions,
+} from '../../settings/pricingSettings.js';
 
 const initialForm = {
   name: '',
   bandName: '',
   phone: '',
+  packageId: 'none',
   sessionType: 'rehearsal',
+  recordingTypeId: 'none',
   date: '',
   startHour: '10',
   duration: '1',
@@ -89,6 +96,28 @@ export default function BookingFormModal({
   const [form, setForm] = useState(() => createInitialForm(initialSlot));
   const [error, setError] = useState('');
 
+  const pricingSettings = useMemo(() => getPricingSettings(), [isOpen]);
+  const sessionTypeOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
+  const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
+  const packageOptions = useMemo(
+    () => [
+      { key: 'none', label: 'Tanpa Paket', description: 'Booking reguler' },
+      ...getPackageOptions(pricingSettings),
+    ],
+    [pricingSettings]
+  );
+
+  const isPackageSelected = form.packageId !== 'none';
+  const activePackage = isPackageSelected ? getSelectedOption(packageOptions, form.packageId) : null;
+  const activeRecordingTypeKey =
+    form.recordingTypeId !== 'none'
+      ? form.recordingTypeId
+      : recordingTypeOptions[0]?.key || 'none';
+  const shouldShowRecordingType = !isPackageSelected && form.sessionType === 'recording' && recordingTypeOptions.length > 0;
+  const activeRecordingType = shouldShowRecordingType
+    ? getSelectedOption(recordingTypeOptions, activeRecordingTypeKey)
+    : null;
+
   useEffect(() => {
     if (!isOpen) return undefined;
 
@@ -123,21 +152,39 @@ export default function BookingFormModal({
   }, [isOpen, onClose]);
 
   const totals = useMemo(() => {
+    if (activePackage && activePackage.key !== 'none') {
+      const total = Number(activePackage.price) || 0;
+      const dpAmount = form.paymentStatus === 'dp' ? clampCurrency(form.dpAmount, total) : 0;
+      const paidAmount = form.paymentStatus === 'lunas' ? total : dpAmount;
+
+      return {
+        durationHours: Number(activePackage.durationHours) || 0,
+        total,
+        dpAmount: form.paymentStatus === 'lunas' ? total : dpAmount,
+        invoiceAmount: Math.max(0, total - paidAmount),
+        session: activePackage,
+        recordingType: null,
+        packageItem: activePackage,
+      };
+    }
+
     const session = getSelectedOption(sessionTypeOptions, form.sessionType);
-    const durationHours = getDurationHours(form);
-    const total = session.rate * durationHours;
-    const dpAmount = form.paymentStatus === 'dp' ? clampCurrency(form.dpAmount, total) : 0;
-    const paidAmount = form.paymentStatus === 'lunas' ? total : dpAmount;
-    const invoiceAmount = Math.max(0, total - paidAmount);
+    const recordingType = shouldShowRecordingType ? activeRecordingType : null;
+    const durationHours = recordingType ? Number(recordingType.durationHours) || 0 : getDurationHours(form);
+    const basePrice = recordingType ? Number(recordingType.price) || 0 : (Number(session.rate) || 0) * durationHours;
+    const dpAmount = form.paymentStatus === 'dp' ? clampCurrency(form.dpAmount, basePrice) : 0;
+    const paidAmount = form.paymentStatus === 'lunas' ? basePrice : dpAmount;
 
     return {
       durationHours,
-      total,
-      dpAmount: form.paymentStatus === 'lunas' ? total : dpAmount,
-      invoiceAmount,
+      total: basePrice,
+      dpAmount: form.paymentStatus === 'lunas' ? basePrice : dpAmount,
+      invoiceAmount: Math.max(0, basePrice - paidAmount),
       session,
+      recordingType,
+      packageItem: null,
     };
-  }, [form]);
+  }, [activePackage, activeRecordingType, form, sessionTypeOptions, shouldShowRecordingType]);
 
   if (!isOpen) return null;
 
@@ -161,6 +208,23 @@ export default function BookingFormModal({
           ...current,
           [field]: nextValue,
         };
+
+        if (field === 'packageId') {
+          if (nextValue !== 'none') {
+            next.sessionType = current.sessionType || sessionTypeOptions[0]?.key || 'rehearsal';
+            next.duration = current.duration || '1';
+            next.customDuration = '';
+            next.recordingTypeId = 'none';
+          } else {
+            next.sessionType = sessionTypeOptions[0]?.key || 'rehearsal';
+            next.duration = '1';
+            next.recordingTypeId = 'none';
+          }
+        }
+
+        if (field === 'sessionType' && nextValue !== 'recording') {
+          next.recordingTypeId = 'none';
+        }
 
         if (field === 'paymentStatus' && nextValue !== 'dp') {
           next.dpAmount = '';
@@ -207,15 +271,20 @@ export default function BookingFormModal({
 
     const startHourNumber = Number(form.startHour);
     const hourOption = getSelectedOption(businessHours, form.startHour);
+    const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
 
     onSave({
       id: makeBookingId(),
       customer: cleanName,
       bandName: cleanBandName,
       phone: cleanPhone,
-      sessionType: form.sessionType,
-      sessionLabel: totals.session.label,
-      title: cleanBandName || totals.session.label,
+      packageId: form.packageId,
+      packageLabel: totals.packageItem?.label || '',
+      sessionType: totals.packageItem ? 'package' : form.sessionType,
+      sessionLabel,
+      recordingTypeId: totals.recordingType?.key || '',
+      recordingTypeLabel: totals.recordingType?.label || '',
+      title: cleanBandName || sessionLabel,
       date: form.date,
       startHour: startHourNumber,
       startTimeLabel: hourOption.shortLabel || hourOption.label,
@@ -295,11 +364,28 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
+              label="Paket"
+              options={packageOptions}
+              selectedKey={form.packageId}
+              onChange={updateValue('packageId')}
+            />
+
+            <StudioSelect
+              disabled={isPackageSelected}
               label="Tipe Session"
               options={sessionTypeOptions}
               selectedKey={form.sessionType}
               onChange={updateValue('sessionType')}
             />
+
+            {shouldShowRecordingType ? (
+              <StudioSelect
+                label="Tipe Recording"
+                options={recordingTypeOptions}
+                selectedKey={activeRecordingTypeKey}
+                onChange={updateValue('recordingTypeId')}
+              />
+            ) : null}
 
             <StudioTextField
               icon={CalendarDays}
@@ -319,13 +405,14 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
+              disabled={isPackageSelected}
               label="Durasi"
               options={durationOptions}
               selectedKey={form.duration}
               onChange={updateValue('duration')}
             />
 
-            {form.duration === 'custom' ? (
+            {form.duration === 'custom' && !isPackageSelected ? (
               <StudioTextField
                 helper="Jam"
                 icon={Clock3}

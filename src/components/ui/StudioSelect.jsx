@@ -17,6 +17,7 @@ function getMultiLabel(options, selectedKeys, placeholder) {
 }
 
 export default function StudioSelect({
+  disabled = false,
   helper,
   label,
   multiple = false,
@@ -28,7 +29,7 @@ export default function StudioSelect({
 }) {
   const selectId = useId();
   const rootRef = useRef(null);
-  const listboxId = `${selectId}-listbox`;
+  const listboxId = selectId + '-listbox';
   const [isOpen, setIsOpen] = useState(false);
 
   const selectedSummary = useMemo(() => {
@@ -60,6 +61,8 @@ export default function StudioSelect({
   }, []);
 
   function handleToggleOption(optionKey) {
+    if (disabled) return;
+
     if (!multiple) {
       onChange(optionKey);
       setIsOpen(false);
@@ -78,17 +81,31 @@ export default function StudioSelect({
     return multiple ? selectedKeys.includes(optionKey) : selectedKey === optionKey;
   }
 
-  const rootClassName = isOpen ? 'studio-select is-open' : 'studio-select';
+  function toggleOpen() {
+    if (disabled) return;
+
+    setIsOpen((current) => !current);
+  }
+
+  const rootClassName = [
+    'studio-select',
+    isOpen ? 'is-open' : '',
+    disabled ? 'is-disabled' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className={rootClassName} ref={rootRef}>
       <button
+        aria-disabled={disabled}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={label}
-        className="studio-select-trigger"
+        className={disabled ? 'studio-select-trigger is-disabled' : 'studio-select-trigger'}
+        disabled={disabled}
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={toggleOpen}
       >
         <span className="studio-select-copy">
           <span className="studio-select-label">{label}</span>
@@ -104,7 +121,7 @@ export default function StudioSelect({
         />
       </button>
 
-      {isOpen ? (
+      {isOpen && !disabled ? (
         <div
           aria-label={label}
           className="studio-select-list"
@@ -125,7 +142,7 @@ export default function StudioSelect({
                 type="button"
                 onClick={() => handleToggleOption(option.key)}
               >
-                <span className={option.tone ? `studio-select-dot is-${option.tone}` : 'studio-select-dot'} />
+                <span className={option.tone ? 'studio-select-dot is-' + option.tone : 'studio-select-dot'} />
                 <span className="studio-select-option-text">
                   <strong>{option.label}</strong>
                   {option.description ? <span>{option.description}</span> : null}

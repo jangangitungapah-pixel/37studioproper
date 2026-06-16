@@ -16,6 +16,7 @@ function collapseNativeInputSelection(event) {
 
 export default function StudioTextField({
   autoComplete = 'off',
+  disabled = false,
   helper,
   icon: Icon,
   id,
@@ -37,7 +38,7 @@ export default function StudioTextField({
   }
 
   return (
-    <label className="studio-field" htmlFor={id}>
+    <label className={disabled ? 'studio-field is-disabled' : 'studio-field'} htmlFor={id}>
       <span className="studio-field-head">
         <span>{label}</span>
         {helper ? <span className="studio-field-helper">{helper}</span> : null}
@@ -56,6 +57,7 @@ export default function StudioTextField({
           data-1p-ignore="true"
           data-form-type="other"
           data-lpignore="true"
+          disabled={disabled}
           id={id}
           inputMode={inputMode}
           min={min}
