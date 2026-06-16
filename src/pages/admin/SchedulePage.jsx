@@ -3,9 +3,9 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   Clock3,
 } from 'lucide-react';
+import StudioSelect from '../../components/ui/StudioSelect.jsx';
 
 const monthNames = [
   'Januari',
@@ -40,15 +40,15 @@ const shortMonthNames = [
 const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 const viewModes = [
-  { key: 'day', label: 'Day' },
-  { key: 'week', label: 'Week' },
-  { key: 'month', label: 'Month' },
+  { key: 'day', label: 'Day', description: 'Fokus satu tanggal' },
+  { key: 'week', label: 'Week', description: 'Tujuh hari aktif' },
+  { key: 'month', label: 'Month', description: 'Satu bulan penuh' },
 ];
 
 const statusFilters = [
-  { key: 'pending', label: 'Pending' },
-  { key: 'dp', label: 'DP' },
-  { key: 'lunas', label: 'Lunas' },
+  { key: 'pending', label: 'Pending', description: 'Belum konfirmasi', tone: 'pending' },
+  { key: 'dp', label: 'DP', description: 'Sudah bayar DP', tone: 'dp' },
+  { key: 'lunas', label: 'Lunas', description: 'Pembayaran selesai', tone: 'lunas' },
 ];
 
 const businessHours = Array.from({ length: 13 }, (_, index) => {
@@ -225,16 +225,6 @@ export default function SchedulePage() {
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const visibleBookingCount = bookings.filter((booking) => activeStatuses.includes(booking.status)).length;
 
-  function toggleStatus(status) {
-    setActiveStatuses((current) => {
-      if (current.includes(status)) {
-        return current.filter((item) => item !== status);
-      }
-
-      return [...current, status];
-    });
-  }
-
   function moveCalendar(direction) {
     setSelectedDate((current) => shiftDate(current, viewMode, direction));
   }
@@ -255,20 +245,22 @@ export default function SchedulePage() {
         </div>
 
         <div className="schedule-actions" aria-label="Kontrol kalender">
-          <div className="schedule-segment" role="tablist" aria-label="Mode tampilan kalender">
-            {viewModes.map((item) => (
-              <button
-                aria-selected={viewMode === item.key}
-                className={viewMode === item.key ? 'is-active' : ''}
-                key={item.key}
-                role="tab"
-                type="button"
-                onClick={() => setViewMode(item.key)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <StudioSelect
+            label="View Mode"
+            options={viewModes}
+            selectedKey={viewMode}
+            onChange={setViewMode}
+          />
+
+          <StudioSelect
+            label="Quick Filter"
+            helper={`${visibleBookingCount} tampil`}
+            multiple
+            options={statusFilters}
+            placeholder="Tidak ada status"
+            selectedKeys={activeStatuses}
+            onChange={setActiveStatuses}
+          />
 
           <div className="schedule-nav">
             <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
@@ -280,31 +272,6 @@ export default function SchedulePage() {
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="schedule-filter-row" aria-label="Quick filter status booking">
-        <span className="schedule-filter-label">Quick Filter</span>
-
-        <div className="schedule-filter-group">
-          {statusFilters.map((item) => {
-            const isActive = activeStatuses.includes(item.key);
-
-            return (
-              <button
-                aria-pressed={isActive}
-                className={isActive ? `schedule-filter-chip is-active is-${item.key}` : `schedule-filter-chip is-${item.key}`}
-                key={item.key}
-                type="button"
-                onClick={() => toggleStatus(item.key)}
-              >
-                <CircleDot size={13} aria-hidden="true" />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <span className="schedule-count">{visibleBookingCount} booking tampil</span>
       </div>
 
       <CalendarGrid
