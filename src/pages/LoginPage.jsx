@@ -33,6 +33,21 @@ export default function LoginPage() {
     }
   }, [navigate]);
 
+  function collapseNativeInputSelection(event) {
+    window.requestAnimationFrame(() => {
+      const input = event.currentTarget;
+
+      if (
+        input.value &&
+        input.selectionStart === 0 &&
+        input.selectionEnd === input.value.length &&
+        typeof input.setSelectionRange === 'function'
+      ) {
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
@@ -84,12 +99,18 @@ export default function LoginPage() {
             <div className="auth-input-wrap">
               <UserRound size={18} aria-hidden="true" />
               <input
-                autoComplete="username"
+                autoComplete="off"
+                className="auth-native-input"
+                data-1p-ignore="true"
+                data-form-type="other"
+                data-lpignore="true"
                 inputMode="text"
-                name="username"
+                name="admin-login-username"
+                spellCheck={false}
                 placeholder="Username admin"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
+                onFocus={collapseNativeInputSelection}
                 required
               />
             </div>
@@ -100,12 +121,18 @@ export default function LoginPage() {
             <div className="auth-input-wrap">
               <LockKeyhole size={18} aria-hidden="true" />
               <input
-                autoComplete="current-password"
-                name="password"
+                autoComplete="new-password"
+                className="auth-native-input"
+                data-1p-ignore="true"
+                data-form-type="other"
+                data-lpignore="true"
+                name="admin-login-password"
+                spellCheck={false}
                 placeholder="Password admin"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                onFocus={collapseNativeInputSelection}
                 required
               />
               <button
