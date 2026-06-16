@@ -559,34 +559,39 @@ function CustomerFormModal({ customers, isOpen, onClose }) {
 }
 
 function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearchChange, searchText }) {
+  const activeFilterLabel = filterOptions.find((item) => item.key === activeFilter)?.label || 'Semua';
+
   return (
     <section className="customer-toolbar" aria-label="Customer toolbar">
       <div className="customer-search-shell">
-        <Search size={17} aria-hidden="true" />
+        <Search size={16} aria-hidden="true" />
         <input
           aria-label="Cari customer"
-          placeholder="Cari nama, nomor, band, email..."
+          placeholder="Cari nama, nomor, band..."
           type="search"
           value={searchText}
           onChange={(event) => onSearchChange(event.target.value)}
         />
       </div>
 
-      <div className="customer-filter-row" aria-label="Quick filter customer">
-        {filterOptions.map((item) => (
-          <button
-            className={activeFilter === item.key ? 'customer-filter-pill is-active' : 'customer-filter-pill'}
-            key={item.key}
-            type="button"
-            onClick={() => onFilterChange(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <label className="customer-filter-select-shell">
+        <span>Filter</span>
+        <select
+          aria-label="Quick filter customer"
+          value={activeFilter}
+          onChange={(event) => onFilterChange(event.target.value)}
+        >
+          {filterOptions.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <small>{activeFilterLabel}</small>
+      </label>
 
       <button className="customer-add-button" type="button" onClick={onAddCustomer}>
-        <Plus size={17} />
+        <Plus size={16} />
         Customer
       </button>
     </section>

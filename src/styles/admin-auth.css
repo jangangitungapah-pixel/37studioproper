@@ -4832,3 +4832,362 @@
   }
 }
 /* === CUSTOMER MOBILE UI POLISH: END === */
+
+/* === CUSTOMER COMPACT UI V2: START === */
+.customer-page,
+.customer-detail-page,
+.customer-toolbar,
+.customer-table-row,
+.customer-hero-card,
+.customer-detail-card,
+.customer-detail-stat-grid article {
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+.customer-page {
+  gap: 10px;
+}
+
+.customer-toolbar {
+  border-radius: 18px;
+}
+
+.customer-filter-select-shell {
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "label select"
+    "hint select";
+  align-items: center;
+  column-gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background: var(--auth-bg-control);
+  padding: 7px 11px;
+}
+
+.customer-filter-select-shell span {
+  grid-area: label;
+  color: var(--auth-text-muted);
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.customer-filter-select-shell small {
+  grid-area: hint;
+  max-width: 84px;
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.68rem;
+  font-weight: 680;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-filter-select-shell select {
+  grid-area: select;
+  width: 100%;
+  min-width: 116px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--auth-text-strong);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 620;
+  text-align: right;
+  cursor: pointer;
+}
+
+.customer-filter-row,
+.customer-filter-pill {
+  display: none !important;
+}
+
+.customer-hero-copy small,
+.customer-table-head,
+.customer-contact-list small,
+.customer-detail-stat-grid small {
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.customer-main-cell strong,
+.customer-contact-cell strong,
+.customer-number-cell strong,
+.customer-contact-list strong,
+.customer-band-chip strong,
+.customer-activity-item b {
+  font-weight: 680;
+}
+
+.customer-status-pill,
+.customer-add-button,
+.customer-back-button {
+  font-weight: 680;
+}
+
+@media (max-width: 767px) {
+  .admin-shell {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+
+  .admin-stage {
+    padding: 12px 12px calc(82px + env(safe-area-inset-bottom));
+  }
+
+  .admin-topbar {
+    margin: -12px -12px 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 9px;
+  }
+
+  .admin-topbar p {
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+  }
+
+  .admin-topbar h1 {
+    font-size: clamp(1.18rem, 7vw, 1.58rem);
+    font-weight: 420;
+    letter-spacing: -0.045em;
+  }
+
+  .admin-shell-icon-button {
+    min-height: 34px;
+    border-radius: 13px;
+    padding: 0 11px;
+    font-size: 0.66rem;
+    font-weight: 680;
+  }
+
+  .admin-shell-icon-button svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .customer-hero-grid {
+    gap: 6px;
+  }
+
+  .customer-hero-card {
+    min-height: 82px;
+    gap: 5px;
+    border-radius: 15px;
+    padding: 8px;
+  }
+
+  .customer-hero-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+  }
+
+  .customer-hero-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .customer-hero-copy small {
+    min-height: 1.95em;
+    font-size: 0.48rem;
+    line-height: 1.05;
+  }
+
+  .customer-hero-copy strong {
+    font-size: 0.92rem;
+    font-weight: 680;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .customer-hero-copy em {
+    min-height: 2.05em;
+    font-size: 0.53rem;
+    line-height: 1.08;
+  }
+
+  .customer-toolbar {
+    grid-template-columns: minmax(0, 1fr) 122px;
+    grid-template-areas:
+      "search search"
+      "filter add";
+    gap: 7px;
+    border-radius: 18px;
+    padding: 8px;
+  }
+
+  .customer-search-shell {
+    grid-area: search;
+    min-height: 38px;
+    border-radius: 13px;
+    padding: 0 10px;
+  }
+
+  .customer-search-shell svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .customer-search-shell input {
+    font-size: 0.72rem;
+    font-weight: 420;
+  }
+
+  .customer-filter-select-shell {
+    grid-area: filter;
+    min-height: 38px;
+    border-radius: 13px;
+    padding: 6px 9px;
+  }
+
+  .customer-filter-select-shell span {
+    font-size: 0.48rem;
+  }
+
+  .customer-filter-select-shell small {
+    font-size: 0.58rem;
+  }
+
+  .customer-filter-select-shell select {
+    min-width: 86px;
+    font-size: 0.68rem;
+  }
+
+  .customer-add-button {
+    grid-area: add;
+    min-height: 38px;
+    border-radius: 13px;
+    font-size: 0.68rem;
+  }
+
+  .customer-add-button svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .customer-table-body {
+    gap: 8px;
+  }
+
+  .customer-table-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main status"
+      "contact booking"
+      "date booking";
+    gap: 6px 10px;
+    border-radius: 15px;
+    padding: 10px;
+  }
+
+  .customer-main-cell,
+  .customer-contact-cell,
+  .customer-number-cell,
+  .customer-date-cell {
+    gap: 2px;
+  }
+
+  .customer-main-cell strong {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .customer-main-cell small,
+  .customer-contact-cell small,
+  .customer-number-cell small,
+  .customer-date-cell {
+    font-size: 0.58rem;
+  }
+
+  .customer-contact-cell strong,
+  .customer-number-cell strong {
+    font-size: 0.7rem;
+    font-weight: 680;
+  }
+
+  .customer-number-cell {
+    align-self: end;
+  }
+
+  .customer-status-pill {
+    padding: 5px 8px;
+    font-size: 0.52rem;
+    font-weight: 700;
+  }
+
+  .customer-main-cell em {
+    padding: 2px 6px;
+    font-size: 0.5rem;
+    font-weight: 650;
+  }
+
+  .customer-date-cell {
+    border-top: 1px solid color-mix(in srgb, var(--auth-border) 64%, transparent);
+    padding-top: 6px;
+  }
+
+  .admin-bottom-nav {
+    left: 22px;
+    right: 22px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    gap: 4px;
+    padding: 5px;
+    border-radius: 20px;
+  }
+
+  .admin-bottom-item {
+    min-height: 48px;
+    border-radius: 15px;
+    font-size: 0.54rem;
+    font-weight: 650;
+  }
+
+  .admin-bottom-item svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .customer-detail-hero {
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .customer-detail-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 15px;
+  }
+
+  .customer-detail-avatar svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .customer-detail-title h2 {
+    font-size: 1rem;
+  }
+
+  .customer-detail-stat-grid article,
+  .customer-detail-card {
+    border-radius: 15px;
+    padding: 10px;
+  }
+}
+
+@media (min-width: 768px) {
+  .customer-toolbar {
+    grid-template-columns: minmax(280px, 1fr) minmax(180px, 220px) auto;
+  }
+
+  .customer-filter-select-shell {
+    min-height: 44px;
+  }
+}
+/* === CUSTOMER COMPACT UI V2: END === */
