@@ -15666,3 +15666,169 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === CUSTOMER STATUS DROPDOWN LAYOUT FIX: END === */
+
+/* === ADMIN MODAL OPAQUE MOBILE FIX: START === */
+:root {
+  --studio-modal-opaque-backdrop: rgba(0, 0, 0, 0.88);
+  --studio-modal-opaque-panel: #11100f;
+  --studio-modal-opaque-panel-2: #171411;
+  --studio-modal-opaque-control: #1f1c18;
+  --studio-modal-opaque-soft: #241f1a;
+  --studio-modal-opaque-border: rgba(255, 138, 42, 0.2);
+}
+
+[data-theme='light'],
+.theme-light,
+.light {
+  --studio-modal-opaque-backdrop: rgba(18, 12, 8, 0.58);
+  --studio-modal-opaque-panel: #fffaf4;
+  --studio-modal-opaque-panel-2: #fff3e8;
+  --studio-modal-opaque-control: #fff7ef;
+  --studio-modal-opaque-soft: #ffefe2;
+  --studio-modal-opaque-border: rgba(255, 138, 42, 0.24);
+}
+
+/* Mobile real-browser fix: prevent page content from bleeding through modal layers. */
+[class*='modal-backdrop'],
+[class*='compact-backdrop'],
+.settings-permission-backdrop {
+  background: var(--studio-modal-opaque-backdrop) !important;
+}
+
+.booking-modal-panel,
+.booking-detail-compact-panel,
+.customer-modal-panel,
+.customer-booking-size-panel.customer-modal-panel,
+.bookkeeping-modal-panel,
+.settings-permission-panel,
+.billing-invoice-panel,
+[class*='modal-backdrop'] > [role='dialog'],
+[class*='compact-backdrop'] > [role='dialog'],
+.settings-permission-backdrop > [role='dialog'] {
+  position: relative !important;
+  isolation: isolate !important;
+  opacity: 1 !important;
+  background: var(--studio-modal-opaque-panel) !important;
+  background-color: var(--studio-modal-opaque-panel) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.booking-modal-panel::before,
+.booking-detail-compact-panel::before,
+.customer-modal-panel::before,
+.customer-booking-size-panel.customer-modal-panel::before,
+.bookkeeping-modal-panel::before,
+.settings-permission-panel::before,
+.billing-invoice-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--studio-modal-opaque-panel);
+  pointer-events: none;
+}
+
+.booking-modal-head,
+.customer-modal-head,
+.customer-booking-size-head.customer-modal-head,
+.booking-detail-compact-head,
+.bookkeeping-modal-head,
+.settings-permission-head,
+.billing-invoice-head {
+  background: var(--studio-modal-opaque-panel) !important;
+  background-color: var(--studio-modal-opaque-panel) !important;
+}
+
+.booking-form,
+.customer-form,
+.customer-booking-size-form.customer-form,
+.bookkeeping-form,
+.billing-invoice-body {
+  background: var(--studio-modal-opaque-panel) !important;
+  background-color: var(--studio-modal-opaque-panel) !important;
+}
+
+.booking-form-actions,
+.customer-booking-size-actions.booking-form-actions,
+.booking-detail-compact-actions,
+.settings-permission-actions,
+.bookkeeping-form-actions,
+.billing-invoice-actions {
+  background:
+    linear-gradient(180deg, transparent, var(--studio-modal-opaque-panel) 28%),
+    var(--studio-modal-opaque-panel) !important;
+  background-color: var(--studio-modal-opaque-panel) !important;
+}
+
+.booking-modal-panel .studio-input-wrap,
+.booking-modal-panel .studio-select-trigger,
+.customer-modal-panel .studio-input-wrap,
+.customer-modal-panel .studio-select-trigger,
+.customer-booking-size-panel .studio-input-wrap,
+.customer-booking-size-panel .studio-select-trigger,
+.bookkeeping-modal-panel .studio-input-wrap,
+.bookkeeping-modal-panel .studio-select-trigger,
+.settings-permission-panel .studio-input-wrap,
+.settings-permission-panel .studio-select-trigger,
+[class*='modal-backdrop'] input,
+[class*='modal-backdrop'] textarea,
+[class*='compact-backdrop'] input,
+[class*='compact-backdrop'] textarea {
+  background: var(--studio-modal-opaque-control) !important;
+  background-color: var(--studio-modal-opaque-control) !important;
+}
+
+.booking-detail-panel,
+.booking-detail-panel.has-discount-row,
+.booking-detail-compact-summary,
+.customer-note-field textarea,
+.customer-booking-size-panel .customer-note-field textarea,
+.bookkeeping-modal-panel textarea,
+.settings-permission-row {
+  background: var(--studio-modal-opaque-panel-2) !important;
+  background-color: var(--studio-modal-opaque-panel-2) !important;
+}
+
+.booking-detail-panel div,
+.booking-detail-panel.has-discount-row div,
+.booking-detail-compact-summary article {
+  background: var(--studio-modal-opaque-soft) !important;
+  background-color: var(--studio-modal-opaque-soft) !important;
+  border-color: var(--studio-modal-opaque-border) !important;
+}
+
+.booking-modal-panel .studio-select-list,
+.customer-modal-panel .studio-select-list,
+.customer-booking-size-panel .studio-select-list,
+.bookkeeping-modal-panel .studio-select-list,
+.settings-permission-panel .studio-select-list,
+[class*='modal-backdrop'] .studio-select-list {
+  background: var(--studio-modal-opaque-panel-2) !important;
+  background-color: var(--studio-modal-opaque-panel-2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 767px) {
+  .booking-modal-panel,
+  .booking-detail-compact-panel,
+  .customer-modal-panel,
+  .customer-booking-size-panel.customer-modal-panel,
+  .bookkeeping-modal-panel,
+  .settings-permission-panel,
+  .billing-invoice-panel {
+    background: var(--studio-modal-opaque-panel) !important;
+    background-color: var(--studio-modal-opaque-panel) !important;
+  }
+
+  .booking-modal-head,
+  .customer-modal-head,
+  .booking-form,
+  .customer-form {
+    background: var(--studio-modal-opaque-panel) !important;
+    background-color: var(--studio-modal-opaque-panel) !important;
+  }
+}
+/* === ADMIN MODAL OPAQUE MOBILE FIX: END === */
