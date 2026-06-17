@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
   Boxes,
+  Minus,
   PackageOpen,
   Pencil,
   Plus,
@@ -206,7 +207,73 @@ function InventoryToolbar({
   );
 }
 
-function InventoryList({ items, onArchive, onEdit }) {
+function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
+  if (!items.length) {
+    return (
+      <section className="inventory-empty-state">
+        <PackageOpen size={24} />
+        <strong>Inventory masih kosong</strong>
+        <span>Tambahkan alat studio, kabel, aksesoris, atau barang habis pakai.</span>
+      </section>
+    );
+  }
+
+  return (
+    <section className="inventory-list" aria-label="Daftar inventory">
+      {items.map((item) => {
+        const status = getEffectiveStatus(item);
+
+        return (
+          <article className={'inventory-item-card is-' + status} key={item.id}>
+            <div className="inventory-item-main">
+              <div>
+                <small>{getOptionLabel(formCategoryOptions, item.category, 'Kategori')}</small>
+                <strong>{item.name}</strong>
+                <span>{item.location || 'Lokasi belum diisi'}</span>
+              </div>
+
+              <b>{getStatusLabel(status)}</b>
+            </div>
+
+            <div className="inventory-item-meta">
+              <span><small>Qty</small><strong>{item.quantity} {item.unit}</strong></span>
+              <span><small>Minimal</small><strong>{item.minStock} {item.unit}</strong></span>
+              <span><small>Kondisi</small><strong>{getOptionLabel(conditionOptions, item.condition, 'Baik')}</strong></span>
+            </div>
+
+            {item.note ? <p className="inventory-item-note">{item.note}</p> : null}
+
+            <div className="inventory-item-actions">
+              <button type="button" onClick={() => onAdjustStock(item, 'in')}>
+                <Plus size={14} />
+                Stok
+              </button>
+
+              <button type="button" onClick={() => onAdjustStock(item, 'out')}>
+                <Minus size={14} />
+                Stok
+              </button>
+
+              <button type="button" onClick={() => onEdit(item)}>
+                <Pencil size={14} />
+                Edit
+              </button>
+
+              {item.status !== 'inactive' ? (
+                <button type="button" onClick={() => onArchive(item)}>
+                  <Archive size={14} />
+                  Nonaktif
+                </button>
+              ) : null}
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+) {
   if (!items.length) {
     return (
       <section className="inventory-empty-state">
@@ -259,6 +326,95 @@ function InventoryList({ items, onArchive, onEdit }) {
         );
       })}
     </section>
+  );
+}
+
+function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
+  const [quantity, setQuantity] = useState('1');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState('');
+
+  const isStockIn = mode === 'in';
+  const title = isStockIn ? 'Tambah Stok' : 'Kurangi Stok';
+  const currentQuantity = Number(item?.quantity || 0);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const amount = toNumber(quantity);
+
+    if (!amount) {
+      setError('Jumlah adjustment wajib lebih dari 0.');
+      return;
+    }
+
+    if (!isStockIn && amount > currentQuantity) {
+      setError('Stok keluar tidak boleh lebih besar dari stok saat ini.');
+      return;
+    }
+
+    onSubmit(item, {
+      amount,
+      mode,
+      note: cleanText(note),
+    });
+  }
+
+  return (
+    <div className="inventory-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="inventory-modal-panel inventory-adjustment-panel" role="dialog" aria-modal="true" aria-labelledby="inventory-adjustment-title">
+        <header className="inventory-modal-head">
+          <div>
+            <p>{title}</p>
+            <h2 id="inventory-adjustment-title">{item?.name || 'Inventory'}</h2>
+          </div>
+
+          <button type="button" aria-label="Tutup adjustment stok" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+
+        <form className="inventory-form inventory-adjustment-form" onSubmit={handleSubmit}>
+          <div className="inventory-adjustment-current">
+            <small>Stok Saat Ini</small>
+            <strong>{currentQuantity} {item?.unit || 'pcs'}</strong>
+          </div>
+
+          <label>
+            <span>{isStockIn ? 'Jumlah Masuk' : 'Jumlah Keluar'}</span>
+            <input
+              inputMode="numeric"
+              min="1"
+              placeholder="Contoh: 2"
+              type="number"
+              value={quantity}
+              onChange={(event) => {
+                setQuantity(event.target.value);
+                if (error) setError('');
+              }}
+            />
+          </label>
+
+          <label>
+            <span>Catatan</span>
+            <textarea
+              placeholder={isStockIn ? 'Contoh: beli baru, restock kabel...' : 'Contoh: dipakai, rusak, hilang...'}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </label>
+
+          {error ? <p className="inventory-form-error" role="alert">{error}</p> : null}
+
+          <footer>
+            <button type="button" onClick={onClose}>Batal</button>
+            <button className="is-primary" type="submit">{title}</button>
+          </footer>
+        </form>
+      </section>
+    </div>
   );
 }
 
@@ -415,6 +571,7 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [editingItem, setEditingItem] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [stockAdjustment, setStockAdjustment] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -471,6 +628,13 @@ export default function InventoryPage() {
     setIsFormOpen(true);
   }
 
+  function openStockAdjustment(item, mode) {
+    setStockAdjustment({
+      item,
+      mode,
+    });
+  }
+
   async function saveItem(nextItem) {
     try {
       if (nextItem.id) {
@@ -490,6 +654,43 @@ export default function InventoryPage() {
       setToast({
         title: 'Gagal menyimpan',
         message: 'Inventory belum berhasil disimpan ke Firestore.',
+      });
+    }
+  }
+
+
+
+  async function adjustStock(item, adjustment) {
+    try {
+      const currentQuantity = Number(item.quantity || 0);
+      const amount = Number(adjustment.amount || 0);
+      const nextQuantity = adjustment.mode === 'in'
+        ? currentQuantity + amount
+        : Math.max(0, currentQuantity - amount);
+      const actionLabel = adjustment.mode === 'in' ? 'Tambah stok' : 'Kurangi stok';
+      const adjustmentNote = adjustment.note
+        ? '[' + actionLabel + ' ' + amount + ' ' + item.unit + '] ' + adjustment.note
+        : '[' + actionLabel + ' ' + amount + ' ' + item.unit + ']';
+      const nextNote = cleanText(item.note)
+        ? cleanText(item.note) + '\n' + adjustmentNote
+        : adjustmentNote;
+
+      await inventoryRepository.updateInventoryItem({
+        ...item,
+        quantity: nextQuantity,
+        note: nextNote,
+      });
+
+      setStockAdjustment(null);
+      setToast({
+        title: 'Stok diperbarui',
+        message: item.name + ' sekarang ' + nextQuantity + ' ' + item.unit + '.',
+      });
+    } catch (error) {
+      console.error('Gagal update stok inventory:', error);
+      setToast({
+        title: 'Gagal update stok',
+        message: 'Perubahan stok belum berhasil disimpan ke Firestore.',
       });
     }
   }
@@ -534,7 +735,22 @@ export default function InventoryPage() {
         onStatusChange={setStatusFilter}
       />
 
-      <InventoryList items={filteredItems} onArchive={archiveItem} onEdit={openEditForm} />
+      <InventoryList
+        items={filteredItems}
+        onArchive={archiveItem}
+        onAdjustStock={openStockAdjustment}
+        onEdit={openEditForm}
+      />
+
+      {stockAdjustment ? (
+        <StockAdjustmentModal
+          key={stockAdjustment.item?.id + '-' + stockAdjustment.mode}
+          item={stockAdjustment.item}
+          mode={stockAdjustment.mode}
+          onClose={() => setStockAdjustment(null)}
+          onSubmit={adjustStock}
+        />
+      ) : null}
 
       {isFormOpen ? (
         <InventoryFormModal
