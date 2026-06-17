@@ -10261,3 +10261,104 @@
   }
 }
 /* === INVENTORY MOVEMENT LOG: END === */
+
+/* === INVENTORY STOCK BUTTON POLISH: START === */
+.inventory-item-actions {
+  gap: 5px;
+}
+
+.inventory-item-actions button {
+  position: relative;
+  overflow: hidden;
+  min-height: 31px;
+  border-radius: 10px;
+  font-size: 0.58rem;
+  font-weight: 680;
+  letter-spacing: 0.01em;
+}
+
+.inventory-item-actions button svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+.inventory-item-actions .inventory-stock-button {
+  min-height: 33px;
+  border-color: color-mix(in srgb, var(--auth-accent) 38%, var(--auth-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--auth-accent) 16%, transparent), rgba(255, 255, 255, 0.035)),
+    var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.inventory-item-actions .inventory-stock-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 22% 0%, color-mix(in srgb, var(--auth-accent) 20%, transparent), transparent 42%);
+  opacity: 0.76;
+}
+
+.inventory-item-actions .inventory-stock-button svg,
+.inventory-item-actions .inventory-stock-button span {
+  position: relative;
+  z-index: 1;
+}
+
+.inventory-item-actions .inventory-stock-button.is-in {
+  border-color: color-mix(in srgb, var(--auth-accent) 52%, var(--auth-border));
+}
+
+.inventory-item-actions .inventory-stock-button.is-in svg {
+  color: var(--auth-accent);
+}
+
+.inventory-item-actions .inventory-stock-button.is-out {
+  border-color: rgba(255, 176, 32, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 176, 32, 0.11), rgba(255, 255, 255, 0.025)),
+    var(--auth-bg-control);
+}
+
+.inventory-item-actions .inventory-stock-button.is-out::before {
+  background: radial-gradient(circle at 22% 0%, rgba(255, 176, 32, 0.18), transparent 44%);
+}
+
+.inventory-item-actions .inventory-stock-button.is-out svg {
+  color: #ffb020;
+}
+
+.inventory-item-actions button:not(.inventory-stock-button) {
+  min-height: 30px;
+  opacity: 0.88;
+}
+
+@media (max-width: 767px) {
+  .inventory-item-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .inventory-item-actions .inventory-stock-button {
+    min-height: 32px;
+    font-size: 0.57rem;
+  }
+
+  .inventory-item-actions button:not(.inventory-stock-button) {
+    min-height: 29px;
+    font-size: 0.56rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .inventory-item-actions .inventory-stock-button span {
+    max-width: 74px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+/* === INVENTORY STOCK BUTTON POLISH: END === */

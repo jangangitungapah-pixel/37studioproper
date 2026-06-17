@@ -303,14 +303,14 @@ function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
             {item.note ? <p className="inventory-item-note">{item.note}</p> : null}
 
             <div className="inventory-item-actions">
-              <button type="button" onClick={() => onAdjustStock(item, 'in')}>
+              <button className="inventory-stock-button is-in" type="button" onClick={() => onAdjustStock(item, 'in')}>
                 <Plus size={14} />
-                + Stok
+                <span>Stok Masuk</span>
               </button>
 
-              <button type="button" onClick={() => onAdjustStock(item, 'out')}>
+              <button className="inventory-stock-button is-out" type="button" onClick={() => onAdjustStock(item, 'out')}>
                 <Minus size={14} />
-                - Stok
+                <span>Stok Keluar</span>
               </button>
 
               <button type="button" onClick={() => onEdit(item)}>
