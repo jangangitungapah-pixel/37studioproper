@@ -22,6 +22,37 @@ service cloud.firestore {
       );
     }
 
+    function hasPermission(page) {
+      return isOwner() || (
+        isApproved() && (
+          getUserDoc().permissions == null ||
+          getUserDoc().permissions[page] == true
+        )
+      );
+    }
+
+    function canAccessBookingData() {
+      return hasPermission('dashboard') ||
+        hasPermission('schedule') ||
+        hasPermission('customers') ||
+        hasPermission('billing');
+    }
+
+    function canAccessCustomerData() {
+      return hasPermission('dashboard') ||
+        hasPermission('customers');
+    }
+
+    function canAccessBookkeepingData() {
+      return hasPermission('dashboard') ||
+        hasPermission('bookkeeping');
+    }
+
+    function canAccessInventoryData() {
+      return hasPermission('dashboard') ||
+        hasPermission('inventory');
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow create: if isSignedIn() && request.auth.uid == userId;
@@ -34,40 +65,28 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
-      allow read, write: if isApproved();
+      allow read, write: if isApproved() && canAccessBookingData();
     }
 
     match /customers/{customerId} {
-      allow read, write: if isApproved();
+      allow read, write: if isApproved() && canAccessCustomerData();
     }
 
     match /inventoryItems/{itemId} {
-      allow read, write: if isApproved();
+      allow read, write: if isApproved() && canAccessInventoryData();
     }
 
     match /inventoryMovements/{movementId} {
-      allow read, write: if isApproved();
+      allow read, write: if isApproved() && canAccessInventoryData();
     }
 
     match /bookkeepingEntries/{entryId} {
-      allow read, write: if isApproved();
+      allow read, write: if isApproved() && canAccessBookkeepingData();
     }
 
     match /settings/{settingId} {
-      allow read: if isSignedIn();
-      allow write: if isApproved();
-    }
-
-    match /bookkeepingEntries/{entryId} {
-      allow read, write: if isApproved();
-    }
-
-    match /inventoryItems/{itemId} {
-      allow read, write: if isApproved();
-    }
-
-    match /inventoryMovements/{movementId} {
-      allow read, write: if isApproved();
+      allow read: if isApproved();
+      allow write: if isApproved() && hasPermission('settings');
     }
 
     match /mail/{mailId} {

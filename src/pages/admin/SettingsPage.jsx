@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clipboard, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { Clipboard, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
@@ -13,6 +13,12 @@ import {
   resetAccountPreferences,
   writeAccountPreferences,
 } from '../../utils/accountSettings.js';
+import {
+  adminPermissionPages,
+  countEnabledAdminPermissions,
+  defaultAdminPermissions,
+  normalizeAdminPermissions,
+} from '../../utils/adminPermissions.js';
 import {
   defaultInvoiceSettings,
   paperSizeOptions,
@@ -213,6 +219,9 @@ export default function SettingsPage({ currentUser }) {
   // Approvals State
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedPermissionUser, setSelectedPermissionUser] = useState(null);
+  const [permissionDraft, setPermissionDraft] = useState(defaultAdminPermissions);
+  const [approvalSettingsMessage, setApprovalSettingsMessage] = useState('');
 
   const sessionOptions = useMemo(() => getSessionOptions(settings), [settings]);
 
@@ -276,6 +285,65 @@ export default function SettingsPage({ currentUser }) {
       } catch (err) {
         console.error('Failed to delete user:', err);
       }
+    }
+  }
+
+  function openPermissionSettings(user) {
+    setSelectedPermissionUser(user);
+    setPermissionDraft(normalizeAdminPermissions(user.permissions));
+    setApprovalSettingsMessage('');
+  }
+
+  function closePermissionSettings() {
+    setSelectedPermissionUser(null);
+    setPermissionDraft(defaultAdminPermissions);
+  }
+
+  function togglePermissionPage(pageKey) {
+    setPermissionDraft((current) => {
+      const normalized = normalizeAdminPermissions(current);
+
+      return {
+        ...normalized,
+        [pageKey]: !normalized[pageKey],
+      };
+    });
+
+    if (approvalSettingsMessage) setApprovalSettingsMessage('');
+  }
+
+  function grantAllPermissions() {
+    setPermissionDraft(defaultAdminPermissions);
+    if (approvalSettingsMessage) setApprovalSettingsMessage('');
+  }
+
+  async function savePermissionSettings(event) {
+    event.preventDefault();
+
+    if (!selectedPermissionUser?.id) {
+      setApprovalSettingsMessage('User belum dipilih.');
+      return;
+    }
+
+    const normalized = normalizeAdminPermissions(permissionDraft);
+    const enabledCount = countEnabledAdminPermissions(normalized);
+
+    if (!enabledCount) {
+      setApprovalSettingsMessage('Minimal aktifkan satu halaman untuk user ini.');
+      return;
+    }
+
+    try {
+      await updateDoc(doc(firestoreDb, 'users', selectedPermissionUser.id), {
+        permissions: normalized,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setApprovalSettingsMessage('Permission ' + (selectedPermissionUser.displayName || selectedPermissionUser.email || 'user') + ' berhasil disimpan.');
+      closePermissionSettings();
+    } catch (err) {
+      console.error('Gagal menyimpan permission user:', err);
+      setApprovalSettingsMessage('Permission belum berhasil disimpan ke Firestore.');
     }
   }
 
@@ -1292,6 +1360,7 @@ export default function SettingsPage({ currentUser }) {
                       {user.email && user.phoneNumber && ' • '}
                       {user.phoneNumber && `No HP: ${user.phoneNumber}`}
                       {` (${user.provider})`}
+                      {' • Akses halaman: ' + countEnabledAdminPermissions(user.permissions) + '/' + adminPermissionPages.length}
                     </span>
                     <span style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginTop: '4px' }}>
                       Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
@@ -1327,6 +1396,71 @@ export default function SettingsPage({ currentUser }) {
               <p className="settings-empty-text">Tidak ada registrasi admin lain saat ini.</p>
             )}
           </div>
+
+          {approvalSettingsMessage ? (
+            <p className="settings-invoice-message" role="status">{approvalSettingsMessage}</p>
+          ) : null}
+
+          {selectedPermissionUser ? (
+            <div
+              className="settings-permission-backdrop"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) closePermissionSettings();
+              }}
+            >
+              <form className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="permission-panel-title" onSubmit={savePermissionSettings}>
+                <header className="settings-permission-head">
+                  <div>
+                    <small>Permission Settings</small>
+                    <h3 id="permission-panel-title">{selectedPermissionUser.displayName || selectedPermissionUser.email || 'Admin User'}</h3>
+                    <span>{selectedPermissionUser.email || selectedPermissionUser.phoneNumber || selectedPermissionUser.id}</span>
+                  </div>
+
+                  <button type="button" aria-label="Tutup permission settings" onClick={closePermissionSettings}>
+                    <X size={16} />
+                  </button>
+                </header>
+
+                <div className="settings-permission-grid" aria-label="Daftar permission halaman admin">
+                  {adminPermissionPages.map((page) => {
+                    const enabled = Boolean(permissionDraft[page.key]);
+
+                    return (
+                      <button
+                        className={enabled ? 'settings-permission-row is-enabled' : 'settings-permission-row'}
+                        key={page.key}
+                        type="button"
+                        onClick={() => togglePermissionPage(page.key)}
+                      >
+                        <span className="settings-permission-toggle" aria-hidden="true">
+                          {enabled ? '✓' : ''}
+                        </span>
+
+                        <span>
+                          <strong>{page.label}</strong>
+                          <small>{page.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <footer className="settings-permission-actions">
+                  <button className="settings-mini-button is-ghost" type="button" onClick={grantAllPermissions}>
+                    Full Access
+                  </button>
+                  <button className="settings-mini-button" type="button" onClick={closePermissionSettings}>
+                    Batal
+                  </button>
+                  <button className="settings-mini-button is-primary" type="submit">
+                    Simpan Permission
+                  </button>
+                </footer>
+              </form>
+            </div>
+          ) : null}
+
         </section>
       )}
     </section>

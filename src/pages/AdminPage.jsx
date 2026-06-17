@@ -21,6 +21,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
+import { hasAdminPagePermission } from '../utils/adminPermissions.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import CustomerPage from './admin/CustomerPage.jsx';
 import BillingPage from './admin/BillingPage.jsx';
@@ -86,6 +87,21 @@ const navItems = [
     title: 'Settings',
   },
 ];
+
+function getFirstPermittedNavItem(user) {
+  return navItems.find((item) => hasAdminPagePermission(user, item.key)) || navItems[0];
+}
+
+function getPermittedDefaultLandingPath(user) {
+  const preferredPath = getAccountDefaultLandingPath(user?.uid);
+  const preferredItem = navItems.find((item) => item.path === preferredPath);
+
+  if (preferredItem && hasAdminPagePermission(user, preferredItem.key)) {
+    return preferredItem.path;
+  }
+
+  return getFirstPermittedNavItem(user).path;
+}
 
 function getInitialSidebarState() {
   if (typeof window === 'undefined') return false;
@@ -261,16 +277,22 @@ export default function AdminPage() {
     [location.pathname]
   );
 
-  const activeItem = routeItem || navItems[0];
+  const permittedNavItems = useMemo(
+    () => navItems.filter((item) => hasAdminPagePermission(authState.user, item.key)),
+    [authState.user]
+  );
+
+  const isRoutePermitted = !routeItem || hasAdminPagePermission(authState.user, routeItem.key);
+  const activeItem = isRoutePermitted ? (routeItem || getFirstPermittedNavItem(authState.user)) : getFirstPermittedNavItem(authState.user);
 
   const mobilePrimaryNavItems = useMemo(
-    () => navItems.filter((item) => mobilePrimaryNavKeys.includes(item.key)),
-    []
+    () => permittedNavItems.filter((item) => mobilePrimaryNavKeys.includes(item.key)),
+    [permittedNavItems]
   );
 
   const mobileMoreNavItems = useMemo(
-    () => navItems.filter((item) => !mobilePrimaryNavKeys.includes(item.key)),
-    []
+    () => permittedNavItems.filter((item) => !mobilePrimaryNavKeys.includes(item.key)),
+    [permittedNavItems]
   );
 
   const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
@@ -278,10 +300,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated) return;
 
-    if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem) {
-      navigate(getAccountDefaultLandingPath(authState.user?.uid), { replace: true });
+    if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem || !isRoutePermitted) {
+      navigate(getPermittedDefaultLandingPath(authState.user), { replace: true });
     }
-  }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated, authState.user?.uid]);
+  }, [location.pathname, navigate, routeItem, isRoutePermitted, authState.isReady, authState.isAuthenticated, authState.user]);
 
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();
@@ -391,7 +413,7 @@ export default function AdminPage() {
         </div>
 
         <nav className="admin-sidebar-nav" aria-label="Menu admin">
-          {navItems.map((item) => {
+          {permittedNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeItem.key === item.key;
 

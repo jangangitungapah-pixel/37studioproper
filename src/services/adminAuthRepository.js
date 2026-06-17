@@ -12,6 +12,7 @@ import {
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import { sendNewUserNotificationEmail } from './emailService.js';
+import { defaultAdminPermissions, normalizeAdminPermissions } from '../utils/adminPermissions.js';
 
 function createUnauthenticatedState(errorMessage = '') {
   return {
@@ -118,6 +119,7 @@ export function subscribeAdminAuth(callback) {
             phoneNumber: user.phoneNumber || '',
             displayName: user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'User',
             provider: user.providerData[0]?.providerId || 'unknown',
+            permissions: defaultAdminPermissions,
             status: isOwnerEmail ? 'approved' : 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -147,6 +149,7 @@ export function subscribeAdminAuth(callback) {
             user: {
               ...serializeFirebaseUser(user),
               status: userData?.status || (isApproved ? 'approved' : 'pending'),
+              permissions: normalizeAdminPermissions(userData?.permissions),
               isApproved
             }
           });
@@ -160,6 +163,7 @@ export function subscribeAdminAuth(callback) {
             user: {
               ...serializeFirebaseUser(user),
               status: isOwnerEmail ? 'approved' : 'pending',
+                permissions: defaultAdminPermissions,
               isApproved: isOwnerEmail
             }
           });
