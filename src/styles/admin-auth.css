@@ -9797,3 +9797,242 @@
   }
 }
 /* === INVENTORY COMPACT AND MOBILE MORE NAV: END === */
+
+/* === INVENTORY FORM MODAL COMPACT: START === */
+.inventory-modal-backdrop {
+  align-items: end;
+  padding: 10px 10px calc(78px + env(safe-area-inset-bottom));
+}
+
+.inventory-modal-panel {
+  width: min(100%, 500px);
+  max-height: calc(100dvh - 104px - env(safe-area-inset-bottom));
+  border-radius: 19px;
+}
+
+.inventory-modal-head {
+  min-height: 52px;
+  padding: 9px 11px;
+}
+
+.inventory-modal-head p {
+  font-size: 0.52rem;
+  font-weight: 620;
+  letter-spacing: 0.14em;
+}
+
+.inventory-modal-head h2 {
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.inventory-modal-head button {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+}
+
+.inventory-modal-head button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.inventory-form {
+  gap: 7px;
+  padding: 10px 11px 11px;
+  scrollbar-width: none;
+}
+
+.inventory-form::-webkit-scrollbar {
+  display: none;
+}
+
+.inventory-form-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.inventory-form label {
+  gap: 4px;
+}
+
+.inventory-form label span {
+  font-size: 0.52rem;
+  font-weight: 560;
+  letter-spacing: 0.13em;
+  line-height: 1.1;
+}
+
+.inventory-form input,
+.inventory-form textarea {
+  min-height: 36px;
+  border-radius: 11px;
+  padding: 0 9px;
+  font-size: 0.68rem;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+.inventory-form input::placeholder,
+.inventory-form textarea::placeholder {
+  font-size: 0.66rem;
+  opacity: 0.52;
+}
+
+.inventory-form textarea {
+  min-height: 58px;
+  padding: 8px 9px;
+  resize: none;
+}
+
+.inventory-form .studio-select-trigger {
+  min-height: 38px;
+  border-radius: 11px;
+  padding: 6px 9px;
+}
+
+.inventory-form .studio-select-copy {
+  gap: 1px;
+}
+
+.inventory-form .studio-select-label {
+  font-size: 0.5rem;
+  font-weight: 560;
+  letter-spacing: 0.13em;
+}
+
+.inventory-form .studio-select-copy strong {
+  font-size: 0.7rem;
+  font-weight: 580;
+  line-height: 1.08;
+}
+
+.inventory-form .studio-select-helper {
+  display: none;
+}
+
+.inventory-form .studio-select-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+
+.inventory-form .studio-select-menu {
+  border-radius: 14px;
+  padding: 5px;
+}
+
+.inventory-form .studio-select-option {
+  min-height: 36px;
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
+.inventory-form .studio-select-option-text strong {
+  font-size: 0.68rem;
+  font-weight: 560;
+}
+
+.inventory-form .studio-select-option-text span {
+  font-size: 0.58rem;
+}
+
+.inventory-form-error {
+  border-radius: 10px;
+  padding: 7px 9px;
+  font-size: 0.62rem;
+}
+
+.inventory-form footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  gap: 7px;
+  margin: 2px -1px -2px;
+  padding-top: 6px;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--auth-bg-elevated) 96%, #050506) 24%);
+}
+
+.inventory-form footer button {
+  min-height: 38px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 620;
+}
+
+@media (max-width: 767px) {
+  .inventory-modal-backdrop {
+    padding: 8px 8px calc(74px + env(safe-area-inset-bottom));
+  }
+
+  .inventory-modal-panel {
+    max-height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    border-radius: 18px;
+  }
+
+  .inventory-modal-head {
+    min-height: 48px;
+    padding: 8px 10px;
+  }
+
+  .inventory-modal-head h2 {
+    font-size: 0.96rem;
+  }
+
+  .inventory-form {
+    gap: 6px;
+    padding: 9px 10px 10px;
+  }
+
+  .inventory-form-grid {
+    gap: 6px;
+  }
+
+  .inventory-form label span {
+    font-size: 0.49rem;
+  }
+
+  .inventory-form input,
+  .inventory-form textarea {
+    min-height: 34px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+  }
+
+  .inventory-form textarea {
+    min-height: 52px;
+  }
+
+  .inventory-form .studio-select-trigger {
+    min-height: 35px;
+    border-radius: 10px;
+    padding: 5px 8px;
+  }
+
+  .inventory-form .studio-select-label {
+    font-size: 0.47rem;
+  }
+
+  .inventory-form .studio-select-copy strong {
+    font-size: 0.66rem;
+  }
+
+  .inventory-form footer button {
+    min-height: 36px;
+    border-radius: 11px;
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .inventory-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-form textarea {
+    min-height: 48px;
+  }
+}
+/* === INVENTORY FORM MODAL COMPACT: END === */
