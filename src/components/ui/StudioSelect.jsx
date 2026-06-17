@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 function getSingleLabel(options, selectedKey, placeholder) {
   return options.find((option) => option.key === selectedKey)?.label || placeholder;
@@ -61,6 +62,7 @@ export default function StudioSelect({
   const listboxId = selectId + '-listbox';
   const [isOpen, setIsOpen] = useState(false);
   const [listStyle, setListStyle] = useState(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const selectedSummary = useMemo(() => {
     if (multiple) return getMultiLabel(options, selectedKeys, placeholder);
@@ -90,7 +92,6 @@ export default function StudioSelect({
       }
 
       setIsOpen(false);
-      setListStyle(null);
     }
 
     function handleKeyDown(event) {
@@ -135,7 +136,6 @@ export default function StudioSelect({
     if (!multiple) {
       onChange(optionKey);
       setIsOpen(false);
-      setListStyle(null);
       return;
     }
 
@@ -160,6 +160,7 @@ export default function StudioSelect({
       return;
     }
 
+    if (!inlineList) updateListPosition();
     setIsOpen(true);
   }
 
@@ -180,43 +181,96 @@ export default function StudioSelect({
     width: '240px',
   };
 
-  const listbox = isOpen && !disabled ? (
-    <div
-      aria-label={label}
-      className="studio-select-list"
-      data-option-count={options.length}
-      data-inline={inlineList ? 'true' : 'false'}
-      data-portal={inlineList ? 'false' : 'true'}
-      data-ready={inlineList || listStyle ? 'true' : 'false'}
-      id={listboxId}
-      ref={listRef}
-      role="listbox"
-      style={inlineList ? undefined : (listStyle || fallbackListStyle)}
-      aria-multiselectable={multiple || undefined}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      {options.map((option) => {
-        const selected = isSelected(option.key);
+  const listbox = !disabled ? (
+    <AnimatePresence initial={false}>
+      {isOpen ? (
+        <motion.div
+          aria-label={label}
+          className="studio-select-list"
+          data-inline={inlineList ? 'true' : 'false'}
+          data-motion="true"
+          data-option-count={options.length}
+          data-portal={inlineList ? 'false' : 'true'}
+          data-ready={inlineList || listStyle ? 'true' : 'false'}
+          id={listboxId}
+          key={listboxId}
+          ref={listRef}
+          role="listbox"
+          style={inlineList ? undefined : (listStyle || fallbackListStyle)}
+          aria-multiselectable={multiple || undefined}
+          onPointerDown={(event) => event.stopPropagation()}
+          initial={
+            prefersReducedMotion
+              ? false
+              : {
+                  opacity: 0,
+                  y: inlineList ? -8 : -10,
+                  scale: 0.975,
+                  filter: 'blur(5px)',
+                }
+          }
+          animate={{
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            filter: 'blur(0px)',
+          }}
+          exit={
+            prefersReducedMotion
+              ? { opacity: 0 }
+              : {
+                  opacity: 0,
+                  y: inlineList ? -5 : -7,
+                  scale: 0.985,
+                  filter: 'blur(4px)',
+                }
+          }
+          transition={
+            prefersReducedMotion
+              ? { duration: 0 }
+              : {
+                  duration: inlineList ? 0.24 : 0.22,
+                  ease: [0.2, 0.9, 0.22, 1],
+                }
+          }
+        >
+          {options.map((option, index) => {
+            const selected = isSelected(option.key);
 
-        return (
-          <button
-            aria-selected={selected}
-            className={selected ? 'studio-select-option is-selected' : 'studio-select-option'}
-            key={option.key}
-            role="option"
-            type="button"
-            onClick={() => handleToggleOption(option.key)}
-          >
-            <span className={option.tone ? 'studio-select-dot is-' + option.tone : 'studio-select-dot'} />
-            <span className="studio-select-option-text">
-              <strong>{option.label}</strong>
-              {option.description ? <span>{option.description}</span> : null}
-            </span>
-            {selected ? <Check size={16} aria-hidden="true" /> : null}
-          </button>
-        );
-      })}
-    </div>
+            return (
+              <motion.button
+                aria-selected={selected}
+                className={selected ? 'studio-select-option is-selected' : 'studio-select-option'}
+                key={option.key}
+                role="option"
+                type="button"
+                onClick={() => handleToggleOption(option.key)}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: -5, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -2, scale: 0.99 }}
+                transition={
+                  prefersReducedMotion
+                    ? { duration: 0 }
+                    : {
+                        delay: Math.min(index, 7) * 0.022,
+                        duration: 0.17,
+                        ease: [0.22, 1, 0.36, 1],
+                      }
+                }
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.985 }}
+              >
+                <span className={option.tone ? 'studio-select-dot is-' + option.tone : 'studio-select-dot'} />
+                <span className="studio-select-option-text">
+                  <strong>{option.label}</strong>
+                  {option.description ? <span>{option.description}</span> : null}
+                </span>
+                {selected ? <Check size={16} aria-hidden="true" /> : null}
+              </motion.button>
+            );
+          })}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   ) : null;
 
   return (
