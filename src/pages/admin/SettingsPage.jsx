@@ -715,28 +715,44 @@ export default function SettingsPage({ currentUser }) {
             </div>
 
             <div className="settings-account-info-grid">
-              <article>
-                <Mail size={15} />
-                <small>Email</small>
-                <strong>{currentUser?.email || '-'}</strong>
+              <article className="settings-account-info-item">
+                <span className="settings-account-info-icon">
+                  <Mail size={14} />
+                </span>
+                <span className="settings-account-info-copy">
+                  <small>Email</small>
+                  <strong title={currentUser?.email || 'Belum tersedia'}>{currentUser?.email || 'Belum tersedia'}</strong>
+                </span>
               </article>
 
-              <article>
-                <Phone size={15} />
-                <small>Nomor HP</small>
-                <strong>{currentUser?.phoneNumber || '-'}</strong>
+              <article className="settings-account-info-item">
+                <span className="settings-account-info-icon">
+                  <Phone size={14} />
+                </span>
+                <span className="settings-account-info-copy">
+                  <small>Nomor HP</small>
+                  <strong title={currentUser?.phoneNumber || 'Belum tersedia'}>{currentUser?.phoneNumber || 'Belum tersedia'}</strong>
+                </span>
               </article>
 
-              <article>
-                <MonitorSmartphone size={15} />
-                <small>Provider Login</small>
-                <strong>{accountProviderLabel}</strong>
+              <article className="settings-account-info-item">
+                <span className="settings-account-info-icon">
+                  <MonitorSmartphone size={14} />
+                </span>
+                <span className="settings-account-info-copy">
+                  <small>Provider Login</small>
+                  <strong title={accountProviderLabel}>{accountProviderLabel}</strong>
+                </span>
               </article>
 
-              <article>
-                <KeyRound size={15} />
-                <small>User ID</small>
-                <strong>{accountUidLabel}</strong>
+              <article className="settings-account-info-item">
+                <span className="settings-account-info-icon">
+                  <KeyRound size={14} />
+                </span>
+                <span className="settings-account-info-copy">
+                  <small>User ID</small>
+                  <strong title={currentUser?.uid || accountUidLabel}>{accountUidLabel}</strong>
+                </span>
               </article>
             </div>
           </section>

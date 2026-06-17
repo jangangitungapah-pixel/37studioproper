@@ -13036,3 +13036,90 @@
   }
 }
 /* === ACCOUNT PROFILE ACTIONS: END === */
+
+/* === ACCOUNT IDENTITY CARDS FIX: START === */
+.settings-account-info-grid {
+  gap: 9px !important;
+}
+
+.settings-account-info-grid .settings-account-info-item {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  align-items: center;
+  gap: 10px !important;
+  min-height: 58px;
+  padding: 10px 11px !important;
+}
+
+.settings-account-info-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--auth-accent);
+  background: var(--auth-accent-soft);
+}
+
+.settings-account-info-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.settings-account-info-copy small {
+  display: block;
+  color: color-mix(in srgb, var(--auth-text-muted) 84%, transparent);
+  font-size: 0.64rem;
+  font-weight: 680;
+  letter-spacing: 0.09em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.settings-account-info-copy strong {
+  display: block;
+  min-width: 0;
+  overflow: visible !important;
+  color: var(--auth-text-strong);
+  font-size: 0.78rem !important;
+  font-weight: 520 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.settings-account-info-grid .settings-account-info-item > svg {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .settings-account-info-grid .settings-account-info-item {
+    min-height: 72px;
+    align-content: start;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-account-info-grid .settings-account-info-item {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    min-height: 54px;
+    gap: 9px !important;
+    padding: 9px 10px !important;
+  }
+
+  .settings-account-info-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 11px;
+  }
+
+  .settings-account-info-copy strong {
+    font-size: 0.74rem !important;
+  }
+}
+/* === ACCOUNT IDENTITY CARDS FIX: END === */
