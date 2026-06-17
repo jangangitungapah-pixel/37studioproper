@@ -366,7 +366,7 @@ export default function AdminPage() {
     .join(' ');
 
   return (
-    <main className={shellClassName} data-auth-surface="admin">
+    <main className={shellClassName} data-auth-surface="admin" data-admin-active={activeItem.key}>
       <aside className="admin-sidebar" aria-label="Navigasi admin desktop">
         <div className="admin-sidebar-brand">
           <div className="admin-sidebar-logo" aria-hidden="true">
