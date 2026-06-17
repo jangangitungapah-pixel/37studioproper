@@ -7,8 +7,8 @@ import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import {
   defaultInvoiceSettings,
   paperSizeOptions,
-  readInvoiceSettings,
-  writeInvoiceSettings,
+  saveInvoiceSettings,
+  useInvoiceSettings,
 } from '../../settings/invoiceSettings.js';
 import {
   formatRupiah,
@@ -102,7 +102,8 @@ export default function SettingsPage({ currentUser }) {
   const [activeSubpage, setActiveSubpage] = useState('pricing');
   const remoteSettings = usePricingSettings();
   const [settings, setSettings] = useState(() => remoteSettings);
-  const [invoiceSettings, setInvoiceSettings] = useState(readInvoiceSettings);
+  const remoteInvoiceSettings = useInvoiceSettings();
+  const [invoiceSettings, setInvoiceSettings] = useState(() => remoteInvoiceSettings);
   const [invoiceSettingsMessage, setInvoiceSettingsMessage] = useState('');
 
   useEffect(() => {
@@ -114,6 +115,16 @@ export default function SettingsPage({ currentUser }) {
       window.cancelAnimationFrame(settingsFrameId);
     };
   }, [remoteSettings]);
+
+  useEffect(() => {
+    const invoiceFrameId = window.requestAnimationFrame(() => {
+      setInvoiceSettings(remoteInvoiceSettings);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(invoiceFrameId);
+    };
+  }, [remoteInvoiceSettings]);
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
@@ -224,27 +235,37 @@ export default function SettingsPage({ currentUser }) {
     };
   }
 
-  function saveInvoiceSettingsPage(event) {
+  async function saveInvoiceSettingsPage(event) {
     event.preventDefault();
 
-    const nextSettings = writeInvoiceSettings({
-      ...defaultInvoiceSettings,
-      ...invoiceSettings,
-      updatedAt: new Date().toISOString(),
-    });
+    try {
+      const nextSettings = await saveInvoiceSettings({
+        ...defaultInvoiceSettings,
+        ...invoiceSettings,
+        updatedAt: new Date().toISOString(),
+      });
 
-    setInvoiceSettings(nextSettings);
-    setInvoiceSettingsMessage('Invoice settings berhasil disimpan.');
+      setInvoiceSettings(nextSettings);
+      setInvoiceSettingsMessage('Invoice settings berhasil disimpan.');
+    } catch (err) {
+      console.error('Failed to save invoice settings:', err);
+      setInvoiceSettingsMessage('Gagal menyimpan invoice settings.');
+    }
   }
 
-  function resetInvoiceSettingsPage() {
-    const nextSettings = writeInvoiceSettings({
-      ...defaultInvoiceSettings,
-      updatedAt: new Date().toISOString(),
-    });
+  async function resetInvoiceSettingsPage() {
+    try {
+      const nextSettings = await saveInvoiceSettings({
+        ...defaultInvoiceSettings,
+        updatedAt: new Date().toISOString(),
+      });
 
-    setInvoiceSettings(nextSettings);
-    setInvoiceSettingsMessage('Invoice settings dikembalikan ke default.');
+      setInvoiceSettings(nextSettings);
+      setInvoiceSettingsMessage('Invoice settings dikembalikan ke default.');
+    } catch (err) {
+      console.error('Failed to reset invoice settings:', err);
+      setInvoiceSettingsMessage('Gagal mengembalikan settings ke default.');
+    }
   }
 
   function saveSession(event) {

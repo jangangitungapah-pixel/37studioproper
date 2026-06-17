@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
-import { defaultInvoiceSettings, readInvoiceSettings } from '../../settings/invoiceSettings.js';
+import { defaultInvoiceSettings, useInvoiceSettings } from '../../settings/invoiceSettings.js';
 
 const billingFilterOptions = [
   { key: 'all', label: 'Semua', description: 'Semua aktivitas booking' },
@@ -988,7 +988,7 @@ export default function BillingPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
-  const [invoiceSettings] = useState(readInvoiceSettings);
+  const invoiceSettings = useInvoiceSettings();
   const [toast, setToast] = useState(null);
 
   useEffect(() => {

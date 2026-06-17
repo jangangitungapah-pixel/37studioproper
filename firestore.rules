@@ -38,7 +38,7 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       allow read: if isSignedIn();
-      allow write: if isOwner();
+      allow write: if isApproved();
     }
 
     match /mail/{mailId} {
