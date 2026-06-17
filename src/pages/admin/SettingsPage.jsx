@@ -703,6 +703,16 @@ export default function SettingsPage({ currentUser }) {
     return sessionOptions.find((item) => item.key === sessionId)?.label || 'Session';
   }
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    document.body.classList.toggle('is-admin-permission-modal-open', Boolean(selectedPermissionUser));
+
+    return () => {
+      document.body.classList.remove('is-admin-permission-modal-open');
+    };
+  }, [selectedPermissionUser]);
+
   const activePageInfo = useMemo(() => {
     return subpages.find((page) => page.key === activeSubpage) || subpages[0];
   }, [subpages, activeSubpage]);

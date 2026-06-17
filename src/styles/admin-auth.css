@@ -13667,3 +13667,71 @@
   }
 }
 /* === ADMIN APPROVAL PERMISSION BUTTON: END === */
+
+/* === PERMISSION MODAL SAFE AREA: START === */
+body.is-admin-permission-modal-open {
+  overflow: hidden;
+}
+
+body.is-admin-permission-modal-open .admin-bottom-nav {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(120%) !important;
+}
+
+body.is-admin-permission-modal-open .admin-bottom-more-menu {
+  display: none !important;
+}
+
+.settings-permission-backdrop {
+  z-index: 2500 !important;
+  place-items: center !important;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+}
+
+.settings-permission-panel {
+  width: min(100%, 520px) !important;
+  max-height: calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  padding: 12px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+}
+
+.settings-permission-actions {
+  position: sticky;
+  bottom: -1px;
+  z-index: 2;
+  margin: 0 -2px -2px;
+  padding-top: 8px;
+  background:
+    linear-gradient(180deg, transparent, var(--auth-bg-card) 26%),
+    var(--auth-bg-card);
+}
+
+.settings-permission-actions .settings-mini-button {
+  min-height: 38px !important;
+}
+
+@media (max-width: 620px) {
+  .settings-permission-backdrop {
+    align-items: end !important;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .settings-permission-panel {
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    border-radius: 20px !important;
+  }
+
+  .settings-permission-actions {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 7px !important;
+  }
+
+  .settings-permission-actions .is-primary {
+    grid-column: 1 / -1 !important;
+  }
+}
+/* === PERMISSION MODAL SAFE AREA: END === */
