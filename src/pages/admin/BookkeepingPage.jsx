@@ -364,24 +364,6 @@ function BookkeepingToolbar({ exportDisabled, onAddExpense, onExportTransactions
   );
 }
 
-) {
-  return (
-    <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
-      <StudioSelect
-        label="Periode"
-        options={periodOptions}
-        selectedKey={period}
-        onChange={onPeriodChange}
-      />
-
-      <button className="bookkeeping-add-button" type="button" onClick={onAddExpense}>
-        <Plus size={14} />
-        Tambah Pengeluaran
-      </button>
-    </section>
-  );
-}
-
 function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactions }) {
   if (!transactions.length) {
     return (
