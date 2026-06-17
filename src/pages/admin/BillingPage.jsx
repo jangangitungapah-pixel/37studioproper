@@ -21,16 +21,19 @@ const billingFilterOptions = [
   { key: 'lunas', label: 'Lunas', description: 'Sudah selesai' },
 ];
 
+const paymentMethodOptions = [
+  { key: 'cash', label: 'Cash', description: 'Pembayaran tunai' },
+  { key: 'transfer', label: 'Transfer', description: 'Transfer bank' },
+  { key: 'qris', label: 'QRIS', description: 'QRIS / e-wallet' },
+  { key: 'other', label: 'Lainnya', description: 'Metode lain' },
+];
+
 function cleanText(value) {
   return String(value || '').trim();
 }
 
 function cleanLower(value) {
   return cleanText(value).toLowerCase();
-}
-
-function normalizeStatus(booking) {
-  return cleanLower(booking?.paymentStatus || booking?.status || 'pending') || 'pending';
 }
 
 function formatMoney(value) {
@@ -69,6 +72,29 @@ function formatThermalDate(value) {
   }).format(date);
 }
 
+function getTodayIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return year + '-' + month + '-' + day;
+}
+
+function isSameIsoDay(value, isoDate) {
+  if (!value || !isoDate) return false;
+
+  const date = new Date(String(value).includes('T') ? value : String(value) + 'T00:00:00');
+
+  if (Number.isNaN(date.getTime())) return false;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return year + '-' + month + '-' + day === isoDate;
+}
+
 function formatHour(value) {
   const numeric = Number(value);
 
@@ -94,6 +120,18 @@ function getTimeRange(booking) {
   return formatHour(start) + ' - ' + formatHour(start + getDurationHours(booking));
 }
 
+function getPaymentMethodLabel(method) {
+  return paymentMethodOptions.find((item) => item.key === method)?.label || 'Lainnya';
+}
+
+function getPaymentHistory(booking) {
+  return Array.isArray(booking?.paymentHistory) ? booking.paymentHistory : [];
+}
+
+function getPaymentHistoryTotal(booking) {
+  return getPaymentHistory(booking).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+}
+
 function getBookingDisplayCode(booking) {
   return booking?.bookingCode || booking?.bookingId || createBookingCode(booking, booking?.id);
 }
@@ -110,23 +148,37 @@ function getDpAmount(booking) {
   return Number(booking?.dpAmount || 0) || 0;
 }
 
-function getOutstandingAmount(booking) {
-  const status = normalizeStatus(booking);
+function normalizeStatus(booking) {
   const total = getBillingTotal(booking);
+  const historyTotal = getPaymentHistoryTotal(booking);
 
-  if (status === 'lunas') return 0;
-  if (status === 'dp') return Math.max(0, Number(booking?.invoiceAmount || total - getDpAmount(booking)) || 0);
+  if (historyTotal > 0 && total > 0) {
+    return historyTotal >= total ? 'lunas' : 'dp';
+  }
 
-  return Math.max(0, Number(booking?.invoiceAmount || total) || 0);
+  return cleanLower(booking?.paymentStatus || booking?.status || 'pending') || 'pending';
 }
 
 function getPaidAmount(booking) {
-  const status = normalizeStatus(booking);
+  const total = getBillingTotal(booking);
+  const historyTotal = getPaymentHistoryTotal(booking);
+  const rawStatus = cleanLower(booking?.paymentStatus || booking?.status || 'pending');
 
-  if (status === 'lunas') return getBillingTotal(booking);
-  if (status === 'dp') return getDpAmount(booking);
+  if (historyTotal > 0) return Math.min(total || historyTotal, historyTotal);
+  if (rawStatus === 'lunas') return total;
+  if (rawStatus === 'dp') return getDpAmount(booking);
 
   return 0;
+}
+
+function getOutstandingAmount(booking) {
+  const status = normalizeStatus(booking);
+  const total = getBillingTotal(booking);
+  const paid = getPaidAmount(booking);
+
+  if (status === 'lunas') return 0;
+
+  return Math.max(0, Number(booking?.invoiceAmount || total - paid) || 0);
 }
 
 function getStatusLabel(status) {
@@ -238,6 +290,37 @@ function getBillingStats(bookings) {
   );
 }
 
+function getDailyCashStats(bookings) {
+  const today = getTodayIsoDate();
+
+  return bookings.reduce(
+    (stats, booking) => {
+      getPaymentHistory(booking).forEach((payment) => {
+        if (!isSameIsoDay(payment.date || payment.createdAt, today)) return;
+
+        const amount = Number(payment.amount) || 0;
+        const method = payment.method || 'other';
+
+        stats.total += amount;
+        stats.count += 1;
+        stats.byMethod[method] = (stats.byMethod[method] || 0) + amount;
+      });
+
+      return stats;
+    },
+    {
+      byMethod: {
+        cash: 0,
+        transfer: 0,
+        qris: 0,
+        other: 0,
+      },
+      count: 0,
+      total: 0,
+    }
+  );
+}
+
 function BillingHero({ bookings }) {
   const stats = getBillingStats(bookings);
 
@@ -263,6 +346,27 @@ function BillingHero({ bookings }) {
         <strong>{stats.total}</strong>
         <em>Data dari Schedule</em>
       </article>
+    </section>
+  );
+}
+
+function BillingCashSummary({ bookings }) {
+  const stats = getDailyCashStats(bookings);
+
+  return (
+    <section className="billing-cash-summary" aria-label="Kas hari ini">
+      <header>
+        <small>Kas Hari Ini</small>
+        <strong>{formatMoney(stats.total)}</strong>
+        <span>{stats.count} pembayaran tercatat</span>
+      </header>
+
+      <div className="billing-cash-grid">
+        <article><small>Cash</small><strong>{formatMoney(stats.byMethod.cash)}</strong></article>
+        <article><small>Transfer</small><strong>{formatMoney(stats.byMethod.transfer)}</strong></article>
+        <article><small>QRIS</small><strong>{formatMoney(stats.byMethod.qris)}</strong></article>
+        <article><small>Lainnya</small><strong>{formatMoney(stats.byMethod.other)}</strong></article>
+      </div>
     </section>
   );
 }
@@ -293,7 +397,7 @@ function BillingToolbar({ activeFilter, onFilterChange, onSearchChange, searchTe
   );
 }
 
-function BillingReminderQueue({ bookings, onOpenInvoice, onMarkPaid }) {
+function BillingReminderQueue({ bookings, onOpenInvoice, onRecordPayment }) {
   const openBookings = bookings.filter(isOpenBilling).slice(0, 4);
 
   return (
@@ -327,8 +431,8 @@ function BillingReminderQueue({ bookings, onOpenInvoice, onMarkPaid }) {
                     </a>
                   ) : null}
 
-                  <button type="button" onClick={() => onMarkPaid(booking)}>
-                    Lunas
+                  <button type="button" onClick={() => onRecordPayment(booking)}>
+                    Bayar
                   </button>
                 </span>
               </article>
@@ -342,7 +446,7 @@ function BillingReminderQueue({ bookings, onOpenInvoice, onMarkPaid }) {
   );
 }
 
-function BillingList({ bookings, onMarkPaid, onOpenInvoice }) {
+function BillingList({ bookings, onOpenInvoice, onRecordPayment }) {
   if (!bookings.length) {
     return (
       <section className="billing-empty-state">
@@ -379,6 +483,10 @@ function BillingList({ bookings, onMarkPaid, onOpenInvoice }) {
                 <strong>{formatMoney(getBillingTotal(booking))}</strong>
               </span>
               <span>
+                <small>Dibayar</small>
+                <strong>{formatMoney(getPaidAmount(booking))}</strong>
+              </span>
+              <span>
                 <small>Sisa</small>
                 <strong>{formatMoney(getOutstandingAmount(booking))}</strong>
               </span>
@@ -396,8 +504,8 @@ function BillingList({ bookings, onMarkPaid, onOpenInvoice }) {
               </button>
 
               {status !== 'lunas' ? (
-                <button className="is-primary" type="button" onClick={() => onMarkPaid(booking)}>
-                  Lunas
+                <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
+                  Bayar
                 </button>
               ) : null}
             </div>
@@ -453,6 +561,22 @@ function ThermalInvoice({ booking }) {
         <span><b>Status</b><em>{getStatusLabel(status)}</em></span>
       </div>
 
+      {getPaymentHistory(booking).length ? (
+        <>
+          <div className="billing-thermal-divider" />
+
+          <div className="billing-thermal-payments">
+            <b>Riwayat Bayar</b>
+            {getPaymentHistory(booking).map((payment) => (
+              <span key={payment.id || payment.createdAt}>
+                <em>{formatThermalDate(payment.date || payment.createdAt)} • {getPaymentMethodLabel(payment.method)}</em>
+                <strong>{formatMoney(payment.amount)}</strong>
+              </span>
+            ))}
+          </div>
+        </>
+      ) : null}
+
       <div className="billing-thermal-divider" />
 
       <footer>
@@ -463,7 +587,7 @@ function ThermalInvoice({ booking }) {
   );
 }
 
-function InvoiceModal({ booking, onClose, onMarkPaid, onPrint, onShare }) {
+function InvoiceModal({ booking, onClose, onPrint, onRecordPayment, onShare }) {
   if (!booking) return null;
 
   const reminderHref = getReminderHref(booking);
@@ -512,11 +636,135 @@ function InvoiceModal({ booking, onClose, onMarkPaid, onPrint, onShare }) {
           </button>
 
           {status !== 'lunas' ? (
-            <button className="is-primary" type="button" onClick={() => onMarkPaid(booking)}>
-              Lunas
+            <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
+              Bayar
             </button>
           ) : null}
         </footer>
+      </section>
+    </div>
+  );
+}
+
+function PaymentRecordModal({ booking, onClose, onSubmit }) {
+  const outstanding = getOutstandingAmount(booking);
+  const [form, setForm] = useState(() => ({
+    amount: String(outstanding || ''),
+    date: getTodayIsoDate(),
+    method: 'cash',
+    note: '',
+  }));
+  const [error, setError] = useState('');
+
+  if (!booking) return null;
+
+  function updateField(field) {
+    return (event) => {
+      setForm((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
+  function updateValue(field) {
+    return (nextValue) => {
+      setForm((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const amount = Number(String(form.amount).replace(/[^0-9.]/g, ''));
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Nominal pembayaran wajib lebih dari 0.');
+      return;
+    }
+
+    if (amount > outstanding) {
+      setError('Nominal pembayaran tidak boleh melebihi sisa tagihan.');
+      return;
+    }
+
+    onSubmit(booking, {
+      amount,
+      createdAt: new Date().toISOString(),
+      date: form.date || getTodayIsoDate(),
+      id: 'pay_' + Date.now().toString(36),
+      method: form.method || 'other',
+      note: form.note.trim(),
+    });
+  }
+
+  return (
+    <div className="billing-payment-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="billing-payment-panel" role="dialog" aria-modal="true" aria-labelledby="billing-payment-title">
+        <header className="billing-payment-head">
+          <div>
+            <p>Catat Pembayaran</p>
+            <h2 id="billing-payment-title">{booking.customer || 'Customer'}</h2>
+            <span>Sisa tagihan {formatMoney(outstanding)}</span>
+          </div>
+
+          <button type="button" aria-label="Tutup pembayaran" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+
+        <form className="billing-payment-form" onSubmit={handleSubmit} noValidate>
+          <label>
+            <span>Nominal Bayar</span>
+            <input
+              inputMode="numeric"
+              placeholder="Contoh: 120000"
+              value={form.amount}
+              onChange={updateField('amount')}
+            />
+          </label>
+
+          <StudioSelect
+            label="Metode"
+            options={paymentMethodOptions}
+            selectedKey={form.method}
+            onChange={updateValue('method')}
+          />
+
+          <label>
+            <span>Tanggal Bayar</span>
+            <input
+              type="date"
+              value={form.date}
+              onChange={updateField('date')}
+            />
+          </label>
+
+          <label>
+            <span>Catatan</span>
+            <textarea
+              placeholder="Opsional, contoh: transfer BCA, QRIS, cash di studio..."
+              value={form.note}
+              onChange={updateField('note')}
+            />
+          </label>
+
+          {error ? <p className="billing-payment-error" role="alert">{error}</p> : null}
+
+          <footer>
+            <button type="button" onClick={onClose}>Batal</button>
+            <button className="is-primary" type="submit">Simpan Pembayaran</button>
+          </footer>
+        </form>
       </section>
     </div>
   );
@@ -527,6 +775,7 @@ export default function BillingPage() {
   const [activeFilter, setActiveFilter] = useState('open');
   const [searchText, setSearchText] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -586,28 +835,38 @@ export default function BillingPage() {
       });
   }, [activeFilter, bookings, searchText]);
 
-  async function markBookingPaid(booking) {
+  async function recordPayment(booking, payment) {
     try {
+      const paymentHistory = [...getPaymentHistory(booking), payment];
+      const totalPaid = paymentHistory.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const total = getBillingTotal(booking);
+      const invoiceAmount = Math.max(0, total - totalPaid);
+      const nextStatus = invoiceAmount <= 0 ? 'lunas' : totalPaid > 0 ? 'dp' : 'pending';
       const nextBooking = {
         ...booking,
-        dpAmount: 0,
-        invoiceAmount: 0,
-        paymentStatus: 'lunas',
-        status: 'lunas',
+        dpAmount: nextStatus === 'dp' ? totalPaid : 0,
+        invoiceAmount,
+        lastPaymentAt: payment.createdAt,
+        lastPaymentMethod: payment.method,
+        paidAmount: Math.min(total || totalPaid, totalPaid),
+        paymentHistory,
+        paymentStatus: nextStatus,
+        status: nextStatus,
         updatedAt: new Date().toISOString(),
       };
 
       await adminBookingRepository.updateManualBooking(nextBooking);
       setSelectedBooking((current) => (current?.id === booking.id ? nextBooking : current));
+      setSelectedPaymentBooking(null);
       setToast({
-        title: 'Pembayaran lunas',
-        message: (booking.customer || 'Booking') + ' sudah ditandai lunas.',
+        title: nextStatus === 'lunas' ? 'Pembayaran lunas' : 'Pembayaran tercatat',
+        message: (booking.customer || 'Booking') + ' membayar ' + formatMoney(payment.amount) + ' via ' + getPaymentMethodLabel(payment.method) + '.',
       });
     } catch (error) {
-      console.error('Gagal update status pembayaran:', error);
+      console.error('Gagal mencatat pembayaran:', error);
       setToast({
-        title: 'Update gagal',
-        message: 'Status pembayaran belum berhasil diubah.',
+        title: 'Pembayaran gagal',
+        message: 'Pembayaran belum berhasil disimpan.',
       });
     }
   }
@@ -656,6 +915,8 @@ export default function BillingPage() {
 
       <BillingHero bookings={bookings} />
 
+      <BillingCashSummary bookings={bookings} />
+
       <BillingToolbar
         activeFilter={activeFilter}
         searchText={searchText}
@@ -665,22 +926,29 @@ export default function BillingPage() {
 
       <BillingReminderQueue
         bookings={bookings}
-        onMarkPaid={markBookingPaid}
         onOpenInvoice={setSelectedBooking}
+        onRecordPayment={setSelectedPaymentBooking}
       />
 
       <BillingList
         bookings={filteredBookings}
-        onMarkPaid={markBookingPaid}
         onOpenInvoice={setSelectedBooking}
+        onRecordPayment={setSelectedPaymentBooking}
       />
 
       <InvoiceModal
         booking={selectedBooking}
         onClose={() => setSelectedBooking(null)}
-        onMarkPaid={markBookingPaid}
         onPrint={printInvoice}
+        onRecordPayment={setSelectedPaymentBooking}
         onShare={shareInvoice}
+      />
+
+      <PaymentRecordModal
+        key={selectedPaymentBooking?.id || 'empty-payment'}
+        booking={selectedPaymentBooking}
+        onClose={() => setSelectedPaymentBooking(null)}
+        onSubmit={recordPayment}
       />
 
       {toast ? (
