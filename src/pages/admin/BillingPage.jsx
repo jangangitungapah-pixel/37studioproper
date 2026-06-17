@@ -12,7 +12,8 @@ import {
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
-import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
+import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { defaultInvoiceSettings, useInvoiceSettings } from '../../settings/invoiceSettings.js';
 
@@ -1009,10 +1010,6 @@ export default function BillingPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
-  useEffect(() => {
-    setBillingPage(1);
-  }, [activeFilter, bookings, searchText]);
-
   const filteredBookings = useMemo(() => {
     const queryText = searchText.trim().toLowerCase();
 
@@ -1051,6 +1048,16 @@ export default function BillingPage() {
     () => getPaginationSlice(filteredBookings, billingPage, ADMIN_LIST_PAGE_SIZE),
     [billingPage, filteredBookings]
   );
+
+  function handleBillingFilterChange(nextFilter) {
+    setActiveFilter(nextFilter);
+    setBillingPage(1);
+  }
+
+  function handleBillingSearchChange(nextSearchText) {
+    setSearchText(nextSearchText);
+    setBillingPage(1);
+  }
 
   async function recordPayment(booking, payment) {
     if (normalizeStatus(booking) === 'void') {
@@ -1179,8 +1186,8 @@ export default function BillingPage() {
       <BillingToolbar
         activeFilter={activeFilter}
         searchText={searchText}
-        onFilterChange={setActiveFilter}
-        onSearchChange={setSearchText}
+        onFilterChange={handleBillingFilterChange}
+        onSearchChange={handleBillingSearchChange}
       />
 
       <BillingReminderQueue

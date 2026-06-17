@@ -13,7 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
-import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
+import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
 
 const categoryOptions = [
@@ -775,10 +776,6 @@ export default function InventoryPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
-  useEffect(() => {
-    setInventoryPage(1);
-  }, [categoryFilter, items, searchText, statusFilter]);
-
   const filteredItems = useMemo(() => {
     const queryText = searchText.trim().toLowerCase();
 
@@ -804,6 +801,21 @@ export default function InventoryPage() {
     () => getPaginationSlice(filteredItems, inventoryPage, ADMIN_LIST_PAGE_SIZE),
     [filteredItems, inventoryPage]
   );
+
+  function handleInventorySearchChange(nextSearchText) {
+    setSearchText(nextSearchText);
+    setInventoryPage(1);
+  }
+
+  function handleInventoryCategoryChange(nextCategory) {
+    setCategoryFilter(nextCategory);
+    setInventoryPage(1);
+  }
+
+  function handleInventoryStatusChange(nextStatus) {
+    setStatusFilter(nextStatus);
+    setInventoryPage(1);
+  }
 
   function exportInventoryCsv() {
     if (!filteredItems.length) {
@@ -973,10 +985,10 @@ export default function InventoryPage() {
         searchText={searchText}
         statusFilter={statusFilter}
         onAddItem={openAddForm}
-        onCategoryChange={setCategoryFilter}
+        onCategoryChange={handleInventoryCategoryChange}
         onExportItems={exportInventoryCsv}
-        onSearchChange={setSearchText}
-        onStatusChange={setStatusFilter}
+        onSearchChange={handleInventorySearchChange}
+        onStatusChange={handleInventoryStatusChange}
       />
 
       <InventoryAttentionPanel

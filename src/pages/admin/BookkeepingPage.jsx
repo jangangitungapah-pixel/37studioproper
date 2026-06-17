@@ -12,7 +12,8 @@ import {
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
-import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
+import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
 
@@ -652,10 +653,6 @@ export default function BookkeepingPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
-  useEffect(() => {
-    setTransactionPage(1);
-  }, [bookings, entries, period]);
-
   const filteredTransactions = useMemo(() => {
     const incomeTransactions = buildIncomeTransactions(bookings);
     const expenseTransactions = buildExpenseTransactions(entries);
@@ -674,6 +671,11 @@ export default function BookkeepingPage() {
     () => getPaginationSlice(filteredTransactions, transactionPage, ADMIN_LIST_PAGE_SIZE),
     [filteredTransactions, transactionPage]
   );
+
+  function handlePeriodChange(nextPeriod) {
+    setPeriod(nextPeriod);
+    setTransactionPage(1);
+  }
 
   function exportBookkeepingCsv() {
     const stats = getBookkeepingStats(filteredTransactions, bookings, period);
@@ -789,7 +791,7 @@ export default function BookkeepingPage() {
         onAddExpense={openAddExpense}
         onAddIncome={openAddIncome}
         onExportTransactions={exportBookkeepingCsv}
-        onPeriodChange={setPeriod}
+        onPeriodChange={handlePeriodChange}
       />
 
       <BookkeepingTransactionList

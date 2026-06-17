@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
-import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
+import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 
@@ -1385,10 +1386,6 @@ export default function CustomerPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
-  useEffect(() => {
-    setCustomerPage(1);
-  }, [activeFilter, customers, searchText]);
-
   const customers = useMemo(
     () => buildCustomerDirectory(bookings, manualCustomers),
     [bookings, manualCustomers]
@@ -1428,6 +1425,16 @@ export default function CustomerPage() {
 
   const detailId = getCustomerRouteId(location.pathname);
   const selectedCustomer = detailId ? customers.find((customer) => customer.id === detailId) : null;
+
+  function handleCustomerFilterChange(nextFilter) {
+    setActiveFilter(nextFilter);
+    setCustomerPage(1);
+  }
+
+  function handleCustomerSearchChange(nextSearchText) {
+    setSearchText(nextSearchText);
+    setCustomerPage(1);
+  }
 
   function openCustomerForm(customer = null) {
     setEditingCustomer(customer);
@@ -1509,8 +1516,8 @@ export default function CustomerPage() {
         activeFilter={activeFilter}
         searchText={searchText}
         onAddCustomer={() => openCustomerForm()}
-        onFilterChange={setActiveFilter}
-        onSearchChange={setSearchText}
+        onFilterChange={handleCustomerFilterChange}
+        onSearchChange={handleCustomerSearchChange}
       />
 
       <CustomerFollowUpCenter
