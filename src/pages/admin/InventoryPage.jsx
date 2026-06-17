@@ -465,12 +465,12 @@ function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
             <div className="inventory-item-actions">
               <button className="inventory-stock-button is-in" type="button" onClick={() => onAdjustStock(item, 'in')}>
                 <Plus size={14} />
-                <span>Stok Masuk</span>
+                <span>Masuk</span>
               </button>
 
               <button className="inventory-stock-button is-out" type="button" onClick={() => onAdjustStock(item, 'out')}>
                 <Minus size={14} />
-                <span>Stok Keluar</span>
+                <span>Keluar</span>
               </button>
 
               <button type="button" onClick={() => onEdit(item)}>
@@ -481,7 +481,7 @@ function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
               {item.status !== 'inactive' ? (
                 <button type="button" onClick={() => onArchive(item)}>
                   <Archive size={14} />
-                  Nonaktif
+                  Off
                 </button>
               ) : null}
             </div>
