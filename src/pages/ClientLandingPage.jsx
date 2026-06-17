@@ -30,6 +30,8 @@ import {
 } from '../settings/pricingSettings.js';
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions } from './admin/scheduleConfig.js';
+import StudioSelect from '../components/ui/StudioSelect.jsx';
+import '../styles/admin-auth.css';
 
 export default function ClientLandingPage() {
   const pricingSettings = usePricingSettings();
@@ -40,6 +42,45 @@ export default function ClientLandingPage() {
   const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
   const packageOptions = useMemo(() => getPackageOptions(pricingSettings), [pricingSettings]);
   const discountOptions = useMemo(() => getDiscountOptions(pricingSettings), [pricingSettings]);
+
+  const startHourOptions = useMemo(() => {
+    return businessHours.map((hour) => ({
+      key: hour.key,
+      label: hour.rangeLabel,
+      description: 'Jam mulai sesi'
+    }));
+  }, []);
+
+  const finalRecordingTypeOptions = useMemo(() => {
+    return [
+      { key: 'none', label: 'Sewa Flat Per Jam', description: 'Tarif reguler per jam' },
+      ...recordingTypeOptions
+    ];
+  }, [recordingTypeOptions]);
+
+  const displayedSessionOptions = useMemo(() => {
+    if (recordingTypeOptions.length > 0) {
+      const list = [];
+      for (const item of sessionOptions) {
+        if (item.key === 'recording') {
+          recordingTypeOptions.forEach(recType => {
+            list.push({
+              key: recType.key,
+              label: recType.label,
+              description: `Sesi rekaman durasi ${recType.durationHours} jam`,
+              price: recType.price,
+              isRecordingType: true,
+              durationHours: recType.durationHours
+            });
+          });
+        } else {
+          list.push(item);
+        }
+      }
+      return list;
+    }
+    return sessionOptions;
+  }, [sessionOptions, recordingTypeOptions]);
 
   // Form states for simulator
   const [name, setName] = useState('');
@@ -311,13 +352,18 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 </div>
                 
                 <div className="space-y-4 border-t border-[var(--ui-border)] pt-4">
-                  {sessionOptions.map((item) => (
+                  {displayedSessionOptions.map((item) => (
                     <div key={item.key} className="flex justify-between items-center text-sm">
                       <div>
                         <p className="text-white font-semibold">{item.label}</p>
                         <p className="text-[11px] text-[var(--ui-text-muted)]">{item.description}</p>
                       </div>
-                      <span className="text-[var(--ui-accent)] font-bold">{formatRupiah(item.price)}<span className="text-[10px] text-[var(--ui-text-muted)] font-normal">/jam</span></span>
+                      <span className="text-[var(--ui-accent)] font-bold">
+                        {formatRupiah(item.price)}
+                        <span className="text-[10px] text-[var(--ui-text-muted)] font-normal">
+                          {item.isRecordingType ? ` / ${item.durationHours}jam` : '/jam'}
+                        </span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -495,47 +541,28 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
 
                 {/* Conditional dropdown selections */}
                 {packageId !== 'none' ? (
-                  <label className="space-y-1.5 block">
-                    <span className="text-xs text-[var(--ui-text-muted)] font-medium">Pilihan Paket Hemat</span>
-                    <select
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] text-white focus:border-[var(--ui-accent)] outline-none transition-colors"
-                      value={packageId}
-                      onChange={(e) => handlePackageChange(e.target.value)}
-                    >
-                      {packageOptions.map((pkg) => (
-                        <option key={pkg.key} value={pkg.key} className="bg-[#101012]">{pkg.label} • {formatRupiah(pkg.price)}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <StudioSelect
+                    label="Pilihan Paket Hemat"
+                    options={packageOptions}
+                    selectedKey={packageId}
+                    onChange={handlePackageChange}
+                  />
                 ) : (
                   <div className="space-y-4">
-                    <label className="space-y-1.5 block">
-                      <span className="text-xs text-[var(--ui-text-muted)] font-medium">Pilih Layanan Studio</span>
-                      <select
-                        className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] text-white focus:border-[var(--ui-accent)] outline-none transition-colors"
-                        value={sessionType}
-                        onChange={(e) => handleSessionTypeChange(e.target.value)}
-                      >
-                        {sessionOptions.map((item) => (
-                          <option key={item.key} value={item.key} className="bg-[#101012]">{item.label}</option>
-                        ))}
-                      </select>
-                    </label>
+                    <StudioSelect
+                      label="Pilih Layanan Studio"
+                      options={sessionOptions}
+                      selectedKey={sessionType}
+                      onChange={handleSessionTypeChange}
+                    />
 
                     {sessionType === 'recording' && recordingTypeOptions.length > 0 && (
-                      <label className="space-y-1.5 block">
-                        <span className="text-xs text-[var(--ui-text-muted)] font-medium">Pilihan Jenis Recording</span>
-                        <select
-                          className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] text-white focus:border-[var(--ui-accent)] outline-none transition-colors"
-                          value={recordingTypeId}
-                          onChange={(e) => setRecordingTypeId(e.target.value)}
-                        >
-                          <option value="none" className="bg-[#101012]">Sewa Flat Per Jam</option>
-                          {recordingTypeOptions.map((item) => (
-                            <option key={item.key} value={item.key} className="bg-[#101012]">{item.label}</option>
-                          ))}
-                        </select>
-                      </label>
+                      <StudioSelect
+                        label="Pilihan Jenis Recording"
+                        options={finalRecordingTypeOptions}
+                        selectedKey={recordingTypeId}
+                        onChange={setRecordingTypeId}
+                      />
                     )}
                   </div>
                 )}
@@ -551,35 +578,24 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                       onChange={(e) => setDate(e.target.value)}
                     />
                   </label>
-                  <label className="space-y-1.5 block">
-                    <span className="text-xs text-[var(--ui-text-muted)] font-medium">Mulai Jam</span>
-                    <select
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] text-white focus:border-[var(--ui-accent)] outline-none transition-colors"
-                      value={startHour}
-                      onChange={(e) => setStartHour(e.target.value)}
-                    >
-                      {businessHours.map((hour) => (
-                        <option key={hour.key} value={hour.key} className="bg-[#101012]">{hour.rangeLabel}</option>
-                      ))}
-                    </select>
-                  </label>
+                  
+                  <StudioSelect
+                    label="Mulai Jam"
+                    options={startHourOptions}
+                    selectedKey={startHour}
+                    onChange={setStartHour}
+                  />
                 </div>
 
                 {/* Duration Picker (Only active for non-package selections) */}
                 {packageId === 'none' && recordingTypeId === 'none' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="space-y-1.5 block">
-                      <span className="text-xs text-[var(--ui-text-muted)] font-medium">Durasi Sewa</span>
-                      <select
-                        className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] text-white focus:border-[var(--ui-accent)] outline-none transition-colors"
-                        value={duration}
-                        onChange={(e) => setDuration(e.target.value)}
-                      >
-                        {durationOptions.map((opt) => (
-                          <option key={opt.key} value={opt.key} className="bg-[#101012]">{opt.label}</option>
-                        ))}
-                      </select>
-                    </label>
+                    <StudioSelect
+                      label="Durasi Sewa"
+                      options={durationOptions}
+                      selectedKey={duration}
+                      onChange={setDuration}
+                    />
                     
                     {duration === 'custom' && (
                       <label className="space-y-1.5 block">

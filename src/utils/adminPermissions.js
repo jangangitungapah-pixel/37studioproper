@@ -32,6 +32,11 @@ export const adminPermissionPages = [
     description: 'Stock, asset studio, movement log, dan maintenance.',
   },
   {
+    key: 'gallery',
+    label: 'Gallery',
+    description: 'Pengelolaan galeri foto studio.',
+  },
+  {
     key: 'settings',
     label: 'Settings',
     description: 'Pengaturan harga, invoice, account, dan approval admin.',

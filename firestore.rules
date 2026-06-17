@@ -58,6 +58,11 @@ service cloud.firestore {
       allow write: if isApproved();
     }
 
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow write: if isApproved();
+    }
+
     match /bookkeepingEntries/{entryId} {
       allow read: if isApproved();
       allow create, update: if isApproved() &&

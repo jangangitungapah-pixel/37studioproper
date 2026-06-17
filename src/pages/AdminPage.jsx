@@ -16,6 +16,7 @@ import {
   AlertCircle,
   BookOpen,
   Home,
+  Image,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
@@ -29,6 +30,7 @@ import BookkeepingPage from './admin/BookkeepingPage.jsx';
 import InventoryPage from './admin/InventoryPage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
 import DashboardPage from './admin/DashboardPage.jsx';
+import GalleryPage from './admin/GalleryPage.jsx';
 
 import '../styles/admin-auth.css';
 
@@ -80,6 +82,13 @@ const navItems = [
     title: 'Inventory',
   },
   {
+    key: 'gallery',
+    label: 'Gallery',
+    path: '/admin/gallery',
+    icon: Image,
+    title: 'Studio Gallery',
+  },
+  {
     key: 'settings',
     label: 'Settings',
     path: '/admin/settings',
@@ -120,6 +129,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'billing') return <BillingPage />;
   if (activeKey === 'bookkeeping') return <BookkeepingPage />;
   if (activeKey === 'inventory') return <InventoryPage />;
+  if (activeKey === 'gallery') return <GalleryPage />;
 
   return <SchedulePage />;
 }
