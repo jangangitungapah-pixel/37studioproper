@@ -780,7 +780,16 @@ export default function SettingsPage({ currentUser }) {
   const accountNotificationLabel = getOptionLabel(accountNotificationOptions, accountPreferences.notificationLevel, 'Penting Saja');
 
   return (
-    <section className={activeSubpage === 'account' ? 'settings-page is-account-settings' : 'settings-page'} aria-labelledby="settings-title">
+    <section
+      className={
+        activeSubpage === 'account'
+          ? 'settings-page is-account-settings'
+          : activeSubpage === 'approvals'
+            ? 'settings-page is-approvals-settings'
+            : 'settings-page'
+      }
+      aria-labelledby="settings-title"
+    >
       <div className="settings-subnav-mobile">
         <StudioSelect
           label="Settings Page"
