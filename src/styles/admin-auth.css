@@ -14694,3 +14694,390 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === BOOKING MODAL INLINE SELECT STATIC: END === */
+
+/* === CUSTOMER MODAL BOOKING FORM ALIGNMENT: START === */
+.customer-modal-backdrop {
+  padding: 10px !important;
+}
+
+.customer-modal-panel {
+  --customer-border-soft: color-mix(in srgb, var(--auth-accent) 22%, transparent);
+  --customer-border-hover: color-mix(in srgb, var(--auth-accent) 34%, transparent);
+  --customer-border-active: color-mix(in srgb, var(--auth-accent) 48%, transparent);
+  width: min(100%, 520px) !important;
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.044), rgba(255, 255, 255, 0.012)),
+    var(--studio-modal-solid, var(--auth-bg-card)) !important;
+  color: var(--auth-text-main) !important;
+  overflow: hidden !important;
+  box-shadow: var(--studio-modal-shadow, 0 24px 72px rgba(0, 0, 0, 0.44)) !important;
+}
+
+.customer-modal-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  display: flex !important;
+  align-items: start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--auth-accent) 14%, transparent) !important;
+  padding: 11px 13px !important;
+  background:
+    linear-gradient(180deg, var(--studio-modal-solid, var(--auth-bg-card)) 82%, transparent),
+    var(--studio-modal-solid, var(--auth-bg-card)) !important;
+}
+
+.customer-modal-head p {
+  margin: 0 0 3px !important;
+  color: var(--auth-accent) !important;
+  font-size: 0.6rem !important;
+  font-weight: 620 !important;
+  letter-spacing: 0.16em !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}
+
+.customer-modal-head h2 {
+  margin: 0 !important;
+  color: var(--auth-text-strong) !important;
+  font-size: clamp(1.1rem, 5.6vw, 1.42rem) !important;
+  font-weight: 330 !important;
+  letter-spacing: -0.055em !important;
+  line-height: 1.04 !important;
+}
+
+.customer-modal-panel .booking-modal-close {
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+  border-radius: 12px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.06), rgba(255, 255, 255, 0.01)),
+    var(--auth-bg-control) !important;
+  color: var(--auth-text-main) !important;
+  padding: 0 !important;
+}
+
+.customer-modal-panel .booking-modal-close svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.customer-form {
+  display: grid !important;
+  gap: 9px !important;
+  padding: 10px 12px 12px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin;
+}
+
+.customer-form-grid {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.customer-modal-panel .studio-field {
+  gap: 4px !important;
+}
+
+.customer-modal-panel .studio-field-head {
+  min-height: 16px !important;
+  color: var(--auth-text-muted) !important;
+  font-size: 0.66rem !important;
+  font-weight: 450 !important;
+  letter-spacing: 0.012em !important;
+  line-height: 1.15 !important;
+}
+
+.customer-modal-panel .studio-field-helper {
+  padding: 1px 6px !important;
+  font-size: 0.58rem !important;
+  font-weight: 380 !important;
+}
+
+.customer-modal-panel .studio-input-wrap,
+.customer-modal-panel .studio-select-trigger {
+  min-height: 37px !important;
+  display: grid !important;
+  grid-template-columns: 22px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 7px !important;
+  border-width: 1px !important;
+  border-color: var(--customer-border-soft) !important;
+  border-radius: 13px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.035), rgba(255, 255, 255, 0.008)),
+    var(--auth-bg-control) !important;
+  box-shadow: none !important;
+  padding: 0 9px !important;
+}
+
+.customer-modal-panel .studio-input-wrap:hover,
+.customer-modal-panel .studio-select-trigger:hover {
+  border-color: var(--customer-border-hover) !important;
+}
+
+.customer-modal-panel .studio-input-wrap:focus-within,
+.customer-modal-panel .studio-select-trigger[aria-expanded='true'] {
+  border-color: var(--customer-border-active) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+}
+
+.customer-modal-panel .studio-input-icon {
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+.customer-modal-panel .studio-input-icon svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.customer-modal-panel .studio-native-input,
+.customer-modal-panel .studio-native-input:hover,
+.customer-modal-panel .studio-native-input:focus,
+.customer-modal-panel .studio-native-input:focus-visible,
+.customer-modal-panel .studio-native-input:active {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--auth-text-main) !important;
+  font-size: 0.72rem !important;
+  font-weight: 400 !important;
+  line-height: 1.2 !important;
+  -webkit-text-fill-color: var(--auth-text-main) !important;
+  appearance: none;
+}
+
+.customer-modal-panel .studio-native-input::placeholder {
+  color: color-mix(in srgb, var(--auth-text-muted) 66%, transparent) !important;
+  font-size: 0.72rem !important;
+  font-weight: 360 !important;
+  opacity: 1 !important;
+}
+
+.customer-modal-panel .studio-native-input:-webkit-autofill,
+.customer-modal-panel .studio-native-input:-webkit-autofill:hover,
+.customer-modal-panel .studio-native-input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--auth-bg-control) inset !important;
+  -webkit-text-fill-color: var(--auth-text-main) !important;
+}
+
+.customer-form-select {
+  min-width: 0 !important;
+}
+
+.customer-form-select .studio-select {
+  position: relative !important;
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+.customer-form-select .studio-select-copy {
+  gap: 0 !important;
+}
+
+.customer-form-select .studio-select-label {
+  font-size: 0.54rem !important;
+  font-weight: 520 !important;
+  letter-spacing: 0.12em !important;
+  line-height: 1.1 !important;
+}
+
+.customer-form-select .studio-select-copy strong {
+  font-size: 0.74rem !important;
+  font-weight: 520 !important;
+  letter-spacing: -0.012em !important;
+  line-height: 1.15 !important;
+}
+
+.customer-form-select .studio-select-chevron svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.customer-form-select .studio-select-list[data-inline='true'] {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-height: 150px !important;
+  margin: 4px 0 0 !important;
+  transform: none !important;
+  translate: none !important;
+  z-index: auto !important;
+  overflow: auto !important;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 20%, transparent) !important;
+  border-radius: 14px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    var(--studio-modal-solid, var(--auth-bg-card)) !important;
+  box-shadow: none !important;
+}
+
+.customer-form-select .studio-select-list[data-inline='true'] .studio-select-option {
+  min-height: 32px !important;
+  grid-template-columns: 18px minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  border-radius: 10px !important;
+  padding: 5px 7px !important;
+}
+
+.customer-form-select .studio-select-option-text strong {
+  font-size: 0.68rem !important;
+  font-weight: 560 !important;
+  line-height: 1.12 !important;
+}
+
+.customer-form-select .studio-select-option-text span {
+  font-size: 0.55rem !important;
+  font-weight: 380 !important;
+  line-height: 1.2 !important;
+}
+
+.customer-note-field {
+  gap: 5px !important;
+}
+
+.customer-modal-panel .customer-note-field .studio-field-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.customer-note-field textarea {
+  min-height: 74px !important;
+  resize: vertical !important;
+  border-width: 1px !important;
+  border-color: var(--customer-border-soft) !important;
+  border-radius: 13px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.035), rgba(255, 255, 255, 0.008)),
+    var(--auth-bg-control) !important;
+  color: var(--auth-text-main) !important;
+  padding: 9px !important;
+  font-size: 0.72rem !important;
+  font-weight: 400 !important;
+  line-height: 1.42 !important;
+}
+
+.customer-note-field textarea:focus {
+  border-color: var(--customer-border-active) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+}
+
+.customer-modal-panel .booking-form-error {
+  border-color: color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+  border-radius: 12px !important;
+  padding: 8px 9px !important;
+  font-size: 0.68rem !important;
+  line-height: 1.35 !important;
+}
+
+.customer-modal-panel .booking-form-actions {
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding-top: 7px !important;
+  background:
+    linear-gradient(180deg, transparent, var(--studio-modal-solid, var(--auth-bg-card)) 28%),
+    var(--studio-modal-solid, var(--auth-bg-card)) !important;
+}
+
+.customer-modal-panel .booking-button {
+  min-height: 40px !important;
+  border-radius: 13px !important;
+  font-size: 0.74rem !important;
+  font-weight: 620 !important;
+}
+
+.customer-modal-panel .booking-button.is-secondary {
+  border-color: color-mix(in srgb, var(--auth-accent) 16%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.045), rgba(255, 255, 255, 0.008)),
+    var(--auth-bg-control) !important;
+}
+
+.customer-modal-panel .booking-button.is-primary {
+  box-shadow: none !important;
+}
+
+@media (max-width: 767px) {
+  .customer-modal-panel {
+    width: min(100%, 94vw) !important;
+  }
+
+  .customer-form {
+    padding-bottom: 10px !important;
+  }
+
+  .customer-modal-panel .booking-form-actions {
+    margin-inline: 0 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .customer-modal-panel {
+    width: min(100%, 96vw) !important;
+    border-radius: 18px !important;
+  }
+
+  .customer-modal-head {
+    padding: 10px 11px !important;
+  }
+
+  .customer-form {
+    gap: 8px !important;
+    padding: 9px 10px 10px !important;
+  }
+
+  .customer-modal-panel .studio-input-wrap,
+  .customer-modal-panel .studio-select-trigger {
+    min-height: 37px !important;
+    border-radius: 12px !important;
+  }
+
+  .customer-note-field textarea {
+    min-height: 68px !important;
+  }
+
+  .customer-modal-panel .booking-button {
+    min-height: 38px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .customer-modal-panel {
+    width: min(100%, 680px) !important;
+  }
+
+  .customer-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .customer-note-field {
+    grid-column: 1 / -1 !important;
+  }
+
+  .customer-modal-panel .booking-form-actions {
+    width: min(100%, 360px) !important;
+    margin-left: auto !important;
+  }
+}
+/* === CUSTOMER MODAL BOOKING FORM ALIGNMENT: END === */

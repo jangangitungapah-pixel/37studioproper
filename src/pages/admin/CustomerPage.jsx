@@ -16,6 +16,7 @@ import {
   Trophy,
   UserRound,
   UsersRound,
+  X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
@@ -770,7 +771,7 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
           </div>
 
           <button className="booking-modal-close" type="button" aria-label="Tutup form customer" onClick={onClose}>
-            ×
+            <X size={18} />
           </button>
         </header>
 
@@ -821,6 +822,7 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
 
             <div className="customer-form-select">
               <StudioSelect
+                inlineList
                 label="Status"
                 options={customerStatusOptions}
                 selectedKey={form.followUpStatus}
