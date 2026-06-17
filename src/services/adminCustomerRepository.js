@@ -12,7 +12,7 @@ import {
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 
 export function subscribeManualCustomers(callback, onError) {
-  if (!isFirebaseConfigured() || !firestoreDb) {
+  if (!isFirebaseConfigured || !firestoreDb) {
     if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
     return () => {};
   }
@@ -40,7 +40,7 @@ export function subscribeManualCustomers(callback, onError) {
 }
 
 export async function createManualCustomer(customer) {
-  if (!isFirebaseConfigured() || !firestoreDb) {
+  if (!isFirebaseConfigured || !firestoreDb) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
 
@@ -59,7 +59,7 @@ export async function createManualCustomer(customer) {
 }
 
 export async function updateManualCustomer(customer) {
-  if (!isFirebaseConfigured() || !firestoreDb) {
+  if (!isFirebaseConfigured || !firestoreDb) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
 
@@ -78,7 +78,7 @@ export async function updateManualCustomer(customer) {
 }
 
 export async function deleteManualCustomer(customerId) {
-  if (!isFirebaseConfigured() || !firestoreDb) {
+  if (!isFirebaseConfigured || !firestoreDb) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
 
@@ -87,7 +87,7 @@ export async function deleteManualCustomer(customerId) {
 }
 
 export async function migrateLocalCustomersToFirestore(localCustomers) {
-  if (!isFirebaseConfigured() || !firestoreDb || !Array.isArray(localCustomers) || localCustomers.length === 0) {
+  if (!isFirebaseConfigured || !firestoreDb || !Array.isArray(localCustomers) || localCustomers.length === 0) {
     return;
   }
 
@@ -117,5 +117,5 @@ export const adminCustomerRepository = {
   createManualCustomer,
   updateManualCustomer,
   deleteManualCustomer,
-  migrateLocalCustomersToFirestore
+  migrateLocalCustomersToFirestore,
 };
