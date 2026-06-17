@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clipboard, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Clipboard, Crown, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
@@ -17,6 +17,7 @@ import {
   adminPermissionPages,
   countEnabledAdminPermissions,
   defaultAdminPermissions,
+  isOwnerAdminUser,
   normalizeAdminPermissions,
 } from '../../utils/adminPermissions.js';
 import {
@@ -146,7 +147,7 @@ export default function SettingsPage({ currentUser }) {
         description: 'Header, footer, nomor kontak, dan ukuran thermal invoice.',
       }
     ];
-    if (currentUser?.email?.toLowerCase() === 'marsicprod@gmail.com') {
+    if (isOwnerAdminUser(currentUser)) {
       pages.push({
         key: 'approvals',
         label: 'Persetujuan Admin',
@@ -231,7 +232,7 @@ export default function SettingsPage({ currentUser }) {
 
   // Sync users list for approvals
   useEffect(() => {
-    if (activeSubpage !== 'approvals' || currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com') return;
+    if (activeSubpage !== 'approvals' || !isOwnerAdminUser(currentUser)) return;
 
     const usersLoadingFrameId = window.requestAnimationFrame(() => {
       setUsersLoading(true);
@@ -246,7 +247,7 @@ export default function SettingsPage({ currentUser }) {
         const list = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
-          if (data.email?.toLowerCase() !== 'marsicprod@gmail.com') {
+          if (doc.id !== currentUser?.uid) {
             list.push({ id: doc.id, ...data });
           }
         });
@@ -344,6 +345,58 @@ export default function SettingsPage({ currentUser }) {
     } catch (err) {
       console.error('Gagal menyimpan permission user:', err);
       setApprovalSettingsMessage('Permission belum berhasil disimpan ke Firestore.');
+    }
+  }
+
+  async function transferOwnershipToUser(user) {
+    if (!user?.id) {
+      setApprovalSettingsMessage('User tujuan belum dipilih.');
+      return;
+    }
+
+    if (!currentUser?.uid) {
+      setApprovalSettingsMessage('Owner aktif belum terbaca.');
+      return;
+    }
+
+    if (user.id === currentUser.uid) {
+      setApprovalSettingsMessage('Akun ini sudah menjadi owner aktif.');
+      return;
+    }
+
+    const targetLabel = user.displayName || user.email || user.phoneNumber || 'user ini';
+    const confirmed = window.confirm(
+      'Transfer ownership ke ' + targetLabel + '?\\n\\nAkun owner saat ini akan berubah menjadi admin biasa.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const now = new Date().toISOString();
+      const batch = writeBatch(firestoreDb);
+
+      batch.update(doc(firestoreDb, 'users', currentUser.uid), {
+        role: 'admin',
+        status: 'approved',
+        permissions: defaultAdminPermissions,
+        ownershipTransferredOutAt: now,
+        updatedAt: now,
+      });
+
+      batch.update(doc(firestoreDb, 'users', user.id), {
+        role: 'owner',
+        status: 'approved',
+        permissions: defaultAdminPermissions,
+        ownershipTransferredInAt: now,
+        updatedAt: now,
+      });
+
+      await batch.commit();
+
+      setApprovalSettingsMessage('Ownership berhasil ditransfer ke ' + targetLabel + '.');
+    } catch (err) {
+      console.error('Gagal transfer ownership:', err);
+      setApprovalSettingsMessage('Ownership belum berhasil ditransfer ke Firestore.');
     }
   }
 
@@ -1377,7 +1430,12 @@ export default function SettingsPage({ currentUser }) {
                     </span>
                   </div>
                   <div className="settings-row-actions settings-approval-actions" style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-                    {user.status !== 'approved' ? (
+                    {user.role === 'owner' ? (
+                      <span className="settings-owner-status-pill">
+                        <Crown size={13} />
+                        Owner
+                      </span>
+                    ) : user.status !== 'approved' ? (
                       <button 
                         type="button" 
                         onClick={() => handleApproveUser(user.id)}
@@ -1391,6 +1449,19 @@ export default function SettingsPage({ currentUser }) {
                         Aktif
                       </span>
                     )}
+                    {user.role !== 'owner' ? (
+                      <button
+                        type="button"
+                        onClick={() => transferOwnershipToUser(user)}
+                        className="settings-mini-button settings-owner-transfer-button"
+                        title="Transfer owner ke user ini"
+                        style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto' }}
+                      >
+                        <Crown size={13} />
+                        Owner
+                      </button>
+                    ) : null}
+
                     <button
                       type="button"
                       onClick={() => openPermissionSettings(user)}

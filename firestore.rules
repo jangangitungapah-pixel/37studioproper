@@ -5,15 +5,25 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner() {
-      return isSignedIn() && (
-        request.auth.token.email != null &&
-        request.auth.token.email.lower() == 'marsicprod@gmail.com'
-      );
-    }
-
     function getUserDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isBootstrapOwnerEmail() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() == 'marsicprod@gmail.com';
+    }
+
+    function userHasExplicitRole() {
+      return isSignedIn() && getUserDoc().keys().hasAny(['role']);
+    }
+
+    function isOwner() {
+      return isSignedIn() && (
+        getUserDoc().role == 'owner' ||
+        (!userHasExplicitRole() && isBootstrapOwnerEmail())
+      );
     }
 
     function isApproved() {

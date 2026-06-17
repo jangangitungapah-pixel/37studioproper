@@ -13735,3 +13735,43 @@ body.is-admin-permission-modal-open .admin-bottom-more-menu {
   }
 }
 /* === PERMISSION MODAL SAFE AREA: END === */
+
+/* === ADMIN OWNERSHIP TRANSFER: START === */
+.settings-owner-transfer-button {
+  border-color: rgba(255, 196, 87, 0.34) !important;
+  color: #ffd27a !important;
+  background:
+    linear-gradient(135deg, rgba(255, 196, 87, 0.12), rgba(255, 255, 255, 0.012)),
+    var(--auth-bg-control) !important;
+}
+
+.settings-owner-transfer-button:hover {
+  border-color: rgba(255, 196, 87, 0.62) !important;
+}
+
+.settings-owner-status-pill {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 196, 87, 0.32);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #ffd27a;
+  background: rgba(255, 196, 87, 0.09);
+  font-size: 0.68rem;
+  font-weight: 680;
+}
+
+.settings-approval-actions {
+  flex-wrap: wrap !important;
+}
+
+@media (max-width: 520px) {
+  .settings-owner-transfer-button,
+  .settings-owner-status-pill {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+/* === ADMIN OWNERSHIP TRANSFER: END === */

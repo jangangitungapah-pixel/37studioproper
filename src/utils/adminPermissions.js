@@ -57,7 +57,11 @@ export function isOwnerEmail(email) {
 }
 
 export function isOwnerAdminUser(user) {
-  return isOwnerEmail(user?.email);
+  if (!user) return false;
+  if (user.role === 'owner' || user.isOwner) return true;
+  if (user.role) return false;
+
+  return isOwnerEmail(user.email);
 }
 
 export function hasAdminPagePermission(user, pageKey) {

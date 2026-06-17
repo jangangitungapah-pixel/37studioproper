@@ -120,6 +120,7 @@ export function subscribeAdminAuth(callback) {
             displayName: user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'User',
             provider: user.providerData[0]?.providerId || 'unknown',
             permissions: defaultAdminPermissions,
+            role: isOwnerEmail ? 'owner' : 'admin',
             status: isOwnerEmail ? 'approved' : 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -140,7 +141,9 @@ export function subscribeAdminAuth(callback) {
         userDocRef,
         (docSnap) => {
           const userData = docSnap.exists() ? docSnap.data() : null;
-          const isApproved = isOwnerEmail || (userData && userData.status === 'approved');
+          const hasExplicitRole = Boolean(userData?.role);
+          const isOwner = userData?.role === 'owner' || (!hasExplicitRole && isOwnerEmail);
+          const isApproved = isOwner || (userData && userData.status === 'approved');
 
           callback({
             errorMessage: '',
@@ -149,6 +152,8 @@ export function subscribeAdminAuth(callback) {
             user: {
               ...serializeFirebaseUser(user),
               status: userData?.status || (isApproved ? 'approved' : 'pending'),
+              role: userData?.role || (isOwner ? 'owner' : 'admin'),
+              isOwner,
               permissions: normalizeAdminPermissions(userData?.permissions),
               isApproved
             }
@@ -163,6 +168,7 @@ export function subscribeAdminAuth(callback) {
             user: {
               ...serializeFirebaseUser(user),
               status: isOwnerEmail ? 'approved' : 'pending',
+                role: isOwnerEmail ? 'owner' : 'admin',
                 permissions: defaultAdminPermissions,
               isApproved: isOwnerEmail
             }
