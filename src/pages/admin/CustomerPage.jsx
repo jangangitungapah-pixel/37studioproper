@@ -20,6 +20,7 @@ import {
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 
 const MANUAL_CUSTOMERS_STORAGE_KEY = '37musicstudio.customers.manual.v1';
 const MANUAL_CUSTOMERS_EVENT = 'customer-manual-change';
@@ -515,7 +516,7 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
     if (event.target === event.currentTarget) onClose();
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     const cleanName = form.name.trim();
@@ -541,7 +542,6 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
       customerId = shouldMerge ? samePhoneCustomers[0].id : customerId;
     }
 
-    const current = readManualCustomers();
     const nextCustomer = {
       id: customerId,
       name: cleanName,
@@ -555,13 +555,17 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
       updatedAt: new Date().toISOString(),
     };
 
-    const exists = current.some((item) => item.id === customerId);
-    const next = exists
-      ? current.map((item) => (item.id === customerId ? { ...item, ...nextCustomer, createdAt: item.createdAt || nextCustomer.createdAt } : item))
-      : [nextCustomer, ...current];
-
-    writeManualCustomers(next);
-    onClose();
+    try {
+      if (editingCustomer || exactCustomer) {
+        await adminCustomerRepository.updateManualCustomer(nextCustomer);
+      } else {
+        await adminCustomerRepository.createManualCustomer(nextCustomer);
+      }
+      onClose();
+    } catch (err) {
+      console.error('Gagal menyimpan customer ke Firestore:', err);
+      setError('Gagal menyimpan data ke Firestore. Periksa koneksi internet Anda.');
+    }
   }
 
   return (
@@ -968,7 +972,28 @@ export default function CustomerPage() {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => subscribeManualCustomers(setManualCustomers), []);
+  useEffect(() => {
+    const local = readManualCustomers();
+    if (local && local.length > 0) {
+      adminCustomerRepository.migrateLocalCustomersToFirestore(local)
+        .catch((err) => console.error('Gagal migrasi customer lokal:', err));
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = adminCustomerRepository.subscribeManualCustomers(
+      (data) => setManualCustomers(data),
+      (error) => {
+        console.error('Gagal memuat customer dari Firestore:', error);
+        setToast({
+          title: 'Gagal Memuat',
+          message: 'Gagal memuat data customer dari Firestore. Menggunakan data lokal.',
+        });
+        setManualCustomers(readManualCustomers());
+      }
+    );
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
@@ -1067,8 +1092,7 @@ export default function CustomerPage() {
         )
       );
 
-      const nextManualCustomers = readManualCustomers().filter((item) => item.id !== sourceCustomer.id);
-      writeManualCustomers(nextManualCustomers);
+      await adminCustomerRepository.deleteManualCustomer(sourceCustomer.id);
 
       setToast({
         title: 'Duplicate digabung',
