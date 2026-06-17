@@ -15081,3 +15081,205 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === CUSTOMER MODAL BOOKING FORM ALIGNMENT: END === */
+
+/* === CUSTOMER MODAL SIZE RESTORE: START === */
+.customer-modal-backdrop {
+  padding: 10px !important;
+  place-items: end center !important;
+  align-items: end !important;
+}
+
+.customer-modal-panel {
+  width: calc(100vw - 20px) !important;
+  max-width: 520px !important;
+  min-height: auto !important;
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  border-radius: 20px !important;
+}
+
+.customer-modal-head {
+  padding: 12px 14px !important;
+}
+
+.customer-modal-head p {
+  font-size: 0.62rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.15em !important;
+}
+
+.customer-modal-head h2 {
+  font-size: clamp(1.2rem, 6vw, 1.5rem) !important;
+  font-weight: 350 !important;
+  line-height: 1.04 !important;
+}
+
+.customer-modal-panel .booking-modal-close {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  border-radius: 13px !important;
+}
+
+.customer-form {
+  gap: 10px !important;
+  padding: 11px 12px 12px !important;
+}
+
+.customer-form-grid {
+  gap: 9px !important;
+}
+
+.customer-modal-panel .studio-field {
+  gap: 5px !important;
+}
+
+.customer-modal-panel .studio-field-head {
+  min-height: 17px !important;
+  font-size: 0.68rem !important;
+  font-weight: 480 !important;
+}
+
+.customer-modal-panel .studio-input-wrap,
+.customer-modal-panel .studio-select-trigger {
+  min-height: 42px !important;
+  border-radius: 14px !important;
+  padding: 0 10px !important;
+}
+
+.customer-modal-panel .studio-input-icon {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+}
+
+.customer-modal-panel .studio-input-icon svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.customer-modal-panel .studio-native-input,
+.customer-modal-panel .studio-native-input:hover,
+.customer-modal-panel .studio-native-input:focus,
+.customer-modal-panel .studio-native-input:focus-visible,
+.customer-modal-panel .studio-native-input:active {
+  font-size: 0.78rem !important;
+  font-weight: 430 !important;
+}
+
+.customer-modal-panel .studio-native-input::placeholder {
+  font-size: 0.78rem !important;
+  font-weight: 380 !important;
+}
+
+.customer-form-select .studio-select-label {
+  font-size: 0.57rem !important;
+  font-weight: 560 !important;
+}
+
+.customer-form-select .studio-select-copy strong {
+  font-size: 0.78rem !important;
+  font-weight: 560 !important;
+}
+
+.customer-form-select .studio-select-list[data-inline='true'] {
+  max-height: 168px !important;
+}
+
+.customer-form-select .studio-select-list[data-inline='true'] .studio-select-option {
+  min-height: 34px !important;
+  padding: 6px 8px !important;
+}
+
+.customer-form-select .studio-select-option-text strong {
+  font-size: 0.72rem !important;
+}
+
+.customer-form-select .studio-select-option-text span {
+  font-size: 0.58rem !important;
+}
+
+.customer-note-field {
+  gap: 6px !important;
+}
+
+.customer-note-field textarea {
+  min-height: 86px !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  font-size: 0.76rem !important;
+  line-height: 1.45 !important;
+}
+
+.customer-modal-panel .booking-form-actions {
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding-top: 8px !important;
+}
+
+.customer-modal-panel .booking-button {
+  min-height: 42px !important;
+  border-radius: 14px !important;
+  font-size: 0.76rem !important;
+  font-weight: 650 !important;
+}
+
+@media (max-width: 420px) {
+  .customer-modal-backdrop {
+    padding: 9px !important;
+  }
+
+  .customer-modal-panel {
+    width: calc(100vw - 18px) !important;
+    max-width: none !important;
+    border-radius: 19px !important;
+  }
+
+  .customer-modal-head {
+    padding: 11px 12px !important;
+  }
+
+  .customer-form {
+    gap: 9px !important;
+    padding: 10px 11px 11px !important;
+  }
+
+  .customer-modal-panel .studio-input-wrap,
+  .customer-modal-panel .studio-select-trigger {
+    min-height: 40px !important;
+    border-radius: 13px !important;
+  }
+
+  .customer-note-field textarea {
+    min-height: 80px !important;
+  }
+
+  .customer-modal-panel .booking-button {
+    min-height: 40px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .customer-modal-backdrop {
+    place-items: center !important;
+    align-items: center !important;
+  }
+
+  .customer-modal-panel {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+  }
+
+  .customer-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .customer-note-field {
+    grid-column: 1 / -1 !important;
+  }
+
+  .customer-modal-panel .booking-form-actions {
+    width: min(100%, 360px) !important;
+    margin-left: auto !important;
+  }
+}
+/* === CUSTOMER MODAL SIZE RESTORE: END === */
