@@ -651,7 +651,7 @@ export default function InventoryPage() {
     });
   }
 
-  async async function saveItem(nextItem) {
+  async function saveItem(nextItem) {
     try {
       const isEditing = Boolean(nextItem.id);
       const savedItem = isEditing
@@ -684,7 +684,7 @@ export default function InventoryPage() {
     }
   }
 
-  async async function adjustStock(item, adjustment) {
+  async function adjustStock(item, adjustment) {
     try {
       const currentQuantity = Number(item.quantity || 0);
       const amount = Number(adjustment.amount || 0);
@@ -732,7 +732,7 @@ export default function InventoryPage() {
     }
   }
 
-  async async function archiveItem(item) {
+  async function archiveItem(item) {
     try {
       const savedItem = await inventoryRepository.updateInventoryItem({
         ...item,
