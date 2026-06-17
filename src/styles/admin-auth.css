@@ -13123,3 +13123,333 @@
   }
 }
 /* === ACCOUNT IDENTITY CARDS FIX: END === */
+
+/* === ACCOUNT SETTINGS COMPACT SCHEDULE TYPOGRAPHY: START === */
+.settings-page.is-account-settings {
+  gap: 10px !important;
+  padding-bottom: calc(86px + env(safe-area-inset-bottom)) !important;
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  font-weight: 420 !important;
+}
+
+.settings-page.is-account-settings .settings-title-block {
+  display: none !important;
+}
+
+.settings-page.is-account-settings .settings-subnav-mobile {
+  margin-bottom: 0 !important;
+}
+
+.settings-page.is-account-settings .settings-account-grid {
+  gap: 9px !important;
+}
+
+.settings-page.is-account-settings .settings-section {
+  gap: 9px !important;
+  border-radius: 18px !important;
+  padding: 10px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018) !important;
+  box-shadow: none !important;
+}
+
+.settings-page.is-account-settings .settings-section-head {
+  gap: 8px !important;
+}
+
+.settings-page.is-account-settings .settings-section-head h3 {
+  font-size: 0.9rem !important;
+  font-weight: 560 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.15 !important;
+}
+
+.settings-page.is-account-settings .settings-section-head p {
+  margin-top: 3px !important;
+  font-size: 0.7rem !important;
+  font-weight: 380 !important;
+  line-height: 1.38 !important;
+}
+
+.settings-page.is-account-settings .settings-account-hero {
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  gap: 9px !important;
+  align-items: center !important;
+}
+
+.settings-page.is-account-settings .settings-account-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 13px !important;
+  box-shadow: none !important;
+}
+
+.settings-page.is-account-settings .settings-account-avatar svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.settings-page.is-account-settings .settings-account-hero-copy {
+  gap: 2px !important;
+}
+
+.settings-page.is-account-settings .settings-account-hero-copy p,
+.settings-page.is-account-settings .settings-account-info-copy small,
+.settings-page.is-account-settings .settings-account-preview small {
+  font-size: 0.58rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.09em !important;
+}
+
+.settings-page.is-account-settings .settings-account-hero-copy h3 {
+  font-size: 1.02rem !important;
+  font-weight: 430 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.04 !important;
+}
+
+.settings-page.is-account-settings .settings-account-hero-copy span {
+  font-size: 0.68rem !important;
+  font-weight: 380 !important;
+}
+
+.settings-page.is-account-settings .settings-account-badges {
+  gap: 6px !important;
+}
+
+.settings-page.is-account-settings .settings-account-badge {
+  min-height: 24px !important;
+  gap: 5px !important;
+  padding: 0 8px !important;
+  font-size: 0.58rem !important;
+  font-weight: 620 !important;
+}
+
+.settings-page.is-account-settings .settings-account-info-grid {
+  gap: 7px !important;
+}
+
+.settings-page.is-account-settings .settings-account-info-grid .settings-account-info-item {
+  min-height: 46px !important;
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  border-radius: 13px !important;
+  padding: 7px 8px !important;
+}
+
+.settings-page.is-account-settings .settings-account-info-icon {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 10px !important;
+}
+
+.settings-page.is-account-settings .settings-account-info-icon svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.settings-page.is-account-settings .settings-account-info-copy {
+  gap: 2px !important;
+}
+
+.settings-page.is-account-settings .settings-account-info-copy strong {
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+  line-height: 1.22 !important;
+}
+
+.settings-page.is-account-settings .settings-account-form {
+  gap: 8px !important;
+  padding-top: 9px !important;
+}
+
+.settings-page.is-account-settings .settings-account-profile-form {
+  gap: 8px !important;
+}
+
+.settings-page.is-account-settings .studio-field {
+  gap: 5px !important;
+}
+
+.settings-page.is-account-settings .studio-field-head {
+  font-size: 0.68rem !important;
+  font-weight: 560 !important;
+}
+
+.settings-page.is-account-settings .studio-input-wrap,
+.settings-page.is-account-settings .studio-select-trigger {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  padding-inline: 10px !important;
+}
+
+.settings-page.is-account-settings .studio-native-input,
+.settings-page.is-account-settings .studio-select-value strong {
+  font-size: 0.72rem !important;
+  font-weight: 430 !important;
+  line-height: 1.2 !important;
+}
+
+.settings-page.is-account-settings .studio-select-value small {
+  font-size: 0.58rem !important;
+  font-weight: 520 !important;
+}
+
+.settings-page.is-account-settings .settings-account-profile-help {
+  gap: 2px !important;
+  border-radius: 13px !important;
+  padding: 8px !important;
+}
+
+.settings-page.is-account-settings .settings-account-profile-help small {
+  font-size: 0.58rem !important;
+  font-weight: 650 !important;
+}
+
+.settings-page.is-account-settings .settings-account-profile-help p {
+  font-size: 0.66rem !important;
+  font-weight: 380 !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page.is-account-settings .settings-account-note-field {
+  gap: 6px !important;
+  font-size: 0.68rem !important;
+  font-weight: 560 !important;
+}
+
+.settings-page.is-account-settings .settings-account-note-field textarea {
+  min-height: 74px !important;
+  border-radius: 13px !important;
+  padding: 9px !important;
+  font-size: 0.72rem !important;
+  font-weight: 400 !important;
+  line-height: 1.42 !important;
+}
+
+.settings-page.is-account-settings .settings-account-preview {
+  gap: 4px !important;
+  border-radius: 13px !important;
+  padding: 8px !important;
+}
+
+.settings-page.is-account-settings .settings-account-preview span {
+  font-size: 0.68rem !important;
+  font-weight: 380 !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page.is-account-settings .settings-account-preview strong {
+  font-weight: 560 !important;
+}
+
+.settings-page.is-account-settings .settings-form-actions {
+  gap: 7px !important;
+}
+
+.settings-page.is-account-settings .settings-row-actions button,
+.settings-page.is-account-settings .settings-mini-button {
+  min-height: 36px !important;
+  border-radius: 12px !important;
+  font-size: 0.68rem !important;
+  font-weight: 560 !important;
+}
+
+.settings-page.is-account-settings .settings-invoice-message {
+  margin: 0 !important;
+  border-radius: 12px !important;
+  padding: 8px 9px !important;
+  font-size: 0.68rem !important;
+  line-height: 1.35 !important;
+}
+
+.settings-page.is-account-settings .settings-account-security-list {
+  gap: 7px !important;
+}
+
+.settings-page.is-account-settings .settings-account-security-list article {
+  min-height: 42px !important;
+  grid-template-columns: 26px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  border-radius: 13px !important;
+  padding: 8px !important;
+}
+
+.settings-page.is-account-settings .settings-account-security-list article svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.settings-page.is-account-settings .settings-account-security-list strong {
+  font-size: 0.72rem !important;
+  font-weight: 560 !important;
+}
+
+.settings-page.is-account-settings .settings-account-security-list small {
+  font-size: 0.62rem !important;
+  font-weight: 380 !important;
+}
+
+.settings-page.is-account-settings .settings-account-danger-zone {
+  gap: 7px !important;
+}
+
+@media (min-width: 768px) {
+  .settings-page.is-account-settings {
+    gap: 12px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-hero {
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-avatar {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .settings-page.is-account-settings .settings-section {
+    padding: 12px !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-info-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-profile-form {
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 0.62fr) !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-note-field,
+  .settings-page.is-account-settings .settings-account-preview,
+  .settings-page.is-account-settings .settings-account-actions,
+  .settings-page.is-account-settings .settings-invoice-message {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-page.is-account-settings {
+    gap: 8px !important;
+  }
+
+  .settings-page.is-account-settings .settings-section {
+    padding: 9px !important;
+    border-radius: 16px !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-info-grid .settings-account-info-item {
+    min-height: 44px !important;
+  }
+
+  .settings-page.is-account-settings .settings-account-hero-copy h3 {
+    font-size: 0.98rem !important;
+  }
+}
+/* === ACCOUNT SETTINGS COMPACT SCHEDULE TYPOGRAPHY: END === */
