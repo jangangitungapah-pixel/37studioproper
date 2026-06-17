@@ -3,8 +3,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
+  browserLocalPersistence,
+  setPersistence,
   signInWithPhoneNumber,
   sendPasswordResetEmail,
   signOut,
@@ -41,6 +44,72 @@ function checkIsOwnerEmail(user) {
   return String(email).trim().toLowerCase() === 'marsicprod@gmail.com';
 }
 
+const GOOGLE_REDIRECT_PENDING_KEY = '37musicstudio.auth.googleRedirectPending.v1';
+
+function safeSessionStorageSet(key, value) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // Some browsers can block storage in strict/private contexts.
+  }
+}
+
+function safeSessionStorageGet(key) {
+  if (typeof window === 'undefined') return '';
+
+  try {
+    return window.sessionStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function safeSessionStorageRemove(key) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Some browsers can block storage in strict/private contexts.
+  }
+}
+
+function markGoogleRedirectPending() {
+  safeSessionStorageSet(GOOGLE_REDIRECT_PENDING_KEY, '1');
+}
+
+function clearGoogleRedirectPending() {
+  safeSessionStorageRemove(GOOGLE_REDIRECT_PENDING_KEY);
+}
+
+export function hasGoogleRedirectPending() {
+  return safeSessionStorageGet(GOOGLE_REDIRECT_PENDING_KEY) === '1';
+}
+
+async function ensureAuthPersistence() {
+  if (!firebaseAuth) return;
+
+  await setPersistence(firebaseAuth, browserLocalPersistence);
+}
+
+function createGoogleProvider() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
+
+  return provider;
+}
+
+function shouldFallbackToRedirect(error) {
+  const code = error?.code || '';
+
+  return code === 'auth/popup-blocked' ||
+    code === 'auth/cancelled-popup-request';
+}
+
 export function getAdminAuthErrorMessage(error) {
   const code = error?.code || '';
 
@@ -61,6 +130,18 @@ export function getAdminAuthErrorMessage(error) {
   }
   if (code === 'auth/network-request-failed') {
     return 'Koneksi ke Firebase gagal. Periksa koneksi internet Anda.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'Domain web app belum diizinkan di Firebase Authentication Authorized domains.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Popup Google diblokir browser. Izinkan pop-up atau coba lagi.';
+  }
+  if (code === 'auth/popup-closed-by-user') {
+    return 'Login Google dibatalkan sebelum selesai.';
+  }
+  if (code === 'auth/account-exists-with-different-credential') {
+    return 'Email ini sudah terdaftar dengan metode login lain.';
   }
   if (code === 'auth/email-already-in-use') {
     return 'Email ini sudah digunakan oleh akun lain.';
@@ -195,6 +276,8 @@ export async function signInAdmin({ email, password }) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
 
+  await ensureAuthPersistence();
+
   const credential = await signInWithEmailAndPassword(
     firebaseAuth,
     String(email || '').trim(),
@@ -208,6 +291,8 @@ export async function signUpAdmin({ email, password }) {
   if (!isFirebaseConfigured || !firebaseAuth) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
+
+  await ensureAuthPersistence();
 
   const credential = await createUserWithEmailAndPassword(
     firebaseAuth,
@@ -223,21 +308,49 @@ export async function signInWithGoogle() {
     throw new Error('Firebase belum dikonfigurasi.');
   }
 
-  const provider = new GoogleAuthProvider();
-  // Use signInWithRedirect for mobile-first support and to avoid popup COOP errors
-  await signInWithRedirect(firebaseAuth, provider);
+  await ensureAuthPersistence();
+
+  const provider = createGoogleProvider();
+
+  try {
+    const credential = await signInWithPopup(firebaseAuth, provider);
+    clearGoogleRedirectPending();
+
+    return serializeFirebaseUser(credential.user);
+  } catch (error) {
+    if (shouldFallbackToRedirect(error)) {
+      markGoogleRedirectPending();
+      await signInWithRedirect(firebaseAuth, provider);
+
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function handleRedirectResult() {
   if (!isFirebaseConfigured || !firebaseAuth) return null;
-  const credential = await getRedirectResult(firebaseAuth);
-  return credential ? serializeFirebaseUser(credential.user) : null;
+
+  await ensureAuthPersistence();
+
+  try {
+    const credential = await getRedirectResult(firebaseAuth);
+    clearGoogleRedirectPending();
+
+    return credential ? serializeFirebaseUser(credential.user) : null;
+  } catch (error) {
+    clearGoogleRedirectPending();
+    throw error;
+  }
 }
 
 export async function sendPhoneOTP(phoneNumber, recaptchaVerifier) {
   if (!isFirebaseConfigured || !firebaseAuth) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
+
+  await ensureAuthPersistence();
 
   return await signInWithPhoneNumber(
     firebaseAuth,
@@ -310,6 +423,7 @@ export async function signOutAdmin() {
 
 export const adminAuthRepository = {
   getAdminAuthErrorMessage,
+  hasGoogleRedirectPending,
   signInAdmin,
   signUpAdmin,
   signInWithGoogle,

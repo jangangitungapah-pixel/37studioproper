@@ -65,19 +65,34 @@ export default function LoginPage() {
   // Handle Google Sign-In redirect result
   useEffect(() => {
     let isMounted = true;
+
     async function checkRedirect() {
+      const hadGoogleRedirectPending = adminAuthRepository.hasGoogleRedirectPending?.() || false;
+
       try {
         const user = await adminAuthRepository.handleRedirectResult();
-        if (user && isMounted) {
+
+        if (!isMounted) return;
+
+        if (user) {
           setSuccess('Google login berhasil! Mengarahkan...');
+          return;
+        }
+
+        if (hadGoogleRedirectPending && !firebaseAuth?.currentUser) {
+          setError('Login Google belum selesai. Silakan coba lagi, atau pastikan domain web app sudah masuk Authorized domains Firebase.');
+          setIsSubmitting(false);
         }
       } catch (err) {
         if (isMounted) {
           setError(adminAuthRepository.getAdminAuthErrorMessage(err));
+          setIsSubmitting(false);
         }
       }
     }
+
     checkRedirect();
+
     return () => {
       isMounted = false;
     };
@@ -227,9 +242,19 @@ export default function LoginPage() {
     setError('');
     setSuccess('');
     setIsSubmitting(true);
+
     try {
-      await adminAuthRepository.signInWithGoogle();
-      // Page is redirecting, do not set isSubmitting to false
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+
+      const googleUser = await adminAuthRepository.signInWithGoogle();
+
+      if (googleUser) {
+        setSuccess('Google login berhasil! Mengarahkan...');
+        setIsSubmitting(false);
+      }
+      // Redirect fallback will leave this page, so do not reset submitting there.
     } catch (err) {
       setError(adminAuthRepository.getAdminAuthErrorMessage(err));
       setIsSubmitting(false);
