@@ -1048,7 +1048,7 @@ export default function BillingPage() {
       });
   }, [activeFilter, bookings, searchText]);
 
-  async async async function recordPayment(booking, payment) {
+  async function recordPayment(booking, payment) {
     if (normalizeStatus(booking) === 'void') {
       setToast({
         title: 'Invoice sudah void',
