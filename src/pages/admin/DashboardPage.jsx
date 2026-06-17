@@ -387,19 +387,21 @@ function DashboardChart({ chartData, range, onRangeChange }) {
 
       <div className="dashboard-chart-shell">
         <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <ComposedChart data={chartData} margin={{ top: 8, right: 10, bottom: 24, left: -6 }}>
             <CartesianGrid stroke="var(--dashboard-chart-grid)" strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
-              tick={{ fill: 'var(--auth-text-muted)', fontSize: 11, fontWeight: 700 }}
+              height={30}
+              tick={{ fill: 'var(--auth-text-muted)', fontSize: 10, fontWeight: 520 }}
+              tickMargin={8}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: 'var(--auth-text-muted)', fontSize: 10, fontWeight: 700 }}
+              tick={{ fill: 'var(--auth-text-muted)', fontSize: 9, fontWeight: 520 }}
               axisLine={false}
               tickLine={false}
-              width={48}
+              width={44}
               tickFormatter={formatCompactCurrency}
             />
             <Tooltip
@@ -413,14 +415,14 @@ function DashboardChart({ chartData, range, onRangeChange }) {
                 color: 'var(--auth-text-main)',
               }}
             />
-            <Legend wrapperStyle={{ color: 'var(--auth-text-muted)', fontSize: 11, fontWeight: 700 }} />
+            <Legend wrapperStyle={{ color: 'var(--auth-text-muted)', fontSize: 10, fontWeight: 560, paddingTop: 6 }} />
             <Area
               type="monotone"
               dataKey="pemasukan"
               name="Pemasukan"
               stroke="var(--dashboard-income)"
               fill="var(--dashboard-income-soft)"
-              strokeWidth={2.3}
+              strokeWidth={2}
             />
             <Bar
               dataKey="pengeluaran"
@@ -434,8 +436,8 @@ function DashboardChart({ chartData, range, onRangeChange }) {
               dataKey="saldo"
               name="Saldo"
               stroke="var(--dashboard-net)"
-              strokeWidth={2.4}
-              dot={{ r: 3, fill: 'var(--dashboard-net)' }}
+              strokeWidth={2}
+              dot={{ r: 2.5, fill: 'var(--dashboard-net)' }}
             />
           </ComposedChart>
         </ResponsiveContainer>

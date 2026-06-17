@@ -12334,3 +12334,231 @@
   }
 }
 /* === DASHBOARD COMPACT SCHEDULE TYPOGRAPHY: END === */
+
+/* === DASHBOARD REFINED CHART TYPOGRAPHY: START === */
+.dashboard-page {
+  gap: 9px !important;
+  font-weight: 520 !important;
+}
+
+.dashboard-page strong,
+.dashboard-page b {
+  font-weight: 680 !important;
+}
+
+.dashboard-hero,
+.dashboard-chart-card,
+.dashboard-list-card,
+.dashboard-mini-card,
+.dashboard-sync-alert,
+.dashboard-metric-card {
+  border-color: color-mix(in srgb, var(--auth-border) 82%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01)),
+    var(--auth-bg-card) !important;
+}
+
+.dashboard-hero {
+  padding: 11px 12px !important;
+}
+
+.dashboard-hero p,
+.dashboard-chart-card small,
+.dashboard-list-card small,
+.dashboard-metric-card small,
+.dashboard-mini-card small {
+  color: color-mix(in srgb, var(--auth-text-muted) 82%, transparent) !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.095em !important;
+}
+
+.dashboard-hero h2 {
+  font-weight: 430 !important;
+  letter-spacing: -0.06em !important;
+}
+
+.dashboard-hero span,
+.dashboard-chart-card header span {
+  color: color-mix(in srgb, var(--auth-text-muted) 88%, transparent) !important;
+  font-weight: 430 !important;
+}
+
+.dashboard-hero button,
+.dashboard-list-card header button {
+  font-weight: 680 !important;
+  box-shadow: none !important;
+}
+
+.dashboard-metric-card,
+.dashboard-mini-card {
+  padding: 8px 9px !important;
+}
+
+.dashboard-metric-card strong,
+.dashboard-mini-card strong {
+  font-weight: 680 !important;
+}
+
+.dashboard-metric-card em {
+  color: color-mix(in srgb, var(--auth-text-muted) 84%, transparent) !important;
+  font-weight: 520 !important;
+}
+
+.dashboard-chart-card {
+  padding: 10px 10px 13px !important;
+}
+
+.dashboard-chart-card header strong,
+.dashboard-list-card header strong {
+  font-weight: 650 !important;
+}
+
+.dashboard-chart-shell {
+  height: 238px !important;
+  padding: 0 0 12px !important;
+  overflow: visible !important;
+}
+
+.dashboard-chart-shell .recharts-wrapper,
+.dashboard-chart-shell .recharts-surface {
+  overflow: visible !important;
+}
+
+.dashboard-chart-shell .recharts-cartesian-axis-tick-value,
+.dashboard-chart-shell .recharts-legend-item-text {
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  font-weight: 520 !important;
+}
+
+.dashboard-chart-shell .recharts-tooltip-wrapper {
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  font-size: 0.72rem !important;
+  font-weight: 520 !important;
+}
+
+.dashboard-list-card {
+  padding: 10px !important;
+}
+
+.dashboard-mini-list article,
+.dashboard-alert-stack button {
+  min-height: 38px !important;
+  padding: 7px 8px !important;
+  border-radius: 12px !important;
+}
+
+.dashboard-mini-list strong,
+.dashboard-alert-stack strong {
+  font-weight: 620 !important;
+}
+
+.dashboard-mini-list small,
+.dashboard-alert-stack small {
+  font-weight: 480 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.dashboard-mini-list em {
+  font-weight: 680 !important;
+  letter-spacing: 0.055em !important;
+}
+
+.dashboard-bottom-grid {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 620px) {
+  .dashboard-page {
+    gap: 8px !important;
+  }
+
+  .dashboard-hero {
+    padding: 10px 11px !important;
+  }
+
+  .dashboard-hero h2 {
+    font-size: clamp(1.18rem, 6.2vw, 1.62rem) !important;
+  }
+
+  .dashboard-hero span {
+    font-size: 0.72rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .dashboard-metric-grid,
+  .dashboard-bottom-grid {
+    gap: 7px !important;
+  }
+
+  .dashboard-metric-card,
+  .dashboard-mini-card {
+    gap: 4px !important;
+    padding: 8px !important;
+  }
+
+  .dashboard-metric-icon,
+  .dashboard-mini-card span {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 10px !important;
+  }
+
+  .dashboard-metric-card strong,
+  .dashboard-mini-card strong {
+    font-size: clamp(0.86rem, 4vw, 1.02rem) !important;
+  }
+
+  .dashboard-metric-card em {
+    font-size: 0.58rem !important;
+    line-height: 1.22 !important;
+  }
+
+  .dashboard-chart-card {
+    padding: 10px 10px 16px !important;
+  }
+
+  .dashboard-chart-card header {
+    gap: 6px !important;
+  }
+
+  .dashboard-chart-card header strong,
+  .dashboard-list-card header strong {
+    font-size: 0.9rem !important;
+  }
+
+  .dashboard-chart-card header span {
+    font-size: 0.7rem !important;
+  }
+
+  .dashboard-chart-shell {
+    height: 232px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .dashboard-list-card {
+    padding: 9px !important;
+  }
+
+  .dashboard-mini-list,
+  .dashboard-alert-stack {
+    gap: 6px !important;
+  }
+
+  .dashboard-mini-list article,
+  .dashboard-alert-stack button {
+    min-height: 36px !important;
+    padding: 7px 8px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .dashboard-chart-shell {
+    height: 224px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .dashboard-chart-card {
+    padding-bottom: 18px !important;
+  }
+}
+/* === DASHBOARD REFINED CHART TYPOGRAPHY: END === */
