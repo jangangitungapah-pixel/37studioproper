@@ -189,6 +189,85 @@ function InventorySummary({ items }) {
   );
 }
 
+function getInventoryAttentionItems(items) {
+  return items
+    .map((item) => ({
+      ...item,
+      effectiveStatus: getEffectiveStatus(item),
+    }))
+    .filter((item) => ['low_stock', 'maintenance', 'broken', 'lost'].includes(item.effectiveStatus))
+    .sort((first, second) => {
+      const priority = {
+        low_stock: 1,
+        maintenance: 2,
+        broken: 3,
+        lost: 4,
+      };
+
+      return (priority[first.effectiveStatus] || 9) - (priority[second.effectiveStatus] || 9);
+    });
+}
+
+function InventoryAttentionPanel({ items, onAdjustStock, onEdit }) {
+  const attentionItems = getInventoryAttentionItems(items);
+
+  if (!attentionItems.length) return null;
+
+  return (
+    <section className="inventory-attention-panel" aria-label="Inventory yang perlu perhatian">
+      <header>
+        <span><Wrench size={15} /></span>
+        <div>
+          <small>Perlu Perhatian</small>
+          <strong>{attentionItems.length} item butuh dicek</strong>
+        </div>
+      </header>
+
+      <div className="inventory-attention-list">
+        {attentionItems.slice(0, 4).map((item) => {
+          const isLowStock = item.effectiveStatus === 'low_stock';
+
+          return (
+            <article className={'inventory-attention-row is-' + item.effectiveStatus} key={item.id}>
+              <div>
+                <strong>{item.name}</strong>
+                <span>
+                  {getStatusLabel(item.effectiveStatus)} • {item.quantity} {item.unit}
+                  {Number(item.minStock) > 0 ? ' / min ' + item.minStock + ' ' + item.unit : ''}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (isLowStock) {
+                    onAdjustStock(item, 'in');
+                    return;
+                  }
+
+                  onEdit(item);
+                }}
+              >
+                {isLowStock ? (
+                  <>
+                    <Plus size={13} />
+                    Restock
+                  </>
+                ) : (
+                  <>
+                    <Pencil size={13} />
+                    Edit
+                  </>
+                )}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function InventoryMovementPanel({ movements }) {
   if (!movements.length) return null;
 
@@ -783,6 +862,12 @@ export default function InventoryPage() {
         onCategoryChange={setCategoryFilter}
         onSearchChange={setSearchText}
         onStatusChange={setStatusFilter}
+      />
+
+      <InventoryAttentionPanel
+        items={items}
+        onAdjustStock={openStockAdjustment}
+        onEdit={openEditForm}
       />
 
       <InventoryMovementPanel movements={movements} />

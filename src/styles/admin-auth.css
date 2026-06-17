@@ -10362,3 +10362,176 @@
   }
 }
 /* === INVENTORY STOCK BUTTON POLISH: END === */
+
+/* === INVENTORY ATTENTION CENTER: START === */
+.inventory-attention-panel {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(255, 176, 32, 0.28);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 176, 32, 0.11), rgba(255, 255, 255, 0.025)),
+    rgba(255, 255, 255, 0.022);
+  padding: 8px;
+}
+
+.inventory-attention-panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inventory-attention-panel header > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 176, 32, 0.32);
+  border-radius: 11px;
+  background: rgba(255, 176, 32, 0.1);
+  color: #ffb020;
+}
+
+.inventory-attention-panel header div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.inventory-attention-panel header small {
+  color: #ffb020;
+  font-size: 0.5rem;
+  font-weight: 680;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.inventory-attention-panel header strong {
+  color: var(--auth-text-strong);
+  font-size: 0.74rem;
+  font-weight: 620;
+}
+
+.inventory-attention-list {
+  display: grid;
+  gap: 5px;
+}
+
+.inventory-attention-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+  background: var(--auth-bg-control);
+  padding: 7px;
+}
+
+.inventory-attention-row div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.inventory-attention-row strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.68rem;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-attention-row span {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.56rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-attention-row button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 44%, var(--auth-border));
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--auth-accent) 14%, transparent), rgba(255, 255, 255, 0.032)),
+    var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  padding: 0 10px;
+  font-size: 0.58rem;
+  font-weight: 720;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inventory-attention-row.is-low_stock button {
+  border-color: rgba(255, 176, 32, 0.4);
+  background:
+    linear-gradient(135deg, rgba(255, 176, 32, 0.13), rgba(255, 255, 255, 0.025)),
+    var(--auth-bg-control);
+}
+
+.inventory-attention-row.is-low_stock button svg {
+  color: #ffb020;
+}
+
+.inventory-attention-row.is-maintenance button svg {
+  color: #5cc8ff;
+}
+
+.inventory-attention-row.is-broken button,
+.inventory-attention-row.is-lost button {
+  border-color: rgba(255, 107, 107, 0.34);
+}
+
+.inventory-attention-row.is-broken button svg,
+.inventory-attention-row.is-lost button svg {
+  color: #ff8a8a;
+}
+
+@media (max-width: 767px) {
+  .inventory-attention-panel {
+    gap: 6px;
+    border-radius: 15px;
+    padding: 7px;
+  }
+
+  .inventory-attention-panel header > span {
+    width: 25px;
+    height: 25px;
+    border-radius: 10px;
+  }
+
+  .inventory-attention-panel header svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .inventory-attention-row {
+    border-radius: 11px;
+    padding: 6px;
+  }
+
+  .inventory-attention-row strong {
+    font-size: 0.62rem;
+  }
+
+  .inventory-attention-row span {
+    font-size: 0.52rem;
+  }
+
+  .inventory-attention-row button {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 0.54rem;
+  }
+}
+/* === INVENTORY ATTENTION CENTER: END === */
