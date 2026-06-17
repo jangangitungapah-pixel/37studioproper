@@ -263,10 +263,6 @@ export default function AdminPage() {
     }
   }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated]);
 
-  useEffect(() => {
-    setIsMoreMenuOpen(false);
-  }, [location.pathname]);
-
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();
     navigate('/login', { replace: true });

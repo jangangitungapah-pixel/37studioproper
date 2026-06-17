@@ -115,19 +115,12 @@ function getDateFromValue(value) {
 
 function isPaymentInCashRange(value, range) {
   if (range === 'all') return true;
+  if (range === 'today') return isSameIsoDay(value, getTodayIsoDate());
 
   const paymentDate = getDateFromValue(value);
   const now = new Date();
 
   if (!paymentDate) return false;
-
-  if (range === 'today') {
-    return (
-      paymentDate.getFullYear() === now.getFullYear() &&
-      paymentDate.getMonth() === now.getMonth() &&
-      paymentDate.getDate() === now.getDate()
-    );
-  }
 
   if (range === 'month') {
     return paymentDate.getFullYear() === now.getFullYear() && paymentDate.getMonth() === now.getMonth();
