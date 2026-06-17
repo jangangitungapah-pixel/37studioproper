@@ -183,26 +183,6 @@ function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, requ
   ];
 }
 
-) {
-  const existingPaymentHistory = getExistingPaymentHistory(editingBooking);
-
-  const initialPaidAmount = getInitialPaidAmount(form.paymentStatus, totals, requestedDpAmount);
-
-  if (!initialPaidAmount) return [];
-
-  return [
-    {
-      amount: initialPaidAmount,
-      createdAt: now,
-      date: getTodayIsoDate(),
-      id: makePaymentRecordId(),
-      method: form.paymentMethod || 'cash',
-      note: form.paymentStatus === 'lunas' ? 'Pembayaran awal dari booking form' : 'DP awal dari booking form',
-      source: 'booking-form',
-      bookingId,
-    },
-  ];
-}
 
 export default function BookingFormModal({
   editingBooking,
