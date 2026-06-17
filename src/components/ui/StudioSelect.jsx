@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 
 function getSingleLabel(options, selectedKey, placeholder) {
@@ -16,6 +17,32 @@ function getMultiLabel(options, selectedKeys, placeholder) {
     .join(', ');
 }
 
+function getFloatingListStyle(rect) {
+  const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  const gutter = 12;
+  const bottomReserve = window.matchMedia('(max-width: 767px)').matches ? 118 : gutter;
+  const maxViewportWidth = Math.max(180, viewportWidth - gutter * 2);
+  const width = Math.min(Math.max(rect.width, 220), maxViewportWidth);
+  const left = Math.min(Math.max(gutter, rect.left), viewportWidth - width - gutter);
+  const spaceBelow = viewportHeight - rect.bottom - bottomReserve - 8;
+  const spaceAbove = rect.top - gutter - 8;
+  const shouldOpenUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+  const availableHeight = shouldOpenUp ? spaceAbove : spaceBelow;
+  const maxHeight = Math.min(320, Math.max(144, availableHeight));
+  const preferredTop = shouldOpenUp ? rect.top - maxHeight - 8 : rect.bottom + 8;
+  const top = Math.max(gutter, Math.min(preferredTop, viewportHeight - bottomReserve - maxHeight));
+
+  return {
+    bottom: 'auto',
+    left: Math.round(left) + 'px',
+    maxHeight: Math.round(maxHeight) + 'px',
+    right: 'auto',
+    top: Math.round(top) + 'px',
+    width: Math.round(width) + 'px',
+  };
+}
+
 export default function StudioSelect({
   disabled = false,
   helper,
@@ -29,8 +56,10 @@ export default function StudioSelect({
 }) {
   const selectId = useId();
   const rootRef = useRef(null);
+  const listRef = useRef(null);
   const listboxId = selectId + '-listbox';
   const [isOpen, setIsOpen] = useState(false);
+  const [listStyle, setListStyle] = useState(null);
 
   const selectedSummary = useMemo(() => {
     if (multiple) return getMultiLabel(options, selectedKeys, placeholder);
@@ -38,16 +67,30 @@ export default function StudioSelect({
     return getSingleLabel(options, selectedKey, placeholder);
   }, [multiple, options, placeholder, selectedKey, selectedKeys]);
 
+  const updateListPosition = useCallback(() => {
+    const rect = rootRef.current?.getBoundingClientRect();
+
+    if (!rect) return;
+
+    setListStyle(getFloatingListStyle(rect));
+  }, []);
+
   useEffect(() => {
     function handlePointerDown(event) {
-      if (!rootRef.current?.contains(event.target)) {
-        setIsOpen(false);
+      const target = event.target;
+
+      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) {
+        return;
       }
+
+      setIsOpen(false);
+      setListStyle(null);
     }
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        setListStyle(null);
       }
     }
 
@@ -60,12 +103,33 @@ export default function StudioSelect({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    let frameId = window.requestAnimationFrame(updateListPosition);
+
+    function handleReposition() {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateListPosition);
+    }
+
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [isOpen, options.length, updateListPosition]);
+
   function handleToggleOption(optionKey) {
     if (disabled) return;
 
     if (!multiple) {
       onChange(optionKey);
       setIsOpen(false);
+      setListStyle(null);
       return;
     }
 
@@ -84,7 +148,13 @@ export default function StudioSelect({
   function toggleOpen() {
     if (disabled) return;
 
-    setIsOpen((current) => !current);
+    if (isOpen) {
+      setListStyle(null);
+      setIsOpen(false);
+      return;
+    }
+
+    setIsOpen(true);
   }
 
   const rootClassName = [
@@ -95,9 +165,57 @@ export default function StudioSelect({
     .filter(Boolean)
     .join(' ');
 
+  const fallbackListStyle = {
+    bottom: 'auto',
+    left: '-9999px',
+    maxHeight: '240px',
+    right: 'auto',
+    top: '0px',
+    width: '240px',
+  };
+
+  const listbox = isOpen && !disabled ? (
+    <div
+      aria-label={label}
+      className="studio-select-list"
+      data-option-count={options.length}
+      data-portal="true"
+      data-ready={listStyle ? 'true' : 'false'}
+      id={listboxId}
+      ref={listRef}
+      role="listbox"
+      style={listStyle || fallbackListStyle}
+      aria-multiselectable={multiple || undefined}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {options.map((option) => {
+        const selected = isSelected(option.key);
+
+        return (
+          <button
+            aria-selected={selected}
+            className={selected ? 'studio-select-option is-selected' : 'studio-select-option'}
+            key={option.key}
+            role="option"
+            type="button"
+            onClick={() => handleToggleOption(option.key)}
+          >
+            <span className={option.tone ? 'studio-select-dot is-' + option.tone : 'studio-select-dot'} />
+            <span className="studio-select-option-text">
+              <strong>{option.label}</strong>
+              {option.description ? <span>{option.description}</span> : null}
+            </span>
+            {selected ? <Check size={16} aria-hidden="true" /> : null}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
     <div className={rootClassName} ref={rootRef}>
       <button
+        aria-controls={listboxId}
         aria-disabled={disabled}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
@@ -121,38 +239,7 @@ export default function StudioSelect({
         />
       </button>
 
-      {isOpen && !disabled ? (
-        <div
-          aria-label={label}
-          className="studio-select-list"
-          data-option-count={options.length}
-          id={listboxId}
-          role="listbox"
-          aria-multiselectable={multiple || undefined}
-        >
-          {options.map((option) => {
-            const selected = isSelected(option.key);
-
-            return (
-              <button
-                aria-selected={selected}
-                className={selected ? 'studio-select-option is-selected' : 'studio-select-option'}
-                key={option.key}
-                role="option"
-                type="button"
-                onClick={() => handleToggleOption(option.key)}
-              >
-                <span className={option.tone ? 'studio-select-dot is-' + option.tone : 'studio-select-dot'} />
-                <span className="studio-select-option-text">
-                  <strong>{option.label}</strong>
-                  {option.description ? <span>{option.description}</span> : null}
-                </span>
-                {selected ? <Check size={16} aria-hidden="true" /> : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      {listbox && typeof document !== 'undefined' ? createPortal(listbox, document.body) : listbox}
     </div>
   );
 }

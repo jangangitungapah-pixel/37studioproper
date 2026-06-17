@@ -327,25 +327,6 @@ function isCustomerIdle(customer) {
   return Date.now() - customer.latestActivityValue > 30 * dayMs;
 }
 
-function getCustomerFollowUpReason(customer) {
-  if (customer.hasOpenPayment) return 'Pending / DP';
-  if (customer.followUpStatus === 'follow-up') return 'Manual follow-up';
-  if (customer.followUpStatus === 'watchlist') return 'Perlu perhatian';
-  if (customer.hasDuplicatePhone) return 'Nomor ganda';
-  if (isCustomerIdle(customer)) return 'Lama tidak booking';
-
-  return 'Normal';
-}
-
-function getCustomerFollowUpTone(customer) {
-  if (customer.hasOpenPayment || customer.followUpStatus === 'watchlist') return 'is-warning';
-  if (customer.followUpStatus === 'follow-up') return 'is-neutral';
-  if (customer.hasDuplicatePhone) return 'is-duplicate';
-  if (isCustomerIdle(customer)) return 'is-idle';
-
-  return 'is-neutral';
-}
-
 function getCustomerListTone(customer) {
   if (customer.hasOpenPayment || customer.followUpStatus === 'watchlist') return 'is-warning';
   if (customer.followUpStatus === 'vip' || customer.paidBookings > 0) return 'is-paid';
