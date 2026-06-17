@@ -36,6 +36,14 @@ service cloud.firestore {
       allow read, write: if isApproved();
     }
 
+    match /inventoryItems/{itemId} {
+      allow read, write: if isApproved();
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read, write: if isApproved();
+    }
+
     match /settings/{settingId} {
       allow read: if isSignedIn();
       allow write: if isApproved();
