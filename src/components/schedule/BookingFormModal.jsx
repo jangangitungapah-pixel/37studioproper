@@ -119,6 +119,12 @@ function parseRupiahInput(value) {
   return Number(digitsOnly) || 0;
 }
 
+function normalizeMoneyInputValue(value) {
+  const digitsOnly = String(value ?? '').replace(/\D/g, '');
+
+  return digitsOnly.replace(/^0+(?=\d)/, '');
+}
+
 function getDurationHours(form) {
   if (form.duration === 'custom') {
     return Math.max(0, Number(form.customDuration) || 0);
@@ -182,7 +188,6 @@ function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, requ
     ...preservedPayments,
   ];
 }
-
 
 export default function BookingFormModal({
   editingBooking,
@@ -268,7 +273,9 @@ export default function BookingFormModal({
 
   function updateField(field) {
     return (event) => {
-      const nextValue = event.target.value;
+      const nextValue = field === 'dpAmount'
+        ? normalizeMoneyInputValue(event.target.value)
+        : event.target.value;
 
       setForm((current) => ({
         ...current,
@@ -553,9 +560,8 @@ export default function BookingFormModal({
                 inputMode="numeric"
                 label="Nominal DP"
                 min="0"
-                placeholder="Contoh 50000"
-                step="1000"
-                type="number"
+                placeholder="Contoh 50000 atau 50.000"
+                type="text"
                 value={form.dpAmount}
                 onChange={updateField('dpAmount')}
               />
