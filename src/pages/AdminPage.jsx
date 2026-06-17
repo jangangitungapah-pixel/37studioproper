@@ -26,14 +26,22 @@ import BillingPage from './admin/BillingPage.jsx';
 import BookkeepingPage from './admin/BookkeepingPage.jsx';
 import InventoryPage from './admin/InventoryPage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
+import DashboardPage from './admin/DashboardPage.jsx';
 
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
 
-const mobilePrimaryNavKeys = ['schedule', 'customers', 'billing'];
+const mobilePrimaryNavKeys = ['dashboard', 'schedule', 'billing'];
 
 const navItems = [
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    path: '/admin/dashboard',
+    icon: Home,
+    title: 'Dashboard',
+  },
   {
     key: 'schedule',
     label: 'Schedule',
@@ -89,6 +97,7 @@ function getInitialSidebarState() {
 }
 
 function renderAdminContent(activeKey, currentUser) {
+  if (activeKey === 'dashboard') return <DashboardPage />;
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
   if (activeKey === 'customers') return <CustomerPage />;
   if (activeKey === 'billing') return <BillingPage />;
@@ -190,7 +199,7 @@ function AutoApproveView({ currentUser, onLogout }) {
             <button 
               className="auth-google-btn" 
               type="button" 
-              onClick={() => navigate('/admin/schedule')}
+              onClick={() => navigate('/admin/dashboard')}
               style={{ marginTop: '0', width: '100%', background: 'var(--auth-accent)', color: '#fff', borderColor: 'var(--auth-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
               <Home size={16} />
@@ -222,7 +231,7 @@ function AutoApproveView({ currentUser, onLogout }) {
               <button 
                 className="auth-google-btn" 
                 type="button" 
-                onClick={() => navigate('/admin/schedule')}
+                onClick={() => navigate('/admin/dashboard')}
                 style={{ marginTop: '0', width: '100%' }}
               >
                 <span>Kembali ke Dashboard</span>
@@ -269,7 +278,7 @@ export default function AdminPage() {
     if (!authState.isReady || !authState.isAuthenticated) return;
 
     if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem) {
-      navigate('/admin/schedule', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     }
   }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated]);
 
