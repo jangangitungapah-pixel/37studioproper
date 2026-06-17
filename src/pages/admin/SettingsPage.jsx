@@ -4,6 +4,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } fro
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
+import { adminAuthRepository } from '../../services/adminAuthRepository.js';
 import {
   accountContactOptions,
   accountLandingOptions,
@@ -157,6 +158,10 @@ export default function SettingsPage({ currentUser }) {
   const [invoiceSettingsMessage, setInvoiceSettingsMessage] = useState('');
   const [accountPreferences, setAccountPreferences] = useState(() => readAccountPreferences(currentUser?.uid));
   const [accountSettingsMessage, setAccountSettingsMessage] = useState('');
+  const [accountProfileForm, setAccountProfileForm] = useState(() => ({
+    displayName: currentUser?.displayName || '',
+  }));
+  const [accountProfileMessage, setAccountProfileMessage] = useState('');
 
   useEffect(() => {
     const settingsFrameId = window.requestAnimationFrame(() => {
@@ -187,6 +192,18 @@ export default function SettingsPage({ currentUser }) {
       window.cancelAnimationFrame(accountFrameId);
     };
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    const profileFrameId = window.requestAnimationFrame(() => {
+      setAccountProfileForm({
+        displayName: currentUser?.displayName || '',
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(profileFrameId);
+    };
+  }, [currentUser?.displayName]);
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
@@ -351,6 +368,47 @@ export default function SettingsPage({ currentUser }) {
     } catch (err) {
       console.error('Gagal menyalin UID akun:', err);
       setAccountSettingsMessage('UID akun belum berhasil disalin.');
+    }
+  }
+
+  function updateAccountProfileField(field) {
+    return (event) => {
+      const value = event.target.value;
+
+      setAccountProfileForm((current) => ({
+        ...current,
+        [field]: value,
+      }));
+
+      if (accountProfileMessage) setAccountProfileMessage('');
+    };
+  }
+
+  async function saveAccountProfilePage(event) {
+    event.preventDefault();
+
+    try {
+      const updatedProfile = await adminAuthRepository.updateAdminProfile({
+        displayName: accountProfileForm.displayName,
+      });
+
+      setAccountProfileForm({
+        displayName: updatedProfile.displayName || accountProfileForm.displayName,
+      });
+      setAccountProfileMessage('Profil akun berhasil diperbarui.');
+    } catch (err) {
+      console.error('Gagal menyimpan profil akun:', err);
+      setAccountProfileMessage(err?.message || 'Profil akun belum berhasil diperbarui.');
+    }
+  }
+
+  async function sendPasswordResetPage() {
+    try {
+      await adminAuthRepository.sendAdminPasswordReset(currentUser?.email);
+      setAccountProfileMessage('Email reset password sudah dikirim.');
+    } catch (err) {
+      console.error('Gagal mengirim reset password:', err);
+      setAccountProfileMessage(err?.message || 'Email reset password belum berhasil dikirim.');
     }
   }
 
@@ -681,6 +739,50 @@ export default function SettingsPage({ currentUser }) {
                 <strong>{accountUidLabel}</strong>
               </article>
             </div>
+          </section>
+
+          <section className="settings-section settings-account-profile-section">
+            <div className="settings-section-head">
+              <div>
+                <h3>Profil Akun</h3>
+                <p>Ubah nama tampilan admin dan kirim email reset password untuk akun email.</p>
+              </div>
+            </div>
+
+            <form className="settings-account-form settings-account-profile-form" onSubmit={saveAccountProfilePage}>
+              <StudioTextField
+                id="account-profile-display-name"
+                label="Nama Tampilan"
+                placeholder="Contoh: Owner 37 Music"
+                value={accountProfileForm.displayName}
+                onChange={updateAccountProfileField('displayName')}
+              />
+
+              <div className="settings-account-profile-help">
+                <small>Reset Password</small>
+                <p>Email reset hanya bisa dikirim jika akun ini punya email login.</p>
+              </div>
+
+              {accountProfileMessage ? (
+                <p className="settings-invoice-message" role="status">{accountProfileMessage}</p>
+              ) : null}
+
+              <div className="settings-form-actions settings-account-actions">
+                <button
+                  className="settings-mini-button is-ghost"
+                  disabled={!currentUser?.email}
+                  type="button"
+                  onClick={sendPasswordResetPage}
+                >
+                  Kirim Reset Password
+                </button>
+
+                <button className="settings-mini-button is-primary" type="submit">
+                  <Save size={15} />
+                  Simpan Profil
+                </button>
+              </div>
+            </form>
           </section>
 
           <section className="settings-section">

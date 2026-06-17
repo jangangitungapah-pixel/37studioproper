@@ -12989,3 +12989,50 @@
   }
 }
 /* === ACCOUNT SETTINGS SUBPAGE: END === */
+
+/* === ACCOUNT PROFILE ACTIONS: START === */
+.settings-account-profile-form {
+  grid-template-columns: 1fr;
+}
+
+.settings-account-profile-help {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-soft);
+  padding: 10px;
+}
+
+.settings-account-profile-help small {
+  color: var(--auth-accent);
+  font-size: 0.64rem;
+  font-weight: 680;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.settings-account-profile-help p {
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.settings-mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (min-width: 768px) {
+  .settings-account-profile-form {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.72fr);
+    align-items: end;
+  }
+
+  .settings-account-profile-form .settings-invoice-message,
+  .settings-account-profile-form .settings-account-actions {
+    grid-column: 1 / -1;
+  }
+}
+/* === ACCOUNT PROFILE ACTIONS: END === */

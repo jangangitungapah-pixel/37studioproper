@@ -5,7 +5,9 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signInWithPhoneNumber,
-  signOut
+  sendPasswordResetEmail,
+  signOut,
+  updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -227,6 +229,61 @@ export async function sendPhoneOTP(phoneNumber, recaptchaVerifier) {
   );
 }
 
+export async function updateAdminProfile({ displayName }) {
+  if (!isFirebaseConfigured || !firebaseAuth) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  const currentUser = firebaseAuth.currentUser;
+  const cleanDisplayName = String(displayName || '').trim();
+
+  if (!currentUser) {
+    throw new Error('Admin belum login.');
+  }
+
+  if (!cleanDisplayName) {
+    throw new Error('Nama tampilan wajib diisi.');
+  }
+
+  await updateProfile(currentUser, {
+    displayName: cleanDisplayName,
+  });
+
+  try {
+    await setDoc(
+      doc(firestoreDb, 'users', currentUser.uid),
+      {
+        displayName: cleanDisplayName,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn('Display name Firebase Auth tersimpan, tetapi Firestore profile belum tersinkron:', error);
+  }
+
+  return {
+    ...serializeFirebaseUser(firebaseAuth.currentUser),
+    displayName: cleanDisplayName,
+  };
+}
+
+export async function sendAdminPasswordReset(email) {
+  if (!isFirebaseConfigured || !firebaseAuth) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  const cleanEmail = String(email || '').trim();
+
+  if (!cleanEmail) {
+    throw new Error('Email akun belum tersedia.');
+  }
+
+  await sendPasswordResetEmail(firebaseAuth, cleanEmail);
+
+  return true;
+}
+
 export async function signOutAdmin() {
   if (!isFirebaseConfigured || !firebaseAuth) {
     return;
@@ -240,6 +297,8 @@ export const adminAuthRepository = {
   signUpAdmin,
   signInWithGoogle,
   sendPhoneOTP,
+  sendAdminPasswordReset,
   signOutAdmin,
+  updateAdminProfile,
   subscribeAdminAuth
 };
