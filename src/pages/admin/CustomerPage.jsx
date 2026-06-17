@@ -23,7 +23,6 @@ import { adminBookingRepository } from '../../services/adminBookingRepository.js
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 
 const MANUAL_CUSTOMERS_STORAGE_KEY = '37musicstudio.customers.manual.v1';
-const MANUAL_CUSTOMERS_EVENT = 'customer-manual-change';
 
 const emptyCustomerForm = {
   name: '',
@@ -57,6 +56,22 @@ const activityFilterOptions = [
   { key: 'pending', label: 'Pending', description: 'Booking belum dibayar' },
   { key: 'dp', label: 'DP', description: 'Booking sudah DP' },
   { key: 'lunas', label: 'Lunas', description: 'Booking sudah lunas' },
+];
+
+const followUpFilterOptions = [
+  { key: 'all', label: 'Semua', description: 'Semua customer yang perlu perhatian' },
+  { key: 'unpaid', label: 'Pending / DP', description: 'Ada tagihan outstanding' },
+  { key: 'pending', label: 'Pending', description: 'Belum ada pembayaran' },
+  { key: 'dp', label: 'DP', description: 'Sudah DP tapi belum lunas' },
+  { key: 'manual', label: 'Manual Follow-up', description: 'Ditandai follow-up / watchlist' },
+  { key: 'duplicate', label: 'Nomor Ganda', description: 'Nomor WA terduplikasi' },
+  { key: 'idle', label: 'Lama Tidak Booking', description: 'Tidak ada activity lebih dari 30 hari' },
+];
+
+const followUpTemplateOptions = [
+  { key: 'payment', label: 'Tagihan / DP', description: 'Template untuk pending atau DP' },
+  { key: 'booking', label: 'Follow-up Booking', description: 'Template ajakan booking ulang' },
+  { key: 'comeback', label: 'Comeback', description: 'Template customer lama' },
 ];
 
 function cleanText(value) {
@@ -304,6 +319,111 @@ function groupCustomerActivities(bookings = []) {
   }, []);
 }
 
+
+function isCustomerIdle(customer) {
+  if (!customer?.latestActivityValue || !customer?.totalBookings) return false;
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  return Date.now() - customer.latestActivityValue > 30 * dayMs;
+}
+
+function getCustomerFollowUpReason(customer) {
+  if (customer.hasOpenPayment) return 'Pending / DP';
+  if (customer.followUpStatus === 'follow-up') return 'Manual follow-up';
+  if (customer.followUpStatus === 'watchlist') return 'Perlu perhatian';
+  if (customer.hasDuplicatePhone) return 'Nomor ganda';
+  if (isCustomerIdle(customer)) return 'Lama tidak booking';
+
+  return 'Normal';
+}
+
+function getCustomerFollowUpTone(customer) {
+  if (customer.hasOpenPayment || customer.followUpStatus === 'watchlist') return 'is-warning';
+  if (customer.followUpStatus === 'follow-up') return 'is-neutral';
+  if (customer.hasDuplicatePhone) return 'is-duplicate';
+  if (isCustomerIdle(customer)) return 'is-idle';
+
+  return 'is-neutral';
+}
+
+function getCustomerFollowUpScore(customer) {
+  let score = 0;
+
+  if (customer.pendingBookings > 0) score += 80;
+  if (customer.dpBookings > 0) score += 64;
+  if (customer.openInvoiceAmount > 0) score += Math.min(40, Math.floor(customer.openInvoiceAmount / 50000));
+  if (customer.followUpStatus === 'watchlist') score += 48;
+  if (customer.followUpStatus === 'follow-up') score += 42;
+  if (customer.hasDuplicatePhone) score += 24;
+  if (isCustomerIdle(customer)) score += 18;
+
+  return score;
+}
+
+function matchesCustomerFollowUpFilter(customer, activeFilter) {
+  if (activeFilter === 'all') {
+    return (
+      customer.hasOpenPayment ||
+      customer.followUpStatus === 'follow-up' ||
+      customer.followUpStatus === 'watchlist' ||
+      customer.hasDuplicatePhone ||
+      isCustomerIdle(customer)
+    );
+  }
+
+  if (activeFilter === 'unpaid') return customer.hasOpenPayment;
+  if (activeFilter === 'pending') return customer.pendingBookings > 0;
+  if (activeFilter === 'dp') return customer.dpBookings > 0;
+  if (activeFilter === 'manual') return customer.followUpStatus === 'follow-up' || customer.followUpStatus === 'watchlist';
+  if (activeFilter === 'duplicate') return customer.hasDuplicatePhone;
+  if (activeFilter === 'idle') return isCustomerIdle(customer);
+
+  return false;
+}
+
+function getCustomerFollowUpCandidates(customers, activeFilter) {
+  return customers
+    .filter((customer) => matchesCustomerFollowUpFilter(customer, activeFilter))
+    .slice()
+    .sort((first, second) => {
+      const scoreDiff = getCustomerFollowUpScore(second) - getCustomerFollowUpScore(first);
+      if (scoreDiff) return scoreDiff;
+
+      return second.latestActivityValue - first.latestActivityValue;
+    });
+}
+
+function getCustomerFollowUpMessage(customer, templateKey) {
+  const name = customer?.name || 'kak';
+  const outstanding = customer?.openInvoiceAmount ? formatMoney(customer.openInvoiceAmount) : '';
+  const lastActivity = customer?.latestActivityAt ? formatDate(customer.latestActivityAt) : 'sebelumnya';
+
+  if (templateKey === 'booking') {
+    return 'Halo kak ' + name + ', kami dari 37 Music Studio. Kami mau follow-up jadwal booking kakak. Kalau ingin latihan atau recording lagi, kami bisa bantu cek slot yang tersedia.';
+  }
+
+  if (templateKey === 'comeback') {
+    return 'Halo kak ' + name + ', kami dari 37 Music Studio. Terakhir ada activity booking sekitar ' + lastActivity + '. Kalau mau main atau recording lagi, kami siap bantu carikan slot yang enak.';
+  }
+
+  if (customer?.hasOpenPayment) {
+    return 'Halo kak ' + name + ', kami dari 37 Music Studio. Untuk data booking kakak masih ada status pending/DP' + (outstanding ? ' dengan estimasi outstanding ' + outstanding : '') + '. Boleh kami bantu follow-up pembayarannya ya kak?';
+  }
+
+  return 'Halo kak ' + name + ', kami dari 37 Music Studio. Kami mau follow-up data booking kakak. Kabari kami ya kak kalau butuh bantuan jadwal atau informasi studio.';
+}
+
+function getCustomerFollowUpWhatsappHref(customer, templateKey) {
+  const links = getCustomerActionLinks(customer);
+  if (!links.whatsappHref) return '';
+
+  return links.whatsappHref + '?text=' + encodeURIComponent(getCustomerFollowUpMessage(customer, templateKey));
+}
+
+function getFollowUpOutstandingTotal(customers) {
+  return customers.reduce((sum, customer) => sum + (Number(customer.openInvoiceAmount) || 0), 0);
+}
+
 function readManualCustomers() {
   if (typeof window === 'undefined') return [];
 
@@ -317,29 +437,6 @@ function readManualCustomers() {
   }
 }
 
-function writeManualCustomers(customers) {
-  if (typeof window === 'undefined') return;
-
-  window.localStorage.setItem(MANUAL_CUSTOMERS_STORAGE_KEY, JSON.stringify(customers));
-  window.dispatchEvent(new Event(MANUAL_CUSTOMERS_EVENT));
-}
-
-function subscribeManualCustomers(callback) {
-  if (typeof window === 'undefined') return () => {};
-
-  function handleChange() {
-    callback(readManualCustomers());
-  }
-
-  callback(readManualCustomers());
-  window.addEventListener(MANUAL_CUSTOMERS_EVENT, handleChange);
-  window.addEventListener('storage', handleChange);
-
-  return () => {
-    window.removeEventListener(MANUAL_CUSTOMERS_EVENT, handleChange);
-    window.removeEventListener('storage', handleChange);
-  };
-}
 
 function buildCustomerDirectory(bookings, manualCustomers) {
   const map = new Map();
@@ -886,6 +983,133 @@ function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
 
 
 
+
+function CustomerFollowUpCenter({
+  activeFilter,
+  activeTemplate,
+  customers,
+  onEditCustomer,
+  onFilterChange,
+  onOpenCustomer,
+  onTemplateChange,
+}) {
+  const candidates = getCustomerFollowUpCandidates(customers, activeFilter);
+  const visibleCandidates = candidates.slice(0, 6);
+  const totalOutstanding = getFollowUpOutstandingTotal(candidates);
+  const unpaidCount = candidates.filter((customer) => customer.hasOpenPayment).length;
+
+  return (
+    <section className="customer-followup-center" aria-label="Follow-up center">
+      <header className="customer-followup-head">
+        <span className="customer-followup-orb" aria-hidden="true">
+          <PhoneCall size={16} />
+        </span>
+
+        <span className="customer-followup-title">
+          <small>Follow-up Center</small>
+          <strong>Prioritas customer</strong>
+        </span>
+
+        <span className="customer-followup-total">
+          {candidates.length} target
+        </span>
+      </header>
+
+      <div className="customer-followup-controls">
+        <div className="customer-followup-select">
+          <StudioSelect
+            label="Target"
+            options={followUpFilterOptions}
+            selectedKey={activeFilter}
+            onChange={onFilterChange}
+          />
+        </div>
+
+        <div className="customer-followup-select">
+          <StudioSelect
+            label="Template"
+            options={followUpTemplateOptions}
+            selectedKey={activeTemplate}
+            onChange={onTemplateChange}
+          />
+        </div>
+      </div>
+
+      <div className="customer-followup-summary-grid">
+        <article>
+          <small>Outstanding</small>
+          <strong>{formatMoney(totalOutstanding)}</strong>
+        </article>
+        <article>
+          <small>Pending / DP</small>
+          <strong>{unpaidCount}</strong>
+        </article>
+        <article>
+          <small>Template</small>
+          <strong>{followUpTemplateOptions.find((item) => item.key === activeTemplate)?.label || 'Tagihan'}</strong>
+        </article>
+      </div>
+
+      {visibleCandidates.length ? (
+        <div className="customer-followup-list">
+          {visibleCandidates.map((customer) => {
+            const links = getCustomerActionLinks(customer);
+            const whatsappHref = getCustomerFollowUpWhatsappHref(customer, activeTemplate);
+
+            return (
+              <article className="customer-followup-row" key={customer.id}>
+                <button className="customer-followup-main" type="button" onClick={() => onOpenCustomer(customer)}>
+                  <span>
+                    <strong>{customer.name}</strong>
+                    <small>{formatPhoneLabel(customer.phone || customer.phoneKey)} • {formatDate(customer.latestActivityAt)}</small>
+                  </span>
+
+                  <em className={'customer-followup-badge ' + getCustomerFollowUpTone(customer)}>
+                    {getCustomerFollowUpReason(customer)}
+                  </em>
+                </button>
+
+                <span className="customer-followup-actions" aria-label={'Aksi follow-up ' + customer.name}>
+                  {whatsappHref ? (
+                    <a
+                      aria-label={'Kirim WhatsApp follow-up ke ' + customer.name}
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="WhatsApp follow-up"
+                    >
+                      <WhatsAppIcon size={15} />
+                    </a>
+                  ) : null}
+
+                  {links.callHref ? (
+                    <a aria-label={'Telepon ' + customer.name} href={links.callHref} title="Telepon">
+                      <PhoneCall size={15} />
+                    </a>
+                  ) : null}
+
+                  <button aria-label={'Buka detail ' + customer.name} title="Buka detail" type="button" onClick={() => onOpenCustomer(customer)}>
+                    <UserRound size={15} />
+                  </button>
+
+                  <button aria-label={'Edit customer ' + customer.name} title="Edit customer" type="button" onClick={() => onEditCustomer(customer)}>
+                    <Pencil size={15} />
+                  </button>
+                </span>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="customer-followup-empty">
+          <strong>Tidak ada target follow-up</strong>
+          <span>Filter ini sedang bersih. Aman, layar tidak perlu panik.</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CustomerActivityTimeline({
   activeFilter,
   activityGroups,
@@ -1172,6 +1396,8 @@ export default function CustomerPage() {
   const [manualCustomers, setManualCustomers] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [followUpFilter, setFollowUpFilter] = useState('all');
+  const [followUpTemplate, setFollowUpTemplate] = useState('payment');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
@@ -1339,6 +1565,16 @@ export default function CustomerPage() {
         onAddCustomer={() => openCustomerForm()}
         onFilterChange={setActiveFilter}
         onSearchChange={setSearchText}
+      />
+
+      <CustomerFollowUpCenter
+        activeFilter={followUpFilter}
+        activeTemplate={followUpTemplate}
+        customers={customers}
+        onEditCustomer={openCustomerForm}
+        onFilterChange={setFollowUpFilter}
+        onOpenCustomer={openCustomer}
+        onTemplateChange={setFollowUpTemplate}
       />
 
       <CustomerTable

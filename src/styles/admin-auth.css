@@ -6025,3 +6025,405 @@
   }
 }
 /* === CUSTOMER ACTIVITY TIMELINE: END === */
+
+/* === CUSTOMER FOLLOWUP CENTER: START === */
+.customer-followup-center {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 138, 42, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.062), transparent 58%),
+    var(--auth-bg-soft);
+  padding: 12px;
+  box-shadow: var(--auth-shadow-soft);
+}
+
+.customer-followup-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.customer-followup-orb {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #fff;
+}
+
+.customer-followup-title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.customer-followup-title small {
+  color: var(--auth-accent);
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.customer-followup-title strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.92rem;
+  font-weight: 620;
+  letter-spacing: -0.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-followup-total {
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 7px 10px;
+  font-size: 0.62rem;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.customer-followup-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.customer-followup-select {
+  min-width: 0;
+}
+
+.customer-followup-select .studio-select-trigger {
+  min-height: 42px;
+  border-radius: 15px;
+}
+
+.customer-followup-select .studio-select-copy strong {
+  font-size: 0.72rem;
+}
+
+.customer-followup-select .studio-select-list {
+  width: min(260px, calc(100vw - 32px));
+}
+
+.customer-followup-summary-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.72fr 1fr;
+  gap: 7px;
+}
+
+.customer-followup-summary-grid article {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 9px;
+}
+
+.customer-followup-summary-grid small {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.customer-followup-summary-grid strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.82rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-followup-list {
+  display: grid;
+  gap: 7px;
+}
+
+.customer-followup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-control);
+  padding: 8px;
+}
+
+.customer-followup-main {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.customer-followup-main span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.customer-followup-main strong,
+.customer-followup-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-followup-main strong {
+  color: var(--auth-text-strong);
+  font-size: 0.76rem;
+  font-weight: 680;
+}
+
+.customer-followup-main small {
+  color: var(--auth-text-muted);
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.customer-followup-badge {
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--auth-text-muted);
+  padding: 5px 8px;
+  font-size: 0.52rem;
+  font-style: normal;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.customer-followup-badge.is-warning {
+  border-color: rgba(255, 176, 32, 0.34);
+  background: rgba(255, 176, 32, 0.1);
+  color: #ffb020;
+}
+
+.customer-followup-badge.is-duplicate {
+  border-color: rgba(92, 200, 255, 0.32);
+  background: rgba(92, 200, 255, 0.1);
+  color: #5cc8ff;
+}
+
+.customer-followup-badge.is-idle {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--auth-text-main);
+}
+
+.customer-followup-actions {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.customer-followup-actions a,
+.customer-followup-actions button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--auth-text-main);
+  padding: 0;
+  cursor: pointer;
+}
+
+.customer-followup-actions a[title='WhatsApp follow-up'] {
+  color: #31d366;
+}
+
+.customer-followup-actions a[title='Telepon'] {
+  color: var(--auth-text-main);
+}
+
+.customer-followup-actions button[title='Buka detail'] {
+  color: #5cc8ff;
+}
+
+.customer-followup-actions button[title='Edit customer'] {
+  color: var(--auth-accent);
+}
+
+.customer-followup-empty {
+  display: grid;
+  gap: 3px;
+  border: 1px dashed var(--auth-border);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.026);
+  padding: 10px;
+}
+
+.customer-followup-empty strong {
+  color: var(--auth-text-strong);
+  font-size: 0.76rem;
+  font-weight: 680;
+}
+
+.customer-followup-empty span {
+  color: var(--auth-text-muted);
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 767px) {
+  .customer-followup-center {
+    gap: 8px;
+    border-radius: 18px;
+    padding: 9px;
+  }
+
+  .customer-followup-head {
+    gap: 8px;
+  }
+
+  .customer-followup-orb {
+    width: 30px;
+    height: 30px;
+    border-radius: 11px;
+  }
+
+  .customer-followup-orb svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .customer-followup-title small {
+    font-size: 0.5rem;
+  }
+
+  .customer-followup-title strong {
+    font-size: 0.78rem;
+  }
+
+  .customer-followup-total {
+    padding: 6px 8px;
+    font-size: 0.54rem;
+  }
+
+  .customer-followup-controls {
+    gap: 6px;
+  }
+
+  .customer-followup-select .studio-select-trigger {
+    min-height: 38px;
+    border-radius: 13px;
+  }
+
+  .customer-followup-select .studio-select-label {
+    font-size: 0.48rem;
+  }
+
+  .customer-followup-select .studio-select-copy strong {
+    max-width: 98px;
+    overflow: hidden;
+    font-size: 0.62rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .customer-followup-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .customer-followup-summary-grid article {
+    border-radius: 13px;
+    padding: 7px;
+  }
+
+  .customer-followup-summary-grid small {
+    font-size: 0.45rem;
+  }
+
+  .customer-followup-summary-grid strong {
+    font-size: 0.66rem;
+  }
+
+  .customer-followup-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+    border-radius: 14px;
+    padding: 8px;
+  }
+
+  .customer-followup-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .customer-followup-main strong {
+    font-size: 0.68rem;
+  }
+
+  .customer-followup-main small {
+    font-size: 0.52rem;
+  }
+
+  .customer-followup-badge {
+    padding: 4px 7px;
+    font-size: 0.48rem;
+  }
+
+  .customer-followup-actions {
+    justify-content: flex-end;
+  }
+
+  .customer-followup-actions a,
+  .customer-followup-actions button {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    border-radius: 10px;
+  }
+
+  .customer-followup-actions svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (max-width: 370px) {
+  .customer-followup-controls,
+  .customer-followup-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-followup-main {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-followup-badge {
+    width: max-content;
+  }
+}
+/* === CUSTOMER FOLLOWUP CENTER: END === */
