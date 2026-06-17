@@ -8369,3 +8369,288 @@
   }
 }
 /* === BILLING CASH RANGE FIX: END === */
+
+/* === SETTINGS PRICING MOBILE COMPACT: START === */
+.settings-page {
+  gap: 11px;
+}
+
+.settings-subnav-mobile {
+  margin-bottom: -2px;
+}
+
+.settings-subnav-mobile .studio-select-trigger {
+  min-height: 45px;
+  border-radius: 14px;
+  padding: 7px 10px;
+}
+
+.settings-subnav-mobile .studio-select-label {
+  font-size: 0.55rem;
+  font-weight: 560;
+}
+
+.settings-subnav-mobile .studio-select-copy {
+  gap: 1px;
+}
+
+.settings-subnav-mobile .studio-select-copy strong {
+  font-size: 0.72rem;
+  font-weight: 560;
+}
+
+.settings-title-block {
+  gap: 3px;
+}
+
+.settings-title-block p {
+  font-size: 0.58rem;
+  font-weight: 620;
+  letter-spacing: 0.16em;
+}
+
+.settings-title-block h2 {
+  font-size: clamp(1.16rem, 6.5vw, 1.72rem);
+  font-weight: 300;
+  letter-spacing: -0.05em;
+}
+
+.settings-title-block span {
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.settings-section {
+  gap: 9px;
+  border-radius: 19px;
+  padding: 10px;
+}
+
+.settings-section-head {
+  gap: 8px;
+}
+
+.settings-section-head h3 {
+  font-size: 0.82rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.settings-section-head p {
+  margin-top: 2px;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.settings-list {
+  gap: 6px;
+}
+
+.settings-list-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 8px;
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.settings-list-item > div:first-child {
+  gap: 1px;
+}
+
+.settings-list-item strong {
+  font-size: 0.74rem;
+  font-weight: 560;
+  line-height: 1.15;
+}
+
+.settings-list-item span {
+  font-size: 0.61rem;
+  line-height: 1.25;
+}
+
+.settings-list-item em {
+  justify-self: end;
+  font-size: 0.68rem;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.settings-row-actions {
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.settings-row-actions button,
+.settings-mini-button {
+  min-height: 31px;
+  border-radius: 10px;
+  gap: 5px;
+  padding: 0 9px;
+  font-size: 0.62rem;
+  font-weight: 560;
+}
+
+.settings-row-actions button svg,
+.settings-mini-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.settings-form {
+  gap: 7px;
+  padding-top: 8px;
+}
+
+.settings-page .studio-field {
+  gap: 4px;
+}
+
+.settings-page .studio-field-head {
+  font-size: 0.62rem;
+  font-weight: 520;
+  line-height: 1.15;
+}
+
+.settings-page .studio-input-wrap {
+  min-height: 39px;
+  border-radius: 12px;
+  padding: 0 10px;
+}
+
+.settings-page .studio-native-input {
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.settings-page .studio-native-input::placeholder {
+  font-size: 0.68rem;
+  opacity: 0.46;
+}
+
+.settings-page .studio-select-trigger {
+  min-height: 40px;
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+
+.settings-page .studio-select-copy {
+  gap: 1px;
+}
+
+.settings-page .studio-select-label {
+  font-size: 0.52rem;
+  font-weight: 560;
+  letter-spacing: 0.12em;
+}
+
+.settings-page .studio-select-copy strong {
+  font-size: 0.7rem;
+  font-weight: 560;
+}
+
+.settings-page .studio-select-helper {
+  padding: 2px 6px;
+  font-size: 0.56rem;
+}
+
+.settings-page .studio-select-option {
+  min-height: 37px;
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
+.settings-page .studio-select-option-text strong {
+  font-size: 0.7rem;
+}
+
+.settings-page .studio-select-option-text span {
+  font-size: 0.6rem;
+}
+
+.settings-form-actions {
+  gap: 6px;
+}
+
+.settings-form-actions .settings-mini-button.is-primary {
+  min-height: 36px;
+  border-radius: 12px;
+}
+
+.settings-empty-text {
+  border-radius: 12px;
+  padding: 9px;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.settings-textarea-field {
+  gap: 5px;
+}
+
+.settings-textarea-field span {
+  font-size: 0.56rem;
+}
+
+.settings-textarea-field textarea {
+  min-height: 72px;
+  border-radius: 12px;
+  padding: 9px 10px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 767px) {
+  .settings-page {
+    padding-bottom: calc(118px + env(safe-area-inset-bottom));
+  }
+
+  .settings-page .settings-section + .settings-section {
+    margin-top: 1px;
+  }
+
+  .settings-page .settings-list-item {
+    min-height: 0;
+  }
+
+  .settings-page .settings-list-item:nth-child(n + 2) {
+    margin-top: -1px;
+  }
+
+  .settings-page .studio-input-icon {
+    width: 14px;
+    flex-basis: 14px;
+  }
+
+  .settings-page .studio-input-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  .settings-page {
+    gap: 14px;
+  }
+
+  .settings-section {
+    border-radius: 22px;
+    padding: 13px;
+  }
+
+  .settings-list-item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    padding: 9px 10px;
+  }
+
+  .settings-row-actions {
+    grid-column: auto;
+    grid-template-columns: auto auto;
+  }
+
+  .settings-form {
+    gap: 8px;
+  }
+}
+/* === SETTINGS PRICING MOBILE COMPACT: END === */
