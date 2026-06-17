@@ -11589,3 +11589,98 @@
   }
 }
 /* === ADMIN LIST PAGINATION: END === */
+
+/* === BOOKKEEPING SEARCH FILTER: START === */
+.bookkeeping-search-shell {
+  min-width: 0;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--auth-border);
+  border-radius: 13px;
+  color: var(--auth-text-muted);
+  background: var(--auth-bg-control);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.bookkeeping-search-shell:focus-within {
+  border-color: var(--auth-border-strong);
+  box-shadow: 0 0 0 4px var(--auth-accent-soft);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.016)),
+    var(--auth-bg-control);
+}
+
+.bookkeeping-search-shell input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--auth-text-main);
+  background: transparent;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.bookkeeping-search-shell input::placeholder {
+  color: color-mix(in srgb, var(--auth-text-muted) 78%, transparent);
+}
+
+.bookkeeping-period-filter,
+.bookkeeping-type-filter {
+  min-width: 0;
+}
+
+.bookkeeping-toolbar {
+  grid-template-columns:
+    minmax(220px, 1fr)
+    minmax(150px, 210px)
+    minmax(138px, 190px)
+    auto
+    auto
+    auto !important;
+}
+
+@media (max-width: 960px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+
+  .bookkeeping-search-shell {
+    grid-column: 1 / -1;
+  }
+
+  .bookkeeping-period-filter,
+  .bookkeeping-type-filter {
+    min-width: 0;
+  }
+
+  .bookkeeping-export-button,
+  .bookkeeping-add-button.is-income,
+  .bookkeeping-add-button.is-expense {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .bookkeeping-search-shell,
+  .bookkeeping-period-filter,
+  .bookkeeping-type-filter {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 380px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* === BOOKKEEPING SEARCH FILTER: END === */

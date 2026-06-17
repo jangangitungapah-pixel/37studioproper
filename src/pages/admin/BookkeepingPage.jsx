@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   ReceiptText,
+  Search,
   Trash2,
   WalletCards,
   X,
@@ -22,6 +23,12 @@ const periodOptions = [
   { key: 'month', label: 'Bulan Ini', description: 'Transaksi bulan berjalan' },
   { key: 'year', label: 'Tahun Ini', description: 'Transaksi tahun berjalan' },
   { key: 'all', label: 'Semua', description: 'Semua transaksi' },
+];
+
+const transactionTypeFilterOptions = [
+  { key: 'all', label: 'Semua', description: 'Pemasukan dan pengeluaran' },
+  { key: 'income', label: 'Pemasukan', description: 'Cash masuk manual dan booking' },
+  { key: 'expense', label: 'Pengeluaran', description: 'Biaya dan transaksi keluar' },
 ];
 
 const expenseCategoryOptions = [
@@ -69,6 +76,10 @@ const emptyIncomeForm = {
 
 function cleanText(value) {
   return String(value || '').trim();
+}
+
+function cleanLower(value) {
+  return cleanText(value).toLowerCase();
 }
 
 function toNumber(value) {
@@ -372,15 +383,48 @@ function BookkeepingSummary({ bookings, period, transactions }) {
   );
 }
 
-function BookkeepingToolbar({ exportDisabled, onAddExpense, onAddIncome, onExportTransactions, onPeriodChange, period }) {
+function BookkeepingToolbar({
+  exportDisabled,
+  onAddExpense,
+  onAddIncome,
+  onExportTransactions,
+  onPeriodChange,
+  onSearchChange,
+  onTypeFilterChange,
+  period,
+  searchText,
+  typeFilter,
+}) {
   return (
     <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
-      <StudioSelect
-        label="Periode"
-        options={periodOptions}
-        selectedKey={period}
-        onChange={onPeriodChange}
-      />
+      <div className="bookkeeping-search-shell">
+        <Search size={15} aria-hidden="true" />
+        <input
+          aria-label="Cari transaksi pembukuan"
+          placeholder="Cari judul, metode, catatan..."
+          type="search"
+          value={searchText}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      </div>
+
+      <div className="bookkeeping-period-filter">
+        <StudioSelect
+          label="Periode"
+          options={periodOptions}
+          selectedKey={period}
+          onChange={onPeriodChange}
+        />
+      </div>
+
+      <div className="bookkeeping-type-filter">
+        <StudioSelect
+          label="Tipe"
+          options={transactionTypeFilterOptions}
+          selectedKey={typeFilter}
+          onChange={onTypeFilterChange}
+        />
+      </div>
 
       <button
         className="bookkeeping-export-button"
@@ -404,7 +448,6 @@ function BookkeepingToolbar({ exportDisabled, onAddExpense, onAddIncome, onExpor
     </section>
   );
 }
-
 
 function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactions }) {
   if (!transactions.length) {
@@ -609,6 +652,8 @@ export default function BookkeepingPage() {
   const [bookings, setBookings] = useState([]);
   const [entries, setEntries] = useState([]);
   const [period, setPeriod] = useState('month');
+  const [transactionSearchText, setTransactionSearchText] = useState('');
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
   const [transactionPage, setTransactionPage] = useState(1);
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -654,18 +699,35 @@ export default function BookkeepingPage() {
   }, [toast]);
 
   const filteredTransactions = useMemo(() => {
+    const queryText = cleanLower(transactionSearchText);
     const incomeTransactions = buildIncomeTransactions(bookings);
     const expenseTransactions = buildExpenseTransactions(entries);
 
     return [...incomeTransactions, ...expenseTransactions]
-      .filter((transaction) => isDateInPeriod(transaction.date, period))
+      .filter((transaction) => {
+        const matchesPeriod = isDateInPeriod(transaction.date, period);
+        const matchesType = transactionTypeFilter === 'all' || transaction.type === transactionTypeFilter;
+        const typeLabel = transaction.type === 'income' ? 'pemasukan masuk cash income' : 'pengeluaran keluar biaya expense';
+        const sourceLabel = transaction.source === 'booking' ? 'booking otomatis billing' : 'manual';
+        const haystack = [
+          transaction.title,
+          transaction.note,
+          transaction.method,
+          getOptionLabel(paymentMethodOptions, transaction.method, transaction.method),
+          typeLabel,
+          sourceLabel,
+        ].join(' ').toLowerCase();
+        const matchesSearch = !queryText || haystack.includes(queryText);
+
+        return matchesPeriod && matchesType && matchesSearch;
+      })
       .sort((first, second) => {
         const firstDate = getDateFromValue(first.date)?.getTime() || 0;
         const secondDate = getDateFromValue(second.date)?.getTime() || 0;
 
         return secondDate - firstDate;
       });
-  }, [bookings, entries, period]);
+  }, [bookings, entries, period, transactionSearchText, transactionTypeFilter]);
 
   const paginatedTransactions = useMemo(
     () => getPaginationSlice(filteredTransactions, transactionPage, ADMIN_LIST_PAGE_SIZE),
@@ -674,6 +736,16 @@ export default function BookkeepingPage() {
 
   function handlePeriodChange(nextPeriod) {
     setPeriod(nextPeriod);
+    setTransactionPage(1);
+  }
+
+  function handleTransactionSearchChange(nextSearchText) {
+    setTransactionSearchText(nextSearchText);
+    setTransactionPage(1);
+  }
+
+  function handleTransactionTypeFilterChange(nextTypeFilter) {
+    setTransactionTypeFilter(nextTypeFilter);
     setTransactionPage(1);
   }
 
@@ -788,10 +860,14 @@ export default function BookkeepingPage() {
       <BookkeepingToolbar
         exportDisabled={!filteredTransactions.length && getBookkeepingStats(filteredTransactions, bookings, period).receivable <= 0}
         period={period}
+        searchText={transactionSearchText}
+        typeFilter={transactionTypeFilter}
         onAddExpense={openAddExpense}
         onAddIncome={openAddIncome}
         onExportTransactions={exportBookkeepingCsv}
         onPeriodChange={handlePeriodChange}
+        onSearchChange={handleTransactionSearchChange}
+        onTypeFilterChange={handleTransactionTypeFilterChange}
       />
 
       <BookkeepingTransactionList
