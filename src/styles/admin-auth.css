@@ -15846,3 +15846,89 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === ADMIN MODAL OPAQUE MOBILE FIX: END === */
+
+/* === GALLERY PAGE FILTER ROW & PILLS MOBILE ACCESSIBILITY === */
+.gallery-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.gallery-filter-pill {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  font-size: 0.76rem;
+  font-weight: 780;
+  cursor: pointer;
+  padding: 0 12px;
+  transition: all 0.2s ease;
+}
+
+.gallery-filter-pill.is-active {
+  border-color: var(--auth-border-strong);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #fff;
+}
+
+@media (max-width: 767px) {
+  .gallery-filter-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+    margin-inline: -2px;
+    overflow-x: auto;
+    padding: 0 2px 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .gallery-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+  .gallery-filter-pill {
+    min-height: 38px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 0 12px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+}
+
+/* Gallery-specific toolbar responsive layout */
+@media (max-width: 767px) {
+  .customer-toolbar.gallery-toolbar {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: none !important;
+    gap: 10px !important;
+  }
+
+  .customer-toolbar.gallery-toolbar > * {
+    grid-area: auto !important;
+    width: 100% !important;
+  }
+
+  .customer-toolbar.gallery-toolbar .gallery-filter-row {
+    margin-bottom: 2px;
+  }
+
+  .customer-toolbar.gallery-toolbar .flex.items-center.justify-end {
+    justify-content: stretch !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .customer-toolbar.gallery-toolbar .customer-back-button,
+  .customer-toolbar.gallery-toolbar .customer-add-button {
+    flex: 1 !important;
+    width: 50% !important;
+    min-height: 40px !important;
+  }
+}
+
