@@ -483,59 +483,6 @@ function BillingCashSummary({ activeRange, bookings, onRangeChange }) {
   );
 }
 
-) {
-  const stats = getCashStats(bookings, activeRange);
-
-  return (
-    <section className="billing-cash-summary" aria-label="Kas masuk">
-      <header>
-        <div>
-          <small>Kas Masuk {getCashRangeLabel(activeRange)}</small>
-          <strong>{formatMoney(stats.total)}</strong>
-          <span>{stats.count} pembayaran tercatat</span>
-        </div>
-
-        <div className="billing-cash-range">
-          <StudioSelect
-            label="Periode"
-            options={cashRangeOptions}
-            selectedKey={activeRange}
-            onChange={onRangeChange}
-          />
-        </div>
-      </header>
-
-      <div className="billing-cash-grid">
-        <article><small>Cash</small><strong>{formatMoney(stats.byMethod.cash)}</strong></article>
-        <article><small>Transfer</small><strong>{formatMoney(stats.byMethod.transfer)}</strong></article>
-        <article><small>QRIS</small><strong>{formatMoney(stats.byMethod.qris)}</strong></article>
-        <article><small>Lainnya</small><strong>{formatMoney(stats.byMethod.other)}</strong></article>
-      </div>
-    </section>
-  );
-}
-
-) {
-  const stats = getDailyCashStats(bookings);
-
-  return (
-    <section className="billing-cash-summary" aria-label="Kas hari ini">
-      <header>
-        <small>Kas Hari Ini</small>
-        <strong>{formatMoney(stats.total)}</strong>
-        <span>{stats.count} pembayaran tercatat</span>
-      </header>
-
-      <div className="billing-cash-grid">
-        <article><small>Cash</small><strong>{formatMoney(stats.byMethod.cash)}</strong></article>
-        <article><small>Transfer</small><strong>{formatMoney(stats.byMethod.transfer)}</strong></article>
-        <article><small>QRIS</small><strong>{formatMoney(stats.byMethod.qris)}</strong></article>
-        <article><small>Lainnya</small><strong>{formatMoney(stats.byMethod.other)}</strong></article>
-      </div>
-    </section>
-  );
-}
-
 function BillingToolbar({ activeFilter, onFilterChange, onSearchChange, searchText }) {
   return (
     <section className="billing-toolbar" aria-label="Billing toolbar">
