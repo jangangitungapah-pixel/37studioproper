@@ -14096,3 +14096,217 @@ body.is-admin-permission-modal-open .admin-bottom-more-menu {
   }
 }
 /* === ADMIN APPROVALS ICON ACTIONS: END === */
+
+/* === UNIFIED ADMIN MODAL BEHAVIOR: START === */
+:root {
+  --studio-modal-z: 2600;
+  --studio-modal-backdrop: rgba(0, 0, 0, 0.68);
+  --studio-modal-solid: color-mix(in srgb, var(--auth-bg-card) 92%, #111 8%);
+  --studio-modal-solid-strong: color-mix(in srgb, var(--auth-bg-card) 82%, #000 18%);
+  --studio-modal-border: color-mix(in srgb, var(--auth-border) 88%, transparent);
+  --studio-modal-shadow: 0 24px 72px rgba(0, 0, 0, 0.44);
+}
+
+[data-theme='light'],
+.theme-light,
+.light {
+  --studio-modal-backdrop: rgba(12, 12, 14, 0.48);
+  --studio-modal-solid: color-mix(in srgb, var(--auth-bg-card) 94%, #fff 6%);
+  --studio-modal-solid-strong: color-mix(in srgb, var(--auth-bg-card) 88%, #fff 12%);
+  --studio-modal-shadow: 0 24px 72px rgba(26, 18, 12, 0.2);
+}
+
+body:has([class*='modal-backdrop']) .admin-bottom-nav,
+body:has([class*='compact-backdrop']) .admin-bottom-nav,
+body:has(.settings-permission-backdrop) .admin-bottom-nav,
+body:has([class*='modal-backdrop']) .admin-bottom-more-menu,
+body:has([class*='compact-backdrop']) .admin-bottom-more-menu,
+body:has(.settings-permission-backdrop) .admin-bottom-more-menu {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(120%) !important;
+}
+
+body:has([class*='modal-backdrop']),
+body:has([class*='compact-backdrop']),
+body:has(.settings-permission-backdrop) {
+  overflow: hidden;
+}
+
+[class*='modal-backdrop'],
+[class*='compact-backdrop'],
+.settings-permission-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: var(--studio-modal-z) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  background: var(--studio-modal-backdrop) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+[class*='modal-backdrop'] > [role='dialog'],
+[class*='compact-backdrop'] > [role='dialog'],
+.settings-permission-backdrop > [role='dialog'],
+.booking-modal-panel,
+.booking-detail-compact-panel,
+.bookkeeping-modal-panel,
+.settings-permission-panel {
+  width: min(100%, 560px) !important;
+  max-height: calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  border: 1px solid var(--studio-modal-border) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    var(--studio-modal-solid) !important;
+  color: var(--auth-text-main) !important;
+  box-shadow: var(--studio-modal-shadow) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  isolation: isolate !important;
+}
+
+[class*='modal-backdrop'] [aria-label*='Tutup'],
+[class*='compact-backdrop'] [aria-label*='Tutup'],
+.settings-permission-backdrop [aria-label*='Tutup'],
+.booking-modal-close,
+.booking-detail-compact-close {
+  border: 1px solid var(--studio-modal-border) !important;
+  background: var(--auth-bg-control) !important;
+  color: var(--auth-text-main) !important;
+  box-shadow: none !important;
+}
+
+[class*='modal-backdrop'] footer,
+[class*='compact-backdrop'] footer,
+.settings-permission-actions,
+.booking-form-actions,
+.booking-detail-compact-actions {
+  position: sticky !important;
+  bottom: -1px !important;
+  z-index: 3 !important;
+  margin-bottom: -1px !important;
+  padding-top: 8px !important;
+  background:
+    linear-gradient(180deg, transparent, var(--studio-modal-solid) 28%),
+    var(--studio-modal-solid) !important;
+}
+
+[class*='modal-backdrop'] input,
+[class*='modal-backdrop'] textarea,
+[class*='modal-backdrop'] select,
+[class*='compact-backdrop'] input,
+[class*='compact-backdrop'] textarea,
+[class*='compact-backdrop'] select,
+.settings-permission-backdrop input,
+.settings-permission-backdrop textarea,
+.settings-permission-backdrop select,
+[class*='modal-backdrop'] .studio-select-trigger,
+[class*='compact-backdrop'] .studio-select-trigger,
+.settings-permission-backdrop .studio-select-trigger,
+[class*='modal-backdrop'] .studio-input-wrap,
+[class*='compact-backdrop'] .studio-input-wrap,
+.settings-permission-backdrop .studio-input-wrap {
+  background: var(--auth-bg-control) !important;
+  border-color: var(--studio-modal-border) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [class*='modal-backdrop'],
+  [class*='compact-backdrop'],
+  .settings-permission-backdrop {
+    animation: studio-modal-backdrop-in 170ms ease-out both;
+  }
+
+  [class*='modal-backdrop'] > [role='dialog'],
+  [class*='compact-backdrop'] > [role='dialog'],
+  .settings-permission-backdrop > [role='dialog'],
+  .booking-modal-panel,
+  .booking-detail-compact-panel,
+  .bookkeeping-modal-panel,
+  .settings-permission-panel {
+    animation: studio-modal-panel-in 190ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+    transform-origin: center bottom;
+  }
+}
+
+@keyframes studio-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes studio-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 620px) {
+  [class*='modal-backdrop'],
+  [class*='compact-backdrop'],
+  .settings-permission-backdrop {
+    place-items: end center !important;
+    align-items: end !important;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  [class*='modal-backdrop'] > [role='dialog'],
+  [class*='compact-backdrop'] > [role='dialog'],
+  .settings-permission-backdrop > [role='dialog'],
+  .booking-modal-panel,
+  .booking-detail-compact-panel,
+  .bookkeeping-modal-panel,
+  .settings-permission-panel {
+    width: 100% !important;
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    border-radius: 20px !important;
+  }
+
+  [class*='modal-backdrop'] footer,
+  [class*='compact-backdrop'] footer,
+  .settings-permission-actions,
+  .booking-form-actions,
+  .booking-detail-compact-actions {
+    padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 620px) and (prefers-reduced-motion: no-preference) {
+  [class*='modal-backdrop'] > [role='dialog'],
+  [class*='compact-backdrop'] > [role='dialog'],
+  .settings-permission-backdrop > [role='dialog'],
+  .booking-modal-panel,
+  .booking-detail-compact-panel,
+  .bookkeeping-modal-panel,
+  .settings-permission-panel {
+    animation-name: studio-modal-sheet-in;
+  }
+}
+
+@keyframes studio-modal-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* === UNIFIED ADMIN MODAL BEHAVIOR: END === */
