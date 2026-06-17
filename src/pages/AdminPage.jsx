@@ -6,6 +6,7 @@ import {
   UsersRound,
   LogOut,
   Music2,
+  PackageOpen,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -20,6 +21,7 @@ import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import CustomerPage from './admin/CustomerPage.jsx';
 import BillingPage from './admin/BillingPage.jsx';
+import InventoryPage from './admin/InventoryPage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
 
 import '../styles/admin-auth.css';
@@ -49,6 +51,13 @@ const navItems = [
     title: 'Billing / POS',
   },
   {
+    key: 'inventory',
+    label: 'Inventory',
+    path: '/admin/inventory',
+    icon: PackageOpen,
+    title: 'Inventory',
+  },
+  {
     key: 'settings',
     label: 'Settings',
     path: '/admin/settings',
@@ -71,6 +80,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
   if (activeKey === 'customers') return <CustomerPage />;
   if (activeKey === 'billing') return <BillingPage />;
+  if (activeKey === 'inventory') return <InventoryPage />;
 
   return <SchedulePage />;
 }
