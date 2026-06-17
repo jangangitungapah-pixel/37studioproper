@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
   Boxes,
+  History,
   Minus,
   PackageOpen,
   Pencil,
@@ -110,6 +111,31 @@ function getStatusLabel(status) {
   return 'Aktif';
 }
 
+function formatMovementDate(value) {
+  if (!value) return '-';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '-';
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+  }).format(date);
+}
+
+function getMovementTypeLabel(type) {
+  if (type === 'create') return 'Item Baru';
+  if (type === 'edit') return 'Update Item';
+  if (type === 'in') return 'Stok Masuk';
+  if (type === 'out') return 'Stok Keluar';
+  if (type === 'inactive') return 'Nonaktif';
+
+  return 'Aktivitas';
+}
+
 function getInventoryStats(items) {
   return items.reduce(
     (stats, item) => {
@@ -159,6 +185,39 @@ function InventorySummary({ items }) {
         <small>Aktif</small>
         <strong>{stats.active}</strong>
       </article>
+    </section>
+  );
+}
+
+function InventoryMovementPanel({ movements }) {
+  if (!movements.length) return null;
+
+  return (
+    <section className="inventory-movement-panel" aria-label="Aktivitas inventory terbaru">
+      <header>
+        <span><History size={15} /></span>
+        <div>
+          <small>Aktivitas Terbaru</small>
+          <strong>Movement Log</strong>
+        </div>
+      </header>
+
+      <div className="inventory-movement-list">
+        {movements.slice(0, 6).map((movement) => (
+          <article className={'inventory-movement-row is-' + movement.type} key={movement.id}>
+            <div>
+              <strong>{movement.itemName}</strong>
+              <span>{getMovementTypeLabel(movement.type)} • {formatMovementDate(movement.createdAt)}</span>
+              {movement.note ? <em>{movement.note}</em> : null}
+            </div>
+
+            <b>
+              {movement.type === 'out' ? '-' : '+'}
+              {movement.quantity} {movement.unit}
+            </b>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -510,6 +569,7 @@ function InventoryFormModal({ item, onClose, onSave }) {
 
 export default function InventoryPage() {
   const [items, setItems] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -528,6 +588,18 @@ export default function InventoryPage() {
           message: 'Data inventory belum bisa dimuat dari Firestore.',
         });
       }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = inventoryRepository.subscribeInventoryMovements(
+      (data) => setMovements(data),
+      (error) => {
+        console.error('Gagal memuat movement inventory:', error);
+      },
+      8
     );
 
     return unsubscribe;
@@ -579,19 +651,29 @@ export default function InventoryPage() {
     });
   }
 
-  async function saveItem(nextItem) {
+  async async function saveItem(nextItem) {
     try {
-      if (nextItem.id) {
-        await inventoryRepository.updateInventoryItem(nextItem);
-      } else {
-        await inventoryRepository.createInventoryItem(nextItem);
-      }
+      const isEditing = Boolean(nextItem.id);
+      const savedItem = isEditing
+        ? await inventoryRepository.updateInventoryItem(nextItem)
+        : await inventoryRepository.createInventoryItem(nextItem);
+
+      await inventoryRepository.createInventoryMovement({
+        itemId: savedItem.id,
+        itemName: savedItem.name,
+        type: isEditing ? 'edit' : 'create',
+        quantity: savedItem.quantity,
+        previousQuantity: savedItem.quantity,
+        nextQuantity: savedItem.quantity,
+        unit: savedItem.unit,
+        note: isEditing ? 'Update data inventory' : 'Item baru ditambahkan',
+      });
 
       setIsFormOpen(false);
       setEditingItem(null);
       setToast({
         title: 'Inventory tersimpan',
-        message: nextItem.name + ' sudah diperbarui.',
+        message: savedItem.name + ' sudah diperbarui.',
       });
     } catch (error) {
       console.error('Gagal menyimpan inventory:', error);
@@ -602,9 +684,7 @@ export default function InventoryPage() {
     }
   }
 
-
-
-  async function adjustStock(item, adjustment) {
+  async async function adjustStock(item, adjustment) {
     try {
       const currentQuantity = Number(item.quantity || 0);
       const amount = Number(adjustment.amount || 0);
@@ -623,6 +703,19 @@ export default function InventoryPage() {
         ...item,
         quantity: nextQuantity,
         note: nextNote,
+        lastMovementAt: new Date().toISOString(),
+        lastMovementType: adjustment.mode,
+      });
+
+      await inventoryRepository.createInventoryMovement({
+        itemId: item.id,
+        itemName: item.name,
+        type: adjustment.mode,
+        quantity: amount,
+        previousQuantity: currentQuantity,
+        nextQuantity,
+        unit: item.unit,
+        note: adjustment.note,
       });
 
       setStockAdjustment(null);
@@ -639,11 +732,24 @@ export default function InventoryPage() {
     }
   }
 
-  async function archiveItem(item) {
+  async async function archiveItem(item) {
     try {
-      await inventoryRepository.updateInventoryItem({
+      const savedItem = await inventoryRepository.updateInventoryItem({
         ...item,
         status: 'inactive',
+        lastMovementAt: new Date().toISOString(),
+        lastMovementType: 'inactive',
+      });
+
+      await inventoryRepository.createInventoryMovement({
+        itemId: savedItem.id,
+        itemName: savedItem.name,
+        type: 'inactive',
+        quantity: savedItem.quantity,
+        previousQuantity: savedItem.quantity,
+        nextQuantity: savedItem.quantity,
+        unit: savedItem.unit,
+        note: 'Item dinonaktifkan',
       });
 
       setToast({
@@ -678,6 +784,8 @@ export default function InventoryPage() {
         onSearchChange={setSearchText}
         onStatusChange={setStatusFilter}
       />
+
+      <InventoryMovementPanel movements={movements} />
 
       <InventoryList
         items={filteredItems}
