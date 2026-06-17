@@ -10587,3 +10587,75 @@
   }
 }
 /* === INVENTORY CSV EXPORT: END === */
+
+/* === INVENTORY TOOLBAR TWO ROW ACTIONS: START === */
+@media (max-width: 767px) {
+  .inventory-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    border-radius: 15px !important;
+    padding: 7px !important;
+  }
+
+  .inventory-search-shell {
+    grid-column: 1 / -1;
+    min-height: 36px !important;
+    border-radius: 11px !important;
+  }
+
+  .inventory-toolbar > .studio-select {
+    min-width: 0;
+  }
+
+  .inventory-toolbar .studio-select-trigger {
+    min-height: 38px !important;
+    border-radius: 11px !important;
+    padding: 5px 9px !important;
+  }
+
+  .inventory-toolbar .studio-select-label {
+    font-size: 0.48rem !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  .inventory-toolbar .studio-select-copy strong {
+    overflow: hidden;
+    font-size: 0.62rem !important;
+    line-height: 1.05 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inventory-export-button,
+  .inventory-add-button {
+    min-height: 37px !important;
+    border-radius: 11px !important;
+    font-size: 0.66rem !important;
+    font-weight: 680 !important;
+  }
+
+  .inventory-export-button svg,
+  .inventory-add-button svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .inventory-toolbar {
+    gap: 5px !important;
+    padding: 6px !important;
+  }
+
+  .inventory-toolbar .studio-select-trigger {
+    min-height: 36px !important;
+    padding-inline: 8px !important;
+  }
+
+  .inventory-export-button,
+  .inventory-add-button {
+    min-height: 35px !important;
+    font-size: 0.62rem !important;
+  }
+}
+/* === INVENTORY TOOLBAR TWO ROW ACTIONS: END === */
