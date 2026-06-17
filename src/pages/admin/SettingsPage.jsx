@@ -1366,7 +1366,7 @@ export default function SettingsPage({ currentUser }) {
                       Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
                     </span>
                   </div>
-                  <div className="settings-row-actions" style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                  <div className="settings-row-actions settings-approval-actions" style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
                     {user.status !== 'approved' ? (
                       <button 
                         type="button" 
@@ -1381,6 +1381,17 @@ export default function SettingsPage({ currentUser }) {
                         Aktif
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => openPermissionSettings(user)}
+                      className="settings-mini-button settings-permission-open-button"
+                      title="Atur permission halaman user"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto' }}
+                    >
+                      <SlidersHorizontal size={13} />
+                      Permission
+                    </button>
+
                     <button 
                       type="button" 
                       onClick={() => handleDeleteUser(user.id)}

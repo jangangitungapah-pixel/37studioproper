@@ -13620,3 +13620,50 @@
   }
 }
 /* === ADMIN USER PERMISSION SETTINGS: END === */
+
+/* === ADMIN APPROVAL PERMISSION BUTTON: START === */
+.settings-approval-actions {
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+}
+
+.settings-approval-actions .settings-mini-button,
+.settings-permission-open-button {
+  min-height: 30px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: 10px !important;
+  padding: 0 10px !important;
+  font-size: 0.68rem !important;
+  font-weight: 620 !important;
+}
+
+.settings-permission-open-button {
+  border-color: rgba(143, 183, 255, 0.34) !important;
+  color: var(--auth-text-main) !important;
+  background:
+    linear-gradient(135deg, rgba(143, 183, 255, 0.12), rgba(255, 255, 255, 0.012)),
+    var(--auth-bg-control) !important;
+}
+
+.settings-permission-open-button:hover {
+  border-color: rgba(143, 183, 255, 0.58) !important;
+}
+
+@media (max-width: 520px) {
+  .settings-approval-actions {
+    width: 100% !important;
+    margin-left: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  .settings-approval-actions .settings-mini-button,
+  .settings-permission-open-button {
+    flex: 1 1 auto !important;
+  }
+}
+/* === ADMIN APPROVAL PERMISSION BUTTON: END === */
