@@ -62,6 +62,27 @@ export default function LoginPage() {
     return unsubscribe;
   }, [navigate, redirectTo]);
 
+  // Handle Google Sign-In redirect result
+  useEffect(() => {
+    let isMounted = true;
+    async function checkRedirect() {
+      try {
+        const user = await adminAuthRepository.handleRedirectResult();
+        if (user && isMounted) {
+          setSuccess('Google login berhasil! Mengarahkan...');
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(adminAuthRepository.getAdminAuthErrorMessage(err));
+        }
+      }
+    }
+    checkRedirect();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Resend Timer Effect
   useEffect(() => {
     let timerId;
@@ -208,10 +229,9 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await adminAuthRepository.signInWithGoogle();
-      setSuccess('Google login berhasil! Mengarahkan...');
+      // Page is redirecting, do not set isSubmitting to false
     } catch (err) {
       setError(adminAuthRepository.getAdminAuthErrorMessage(err));
-    } finally {
       setIsSubmitting(false);
     }
   }

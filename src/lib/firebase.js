@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
 
 const requiredEnvKeys = [
   'VITE_FIREBASE_API_KEY',
@@ -28,4 +28,17 @@ export const firebaseApp = isFirebaseConfigured
   : null;
 
 export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null;
-export const firestoreDb = firebaseApp ? getFirestore(firebaseApp) : null;
+let db = null;
+if (firebaseApp) {
+  try {
+    db = initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch (error) {
+    console.warn('Firestore initialization with persistent cache failed, falling back to getFirestore:', error);
+    db = getFirestore(firebaseApp);
+  }
+}
+export const firestoreDb = db;

@@ -15692,7 +15692,21 @@ body:has(.settings-permission-backdrop) {
 [class*='modal-backdrop'],
 [class*='compact-backdrop'],
 .settings-permission-backdrop {
-  background: var(--studio-modal-opaque-backdrop) !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+[data-theme='light'] [class*='modal-backdrop'],
+[data-theme='light'] [class*='compact-backdrop'],
+[data-theme='light'] .settings-permission-backdrop,
+.theme-light [class*='modal-backdrop'],
+.theme-light [class*='compact-backdrop'],
+.theme-light .settings-permission-backdrop,
+.light [class*='modal-backdrop'],
+.light [class*='compact-backdrop'],
+.light .settings-permission-backdrop {
+  background: rgba(255, 255, 255, 0.45) !important;
 }
 
 .booking-modal-panel,

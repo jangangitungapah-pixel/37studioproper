@@ -5,25 +5,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isBootstrapOwnerEmail() {
-      return isSignedIn() &&
-        request.auth.token.email != null &&
-        request.auth.token.email.lower() == 'marsicprod@gmail.com';
-    }
-
-    function userHasExplicitRole() {
-      return isSignedIn() && getUserDoc().keys().hasAny(['role']);
-    }
-
     function isOwner() {
       return isSignedIn() && (
-        getUserDoc().role == 'owner' ||
-        (!userHasExplicitRole() && isBootstrapOwnerEmail())
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() == 'marsicprod@gmail.com'
       );
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isApproved() {
@@ -32,71 +22,66 @@ service cloud.firestore {
       );
     }
 
-    function hasPermission(page) {
-      return isOwner() || (
-        isApproved() && (
-          getUserDoc().permissions == null ||
-          getUserDoc().permissions[page] == true
-        )
-      );
+    function isValidString(val) {
+      return val is string && val.size() > 0;
     }
 
-    function canAccessBookingData() {
-      return hasPermission('dashboard') ||
-        hasPermission('schedule') ||
-        hasPermission('customers') ||
-        hasPermission('billing');
-    }
-
-    function canAccessCustomerData() {
-      return hasPermission('dashboard') ||
-        hasPermission('customers');
-    }
-
-    function canAccessBookkeepingData() {
-      return hasPermission('dashboard') ||
-        hasPermission('bookkeeping');
-    }
-
-    function canAccessInventoryData() {
-      return hasPermission('dashboard') ||
-        hasPermission('inventory');
+    function isValidNumber(val, minVal) {
+      return (val is int || val is float) && val >= minVal;
     }
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isOwner() || (
-        isSignedIn() &&
-        request.auth.uid == userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'updatedAt'])
-      );
-      allow delete: if isOwner();
+      allow update, delete: if isOwner();
     }
 
     match /bookings/{bookingId} {
-      allow read, write: if isApproved() && canAccessBookingData();
+      allow read: if isApproved();
+      allow create, update: if isApproved() &&
+        isValidString(request.resource.data.customer) &&
+        isValidNumber(request.resource.data.total, 0) &&
+        isValidNumber(request.resource.data.durationHours, 0);
+      allow delete: if isApproved();
     }
 
     match /customers/{customerId} {
-      allow read, write: if isApproved() && canAccessCustomerData();
-    }
-
-    match /inventoryItems/{itemId} {
-      allow read, write: if isApproved() && canAccessInventoryData();
-    }
-
-    match /inventoryMovements/{movementId} {
-      allow read, write: if isApproved() && canAccessInventoryData();
-    }
-
-    match /bookkeepingEntries/{entryId} {
-      allow read, write: if isApproved() && canAccessBookkeepingData();
+      allow read: if isApproved();
+      allow create, update: if isApproved() &&
+        isValidString(request.resource.data.name) &&
+        isValidString(request.resource.data.phone);
+      allow delete: if isApproved();
     }
 
     match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isApproved();
+    }
+
+    match /bookkeepingEntries/{entryId} {
       allow read: if isApproved();
-      allow write: if isApproved() && hasPermission('settings');
+      allow create, update: if isApproved() &&
+        isValidString(request.resource.data.title) &&
+        isValidNumber(request.resource.data.amount, 0) &&
+        (request.resource.data.type == 'income' || request.resource.data.type == 'expense');
+      allow delete: if isApproved();
+    }
+
+    match /inventoryItems/{itemId} {
+      allow read: if isApproved();
+      allow create, update: if isApproved() &&
+        isValidString(request.resource.data.name) &&
+        isValidNumber(request.resource.data.quantity, 0) &&
+        isValidNumber(request.resource.data.minStock, 0);
+      allow delete: if isApproved();
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if isApproved();
+      allow create: if isApproved() &&
+        isValidString(request.resource.data.itemName) &&
+        isValidNumber(request.resource.data.quantity, 0);
+      allow update, delete: if false;
     }
 
     match /mail/{mailId} {

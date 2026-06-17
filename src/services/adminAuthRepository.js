@@ -3,6 +3,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signInWithPhoneNumber,
   sendPasswordResetEmail,
@@ -223,8 +225,14 @@ export async function signInWithGoogle() {
   }
 
   const provider = new GoogleAuthProvider();
-  const credential = await signInWithPopup(firebaseAuth, provider);
-  return serializeFirebaseUser(credential.user);
+  // Use signInWithRedirect for mobile-first support and to avoid popup COOP errors
+  await signInWithRedirect(firebaseAuth, provider);
+}
+
+export async function handleRedirectResult() {
+  if (!isFirebaseConfigured || !firebaseAuth) return null;
+  const credential = await getRedirectResult(firebaseAuth);
+  return credential ? serializeFirebaseUser(credential.user) : null;
 }
 
 export async function sendPhoneOTP(phoneNumber, recaptchaVerifier) {
@@ -306,6 +314,7 @@ export const adminAuthRepository = {
   signInAdmin,
   signUpAdmin,
   signInWithGoogle,
+  handleRedirectResult,
   sendPhoneOTP,
   sendAdminPasswordReset,
   signOutAdmin,
