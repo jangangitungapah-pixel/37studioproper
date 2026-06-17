@@ -1,4 +1,12 @@
 
+@font-face {
+  font-family: 'RetroFloral';
+  src: url('/fonts/retro-floral.regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
