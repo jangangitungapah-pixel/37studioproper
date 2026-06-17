@@ -5,21 +5,62 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner() {
-      return isSignedIn() && (
-        request.auth.token.email != null &&
-        request.auth.token.email.lower() == 'marsicprod@gmail.com'
-      );
-    }
-
     function getUserDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isBootstrapOwnerEmail() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() == 'marsicprod@gmail.com';
+    }
+
+    function userHasExplicitRole() {
+      return isSignedIn() && getUserDoc().keys().hasAny(['role']);
+    }
+
+    function isOwner() {
+      return isSignedIn() && (
+        getUserDoc().role == 'owner' ||
+        (!userHasExplicitRole() && isBootstrapOwnerEmail())
+      );
     }
 
     function isApproved() {
       return isOwner() || (
         isSignedIn() && getUserDoc().status == 'approved'
       );
+    }
+
+    function hasPermission(page) {
+      return isOwner() || (
+        isApproved() && (
+          getUserDoc().permissions == null ||
+          getUserDoc().permissions[page] == true
+        )
+      );
+    }
+
+    function canAccessBookingData() {
+      return hasPermission('dashboard') ||
+        hasPermission('schedule') ||
+        hasPermission('customers') ||
+        hasPermission('billing');
+    }
+
+    function canAccessCustomerData() {
+      return hasPermission('dashboard') ||
+        hasPermission('customers');
+    }
+
+    function canAccessBookkeepingData() {
+      return hasPermission('dashboard') ||
+        hasPermission('bookkeeping');
+    }
+
+    function canAccessInventoryData() {
+      return hasPermission('dashboard') ||
+        hasPermission('inventory');
     }
 
     function isValidString(val) {
@@ -33,57 +74,67 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update, delete: if isOwner();
+      allow update: if isOwner() || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'updatedAt'])
+      );
+      allow delete: if isOwner();
     }
 
     match /bookings/{bookingId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && canAccessBookingData();
       allow create, update: if isApproved() &&
+        canAccessBookingData() &&
         isValidString(request.resource.data.customer) &&
         isValidNumber(request.resource.data.total, 0) &&
         isValidNumber(request.resource.data.durationHours, 0);
-      allow delete: if isApproved();
+      allow delete: if isApproved() && canAccessBookingData();
     }
 
     match /customers/{customerId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && canAccessCustomerData();
       allow create, update: if isApproved() &&
+        canAccessCustomerData() &&
         isValidString(request.resource.data.name) &&
         isValidString(request.resource.data.phone);
-      allow delete: if isApproved();
+      allow delete: if isApproved() && canAccessCustomerData();
     }
 
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isApproved();
+      allow write: if isApproved() && hasPermission('settings');
     }
 
     match /gallery/{imageId} {
       allow read: if true;
-      allow write: if isApproved();
+      allow write: if isApproved() && hasPermission('gallery');
     }
 
     match /bookkeepingEntries/{entryId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && canAccessBookkeepingData();
       allow create, update: if isApproved() &&
+        canAccessBookkeepingData() &&
         isValidString(request.resource.data.title) &&
         isValidNumber(request.resource.data.amount, 0) &&
         (request.resource.data.type == 'income' || request.resource.data.type == 'expense');
-      allow delete: if isApproved();
+      allow delete: if isApproved() && canAccessBookkeepingData();
     }
 
     match /inventoryItems/{itemId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && canAccessInventoryData();
       allow create, update: if isApproved() &&
+        canAccessInventoryData() &&
         isValidString(request.resource.data.name) &&
         isValidNumber(request.resource.data.quantity, 0) &&
         isValidNumber(request.resource.data.minStock, 0);
-      allow delete: if isApproved();
+      allow delete: if isApproved() && canAccessInventoryData();
     }
 
     match /inventoryMovements/{movementId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && canAccessInventoryData();
       allow create: if isApproved() &&
+        canAccessInventoryData() &&
         isValidString(request.resource.data.itemName) &&
         isValidNumber(request.resource.data.quantity, 0);
       allow update, delete: if false;

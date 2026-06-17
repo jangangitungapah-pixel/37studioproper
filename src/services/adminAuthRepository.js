@@ -2,7 +2,6 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { 
   collection, 
   addDoc, 
@@ -37,11 +37,9 @@ import {
   Music,
   MapPin,
   Camera,
-  Layers,
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Sliders,
   Trash
 } from 'lucide-react';
 import { firestoreDb, firebaseAuth } from '../../lib/firebase.js';
@@ -158,10 +156,14 @@ class LofiAmbientSynth {
     if (!this.isPlaying) return;
     clearInterval(this.chordTimer);
     if (this.noise) {
-      try { this.noise.stop(); } catch(e){}
+      try { this.noise.stop(); } catch {
+        // Audio nodes can already be stopped by the browser.
+      }
     }
     if (this.droneOsc) {
-      try { this.droneOsc.stop(); } catch(e){}
+      try { this.droneOsc.stop(); } catch {
+        // Audio nodes can already be stopped by the browser.
+      }
     }
     if (this.ctx) {
       this.ctx.close();
@@ -177,6 +179,8 @@ const CATEGORIES = [
   { value: 'Events', label: 'Kegiatan / Sesi', color: 'from-purple-500/20 to-pink-600/20' },
   { value: 'Others', label: 'Lain-lain', color: 'from-gray-500/20 to-slate-600/20' }
 ];
+
+const AUDIO_VISUALIZER_BAR_HEIGHTS = [7, 11, 5, 12, 8, 10];
 
 export default function GalleryPage() {
   const [rawImages, setRawImages] = useState([]);
@@ -236,7 +240,6 @@ export default function GalleryPage() {
 
   // Fetch all gallery items (live updates)
   useEffect(() => {
-    setIsLoading(true);
     const q = query(collection(firestoreDb, 'gallery'), orderBy('createdAt', 'desc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -339,7 +342,7 @@ export default function GalleryPage() {
         synthRef.current.stop();
       }
     }
-  }, [isMusicPlaying]);
+  }, [isMusicPlaying, audioVolume]);
 
   // Adjust volume
   const handleVolumeChange = (e) => {
@@ -349,6 +352,45 @@ export default function GalleryPage() {
       synthRef.current.setVolume(val);
     }
   };
+
+  // Active Photo document helper
+  const activePhoto = useMemo(() => {
+    if (activePhotoIndex === null) return null;
+    return displayedImages[activePhotoIndex];
+  }, [activePhotoIndex, displayedImages]);
+
+  const handleNextPhoto = useCallback(() => {
+    if (displayedImages.length <= 1) return;
+    setActivePhotoIndex(prev => (prev + 1) % displayedImages.length);
+  }, [displayedImages.length]);
+
+  const handlePrevPhoto = useCallback(() => {
+    if (displayedImages.length <= 1) return;
+    setActivePhotoIndex(prev => (prev - 1 + displayedImages.length) % displayedImages.length);
+  }, [displayedImages.length]);
+
+  const closeLightbox = useCallback(() => {
+    setActivePhotoIndex(null);
+    setIsSlideshowPlaying(false);
+    setIsMusicPlaying(false);
+    setIsEditing(false);
+    if (synthRef.current) {
+      synthRef.current.stop();
+    }
+  }, []);
+
+  const handleToggleFavorite = useCallback(async (img) => {
+    if (!img?.id) return;
+
+    try {
+      await updateDoc(doc(firestoreDb, 'gallery', img.id), {
+        isFavorite: !img.isFavorite
+      });
+    } catch (err) {
+      console.error('Favorite update failed:', err);
+      setError('Gagal memperbarui status favorit.');
+    }
+  }, []);
 
   // Keyboard Navigation in Lightbox
   useEffect(() => {
@@ -373,7 +415,7 @@ export default function GalleryPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activePhotoIndex, displayedImages, isEditing]);
+  }, [activePhotoIndex, closeLightbox, displayedImages, handleNextPhoto, handlePrevPhoto, handleToggleFavorite, isEditing]);
 
   // Slideshow Timer Effect
   useEffect(() => {
@@ -384,33 +426,7 @@ export default function GalleryPage() {
       }, 4000);
     }
     return () => clearInterval(timer);
-  }, [isSlideshowPlaying, activePhotoIndex, displayedImages]);
-
-  // Active Photo document helper
-  const activePhoto = useMemo(() => {
-    if (activePhotoIndex === null) return null;
-    return displayedImages[activePhotoIndex];
-  }, [activePhotoIndex, displayedImages]);
-
-  const handleNextPhoto = () => {
-    if (displayedImages.length <= 1) return;
-    setActivePhotoIndex(prev => (prev + 1) % displayedImages.length);
-  };
-
-  const handlePrevPhoto = () => {
-    if (displayedImages.length <= 1) return;
-    setActivePhotoIndex(prev => (prev - 1 + displayedImages.length) % displayedImages.length);
-  };
-
-  const closeLightbox = () => {
-    setActivePhotoIndex(null);
-    setIsSlideshowPlaying(false);
-    setIsMusicPlaying(false);
-    setIsEditing(false);
-    if (synthRef.current) {
-      synthRef.current.stop();
-    }
-  };
+  }, [isSlideshowPlaying, activePhotoIndex, handleNextPhoto]);
 
   // File Upload Handlers
   const handleFileChange = (e) => {
@@ -492,20 +508,8 @@ export default function GalleryPage() {
     }
   };
 
-  // Toggle Favorite
-  const handleToggleFavorite = async (img) => {
-    try {
-      await updateDoc(doc(firestoreDb, 'gallery', img.id), {
-        isFavorite: !img.isFavorite
-      });
-    } catch (err) {
-      console.error('Favorite update failed:', err);
-      setError('Gagal memperbarui status favorit.');
-    }
-  };
-
   // Soft Delete (Move to Trash)
-  const handleSoftDelete = async (imgId) => {
+  const handleSoftDelete = useCallback(async (imgId) => {
     try {
       await updateDoc(doc(firestoreDb, 'gallery', imgId), {
         isDeleted: true,
@@ -513,7 +517,10 @@ export default function GalleryPage() {
       });
       if (activePhotoIndex !== null && displayedImages[activePhotoIndex].id === imgId) {
         if (displayedImages.length <= 1) {
-          closeLightbox();
+          setActivePhotoIndex(null);
+          setIsSlideshowPlaying(false);
+          setIsMusicPlaying(false);
+          setIsEditing(false);
         } else {
           handleNextPhoto();
         }
@@ -523,7 +530,7 @@ export default function GalleryPage() {
       console.error('Soft delete failed:', err);
       setError('Gagal memindahkan foto ke Tempat Sampah.');
     }
-  };
+  }, [activePhotoIndex, displayedImages, handleNextPhoto]);
 
   // Restore from Trash
   const handleRestore = async (imgId) => {
@@ -655,11 +662,17 @@ export default function GalleryPage() {
   // Image Editor Canvas Logic
   useEffect(() => {
     if (!isEditing || !activePhoto) return;
-    setImgElement(null);
+    let isCurrent = true;
+    const resetFrameId = window.requestAnimationFrame(() => {
+      if (isCurrent) {
+        setImgElement(null);
+      }
+    });
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = activePhoto.url;
     img.onload = () => {
+      if (!isCurrent) return;
       setImgElement(img);
       setEditorFilterPreset('original');
       setEditorAdjustments({
@@ -675,8 +688,14 @@ export default function GalleryPage() {
       setEditorCropPreset('free');
     };
     img.onerror = () => {
+      if (!isCurrent) return;
       setError('Gagal memuat file gambar untuk diedit.');
       setIsEditing(false);
+    };
+
+    return () => {
+      isCurrent = false;
+      window.cancelAnimationFrame(resetFrameId);
     };
   }, [isEditing, activePhoto]);
 
@@ -892,7 +911,7 @@ export default function GalleryPage() {
   }, [activePhoto]);
 
   return (
-    <section className="customer-page pb-28 md:pb-8" aria-labelledby="gallery-page-title">
+    <section className="customer-page gallery-page pb-28 md:pb-8" aria-labelledby="gallery-page-title">
       
       {/* 1. COHESIVE CRM TITLE BLOCK */}
       <div className="customer-page-title">
@@ -1000,7 +1019,7 @@ export default function GalleryPage() {
         </div>
 
         {/* Column 3: Action Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <div className="gallery-actions flex items-center gap-2 w-full sm:w-auto justify-end">
           {/* Grid density controls (Desktop Only) */}
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--auth-border)] bg-[var(--auth-bg-control)] text-xs text-[var(--auth-text-muted)] mr-2">
             <Grid size={13} className="text-zinc-500" />
@@ -1121,7 +1140,7 @@ export default function GalleryPage() {
             <div className="space-y-6">
               
               {/* Category pills using system .gallery-filter-row & .gallery-filter-pill */}
-              <div className="gallery-filter-row">
+              <div className="gallery-category-row gallery-filter-row">
                 <button
                   onClick={() => setSelectedCategoryFilter('All')}
                   className={`gallery-filter-pill ${selectedCategoryFilter === 'All' ? 'is-active' : ''}`}
@@ -1156,7 +1175,7 @@ export default function GalleryPage() {
 
                     {/* Responsive Grid layout */}
                     <div 
-                      className="grid gap-4 sm:gap-5"
+                      className="gallery-photo-grid grid gap-4 sm:gap-5"
                       style={{
                         gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
                       }}
@@ -1194,7 +1213,7 @@ export default function GalleryPage() {
             <div>
               {selectedAlbum === null ? (
                 // Albums Menu
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                <div className="gallery-album-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                   {/* Virtual Album: All Photos */}
                   <AlbumFolderCard
                     title="Semua Foto"
@@ -1281,7 +1300,7 @@ export default function GalleryPage() {
                     <EmptyGalleryState activeTab="albums_detail" />
                   ) : (
                     <div 
-                      className="grid gap-4 sm:gap-5"
+                      className="gallery-photo-grid grid gap-4 sm:gap-5"
                       style={{
                         gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
                       }}
@@ -1334,7 +1353,7 @@ export default function GalleryPage() {
                           const promises = displayedImages.map(img => deleteDoc(doc(firestoreDb, 'gallery', img.id)));
                           await Promise.all(promises);
                           setSuccess('Tempat sampah berhasil dikosongkan.');
-                        } catch(e) {
+                        } catch {
                           setError('Gagal mengosongkan tempat sampah.');
                         }
                       }
@@ -1351,7 +1370,7 @@ export default function GalleryPage() {
                 <EmptyGalleryState activeTab="trash" />
               ) : (
                 <div 
-                  className="grid gap-4 sm:gap-5"
+                  className="gallery-photo-grid grid gap-4 sm:gap-5"
                   style={{
                     gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
                   }}
@@ -2062,12 +2081,12 @@ export default function GalleryPage() {
               <Music size={13} className="text-orange-500 animate-bounce" />
               <span className="text-[10px] text-zinc-400 mr-2 font-medium">Ambient Lofi Playing</span>
               <div className="flex items-end gap-0.5 h-3">
-                {[...Array(6)].map((_, i) => (
+                {AUDIO_VISUALIZER_BAR_HEIGHTS.map((height, i) => (
                   <span
                     key={i}
                     className="w-0.5 bg-orange-500 rounded-full animate-pulse"
                     style={{
-                      height: `${Math.floor(Math.random() * 8) + 4}px`,
+                      height: `${height}px`,
                       animationDelay: `${i * 0.15}s`,
                       animationDuration: '0.8s'
                     }}
@@ -2282,7 +2301,7 @@ function AlbumFolderCard({ title, count, coverUrl, onClick, icon: FolderIcon = F
 // Subcomponent: Empty status placeholder
 function EmptyGalleryState({ activeTab }) {
   return (
-    <div className="text-center py-24 rounded-[22px] border border-dashed border-[var(--auth-border)] bg-[var(--auth-bg-soft)]/50 p-6 space-y-4 max-w-lg mx-auto">
+    <div className="gallery-empty-state text-center py-24 rounded-[22px] border border-dashed border-[var(--auth-border)] bg-[var(--auth-bg-soft)]/50 p-6 space-y-4 max-w-lg mx-auto">
       <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center border border-white/5">
         <ImageIcon className="text-zinc-600 w-8 h-8 opacity-65" />
       </div>

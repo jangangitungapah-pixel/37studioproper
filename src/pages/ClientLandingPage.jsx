@@ -1,20 +1,16 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Calendar,
-  Clock,
   Music,
   Phone,
   Shield,
   Volume2,
   MapPin,
   Sparkles,
-  DollarSign,
   ArrowRight,
   Check,
-  Headphones,
   Mic,
   Sliders,
-  Layers,
   ChevronRight,
   Flame,
   Info
@@ -155,15 +151,16 @@ export default function ClientLandingPage() {
     const endHourNum = startHourNum + actualDuration;
     const timeString = `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`;
 
-    let selectedService = '';
-    if (packageId !== 'none') {
+    const selectedService = packageId !== 'none'
+      ? (() => {
       const pkg = pricingSettings.packages?.find(p => p.id === packageId);
-      selectedService = `Paket: ${pkg?.name || 'Paket Studio'}`;
-    } else {
+        return `Paket: ${pkg?.name || 'Paket Studio'}`;
+      })()
+      : (() => {
       const sess = sessionOptions.find(s => s.key === sessionType);
       const sub = recordingTypeId !== 'none' ? ` (${recordingTypeOptions.find(r => r.key === recordingTypeId)?.label.split(' • ')[0] || ''})` : '';
-      selectedService = `Sesi: ${sess?.label || sessionType}${sub}`;
-    }
+        return `Sesi: ${sess?.label || sessionType}${sub}`;
+      })();
 
     const text = `Halo *${studioName}*, saya ingin booking slot studio:
 

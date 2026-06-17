@@ -1,6 +1,15 @@
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 export async function sendNewUserNotificationEmail(userDoc) {
   const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
   const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
@@ -8,6 +17,12 @@ export async function sendNewUserNotificationEmail(userDoc) {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://studio-37.web.app';
   const approveLink = `${origin}/admin/approve?uid=${userDoc.uid}`;
+  const safeDisplayName = escapeHtml(userDoc.displayName);
+  const safeEmail = escapeHtml(userDoc.email || 'Tidak ada');
+  const safePhoneNumber = escapeHtml(userDoc.phoneNumber || 'Tidak ada');
+  const safeProvider = escapeHtml(userDoc.provider);
+  const safeCreatedAt = escapeHtml(new Date(userDoc.createdAt).toLocaleString('id-ID'));
+  const safeApproveLink = escapeHtml(approveLink);
 
   // Method 1: EmailJS (Client-Side API)
   if (serviceId && templateId && publicKey) {
@@ -60,28 +75,28 @@ export async function sendNewUserNotificationEmail(userDoc) {
               <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; width: 120px; color: #7f8c8d;">Nama:</td>
-                  <td style="padding: 8px 0; color: #2c3e50;">${userDoc.displayName}</td>
+                  <td style="padding: 8px 0; color: #2c3e50;">${safeDisplayName}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #7f8c8d;">Email:</td>
-                  <td style="padding: 8px 0; color: #2c3e50;">${userDoc.email || 'Tidak ada'}</td>
+                  <td style="padding: 8px 0; color: #2c3e50;">${safeEmail}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #7f8c8d;">No HP:</td>
-                  <td style="padding: 8px 0; color: #2c3e50;">${userDoc.phoneNumber || 'Tidak ada'}</td>
+                  <td style="padding: 8px 0; color: #2c3e50;">${safePhoneNumber}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #7f8c8d;">Metode Login:</td>
-                  <td style="padding: 8px 0; color: #2c3e50; text-transform: uppercase;">${userDoc.provider}</td>
+                  <td style="padding: 8px 0; color: #2c3e50; text-transform: uppercase;">${safeProvider}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold; color: #7f8c8d;">Waktu Daftar:</td>
-                  <td style="padding: 8px 0; color: #2c3e50;">${new Date(userDoc.createdAt).toLocaleString('id-ID')}</td>
+                  <td style="padding: 8px 0; color: #2c3e50;">${safeCreatedAt}</td>
                 </tr>
               </table>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${approveLink}" style="background-color: #2ecc71; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block; box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);">
+                <a href="${safeApproveLink}" style="background-color: #2ecc71; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block; box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);">
                   Setujui Akses Akun
                 </a>
               </div>
@@ -89,7 +104,7 @@ export async function sendNewUserNotificationEmail(userDoc) {
               <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
               <p style="font-size: 0.8rem; color: #95a5a6; text-align: center;">
                 Jika tombol di atas tidak berfungsi, Anda juga dapat menyalin tautan berikut ke browser Anda:<br/>
-                <a href="${approveLink}" style="color: #3498db; word-break: break-all;">${approveLink}</a>
+                <a href="${safeApproveLink}" style="color: #3498db; word-break: break-all;">${safeApproveLink}</a>
               </p>
             </div>
           `,

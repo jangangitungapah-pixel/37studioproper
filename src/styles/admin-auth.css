@@ -15877,6 +15877,121 @@ body:has(.settings-permission-backdrop) {
   color: #fff;
 }
 
+/* Gallery compact pass: follow schedule typography and reduce vertical waste. */
+.gallery-page,
+.gallery-page button,
+.gallery-page input {
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  letter-spacing: 0;
+}
+
+.gallery-page {
+  gap: 10px !important;
+}
+
+.gallery-page .customer-page-title {
+  gap: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+.gallery-page .customer-page-title p {
+  font-size: 0.72rem !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.1em !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+}
+
+.gallery-page .customer-page-title h2 {
+  font-size: clamp(1.34rem, 7vw, 2.25rem) !important;
+  letter-spacing: -0.052em !important;
+  line-height: 1.02 !important;
+  margin: 0 !important;
+}
+
+.gallery-page .customer-hero-grid {
+  gap: 10px !important;
+}
+
+.gallery-page .customer-hero-card {
+  min-height: auto !important;
+  padding: 12px !important;
+}
+
+.gallery-page .customer-hero-icon {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.gallery-page .customer-hero-copy {
+  gap: 2px !important;
+}
+
+.gallery-page .customer-hero-copy small {
+  font-size: 0.68rem !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.1 !important;
+}
+
+.gallery-page .customer-hero-copy strong {
+  font-size: 1.1rem !important;
+  line-height: 1 !important;
+}
+
+.gallery-page .customer-hero-copy em {
+  font-size: 0.7rem !important;
+  line-height: 1.2 !important;
+}
+
+.gallery-page .gallery-toolbar {
+  gap: 8px !important;
+  padding: 10px !important;
+}
+
+.gallery-page .customer-search-shell {
+  min-height: 40px !important;
+}
+
+.gallery-page .gallery-filter-pill {
+  min-height: 34px !important;
+  border-radius: 999px;
+  font-size: 0.72rem !important;
+  font-weight: 780 !important;
+  padding: 0 10px !important;
+}
+
+.gallery-page .gallery-actions .customer-back-button,
+.gallery-page .gallery-actions .customer-add-button {
+  min-height: 38px !important;
+  font-size: 0.76rem !important;
+}
+
+.gallery-page .gallery-category-row {
+  margin-top: -2px !important;
+}
+
+.gallery-page .gallery-empty-state {
+  gap: 8px !important;
+  padding: 28px 14px !important;
+}
+
+.gallery-page .gallery-empty-state > div:first-child {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+}
+
+.gallery-page .gallery-empty-state h4 {
+  font-size: 0.84rem !important;
+  line-height: 1.2 !important;
+}
+
+.gallery-page .gallery-empty-state p {
+  font-size: 0.72rem !important;
+  line-height: 1.45 !important;
+}
+
 @media (max-width: 767px) {
   .gallery-filter-row {
     display: flex;
@@ -15932,3 +16047,198 @@ body:has(.settings-permission-backdrop) {
   }
 }
 
+/* Gallery mobile containment: keep the admin gallery inside the viewport. */
+@media (max-width: 767px) {
+  .gallery-page {
+    display: block !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+    padding-inline: 8px !important;
+    padding-bottom: 96px !important;
+  }
+
+  .gallery-page *,
+  .gallery-page *::before,
+  .gallery-page *::after {
+    box-sizing: border-box;
+  }
+
+  .gallery-page .customer-page-title,
+  .gallery-page .customer-hero-grid,
+  .gallery-page .gallery-toolbar,
+  .gallery-page .gallery-category-row,
+  .gallery-page .gallery-photo-grid,
+  .gallery-page .gallery-album-grid,
+  .gallery-page .gallery-empty-state {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .gallery-page .customer-hero-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .gallery-page .customer-hero-card {
+    min-width: 0 !important;
+    padding: 10px 9px !important;
+  }
+
+  .gallery-page .customer-hero-icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .gallery-page .customer-hero-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .gallery-page .customer-hero-copy,
+  .gallery-page .customer-hero-copy small,
+  .gallery-page .customer-hero-copy em {
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .gallery-page .gallery-toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .gallery-page .customer-search-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+  }
+
+  .gallery-page .customer-search-shell input {
+    min-width: 0 !important;
+    font-size: 0.78rem !important;
+    text-overflow: ellipsis;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row {
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row .gallery-filter-pill {
+    flex: 1 1 calc(33.333% - 8px) !important;
+    min-width: 0 !important;
+    min-height: 34px !important;
+    padding-inline: 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row .gallery-filter-pill span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gallery-page .gallery-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+
+  .gallery-page .gallery-actions .customer-back-button,
+  .gallery-page .gallery-actions .customer-add-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 38px !important;
+    padding-inline: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .gallery-page .gallery-category-row {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    flex-wrap: nowrap !important;
+    padding: 0 0 4px !important;
+    margin-inline: 0 !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .gallery-page .gallery-category-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gallery-page .gallery-category-row .gallery-filter-pill {
+    flex: 0 0 auto !important;
+    max-width: min(72vw, 190px);
+    min-height: 34px !important;
+  }
+
+  .gallery-page .gallery-photo-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .gallery-page .gallery-album-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .gallery-page .gallery-empty-state {
+    padding: 26px 14px !important;
+    border-radius: 18px !important;
+    transform: none !important;
+  }
+
+  .gallery-page .gallery-empty-state h4,
+  .gallery-page .gallery-empty-state p {
+    max-width: 100% !important;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (min-width: 520px) and (max-width: 767px) {
+  .gallery-page .customer-hero-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .gallery-page .customer-hero-card:nth-child(3) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .gallery-page {
+    padding-inline: 8px !important;
+  }
+
+  .gallery-page .customer-hero-grid,
+  .gallery-page .gallery-album-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .gallery-page .customer-hero-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row .gallery-filter-pill {
+    flex-basis: calc(50% - 6px) !important;
+  }
+}

@@ -799,18 +799,6 @@ export default function BookkeepingPage() {
     setIsExpenseFormOpen(true);
   }
 
-  function openAddIncome() {
-    setEditingExpense(null);
-    setEntryFormMode('income');
-    setIsExpenseFormOpen(true);
-  }
-
-  function openAddExpense() {
-    setEditingExpense(null);
-    setEntryFormMode('expense');
-    setIsExpenseFormOpen(true);
-  }
-
   function closeExpenseForm() {
     setIsExpenseFormOpen(false);
     setEditingExpense(null);

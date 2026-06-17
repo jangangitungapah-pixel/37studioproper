@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -22,19 +22,19 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
-import { hasAdminPagePermission } from '../utils/adminPermissions.js';
-import SchedulePage from './admin/SchedulePage.jsx';
-import CustomerPage from './admin/CustomerPage.jsx';
-import BillingPage from './admin/BillingPage.jsx';
-import BookkeepingPage from './admin/BookkeepingPage.jsx';
-import InventoryPage from './admin/InventoryPage.jsx';
-import SettingsPage from './admin/SettingsPage.jsx';
-import DashboardPage from './admin/DashboardPage.jsx';
-import GalleryPage from './admin/GalleryPage.jsx';
-
+import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
+
+const SchedulePage = lazy(() => import('./admin/SchedulePage.jsx'));
+const CustomerPage = lazy(() => import('./admin/CustomerPage.jsx'));
+const BillingPage = lazy(() => import('./admin/BillingPage.jsx'));
+const BookkeepingPage = lazy(() => import('./admin/BookkeepingPage.jsx'));
+const InventoryPage = lazy(() => import('./admin/InventoryPage.jsx'));
+const SettingsPage = lazy(() => import('./admin/SettingsPage.jsx'));
+const DashboardPage = lazy(() => import('./admin/DashboardPage.jsx'));
+const GalleryPage = lazy(() => import('./admin/GalleryPage.jsx'));
 
 const mobilePrimaryNavKeys = ['dashboard', 'schedule', 'billing'];
 
@@ -137,7 +137,7 @@ function renderAdminContent(activeKey, currentUser) {
 function AutoApproveView({ currentUser, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
+  const [status, setStatus] = useState('loading'); // 'loading' | 'confirm' | 'success' | 'error'
   const [errorMsg, setErrorMsg] = useState('');
   const [targetUser, setTargetUser] = useState(null);
 
@@ -156,10 +156,10 @@ function AutoApproveView({ currentUser, onLogout }) {
       };
     }
 
-    if (currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com') {
+    if (!isOwnerAdminUser(currentUser)) {
       const ownerGuardFrameId = window.requestAnimationFrame(() => {
         setStatus('error');
-        setErrorMsg('Hanya pemilik studio (marsicprod@gmail.com) yang diizinkan untuk menyetujui akun baru.');
+        setErrorMsg('Hanya owner aktif yang diizinkan untuk menyetujui akun baru.');
       });
 
       return () => {
@@ -167,7 +167,7 @@ function AutoApproveView({ currentUser, onLogout }) {
       };
     }
 
-    async function approveUser() {
+    async function loadTargetUser() {
       try {
         const userRef = doc(firestoreDb, 'users', targetUid);
         const userSnap = await getDoc(userRef);
@@ -186,21 +186,34 @@ function AutoApproveView({ currentUser, onLogout }) {
           return;
         }
 
-        await updateDoc(userRef, {
-          status: 'approved',
-          updatedAt: new Date().toISOString()
-        });
-
-        setStatus('success');
+        setStatus('confirm');
       } catch (err) {
-        console.error('Failed to approve user:', err);
+        console.error('Failed to load approval target:', err);
         setStatus('error');
-        setErrorMsg('Gagal menyetujui user di Firestore. Periksa koneksi atau database.');
+        setErrorMsg('Gagal memuat user dari Firestore. Periksa koneksi atau database.');
       }
     }
 
-    approveUser();
+    loadTargetUser();
   }, [targetUid, currentUser]);
+
+  async function approveTargetUser() {
+    if (!targetUid) return;
+
+    try {
+      await updateDoc(doc(firestoreDb, 'users', targetUid), {
+        status: 'approved',
+        updatedAt: new Date().toISOString()
+      });
+
+      setTargetUser((current) => current ? { ...current, status: 'approved' } : current);
+      setStatus('success');
+    } catch (err) {
+      console.error('Failed to approve user:', err);
+      setStatus('error');
+      setErrorMsg('Gagal menyetujui user di Firestore. Periksa koneksi atau database.');
+    }
+  }
 
   return (
     <main className="theme-container auth-page" data-auth-surface="approve">
@@ -208,8 +221,40 @@ function AutoApproveView({ currentUser, onLogout }) {
         {status === 'loading' && (
           <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <LoaderCircle size={36} className="auth-spin mb-4" style={{ color: 'var(--auth-accent)' }} />
-            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Memproses Persetujuan...</h1>
-            <p style={{ fontSize: '0.88rem', opacity: 0.8 }}>Sistem sedang memverifikasi dan menyetujui akun baru.</p>
+            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Memuat Persetujuan...</h1>
+            <p style={{ fontSize: '0.88rem', opacity: 0.8 }}>Sistem sedang memverifikasi akun baru.</p>
+          </div>
+        )}
+
+        {status === 'confirm' && (
+          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
+              <ShieldCheck size={14} />
+              <span>Konfirmasi</span>
+            </div>
+            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Setujui Akun Ini?</h1>
+            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '24px' }}>
+              Akun <strong>{targetUser?.displayName || targetUser?.email || 'User'}</strong> ({targetUser?.email || targetUser?.phoneNumber || 'No HP'}) akan diberi akses admin.
+            </p>
+            <div style={{ display: 'grid', gap: '10px', width: '100%' }}>
+              <button 
+                className="auth-google-btn" 
+                type="button" 
+                onClick={approveTargetUser}
+                style={{ marginTop: '0', width: '100%', background: 'var(--auth-accent)', color: '#fff', borderColor: 'var(--auth-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <ShieldCheck size={16} />
+                <span>Setujui Akun</span>
+              </button>
+              <button 
+                className="auth-google-btn" 
+                type="button" 
+                onClick={() => navigate('/admin/settings')}
+                style={{ marginTop: '0', width: '100%' }}
+              >
+                <span>Batal</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -245,7 +290,7 @@ function AutoApproveView({ currentUser, onLogout }) {
             <p style={{ fontSize: '0.88rem', color: 'var(--auth-danger)', lineHeight: '1.6', marginBottom: '24px' }}>
               {errorMsg}
             </p>
-            {currentUser?.email?.toLowerCase() !== 'marsicprod@gmail.com' ? (
+            {!isOwnerAdminUser(currentUser) ? (
               <button 
                 className="auth-google-btn" 
                 type="button" 
@@ -469,7 +514,15 @@ export default function AdminPage() {
           </button>
         </header>
 
-        {renderAdminContent(activeItem.key, authState.user)}
+        <Suspense
+          fallback={
+            <div className="admin-page-loading" style={{ minHeight: '40vh', display: 'grid', placeItems: 'center' }}>
+              <LoaderCircle className="auth-spin" size={32} style={{ color: 'var(--auth-accent)' }} />
+            </div>
+          }
+        >
+          {renderAdminContent(activeItem.key, authState.user)}
+        </Suspense>
       </section>
 
       <nav className="admin-bottom-nav" aria-label="Navigasi admin mobile">
