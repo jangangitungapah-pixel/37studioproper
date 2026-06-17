@@ -44,6 +44,10 @@ service cloud.firestore {
       allow read, write: if isApproved();
     }
 
+    match /bookkeepingEntries/{entryId} {
+      allow read, write: if isApproved();
+    }
+
     match /settings/{settingId} {
       allow read: if isSignedIn();
       allow write: if isApproved();

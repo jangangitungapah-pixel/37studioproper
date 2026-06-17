@@ -14,6 +14,7 @@ import {
   LoaderCircle,
   ShieldCheck,
   AlertCircle,
+  BookOpen,
   Home,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -22,6 +23,7 @@ import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import CustomerPage from './admin/CustomerPage.jsx';
 import BillingPage from './admin/BillingPage.jsx';
+import BookkeepingPage from './admin/BookkeepingPage.jsx';
 import InventoryPage from './admin/InventoryPage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
 
@@ -54,6 +56,13 @@ const navItems = [
     title: 'Billing / POS',
   },
   {
+    key: 'bookkeeping',
+    label: 'Pembukuan',
+    path: '/admin/bookkeeping',
+    icon: BookOpen,
+    title: 'Pembukuan',
+  },
+  {
     key: 'inventory',
     label: 'Inventory',
     path: '/admin/inventory',
@@ -83,6 +92,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
   if (activeKey === 'customers') return <CustomerPage />;
   if (activeKey === 'billing') return <BillingPage />;
+  if (activeKey === 'bookkeeping') return <BookkeepingPage />;
   if (activeKey === 'inventory') return <InventoryPage />;
 
   return <SchedulePage />;
