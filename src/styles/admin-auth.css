@@ -10535,3 +10535,55 @@
   }
 }
 /* === INVENTORY ATTENTION CENTER: END === */
+
+/* === INVENTORY CSV EXPORT: START === */
+.inventory-export-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.016)),
+    var(--auth-bg-control);
+  color: var(--auth-text-main);
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.72rem;
+  font-weight: 640;
+  cursor: pointer;
+}
+
+.inventory-export-button svg {
+  width: 14px;
+  height: 14px;
+  color: var(--auth-accent);
+}
+
+.inventory-export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.44;
+}
+
+.inventory-export-button:not(:disabled):hover {
+  border-color: var(--auth-border-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--auth-accent) 12%, transparent), rgba(255, 255, 255, 0.03)),
+    var(--auth-bg-control);
+}
+
+@media (min-width: 768px) {
+  .inventory-toolbar {
+    grid-template-columns: minmax(260px, 1fr) minmax(170px, 0.48fr) minmax(170px, 0.48fr) auto auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .inventory-export-button {
+    min-height: 40px;
+    border-radius: 13px;
+    font-size: 0.68rem;
+  }
+}
+/* === INVENTORY CSV EXPORT: END === */

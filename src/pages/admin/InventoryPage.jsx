@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
   Boxes,
+  Download,
   History,
   Minus,
   PackageOpen,
@@ -134,6 +135,74 @@ function getMovementTypeLabel(type) {
   if (type === 'inactive') return 'Nonaktif';
 
   return 'Aktivitas';
+}
+
+function escapeCsvCell(value) {
+  const text = String(value ?? '').replace(/\r?\n/g, ' ').trim();
+
+  if (/[",;]/.test(text)) {
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+
+  return text;
+}
+
+function buildInventoryCsv(items) {
+  const header = [
+    'Nama Item',
+    'Kategori',
+    'Tipe',
+    'Qty',
+    'Satuan',
+    'Minimal Stok',
+    'Status',
+    'Kondisi',
+    'Lokasi',
+    'Catatan',
+  ];
+
+  const rows = items.map((item) => {
+    const status = getEffectiveStatus(item);
+
+    return [
+      item.name,
+      getOptionLabel(formCategoryOptions, item.category, item.category),
+      item.type === 'consumable' ? 'Consumable' : 'Asset',
+      item.quantity,
+      item.unit,
+      item.minStock,
+      getStatusLabel(status),
+      getOptionLabel(conditionOptions, item.condition, item.condition),
+      item.location,
+      item.note,
+    ];
+  });
+
+  return '\uFEFF' + [header, ...rows]
+    .map((row) => row.map(escapeCsvCell).join(','))
+    .join('\n');
+}
+
+function downloadInventoryCsv(filename, csvContent) {
+  if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
+    return false;
+  }
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 250);
+
+  return true;
 }
 
 function getInventoryStats(items) {
@@ -303,8 +372,10 @@ function InventoryMovementPanel({ movements }) {
 
 function InventoryToolbar({
   categoryFilter,
+  exportDisabled,
   onAddItem,
   onCategoryChange,
+  onExportItems,
   onSearchChange,
   onStatusChange,
   searchText,
@@ -336,6 +407,16 @@ function InventoryToolbar({
         selectedKey={statusFilter}
         onChange={onStatusChange}
       />
+
+      <button
+        className="inventory-export-button"
+        disabled={exportDisabled}
+        type="button"
+        onClick={onExportItems}
+      >
+        <Download size={16} />
+        Export
+      </button>
 
       <button className="inventory-add-button" type="button" onClick={onAddItem}>
         <Plus size={16} />
@@ -713,6 +794,29 @@ export default function InventoryPage() {
     });
   }, [categoryFilter, items, searchText, statusFilter]);
 
+
+
+  function exportInventoryCsv() {
+    if (!filteredItems.length) {
+      setToast({
+        title: 'Tidak ada data',
+        message: 'Tidak ada item inventory yang bisa diexport dari filter saat ini.',
+      });
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const csvContent = buildInventoryCsv(filteredItems);
+    const isDownloaded = downloadInventoryCsv('inventory-37musicstudio-' + today + '.csv', csvContent);
+
+    setToast({
+      title: isDownloaded ? 'Export berhasil' : 'Export tidak tersedia',
+      message: isDownloaded
+        ? filteredItems.length + ' item inventory sudah dibuat menjadi file CSV.'
+        : 'Browser tidak mendukung download file otomatis.',
+    });
+  }
+
   function openAddForm() {
     setEditingItem(null);
     setIsFormOpen(true);
@@ -856,10 +960,12 @@ export default function InventoryPage() {
 
       <InventoryToolbar
         categoryFilter={categoryFilter}
+        exportDisabled={!filteredItems.length}
         searchText={searchText}
         statusFilter={statusFilter}
         onAddItem={openAddForm}
         onCategoryChange={setCategoryFilter}
+        onExportItems={exportInventoryCsv}
         onSearchChange={setSearchText}
         onStatusChange={setStatusFilter}
       />
