@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { 
-  collection, 
-  addDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot, 
-  query, 
-  orderBy,
-  updateDoc
-} from 'firebase/firestore';
-import { 
   Image as ImageIcon, 
   Plus, 
   Trash2, 
@@ -42,7 +32,9 @@ import {
   ChevronRight,
   Trash
 } from 'lucide-react';
-import { firestoreDb, firebaseAuth } from '../../lib/firebase.js';
+import { firebaseAuth } from '../../lib/firebase.js';
+import { uploadGalleryImageFile, MAX_GALLERY_IMAGE_SIZE_BYTES } from '../../services/cloudinaryUploadService.js';
+import { galleryRepository } from '../../services/galleryRepository.js';
 
 // Procedural Lo-fi Ambient Sound Generator using Web Audio API
 class LofiAmbientSynth {
@@ -240,20 +232,17 @@ export default function GalleryPage() {
 
   // Fetch all gallery items (live updates)
   useEffect(() => {
-    const q = query(collection(firestoreDb, 'gallery'), orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = [];
-      snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      setRawImages(list);
-      setIsLoading(false);
-    }, (err) => {
-      console.error('Error fetching gallery:', err);
-      setError('Gagal memuat daftar foto galeri.');
-      setIsLoading(false);
-    });
+    const unsubscribe = galleryRepository.subscribeGalleryItems(
+      (list) => {
+        setRawImages(list);
+        setIsLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching gallery:', err);
+        setError('Gagal memuat daftar foto galeri.');
+        setIsLoading(false);
+      }
+    );
 
     return () => {
       unsubscribe();
@@ -383,9 +372,7 @@ export default function GalleryPage() {
     if (!img?.id) return;
 
     try {
-      await updateDoc(doc(firestoreDb, 'gallery', img.id), {
-        isFavorite: !img.isFavorite
-      });
+      await galleryRepository.setGalleryFavorite(img.id, !img.isFavorite);
     } catch (err) {
       console.error('Favorite update failed:', err);
       setError('Gagal memperbarui status favorit.');
@@ -432,7 +419,7 @@ export default function GalleryPage() {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 12 * 1024 * 1024) {
+      if (file.size > MAX_GALLERY_IMAGE_SIZE_BYTES) {
         setError('Ukuran file maksimal 12MB.');
         return;
       }
@@ -457,26 +444,7 @@ export default function GalleryPage() {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('upload_preset', 'studio37_gallery_unsigned');
-
-      const cloudName = 'dbvlmxvyd';
-      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-      
-      const response = await fetch(cloudinaryUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error?.message || 'Gagal mengirim file ke Cloudinary.');
-      }
-
-      const data = await response.json();
-      const secureUrl = data.secure_url;
-      const publicId = data.public_id;
+      const { secureUrl, publicId } = await uploadGalleryImageFile(selectedFile);
 
       const currentUser = firebaseAuth?.currentUser;
       const docData = {
@@ -491,7 +459,7 @@ export default function GalleryPage() {
         createdAt: new Date().toISOString(),
       };
 
-      await addDoc(collection(firestoreDb, 'gallery'), docData);
+      await galleryRepository.createGalleryItem(docData);
       
       setSuccess('Foto berhasil diupload dan ditambahkan ke galeri!');
       setUploadTitle('');
@@ -511,10 +479,8 @@ export default function GalleryPage() {
   // Soft Delete (Move to Trash)
   const handleSoftDelete = useCallback(async (imgId) => {
     try {
-      await updateDoc(doc(firestoreDb, 'gallery', imgId), {
-        isDeleted: true,
-        deletedAt: new Date().toISOString()
-      });
+      await galleryRepository.moveGalleryItemToTrash(imgId);
+
       if (activePhotoIndex !== null && displayedImages[activePhotoIndex].id === imgId) {
         if (displayedImages.length <= 1) {
           setActivePhotoIndex(null);
@@ -535,10 +501,7 @@ export default function GalleryPage() {
   // Restore from Trash
   const handleRestore = async (imgId) => {
     try {
-      await updateDoc(doc(firestoreDb, 'gallery', imgId), {
-        isDeleted: false,
-        deletedAt: null
-      });
+      await galleryRepository.restoreGalleryItem(imgId);
       setSuccess('Foto berhasil dipulihkan.');
     } catch (err) {
       console.error('Restore failed:', err);
@@ -552,7 +515,7 @@ export default function GalleryPage() {
       return;
     }
     try {
-      await deleteDoc(doc(firestoreDb, 'gallery', imgId));
+      await galleryRepository.deleteGalleryItem(imgId);
       setSuccess('Foto dihapus secara permanen.');
     } catch (err) {
       console.error('Permanent delete failed:', err);
@@ -589,10 +552,7 @@ export default function GalleryPage() {
       const allFav = selectedPhotos.every(p => p.isFavorite);
       if (allFav) isFavVal = false;
 
-      const promises = Array.from(selectedIds).map(id => 
-        updateDoc(doc(firestoreDb, 'gallery', id), { isFavorite: isFavVal })
-      );
-      await Promise.all(promises);
+      await galleryRepository.batchUpdateGalleryItems(Array.from(selectedIds), { isFavorite: isFavVal });
       setSuccess(`Berhasil memperbarui status favorit ${selectedIds.size} foto.`);
       setIsSelectMode(false);
       setSelectedIds(new Set());
@@ -605,13 +565,10 @@ export default function GalleryPage() {
   const handleBatchSoftDelete = async () => {
     setError('');
     try {
-      const promises = Array.from(selectedIds).map(id => 
-        updateDoc(doc(firestoreDb, 'gallery', id), { 
-          isDeleted: true, 
-          deletedAt: new Date().toISOString() 
-        })
-      );
-      await Promise.all(promises);
+      await galleryRepository.batchUpdateGalleryItems(Array.from(selectedIds), {
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+      });
       setSuccess(`Berhasil memindahkan ${selectedIds.size} foto ke Tempat Sampah.`);
       setIsSelectMode(false);
       setSelectedIds(new Set());
@@ -624,13 +581,10 @@ export default function GalleryPage() {
   const handleBatchRestore = async () => {
     setError('');
     try {
-      const promises = Array.from(selectedIds).map(id => 
-        updateDoc(doc(firestoreDb, 'gallery', id), { 
-          isDeleted: false, 
-          deletedAt: null 
-        })
-      );
-      await Promise.all(promises);
+      await galleryRepository.batchUpdateGalleryItems(Array.from(selectedIds), {
+        isDeleted: false,
+        deletedAt: null,
+      });
       setSuccess(`Berhasil memulihkan ${selectedIds.size} foto.`);
       setIsSelectMode(false);
       setSelectedIds(new Set());
@@ -646,10 +600,7 @@ export default function GalleryPage() {
     }
     setError('');
     try {
-      const promises = Array.from(selectedIds).map(id => 
-        deleteDoc(doc(firestoreDb, 'gallery', id))
-      );
-      await Promise.all(promises);
+      await galleryRepository.batchDeleteGalleryItems(Array.from(selectedIds));
       setSuccess(`Berhasil menghapus permanen ${selectedIds.size} foto.`);
       setIsSelectMode(false);
       setSelectedIds(new Set());
@@ -828,27 +779,7 @@ export default function GalleryPage() {
       if (!blob) throw new Error('Gagal menghasilkan file gambar dari editor.');
 
       const file = new File([blob], `${activePhoto.title.replace(/\s+/g, '_')}_edited.jpg`, { type: 'image/jpeg' });
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', 'studio37_gallery_unsigned');
-
-      const cloudName = 'dbvlmxvyd';
-      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-
-      const uploadResponse = await fetch(cloudinaryUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        const errData = await uploadResponse.json();
-        throw new Error(errData.error?.message || 'Gagal mengupload file editan ke Cloudinary.');
-      }
-
-      const uploadData = await uploadResponse.json();
-      const secureUrl = uploadData.secure_url;
-      const publicId = uploadData.public_id;
+      const { secureUrl, publicId } = await uploadGalleryImageFile(file);
 
       const currentUser = firebaseAuth?.currentUser;
       const docData = {
@@ -863,7 +794,7 @@ export default function GalleryPage() {
         createdAt: new Date().toISOString(),
       };
 
-      await addDoc(collection(firestoreDb, 'gallery'), docData);
+      await galleryRepository.createGalleryItem(docData);
       
       setSuccess('Foto editan berhasil disimpan sebagai salinan baru!');
       setIsEditing(false);
@@ -1350,7 +1281,7 @@ export default function GalleryPage() {
                       if (window.confirm('Kosongkan semua sampah secara permanen? Tindakan ini tidak dapat dibatalkan.')) {
                         setError('');
                         try {
-                          const promises = displayedImages.map(img => deleteDoc(doc(firestoreDb, 'gallery', img.id)));
+                          const promises = displayedImages.map(img => galleryRepository.deleteGalleryItem(img.id));
                           await Promise.all(promises);
                           setSuccess('Tempat sampah berhasil dikosongkan.');
                         } catch {
