@@ -14560,3 +14560,122 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === BOOKING MODAL INLINE SELECT FIX: END === */
+
+/* === BOOKING MODAL SOFT ORANGE BORDERS: START === */
+.booking-modal-panel {
+  --booking-border-soft: color-mix(in srgb, var(--auth-accent) 22%, transparent);
+  --booking-border-hover: color-mix(in srgb, var(--auth-accent) 34%, transparent);
+  --booking-border-active: color-mix(in srgb, var(--auth-accent) 48%, transparent);
+  --booking-surface-soft: color-mix(in srgb, var(--auth-accent) 5%, transparent);
+  border-color: color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+}
+
+.booking-modal-head {
+  border-bottom-color: color-mix(in srgb, var(--auth-accent) 14%, transparent) !important;
+}
+
+.booking-modal-close {
+  border-color: color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.06), rgba(255, 255, 255, 0.01)),
+    var(--auth-bg-control) !important;
+}
+
+.booking-modal-panel .studio-input-wrap,
+.booking-modal-panel .studio-select-trigger {
+  border-width: 1px !important;
+  border-color: var(--booking-border-soft) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.035), rgba(255, 255, 255, 0.008)),
+    var(--auth-bg-control) !important;
+  box-shadow: none !important;
+}
+
+.booking-modal-panel .studio-input-wrap:hover,
+.booking-modal-panel .studio-select-trigger:hover {
+  border-color: var(--booking-border-hover) !important;
+}
+
+.booking-modal-panel .studio-input-wrap:focus-within,
+.booking-modal-panel .studio-select-trigger[aria-expanded='true'] {
+  border-color: var(--booking-border-active) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+}
+
+.booking-modal-panel .studio-native-input,
+.booking-modal-panel .studio-native-input:hover,
+.booking-modal-panel .studio-native-input:focus {
+  background: transparent !important;
+}
+
+.booking-modal-panel .studio-select-list[data-inline='true'] {
+  border-color: color-mix(in srgb, var(--auth-accent) 20%, transparent) !important;
+}
+
+.booking-modal-panel .studio-select-option {
+  border-color: color-mix(in srgb, var(--auth-accent) 10%, transparent) !important;
+}
+
+.booking-modal-panel .studio-select-option:hover,
+.booking-modal-panel .studio-select-option.is-selected {
+  border-color: color-mix(in srgb, var(--auth-accent) 28%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.09), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.025) !important;
+}
+
+.booking-detail-panel.has-discount-row,
+.booking-detail-panel {
+  border-color: color-mix(in srgb, var(--auth-accent) 16%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.055), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.02) !important;
+}
+
+.booking-detail-panel div {
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 8%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.035), rgba(255, 255, 255, 0.008)),
+    rgba(255, 255, 255, 0.018) !important;
+}
+
+.booking-detail-panel div:nth-child(3),
+.booking-detail-panel div:last-child {
+  border-color: color-mix(in srgb, var(--auth-accent) 13%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.075), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02) !important;
+}
+
+.booking-button.is-secondary {
+  border-color: color-mix(in srgb, var(--auth-accent) 16%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.045), rgba(255, 255, 255, 0.008)),
+    var(--auth-bg-control) !important;
+}
+
+.booking-button.is-secondary:hover {
+  border-color: color-mix(in srgb, var(--auth-accent) 28%, transparent) !important;
+}
+
+.booking-price-note,
+.booking-form-error {
+  border-color: color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+}
+
+@media (max-width: 420px) {
+  .booking-modal-panel {
+    border-color: color-mix(in srgb, var(--auth-accent) 14%, transparent) !important;
+  }
+
+  .booking-modal-panel .studio-input-wrap,
+  .booking-modal-panel .studio-select-trigger {
+    border-color: color-mix(in srgb, var(--auth-accent) 18%, transparent) !important;
+  }
+
+  .booking-modal-panel .studio-input-wrap:focus-within,
+  .booking-modal-panel .studio-select-trigger[aria-expanded='true'] {
+    border-color: color-mix(in srgb, var(--auth-accent) 42%, transparent) !important;
+  }
+}
+/* === BOOKING MODAL SOFT ORANGE BORDERS: END === */
