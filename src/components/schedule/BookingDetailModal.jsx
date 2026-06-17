@@ -65,7 +65,27 @@ function getBookingStatus(booking) {
   return booking?.paymentStatus || booking?.status || 'pending';
 }
 
+function getPaymentHistoryTotal(booking) {
+  const history = Array.isArray(booking?.paymentHistory) ? booking.paymentHistory : [];
+
+  return history.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+}
+
+function getInvoiceAmount(booking, paidAmount) {
+  const total = Number(booking?.total || booking?.subtotal || 0) || 0;
+  const storedInvoice = Number(booking?.invoiceAmount);
+
+  if (total > 0 && paidAmount > 0) {
+    return Math.max(0, total - paidAmount);
+  }
+
+  return Number.isFinite(storedInvoice) ? Math.max(0, storedInvoice) : 0;
+}
+
 function getPaidAmount(booking, status) {
+  const historyTotal = getPaymentHistoryTotal(booking);
+
+  if (historyTotal > 0) return historyTotal;
   if (status === 'dp') return booking?.dpAmount;
   if (status === 'lunas') return booking?.total;
 
@@ -106,7 +126,7 @@ export default function BookingDetailModal({
   const title = booking?.title || booking?.bandName || booking?.sessionLabel || booking?.packageLabel || 'Detail Booking';
   const sessionLabel = booking?.packageLabel || booking?.recordingTypeLabel || booking?.sessionLabel || '-';
   const paidAmount = getPaidAmount(booking, status);
-  const invoiceAmount = Number(booking?.invoiceAmount) || 0;
+  const invoiceAmount = getInvoiceAmount(booking, paidAmount);
 
   useEffect(() => {
     if (!isOpen) return undefined;

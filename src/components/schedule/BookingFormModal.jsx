@@ -105,6 +105,20 @@ function getSelectedOption(options, key) {
   return options.find((option) => option.key === key) || options[0];
 }
 
+function parseRupiahInput(value) {
+  const raw = String(value ?? '').trim();
+
+  if (!raw) return 0;
+
+  if (/^\d+$/.test(raw)) {
+    return Number(raw) || 0;
+  }
+
+  const digitsOnly = raw.replace(/\D/g, '');
+
+  return Number(digitsOnly) || 0;
+}
+
 function getDurationHours(form) {
   if (form.duration === 'custom') {
     return Math.max(0, Number(form.customDuration) || 0);
@@ -125,19 +139,25 @@ function getExistingPaymentHistory(editingBooking) {
   return Array.isArray(editingBooking?.paymentHistory) ? editingBooking.paymentHistory : [];
 }
 
-function getInitialPaidAmount(paymentStatus, totals) {
-  if (paymentStatus === 'lunas') return Number(totals.total) || 0;
-  if (paymentStatus === 'dp') return Number(totals.dpAmount) || 0;
+function getInitialPaidAmount(paymentStatus, totals, requestedDpAmount = 0) {
+  const safeTotal = Number(totals.total) || 0;
+  const safeRequestedDp = Number(requestedDpAmount) || 0;
+
+  if (paymentStatus === 'lunas') return safeTotal;
+
+  if (paymentStatus === 'dp') {
+    return Math.min(safeTotal || safeRequestedDp, safeRequestedDp || Number(totals.dpAmount) || 0);
+  }
 
   return 0;
 }
 
-function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, totals }) {
+function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, requestedDpAmount, totals }) {
   const existingPaymentHistory = getExistingPaymentHistory(editingBooking);
 
   if (existingPaymentHistory.length) return existingPaymentHistory;
 
-  const initialPaidAmount = getInitialPaidAmount(form.paymentStatus, totals);
+  const initialPaidAmount = getInitialPaidAmount(form.paymentStatus, totals, requestedDpAmount);
 
   if (!initialPaidAmount) return [];
 
@@ -227,7 +247,7 @@ export default function BookingFormModal({
         durationHours: getDurationHours(form),
         packageId: form.packageId,
         paymentStatus: form.paymentStatus,
-        dpAmount: form.dpAmount,
+        dpAmount: parseRupiahInput(form.dpAmount),
         pricingSettings,
         recordingTypeId: shouldShowRecordingType ? activeRecordingTypeKey : 'none',
         sessionId: form.sessionType,
@@ -321,11 +341,13 @@ export default function BookingFormModal({
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
     const bookingId = editingBooking?.id || makeBookingId();
     const now = new Date().toISOString();
+    const requestedDpAmount = parseRupiahInput(form.dpAmount);
     const paymentHistory = buildInitialPaymentHistory({
       bookingId,
       editingBooking,
       form,
       now,
+      requestedDpAmount,
       totals,
     });
     const paidAmount = paymentHistory.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
