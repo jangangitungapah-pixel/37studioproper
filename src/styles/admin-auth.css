@@ -15568,3 +15568,101 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === CUSTOMER MODAL BOOKING SIZE FORCE: END === */
+
+/* === CUSTOMER STATUS DROPDOWN LAYOUT FIX: START === */
+.customer-booking-size-panel .customer-form-select {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 5px !important;
+}
+
+/* StudioSelect does not have a left icon, so do not use input-field grid here. */
+.customer-booking-size-panel .customer-form-select .studio-select-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 22px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border-radius: 14px !important;
+  padding: 6px 10px !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select-copy {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 1px !important;
+  align-content: center !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select-label {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  color: var(--auth-text-muted) !important;
+  font-size: 0.56rem !important;
+  font-weight: 620 !important;
+  letter-spacing: 0.12em !important;
+  line-height: 1.05 !important;
+  text-overflow: ellipsis !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select-copy strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  color: var(--auth-text-strong) !important;
+  font-size: 0.78rem !important;
+  font-weight: 560 !important;
+  letter-spacing: -0.012em !important;
+  line-height: 1.14 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select-chevron {
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  display: grid !important;
+  place-items: center !important;
+  justify-self: end !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select-chevron svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.customer-booking-size-panel .customer-form-select .studio-select-list[data-inline='true'] {
+  width: 100% !important;
+  margin-top: 4px !important;
+}
+
+@media (max-width: 420px) {
+  .customer-booking-size-panel .customer-form-select .studio-select-trigger {
+    min-height: 40px !important;
+    grid-template-columns: minmax(0, 1fr) 20px !important;
+    border-radius: 13px !important;
+    padding: 6px 9px !important;
+  }
+
+  .customer-booking-size-panel .customer-form-select .studio-select-copy strong {
+    font-size: 0.74rem !important;
+  }
+
+  .customer-booking-size-panel .customer-form-select .studio-select-label {
+    font-size: 0.54rem !important;
+  }
+}
+/* === CUSTOMER STATUS DROPDOWN LAYOUT FIX: END === */
