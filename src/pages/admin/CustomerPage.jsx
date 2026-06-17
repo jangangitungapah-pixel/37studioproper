@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
+import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 
@@ -1331,6 +1332,7 @@ export default function CustomerPage() {
   const [manualCustomers, setManualCustomers] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [customerPage, setCustomerPage] = useState(1);
   const [followUpFilter, setFollowUpFilter] = useState('all');
   const [followUpTemplate, setFollowUpTemplate] = useState('payment');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -1383,6 +1385,10 @@ export default function CustomerPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
+  useEffect(() => {
+    setCustomerPage(1);
+  }, [activeFilter, customers, searchText]);
+
   const customers = useMemo(
     () => buildCustomerDirectory(bookings, manualCustomers),
     [bookings, manualCustomers]
@@ -1414,6 +1420,11 @@ export default function CustomerPage() {
       return matchesSearch && matchesFilter;
     });
   }, [activeFilter, customers, searchText]);
+
+  const paginatedCustomers = useMemo(
+    () => getPaginationSlice(filteredCustomers, customerPage, ADMIN_LIST_PAGE_SIZE),
+    [customerPage, filteredCustomers]
+  );
 
   const detailId = getCustomerRouteId(location.pathname);
   const selectedCustomer = detailId ? customers.find((customer) => customer.id === detailId) : null;
@@ -1511,10 +1522,18 @@ export default function CustomerPage() {
       />
 
       <CustomerTable
-        customers={filteredCustomers}
+        customers={paginatedCustomers}
         followUpTemplate={followUpTemplate}
         onEditCustomer={openCustomerForm}
         onOpenCustomer={openCustomer}
+      />
+
+      <PaginationControls
+        label="customer"
+        page={customerPage}
+        pageSize={ADMIN_LIST_PAGE_SIZE}
+        totalItems={filteredCustomers.length}
+        onPageChange={setCustomerPage}
       />
 
       <CustomerFormModal

@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
+import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { defaultInvoiceSettings, useInvoiceSettings } from '../../settings/invoiceSettings.js';
 
@@ -977,6 +978,7 @@ export default function BillingPage() {
   const [bookings, setBookings] = useState([]);
   const [activeFilter, setActiveFilter] = useState('open');
   const [activeCashRange, setActiveCashRange] = useState('today');
+  const [billingPage, setBillingPage] = useState(1);
   const [searchText, setSearchText] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
@@ -1006,6 +1008,10 @@ export default function BillingPage() {
 
     return () => window.clearTimeout(timerId);
   }, [toast]);
+
+  useEffect(() => {
+    setBillingPage(1);
+  }, [activeFilter, bookings, searchText]);
 
   const filteredBookings = useMemo(() => {
     const queryText = searchText.trim().toLowerCase();
@@ -1040,6 +1046,11 @@ export default function BillingPage() {
         return secondDate - firstDate;
       });
   }, [activeFilter, bookings, searchText]);
+
+  const paginatedBookings = useMemo(
+    () => getPaginationSlice(filteredBookings, billingPage, ADMIN_LIST_PAGE_SIZE),
+    [billingPage, filteredBookings]
+  );
 
   async function recordPayment(booking, payment) {
     if (normalizeStatus(booking) === 'void') {
@@ -1180,11 +1191,19 @@ export default function BillingPage() {
       />
 
       <BillingList
-        bookings={filteredBookings}
+        bookings={paginatedBookings}
         invoiceSettings={invoiceSettings}
         onOpenInvoice={setSelectedBooking}
         onRecordPayment={setSelectedPaymentBooking}
         onVoidInvoice={setSelectedVoidBooking}
+      />
+
+      <PaginationControls
+        label="billing"
+        page={billingPage}
+        pageSize={ADMIN_LIST_PAGE_SIZE}
+        totalItems={filteredBookings.length}
+        onPageChange={setBillingPage}
       />
 
       <InvoiceModal

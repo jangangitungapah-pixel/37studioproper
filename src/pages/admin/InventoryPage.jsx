@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
+import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
 
 const categoryOptions = [
@@ -733,6 +734,7 @@ export default function InventoryPage() {
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [inventoryPage, setInventoryPage] = useState(1);
   const [editingItem, setEditingItem] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stockAdjustment, setStockAdjustment] = useState(null);
@@ -773,6 +775,10 @@ export default function InventoryPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [categoryFilter, items, searchText, statusFilter]);
+
   const filteredItems = useMemo(() => {
     const queryText = searchText.trim().toLowerCase();
 
@@ -794,7 +800,10 @@ export default function InventoryPage() {
     });
   }, [categoryFilter, items, searchText, statusFilter]);
 
-
+  const paginatedItems = useMemo(
+    () => getPaginationSlice(filteredItems, inventoryPage, ADMIN_LIST_PAGE_SIZE),
+    [filteredItems, inventoryPage]
+  );
 
   function exportInventoryCsv() {
     if (!filteredItems.length) {
@@ -979,10 +988,18 @@ export default function InventoryPage() {
       <InventoryMovementPanel movements={movements} />
 
       <InventoryList
-        items={filteredItems}
+        items={paginatedItems}
         onArchive={archiveItem}
         onAdjustStock={openStockAdjustment}
         onEdit={openEditForm}
+      />
+
+      <PaginationControls
+        label="item"
+        page={inventoryPage}
+        pageSize={ADMIN_LIST_PAGE_SIZE}
+        totalItems={filteredItems.length}
+        onPageChange={setInventoryPage}
       />
 
       {stockAdjustment ? (

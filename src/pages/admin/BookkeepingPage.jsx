@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
+import PaginationControls, { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../components/ui/PaginationControls.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
 
@@ -607,6 +608,7 @@ export default function BookkeepingPage() {
   const [bookings, setBookings] = useState([]);
   const [entries, setEntries] = useState([]);
   const [period, setPeriod] = useState('month');
+  const [transactionPage, setTransactionPage] = useState(1);
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [entryFormMode, setEntryFormMode] = useState('expense');
@@ -650,6 +652,10 @@ export default function BookkeepingPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
+  useEffect(() => {
+    setTransactionPage(1);
+  }, [bookings, entries, period]);
+
   const filteredTransactions = useMemo(() => {
     const incomeTransactions = buildIncomeTransactions(bookings);
     const expenseTransactions = buildExpenseTransactions(entries);
@@ -663,6 +669,11 @@ export default function BookkeepingPage() {
         return secondDate - firstDate;
       });
   }, [bookings, entries, period]);
+
+  const paginatedTransactions = useMemo(
+    () => getPaginationSlice(filteredTransactions, transactionPage, ADMIN_LIST_PAGE_SIZE),
+    [filteredTransactions, transactionPage]
+  );
 
   function exportBookkeepingCsv() {
     const stats = getBookkeepingStats(filteredTransactions, bookings, period);
@@ -782,9 +793,17 @@ export default function BookkeepingPage() {
       />
 
       <BookkeepingTransactionList
-        transactions={filteredTransactions}
+        transactions={paginatedTransactions}
         onDeleteExpense={deleteExpense}
         onEditExpense={openEditExpense}
+      />
+
+      <PaginationControls
+        label="transaksi"
+        page={transactionPage}
+        pageSize={ADMIN_LIST_PAGE_SIZE}
+        totalItems={filteredTransactions.length}
+        onPageChange={setTransactionPage}
       />
 
       {isExpenseFormOpen ? (
