@@ -146,16 +146,45 @@ function getInitialPaidAmount(paymentStatus, totals, requestedDpAmount = 0) {
   if (paymentStatus === 'lunas') return safeTotal;
 
   if (paymentStatus === 'dp') {
-    return Math.min(safeTotal || safeRequestedDp, safeRequestedDp || Number(totals.dpAmount) || 0);
+    return Math.min(safeTotal || safeRequestedDp, safeRequestedDp);
   }
 
   return 0;
 }
 
+function isInitialBookingPayment(payment) {
+  const source = String(payment?.source || '');
+  const id = String(payment?.id || '');
+
+  return source === 'booking-form' || source === 'legacy-booking-payment' || id === 'legacy-payment';
+}
+
 function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, requestedDpAmount, totals }) {
   const existingPaymentHistory = getExistingPaymentHistory(editingBooking);
+  const preservedPayments = existingPaymentHistory.filter((payment) => !isInitialBookingPayment(payment));
+  const initialPaidAmount = getInitialPaidAmount(form.paymentStatus, totals, requestedDpAmount);
 
-  if (existingPaymentHistory.length) return existingPaymentHistory;
+  if (!initialPaidAmount) return preservedPayments;
+
+  const previousInitialPayment = existingPaymentHistory.find(isInitialBookingPayment);
+
+  return [
+    {
+      amount: initialPaidAmount,
+      createdAt: previousInitialPayment?.createdAt || now,
+      date: previousInitialPayment?.date || getTodayIsoDate(),
+      id: previousInitialPayment?.id || makePaymentRecordId(),
+      method: form.paymentMethod || previousInitialPayment?.method || 'cash',
+      note: form.paymentStatus === 'lunas' ? 'Pembayaran awal dari booking form' : 'DP awal dari booking form',
+      source: 'booking-form',
+      bookingId,
+    },
+    ...preservedPayments,
+  ];
+}
+
+) {
+  const existingPaymentHistory = getExistingPaymentHistory(editingBooking);
 
   const initialPaidAmount = getInitialPaidAmount(form.paymentStatus, totals, requestedDpAmount);
 
@@ -320,6 +349,7 @@ export default function BookingFormModal({
     const cleanName = form.name.trim();
     const cleanPhone = form.phone.trim();
     const cleanBandName = form.bandName.trim();
+    const requestedDpAmount = parseRupiahInput(form.dpAmount);
 
     if (!cleanName || !cleanPhone || !form.date || !form.startHour) {
       setError('Nama, No HP, tanggal, dan jam wajib diisi.');
@@ -331,7 +361,7 @@ export default function BookingFormModal({
       return;
     }
 
-    if (form.paymentStatus === 'dp' && !totals.dpAmount) {
+    if (form.paymentStatus === 'dp' && !requestedDpAmount) {
       setError('Nominal DP wajib diisi jika status pembayaran DP.');
       return;
     }
@@ -341,7 +371,6 @@ export default function BookingFormModal({
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
     const bookingId = editingBooking?.id || makeBookingId();
     const now = new Date().toISOString();
-    const requestedDpAmount = parseRupiahInput(form.dpAmount);
     const paymentHistory = buildInitialPaymentHistory({
       bookingId,
       editingBooking,
