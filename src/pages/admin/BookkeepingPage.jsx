@@ -4,8 +4,10 @@ import {
   ArrowUpRight,
   Banknote,
   Landmark,
+  Pencil,
   Plus,
   ReceiptText,
+  Trash2,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -208,6 +210,7 @@ function buildExpenseTransactions(entries) {
     .filter((entry) => entry.type === 'expense')
     .map((entry) => ({
       id: 'expense-' + entry.id,
+      entryId: entry.id,
       source: 'manual',
       type: 'expense',
       title: entry.title,
@@ -287,7 +290,60 @@ function BookkeepingToolbar({ onAddExpense, onPeriodChange, period }) {
   );
 }
 
-function BookkeepingTransactionList({ transactions }) {
+function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactions }) {
+  if (!transactions.length) {
+    return (
+      <section className="bookkeeping-empty-state">
+        <Landmark size={22} />
+        <strong>Belum ada transaksi</strong>
+        <span>Cash masuk dari billing dan pengeluaran manual akan muncul di sini.</span>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bookkeeping-list" aria-label="Daftar transaksi pembukuan">
+      {transactions.map((transaction) => {
+        const isIncome = transaction.type === 'income';
+        const isManualExpense = transaction.source === 'manual' && transaction.type === 'expense';
+
+        return (
+          <article className={isIncome ? 'bookkeeping-row is-income' : 'bookkeeping-row is-expense'} key={transaction.id}>
+            <span className="bookkeeping-row-icon">
+              {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            </span>
+
+            <div className="bookkeeping-row-copy">
+              <strong>{transaction.title}</strong>
+              <small>
+                {formatShortDate(transaction.date)} • {getOptionLabel(paymentMethodOptions, transaction.method, transaction.method)}
+              </small>
+              {transaction.note ? <em>{transaction.note}</em> : null}
+            </div>
+
+            <div className="bookkeeping-row-tail">
+              <b>{isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}</b>
+
+              {isManualExpense ? (
+                <div className="bookkeeping-row-actions" aria-label="Aksi pengeluaran">
+                  <button type="button" aria-label="Edit pengeluaran" onClick={() => onEditExpense(transaction)}>
+                    <Pencil size={12} />
+                  </button>
+
+                  <button className="is-danger" type="button" aria-label="Hapus pengeluaran" onClick={() => onDeleteExpense(transaction)}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+) {
   if (!transactions.length) {
     return (
       <section className="bookkeeping-empty-state">
@@ -325,7 +381,132 @@ function BookkeepingTransactionList({ transactions }) {
   );
 }
 
-function ExpenseFormModal({ onClose, onSave }) {
+function ExpenseFormModal({ entry, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    ...emptyExpenseForm,
+    ...(entry || {}),
+    amount: entry?.amount != null ? String(entry.amount) : '',
+    date: entry?.date || emptyExpenseForm.date,
+  }));
+  const [error, setError] = useState('');
+  const isEditing = Boolean(entry?.id || form.id);
+
+  function updateField(field) {
+    return (event) => {
+      setForm((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
+  function updateValue(field) {
+    return (nextValue) => {
+      setForm((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const title = cleanText(form.title);
+    const amount = toNumber(form.amount);
+
+    if (!title) {
+      setError('Judul pengeluaran wajib diisi.');
+      return;
+    }
+
+    if (!amount) {
+      setError('Nominal pengeluaran wajib lebih dari 0.');
+      return;
+    }
+
+    onSave({
+      ...form,
+      id: entry?.id || form.id,
+      type: 'expense',
+      title,
+      amount,
+      note: cleanText(form.note),
+    });
+  }
+
+  return (
+    <div className="bookkeeping-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="bookkeeping-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bookkeeping-expense-title">
+        <header className="bookkeeping-modal-head">
+          <div>
+            <p>Pengeluaran</p>
+            <h2 id="bookkeeping-expense-title">{isEditing ? 'Edit Biaya' : 'Tambah Biaya'}</h2>
+          </div>
+
+          <button type="button" aria-label="Tutup form pengeluaran" onClick={onClose}>
+            <X size={17} />
+          </button>
+        </header>
+
+        <form className="bookkeeping-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Judul</span>
+            <input value={form.title} placeholder="Contoh: Listrik Studio" onChange={updateField('title')} />
+          </label>
+
+          <div className="bookkeeping-form-grid">
+            <label>
+              <span>Nominal</span>
+              <input inputMode="numeric" min="0" placeholder="350000" type="number" value={form.amount} onChange={updateField('amount')} />
+            </label>
+
+            <label>
+              <span>Tanggal</span>
+              <input type="date" value={form.date} onChange={updateField('date')} />
+            </label>
+          </div>
+
+          <div className="bookkeeping-form-grid">
+            <StudioSelect
+              label="Kategori"
+              options={expenseCategoryOptions}
+              selectedKey={form.category}
+              onChange={updateValue('category')}
+            />
+
+            <StudioSelect
+              label="Metode"
+              options={paymentMethodOptions}
+              selectedKey={form.paymentMethod}
+              onChange={updateValue('paymentMethod')}
+            />
+          </div>
+
+          <label>
+            <span>Catatan</span>
+            <textarea value={form.note} placeholder="Opsional..." onChange={updateField('note')} />
+          </label>
+
+          {error ? <p className="bookkeeping-form-error" role="alert">{error}</p> : null}
+
+          <footer>
+            <button type="button" onClick={onClose}>Batal</button>
+            <button className="is-primary" type="submit">{isEditing ? 'Update' : 'Simpan'}</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+) {
   const [form, setForm] = useState(emptyExpenseForm);
   const [error, setError] = useState('');
 
@@ -448,6 +629,7 @@ export default function BookkeepingPage() {
   const [entries, setEntries] = useState([]);
   const [period, setPeriod] = useState('month');
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -502,13 +684,41 @@ export default function BookkeepingPage() {
       });
   }, [bookings, entries, period]);
 
+  function openAddExpense() {
+    setEditingExpense(null);
+    setIsExpenseFormOpen(true);
+  }
+
+  function closeExpenseForm() {
+    setIsExpenseFormOpen(false);
+    setEditingExpense(null);
+  }
+
+  function openEditExpense(transaction) {
+    const targetEntry = entries.find((entry) => entry.id === transaction.entryId);
+
+    if (!targetEntry) {
+      setToast({
+        title: 'Data tidak ditemukan',
+        message: 'Pengeluaran ini belum bisa diedit karena data sumber tidak ditemukan.',
+      });
+      return;
+    }
+
+    setEditingExpense(targetEntry);
+    setIsExpenseFormOpen(true);
+  }
+
   async function saveExpense(entry) {
     try {
-      const savedEntry = await bookkeepingRepository.createBookkeepingEntry(entry);
+      const isEditing = Boolean(entry.id);
+      const savedEntry = isEditing
+        ? await bookkeepingRepository.updateBookkeepingEntry(entry)
+        : await bookkeepingRepository.createBookkeepingEntry(entry);
 
-      setIsExpenseFormOpen(false);
+      closeExpenseForm();
       setToast({
-        title: 'Pengeluaran tersimpan',
+        title: isEditing ? 'Pengeluaran diperbarui' : 'Pengeluaran tersimpan',
         message: savedEntry.title + ' masuk ke pembukuan.',
       });
     } catch (error) {
@@ -520,21 +730,50 @@ export default function BookkeepingPage() {
     }
   }
 
+  async function deleteExpense(transaction) {
+    try {
+      const confirmed = typeof window === 'undefined'
+        ? true
+        : window.confirm('Hapus pengeluaran "' + transaction.title + '" dari pembukuan?');
+
+      if (!confirmed) return;
+
+      await bookkeepingRepository.deleteBookkeepingEntry(transaction.entryId);
+
+      setToast({
+        title: 'Pengeluaran dihapus',
+        message: transaction.title + ' sudah dihapus dari pembukuan.',
+      });
+    } catch (error) {
+      console.error('Gagal menghapus pengeluaran:', error);
+      setToast({
+        title: 'Gagal menghapus',
+        message: 'Pengeluaran belum berhasil dihapus dari Firestore.',
+      });
+    }
+  }
+
   return (
     <section className="bookkeeping-page" aria-label="Halaman pembukuan">
       <BookkeepingSummary bookings={bookings} period={period} transactions={filteredTransactions} />
 
       <BookkeepingToolbar
         period={period}
-        onAddExpense={() => setIsExpenseFormOpen(true)}
+        onAddExpense={openAddExpense}
         onPeriodChange={setPeriod}
       />
 
-      <BookkeepingTransactionList transactions={filteredTransactions} />
+      <BookkeepingTransactionList
+        transactions={filteredTransactions}
+        onDeleteExpense={deleteExpense}
+        onEditExpense={openEditExpense}
+      />
 
       {isExpenseFormOpen ? (
         <ExpenseFormModal
-          onClose={() => setIsExpenseFormOpen(false)}
+          key={editingExpense?.id || 'new-expense'}
+          entry={editingExpense}
+          onClose={closeExpenseForm}
           onSave={saveExpense}
         />
       ) : null}

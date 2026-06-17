@@ -11259,3 +11259,82 @@
   }
 }
 /* === BOOKKEEPING FOUNDATION PAGE: END === */
+
+/* === BOOKKEEPING EXPENSE MANAGEMENT: START === */
+.bookkeeping-row-tail {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.bookkeeping-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.bookkeeping-row-actions button {
+  width: 26px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 9px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0;
+  cursor: pointer;
+}
+
+.bookkeeping-row-actions button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.bookkeeping-row-actions button:hover {
+  border-color: var(--auth-border-strong);
+}
+
+.bookkeeping-row-actions button.is-danger {
+  border-color: rgba(255, 107, 107, 0.28);
+  color: #ff8a8a;
+}
+
+@media (max-width: 767px) {
+  .bookkeeping-row {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .bookkeeping-row-tail {
+    gap: 3px;
+  }
+
+  .bookkeeping-row-actions button {
+    width: 24px;
+    height: 22px;
+    border-radius: 8px;
+  }
+
+  .bookkeeping-row b {
+    font-size: 0.58rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .bookkeeping-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .bookkeeping-row-tail {
+    grid-column: 2;
+    justify-items: start;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 7px;
+  }
+}
+/* === BOOKKEEPING EXPENSE MANAGEMENT: END === */
