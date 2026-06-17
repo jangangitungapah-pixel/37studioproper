@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   CalendarDays,
+  CreditCard,
   UsersRound,
   LogOut,
   Music2,
@@ -18,6 +19,7 @@ import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import CustomerPage from './admin/CustomerPage.jsx';
+import BillingPage from './admin/BillingPage.jsx';
 import SettingsPage from './admin/SettingsPage.jsx';
 
 import '../styles/admin-auth.css';
@@ -38,6 +40,13 @@ const navItems = [
     path: '/admin/customers',
     icon: UsersRound,
     title: 'Customer',
+  },
+  {
+    key: 'billing',
+    label: 'Billing',
+    path: '/admin/billing',
+    icon: CreditCard,
+    title: 'Billing / POS',
   },
   {
     key: 'settings',
@@ -61,6 +70,7 @@ function getInitialSidebarState() {
 function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
   if (activeKey === 'customers') return <CustomerPage />;
+  if (activeKey === 'billing') return <BillingPage />;
 
   return <SchedulePage />;
 }
