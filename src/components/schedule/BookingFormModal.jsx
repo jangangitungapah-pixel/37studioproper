@@ -36,8 +36,16 @@ const initialForm = {
   duration: '1',
   customDuration: '',
   paymentStatus: 'pending',
+  paymentMethod: 'cash',
   dpAmount: '',
 };
+
+const paymentMethodOptions = [
+  { key: 'cash', label: 'Cash', description: 'Pembayaran tunai' },
+  { key: 'transfer', label: 'Transfer', description: 'Transfer bank' },
+  { key: 'qris', label: 'QRIS', description: 'QRIS / e-wallet' },
+  { key: 'other', label: 'Lainnya', description: 'Metode lain' },
+];
 
 function makeBookingId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -81,6 +89,7 @@ function createInitialForm(initialSlot, editingBooking) {
       duration: durationValue,
       customDuration: durationValue === 'custom' ? String(editingBooking.durationHours || '') : '',
       paymentStatus: editingBooking.paymentStatus || editingBooking.status || 'pending',
+      paymentMethod: editingBooking.lastPaymentMethod || editingBooking.paymentMethod || editingBooking.paymentHistory?.[0]?.method || 'cash',
       dpAmount: editingBooking.dpAmount ? String(editingBooking.dpAmount) : '',
     };
   }
@@ -106,6 +115,44 @@ function getDurationHours(form) {
 
 function getRecordingSessionKey(sessionOptions) {
   return sessionOptions.find((item) => item.key === 'recording')?.key || 'recording';
+}
+
+function makePaymentRecordId() {
+  return 'pay_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 7);
+}
+
+function getExistingPaymentHistory(editingBooking) {
+  return Array.isArray(editingBooking?.paymentHistory) ? editingBooking.paymentHistory : [];
+}
+
+function getInitialPaidAmount(paymentStatus, totals) {
+  if (paymentStatus === 'lunas') return Number(totals.total) || 0;
+  if (paymentStatus === 'dp') return Number(totals.dpAmount) || 0;
+
+  return 0;
+}
+
+function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, totals }) {
+  const existingPaymentHistory = getExistingPaymentHistory(editingBooking);
+
+  if (existingPaymentHistory.length) return existingPaymentHistory;
+
+  const initialPaidAmount = getInitialPaidAmount(form.paymentStatus, totals);
+
+  if (!initialPaidAmount) return [];
+
+  return [
+    {
+      amount: initialPaidAmount,
+      createdAt: now,
+      date: getTodayIsoDate(),
+      id: makePaymentRecordId(),
+      method: form.paymentMethod || 'cash',
+      note: form.paymentStatus === 'lunas' ? 'Pembayaran awal dari booking form' : 'DP awal dari booking form',
+      source: 'booking-form',
+      bookingId,
+    },
+  ];
 }
 
 export default function BookingFormModal({
@@ -272,9 +319,27 @@ export default function BookingFormModal({
     const startHourNumber = Number(form.startHour);
     const hourOption = getSelectedOption(businessHours, form.startHour);
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
+    const bookingId = editingBooking?.id || makeBookingId();
+    const now = new Date().toISOString();
+    const paymentHistory = buildInitialPaymentHistory({
+      bookingId,
+      editingBooking,
+      form,
+      now,
+      totals,
+    });
+    const paidAmount = paymentHistory.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const invoiceAmount = Math.max(0, Number(totals.total || 0) - paidAmount);
+    const resolvedPaymentStatus =
+      invoiceAmount <= 0 && Number(totals.total || 0) > 0
+        ? 'lunas'
+        : paidAmount > 0
+          ? 'dp'
+          : form.paymentStatus;
+    const lastPayment = paymentHistory[paymentHistory.length - 1];
 
     const didSave = await onSave({
-      id: editingBooking?.id || makeBookingId(),
+      id: bookingId,
       customer: cleanName,
       bandName: cleanBandName,
       phone: cleanPhone,
@@ -290,16 +355,21 @@ export default function BookingFormModal({
       startHour: startHourNumber,
       startTimeLabel: hourOption.shortLabel || hourOption.label,
       durationHours: totals.durationHours,
-      paymentStatus: form.paymentStatus,
-      status: form.paymentStatus,
+      paymentMethod: form.paymentStatus === 'pending' ? '' : form.paymentMethod,
+      paymentHistory,
+      paidAmount,
+      lastPaymentAt: lastPayment?.createdAt || editingBooking?.lastPaymentAt || '',
+      lastPaymentMethod: lastPayment?.method || editingBooking?.lastPaymentMethod || '',
+      paymentStatus: resolvedPaymentStatus,
+      status: resolvedPaymentStatus,
       subtotal: totals.subtotal,
       discountAmount: totals.discountAmount,
       appliedDiscounts: totals.appliedDiscounts,
       total: totals.total,
-      dpAmount: totals.dpAmount,
-      invoiceAmount: totals.invoiceAmount,
-      createdAt: editingBooking?.createdAt || new Date().toISOString(),
-      updatedAt: editingBooking ? new Date().toISOString() : '',
+      dpAmount: resolvedPaymentStatus === 'dp' ? paidAmount : 0,
+      invoiceAmount,
+      createdAt: editingBooking?.createdAt || now,
+      updatedAt: editingBooking ? now : '',
     });
 
     if (didSave === false) {
@@ -457,6 +527,15 @@ export default function BookingFormModal({
                 type="number"
                 value={form.dpAmount}
                 onChange={updateField('dpAmount')}
+              />
+            ) : null}
+
+            {form.paymentStatus !== 'pending' ? (
+              <StudioSelect
+                label="Metode Bayar"
+                options={paymentMethodOptions}
+                selectedKey={form.paymentMethod}
+                onChange={updateValue('paymentMethod')}
               />
             ) : null}
           </div>

@@ -8326,3 +8326,46 @@
   }
 }
 /* === SETTINGS INVOICE SUBPAGE: END === */
+
+/* === BILLING CASH RANGE FIX: START === */
+.billing-cash-summary header {
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 230px);
+  align-items: center;
+  gap: 10px;
+}
+
+.billing-cash-summary header > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.billing-cash-range {
+  min-width: 0;
+}
+
+.billing-cash-range .studio-select-trigger {
+  min-height: 42px;
+  border-radius: 15px;
+}
+
+@media (max-width: 767px) {
+  .billing-cash-summary header {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .billing-cash-range .studio-select-trigger {
+    min-height: 36px;
+    border-radius: 12px;
+  }
+
+  .billing-cash-range .studio-select-label {
+    font-size: 0.48rem;
+  }
+
+  .billing-cash-range .studio-select-copy strong {
+    font-size: 0.64rem;
+  }
+}
+/* === BILLING CASH RANGE FIX: END === */

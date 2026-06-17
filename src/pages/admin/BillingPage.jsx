@@ -31,6 +31,13 @@ const paymentMethodOptions = [
   { key: 'other', label: 'Lainnya', description: 'Metode lain' },
 ];
 
+const cashRangeOptions = [
+  { key: 'today', label: 'Hari Ini', description: 'Kas masuk hari ini' },
+  { key: 'month', label: 'Bulan Ini', description: 'Kas masuk bulan ini' },
+  { key: 'year', label: 'Tahun Ini', description: 'Kas masuk tahun ini' },
+  { key: 'all', label: 'Semua', description: 'Semua kas masuk' },
+];
+
 function cleanText(value) {
   return String(value || '').trim();
 }
@@ -98,6 +105,45 @@ function isSameIsoDay(value, isoDate) {
   return year + '-' + month + '-' + day === isoDate;
 }
 
+function getDateFromValue(value) {
+  if (!value) return null;
+
+  const date = new Date(String(value).includes('T') ? value : String(value) + 'T00:00:00');
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isPaymentInCashRange(value, range) {
+  if (range === 'all') return true;
+
+  const paymentDate = getDateFromValue(value);
+  const now = new Date();
+
+  if (!paymentDate) return false;
+
+  if (range === 'today') {
+    return (
+      paymentDate.getFullYear() === now.getFullYear() &&
+      paymentDate.getMonth() === now.getMonth() &&
+      paymentDate.getDate() === now.getDate()
+    );
+  }
+
+  if (range === 'month') {
+    return paymentDate.getFullYear() === now.getFullYear() && paymentDate.getMonth() === now.getMonth();
+  }
+
+  if (range === 'year') {
+    return paymentDate.getFullYear() === now.getFullYear();
+  }
+
+  return true;
+}
+
+function getCashRangeLabel(range) {
+  return cashRangeOptions.find((item) => item.key === range)?.label || 'Hari Ini';
+}
+
 function formatHour(value) {
   const numeric = Number(value);
 
@@ -128,7 +174,33 @@ function getPaymentMethodLabel(method) {
 }
 
 function getPaymentHistory(booking) {
-  return Array.isArray(booking?.paymentHistory) ? booking.paymentHistory : [];
+  const rawHistory = Array.isArray(booking?.paymentHistory) ? booking.paymentHistory : [];
+
+  if (rawHistory.length) return rawHistory;
+
+  const status = cleanLower(booking?.paymentStatus || booking?.status || 'pending');
+
+  if (status === 'void' || booking?.voidedAt) return [];
+
+  const total = getBillingTotal(booking);
+  const dpAmount = getDpAmount(booking);
+  const legacyPaidAmount = status === 'lunas' ? total : status === 'dp' ? dpAmount : 0;
+
+  if (!legacyPaidAmount) return [];
+
+  const paymentDate = booking?.lastPaymentAt || booking?.createdAt || booking?.date || getTodayIsoDate();
+
+  return [
+    {
+      amount: legacyPaidAmount,
+      createdAt: paymentDate,
+      date: paymentDate,
+      id: 'legacy_' + (booking?.id || getBookingDisplayCode(booking)),
+      method: booking?.lastPaymentMethod || booking?.paymentMethod || 'other',
+      note: status === 'lunas' ? 'Pembayaran awal dari booking form' : 'DP awal dari booking form',
+      source: 'legacy-booking-payment',
+    },
+  ];
 }
 
 function getPaymentHistoryTotal(booking) {
@@ -319,13 +391,13 @@ function getBillingStats(bookings) {
   );
 }
 
-function getDailyCashStats(bookings) {
-  const today = getTodayIsoDate();
-
+function getCashStats(bookings, range = 'today') {
   return bookings.reduce(
     (stats, booking) => {
       getPaymentHistory(booking).forEach((payment) => {
-        if (!isSameIsoDay(payment.date || payment.createdAt, today)) return;
+        const paymentDate = payment.date || payment.createdAt;
+
+        if (!isPaymentInCashRange(paymentDate, range)) return;
 
         const amount = Number(payment.amount) || 0;
         const method = payment.method || 'other';
@@ -379,7 +451,39 @@ function BillingHero({ bookings }) {
   );
 }
 
-function BillingCashSummary({ bookings }) {
+function BillingCashSummary({ activeRange, bookings, onRangeChange }) {
+  const stats = getCashStats(bookings, activeRange);
+
+  return (
+    <section className="billing-cash-summary" aria-label="Kas masuk">
+      <header>
+        <div>
+          <small>Kas Masuk {getCashRangeLabel(activeRange)}</small>
+          <strong>{formatMoney(stats.total)}</strong>
+          <span>{stats.count} pembayaran tercatat</span>
+        </div>
+
+        <div className="billing-cash-range">
+          <StudioSelect
+            label="Periode"
+            options={cashRangeOptions}
+            selectedKey={activeRange}
+            onChange={onRangeChange}
+          />
+        </div>
+      </header>
+
+      <div className="billing-cash-grid">
+        <article><small>Cash</small><strong>{formatMoney(stats.byMethod.cash)}</strong></article>
+        <article><small>Transfer</small><strong>{formatMoney(stats.byMethod.transfer)}</strong></article>
+        <article><small>QRIS</small><strong>{formatMoney(stats.byMethod.qris)}</strong></article>
+        <article><small>Lainnya</small><strong>{formatMoney(stats.byMethod.other)}</strong></article>
+      </div>
+    </section>
+  );
+}
+
+) {
   const stats = getDailyCashStats(bookings);
 
   return (
@@ -900,6 +1004,7 @@ function VoidInvoiceModal({ booking, onClose, onSubmit }) {
 export default function BillingPage() {
   const [bookings, setBookings] = useState([]);
   const [activeFilter, setActiveFilter] = useState('open');
+  const [activeCashRange, setActiveCashRange] = useState('today');
   const [searchText, setSearchText] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
@@ -964,7 +1069,7 @@ export default function BillingPage() {
       });
   }, [activeFilter, bookings, searchText]);
 
-  async function recordPayment(booking, payment) {
+  async async function recordPayment(booking, payment) {
     if (normalizeStatus(booking) === 'void') {
       setToast({
         title: 'Invoice sudah void',
@@ -1082,7 +1187,11 @@ export default function BillingPage() {
 
       <BillingHero bookings={bookings} />
 
-      <BillingCashSummary bookings={bookings} />
+      <BillingCashSummary
+        activeRange={activeCashRange}
+        bookings={bookings}
+        onRangeChange={setActiveCashRange}
+      />
 
       <BillingToolbar
         activeFilter={activeFilter}
