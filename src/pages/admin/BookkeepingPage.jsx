@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  Banknote,
+  Download,
   Landmark,
   Pencil,
   Plus,
@@ -221,6 +221,70 @@ function buildExpenseTransactions(entries) {
     }));
 }
 
+function escapeCsvCell(value) {
+  const text = String(value ?? '').replace(/\r?\n/g, ' ').trim();
+
+  if (/[",;]/.test(text)) {
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+
+  return text;
+}
+
+function getPeriodLabel(period) {
+  return getOptionLabel(periodOptions, period, period);
+}
+
+function buildBookkeepingCsv(transactions, bookings, period) {
+  const stats = getBookkeepingStats(transactions, bookings, period);
+  const summaryRows = [
+    ['Ringkasan Pembukuan', ''],
+    ['Periode', getPeriodLabel(period)],
+    ['Cash Masuk', stats.cashIn],
+    ['Pengeluaran', stats.cashOut],
+    ['Saldo Bersih', stats.net],
+    ['Piutang', stats.receivable],
+    ['', ''],
+    ['Tanggal', 'Tipe', 'Judul', 'Metode', 'Nominal', 'Sumber', 'Catatan'],
+  ];
+
+  const transactionRows = transactions.map((transaction) => [
+    formatShortDate(transaction.date),
+    transaction.type === 'income' ? 'Masuk' : 'Keluar',
+    transaction.title,
+    getOptionLabel(paymentMethodOptions, transaction.method, transaction.method),
+    toNumber(transaction.amount),
+    transaction.source === 'booking' ? 'Booking' : 'Manual',
+    transaction.note || '',
+  ]);
+
+  return '\uFEFF' + [...summaryRows, ...transactionRows]
+    .map((row) => row.map(escapeCsvCell).join(','))
+    .join('\n');
+}
+
+function downloadBookkeepingCsv(filename, csvContent) {
+  if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
+    return false;
+  }
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 250);
+
+  return true;
+}
+
 function getBookkeepingStats(transactions, bookings, period) {
   const cashIn = transactions
     .filter((transaction) => transaction.type === 'income')
@@ -272,7 +336,35 @@ function BookkeepingSummary({ bookings, period, transactions }) {
   );
 }
 
-function BookkeepingToolbar({ onAddExpense, onPeriodChange, period }) {
+function BookkeepingToolbar({ exportDisabled, onAddExpense, onExportTransactions, onPeriodChange, period }) {
+  return (
+    <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
+      <StudioSelect
+        label="Periode"
+        options={periodOptions}
+        selectedKey={period}
+        onChange={onPeriodChange}
+      />
+
+      <button
+        className="bookkeeping-export-button"
+        disabled={exportDisabled}
+        type="button"
+        onClick={onExportTransactions}
+      >
+        <Download size={14} />
+        Export
+      </button>
+
+      <button className="bookkeeping-add-button" title="Tambah pengeluaran" type="button" onClick={onAddExpense}>
+        <Plus size={14} />
+        Tambah
+      </button>
+    </section>
+  );
+}
+
+) {
   return (
     <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
       <StudioSelect
@@ -528,6 +620,29 @@ export default function BookkeepingPage() {
       });
   }, [bookings, entries, period]);
 
+  function exportBookkeepingCsv() {
+    const stats = getBookkeepingStats(filteredTransactions, bookings, period);
+
+    if (!filteredTransactions.length && stats.receivable <= 0) {
+      setToast({
+        title: 'Tidak ada data',
+        message: 'Belum ada transaksi pembukuan untuk periode ini.',
+      });
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const csvContent = buildBookkeepingCsv(filteredTransactions, bookings, period);
+    const isDownloaded = downloadBookkeepingCsv('pembukuan-37musicstudio-' + period + '-' + today + '.csv', csvContent);
+
+    setToast({
+      title: isDownloaded ? 'Export berhasil' : 'Export tidak tersedia',
+      message: isDownloaded
+        ? 'Data pembukuan periode ' + getPeriodLabel(period) + ' sudah dibuat menjadi file CSV.'
+        : 'Browser tidak mendukung download file otomatis.',
+    });
+  }
+
   function openAddExpense() {
     setEditingExpense(null);
     setIsExpenseFormOpen(true);
@@ -602,8 +717,10 @@ export default function BookkeepingPage() {
       <BookkeepingSummary bookings={bookings} period={period} transactions={filteredTransactions} />
 
       <BookkeepingToolbar
+        exportDisabled={!filteredTransactions.length && getBookkeepingStats(filteredTransactions, bookings, period).receivable <= 0}
         period={period}
         onAddExpense={openAddExpense}
+        onExportTransactions={exportBookkeepingCsv}
         onPeriodChange={setPeriod}
       />
 

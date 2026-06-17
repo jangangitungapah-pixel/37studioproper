@@ -11338,3 +11338,81 @@
   }
 }
 /* === BOOKKEEPING EXPENSE MANAGEMENT: END === */
+
+/* === BOOKKEEPING CSV EXPORT: START === */
+.bookkeeping-export-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--auth-border);
+  border-radius: 11px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.014)),
+    var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.bookkeeping-export-button svg {
+  width: 13px;
+  height: 13px;
+  color: var(--auth-accent);
+}
+
+.bookkeeping-export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.bookkeeping-export-button:not(:disabled):hover {
+  border-color: var(--auth-border-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--auth-accent) 12%, transparent), rgba(255, 255, 255, 0.025)),
+    var(--auth-bg-control);
+}
+
+.bookkeeping-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+}
+
+@media (min-width: 768px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: minmax(220px, 280px) auto auto !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    gap: 5px;
+  }
+
+  .bookkeeping-export-button,
+  .bookkeeping-add-button {
+    min-height: 36px;
+    padding: 0 9px;
+    font-size: 0.6rem;
+  }
+
+  .bookkeeping-export-button svg,
+  .bookkeeping-add-button svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .bookkeeping-export-button,
+  .bookkeeping-add-button {
+    padding: 0 7px;
+    font-size: 0.56rem;
+  }
+}
+/* === BOOKKEEPING CSV EXPORT: END === */
