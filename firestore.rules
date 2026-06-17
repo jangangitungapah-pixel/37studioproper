@@ -53,6 +53,18 @@ service cloud.firestore {
       allow write: if isApproved();
     }
 
+    match /bookkeepingEntries/{entryId} {
+      allow read, write: if isApproved();
+    }
+
+    match /inventoryItems/{itemId} {
+      allow read, write: if isApproved();
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read, write: if isApproved();
+    }
+
     match /mail/{mailId} {
       allow create: if isSignedIn();
     }
