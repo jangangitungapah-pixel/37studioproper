@@ -1,17 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Ban,
   CheckCircle2,
   CreditCard,
   Download,
   PhoneCall,
   Printer,
   Search,
+  Settings,
   Share2,
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
+
+const INVOICE_SETTINGS_STORAGE_KEY = '37musicstudio.billing.invoice-settings.v1';
+
+const defaultInvoiceSettings = {
+  studioName: '37 Music Studio',
+  subtitle: 'Invoice Digital',
+  phone: '',
+  address: '',
+  footer: 'Terima kasih sudah booking.',
+  paperSize: '80mm',
+  updatedAt: '',
+};
 
 const billingFilterOptions = [
   { key: 'all', label: 'Semua', description: 'Semua aktivitas booking' },
@@ -19,6 +33,7 @@ const billingFilterOptions = [
   { key: 'pending', label: 'Pending', description: 'Belum ada pembayaran' },
   { key: 'dp', label: 'DP', description: 'Sudah DP, belum lunas' },
   { key: 'lunas', label: 'Lunas', description: 'Sudah selesai' },
+  { key: 'void', label: 'Void', description: 'Invoice dibatalkan' },
 ];
 
 const paymentMethodOptions = [
@@ -28,12 +43,40 @@ const paymentMethodOptions = [
   { key: 'other', label: 'Lainnya', description: 'Metode lain' },
 ];
 
+const paperSizeOptions = [
+  { key: '80mm', label: 'Thermal 80mm', description: 'Ukuran struk umum' },
+  { key: '58mm', label: 'Thermal 58mm', description: 'Ukuran struk kecil' },
+];
+
 function cleanText(value) {
   return String(value || '').trim();
 }
 
 function cleanLower(value) {
   return cleanText(value).toLowerCase();
+}
+
+function readInvoiceSettings() {
+  if (typeof window === 'undefined') return defaultInvoiceSettings;
+
+  try {
+    const raw = window.localStorage.getItem(INVOICE_SETTINGS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+
+    return {
+      ...defaultInvoiceSettings,
+      ...(parsed && typeof parsed === 'object' ? parsed : {}),
+    };
+  } catch (error) {
+    console.error('Gagal membaca invoice settings:', error);
+    return defaultInvoiceSettings;
+  }
+}
+
+function writeInvoiceSettings(settings) {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(INVOICE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 }
 
 function formatMoney(value) {
@@ -149,6 +192,10 @@ function getDpAmount(booking) {
 }
 
 function normalizeStatus(booking) {
+  const rawStatus = cleanLower(booking?.paymentStatus || booking?.status || 'pending');
+
+  if (rawStatus === 'void' || booking?.voidedAt) return 'void';
+
   const total = getBillingTotal(booking);
   const historyTotal = getPaymentHistoryTotal(booking);
 
@@ -156,7 +203,7 @@ function normalizeStatus(booking) {
     return historyTotal >= total ? 'lunas' : 'dp';
   }
 
-  return cleanLower(booking?.paymentStatus || booking?.status || 'pending') || 'pending';
+  return rawStatus || 'pending';
 }
 
 function getPaidAmount(booking) {
@@ -176,7 +223,7 @@ function getOutstandingAmount(booking) {
   const total = getBillingTotal(booking);
   const paid = getPaidAmount(booking);
 
-  if (status === 'lunas') return 0;
+  if (status === 'lunas' || status === 'void') return 0;
 
   return Math.max(0, Number(booking?.invoiceAmount || total - paid) || 0);
 }
@@ -184,6 +231,7 @@ function getOutstandingAmount(booking) {
 function getStatusLabel(status) {
   if (status === 'lunas') return 'Lunas';
   if (status === 'dp') return 'DP';
+  if (status === 'void') return 'Void';
 
   return 'Pending';
 }
@@ -193,6 +241,7 @@ function getStatusClass(booking) {
 
   if (status === 'lunas') return 'is-lunas';
   if (status === 'dp') return 'is-dp';
+  if (status === 'void') return 'is-void';
 
   return 'is-pending';
 }
@@ -223,7 +272,7 @@ function getCustomerPhoneLabel(value) {
   return phoneKey;
 }
 
-function getReminderMessage(booking) {
+function getReminderMessage(booking, settings = defaultInvoiceSettings) {
   const customer = booking?.customer || 'kak';
   const invoiceNumber = getInvoiceDisplayNumber(booking);
   const outstanding = formatMoney(getOutstandingAmount(booking));
@@ -233,7 +282,9 @@ function getReminderMessage(booking) {
   return (
     'Halo kak ' +
     customer +
-    ', kami dari 37 Music Studio. Reminder untuk invoice ' +
+    ', kami dari ' +
+    (settings.studioName || defaultInvoiceSettings.studioName) +
+    '. Reminder untuk invoice ' +
     invoiceNumber +
     ' tanggal booking ' +
     bookingDate +
@@ -245,37 +296,54 @@ function getReminderMessage(booking) {
   );
 }
 
-function getReminderHref(booking) {
+function getReminderHref(booking, settings = defaultInvoiceSettings) {
+  if (!isOpenBilling(booking)) return '';
+
   const phoneKey = getCustomerPhoneKey(booking?.phone);
 
   if (!phoneKey) return '';
 
-  return 'https://wa.me/' + phoneKey + '?text=' + encodeURIComponent(getReminderMessage(booking));
+  return 'https://wa.me/' + phoneKey + '?text=' + encodeURIComponent(getReminderMessage(booking, settings));
 }
 
-function getShareText(booking) {
-  return [
-    '37 Music Studio',
+function getShareText(booking, settings = defaultInvoiceSettings) {
+  const status = normalizeStatus(booking);
+  const lines = [
+    settings.studioName || defaultInvoiceSettings.studioName,
     'Invoice: ' + getInvoiceDisplayNumber(booking),
     'Booking ID: ' + getBookingDisplayCode(booking),
     'Customer: ' + (booking?.customer || '-'),
     'Tanggal: ' + formatDate(booking?.date),
     'Jam: ' + getTimeRange(booking),
-    'Status: ' + getStatusLabel(normalizeStatus(booking)),
+    'Status: ' + getStatusLabel(status),
     'Total: ' + formatMoney(getBillingTotal(booking)),
     'Dibayar: ' + formatMoney(getPaidAmount(booking)),
     'Sisa: ' + formatMoney(getOutstandingAmount(booking)),
-  ].join('\n');
+  ];
+
+  if (status === 'void' && booking?.voidReason) {
+    lines.push('Alasan void: ' + booking.voidReason);
+  }
+
+  return lines.join('\n');
 }
 
 function getBillingStats(bookings) {
   return bookings.reduce(
     (stats, booking) => {
+      const status = normalizeStatus(booking);
+
       stats.total += 1;
-      stats.totalAmount += getBillingTotal(booking);
       stats.outstanding += getOutstandingAmount(booking);
 
-      if (normalizeStatus(booking) === 'lunas') stats.paid += 1;
+      if (status === 'void') {
+        stats.void += 1;
+        return stats;
+      }
+
+      stats.totalAmount += getBillingTotal(booking);
+
+      if (status === 'lunas') stats.paid += 1;
       if (isOpenBilling(booking)) stats.open += 1;
 
       return stats;
@@ -286,6 +354,7 @@ function getBillingStats(bookings) {
       paid: 0,
       total: 0,
       totalAmount: 0,
+      void: 0,
     }
   );
 }
@@ -344,7 +413,7 @@ function BillingHero({ bookings }) {
         <span><AlertCircle size={17} /></span>
         <small>Aktivitas</small>
         <strong>{stats.total}</strong>
-        <em>Data dari Schedule</em>
+        <em>{stats.void} invoice void</em>
       </article>
     </section>
   );
@@ -371,7 +440,7 @@ function BillingCashSummary({ bookings }) {
   );
 }
 
-function BillingToolbar({ activeFilter, onFilterChange, onSearchChange, searchText }) {
+function BillingToolbar({ activeFilter, onFilterChange, onOpenSettings, onSearchChange, searchText }) {
   return (
     <section className="billing-toolbar" aria-label="Billing toolbar">
       <div className="billing-search-shell">
@@ -393,11 +462,16 @@ function BillingToolbar({ activeFilter, onFilterChange, onSearchChange, searchTe
           onChange={onFilterChange}
         />
       </div>
+
+      <button className="billing-settings-button" type="button" onClick={onOpenSettings}>
+        <Settings size={15} />
+        Invoice
+      </button>
     </section>
   );
 }
 
-function BillingReminderQueue({ bookings, onOpenInvoice, onRecordPayment }) {
+function BillingReminderQueue({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment }) {
   const openBookings = bookings.filter(isOpenBilling).slice(0, 4);
 
   return (
@@ -413,7 +487,7 @@ function BillingReminderQueue({ bookings, onOpenInvoice, onRecordPayment }) {
       {openBookings.length ? (
         <div className="billing-reminder-list">
           {openBookings.map((booking) => {
-            const reminderHref = getReminderHref(booking);
+            const reminderHref = getReminderHref(booking, invoiceSettings);
 
             return (
               <article className="billing-reminder-row" key={booking.id}>
@@ -446,7 +520,7 @@ function BillingReminderQueue({ bookings, onOpenInvoice, onRecordPayment }) {
   );
 }
 
-function BillingList({ bookings, onOpenInvoice, onRecordPayment }) {
+function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment, onVoidInvoice }) {
   if (!bookings.length) {
     return (
       <section className="billing-empty-state">
@@ -461,10 +535,10 @@ function BillingList({ bookings, onOpenInvoice, onRecordPayment }) {
     <section className="billing-list" aria-label="Daftar billing">
       {bookings.map((booking) => {
         const status = normalizeStatus(booking);
-        const reminderHref = getReminderHref(booking);
+        const reminderHref = getReminderHref(booking, invoiceSettings);
 
         return (
-          <article className="billing-row" key={booking.id}>
+          <article className={status === 'void' ? 'billing-row is-void' : 'billing-row'} key={booking.id}>
             <button className="billing-row-main" type="button" onClick={() => onOpenInvoice(booking)}>
               <span>
                 <small>{getBookingDisplayCode(booking)}</small>
@@ -492,8 +566,12 @@ function BillingList({ bookings, onOpenInvoice, onRecordPayment }) {
               </span>
             </div>
 
+            {status === 'void' && booking.voidReason ? (
+              <p className="billing-void-note">Void: {booking.voidReason}</p>
+            ) : null}
+
             <div className="billing-row-actions">
-              {reminderHref && isOpenBilling(booking) ? (
+              {reminderHref ? (
                 <a href={reminderHref} target="_blank" rel="noreferrer">
                   Reminder
                 </a>
@@ -503,9 +581,15 @@ function BillingList({ bookings, onOpenInvoice, onRecordPayment }) {
                 Invoice
               </button>
 
-              {status !== 'lunas' ? (
+              {status !== 'lunas' && status !== 'void' ? (
                 <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
                   Bayar
+                </button>
+              ) : null}
+
+              {status !== 'void' ? (
+                <button className="is-danger" type="button" onClick={() => onVoidInvoice(booking)}>
+                  Void
                 </button>
               ) : null}
             </div>
@@ -516,18 +600,28 @@ function BillingList({ bookings, onOpenInvoice, onRecordPayment }) {
   );
 }
 
-function ThermalInvoice({ booking }) {
+function ThermalInvoice({ booking, settings }) {
   const bookingCode = getBookingDisplayCode(booking);
   const invoiceNumber = getInvoiceDisplayNumber(booking);
   const status = normalizeStatus(booking);
+  const studioName = settings.studioName || defaultInvoiceSettings.studioName;
+  const subtitle = settings.subtitle || defaultInvoiceSettings.subtitle;
 
   return (
-    <section className="billing-thermal-receipt" aria-label="Invoice thermal">
+    <section
+      className={status === 'void' ? 'billing-thermal-receipt is-void' : 'billing-thermal-receipt'}
+      data-paper={settings.paperSize || '80mm'}
+      aria-label="Invoice thermal"
+    >
       <header>
-        <strong>37 MUSIC STUDIO</strong>
-        <span>Invoice Digital</span>
+        <strong>{studioName}</strong>
+        <span>{subtitle}</span>
         <span>{invoiceNumber}</span>
+        {settings.address ? <span>{settings.address}</span> : null}
+        {settings.phone ? <span>{settings.phone}</span> : null}
       </header>
+
+      {status === 'void' ? <div className="billing-thermal-void">VOID</div> : null}
 
       <div className="billing-thermal-divider" />
 
@@ -561,6 +655,16 @@ function ThermalInvoice({ booking }) {
         <span><b>Status</b><em>{getStatusLabel(status)}</em></span>
       </div>
 
+      {status === 'void' && booking.voidReason ? (
+        <>
+          <div className="billing-thermal-divider" />
+          <div className="billing-thermal-note">
+            <b>Alasan Void</b>
+            <span>{booking.voidReason}</span>
+          </div>
+        </>
+      ) : null}
+
       {getPaymentHistory(booking).length ? (
         <>
           <div className="billing-thermal-divider" />
@@ -580,17 +684,17 @@ function ThermalInvoice({ booking }) {
       <div className="billing-thermal-divider" />
 
       <footer>
-        <span>Terima kasih sudah booking.</span>
-        <span>37 Music Studio</span>
+        <span>{settings.footer || defaultInvoiceSettings.footer}</span>
+        <span>{studioName}</span>
       </footer>
     </section>
   );
 }
 
-function InvoiceModal({ booking, onClose, onPrint, onRecordPayment, onShare }) {
+function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPayment, onShare, onVoidInvoice }) {
   if (!booking) return null;
 
-  const reminderHref = getReminderHref(booking);
+  const reminderHref = getReminderHref(booking, invoiceSettings);
   const status = normalizeStatus(booking);
 
   return (
@@ -610,11 +714,11 @@ function InvoiceModal({ booking, onClose, onPrint, onRecordPayment, onShare }) {
         </header>
 
         <div className="billing-invoice-body">
-          <ThermalInvoice booking={booking} />
+          <ThermalInvoice booking={booking} settings={invoiceSettings} />
         </div>
 
         <footer className="billing-invoice-actions">
-          {reminderHref && isOpenBilling(booking) ? (
+          {reminderHref ? (
             <a href={reminderHref} target="_blank" rel="noreferrer">
               Reminder
             </a>
@@ -635,9 +739,16 @@ function InvoiceModal({ booking, onClose, onPrint, onRecordPayment, onShare }) {
             Print
           </button>
 
-          {status !== 'lunas' ? (
+          {status !== 'lunas' && status !== 'void' ? (
             <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
               Bayar
+            </button>
+          ) : null}
+
+          {status !== 'void' ? (
+            <button className="is-danger" type="button" onClick={() => onVoidInvoice(booking)}>
+              <Ban size={15} />
+              Void
             </button>
           ) : null}
         </footer>
@@ -770,12 +881,173 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
   );
 }
 
+function VoidInvoiceModal({ booking, onClose, onSubmit }) {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  if (!booking) return null;
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const cleanReason = reason.trim();
+
+    if (cleanReason.length < 4) {
+      setError('Alasan void wajib diisi minimal 4 karakter.');
+      return;
+    }
+
+    onSubmit(booking, cleanReason);
+  }
+
+  return (
+    <div className="billing-payment-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="billing-payment-panel billing-void-panel" role="dialog" aria-modal="true" aria-labelledby="billing-void-title">
+        <header className="billing-payment-head">
+          <div>
+            <p>Void Invoice</p>
+            <h2 id="billing-void-title">{getInvoiceDisplayNumber(booking)}</h2>
+            <span>Invoice akan dibatalkan, bukan dihapus.</span>
+          </div>
+
+          <button type="button" aria-label="Tutup void invoice" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+
+        <form className="billing-payment-form" onSubmit={handleSubmit} noValidate>
+          <label>
+            <span>Alasan Void</span>
+            <textarea
+              placeholder="Contoh: salah input jadwal, customer batal, invoice duplikat..."
+              value={reason}
+              onChange={(event) => {
+                setReason(event.target.value);
+                if (error) setError('');
+              }}
+            />
+          </label>
+
+          {error ? <p className="billing-payment-error" role="alert">{error}</p> : null}
+
+          <footer>
+            <button type="button" onClick={onClose}>Batal</button>
+            <button className="is-danger" type="submit">Void Invoice</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function InvoiceSettingsModal({ settings, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({ ...settings }));
+
+  function updateField(field) {
+    return (event) => {
+      setForm((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+    };
+  }
+
+  function updateValue(field) {
+    return (nextValue) => {
+      setForm((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+    };
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    onSave({
+      ...defaultInvoiceSettings,
+      ...form,
+      studioName: form.studioName.trim() || defaultInvoiceSettings.studioName,
+      subtitle: form.subtitle.trim() || defaultInvoiceSettings.subtitle,
+      phone: form.phone.trim(),
+      address: form.address.trim(),
+      footer: form.footer.trim() || defaultInvoiceSettings.footer,
+      paperSize: form.paperSize || defaultInvoiceSettings.paperSize,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return (
+    <div className="billing-payment-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="billing-payment-panel billing-settings-panel" role="dialog" aria-modal="true" aria-labelledby="billing-settings-title">
+        <header className="billing-payment-head">
+          <div>
+            <p>Invoice Settings</p>
+            <h2 id="billing-settings-title">Thermal Invoice</h2>
+            <span>Pengaturan ini disimpan di browser admin.</span>
+          </div>
+
+          <button type="button" aria-label="Tutup invoice settings" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+
+        <form className="billing-payment-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Nama Studio</span>
+            <input value={form.studioName} onChange={updateField('studioName')} />
+          </label>
+
+          <label>
+            <span>Subtitle</span>
+            <input value={form.subtitle} onChange={updateField('subtitle')} />
+          </label>
+
+          <label>
+            <span>Nomor WA Studio</span>
+            <input value={form.phone} onChange={updateField('phone')} />
+          </label>
+
+          <label>
+            <span>Alamat Singkat</span>
+            <input value={form.address} onChange={updateField('address')} />
+          </label>
+
+          <StudioSelect
+            label="Ukuran"
+            options={paperSizeOptions}
+            selectedKey={form.paperSize}
+            onChange={updateValue('paperSize')}
+          />
+
+          <label>
+            <span>Footer Invoice</span>
+            <textarea value={form.footer} onChange={updateField('footer')} />
+          </label>
+
+          <footer>
+            <button type="button" onClick={onClose}>Batal</button>
+            <button className="is-primary" type="submit">Simpan Settings</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 export default function BillingPage() {
   const [bookings, setBookings] = useState([]);
   const [activeFilter, setActiveFilter] = useState('open');
   const [searchText, setSearchText] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
+  const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
+  const [invoiceSettings, setInvoiceSettings] = useState(readInvoiceSettings);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -836,6 +1108,14 @@ export default function BillingPage() {
   }, [activeFilter, bookings, searchText]);
 
   async function recordPayment(booking, payment) {
+    if (normalizeStatus(booking) === 'void') {
+      setToast({
+        title: 'Invoice sudah void',
+        message: 'Pembayaran tidak bisa dicatat untuk invoice void.',
+      });
+      return;
+    }
+
     try {
       const paymentHistory = [...getPaymentHistory(booking), payment];
       const totalPaid = paymentHistory.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -871,6 +1151,46 @@ export default function BillingPage() {
     }
   }
 
+  async function voidInvoice(booking, reason) {
+    try {
+      const nextBooking = {
+        ...booking,
+        invoiceAmount: 0,
+        paymentStatus: 'void',
+        previousInvoiceAmount: getOutstandingAmount(booking),
+        previousPaymentStatus: normalizeStatus(booking),
+        status: 'void',
+        updatedAt: new Date().toISOString(),
+        voidReason: reason,
+        voidedAt: new Date().toISOString(),
+      };
+
+      await adminBookingRepository.updateManualBooking(nextBooking);
+      setSelectedBooking((current) => (current?.id === booking.id ? nextBooking : current));
+      setSelectedVoidBooking(null);
+      setToast({
+        title: 'Invoice void',
+        message: getInvoiceDisplayNumber(booking) + ' sudah dibatalkan.',
+      });
+    } catch (error) {
+      console.error('Gagal void invoice:', error);
+      setToast({
+        title: 'Void gagal',
+        message: 'Invoice belum berhasil dibatalkan.',
+      });
+    }
+  }
+
+  function saveInvoiceSettings(nextSettings) {
+    writeInvoiceSettings(nextSettings);
+    setInvoiceSettings(nextSettings);
+    setIsSettingsModalOpen(false);
+    setToast({
+      title: 'Invoice settings disimpan',
+      message: 'Format invoice thermal sudah diperbarui.',
+    });
+  }
+
   function printInvoice(booking) {
     setSelectedBooking(booking);
 
@@ -880,7 +1200,7 @@ export default function BillingPage() {
   }
 
   async function shareInvoice(booking) {
-    const text = getShareText(booking);
+    const text = getShareText(booking, invoiceSettings);
 
     try {
       if (typeof navigator !== 'undefined' && navigator.share) {
@@ -921,27 +1241,33 @@ export default function BillingPage() {
         activeFilter={activeFilter}
         searchText={searchText}
         onFilterChange={setActiveFilter}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
         onSearchChange={setSearchText}
       />
 
       <BillingReminderQueue
         bookings={bookings}
+        invoiceSettings={invoiceSettings}
         onOpenInvoice={setSelectedBooking}
         onRecordPayment={setSelectedPaymentBooking}
       />
 
       <BillingList
         bookings={filteredBookings}
+        invoiceSettings={invoiceSettings}
         onOpenInvoice={setSelectedBooking}
         onRecordPayment={setSelectedPaymentBooking}
+        onVoidInvoice={setSelectedVoidBooking}
       />
 
       <InvoiceModal
         booking={selectedBooking}
+        invoiceSettings={invoiceSettings}
         onClose={() => setSelectedBooking(null)}
         onPrint={printInvoice}
         onRecordPayment={setSelectedPaymentBooking}
         onShare={shareInvoice}
+        onVoidInvoice={setSelectedVoidBooking}
       />
 
       <PaymentRecordModal
@@ -950,6 +1276,22 @@ export default function BillingPage() {
         onClose={() => setSelectedPaymentBooking(null)}
         onSubmit={recordPayment}
       />
+
+      <VoidInvoiceModal
+        key={selectedVoidBooking?.id || 'empty-void'}
+        booking={selectedVoidBooking}
+        onClose={() => setSelectedVoidBooking(null)}
+        onSubmit={voidInvoice}
+      />
+
+      {isSettingsModalOpen ? (
+        <InvoiceSettingsModal
+          key={invoiceSettings.updatedAt || 'default-invoice-settings'}
+          settings={invoiceSettings}
+          onClose={() => setIsSettingsModalOpen(false)}
+          onSave={saveInvoiceSettings}
+        />
+      ) : null}
 
       {toast ? (
         <aside className="schedule-toast is-warning" role="status" aria-live="polite">

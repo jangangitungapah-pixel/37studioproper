@@ -8094,3 +8094,135 @@
   }
 }
 /* === BILLING PAYMENT RECORDS: END === */
+
+/* === BILLING VOID SETTINGS: START === */
+.billing-settings-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--auth-border);
+  border-radius: 17px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 13px;
+  font-size: 0.72rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.billing-status-pill.is-void {
+  border-color: rgba(255, 82, 82, 0.34);
+  background: rgba(255, 82, 82, 0.1);
+  color: #ff8a8a;
+}
+
+.billing-row.is-void {
+  opacity: 0.78;
+}
+
+.billing-void-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid rgba(255, 82, 82, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 82, 82, 0.075);
+  color: #ffb1b1;
+  padding: 7px 9px;
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.billing-row-actions .is-danger,
+.billing-invoice-actions .is-danger,
+.billing-payment-form footer button.is-danger {
+  border-color: rgba(255, 82, 82, 0.34);
+  background: rgba(255, 82, 82, 0.11);
+  color: #ff8a8a;
+}
+
+.billing-void-panel .billing-payment-head p {
+  color: #ff8a8a;
+}
+
+.billing-settings-panel {
+  max-height: min(92dvh, 780px);
+}
+
+.billing-thermal-receipt[data-paper='58mm'] {
+  width: min(100%, 232px);
+  font-size: 10.5px;
+}
+
+.billing-thermal-receipt[data-paper='80mm'] {
+  width: min(100%, 320px);
+}
+
+.billing-thermal-receipt.is-void {
+  position: relative;
+}
+
+.billing-thermal-void {
+  border: 2px solid #111;
+  padding: 4px 8px;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-align: center;
+}
+
+.billing-thermal-note {
+  display: grid;
+  gap: 3px;
+  text-align: center;
+}
+
+.billing-thermal-note span {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (max-width: 767px) {
+  .billing-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-settings-button {
+    min-height: 38px;
+    border-radius: 13px;
+    padding: 0 10px;
+    font-size: 0.62rem;
+  }
+
+  .billing-settings-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .billing-void-note {
+    font-size: 0.58rem;
+    padding: 6px 8px;
+  }
+
+  .billing-thermal-receipt[data-paper='58mm'] {
+    width: min(100%, 232px);
+  }
+
+  .billing-thermal-receipt[data-paper='80mm'] {
+    width: min(100%, 300px);
+  }
+}
+
+@media print {
+  .billing-thermal-receipt[data-paper='58mm'] {
+    width: 58mm;
+    max-width: 58mm;
+  }
+
+  .billing-thermal-receipt[data-paper='80mm'] {
+    width: 80mm;
+    max-width: 80mm;
+  }
+}
+/* === BILLING VOID SETTINGS: END === */
