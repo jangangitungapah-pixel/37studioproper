@@ -762,9 +762,9 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
   }
 
   return (
-    <div className="customer-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
-      <section className="customer-modal-panel" role="dialog" aria-modal="true" aria-labelledby="customer-form-title">
-        <header className="customer-modal-head">
+    <div className="customer-modal-backdrop customer-booking-size-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
+      <section className="customer-modal-panel customer-booking-size-panel" role="dialog" aria-modal="true" aria-labelledby="customer-form-title">
+        <header className="customer-modal-head customer-booking-size-head">
           <div>
             <p>Customer Form</p>
             <h2 id="customer-form-title">{editingCustomer ? 'Edit Customer' : 'Tambah Customer'}</h2>
@@ -775,8 +775,8 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
           </button>
         </header>
 
-        <form className="customer-form" onSubmit={handleSubmit} noValidate>
-          <div className="customer-form-grid">
+        <form className="customer-form customer-booking-size-form" onSubmit={handleSubmit} noValidate>
+          <div className="customer-form-grid customer-booking-size-grid">
             <StudioTextField
               autoComplete="name"
               icon={UserRound}
@@ -846,7 +846,7 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
 
           {error ? <p className="booking-form-error" role="alert">{error}</p> : null}
 
-          <footer className="booking-form-actions">
+          <footer className="booking-form-actions customer-booking-size-actions">
             <button className="booking-button is-secondary" type="button" onClick={onClose}>Batal</button>
             <button className="booking-button is-primary" type="submit">{editingCustomer ? 'Update Customer' : 'Simpan Customer'}</button>
           </footer>
