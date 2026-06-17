@@ -35,6 +35,10 @@ import {
 import { firebaseAuth } from '../../lib/firebase.js';
 import { uploadGalleryImageFile, MAX_GALLERY_IMAGE_SIZE_BYTES } from '../../services/cloudinaryUploadService.js';
 import { galleryRepository } from '../../services/galleryRepository.js';
+import GalleryAlerts from '../../components/gallery/GalleryAlerts.jsx';
+import GalleryBatchBanner from '../../components/gallery/GalleryBatchBanner.jsx';
+import GalleryHero from '../../components/gallery/GalleryHero.jsx';
+import GalleryToolbar from '../../components/gallery/GalleryToolbar.jsx';
 
 // Procedural Lo-fi Ambient Sound Generator using Web Audio API
 class LofiAmbientSynth {
@@ -851,212 +855,74 @@ export default function GalleryPage() {
       </div>
 
       {/* 2. COHESIVE GALLERY STATS GRID (GalleryHero) */}
-      <section className="customer-hero-grid" aria-label="Ringkasan galeri">
-        <article className="customer-hero-card">
-          <span className="customer-hero-icon">
-            <ImageIcon size={18} />
-          </span>
-          <span className="customer-hero-copy">
-            <small>Total Foto</small>
-            <strong>{filteredActiveImages.length}</strong>
-            <em>Aktif di portofolio</em>
-          </span>
-        </article>
-
-        <article className="customer-hero-card">
-          <span className="customer-hero-icon">
-            <Heart size={18} className="text-red-400" />
-          </span>
-          <span className="customer-hero-copy">
-            <small>Favorit Saya</small>
-            <strong>{filteredActiveImages.filter(img => img.isFavorite).length}</strong>
-            <em>Foto bertanda bintang</em>
-          </span>
-        </article>
-
-        <article className="customer-hero-card">
-          <span className="customer-hero-icon">
-            <Trash2 size={18} className="text-red-400" />
-          </span>
-          <span className="customer-hero-copy">
-            <small>Tempat Sampah</small>
-            <strong>{trashedImages.length}</strong>
-            <em>Baru saja dihapus</em>
-          </span>
-        </article>
-      </section>
+      <GalleryHero
+        activeCount={filteredActiveImages.length}
+        favoriteCount={filteredActiveImages.filter(img => img.isFavorite).length}
+        HeartIcon={Heart}
+        ImageIcon={ImageIcon}
+        trashCount={trashedImages.length}
+        TrashIcon={Trash2}
+      />
 
       {/* Global Alerts */}
-      {error && (
-        <div className="p-4 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs flex items-center justify-between gap-2 animate-in fade-in-50 slide-in-from-top-3">
-          <span className="flex items-center gap-2">⚠️ {error}</span>
-          <button onClick={() => setError('')} className="p-1 text-red-400 hover:text-red-200"><X size={14} /></button>
-        </div>
-      )}
-
-      {success && (
-        <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs flex items-center justify-between gap-2 animate-in fade-in-50 slide-in-from-top-3">
-          <span className="flex items-center gap-2">✨ {success}</span>
-          <button onClick={() => setSuccess('')} className="p-1 text-emerald-400 hover:text-emerald-200"><X size={14} /></button>
-        </div>
-      )}
+      <GalleryAlerts
+        CloseIcon={X}
+        error={error}
+        onClearError={() => setError('')}
+        onClearSuccess={() => setSuccess('')}
+        success={success}
+      />
 
       {/* 3. COHESIVE UNIFIED TOOLBAR (.customer-toolbar) */}
-      <section className="customer-toolbar gallery-toolbar" aria-label="Toolbar galeri">
-        
-        {/* Column 1: Search bar */}
-        <div className="customer-search-shell">
-          <Search size={16} aria-hidden="true" />
-          <input
-            aria-label="Cari foto"
-            placeholder="Cari judul, deskripsi, uploader..."
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        {/* Column 2: Navigation tab pills inside toolbar */}
-        <div className="gallery-filter-row">
-          {[
-            { key: 'photos', label: 'Foto', icon: ImageIcon },
-            { key: 'albums', label: 'Album', icon: Folder },
-            { key: 'trash', label: 'Sampah', icon: Trash2 }
-          ].map(tab => {
-            const isActive = activeTab === tab.key;
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setSelectedAlbum(null);
-                  setIsSelectMode(false);
-                  setSelectedIds(new Set());
-                }}
-                className={`gallery-filter-pill ${isActive ? 'is-active' : ''}`}
-              >
-                <Icon size={14} />
-                <span>{tab.label}</span>
-                {tab.key === 'trash' && trashedImages.length > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold">
-                    {trashedImages.length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Column 3: Action Buttons */}
-        <div className="gallery-actions flex items-center gap-2 w-full sm:w-auto justify-end">
-          {/* Grid density controls (Desktop Only) */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--auth-border)] bg-[var(--auth-bg-control)] text-xs text-[var(--auth-text-muted)] mr-2">
-            <Grid size={13} className="text-zinc-500" />
-            <input
-              type="range"
-              min={2}
-              max={6}
-              value={gridColumns}
-              onChange={(e) => setGridColumns(parseInt(e.target.value))}
-              className="w-16 accent-orange-500 cursor-pointer h-1 rounded bg-zinc-800"
-              title="Kerapatan Grid"
-            />
-            <span className="text-[10px] font-bold text-zinc-400 w-4">{gridColumns}x</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsSelectMode(!isSelectMode)}
-            className={`customer-back-button ${isSelectMode ? 'border-orange-500 text-orange-400' : ''}`}
-          >
-            <Check size={14} />
-            <span>{isSelectMode ? 'Selesai' : 'Pilih'}</span>
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setError('');
-              setSuccess('');
-              setIsModalOpen(true);
-            }}
-            className="customer-add-button"
-          >
-            <Plus size={16} />
-            Unggah Foto
-          </button>
-        </div>
-      </section>
+      <GalleryToolbar
+        activeTab={activeTab}
+        CheckIcon={Check}
+        FolderIcon={Folder}
+        GridIcon={Grid}
+        gridColumns={gridColumns}
+        ImageIcon={ImageIcon}
+        isSelectMode={isSelectMode}
+        onGridColumnsChange={setGridColumns}
+        onOpenUpload={() => {
+          setError('');
+          setSuccess('');
+          setIsModalOpen(true);
+        }}
+        onSearchChange={setSearchQuery}
+        onTabChange={(tabKey) => {
+          setActiveTab(tabKey);
+          setSelectedAlbum(null);
+          setIsSelectMode(false);
+          setSelectedIds(new Set());
+        }}
+        onToggleSelectMode={() => setIsSelectMode(!isSelectMode)}
+        PlusIcon={Plus}
+        searchQuery={searchQuery}
+        trashCount={trashedImages.length}
+        TrashIcon={Trash2}
+      />
 
       {/* 4. BATCH SELECT FLOATING BANNER */}
-      {isSelectMode && (
-        <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-bottom-5 duration-200">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSelectAll}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-semibold text-white border border-white/10"
-            >
-              {selectedIds.size === displayedImages.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
-            </button>
-            <span className="text-xs font-bold text-white">
-              {selectedIds.size} file terpilih
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {activeTab !== 'trash' ? (
-              <>
-                <button
-                  onClick={handleBatchFavorite}
-                  disabled={selectedIds.size === 0}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/20 disabled:opacity-40 transition-all"
-                >
-                  <Heart size={13} className="fill-current" />
-                  <span>Favoritkan</span>
-                </button>
-                <button
-                  onClick={handleBatchSoftDelete}
-                  disabled={selectedIds.size === 0}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 disabled:opacity-40 transition-all"
-                >
-                  <Trash2 size={13} />
-                  <span>Buang ke Sampah</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleBatchRestore}
-                  disabled={selectedIds.size === 0}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/20 disabled:opacity-40 transition-all"
-                >
-                  <RefreshCw size={13} />
-                  <span>Pulihkan</span>
-                </button>
-                <button
-                  onClick={handleBatchPermanentDelete}
-                  disabled={selectedIds.size === 0}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 disabled:opacity-40 transition-all"
-                >
-                  <Trash size={13} />
-                  <span>Hapus Permanen</span>
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => {
-                setIsSelectMode(false);
-                setSelectedIds(new Set());
-              }}
-              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold"
-            >
-              Batal
-            </button>
-          </div>
-        </div>
-      )}
+      {isSelectMode ? (
+        <GalleryBatchBanner
+          activeTab={activeTab}
+          FavoriteIcon={Heart}
+          onBatchFavorite={handleBatchFavorite}
+          onBatchPermanentDelete={handleBatchPermanentDelete}
+          onBatchRestore={handleBatchRestore}
+          onBatchSoftDelete={handleBatchSoftDelete}
+          onCancelSelectMode={() => {
+            setIsSelectMode(false);
+            setSelectedIds(new Set());
+          }}
+          onSelectAll={handleSelectAll}
+          RefreshIcon={RefreshCw}
+          selectedCount={selectedIds.size}
+          totalCount={displayedImages.length}
+          TrashIcon={Trash2}
+          TrashPermanentIcon={Trash}
+        />
+      ) : null}
 
       {/* 5. MAIN VIEWS CONTENT */}
       {isLoading ? (
