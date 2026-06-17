@@ -8226,3 +8226,103 @@
   }
 }
 /* === BILLING VOID SETTINGS: END === */
+
+/* === SETTINGS INVOICE SUBPAGE: START === */
+.settings-invoice-section {
+  position: relative;
+}
+
+.settings-textarea-field {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-textarea-field span {
+  color: var(--auth-text-muted);
+  font-size: 0.62rem;
+  font-weight: 760;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.settings-textarea-field textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  padding: 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  outline: 0;
+  resize: vertical;
+}
+
+.settings-invoice-preview {
+  display: grid;
+  gap: 4px;
+  border: 1px dashed var(--auth-border-strong);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 138, 42, 0.12), transparent 34%),
+    rgba(255, 255, 255, 0.028);
+  padding: 13px;
+  text-align: center;
+}
+
+.settings-invoice-preview small,
+.settings-invoice-preview em {
+  color: var(--auth-text-muted);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 760;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.settings-invoice-preview strong {
+  color: var(--auth-text-strong);
+  font-size: 1rem;
+  font-weight: 720;
+}
+
+.settings-invoice-preview span {
+  color: var(--auth-text-muted);
+  font-size: 0.78rem;
+}
+
+.settings-invoice-message {
+  margin: 0;
+  border: 1px solid rgba(103, 232, 165, 0.28);
+  border-radius: 14px;
+  background: rgba(103, 232, 165, 0.1);
+  color: #67e8a5;
+  padding: 9px 11px;
+  font-size: 0.72rem;
+  font-weight: 680;
+}
+
+@media (max-width: 767px) {
+  .settings-textarea-field textarea {
+    min-height: 82px;
+    border-radius: 14px;
+    padding: 10px;
+    font-size: 0.74rem;
+  }
+
+  .settings-invoice-preview {
+    border-radius: 15px;
+    padding: 11px;
+  }
+
+  .settings-invoice-preview strong {
+    font-size: 0.86rem;
+  }
+
+  .settings-invoice-preview span {
+    font-size: 0.68rem;
+  }
+}
+/* === SETTINGS INVOICE SUBPAGE: END === */

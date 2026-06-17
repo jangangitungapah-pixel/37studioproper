@@ -8,24 +8,12 @@ import {
   PhoneCall,
   Printer,
   Search,
-  Settings,
   Share2,
   X,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
-
-const INVOICE_SETTINGS_STORAGE_KEY = '37musicstudio.billing.invoice-settings.v1';
-
-const defaultInvoiceSettings = {
-  studioName: '37 Music Studio',
-  subtitle: 'Invoice Digital',
-  phone: '',
-  address: '',
-  footer: 'Terima kasih sudah booking.',
-  paperSize: '80mm',
-  updatedAt: '',
-};
+import { defaultInvoiceSettings, readInvoiceSettings } from '../../settings/invoiceSettings.js';
 
 const billingFilterOptions = [
   { key: 'all', label: 'Semua', description: 'Semua aktivitas booking' },
@@ -43,40 +31,12 @@ const paymentMethodOptions = [
   { key: 'other', label: 'Lainnya', description: 'Metode lain' },
 ];
 
-const paperSizeOptions = [
-  { key: '80mm', label: 'Thermal 80mm', description: 'Ukuran struk umum' },
-  { key: '58mm', label: 'Thermal 58mm', description: 'Ukuran struk kecil' },
-];
-
 function cleanText(value) {
   return String(value || '').trim();
 }
 
 function cleanLower(value) {
   return cleanText(value).toLowerCase();
-}
-
-function readInvoiceSettings() {
-  if (typeof window === 'undefined') return defaultInvoiceSettings;
-
-  try {
-    const raw = window.localStorage.getItem(INVOICE_SETTINGS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-
-    return {
-      ...defaultInvoiceSettings,
-      ...(parsed && typeof parsed === 'object' ? parsed : {}),
-    };
-  } catch (error) {
-    console.error('Gagal membaca invoice settings:', error);
-    return defaultInvoiceSettings;
-  }
-}
-
-function writeInvoiceSettings(settings) {
-  if (typeof window === 'undefined') return;
-
-  window.localStorage.setItem(INVOICE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 }
 
 function formatMoney(value) {
@@ -440,7 +400,7 @@ function BillingCashSummary({ bookings }) {
   );
 }
 
-function BillingToolbar({ activeFilter, onFilterChange, onOpenSettings, onSearchChange, searchText }) {
+function BillingToolbar({ activeFilter, onFilterChange, onSearchChange, searchText }) {
   return (
     <section className="billing-toolbar" aria-label="Billing toolbar">
       <div className="billing-search-shell">
@@ -462,11 +422,6 @@ function BillingToolbar({ activeFilter, onFilterChange, onOpenSettings, onSearch
           onChange={onFilterChange}
         />
       </div>
-
-      <button className="billing-settings-button" type="button" onClick={onOpenSettings}>
-        <Settings size={15} />
-        Invoice
-      </button>
     </section>
   );
 }
@@ -942,103 +897,6 @@ function VoidInvoiceModal({ booking, onClose, onSubmit }) {
   );
 }
 
-function InvoiceSettingsModal({ settings, onClose, onSave }) {
-  const [form, setForm] = useState(() => ({ ...settings }));
-
-  function updateField(field) {
-    return (event) => {
-      setForm((current) => ({
-        ...current,
-        [field]: event.target.value,
-      }));
-    };
-  }
-
-  function updateValue(field) {
-    return (nextValue) => {
-      setForm((current) => ({
-        ...current,
-        [field]: nextValue,
-      }));
-    };
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-
-    onSave({
-      ...defaultInvoiceSettings,
-      ...form,
-      studioName: form.studioName.trim() || defaultInvoiceSettings.studioName,
-      subtitle: form.subtitle.trim() || defaultInvoiceSettings.subtitle,
-      phone: form.phone.trim(),
-      address: form.address.trim(),
-      footer: form.footer.trim() || defaultInvoiceSettings.footer,
-      paperSize: form.paperSize || defaultInvoiceSettings.paperSize,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  return (
-    <div className="billing-payment-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
-      <section className="billing-payment-panel billing-settings-panel" role="dialog" aria-modal="true" aria-labelledby="billing-settings-title">
-        <header className="billing-payment-head">
-          <div>
-            <p>Invoice Settings</p>
-            <h2 id="billing-settings-title">Thermal Invoice</h2>
-            <span>Pengaturan ini disimpan di browser admin.</span>
-          </div>
-
-          <button type="button" aria-label="Tutup invoice settings" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </header>
-
-        <form className="billing-payment-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Nama Studio</span>
-            <input value={form.studioName} onChange={updateField('studioName')} />
-          </label>
-
-          <label>
-            <span>Subtitle</span>
-            <input value={form.subtitle} onChange={updateField('subtitle')} />
-          </label>
-
-          <label>
-            <span>Nomor WA Studio</span>
-            <input value={form.phone} onChange={updateField('phone')} />
-          </label>
-
-          <label>
-            <span>Alamat Singkat</span>
-            <input value={form.address} onChange={updateField('address')} />
-          </label>
-
-          <StudioSelect
-            label="Ukuran"
-            options={paperSizeOptions}
-            selectedKey={form.paperSize}
-            onChange={updateValue('paperSize')}
-          />
-
-          <label>
-            <span>Footer Invoice</span>
-            <textarea value={form.footer} onChange={updateField('footer')} />
-          </label>
-
-          <footer>
-            <button type="button" onClick={onClose}>Batal</button>
-            <button className="is-primary" type="submit">Simpan Settings</button>
-          </footer>
-        </form>
-      </section>
-    </div>
-  );
-}
-
 export default function BillingPage() {
   const [bookings, setBookings] = useState([]);
   const [activeFilter, setActiveFilter] = useState('open');
@@ -1046,8 +904,7 @@ export default function BillingPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
-  const [invoiceSettings, setInvoiceSettings] = useState(readInvoiceSettings);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [invoiceSettings] = useState(readInvoiceSettings);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -1181,16 +1038,6 @@ export default function BillingPage() {
     }
   }
 
-  function saveInvoiceSettings(nextSettings) {
-    writeInvoiceSettings(nextSettings);
-    setInvoiceSettings(nextSettings);
-    setIsSettingsModalOpen(false);
-    setToast({
-      title: 'Invoice settings disimpan',
-      message: 'Format invoice thermal sudah diperbarui.',
-    });
-  }
-
   function printInvoice(booking) {
     setSelectedBooking(booking);
 
@@ -1241,7 +1088,6 @@ export default function BillingPage() {
         activeFilter={activeFilter}
         searchText={searchText}
         onFilterChange={setActiveFilter}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
         onSearchChange={setSearchText}
       />
 
@@ -1283,15 +1129,6 @@ export default function BillingPage() {
         onClose={() => setSelectedVoidBooking(null)}
         onSubmit={voidInvoice}
       />
-
-      {isSettingsModalOpen ? (
-        <InvoiceSettingsModal
-          key={invoiceSettings.updatedAt || 'default-invoice-settings'}
-          settings={invoiceSettings}
-          onClose={() => setIsSettingsModalOpen(false)}
-          onSave={saveInvoiceSettings}
-        />
-      ) : null}
 
       {toast ? (
         <aside className="schedule-toast is-warning" role="status" aria-live="polite">

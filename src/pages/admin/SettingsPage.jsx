@@ -5,6 +5,12 @@ import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import {
+  defaultInvoiceSettings,
+  paperSizeOptions,
+  readInvoiceSettings,
+  writeInvoiceSettings,
+} from '../../settings/invoiceSettings.js';
+import {
   formatRupiah,
   getSessionOptions,
   makeSettingItemId,
@@ -76,6 +82,11 @@ export default function SettingsPage({ currentUser }) {
         key: 'pricing',
         label: 'Pricing and Session',
         description: 'Harga session, discount, recording type, dan paket.',
+      },
+      {
+        key: 'invoice',
+        label: 'Invoice Settings',
+        description: 'Header, footer, nomor kontak, dan ukuran thermal invoice.',
       }
     ];
     if (currentUser?.email?.toLowerCase() === 'marsicprod@gmail.com') {
@@ -91,6 +102,8 @@ export default function SettingsPage({ currentUser }) {
   const [activeSubpage, setActiveSubpage] = useState('pricing');
   const remoteSettings = usePricingSettings();
   const [settings, setSettings] = useState(() => remoteSettings);
+  const [invoiceSettings, setInvoiceSettings] = useState(readInvoiceSettings);
+  const [invoiceSettingsMessage, setInvoiceSettingsMessage] = useState('');
 
   useEffect(() => {
     const settingsFrameId = window.requestAnimationFrame(() => {
@@ -188,6 +201,50 @@ export default function SettingsPage({ currentUser }) {
         [field]: value,
       }));
     };
+  }
+
+  function updateInvoiceSetting(field) {
+    return (event) => {
+      const value = event.target.value;
+      setInvoiceSettings((current) => ({
+        ...current,
+        [field]: value,
+      }));
+      if (invoiceSettingsMessage) setInvoiceSettingsMessage('');
+    };
+  }
+
+  function updateInvoiceValue(field) {
+    return (nextValue) => {
+      setInvoiceSettings((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+      if (invoiceSettingsMessage) setInvoiceSettingsMessage('');
+    };
+  }
+
+  function saveInvoiceSettingsPage(event) {
+    event.preventDefault();
+
+    const nextSettings = writeInvoiceSettings({
+      ...defaultInvoiceSettings,
+      ...invoiceSettings,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setInvoiceSettings(nextSettings);
+    setInvoiceSettingsMessage('Invoice settings berhasil disimpan.');
+  }
+
+  function resetInvoiceSettingsPage() {
+    const nextSettings = writeInvoiceSettings({
+      ...defaultInvoiceSettings,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setInvoiceSettings(nextSettings);
+    setInvoiceSettingsMessage('Invoice settings dikembalikan ke default.');
   }
 
   function saveSession(event) {
@@ -689,6 +746,92 @@ export default function SettingsPage({ currentUser }) {
         </form>
       </section>
       </>
+      )}
+
+      {activeSubpage === 'invoice' && (
+        <section className="settings-section settings-invoice-section">
+          <div className="settings-section-head">
+            <div>
+              <h3>Invoice Thermal</h3>
+              <p>Atur identitas studio dan tampilan invoice digital yang dipakai di halaman Billing/POS.</p>
+            </div>
+          </div>
+
+          <form className="settings-form settings-invoice-form" onSubmit={saveInvoiceSettingsPage}>
+            <StudioTextField
+              id="invoice-setting-studio-name"
+              label="Nama Studio"
+              placeholder="37 Music Studio"
+              value={invoiceSettings.studioName}
+              onChange={updateInvoiceSetting('studioName')}
+            />
+
+            <StudioTextField
+              id="invoice-setting-subtitle"
+              label="Subtitle Invoice"
+              placeholder="Invoice Digital"
+              value={invoiceSettings.subtitle}
+              onChange={updateInvoiceSetting('subtitle')}
+            />
+
+            <StudioTextField
+              id="invoice-setting-phone"
+              inputMode="tel"
+              label="Nomor WA Studio"
+              placeholder="08xxxxxxxxxx"
+              value={invoiceSettings.phone}
+              onChange={updateInvoiceSetting('phone')}
+            />
+
+            <StudioTextField
+              id="invoice-setting-address"
+              label="Alamat Singkat"
+              placeholder="Contoh: Tangerang"
+              value={invoiceSettings.address}
+              onChange={updateInvoiceSetting('address')}
+            />
+
+            <StudioSelect
+              label="Ukuran Thermal"
+              options={paperSizeOptions}
+              selectedKey={invoiceSettings.paperSize}
+              onChange={updateInvoiceValue('paperSize')}
+            />
+
+            <label className="settings-textarea-field" htmlFor="invoice-setting-footer">
+              <span>Footer Invoice</span>
+              <textarea
+                id="invoice-setting-footer"
+                placeholder="Terima kasih sudah booking."
+                value={invoiceSettings.footer}
+                onChange={updateInvoiceSetting('footer')}
+              />
+            </label>
+
+            <div className="settings-invoice-preview" aria-label="Preview invoice settings">
+              <small>Preview Header</small>
+              <strong>{invoiceSettings.studioName || defaultInvoiceSettings.studioName}</strong>
+              <span>{invoiceSettings.subtitle || defaultInvoiceSettings.subtitle}</span>
+              {invoiceSettings.address ? <span>{invoiceSettings.address}</span> : null}
+              {invoiceSettings.phone ? <span>{invoiceSettings.phone}</span> : null}
+              <em>{invoiceSettings.paperSize || defaultInvoiceSettings.paperSize}</em>
+            </div>
+
+            {invoiceSettingsMessage ? (
+              <p className="settings-invoice-message" role="status">{invoiceSettingsMessage}</p>
+            ) : null}
+
+            <div className="settings-form-actions">
+              <button className="settings-mini-button is-ghost" type="button" onClick={resetInvoiceSettingsPage}>
+                Reset Default
+              </button>
+              <button className="settings-mini-button is-primary" type="submit">
+                <Save size={15} />
+                Simpan Settings
+              </button>
+            </div>
+          </form>
+        </section>
       )}
 
       {activeSubpage === 'approvals' && (
