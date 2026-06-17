@@ -898,6 +898,7 @@ export default function GalleryPage() {
         onToggleSelectMode={() => setIsSelectMode(!isSelectMode)}
         PlusIcon={Plus}
         searchQuery={searchQuery}
+        SearchIcon={Search}
         trashCount={trashedImages.length}
         TrashIcon={Trash2}
       />

@@ -13,6 +13,7 @@ export default function GalleryToolbar({
   onToggleSelectMode,
   PlusIcon,
   searchQuery,
+  SearchIcon,
   trashCount,
   TrashIcon,
 }) {
@@ -25,12 +26,7 @@ export default function GalleryToolbar({
   return (
     <section className="customer-toolbar gallery-toolbar" aria-label="Toolbar galeri">
       <div className="customer-search-shell">
-        <GridIcon size={0} aria-hidden="true" style={{ display: 'none' }} />
-        <span aria-hidden="true" className="gallery-toolbar-search-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </span>
+        <SearchIcon size={16} aria-hidden="true" />
         <input
           aria-label="Cari foto"
           placeholder="Cari judul, deskripsi, uploader..."
