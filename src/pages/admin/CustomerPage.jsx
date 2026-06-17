@@ -346,6 +346,16 @@ function getCustomerFollowUpTone(customer) {
   return 'is-neutral';
 }
 
+function getCustomerListTone(customer) {
+  if (customer.hasOpenPayment || customer.followUpStatus === 'watchlist') return 'is-warning';
+  if (customer.followUpStatus === 'vip' || customer.paidBookings > 0) return 'is-paid';
+  if (customer.hasDuplicatePhone) return 'is-duplicate';
+  if (isCustomerIdle(customer)) return 'is-idle';
+  if (customer.followUpStatus === 'follow-up') return 'is-neutral';
+
+  return 'is-neutral';
+}
+
 function getCustomerFollowUpScore(customer) {
   let score = 0;
 
@@ -893,7 +903,7 @@ function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearch
   );
 }
 
-function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
+function CustomerTable({ customers, followUpTemplate, onEditCustomer, onOpenCustomer }) {
   if (!customers.length) {
     return (
       <section className="customer-empty-state">
@@ -905,54 +915,51 @@ function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
   }
 
   return (
-    <section className="customer-table-shell" aria-label="Customer table">
-      <div className="customer-table-head">
-        <span>Customer</span>
-        <span>Kontak</span>
-        <span>Booking</span>
-        <span>Status</span>
-        <span>Terakhir</span>
+    <section className="customer-table-shell customer-unified-list-shell" aria-label="Customer list">
+      <div className="customer-unified-list-head">
+        <span>
+          <small>Customer List</small>
+          <strong>{customers.length} customer</strong>
+        </span>
+        <em>Action pakai template Follow-up Center</em>
       </div>
 
-      <div className="customer-table-body">
+      <div className="customer-table-body customer-unified-list">
         {customers.map((customer) => {
           const topBand = customer.bands[0];
           const links = getCustomerActionLinks(customer);
+          const whatsappHref = getCustomerFollowUpWhatsappHref(customer, followUpTemplate);
+          const subtitleItems = [
+            formatPhoneLabel(customer.phone || customer.phoneKey),
+            topBand ? topBand.name + ' • ' + topBand.count + 'x' : customer.aliasLabel,
+            formatDate(customer.latestActivityAt),
+          ].filter(Boolean);
+          const metaValue = customer.openInvoiceAmount
+            ? formatMoney(customer.openInvoiceAmount)
+            : customer.email || customer.instagram || '-';
 
           return (
-            <article className="customer-table-row" key={customer.id}>
-              <button className="customer-row-main-button" type="button" onClick={() => onOpenCustomer(customer)}>
-                <span className="customer-main-cell">
+            <article className="customer-followup-row customer-list-row" key={customer.id}>
+              <button className="customer-followup-main customer-list-main" type="button" onClick={() => onOpenCustomer(customer)}>
+                <span>
                   <strong>{customer.name}</strong>
-                  <small>{topBand ? topBand.name + ' • ' + topBand.count + 'x' : customer.aliasLabel || getFollowUpLabel(customer.followUpStatus)}</small>
-                  {customer.hasDuplicatePhone ? <em>Nomor WA ganda</em> : null}
+                  <small>{subtitleItems.join(' • ')}</small>
+                  {customer.hasDuplicatePhone ? <mark>Nomor WA ganda</mark> : null}
                 </span>
 
-                <span className="customer-contact-cell">
-                  <strong>{formatPhoneLabel(customer.phone || customer.phoneKey)}</strong>
-                  <small>{customer.email || customer.instagram || '-'}</small>
-                </span>
-
-                <span className="customer-number-cell">
-                  <strong>{customer.totalBookings}</strong>
-                  <small>{customer.paidBookings} lunas</small>
-                </span>
-
-                <span className={'customer-status-pill ' + getCustomerStatusClass(customer)}>
+                <em className={'customer-followup-badge ' + getCustomerListTone(customer)}>
                   {getCustomerStatusLabel(customer)}
-                </span>
-
-                <span className="customer-date-cell">{formatDate(customer.latestActivityAt)}</span>
+                </em>
               </button>
 
-              <span className="customer-row-actions" aria-label={'Aksi customer ' + customer.name}>
-                {links.whatsappHref ? (
+              <span className="customer-followup-actions customer-list-actions" aria-label={'Aksi customer ' + customer.name}>
+                {whatsappHref ? (
                   <a
-                    aria-label={'Chat WhatsApp ' + customer.name}
-                    href={links.whatsappHref}
+                    aria-label={'Kirim WhatsApp ke ' + customer.name}
+                    href={whatsappHref}
                     target="_blank"
                     rel="noreferrer"
-                    title="WhatsApp"
+                    title="WhatsApp follow-up"
                   >
                     <WhatsAppIcon size={15} />
                   </a>
@@ -964,14 +971,18 @@ function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
                   </a>
                 ) : null}
 
-                <button
-                  aria-label={'Edit customer ' + customer.name}
-                  title="Edit customer"
-                  type="button"
-                  onClick={() => onEditCustomer(customer)}
-                >
+                <button aria-label={'Buka detail ' + customer.name} title="Buka detail" type="button" onClick={() => onOpenCustomer(customer)}>
+                  <UserRound size={15} />
+                </button>
+
+                <button aria-label={'Edit customer ' + customer.name} title="Edit customer" type="button" onClick={() => onEditCustomer(customer)}>
                   <Pencil size={15} />
                 </button>
+              </span>
+
+              <span className="customer-list-meta">
+                <small>{customer.totalBookings} booking • {customer.paidBookings} lunas</small>
+                <strong>{metaValue}</strong>
               </span>
             </article>
           );
@@ -982,24 +993,19 @@ function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
 }
 
 
-
-
 function CustomerFollowUpCenter({
   activeFilter,
   activeTemplate,
   customers,
-  onEditCustomer,
   onFilterChange,
-  onOpenCustomer,
   onTemplateChange,
 }) {
   const candidates = getCustomerFollowUpCandidates(customers, activeFilter);
-  const visibleCandidates = candidates.slice(0, 6);
   const totalOutstanding = getFollowUpOutstandingTotal(candidates);
   const unpaidCount = candidates.filter((customer) => customer.hasOpenPayment).length;
 
   return (
-    <section className="customer-followup-center" aria-label="Follow-up center">
+    <section className="customer-followup-center is-compact-hub" aria-label="Follow-up center">
       <header className="customer-followup-head">
         <span className="customer-followup-orb" aria-hidden="true">
           <PhoneCall size={16} />
@@ -1007,7 +1013,7 @@ function CustomerFollowUpCenter({
 
         <span className="customer-followup-title">
           <small>Follow-up Center</small>
-          <strong>Prioritas customer</strong>
+          <strong>Template & prioritas</strong>
         </span>
 
         <span className="customer-followup-total">
@@ -1045,70 +1051,18 @@ function CustomerFollowUpCenter({
           <strong>{unpaidCount}</strong>
         </article>
         <article>
-          <small>Template</small>
+          <small>Template WA</small>
           <strong>{followUpTemplateOptions.find((item) => item.key === activeTemplate)?.label || 'Tagihan'}</strong>
         </article>
       </div>
 
-      {visibleCandidates.length ? (
-        <div className="customer-followup-list">
-          {visibleCandidates.map((customer) => {
-            const links = getCustomerActionLinks(customer);
-            const whatsappHref = getCustomerFollowUpWhatsappHref(customer, activeTemplate);
-
-            return (
-              <article className="customer-followup-row" key={customer.id}>
-                <button className="customer-followup-main" type="button" onClick={() => onOpenCustomer(customer)}>
-                  <span>
-                    <strong>{customer.name}</strong>
-                    <small>{formatPhoneLabel(customer.phone || customer.phoneKey)} • {formatDate(customer.latestActivityAt)}</small>
-                  </span>
-
-                  <em className={'customer-followup-badge ' + getCustomerFollowUpTone(customer)}>
-                    {getCustomerFollowUpReason(customer)}
-                  </em>
-                </button>
-
-                <span className="customer-followup-actions" aria-label={'Aksi follow-up ' + customer.name}>
-                  {whatsappHref ? (
-                    <a
-                      aria-label={'Kirim WhatsApp follow-up ke ' + customer.name}
-                      href={whatsappHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="WhatsApp follow-up"
-                    >
-                      <WhatsAppIcon size={15} />
-                    </a>
-                  ) : null}
-
-                  {links.callHref ? (
-                    <a aria-label={'Telepon ' + customer.name} href={links.callHref} title="Telepon">
-                      <PhoneCall size={15} />
-                    </a>
-                  ) : null}
-
-                  <button aria-label={'Buka detail ' + customer.name} title="Buka detail" type="button" onClick={() => onOpenCustomer(customer)}>
-                    <UserRound size={15} />
-                  </button>
-
-                  <button aria-label={'Edit customer ' + customer.name} title="Edit customer" type="button" onClick={() => onEditCustomer(customer)}>
-                    <Pencil size={15} />
-                  </button>
-                </span>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="customer-followup-empty">
-          <strong>Tidak ada target follow-up</strong>
-          <span>Filter ini sedang bersih. Aman, layar tidak perlu panik.</span>
-        </div>
-      )}
+      <p className="customer-followup-hint">
+        Action WhatsApp di Customer List memakai template yang dipilih di sini.
+      </p>
     </section>
   );
 }
+
 
 function CustomerActivityTimeline({
   activeFilter,
@@ -1571,14 +1525,13 @@ export default function CustomerPage() {
         activeFilter={followUpFilter}
         activeTemplate={followUpTemplate}
         customers={customers}
-        onEditCustomer={openCustomerForm}
         onFilterChange={setFollowUpFilter}
-        onOpenCustomer={openCustomer}
         onTemplateChange={setFollowUpTemplate}
       />
 
       <CustomerTable
         customers={filteredCustomers}
+        followUpTemplate={followUpTemplate}
         onEditCustomer={openCustomerForm}
         onOpenCustomer={openCustomer}
       />
