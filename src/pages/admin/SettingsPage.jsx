@@ -1427,68 +1427,61 @@ export default function SettingsPage({ currentUser }) {
                 <article className="settings-list-item" key={user.id}>
                   <div>
                     <strong>{user.displayName || 'User'}</strong>
-                    <span>
-                      {user.email && `Email: ${user.email}`}
-                      {user.email && user.phoneNumber && ' • '}
-                      {user.phoneNumber && `No HP: ${user.phoneNumber}`}
-                      {` (${user.provider})`}
-                      {' • Akses halaman: ' + countEnabledAdminPermissions(user.permissions) + '/' + adminPermissionPages.length}
-                    </span>
-                    <span style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginTop: '4px' }}>
+                    <span className="settings-approval-date">
                       Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
                     </span>
                   </div>
-                  <div className="settings-row-actions settings-approval-actions" style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                  <div className="settings-row-actions settings-approval-actions">
                     {user.role === 'owner' ? (
-                      <span className="settings-owner-status-pill">
+                      <span className="settings-owner-status-pill" title="Owner aktif" aria-label="Owner aktif">
                         <Crown size={13} />
-                        Owner
                       </span>
                     ) : user.status !== 'approved' ? (
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
+                        aria-label="Setujui user"
+                        title="Setujui user"
                         onClick={() => handleApproveUser(user.id)}
-                        className="settings-mini-button is-primary"
-                        style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto', background: '#2ecc71', borderColor: '#27ae60', color: '#fff' }}
+                        className="settings-mini-button is-primary settings-approval-icon-button is-approve"
                       >
-                        Setujui
+                        <ShieldCheck size={13} />
                       </button>
                     ) : (
-                      <span style={{ color: '#2ecc71', fontSize: '0.78rem', fontWeight: 'bold', marginRight: '8px', display: 'flex', alignItems: 'center' }}>
+                      <span className="settings-approval-status-pill" title="User aktif">
                         Aktif
                       </span>
                     )}
+
                     {user.role !== 'owner' ? (
                       <button
                         type="button"
-                        onClick={() => transferOwnershipToUser(user)}
-                        className="settings-mini-button settings-owner-transfer-button"
+                        aria-label="Transfer owner ke user ini"
                         title="Transfer owner ke user ini"
-                        style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto' }}
+                        onClick={() => transferOwnershipToUser(user)}
+                        className="settings-mini-button settings-owner-transfer-button settings-approval-icon-button"
                       >
                         <Crown size={13} />
-                        Owner
                       </button>
                     ) : null}
 
                     <button
                       type="button"
+                      aria-label="Atur permission halaman user"
+                      title={'Permission: ' + countEnabledAdminPermissions(user.permissions) + '/' + adminPermissionPages.length}
                       onClick={() => openPermissionSettings(user)}
-                      className="settings-mini-button settings-permission-open-button"
-                      title="Atur permission halaman user"
-                      style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto' }}
+                      className="settings-mini-button settings-permission-open-button settings-approval-icon-button"
                     >
                       <SlidersHorizontal size={13} />
-                      Permission
                     </button>
 
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
+                      aria-label="Hapus user"
+                      title="Hapus user"
                       onClick={() => handleDeleteUser(user.id)}
-                      className="settings-mini-button"
-                      style={{ padding: '4px 10px', fontSize: '0.75rem', minHeight: 'auto', color: 'var(--auth-danger)', borderColor: 'rgba(255, 107, 107, 0.3)' }}
+                      className="settings-mini-button settings-approval-delete-button settings-approval-icon-button"
                     >
-                      Hapus
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </article>

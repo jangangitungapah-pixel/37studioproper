@@ -13990,3 +13990,109 @@ body.is-admin-permission-modal-open .admin-bottom-more-menu {
   }
 }
 /* === ADMIN APPROVALS COMPACT SCHEDULE TYPOGRAPHY: END === */
+
+/* === ADMIN APPROVALS ICON ACTIONS: START === */
+.settings-page.is-approvals-settings .settings-approval-date {
+  display: block;
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--auth-text-muted) 76%, transparent);
+  font-size: 0.62rem !important;
+  font-weight: 380 !important;
+  line-height: 1.28;
+}
+
+.settings-page.is-approvals-settings .settings-approval-actions {
+  width: 100% !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 7px !important;
+  margin-left: 0 !important;
+}
+
+.settings-page.is-approvals-settings .settings-approval-icon-button,
+.settings-page.is-approvals-settings .settings-owner-status-pill {
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  border-radius: 11px !important;
+  padding: 0 !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+}
+
+.settings-page.is-approvals-settings .settings-approval-icon-button svg,
+.settings-page.is-approvals-settings .settings-owner-status-pill svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.settings-page.is-approvals-settings .settings-approval-status-pill {
+  min-width: 46px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #67e8a5;
+  background: rgba(103, 232, 165, 0.08);
+  border: 1px solid rgba(103, 232, 165, 0.24);
+  font-size: 0.62rem;
+  font-weight: 620;
+}
+
+.settings-page.is-approvals-settings .settings-approval-delete-button {
+  border-color: rgba(255, 107, 107, 0.32) !important;
+  color: var(--auth-danger) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 107, 107, 0.09), rgba(255, 255, 255, 0.01)),
+    var(--auth-bg-control) !important;
+}
+
+.settings-page.is-approvals-settings .settings-list-item {
+  gap: 7px !important;
+}
+
+.settings-page.is-approvals-settings .settings-list-item > div:first-child {
+  gap: 2px !important;
+}
+
+.settings-page.is-approvals-settings .settings-list-item strong {
+  font-size: 0.82rem !important;
+}
+
+@media (min-width: 768px) {
+  .settings-page.is-approvals-settings .settings-list-item {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .settings-page.is-approvals-settings .settings-approval-actions {
+    width: auto !important;
+    justify-content: flex-end !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-page.is-approvals-settings .settings-approval-actions {
+    gap: 6px !important;
+  }
+
+  .settings-page.is-approvals-settings .settings-approval-icon-button,
+  .settings-page.is-approvals-settings .settings-owner-status-pill {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: 10px !important;
+  }
+
+  .settings-page.is-approvals-settings .settings-approval-status-pill {
+    min-width: 42px;
+    height: 28px;
+    font-size: 0.58rem;
+  }
+}
+/* === ADMIN APPROVALS ICON ACTIONS: END === */
