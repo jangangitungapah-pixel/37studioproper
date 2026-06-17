@@ -6688,3 +6688,50 @@
   }
 }
 /* === STUDIO SELECT PORTAL POSITION FIX: END === */
+
+/* === STUDIO SELECT OPTION BORDER: START === */
+.studio-select-list .studio-select-option {
+  border: 1px solid color-mix(in srgb, var(--auth-border) 76%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 72%),
+    rgba(255, 255, 255, 0.022);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.studio-select-list .studio-select-option:hover {
+  border-color: color-mix(in srgb, var(--auth-border-strong) 82%, transparent);
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.14), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.028);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 138, 42, 0.14),
+    0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.studio-select-list .studio-select-option.is-selected {
+  border-color: color-mix(in srgb, var(--auth-accent) 68%, var(--auth-border-strong));
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.18), rgba(255, 255, 255, 0.05)),
+    rgba(255, 138, 42, 0.035);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 138, 42, 0.22),
+    0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.studio-select-list[data-portal='true'] {
+  border-color: color-mix(in srgb, var(--auth-border-strong) 86%, transparent);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.66),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+@media (max-width: 767px) {
+  .studio-select-list .studio-select-option {
+    border-radius: 13px;
+  }
+
+  .studio-select-list .studio-select-option + .studio-select-option {
+    margin-top: 1px;
+  }
+}
+/* === STUDIO SELECT OPTION BORDER: END === */
