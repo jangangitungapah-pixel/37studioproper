@@ -25,6 +25,11 @@ const periodOptions = [
   { key: 'all', label: 'Semua', description: 'Semua transaksi' },
 ];
 
+const transactionKindOptions = [
+  { key: 'income', label: 'Pemasukan', description: 'Cash masuk manual' },
+  { key: 'expense', label: 'Pengeluaran', description: 'Biaya atau transaksi keluar' },
+];
+
 const transactionTypeFilterOptions = [
   { key: 'all', label: 'Semua', description: 'Pemasukan dan pengeluaran' },
   { key: 'income', label: 'Pemasukan', description: 'Cash masuk manual dan booking' },
@@ -385,8 +390,7 @@ function BookkeepingSummary({ bookings, period, transactions }) {
 
 function BookkeepingToolbar({
   exportDisabled,
-  onAddExpense,
-  onAddIncome,
+  onAddTransaction,
   onExportTransactions,
   onPeriodChange,
   onSearchChange,
@@ -436,14 +440,9 @@ function BookkeepingToolbar({
         Export
       </button>
 
-      <button className="bookkeeping-add-button is-income" title="Tambah pemasukan manual" type="button" onClick={onAddIncome}>
+      <button className="bookkeeping-add-button" title="Tambah transaksi pembukuan" type="button" onClick={onAddTransaction}>
         <Plus size={14} />
-        Masuk
-      </button>
-
-      <button className="bookkeeping-add-button is-expense" title="Tambah pengeluaran" type="button" onClick={onAddExpense}>
-        <Plus size={14} />
-        Keluar
+        Tambah
       </button>
     </section>
   );
@@ -504,20 +503,21 @@ function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactio
 
 
 function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
-  const activeType = entry?.type === 'income' || mode === 'income' ? 'income' : 'expense';
-  const initialForm = activeType === 'income' ? emptyIncomeForm : emptyExpenseForm;
-  const categoryOptions = getEntryCategoryOptions(activeType);
-  const typeLabel = getEntryTypeLabel(activeType);
-  const isIncome = activeType === 'income';
+  const initialType = entry?.type === 'income' || mode === 'income' ? 'income' : 'expense';
+  const initialForm = initialType === 'income' ? emptyIncomeForm : emptyExpenseForm;
   const [form, setForm] = useState(() => ({
     ...initialForm,
     ...(entry || {}),
-    type: activeType,
+    type: initialType,
     category: entry?.category || initialForm.category,
     amount: entry?.amount != null ? String(entry.amount) : '',
     date: entry?.date || initialForm.date,
   }));
   const [error, setError] = useState('');
+  const activeType = form.type === 'income' ? 'income' : 'expense';
+  const categoryOptions = getEntryCategoryOptions(activeType);
+  const typeLabel = getEntryTypeLabel(activeType);
+  const isIncome = activeType === 'income';
   const isEditing = Boolean(entry?.id || form.id);
 
   function updateField(field) {
@@ -533,10 +533,25 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
 
   function updateValue(field) {
     return (nextValue) => {
-      setForm((current) => ({
-        ...current,
-        [field]: nextValue,
-      }));
+      setForm((current) => {
+        if (field === 'type') {
+          const nextType = nextValue === 'income' ? 'income' : 'expense';
+          const nextInitialForm = nextType === 'income' ? emptyIncomeForm : emptyExpenseForm;
+          const currentCategoryOptions = getEntryCategoryOptions(nextType);
+          const hasMatchingCategory = currentCategoryOptions.some((option) => option.key === current.category);
+
+          return {
+            ...current,
+            type: nextType,
+            category: hasMatchingCategory ? current.category : nextInitialForm.category,
+          };
+        }
+
+        return {
+          ...current,
+          [field]: nextValue,
+        };
+      });
 
       if (error) setError('');
     };
@@ -564,7 +579,7 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
       type: activeType,
       title,
       amount,
-      category: form.category || initialForm.category,
+      category: form.category || (isIncome ? emptyIncomeForm.category : emptyExpenseForm.category),
       note: cleanText(form.note),
     });
   }
@@ -576,8 +591,8 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
       <section className="bookkeeping-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bookkeeping-entry-title">
         <header className="bookkeeping-modal-head">
           <div>
-            <p>{typeLabel}</p>
-            <h2 id="bookkeeping-entry-title">{isEditing ? 'Edit ' + typeLabel : 'Tambah ' + typeLabel}</h2>
+            <p>Transaksi Pembukuan</p>
+            <h2 id="bookkeeping-entry-title">{isEditing ? 'Edit ' + typeLabel : 'Tambah Transaksi'}</h2>
           </div>
 
           <button type="button" aria-label="Tutup form pembukuan" onClick={onClose}>
@@ -586,6 +601,22 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
         </header>
 
         <form className="bookkeeping-form" onSubmit={handleSubmit}>
+          <div className="bookkeeping-form-grid">
+            <StudioSelect
+              label="Jenis Transaksi"
+              options={transactionKindOptions}
+              selectedKey={activeType}
+              onChange={updateValue('type')}
+            />
+
+            <StudioSelect
+              label="Kategori"
+              options={categoryOptions}
+              selectedKey={form.category}
+              onChange={updateValue('category')}
+            />
+          </div>
+
           <label>
             <span>Judul</span>
             <input
@@ -614,21 +645,12 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
             </label>
           </div>
 
-          <div className="bookkeeping-form-grid">
-            <StudioSelect
-              label="Kategori"
-              options={categoryOptions}
-              selectedKey={form.category}
-              onChange={updateValue('category')}
-            />
-
-            <StudioSelect
-              label="Metode"
-              options={paymentMethodOptions}
-              selectedKey={form.paymentMethod}
-              onChange={updateValue('paymentMethod')}
-            />
-          </div>
+          <StudioSelect
+            label="Metode"
+            options={paymentMethodOptions}
+            selectedKey={form.paymentMethod}
+            onChange={updateValue('paymentMethod')}
+          />
 
           <label>
             <span>Catatan</span>
@@ -646,7 +668,6 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
     </div>
   );
 }
-
 
 export default function BookkeepingPage() {
   const [bookings, setBookings] = useState([]);
@@ -772,6 +793,12 @@ export default function BookkeepingPage() {
     });
   }
 
+  function openAddTransaction() {
+    setEditingExpense(null);
+    setEntryFormMode('expense');
+    setIsExpenseFormOpen(true);
+  }
+
   function openAddIncome() {
     setEditingExpense(null);
     setEntryFormMode('income');
@@ -862,8 +889,7 @@ export default function BookkeepingPage() {
         period={period}
         searchText={transactionSearchText}
         typeFilter={transactionTypeFilter}
-        onAddExpense={openAddExpense}
-        onAddIncome={openAddIncome}
+        onAddTransaction={openAddTransaction}
         onExportTransactions={exportBookkeepingCsv}
         onPeriodChange={handlePeriodChange}
         onSearchChange={handleTransactionSearchChange}

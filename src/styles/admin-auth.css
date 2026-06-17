@@ -11684,3 +11684,66 @@
   }
 }
 /* === BOOKKEEPING SEARCH FILTER: END === */
+
+/* === BOOKKEEPING UNIFIED ADD ACTION: START === */
+.bookkeeping-toolbar {
+  grid-template-columns:
+    minmax(220px, 1fr)
+    minmax(150px, 210px)
+    minmax(138px, 190px)
+    auto
+    auto !important;
+}
+
+.bookkeeping-add-button {
+  border-color: rgba(255, 138, 42, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.24), rgba(255, 95, 21, 0.1)),
+    var(--auth-accent);
+  color: #fff;
+}
+
+.bookkeeping-add-button:hover {
+  border-color: rgba(255, 180, 90, 0.6);
+  box-shadow: 0 12px 30px rgba(255, 105, 24, 0.18);
+}
+
+@media (max-width: 960px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .bookkeeping-search-shell {
+    grid-column: 1 / -1;
+  }
+
+  .bookkeeping-period-filter,
+  .bookkeeping-type-filter {
+    grid-column: auto;
+  }
+
+  .bookkeeping-export-button,
+  .bookkeeping-add-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .bookkeeping-search-shell,
+  .bookkeeping-period-filter,
+  .bookkeeping-type-filter {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 380px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* === BOOKKEEPING UNIFIED ADD ACTION: END === */
