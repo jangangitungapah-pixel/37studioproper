@@ -481,6 +481,7 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
+              inlineList
               label="Paket"
               options={packageOptions}
               selectedKey={form.packageId}
@@ -488,6 +489,7 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
+              inlineList
               disabled={isPackageSelected}
               label="Tipe Session"
               options={sessionTypeOptions}
@@ -497,6 +499,7 @@ export default function BookingFormModal({
 
             {shouldShowRecordingType ? (
               <StudioSelect
+                inlineList
                 label="Tipe Recording"
                 options={recordingTypeOptions}
                 selectedKey={activeRecordingTypeKey}
@@ -515,6 +518,7 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
+              inlineList
               label="Jam"
               options={businessHours}
               selectedKey={form.startHour}
@@ -522,6 +526,7 @@ export default function BookingFormModal({
             />
 
             <StudioSelect
+              inlineList
               disabled={isPackageSelected || Boolean(totals.recordingType)}
               label="Durasi"
               options={durationOptions}
@@ -546,6 +551,7 @@ export default function BookingFormModal({
             ) : null}
 
             <StudioSelect
+              inlineList
               label="Payment Status"
               options={paymentStatusOptions}
               selectedKey={form.paymentStatus}
@@ -569,6 +575,7 @@ export default function BookingFormModal({
 
             {form.paymentStatus !== 'pending' ? (
               <StudioSelect
+                inlineList
                 label="Metode Bayar"
                 options={paymentMethodOptions}
                 selectedKey={form.paymentMethod}

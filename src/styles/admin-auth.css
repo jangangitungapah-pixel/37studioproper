@@ -14460,38 +14460,25 @@ body:has(.settings-permission-backdrop) {
 }
 /* === BOOKING FORM MODAL COMPACT REPAIR: END === */
 
-/* === BOOKING MODAL SELECT ANCHOR FIX: START === */
-.booking-modal-panel {
-  overflow: hidden !important;
-}
-
-.booking-form {
-  overflow: auto !important;
-  overscroll-behavior: contain !important;
-}
-
+/* === BOOKING MODAL INLINE SELECT FIX: START === */
 .booking-modal-panel .studio-select {
   position: relative !important;
   display: grid !important;
   gap: 5px !important;
+  min-width: 0 !important;
 }
 
-.booking-modal-panel .studio-select-trigger {
-  position: relative !important;
-  z-index: 2 !important;
-}
-
-/* Keep select options attached to the selected field inside Booking modal. */
-.booking-modal-panel .studio-select-list {
+.booking-modal-panel .studio-select-list[data-inline='true'] {
   position: static !important;
   inset: auto !important;
   width: 100% !important;
-  max-height: 178px !important;
+  max-height: 156px !important;
   margin: 4px 0 0 !important;
   transform: none !important;
   translate: none !important;
   z-index: auto !important;
   overflow: auto !important;
+  border: 1px solid var(--studio-modal-border, var(--auth-border)) !important;
   border-radius: 14px !important;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
@@ -14499,48 +14486,47 @@ body:has(.settings-permission-backdrop) {
   box-shadow: none !important;
 }
 
-.booking-modal-panel .studio-select-option {
-  min-height: 34px !important;
+.booking-modal-panel .studio-select-list[data-inline='true'][data-ready='true'] {
+  animation: booking-inline-select-in 120ms ease-out both;
+}
+
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option {
+  min-height: 32px !important;
   grid-template-columns: 18px minmax(0, 1fr) auto !important;
   gap: 8px !important;
   border-radius: 10px !important;
-  padding: 6px 8px !important;
+  padding: 5px 7px !important;
 }
 
-.booking-modal-panel .studio-select-option-dot {
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-dot {
   width: 8px !important;
   height: 8px !important;
 }
 
-.booking-modal-panel .studio-select-option-text {
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text {
   gap: 1px !important;
 }
 
-.booking-modal-panel .studio-select-option-text strong {
-  font-size: 0.7rem !important;
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text strong {
+  font-size: 0.68rem !important;
   font-weight: 560 !important;
   line-height: 1.12 !important;
 }
 
-.booking-modal-panel .studio-select-option-text span {
-  font-size: 0.58rem !important;
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text span {
+  font-size: 0.55rem !important;
   font-weight: 380 !important;
-  line-height: 1.22 !important;
+  line-height: 1.2 !important;
 }
 
-.booking-modal-panel .studio-select-option-check svg {
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option svg {
   width: 13px !important;
   height: 13px !important;
 }
 
 .booking-modal-panel .studio-select-trigger[aria-expanded='true'] {
   border-color: var(--auth-accent) !important;
-  box-shadow: 0 0 0 1px rgba(255, 138, 42, 0.2) !important;
-}
-
-/* More compact vertical rhythm after inline dropdown opens. */
-.booking-modal-panel .booking-form-grid {
-  gap: 7px !important;
+  box-shadow: 0 0 0 1px rgba(255, 138, 42, 0.24) !important;
 }
 
 .booking-modal-panel .studio-input-wrap,
@@ -14548,44 +14534,29 @@ body:has(.settings-permission-backdrop) {
   min-height: 37px !important;
 }
 
-.booking-modal-panel .studio-field-head {
-  font-size: 0.64rem !important;
+.booking-modal-panel .booking-form-grid {
+  gap: 7px !important;
 }
 
-.booking-modal-panel .studio-native-input,
-.booking-modal-panel .studio-native-input::placeholder {
-  font-size: 0.7rem !important;
-}
+@keyframes booking-inline-select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 
-.booking-modal-panel .studio-select-copy strong {
-  font-size: 0.74rem !important;
-}
-
-.booking-modal-panel .studio-select-label {
-  font-size: 0.54rem !important;
-}
-
-.booking-detail-panel.has-discount-row,
-.booking-detail-panel {
-  margin-top: 1px !important;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 420px) {
-  .booking-modal-panel .studio-select-list {
-    max-height: 158px !important;
+  .booking-modal-panel .studio-select-list[data-inline='true'] {
+    max-height: 142px !important;
   }
 
-  .booking-modal-panel .studio-select-option {
-    min-height: 32px !important;
-    padding: 5px 7px !important;
-  }
-
-  .booking-modal-panel .studio-select-option-text strong {
-    font-size: 0.68rem !important;
-  }
-
-  .booking-modal-panel .studio-select-option-text span {
-    font-size: 0.56rem !important;
+  .booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option {
+    min-height: 31px !important;
   }
 }
-/* === BOOKING MODAL SELECT ANCHOR FIX: END === */
+/* === BOOKING MODAL INLINE SELECT FIX: END === */

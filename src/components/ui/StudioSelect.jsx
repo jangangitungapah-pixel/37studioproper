@@ -46,6 +46,7 @@ function getFloatingListStyle(rect) {
 export default function StudioSelect({
   disabled = false,
   helper,
+  inlineList = false,
   label,
   multiple = false,
   onChange,
@@ -68,12 +69,17 @@ export default function StudioSelect({
   }, [multiple, options, placeholder, selectedKey, selectedKeys]);
 
   const updateListPosition = useCallback(() => {
+    if (inlineList) {
+      setListStyle(null);
+      return;
+    }
+
     const rect = rootRef.current?.getBoundingClientRect();
 
     if (!rect) return;
 
     setListStyle(getFloatingListStyle(rect));
-  }, []);
+  }, [inlineList]);
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -179,12 +185,13 @@ export default function StudioSelect({
       aria-label={label}
       className="studio-select-list"
       data-option-count={options.length}
-      data-portal="true"
-      data-ready={listStyle ? 'true' : 'false'}
+      data-inline={inlineList ? 'true' : 'false'}
+      data-portal={inlineList ? 'false' : 'true'}
+      data-ready={inlineList || listStyle ? 'true' : 'false'}
       id={listboxId}
       ref={listRef}
       role="listbox"
-      style={listStyle || fallbackListStyle}
+      style={inlineList ? undefined : (listStyle || fallbackListStyle)}
       aria-multiselectable={multiple || undefined}
       onPointerDown={(event) => event.stopPropagation()}
     >
@@ -239,7 +246,7 @@ export default function StudioSelect({
         />
       </button>
 
-      {listbox && typeof document !== 'undefined' ? createPortal(listbox, document.body) : listbox}
+      {listbox && typeof document !== 'undefined' && !inlineList ? createPortal(listbox, document.body) : listbox}
     </div>
   );
 }
