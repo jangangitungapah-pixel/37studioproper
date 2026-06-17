@@ -5770,3 +5770,258 @@
   }
 }
 /* === CUSTOMER ICON ACTIONS: END === */
+
+/* === CUSTOMER ACTIVITY TIMELINE: START === */
+.customer-activity-card {
+  overflow: visible;
+}
+
+.customer-activity-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.customer-activity-filter {
+  min-width: 0;
+}
+
+.customer-activity-filter .studio-select-trigger {
+  min-height: 42px;
+  border-radius: 15px;
+}
+
+.customer-activity-filter .studio-select-copy strong {
+  font-size: 0.72rem;
+}
+
+.customer-activity-filter .studio-select-list {
+  width: min(240px, calc(100vw - 32px));
+}
+
+.customer-activity-count {
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-muted);
+  padding: 8px 10px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.customer-timeline-list {
+  display: grid;
+  gap: 12px;
+}
+
+.customer-timeline-group {
+  display: grid;
+  gap: 7px;
+}
+
+.customer-timeline-month {
+  color: var(--auth-text-muted);
+  font-size: 0.62rem;
+  font-weight: 720;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.customer-timeline-items {
+  display: grid;
+  gap: 7px;
+}
+
+.customer-timeline-row {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 58%),
+    var(--auth-bg-control);
+  overflow: hidden;
+}
+
+.customer-timeline-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(78px, 0.66fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 9px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.customer-timeline-button:hover {
+  background: rgba(255, 138, 42, 0.055);
+}
+
+.customer-timeline-date,
+.customer-timeline-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.customer-timeline-date strong,
+.customer-timeline-main b {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.72rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-timeline-date small,
+.customer-timeline-main small {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.58rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-timeline-expanded {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  border-top: 1px solid var(--auth-border);
+  padding: 8px;
+}
+
+.customer-timeline-expanded span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 8px;
+}
+
+.customer-timeline-expanded small {
+  color: var(--auth-text-muted);
+  font-size: 0.52rem;
+  font-weight: 680;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.customer-timeline-expanded strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.68rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .customer-activity-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .customer-activity-filter .studio-select-trigger {
+    min-height: 38px;
+    border-radius: 13px;
+  }
+
+  .customer-activity-filter .studio-select-label {
+    font-size: 0.5rem;
+  }
+
+  .customer-activity-filter .studio-select-copy strong {
+    font-size: 0.64rem;
+  }
+
+  .customer-activity-count {
+    padding: 7px 8px;
+    font-size: 0.54rem;
+  }
+
+  .customer-timeline-list {
+    gap: 10px;
+  }
+
+  .customer-timeline-month {
+    font-size: 0.54rem;
+  }
+
+  .customer-timeline-row {
+    border-radius: 14px;
+  }
+
+  .customer-timeline-button {
+    grid-template-columns: minmax(68px, 0.58fr) minmax(0, 1fr) auto;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .customer-timeline-date strong,
+  .customer-timeline-main b {
+    font-size: 0.64rem;
+  }
+
+  .customer-timeline-date small,
+  .customer-timeline-main small {
+    font-size: 0.52rem;
+  }
+
+  .customer-timeline-button .customer-mini-status {
+    max-width: 62px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .customer-timeline-expanded {
+    gap: 5px;
+    padding: 7px;
+  }
+
+  .customer-timeline-expanded span {
+    padding: 7px;
+  }
+
+  .customer-timeline-expanded small {
+    font-size: 0.47rem;
+  }
+
+  .customer-timeline-expanded strong {
+    font-size: 0.62rem;
+  }
+}
+
+@media (max-width: 370px) {
+  .customer-timeline-button {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "main status"
+      "date date";
+  }
+
+  .customer-timeline-date {
+    grid-area: date;
+  }
+
+  .customer-timeline-main {
+    grid-area: main;
+  }
+
+  .customer-timeline-button .customer-mini-status {
+    grid-area: status;
+  }
+
+  .customer-timeline-expanded {
+    grid-template-columns: 1fr;
+  }
+}
+/* === CUSTOMER ACTIVITY TIMELINE: END === */

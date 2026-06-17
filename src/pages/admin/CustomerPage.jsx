@@ -50,6 +50,15 @@ const customerStatusOptions = [
   { key: 'watchlist', label: 'Perlu perhatian', description: 'Pantau sebelum booking berikutnya' },
 ];
 
+const activityFilterOptions = [
+  { key: 'all', label: 'Semua', description: 'Semua aktivitas booking' },
+  { key: 'rehearsal', label: 'Latihan', description: 'Aktivitas rehearsal' },
+  { key: 'recording', label: 'Recording', description: 'Aktivitas recording' },
+  { key: 'pending', label: 'Pending', description: 'Booking belum dibayar' },
+  { key: 'dp', label: 'DP', description: 'Booking sudah DP' },
+  { key: 'lunas', label: 'Lunas', description: 'Booking sudah lunas' },
+];
+
 function cleanText(value) {
   return String(value || '').trim();
 }
@@ -200,6 +209,99 @@ function getCustomerActionLinks(customer) {
 
 function getFollowUpLabel(status) {
   return customerStatusOptions.find((item) => item.key === status)?.label || 'Normal';
+}
+
+function getBookingActivityKind(booking) {
+  if (isRecordingBooking(booking)) return 'recording';
+  if (isRehearsalBooking(booking)) return 'rehearsal';
+
+  return 'other';
+}
+
+function getBookingActivityKindLabel(booking) {
+  const kind = getBookingActivityKind(booking);
+
+  if (kind === 'recording') return 'Recording';
+  if (kind === 'rehearsal') return 'Latihan';
+
+  return 'Session';
+}
+
+function getBookingTimeLabel(booking) {
+  const rawHour = booking?.startHour || booking?.hour || '';
+
+  if (!rawHour) return 'Jam belum diisi';
+
+  const numericHour = Number(rawHour);
+  const hourLabel = Number.isFinite(numericHour)
+    ? String(numericHour).padStart(2, '0') + ':00'
+    : String(rawHour);
+
+  const duration = Number(booking?.duration || booking?.customDuration || 0);
+
+  if (!duration) return hourLabel;
+
+  return hourLabel + ' • ' + duration + ' jam';
+}
+
+function getBookingPriceLabel(booking) {
+  const value = Number(booking?.invoiceAmount || booking?.total || booking?.subtotal || 0);
+
+  return value > 0 ? formatMoney(value) : '-';
+}
+
+function getBookingActivityId(booking, index) {
+  return booking?.id || [
+    booking?.date || 'no-date',
+    booking?.bandName || booking?.title || 'activity',
+    index,
+  ].join('-');
+}
+
+function getBookingMonthLabel(booking) {
+  const rawDate = booking?.date || booking?.createdAt || '';
+  const date = new Date(String(rawDate).includes('T') ? rawDate : String(rawDate) + 'T00:00:00');
+
+  if (Number.isNaN(date.getTime())) return 'Tanpa tanggal';
+
+  return new Intl.DateTimeFormat('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+function filterCustomerActivities(bookings = [], activeFilter = 'all') {
+  return bookings.filter((booking) => {
+    const status = getBookingStatus(booking);
+    const kind = getBookingActivityKind(booking);
+
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'recording') return kind === 'recording';
+    if (activeFilter === 'rehearsal') return kind === 'rehearsal';
+
+    return status === activeFilter;
+  });
+}
+
+function groupCustomerActivities(bookings = []) {
+  return bookings.reduce((groups, booking, index) => {
+    const monthLabel = getBookingMonthLabel(booking);
+    const currentGroup = groups[groups.length - 1];
+
+    if (!currentGroup || currentGroup.label !== monthLabel) {
+      groups.push({
+        label: monthLabel,
+        items: [],
+      });
+    }
+
+    groups[groups.length - 1].items.push({
+      booking,
+      id: getBookingActivityId(booking, index),
+    });
+
+    return groups;
+  }, []);
 }
 
 function readManualCustomers() {
@@ -783,7 +885,109 @@ function CustomerTable({ customers, onEditCustomer, onOpenCustomer }) {
 }
 
 
+
+function CustomerActivityTimeline({
+  activeFilter,
+  activityGroups,
+  expandedActivityId,
+  onFilterChange,
+  onToggleActivity,
+  totalActivities,
+}) {
+  return (
+    <article className="customer-detail-card customer-activity-card">
+      <header>
+        <CalendarDays size={16} />
+        <span>Activity Timeline</span>
+      </header>
+
+      <div className="customer-activity-toolbar">
+        <div className="customer-activity-filter">
+          <StudioSelect
+            label="Activity"
+            options={activityFilterOptions}
+            selectedKey={activeFilter}
+            onChange={onFilterChange}
+          />
+        </div>
+
+        <span className="customer-activity-count">
+          {totalActivities} aktivitas
+        </span>
+      </div>
+
+      {activityGroups.length ? (
+        <div className="customer-timeline-list">
+          {activityGroups.map((group) => (
+            <section className="customer-timeline-group" key={group.label}>
+              <strong className="customer-timeline-month">{group.label}</strong>
+
+              <div className="customer-timeline-items">
+                {group.items.map(({ booking, id }) => {
+                  const status = getBookingStatus(booking);
+                  const isExpanded = expandedActivityId === id;
+
+                  return (
+                    <article className={isExpanded ? 'customer-timeline-row is-expanded' : 'customer-timeline-row'} key={id}>
+                      <button
+                        aria-expanded={isExpanded}
+                        className="customer-timeline-button"
+                        type="button"
+                        onClick={() => onToggleActivity(id)}
+                      >
+                        <span className="customer-timeline-date">
+                          <strong>{formatDate(booking.date || booking.createdAt)}</strong>
+                          <small>{getBookingTimeLabel(booking)}</small>
+                        </span>
+
+                        <span className="customer-timeline-main">
+                          <b>{booking.bandName || booking.title || 'Tanpa nama band'}</b>
+                          <small>{getBookingActivityKindLabel(booking)} • {booking.sessionLabel || booking.packageLabel || 'Session'}</small>
+                        </span>
+
+                        <em className={'customer-mini-status is-' + status}>
+                          {status}
+                        </em>
+                      </button>
+
+                      {isExpanded ? (
+                        <div className="customer-timeline-expanded">
+                          <span>
+                            <small>Harga / Tagihan</small>
+                            <strong>{getBookingPriceLabel(booking)}</strong>
+                          </span>
+                          <span>
+                            <small>Payment</small>
+                            <strong>{status}</strong>
+                          </span>
+                          <span>
+                            <small>Durasi</small>
+                            <strong>{booking.duration || booking.customDuration || '-'} jam</strong>
+                          </span>
+                          <span>
+                            <small>Customer</small>
+                            <strong>{getBookingName(booking)}</strong>
+                          </span>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <p>Belum ada activity yang cocok dengan filter ini.</p>
+      )}
+    </article>
+  );
+}
+
 function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDuplicate, onOpenCustomer }) {
+  const [activeActivityFilter, setActiveActivityFilter] = useState('all');
+  const [expandedActivityId, setExpandedActivityId] = useState('');
+
   if (!customer) {
     return (
       <section className="customer-empty-state">
@@ -802,6 +1006,9 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
     const status = getBookingStatus(booking);
     return status === 'pending' || status === 'dp';
   });
+
+  const activityItems = filterCustomerActivities(customer.bookings, activeActivityFilter);
+  const activityGroups = groupCustomerActivities(activityItems);
 
   return (
     <section className="customer-detail-page" aria-labelledby="customer-detail-title">
@@ -919,22 +1126,19 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
           </div>
         </article>
 
-        <article className="customer-detail-card">
-          <header><CalendarDays size={16} /><span>Recent Activity</span></header>
-          <div className="customer-activity-list">
-            {customer.bookings.length ? customer.bookings.slice(0, 8).map((booking) => {
-              const status = getBookingStatus(booking);
-
-              return (
-                <span className="customer-activity-item" key={booking.id || booking.createdAt}>
-                  <b>{booking.bandName || booking.title || booking.sessionLabel || 'Booking'}</b>
-                  <small>{formatDate(booking.date)} • {booking.sessionLabel || booking.packageLabel || 'Session'}</small>
-                  <em className={'customer-mini-status is-' + status}>{status}</em>
-                </span>
-              );
-            }) : <p>Belum ada activity booking.</p>}
-          </div>
-        </article>
+        <CustomerActivityTimeline
+          activeFilter={activeActivityFilter}
+          activityGroups={activityGroups}
+          expandedActivityId={expandedActivityId}
+          totalActivities={activityItems.length}
+          onFilterChange={(nextFilter) => {
+            setActiveActivityFilter(nextFilter);
+            setExpandedActivityId('');
+          }}
+          onToggleActivity={(activityId) => {
+            setExpandedActivityId((current) => (current === activityId ? '' : activityId));
+          }}
+        />
 
         <article className="customer-detail-card">
           <header><Phone size={16} /><span>Kontak</span></header>
