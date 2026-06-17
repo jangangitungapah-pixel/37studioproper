@@ -494,31 +494,44 @@ function DashboardAttention({ inventoryItems, openInvoices, onOpenBilling, onOpe
   const attentionItems = inventoryItems
     .filter((item) => ['low_stock', 'maintenance', 'broken', 'lost'].includes(getInventoryStatus(item)))
     .slice(0, 4);
+  const totalAttention = openInvoices + attentionItems.length;
 
   return (
-    <section className="dashboard-list-card">
+    <section className="dashboard-list-card dashboard-attention-card">
       <header>
         <div>
           <small>Alert</small>
           <strong>Perlu Perhatian</strong>
         </div>
+
+        <span className="dashboard-attention-total">{totalAttention}</span>
       </header>
 
-      <div className="dashboard-alert-stack">
-        <button type="button" onClick={onOpenBilling}>
-          <CreditCard size={15} />
-          <span>
-            <strong>{openInvoices} invoice belum lunas</strong>
+      <div className="dashboard-attention-list">
+        <button className="dashboard-attention-row is-billing" type="button" onClick={onOpenBilling}>
+          <span className="dashboard-attention-icon">
+            <CreditCard size={14} />
+          </span>
+
+          <span className="dashboard-attention-copy">
+            <strong>Invoice belum lunas</strong>
             <small>Pending atau DP yang perlu follow-up.</small>
           </span>
+
+          <b>{openInvoices}</b>
         </button>
 
-        <button type="button" onClick={onOpenInventory}>
-          <PackageOpen size={15} />
-          <span>
-            <strong>{attentionItems.length} inventory dicek</strong>
+        <button className="dashboard-attention-row is-inventory" type="button" onClick={onOpenInventory}>
+          <span className="dashboard-attention-icon">
+            <PackageOpen size={14} />
+          </span>
+
+          <span className="dashboard-attention-copy">
+            <strong>Inventory dicek</strong>
             <small>Low stock, maintenance, rusak, atau hilang.</small>
           </span>
+
+          <b>{attentionItems.length}</b>
         </button>
       </div>
     </section>
