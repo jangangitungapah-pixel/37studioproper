@@ -246,70 +246,14 @@ function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
             <div className="inventory-item-actions">
               <button type="button" onClick={() => onAdjustStock(item, 'in')}>
                 <Plus size={14} />
-                Stok
+                + Stok
               </button>
 
               <button type="button" onClick={() => onAdjustStock(item, 'out')}>
                 <Minus size={14} />
-                Stok
+                - Stok
               </button>
 
-              <button type="button" onClick={() => onEdit(item)}>
-                <Pencil size={14} />
-                Edit
-              </button>
-
-              {item.status !== 'inactive' ? (
-                <button type="button" onClick={() => onArchive(item)}>
-                  <Archive size={14} />
-                  Nonaktif
-                </button>
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
-    </section>
-  );
-}
-
-) {
-  if (!items.length) {
-    return (
-      <section className="inventory-empty-state">
-        <PackageOpen size={24} />
-        <strong>Inventory masih kosong</strong>
-        <span>Tambahkan alat studio, kabel, aksesoris, atau barang habis pakai.</span>
-      </section>
-    );
-  }
-
-  return (
-    <section className="inventory-list" aria-label="Daftar inventory">
-      {items.map((item) => {
-        const status = getEffectiveStatus(item);
-
-        return (
-          <article className={'inventory-item-card is-' + status} key={item.id}>
-            <div className="inventory-item-main">
-              <div>
-                <small>{getOptionLabel(formCategoryOptions, item.category, 'Kategori')}</small>
-                <strong>{item.name}</strong>
-                <span>{item.location || 'Lokasi belum diisi'}</span>
-              </div>
-
-              <b>{getStatusLabel(status)}</b>
-            </div>
-
-            <div className="inventory-item-meta">
-              <span><small>Qty</small><strong>{item.quantity} {item.unit}</strong></span>
-              <span><small>Minimal</small><strong>{item.minStock} {item.unit}</strong></span>
-              <span><small>Kondisi</small><strong>{getOptionLabel(conditionOptions, item.condition, 'Baik')}</strong></span>
-            </div>
-
-            {item.note ? <p className="inventory-item-note">{item.note}</p> : null}
-
-            <div className="inventory-item-actions">
               <button type="button" onClick={() => onEdit(item)}>
                 <Pencil size={14} />
                 Edit
