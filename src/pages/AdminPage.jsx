@@ -20,6 +20,7 @@ import {
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
+import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import SchedulePage from './admin/SchedulePage.jsx';
 import CustomerPage from './admin/CustomerPage.jsx';
 import BillingPage from './admin/BillingPage.jsx';
@@ -278,9 +279,9 @@ export default function AdminPage() {
     if (!authState.isReady || !authState.isAuthenticated) return;
 
     if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem) {
-      navigate('/admin/dashboard', { replace: true });
+      navigate(getAccountDefaultLandingPath(authState.user?.uid), { replace: true });
     }
-  }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated]);
+  }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated, authState.user?.uid]);
 
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();

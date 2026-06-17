@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Edit3, Save, Trash2 } from 'lucide-react';
+import { Clipboard, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
+import {
+  accountContactOptions,
+  accountLandingOptions,
+  accountNotificationOptions,
+  readAccountPreferences,
+  resetAccountPreferences,
+  writeAccountPreferences,
+} from '../../utils/accountSettings.js';
 import {
   defaultInvoiceSettings,
   paperSizeOptions,
@@ -19,6 +27,8 @@ import {
   savePricingSettings,
 } from '../../settings/pricingSettings.js';
 
+
+const OWNER_EMAIL = 'marsicprod@gmail.com';
 
 const emptySessionForm = {
   id: '',
@@ -55,6 +65,41 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
+function getAccountProviderLabel(user) {
+  const provider = String(user?.provider || '').toLowerCase();
+
+  if (provider.includes('google')) return 'Google';
+  if (provider.includes('phone')) return 'Phone OTP';
+  if (user?.phoneNumber && !user?.email) return 'Phone OTP';
+  if (user?.email) return 'Email / Password';
+
+  return 'Unknown';
+}
+
+function getAccountRoleLabel(user) {
+  return String(user?.email || '').trim().toLowerCase() === OWNER_EMAIL ? 'Owner' : 'Admin';
+}
+
+function getAccountStatusLabel(user) {
+  if (user?.isApproved || user?.status === 'approved') return 'Approved';
+  if (user?.status === 'pending') return 'Pending Approval';
+
+  return user?.status || 'Unknown';
+}
+
+function getMaskedUid(uid) {
+  const text = String(uid || '');
+
+  if (!text) return '-';
+  if (text.length <= 10) return text;
+
+  return text.slice(0, 6) + '...' + text.slice(-4);
+}
+
+function getOptionLabel(options, key, fallback = '-') {
+  return options.find((item) => item.key === key)?.label || fallback;
+}
+
 function FormActions({ editing, onCancel }) {
   return (
     <div className="settings-form-actions">
@@ -79,6 +124,11 @@ export default function SettingsPage({ currentUser }) {
   const subpages = useMemo(() => {
     const pages = [
       {
+        key: 'account',
+        label: 'Account Settings',
+        description: 'Profil admin, akses akun, preferensi login, dan pengaturan lokal.',
+      },
+      {
         key: 'pricing',
         label: 'Pricing and Session',
         description: 'Harga session, discount, recording type, dan paket.',
@@ -99,12 +149,14 @@ export default function SettingsPage({ currentUser }) {
     return pages;
   }, [currentUser]);
 
-  const [activeSubpage, setActiveSubpage] = useState('pricing');
+  const [activeSubpage, setActiveSubpage] = useState('account');
   const remoteSettings = usePricingSettings();
   const [settings, setSettings] = useState(() => remoteSettings);
   const remoteInvoiceSettings = useInvoiceSettings();
   const [invoiceSettings, setInvoiceSettings] = useState(() => remoteInvoiceSettings);
   const [invoiceSettingsMessage, setInvoiceSettingsMessage] = useState('');
+  const [accountPreferences, setAccountPreferences] = useState(() => readAccountPreferences(currentUser?.uid));
+  const [accountSettingsMessage, setAccountSettingsMessage] = useState('');
 
   useEffect(() => {
     const settingsFrameId = window.requestAnimationFrame(() => {
@@ -125,6 +177,16 @@ export default function SettingsPage({ currentUser }) {
       window.cancelAnimationFrame(invoiceFrameId);
     };
   }, [remoteInvoiceSettings]);
+
+  useEffect(() => {
+    const accountFrameId = window.requestAnimationFrame(() => {
+      setAccountPreferences(readAccountPreferences(currentUser?.uid));
+    });
+
+    return () => {
+      window.cancelAnimationFrame(accountFrameId);
+    };
+  }, [currentUser?.uid]);
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
@@ -233,6 +295,63 @@ export default function SettingsPage({ currentUser }) {
       }));
       if (invoiceSettingsMessage) setInvoiceSettingsMessage('');
     };
+  }
+
+  function updateAccountPreference(field) {
+    return (event) => {
+      const value = event.target.value;
+      setAccountPreferences((current) => ({
+        ...current,
+        [field]: value,
+      }));
+      if (accountSettingsMessage) setAccountSettingsMessage('');
+    };
+  }
+
+  function updateAccountPreferenceValue(field) {
+    return (nextValue) => {
+      setAccountPreferences((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+      if (accountSettingsMessage) setAccountSettingsMessage('');
+    };
+  }
+
+  function saveAccountSettingsPage(event) {
+    event.preventDefault();
+
+    const nextPreferences = writeAccountPreferences(currentUser?.uid, accountPreferences);
+    setAccountPreferences(nextPreferences);
+    setAccountSettingsMessage('Account settings berhasil disimpan di perangkat ini.');
+  }
+
+  function resetAccountSettingsPage() {
+    const nextPreferences = resetAccountPreferences(currentUser?.uid);
+    setAccountPreferences(nextPreferences);
+    setAccountSettingsMessage('Preferensi account lokal dikembalikan ke default.');
+  }
+
+  async function copyAccountUid() {
+    const uid = currentUser?.uid || '';
+
+    if (!uid) {
+      setAccountSettingsMessage('UID akun belum tersedia.');
+      return;
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(uid);
+        setAccountSettingsMessage('UID akun berhasil disalin.');
+        return;
+      }
+
+      setAccountSettingsMessage('Clipboard browser tidak tersedia.');
+    } catch (err) {
+      console.error('Gagal menyalin UID akun:', err);
+      setAccountSettingsMessage('UID akun belum berhasil disalin.');
+    }
   }
 
   async function saveInvoiceSettingsPage(event) {
@@ -462,6 +581,15 @@ export default function SettingsPage({ currentUser }) {
     return subpages.find((page) => page.key === activeSubpage) || subpages[0];
   }, [subpages, activeSubpage]);
 
+  const accountProviderLabel = getAccountProviderLabel(currentUser);
+  const accountRoleLabel = getAccountRoleLabel(currentUser);
+  const accountStatusLabel = getAccountStatusLabel(currentUser);
+  const accountContactValue = currentUser?.email || currentUser?.phoneNumber || 'Belum tersedia';
+  const accountUidLabel = getMaskedUid(currentUser?.uid);
+  const accountPreferredContactLabel = getOptionLabel(accountContactOptions, accountPreferences.preferredContact, 'Email');
+  const accountLandingLabel = getOptionLabel(accountLandingOptions, accountPreferences.defaultLandingKey, 'Dashboard');
+  const accountNotificationLabel = getOptionLabel(accountNotificationOptions, accountPreferences.notificationLevel, 'Penting Saja');
+
   return (
     <section className="settings-page" aria-labelledby="settings-title">
       <div className="settings-subnav-mobile">
@@ -494,6 +622,175 @@ export default function SettingsPage({ currentUser }) {
         <h2 id="settings-title">{activePageInfo.label}</h2>
         <span>{activePageInfo.description}</span>
       </div>
+
+      {activeSubpage === 'account' && (
+        <section className="settings-account-grid" aria-label="Account settings">
+          <section className="settings-section settings-account-hero">
+            <div className="settings-account-avatar" aria-hidden="true">
+              <UserRound size={22} />
+            </div>
+
+            <div className="settings-account-hero-copy">
+              <p>Admin Account</p>
+              <h3>{currentUser?.displayName || currentUser?.email || currentUser?.phoneNumber || 'Admin 37 Music'}</h3>
+              <span>{accountContactValue}</span>
+            </div>
+
+            <div className="settings-account-badges" aria-label="Status akun">
+              <span className="settings-account-badge is-approved">
+                <ShieldCheck size={13} />
+                {accountStatusLabel}
+              </span>
+              <span className="settings-account-badge">
+                <KeyRound size={13} />
+                {accountRoleLabel}
+              </span>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <div className="settings-section-head">
+              <div>
+                <h3>Identitas Login</h3>
+                <p>Informasi dasar akun admin yang sedang aktif di perangkat ini.</p>
+              </div>
+            </div>
+
+            <div className="settings-account-info-grid">
+              <article>
+                <Mail size={15} />
+                <small>Email</small>
+                <strong>{currentUser?.email || '-'}</strong>
+              </article>
+
+              <article>
+                <Phone size={15} />
+                <small>Nomor HP</small>
+                <strong>{currentUser?.phoneNumber || '-'}</strong>
+              </article>
+
+              <article>
+                <MonitorSmartphone size={15} />
+                <small>Provider Login</small>
+                <strong>{accountProviderLabel}</strong>
+              </article>
+
+              <article>
+                <KeyRound size={15} />
+                <small>User ID</small>
+                <strong>{accountUidLabel}</strong>
+              </article>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <div className="settings-section-head">
+              <div>
+                <h3>Preferensi Account</h3>
+                <p>Preferensi ini disimpan lokal di perangkat dan tidak mengubah data booking, billing, atau pembukuan.</p>
+              </div>
+            </div>
+
+            <form className="settings-account-form" onSubmit={saveAccountSettingsPage}>
+              <StudioSelect
+                label="Halaman Awal Admin"
+                options={accountLandingOptions}
+                selectedKey={accountPreferences.defaultLandingKey}
+                onChange={updateAccountPreferenceValue('defaultLandingKey')}
+              />
+
+              <StudioSelect
+                label="Kontak Utama"
+                options={accountContactOptions}
+                selectedKey={accountPreferences.preferredContact}
+                onChange={updateAccountPreferenceValue('preferredContact')}
+              />
+
+              <StudioSelect
+                label="Level Notifikasi"
+                options={accountNotificationOptions}
+                selectedKey={accountPreferences.notificationLevel}
+                onChange={updateAccountPreferenceValue('notificationLevel')}
+              />
+
+              <label className="settings-account-note-field" htmlFor="account-setting-note">
+                <span>Catatan Account</span>
+                <textarea
+                  id="account-setting-note"
+                  maxLength={240}
+                  placeholder="Contoh: akun owner utama, dipakai untuk approval admin..."
+                  value={accountPreferences.accountNote}
+                  onChange={updateAccountPreference('accountNote')}
+                />
+              </label>
+
+              <div className="settings-account-preview">
+                <small>Preview Preferensi</small>
+                <span>Landing: <strong>{accountLandingLabel}</strong></span>
+                <span>Kontak: <strong>{accountPreferredContactLabel}</strong></span>
+                <span>Notifikasi: <strong>{accountNotificationLabel}</strong></span>
+              </div>
+
+              {accountSettingsMessage ? (
+                <p className="settings-invoice-message" role="status">{accountSettingsMessage}</p>
+              ) : null}
+
+              <div className="settings-form-actions settings-account-actions">
+                <button className="settings-mini-button is-ghost" type="button" onClick={resetAccountSettingsPage}>
+                  <RefreshCcw size={15} />
+                  Reset Lokal
+                </button>
+                <button className="settings-mini-button is-primary" type="submit">
+                  <Save size={15} />
+                  Simpan Account
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section className="settings-section settings-account-security">
+            <div className="settings-section-head">
+              <div>
+                <h3>Access & Security</h3>
+                <p>Ringkasan status akses akun. Aksi sensitif tetap mengikuti Firebase Auth dan approval owner.</p>
+              </div>
+            </div>
+
+            <div className="settings-account-security-list">
+              <article>
+                <ShieldCheck size={15} />
+                <span>
+                  <strong>Status akses</strong>
+                  <small>{accountStatusLabel}</small>
+                </span>
+              </article>
+
+              <article>
+                <Mail size={15} />
+                <span>
+                  <strong>Verifikasi email</strong>
+                  <small>{currentUser?.emailVerified ? 'Email sudah verified' : 'Belum verified atau tidak tersedia'}</small>
+                </span>
+              </article>
+
+              <article>
+                <MonitorSmartphone size={15} />
+                <span>
+                  <strong>Login aktif</strong>
+                  <small>{accountProviderLabel}</small>
+                </span>
+              </article>
+            </div>
+
+            <div className="settings-account-danger-zone">
+              <button className="settings-mini-button" type="button" onClick={copyAccountUid}>
+                <Clipboard size={15} />
+                Copy UID
+              </button>
+            </div>
+          </section>
+        </section>
+      )}
 
       {activeSubpage === 'pricing' && (
         <>
