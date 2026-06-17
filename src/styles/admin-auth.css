@@ -14460,106 +14460,6 @@ body:has(.settings-permission-backdrop) {
 }
 /* === BOOKING FORM MODAL COMPACT REPAIR: END === */
 
-/* === BOOKING MODAL INLINE SELECT FIX: START === */
-.booking-modal-panel .studio-select {
-  position: relative !important;
-  display: grid !important;
-  gap: 5px !important;
-  min-width: 0 !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] {
-  position: static !important;
-  inset: auto !important;
-  width: 100% !important;
-  max-height: 156px !important;
-  margin: 4px 0 0 !important;
-  transform: none !important;
-  translate: none !important;
-  z-index: auto !important;
-  overflow: auto !important;
-  border: 1px solid var(--studio-modal-border, var(--auth-border)) !important;
-  border-radius: 14px !important;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
-    var(--studio-modal-solid, var(--auth-bg-card)) !important;
-  box-shadow: none !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'][data-ready='true'] {
-  animation: booking-inline-select-in 120ms ease-out both;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option {
-  min-height: 32px !important;
-  grid-template-columns: 18px minmax(0, 1fr) auto !important;
-  gap: 8px !important;
-  border-radius: 10px !important;
-  padding: 5px 7px !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-dot {
-  width: 8px !important;
-  height: 8px !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text {
-  gap: 1px !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text strong {
-  font-size: 0.68rem !important;
-  font-weight: 560 !important;
-  line-height: 1.12 !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text span {
-  font-size: 0.55rem !important;
-  font-weight: 380 !important;
-  line-height: 1.2 !important;
-}
-
-.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option svg {
-  width: 13px !important;
-  height: 13px !important;
-}
-
-.booking-modal-panel .studio-select-trigger[aria-expanded='true'] {
-  border-color: var(--auth-accent) !important;
-  box-shadow: 0 0 0 1px rgba(255, 138, 42, 0.24) !important;
-}
-
-.booking-modal-panel .studio-input-wrap,
-.booking-modal-panel .studio-select-trigger {
-  min-height: 37px !important;
-}
-
-.booking-modal-panel .booking-form-grid {
-  gap: 7px !important;
-}
-
-@keyframes booking-inline-select-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 420px) {
-  .booking-modal-panel .studio-select-list[data-inline='true'] {
-    max-height: 142px !important;
-  }
-
-  .booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option {
-    min-height: 31px !important;
-  }
-}
-/* === BOOKING MODAL INLINE SELECT FIX: END === */
 
 /* === BOOKING MODAL SOFT ORANGE BORDERS: START === */
 .booking-modal-panel {
@@ -14680,82 +14580,117 @@ body:has(.settings-permission-backdrop) {
 }
 /* === BOOKING MODAL SOFT ORANGE BORDERS: END === */
 
-/* === STUDIO SELECT MOTION DROPDOWN POLISH: START === */
-.studio-select-trigger {
-  transition:
-    border-color 170ms ease,
-    background 170ms ease,
-    box-shadow 170ms ease,
-    transform 170ms ease !important;
+/* === DROPDOWN ANIMATION REMOVAL RESET: START === */
+.studio-select-trigger,
+.studio-select-chevron,
+.studio-select-list,
+.studio-select-list *,
+.studio-select-option {
+  animation: none !important;
+  transition: none !important;
 }
 
-.studio-select-trigger:hover {
-  transform: translateY(-1px);
-}
-
-.studio-select-trigger[aria-expanded='true'] {
-  transform: translateY(0);
-}
-
-.studio-select-chevron {
-  transition:
-    transform 190ms cubic-bezier(0.2, 0.9, 0.22, 1),
-    opacity 160ms ease,
-    color 160ms ease !important;
-  transform-origin: center;
+.studio-select-trigger:hover,
+.studio-select-option:hover,
+.studio-select-option.is-selected {
+  transform: none !important;
 }
 
 .studio-select-chevron.is-open {
-  transform: rotate(180deg) scale(1.04) !important;
+  transform: rotate(180deg) !important;
 }
 
-.studio-select-list[data-motion='true'] {
-  animation: none !important;
-  transform-origin: top center;
-  will-change: opacity, transform, filter;
-}
-
-.studio-select-list[data-motion='true'] .studio-select-option {
-  animation: none !important;
-  will-change: opacity, transform;
-}
-
-.studio-select-list[data-motion='true'][data-ready='false'] {
+.studio-select-list[data-ready='false'] {
   opacity: 0;
   pointer-events: none;
 }
 
-.studio-select-option {
-  transition:
-    border-color 140ms ease,
-    background 140ms ease,
-    color 140ms ease !important;
+.studio-select-list[data-ready='true'] {
+  opacity: 1;
+}
+/* === DROPDOWN ANIMATION REMOVAL RESET: END === */
+
+/* === BOOKING MODAL INLINE SELECT STATIC: START === */
+.booking-modal-panel .studio-select {
+  position: relative !important;
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0 !important;
 }
 
-.studio-select-option:hover {
+.booking-modal-panel .studio-select-list[data-inline='true'] {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-height: 156px !important;
+  margin: 4px 0 0 !important;
+  transform: none !important;
+  translate: none !important;
+  z-index: auto !important;
+  overflow: auto !important;
+  border: 1px solid var(--studio-modal-border, var(--auth-border)) !important;
+  border-radius: 14px !important;
   background:
-    linear-gradient(135deg, rgba(255, 138, 42, 0.095), rgba(255, 255, 255, 0.01)),
-    rgba(255, 255, 255, 0.028) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    var(--studio-modal-solid, var(--auth-bg-card)) !important;
+  box-shadow: none !important;
 }
 
-.booking-modal-panel .studio-select-list[data-motion='true'][data-inline='true'] {
-  animation: none !important;
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option {
+  min-height: 32px !important;
+  grid-template-columns: 18px minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  border-radius: 10px !important;
+  padding: 5px 7px !important;
 }
 
-@media (max-width: 620px) {
-  .studio-select-trigger:hover {
-    transform: none;
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-dot {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text {
+  gap: 1px !important;
+}
+
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text strong {
+  font-size: 0.68rem !important;
+  font-weight: 560 !important;
+  line-height: 1.12 !important;
+}
+
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option-text span {
+  font-size: 0.55rem !important;
+  font-weight: 380 !important;
+  line-height: 1.2 !important;
+}
+
+.booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.booking-modal-panel .studio-select-trigger[aria-expanded='true'] {
+  border-color: var(--auth-accent) !important;
+  box-shadow: 0 0 0 1px rgba(255, 138, 42, 0.24) !important;
+}
+
+.booking-modal-panel .studio-input-wrap,
+.booking-modal-panel .studio-select-trigger {
+  min-height: 37px !important;
+}
+
+.booking-modal-panel .booking-form-grid {
+  gap: 7px !important;
+}
+
+@media (max-width: 420px) {
+  .booking-modal-panel .studio-select-list[data-inline='true'] {
+    max-height: 142px !important;
+  }
+
+  .booking-modal-panel .studio-select-list[data-inline='true'] .studio-select-option {
+    min-height: 31px !important;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .studio-select-trigger,
-  .studio-select-chevron,
-  .studio-select-list,
-  .studio-select-option {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-  }
-}
-/* === STUDIO SELECT MOTION DROPDOWN POLISH: END === */
+/* === BOOKING MODAL INLINE SELECT STATIC: END === */

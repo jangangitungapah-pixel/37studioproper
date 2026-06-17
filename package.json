@@ -14,7 +14,6 @@
     "@fontsource/montserrat": "^5.2.8",
     "firebase": "^12.14.0",
     "lucide-react": "^1.18.0",
-    "motion": "^12.40.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.17.0",
