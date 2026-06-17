@@ -11416,3 +11416,55 @@
   }
 }
 /* === BOOKKEEPING CSV EXPORT: END === */
+
+/* === BOOKKEEPING MANUAL INCOME: START === */
+.bookkeeping-add-button.is-income {
+  border-color: rgba(90, 220, 160, 0.32);
+  background:
+    linear-gradient(135deg, rgba(90, 220, 160, 0.16), rgba(255, 255, 255, 0.018)),
+    var(--auth-bg-control);
+}
+
+.bookkeeping-add-button.is-expense {
+  border-color: rgba(255, 138, 42, 0.28);
+}
+
+.bookkeeping-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto auto auto !important;
+}
+
+@media (min-width: 768px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: minmax(220px, 280px) auto auto auto !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto !important;
+    gap: 5px;
+  }
+
+  .bookkeeping-add-button.is-income,
+  .bookkeeping-add-button.is-expense {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .bookkeeping-toolbar {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .bookkeeping-toolbar .studio-select {
+    grid-column: 1 / -1;
+  }
+
+  .bookkeeping-export-button,
+  .bookkeeping-add-button.is-income,
+  .bookkeeping-add-button.is-expense {
+    width: 100%;
+  }
+}
+/* === BOOKKEEPING MANUAL INCOME: END === */

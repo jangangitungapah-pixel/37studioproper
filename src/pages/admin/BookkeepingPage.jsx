@@ -32,6 +32,14 @@ const expenseCategoryOptions = [
   { key: 'other', label: 'Lainnya', description: 'Biaya lain' },
 ];
 
+const incomeCategoryOptions = [
+  { key: 'walk-in', label: 'Walk-in', description: 'Pemasukan langsung di studio' },
+  { key: 'rental', label: 'Sewa Alat', description: 'Sewa alat atau ruang tambahan' },
+  { key: 'retail', label: 'Retail', description: 'Jual kabel, senar, stick, aksesoris' },
+  { key: 'service', label: 'Service', description: 'Jasa tambahan non-booking' },
+  { key: 'other', label: 'Lainnya', description: 'Pemasukan lain' },
+];
+
 const paymentMethodOptions = [
   { key: 'cash', label: 'Cash', description: 'Tunai' },
   { key: 'transfer', label: 'Transfer', description: 'Bank transfer' },
@@ -44,6 +52,15 @@ const emptyExpenseForm = {
   amount: '',
   date: getTodayIsoDate(),
   category: 'utility',
+  paymentMethod: 'cash',
+  note: '',
+};
+
+const emptyIncomeForm = {
+  title: '',
+  amount: '',
+  date: getTodayIsoDate(),
+  category: 'walk-in',
   paymentMethod: 'cash',
   note: '',
 };
@@ -205,20 +222,37 @@ function buildIncomeTransactions(bookings) {
   });
 }
 
+function getEntryCategoryOptions(type) {
+  return type === 'income' ? incomeCategoryOptions : expenseCategoryOptions;
+}
+
+function getEntryTypeLabel(type) {
+  return type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+}
+
+function getEntryActionLabel(type) {
+  return type === 'income' ? 'pemasukan' : 'pengeluaran';
+}
+
 function buildExpenseTransactions(entries) {
   return entries
-    .filter((entry) => entry.type === 'expense')
-    .map((entry) => ({
-      id: 'expense-' + entry.id,
-      entryId: entry.id,
-      source: 'manual',
-      type: 'expense',
-      title: entry.title,
-      amount: toNumber(entry.amount),
-      date: entry.date,
-      method: entry.paymentMethod,
-      note: getOptionLabel(expenseCategoryOptions, entry.category, entry.category) + (entry.note ? ' • ' + entry.note : ''),
-    }));
+    .filter((entry) => entry.type === 'expense' || entry.type === 'income')
+    .map((entry) => {
+      const entryType = entry.type === 'income' ? 'income' : 'expense';
+      const categoryOptions = getEntryCategoryOptions(entryType);
+
+      return {
+        id: entryType + '-' + entry.id,
+        entryId: entry.id,
+        source: 'manual',
+        type: entryType,
+        title: entry.title,
+        amount: toNumber(entry.amount),
+        date: entry.date,
+        method: entry.paymentMethod,
+        note: getOptionLabel(categoryOptions, entry.category, entry.category) + (entry.note ? ' • ' + entry.note : ''),
+      };
+    });
 }
 
 function escapeCsvCell(value) {
@@ -336,7 +370,40 @@ function BookkeepingSummary({ bookings, period, transactions }) {
   );
 }
 
-function BookkeepingToolbar({ exportDisabled, onAddExpense, onExportTransactions, onPeriodChange, period }) {
+function BookkeepingToolbar({ exportDisabled, onAddExpense, onAddIncome, onExportTransactions, onPeriodChange, period }) {
+  return (
+    <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
+      <StudioSelect
+        label="Periode"
+        options={periodOptions}
+        selectedKey={period}
+        onChange={onPeriodChange}
+      />
+
+      <button
+        className="bookkeeping-export-button"
+        disabled={exportDisabled}
+        type="button"
+        onClick={onExportTransactions}
+      >
+        <Download size={14} />
+        Export
+      </button>
+
+      <button className="bookkeeping-add-button is-income" title="Tambah pemasukan manual" type="button" onClick={onAddIncome}>
+        <Plus size={14} />
+        Masuk
+      </button>
+
+      <button className="bookkeeping-add-button is-expense" title="Tambah pengeluaran" type="button" onClick={onAddExpense}>
+        <Plus size={14} />
+        Keluar
+      </button>
+    </section>
+  );
+}
+
+) {
   return (
     <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
       <StudioSelect
@@ -365,6 +432,59 @@ function BookkeepingToolbar({ exportDisabled, onAddExpense, onExportTransactions
 }
 
 function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactions }) {
+  if (!transactions.length) {
+    return (
+      <section className="bookkeeping-empty-state">
+        <Landmark size={22} />
+        <strong>Belum ada transaksi</strong>
+        <span>Cash masuk dari billing, pemasukan manual, dan pengeluaran manual akan muncul di sini.</span>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bookkeeping-list" aria-label="Daftar transaksi pembukuan">
+      {transactions.map((transaction) => {
+        const isIncome = transaction.type === 'income';
+        const isManualEntry = transaction.source === 'manual';
+
+        return (
+          <article className={isIncome ? 'bookkeeping-row is-income' : 'bookkeeping-row is-expense'} key={transaction.id}>
+            <span className="bookkeeping-row-icon">
+              {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            </span>
+
+            <div className="bookkeeping-row-copy">
+              <strong>{transaction.title}</strong>
+              <small>
+                {formatShortDate(transaction.date)} • {getOptionLabel(paymentMethodOptions, transaction.method, transaction.method)}
+              </small>
+              {transaction.note ? <em>{transaction.note}</em> : null}
+            </div>
+
+            <div className="bookkeeping-row-tail">
+              <b>{isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}</b>
+
+              {isManualEntry ? (
+                <div className="bookkeeping-row-actions" aria-label="Aksi transaksi manual">
+                  <button type="button" aria-label={'Edit ' + getEntryActionLabel(transaction.type)} onClick={() => onEditExpense(transaction)}>
+                    <Pencil size={12} />
+                  </button>
+
+                  <button className="is-danger" type="button" aria-label={'Hapus ' + getEntryActionLabel(transaction.type)} onClick={() => onDeleteExpense(transaction)}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+) {
   if (!transactions.length) {
     return (
       <section className="bookkeeping-empty-state">
@@ -417,7 +537,151 @@ function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactio
   );
 }
 
-function ExpenseFormModal({ entry, onClose, onSave }) {
+function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
+  const activeType = entry?.type === 'income' || mode === 'income' ? 'income' : 'expense';
+  const initialForm = activeType === 'income' ? emptyIncomeForm : emptyExpenseForm;
+  const categoryOptions = getEntryCategoryOptions(activeType);
+  const typeLabel = getEntryTypeLabel(activeType);
+  const isIncome = activeType === 'income';
+  const [form, setForm] = useState(() => ({
+    ...initialForm,
+    ...(entry || {}),
+    type: activeType,
+    category: entry?.category || initialForm.category,
+    amount: entry?.amount != null ? String(entry.amount) : '',
+    date: entry?.date || initialForm.date,
+  }));
+  const [error, setError] = useState('');
+  const isEditing = Boolean(entry?.id || form.id);
+
+  function updateField(field) {
+    return (event) => {
+      setForm((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
+  function updateValue(field) {
+    return (nextValue) => {
+      setForm((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+
+      if (error) setError('');
+    };
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    const title = cleanText(form.title);
+    const amount = toNumber(form.amount);
+
+    if (!title) {
+      setError('Judul ' + typeLabel.toLowerCase() + ' wajib diisi.');
+      return;
+    }
+
+    if (!amount) {
+      setError('Nominal ' + typeLabel.toLowerCase() + ' wajib lebih dari 0.');
+      return;
+    }
+
+    onSave({
+      ...form,
+      id: entry?.id || form.id,
+      type: activeType,
+      title,
+      amount,
+      category: form.category || initialForm.category,
+      note: cleanText(form.note),
+    });
+  }
+
+  return (
+    <div className="bookkeeping-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="bookkeeping-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bookkeeping-entry-title">
+        <header className="bookkeeping-modal-head">
+          <div>
+            <p>{typeLabel}</p>
+            <h2 id="bookkeeping-entry-title">{isEditing ? 'Edit ' + typeLabel : 'Tambah ' + typeLabel}</h2>
+          </div>
+
+          <button type="button" aria-label="Tutup form pembukuan" onClick={onClose}>
+            <X size={17} />
+          </button>
+        </header>
+
+        <form className="bookkeeping-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Judul</span>
+            <input
+              value={form.title}
+              placeholder={isIncome ? 'Contoh: Jual senar gitar' : 'Contoh: Listrik Studio'}
+              onChange={updateField('title')}
+            />
+          </label>
+
+          <div className="bookkeeping-form-grid">
+            <label>
+              <span>Nominal</span>
+              <input
+                inputMode="numeric"
+                min="0"
+                placeholder={isIncome ? '150000' : '350000'}
+                type="number"
+                value={form.amount}
+                onChange={updateField('amount')}
+              />
+            </label>
+
+            <label>
+              <span>Tanggal</span>
+              <input type="date" value={form.date} onChange={updateField('date')} />
+            </label>
+          </div>
+
+          <div className="bookkeeping-form-grid">
+            <StudioSelect
+              label="Kategori"
+              options={categoryOptions}
+              selectedKey={form.category}
+              onChange={updateValue('category')}
+            />
+
+            <StudioSelect
+              label="Metode"
+              options={paymentMethodOptions}
+              selectedKey={form.paymentMethod}
+              onChange={updateValue('paymentMethod')}
+            />
+          </div>
+
+          <label>
+            <span>Catatan</span>
+            <textarea value={form.note} placeholder="Opsional..." onChange={updateField('note')} />
+          </label>
+
+          {error ? <p className="bookkeeping-form-error" role="alert">{error}</p> : null}
+
+          <footer>
+            <button type="button" onClick={onClose}>Batal</button>
+            <button className="is-primary" type="submit">{isEditing ? 'Update' : 'Simpan'}</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+) {
   const [form, setForm] = useState(() => ({
     ...emptyExpenseForm,
     ...(entry || {}),
@@ -548,6 +812,7 @@ export default function BookkeepingPage() {
   const [period, setPeriod] = useState('month');
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [entryFormMode, setEntryFormMode] = useState('expense');
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -625,14 +890,22 @@ export default function BookkeepingPage() {
     });
   }
 
+  function openAddIncome() {
+    setEditingExpense(null);
+    setEntryFormMode('income');
+    setIsExpenseFormOpen(true);
+  }
+
   function openAddExpense() {
     setEditingExpense(null);
+    setEntryFormMode('expense');
     setIsExpenseFormOpen(true);
   }
 
   function closeExpenseForm() {
     setIsExpenseFormOpen(false);
     setEditingExpense(null);
+    setEntryFormMode('expense');
   }
 
   function openEditExpense(transaction) {
@@ -641,12 +914,13 @@ export default function BookkeepingPage() {
     if (!targetEntry) {
       setToast({
         title: 'Data tidak ditemukan',
-        message: 'Pengeluaran ini belum bisa diedit karena data sumber tidak ditemukan.',
+        message: 'Transaksi manual ini belum bisa diedit karena data sumber tidak ditemukan.',
       });
       return;
     }
 
     setEditingExpense(targetEntry);
+    setEntryFormMode(targetEntry.type === 'income' ? 'income' : 'expense');
     setIsExpenseFormOpen(true);
   }
 
@@ -656,40 +930,43 @@ export default function BookkeepingPage() {
       const savedEntry = isEditing
         ? await bookkeepingRepository.updateBookkeepingEntry(entry)
         : await bookkeepingRepository.createBookkeepingEntry(entry);
+      const typeLabel = getEntryTypeLabel(savedEntry.type);
 
       closeExpenseForm();
       setToast({
-        title: isEditing ? 'Pengeluaran diperbarui' : 'Pengeluaran tersimpan',
+        title: typeLabel + (isEditing ? ' diperbarui' : ' tersimpan'),
         message: savedEntry.title + ' masuk ke pembukuan.',
       });
     } catch (error) {
-      console.error('Gagal menyimpan pengeluaran:', error);
+      console.error('Gagal menyimpan transaksi pembukuan:', error);
       setToast({
         title: 'Gagal menyimpan',
-        message: 'Pengeluaran belum berhasil disimpan ke Firestore.',
+        message: 'Transaksi belum berhasil disimpan ke Firestore.',
       });
     }
   }
 
   async function deleteExpense(transaction) {
+    const actionLabel = getEntryActionLabel(transaction.type);
+
     try {
       const confirmed = typeof window === 'undefined'
         ? true
-        : window.confirm('Hapus pengeluaran "' + transaction.title + '" dari pembukuan?');
+        : window.confirm('Hapus ' + actionLabel + ' "' + transaction.title + '" dari pembukuan?');
 
       if (!confirmed) return;
 
       await bookkeepingRepository.deleteBookkeepingEntry(transaction.entryId);
 
       setToast({
-        title: 'Pengeluaran dihapus',
+        title: getEntryTypeLabel(transaction.type) + ' dihapus',
         message: transaction.title + ' sudah dihapus dari pembukuan.',
       });
     } catch (error) {
-      console.error('Gagal menghapus pengeluaran:', error);
+      console.error('Gagal menghapus transaksi pembukuan:', error);
       setToast({
         title: 'Gagal menghapus',
-        message: 'Pengeluaran belum berhasil dihapus dari Firestore.',
+        message: 'Transaksi belum berhasil dihapus dari Firestore.',
       });
     }
   }
@@ -702,6 +979,7 @@ export default function BookkeepingPage() {
         exportDisabled={!filteredTransactions.length && getBookkeepingStats(filteredTransactions, bookings, period).receivable <= 0}
         period={period}
         onAddExpense={openAddExpense}
+        onAddIncome={openAddIncome}
         onExportTransactions={exportBookkeepingCsv}
         onPeriodChange={setPeriod}
       />
@@ -714,8 +992,9 @@ export default function BookkeepingPage() {
 
       {isExpenseFormOpen ? (
         <ExpenseFormModal
-          key={editingExpense?.id || 'new-expense'}
+          key={editingExpense?.id || entryFormMode + '-entry'}
           entry={editingExpense}
+          mode={entryFormMode}
           onClose={closeExpenseForm}
           onSave={saveExpense}
         />
