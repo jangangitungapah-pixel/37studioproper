@@ -6,6 +6,7 @@ import {
   UsersRound,
   LogOut,
   Music2,
+  MoreHorizontal,
   PackageOpen,
   PanelLeftClose,
   PanelLeftOpen,
@@ -27,6 +28,8 @@ import SettingsPage from './admin/SettingsPage.jsx';
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
+
+const mobilePrimaryNavKeys = ['schedule', 'customers', 'billing'];
 
 const navItems = [
   {
@@ -227,6 +230,7 @@ export default function AdminPage() {
   const location = useLocation();
   const [authState, setAuthState] = useState({ isReady: false, isAuthenticated: false, user: null });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getInitialSidebarState);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   useEffect(() => {
     return adminAuthRepository.subscribeAdminAuth(setAuthState);
@@ -239,6 +243,18 @@ export default function AdminPage() {
 
   const activeItem = routeItem || navItems[0];
 
+  const mobilePrimaryNavItems = useMemo(
+    () => navItems.filter((item) => mobilePrimaryNavKeys.includes(item.key)),
+    []
+  );
+
+  const mobileMoreNavItems = useMemo(
+    () => navItems.filter((item) => !mobilePrimaryNavKeys.includes(item.key)),
+    []
+  );
+
+  const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
+
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated) return;
 
@@ -246,6 +262,10 @@ export default function AdminPage() {
       navigate('/admin/schedule', { replace: true });
     }
   }, [location.pathname, navigate, routeItem, authState.isReady, authState.isAuthenticated]);
+
+  useEffect(() => {
+    setIsMoreMenuOpen(false);
+  }, [location.pathname]);
 
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();
@@ -318,6 +338,7 @@ export default function AdminPage() {
   }
 
   function goTo(path) {
+    setIsMoreMenuOpen(false);
     navigate(path);
   }
 
@@ -404,7 +425,7 @@ export default function AdminPage() {
       </section>
 
       <nav className="admin-bottom-nav" aria-label="Navigasi admin mobile">
-        {navItems.map((item) => {
+        {mobilePrimaryNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeItem.key === item.key;
 
@@ -421,6 +442,42 @@ export default function AdminPage() {
             </button>
           );
         })}
+
+        <div className={isMoreMenuOpen ? 'admin-bottom-more is-open' : 'admin-bottom-more'}>
+          {isMoreMenuOpen ? (
+            <div className="admin-bottom-more-menu" role="menu" aria-label="Menu admin tambahan">
+              {mobileMoreNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeItem.key === item.key;
+
+                return (
+                  <button
+                    aria-current={isActive ? 'page' : undefined}
+                    className={isActive ? 'admin-more-item is-active' : 'admin-more-item'}
+                    key={item.key}
+                    role="menuitem"
+                    type="button"
+                    onClick={() => goTo(item.path)}
+                  >
+                    <Icon size={17} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <button
+            aria-expanded={isMoreMenuOpen}
+            aria-haspopup="menu"
+            className={isMoreNavActive ? 'admin-bottom-item is-active' : 'admin-bottom-item'}
+            type="button"
+            onClick={() => setIsMoreMenuOpen((current) => !current)}
+          >
+            <MoreHorizontal size={20} />
+            <span>More</span>
+          </button>
+        </div>
       </nav>
     </main>
   );
