@@ -686,7 +686,11 @@ export default function SchedulePage() {
   // Subscribe to real-time Firestore bookings
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
-      (data) => setBookings(data),
+      (data) => {
+        setBookings(data);
+        adminBookingRepository.syncClientCalendarSlotsFromBookings(data)
+          .catch((err) => console.error('Gagal sinkron slot client calendar:', err));
+      },
       (_err) => {
         setScheduleToast({
           kind: 'warning',

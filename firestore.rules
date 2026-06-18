@@ -63,6 +63,43 @@ service cloud.firestore {
         hasPermission('inventory');
     }
 
+    function hasAuthEmail() {
+      return isSignedIn() && request.auth.token.email != null;
+    }
+
+    function hasAuthPhone() {
+      return isSignedIn() && request.auth.token.phone_number != null;
+    }
+
+    function isClientBookingOwner() {
+      return isSignedIn() && (
+        (
+          hasAuthEmail() &&
+          resource.data.email is string &&
+          resource.data.email.lower() == request.auth.token.email.lower()
+        ) ||
+        (
+          hasAuthPhone() &&
+          (
+            (
+              resource.data.phone is string &&
+              (
+                resource.data.phone == request.auth.token.phone_number ||
+                ('+' + resource.data.phone) == request.auth.token.phone_number
+              )
+            ) ||
+            (
+              resource.data.customerPhoneKey is string &&
+              (
+                resource.data.customerPhoneKey == request.auth.token.phone_number ||
+                ('+' + resource.data.customerPhoneKey) == request.auth.token.phone_number
+              )
+            )
+          )
+        )
+      );
+    }
+
     function isValidString(val) {
       return val is string && val.size() > 0;
     }
@@ -82,8 +119,13 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    match /clientCalendarSlots/{slotId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isApproved() && canAccessBookingData();
+    }
+
     match /bookings/{bookingId} {
-      allow read: if (isApproved() && canAccessBookingData()) || isSignedIn();
+      allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner();
       allow create, update: if isApproved() &&
         canAccessBookingData() &&
         isValidString(request.resource.data.customer) &&

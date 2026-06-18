@@ -269,6 +269,7 @@ export default function ClientPortalPage() {
 
   // Booking Data State
   const [bookings, setBookings] = useState([]);
+  const [calendarSlots, setCalendarSlots] = useState([]);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
 
   // Calendar parameters
@@ -299,12 +300,23 @@ export default function ClientPortalPage() {
     return unsubscribe;
   }, [navigate]);
 
-  // Load Bookings from Firestore
+  // Load client-owned bookings from Firestore
   useEffect(() => {
     if (!currentUser) return;
-    const unsubscribe = adminBookingRepository.subscribeManualBookings(
+    const unsubscribe = adminBookingRepository.subscribeClientBookingsForUser(
+      currentUser,
       (data) => setBookings(data),
-      (err) => console.error('Gagal mengambil data booking:', err)
+      (err) => console.error('Gagal mengambil booking client:', err)
+    );
+    return unsubscribe;
+  }, [currentUser]);
+
+  // Load public-safe occupied slots mirrored from admin schedule
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
+      (data) => setCalendarSlots(data),
+      (err) => console.error('Gagal mengambil slot calendar client:', err)
     );
     return unsubscribe;
   }, [currentUser]);
@@ -328,6 +340,58 @@ export default function ClientPortalPage() {
       );
     });
   }, [bookings, currentUser]);
+
+  const calendarBookings = useMemo(() => {
+    const ownBookingsById = new Map(
+      userBookings
+        .filter((booking) => booking.id)
+        .map((booking) => [
+          booking.id,
+          {
+            ...booking,
+            isOwnClientBooking: true,
+          },
+        ])
+    );
+
+    const mergedSlotIds = new Set();
+
+    const mergedSlots = calendarSlots.map((slot) => {
+      const bookingId = slot.bookingId || slot.id;
+      const ownBooking = ownBookingsById.get(bookingId);
+
+      mergedSlotIds.add(bookingId);
+
+      if (ownBooking) {
+        return {
+          ...slot,
+          ...ownBooking,
+          bookingId,
+          id: ownBooking.id,
+          isOwnClientBooking: true,
+        };
+      }
+
+      return {
+        ...slot,
+        bookingId,
+        id: slot.id || bookingId,
+        isPublicClientSlot: true,
+      };
+    });
+
+    userBookings.forEach((booking) => {
+      if (booking.id && !mergedSlotIds.has(booking.id)) {
+        mergedSlots.push({
+          ...booking,
+          bookingId: booking.id,
+          isOwnClientBooking: true,
+        });
+      }
+    });
+
+    return mergedSlots;
+  }, [calendarSlots, userBookings]);
 
   // Dashboard Stats Calculations
   const stats = useMemo(() => {
@@ -502,7 +566,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   // Calendar rendering parameters
   const visibleDays = useMemo(() => getVisibleDays(calendarSelectedDate, calendarViewMode), [calendarSelectedDate, calendarViewMode]);
-  const bookingBlocks = useMemo(() => getVisibleBookingBlocks(bookings, visibleDays), [bookings, visibleDays]);
+  const bookingBlocks = useMemo(() => getVisibleBookingBlocks(calendarBookings, visibleDays), [calendarBookings, visibleDays]);
   const gridTemplateColumns = getGridTemplate(calendarViewMode, visibleDays.length);
 
   const handleSlotClick = (slot) => {
@@ -789,19 +853,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
                   {/* Booking Blocks Overlay */}
                   {bookingBlocks.map((block) => {
-                    const emailQueryStr = (currentUser?.email || '___no_email___').toLowerCase();
-                    const phoneQueryStr = currentUser?.phoneNumber || '___no_phone___';
-                    const phoneNormalized = phoneQueryStr.replace(/^\+/, '');
-
-                    const bEmail = (block.booking.email || '').toLowerCase();
-                    const bPhone = (block.booking.phone || '').replace(/^\+/, '');
-                    const bPhoneKey = (block.booking.customerPhoneKey || '').replace(/^\+/, '');
-
-                    const isOwn = (
-                      (emailQueryStr && bEmail === emailQueryStr) ||
-                      (phoneNormalized && bPhone === phoneNormalized) ||
-                      (phoneNormalized && bPhoneKey === phoneNormalized)
-                    );
+                    const isOwn = Boolean(block.booking.isOwnClientBooking);
 
                     return (
                       <ClientCalendarBookingBlock

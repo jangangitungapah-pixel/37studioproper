@@ -1,12 +1,13 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
+  or,
   orderBy,
   query,
   setDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -58,6 +59,229 @@ export function createInvoiceNumber(booking, fallbackId = '') {
   const bookingCode = booking?.bookingCode || createBookingCode(booking, fallbackId);
 
   return 'INV-' + bookingCode.replace(/^BKG-/, '');
+}
+
+const CLIENT_CALENDAR_SLOTS_COLLECTION = 'clientCalendarSlots';
+
+function getClientCalendarSlotRef(bookingId) {
+  return doc(firestoreDb, CLIENT_CALENDAR_SLOTS_COLLECTION, bookingId);
+}
+
+function getSafeBookingStatus(booking) {
+  return String(booking?.paymentStatus || booking?.status || 'pending').trim().toLowerCase();
+}
+
+function shouldExposeClientCalendarSlot(booking) {
+  const status = getSafeBookingStatus(booking);
+  const hiddenStatuses = ['void', 'cancelled', 'canceled', 'deleted'];
+
+  return Boolean(
+    booking?.id &&
+    booking?.date &&
+    booking?.startHour !== undefined &&
+    booking?.startHour !== null &&
+    !hiddenStatuses.includes(status)
+  );
+}
+
+function buildClientCalendarSlot(booking) {
+  if (!shouldExposeClientCalendarSlot(booking)) return null;
+
+  const rawStatus = getSafeBookingStatus(booking);
+  const status = ['pending', 'dp', 'lunas'].includes(rawStatus) ? rawStatus : 'pending';
+  const startHour = Number(booking.startHour);
+  const durationHours = Math.max(1, Math.ceil(Number(booking.durationHours || booking.duration || 1) || 1));
+
+  return {
+    bookingId: booking.id,
+    date: booking.date,
+    durationHours,
+    sessionLabel: 'Sesi Studio',
+    startHour: Number.isFinite(startHour) ? startHour : 10,
+    status,
+    title: 'Terisi',
+    updatedAt: booking.updatedAt || booking.createdAt || new Date().toISOString(),
+  };
+}
+
+function clientSlotHasChanged(currentSlot, nextSlot) {
+  if (!currentSlot) return true;
+
+  const keys = ['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt'];
+
+  return keys.some((key) => String(currentSlot[key] ?? '') !== String(nextSlot[key] ?? ''));
+}
+
+async function commitBatchOperations(operations) {
+  if (!operations.length) return 0;
+
+  let committed = 0;
+
+  for (let index = 0; index < operations.length; index += 450) {
+    const batch = writeBatch(firestoreDb);
+    const slice = operations.slice(index, index + 450);
+
+    slice.forEach((operation) => {
+      if (operation.type === 'set') {
+        batch.set(operation.ref, operation.data, { merge: true });
+      } else if (operation.type === 'delete') {
+        batch.delete(operation.ref);
+      }
+    });
+
+    await batch.commit();
+    committed += slice.length;
+  }
+
+  return committed;
+}
+
+export async function syncClientCalendarSlotsFromBookings(bookings = []) {
+  if (!isFirebaseConfigured || !firestoreDb || !Array.isArray(bookings)) {
+    return 0;
+  }
+
+  const slotsRef = collection(firestoreDb, CLIENT_CALENDAR_SLOTS_COLLECTION);
+  const existingSnapshot = await getDocs(slotsRef);
+  const existingSlots = new Map();
+
+  existingSnapshot.forEach((slotDoc) => {
+    existingSlots.set(slotDoc.id, slotDoc.data());
+  });
+
+  const intendedSlotIds = new Set();
+  const operations = [];
+
+  bookings.forEach((booking) => {
+    if (!booking?.id) return;
+
+    const slotRef = getClientCalendarSlotRef(booking.id);
+    const slot = buildClientCalendarSlot(booking);
+
+    if (!slot) {
+      if (existingSlots.has(booking.id)) {
+        operations.push({ type: 'delete', ref: slotRef });
+      }
+      return;
+    }
+
+    intendedSlotIds.add(booking.id);
+
+    if (clientSlotHasChanged(existingSlots.get(booking.id), slot)) {
+      operations.push({ type: 'set', ref: slotRef, data: slot });
+    }
+  });
+
+  existingSlots.forEach((_slot, slotId) => {
+    if (!intendedSlotIds.has(slotId)) {
+      operations.push({
+        type: 'delete',
+        ref: getClientCalendarSlotRef(slotId),
+      });
+    }
+  });
+
+  return commitBatchOperations(operations);
+}
+
+export function subscribeClientCalendarSlots(callback, onError) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+
+  const slotsRef = collection(firestoreDb, CLIENT_CALENDAR_SLOTS_COLLECTION);
+  const q = query(slotsRef, orderBy('date', 'asc'));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const slots = [];
+
+      snapshot.forEach((slotDoc) => {
+        slots.push({
+          id: slotDoc.id,
+          ...slotDoc.data(),
+        });
+      });
+
+      slots.sort((first, second) => {
+        if (first.date !== second.date) return String(first.date || '').localeCompare(String(second.date || ''));
+        return Number(first.startHour || 0) - Number(second.startHour || 0);
+      });
+
+      callback(slots);
+    },
+    (error) => {
+      console.error('Error fetching client calendar slots from Firestore:', error);
+      if (onError) onError(error);
+    }
+  );
+}
+
+export function subscribeClientBookingsForUser(user, callback, onError) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+
+  if (!user) {
+    callback([]);
+    return () => {};
+  }
+
+  const email = String(user.email || '').trim();
+  const emailLower = email.toLowerCase();
+  const phoneRaw = String(user.phoneNumber || '').trim();
+  const phoneNoPlus = phoneRaw.replace(/^\+/, '');
+  const filters = [];
+
+  if (email) filters.push(where('email', '==', email));
+  if (emailLower && emailLower !== email) filters.push(where('email', '==', emailLower));
+  if (phoneRaw) filters.push(where('phone', '==', phoneRaw));
+  if (phoneNoPlus) {
+    filters.push(where('phone', '==', phoneNoPlus));
+    filters.push(where('customerPhoneKey', '==', phoneNoPlus));
+  }
+
+  if (!filters.length) {
+    callback([]);
+    return () => {};
+  }
+
+  const bookingsRef = collection(firestoreDb, 'bookings');
+  const q = filters.length === 1
+    ? query(bookingsRef, filters[0])
+    : query(bookingsRef, or(...filters));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const bookings = [];
+
+      snapshot.forEach((bookingDoc) => {
+        const booking = {
+          id: bookingDoc.id,
+          ...bookingDoc.data(),
+        };
+
+        bookings.push(normalizeBookingBillingIdentity(booking, bookingDoc.id));
+      });
+
+      bookings.sort((first, second) => {
+        const firstDate = String(first.date || first.createdAt || '');
+        const secondDate = String(second.date || second.createdAt || '');
+
+        return secondDate.localeCompare(firstDate);
+      });
+
+      callback(bookings);
+    },
+    (error) => {
+      console.error('Error fetching client-owned bookings from Firestore:', error);
+      if (onError) onError(error);
+    }
+  );
 }
 
 function normalizeBookingBillingIdentity(booking, fallbackId = '') {
@@ -121,7 +345,16 @@ export async function createManualBooking(booking) {
     bookingId
   );
 
-  await setDoc(docRef, cleanBooking);
+  const batch = writeBatch(firestoreDb);
+  const publicSlot = buildClientCalendarSlot(cleanBooking);
+
+  batch.set(docRef, cleanBooking);
+
+  if (publicSlot) {
+    batch.set(getClientCalendarSlotRef(bookingId), publicSlot, { merge: true });
+  }
+
+  await batch.commit();
   return cleanBooking;
 }
 
@@ -143,7 +376,18 @@ export async function updateManualBooking(booking) {
     booking.id
   );
 
-  await setDoc(docRef, cleanBooking, { merge: true });
+  const batch = writeBatch(firestoreDb);
+  const publicSlot = buildClientCalendarSlot(cleanBooking);
+
+  batch.set(docRef, cleanBooking, { merge: true });
+
+  if (publicSlot) {
+    batch.set(getClientCalendarSlotRef(booking.id), publicSlot, { merge: true });
+  } else {
+    batch.delete(getClientCalendarSlotRef(booking.id));
+  }
+
+  await batch.commit();
   return cleanBooking;
 }
 
@@ -153,7 +397,12 @@ export async function deleteManualBooking(bookingId) {
   }
 
   const docRef = doc(firestoreDb, 'bookings', bookingId);
-  await deleteDoc(docRef);
+  const batch = writeBatch(firestoreDb);
+
+  batch.delete(docRef);
+  batch.delete(getClientCalendarSlotRef(bookingId));
+
+  await batch.commit();
 }
 
 export async function migrateLocalBookingsToFirestore(localBookings) {
@@ -215,4 +464,7 @@ export const adminBookingRepository = {
   updateManualBooking,
   deleteManualBooking,
   migrateLocalBookingsToFirestore,
+  subscribeClientBookingsForUser,
+  subscribeClientCalendarSlots,
+  syncClientCalendarSlotsFromBookings,
 };
