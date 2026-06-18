@@ -21,7 +21,6 @@ export default function GalleryToolbar({
   TrashIcon,
 }) {
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
-  const actionMenuId = 'gallery-mobile-action-menu';
 
   const tabItems = [
     { key: 'photos', label: 'Photos', icon: ImageIcon },
@@ -50,15 +49,53 @@ export default function GalleryToolbar({
 
   return (
     <section className="customer-toolbar gallery-toolbar gallery-clean-toolbar" aria-label="Toolbar galeri">
-      <div className="customer-search-shell gallery-clean-search">
-        <SearchIcon size={15} aria-hidden="true" />
-        <input
-          aria-label="Cari foto"
-          placeholder="Search"
-          type="search"
-          value={searchQuery}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
+      <div className="gallery-clean-topbar">
+        <div className="customer-search-shell gallery-clean-search">
+          <SearchIcon size={14} aria-hidden="true" />
+          <input
+            aria-label="Cari foto"
+            placeholder="Search"
+            type="search"
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
+
+        <div className="gallery-mobile-action-shell">
+          <button
+            type="button"
+            className={`gallery-mobile-action-toggle ${isActionMenuOpen ? 'is-open' : ''}`}
+            aria-expanded={isActionMenuOpen}
+            onClick={() => setIsActionMenuOpen((current) => !current)}
+            title="Gallery actions"
+          >
+            {isActionMenuOpen ? <CloseIcon size={15} /> : <Menu size={15} />}
+            <span className="gallery-action-label">Actions</span>
+          </button>
+
+          {isActionMenuOpen ? (
+            <div className="gallery-action-popover" role="menu" aria-label="Gallery actions">
+              <button
+                type="button"
+                onClick={handleToggleSelectMode}
+                className={isSelectMode ? 'is-active' : ''}
+                role="menuitem"
+              >
+                <CheckIcon size={14} />
+                <span>{isSelectMode ? 'Done' : 'Select'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenUpload}
+                role="menuitem"
+              >
+                <PlusIcon size={14} />
+                <span>Upload</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="gallery-filter-row gallery-primary-tabs" role="tablist" aria-label="Filter tampilan galeri">
@@ -86,24 +123,7 @@ export default function GalleryToolbar({
         })}
       </div>
 
-      <div className="gallery-mobile-action-shell">
-        <button
-          type="button"
-          className={`gallery-mobile-action-toggle ${isActionMenuOpen ? 'is-open' : ''}`}
-          aria-expanded={isActionMenuOpen}
-          aria-controls={actionMenuId}
-          onClick={() => setIsActionMenuOpen((current) => !current)}
-          title="Gallery actions"
-        >
-          {isActionMenuOpen ? <CloseIcon size={15} /> : <Menu size={15} />}
-          <span className="gallery-action-label">Actions</span>
-        </button>
-      </div>
-
-      <div
-        id={actionMenuId}
-        className={`gallery-action-panel ${isActionMenuOpen ? 'is-open' : ''}`}
-      >
+      <div className="gallery-desktop-actions">
         <div className="gallery-density-control">
           <GridIcon size={13} />
           <input
@@ -120,7 +140,7 @@ export default function GalleryToolbar({
         <button
           type="button"
           onClick={handleToggleSelectMode}
-          className={`customer-back-button ${isSelectMode ? 'border-orange-500 text-orange-400' : ''}`}
+          className={isSelectMode ? 'is-active' : ''}
         >
           <CheckIcon size={14} />
           <span>{isSelectMode ? 'Done' : 'Select'}</span>
@@ -129,9 +149,8 @@ export default function GalleryToolbar({
         <button
           type="button"
           onClick={handleOpenUpload}
-          className="customer-add-button"
         >
-          <PlusIcon size={15} />
+          <PlusIcon size={14} />
           <span>Upload</span>
         </button>
       </div>
