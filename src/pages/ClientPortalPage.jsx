@@ -103,9 +103,9 @@ function shiftDate(date, viewMode, direction) {
   return addMonths(date, direction);
 }
 function getGridTemplate(viewMode, visibleDayCount) {
-  if (viewMode === 'day') return '112px minmax(280px, 1fr)';
-  if (viewMode === 'week') return '112px repeat(' + visibleDayCount + ', minmax(126px, 1fr))';
-  return '112px repeat(' + visibleDayCount + ', minmax(92px, 1fr))';
+  if (viewMode === 'day') return '86px minmax(238px, 1fr)';
+  if (viewMode === 'week') return '86px repeat(' + visibleDayCount + ', minmax(108px, 1fr))';
+  return '86px repeat(' + visibleDayCount + ', minmax(82px, 1fr))';
 }
 function getSlotSpanRows(booking, startIndex) {
   const duration = Math.max(1, Math.ceil(Number(booking.durationHours) || 1));
@@ -729,9 +729,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         )}
 
         {activeTab === 'calendar' && (
-          <div className="space-y-5">
+          <div className="client-calendar-tab space-y-4">
             {/* Calendar Controls Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
+            <div className="client-calendar-controls flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
               {/* Left Side: Navigation */}
               <div className="flex items-center gap-2">
                 <button
@@ -774,7 +774,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             </div>
 
             {/* Helper Hint */}
-            <div className="text-[11px] text-[var(--ui-text-muted)] flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="client-calendar-legend text-[11px] text-[var(--ui-text-muted)] flex flex-wrap items-center gap-x-4 gap-y-2">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded bg-[#ff8a2a]/30 border border-[#ff8a2a]/50" />
                 <span>Booking Anda</span>
@@ -790,7 +790,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             </div>
 
             {/* Calendar Grid Section */}
-            <div className="schedule-grid-shell rounded-2xl border border-white/5 overflow-hidden">
+            <div className="client-calendar-grid-shell schedule-grid-shell rounded-2xl border border-white/5 overflow-hidden">
               <div className="schedule-grid-scroll">
                 <div
                   className={`schedule-grid schedule-grid--${calendarViewMode}`}

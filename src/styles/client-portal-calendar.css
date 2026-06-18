@@ -331,3 +331,270 @@
 }
 
 /* === CLIENT PORTAL CALENDAR GRID FIX: END === */
+
+/* === CLIENT COMPACT CALENDAR OVERRIDE: START === */
+
+.client-portal-page {
+  --client-calendar-hour-width: 86px;
+  --client-calendar-row-height: 46px;
+  --client-calendar-head-height: 54px;
+  --client-calendar-solid-corner: #090a0c;
+  --client-calendar-solid-time: #0a0b0d;
+  --client-calendar-solid-head: #101113;
+  --client-calendar-solid-today: #22160e;
+  --client-calendar-line-compact: rgba(255, 255, 255, 0.118);
+}
+
+.client-portal-page .client-calendar-tab {
+  gap: 12px !important;
+}
+
+.client-portal-page .client-calendar-controls {
+  padding: 14px 16px !important;
+  border-radius: 22px !important;
+  gap: 12px !important;
+}
+
+.client-portal-page .client-calendar-controls > div:first-child {
+  gap: 8px !important;
+}
+
+.client-portal-page .client-calendar-controls button {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+}
+
+.client-portal-page .client-calendar-controls button[class*="w-8"] {
+  width: 38px !important;
+  height: 38px !important;
+}
+
+.client-portal-page .client-calendar-controls strong {
+  font-size: 0.92rem !important;
+  letter-spacing: -0.02em;
+}
+
+.client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] {
+  padding: 4px !important;
+  border-radius: 13px !important;
+}
+
+.client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] button {
+  min-height: 34px !important;
+  padding-inline: 13px !important;
+  border-radius: 10px !important;
+  font-size: 0.72rem !important;
+}
+
+.client-portal-page .client-calendar-legend {
+  margin-top: 4px !important;
+  gap: 8px 14px !important;
+  font-size: 0.74rem !important;
+  line-height: 1.3;
+}
+
+.client-portal-page .client-calendar-legend span {
+  white-space: nowrap;
+}
+
+.client-portal-page .client-calendar-grid-shell {
+  border-radius: 24px !important;
+}
+
+.client-portal-page .schedule-grid {
+  grid-auto-rows: minmax(var(--client-calendar-row-height), auto) !important;
+  background: rgba(255, 255, 255, 0.012) !important;
+}
+
+.client-portal-page .schedule-grid-corner,
+.client-portal-page .schedule-day-head,
+.client-portal-page .schedule-time-cell,
+.client-portal-page .schedule-slot-cell {
+  border-right: 1px solid var(--client-calendar-line-compact) !important;
+  border-bottom: 1px solid var(--client-calendar-line-compact) !important;
+}
+
+.client-portal-page .schedule-grid-corner {
+  min-height: var(--client-calendar-head-height) !important;
+  background: var(--client-calendar-solid-corner) !important;
+  background-image: none !important;
+  border-top-left-radius: 22px;
+  color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    1px 0 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.client-portal-page .schedule-grid-corner span {
+  font-size: 0.68rem !important;
+  letter-spacing: 0.18em !important;
+}
+
+.client-portal-page .schedule-day-head {
+  min-height: var(--client-calendar-head-height) !important;
+  background: var(--client-calendar-solid-head) !important;
+  background-image: none !important;
+}
+
+.client-portal-page .schedule-day-head.is-today {
+  background: var(--client-calendar-solid-today) !important;
+  background-image: none !important;
+}
+
+.client-portal-page .schedule-day-head span {
+  font-size: 0.62rem !important;
+  opacity: 0.78;
+}
+
+.client-portal-page .schedule-day-head strong {
+  font-size: 0.92rem !important;
+}
+
+.client-portal-page .schedule-time-cell {
+  min-height: var(--client-calendar-row-height) !important;
+  background: var(--client-calendar-solid-time) !important;
+  background-image: none !important;
+  padding: 0 9px !important;
+  gap: 6px !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 0.66rem !important;
+  line-height: 1.15 !important;
+}
+
+.client-portal-page .schedule-time-cell svg {
+  width: 12px !important;
+  height: 12px !important;
+  opacity: 0.78;
+}
+
+.client-portal-page .schedule-slot-cell {
+  min-height: var(--client-calendar-row-height) !important;
+  padding: 3px !important;
+  background: rgba(255, 255, 255, 0.014) !important;
+}
+
+.client-portal-page .schedule-slot-button {
+  min-height: 38px !important;
+  border-radius: 10px !important;
+}
+
+.client-portal-page .schedule-booking-block {
+  min-height: calc(100% - 6px) !important;
+  margin: 3px !important;
+  padding: 6px 7px !important;
+  gap: 3px !important;
+  border-radius: 12px !important;
+  border-width: 1px !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.065) !important;
+}
+
+.client-portal-page .schedule-booking-glow {
+  width: 48px !important;
+  height: 48px !important;
+  opacity: 0.7;
+}
+
+.client-portal-page .schedule-booking-topline {
+  gap: 4px !important;
+}
+
+.client-portal-page .schedule-booking-topline strong {
+  font-size: 0.65rem !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .schedule-booking-topline em {
+  font-size: 0.54rem !important;
+}
+
+.client-portal-page .schedule-booking-title {
+  font-size: 0.58rem !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .schedule-booking-meta {
+  font-size: 0.55rem !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .schedule-booking-meta b {
+  font-size: 0.56rem !important;
+}
+
+.client-portal-page .schedule-booking-block.is-occupied-other {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.032) 0,
+      rgba(255, 255, 255, 0.032) 7px,
+      rgba(255, 255, 255, 0.016) 7px,
+      rgba(255, 255, 255, 0.016) 14px
+    ),
+    rgba(255, 255, 255, 0.036) !important;
+}
+
+@media (max-width: 767px) {
+  .client-portal-page {
+    --client-calendar-row-height: 46px;
+    --client-calendar-head-height: 52px;
+  }
+
+  .client-portal-page .client-calendar-controls {
+    padding: 12px 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .client-portal-page .client-calendar-controls > div:first-child {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .client-portal-page .client-calendar-controls strong {
+    width: 100%;
+    order: 2;
+    font-size: 0.95rem !important;
+  }
+
+  .client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] {
+    width: 100%;
+    order: 3;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] button {
+    padding-inline: 6px !important;
+  }
+
+  .client-portal-page .client-calendar-legend {
+    padding-inline: 2px;
+    font-size: 0.72rem !important;
+  }
+
+  .client-portal-page .schedule-grid-corner span {
+    font-size: 0.62rem !important;
+  }
+
+  .client-portal-page .schedule-time-cell {
+    font-size: 0.62rem !important;
+    padding-inline: 8px !important;
+  }
+
+  .client-portal-page .schedule-booking-block {
+    padding: 5px 6px !important;
+    border-radius: 11px !important;
+  }
+
+  .client-portal-page .schedule-booking-topline strong {
+    font-size: 0.6rem !important;
+  }
+
+  .client-portal-page .schedule-booking-title,
+  .client-portal-page .schedule-booking-meta {
+    font-size: 0.52rem !important;
+  }
+}
+
+/* === CLIENT COMPACT CALENDAR OVERRIDE: END === */
