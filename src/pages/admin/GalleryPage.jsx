@@ -677,8 +677,8 @@ export default function GalleryPage() {
       
       {/* 1. COHESIVE CRM TITLE BLOCK */}
       <div className="customer-page-title">
-        <p>Studio Portfolio</p>
-        <h2 id="gallery-page-title">Studio Gallery</h2>
+        <p>Studio Gallery</p>
+        <h2 id="gallery-page-title">Photos</h2>
       </div>
 
       {/* 2. COHESIVE GALLERY STATS GRID (GalleryHero) */}

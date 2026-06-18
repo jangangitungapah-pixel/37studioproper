@@ -24,9 +24,9 @@ export default function GalleryToolbar({
   const actionMenuId = 'gallery-mobile-action-menu';
 
   const tabItems = [
-    { key: 'photos', label: 'Foto', icon: ImageIcon },
-    { key: 'albums', label: 'Album', icon: FolderIcon },
-    { key: 'trash', label: 'Sampah', icon: TrashIcon },
+    { key: 'photos', label: 'Photos', icon: ImageIcon },
+    { key: 'albums', label: 'Albums', icon: FolderIcon },
+    { key: 'trash', label: 'Trash', icon: TrashIcon },
   ];
 
   const closeActionMenu = () => {
@@ -34,7 +34,7 @@ export default function GalleryToolbar({
   };
 
   const handleTabChange = (tabKey) => {
-    setIsActionMenuOpen(false);
+    closeActionMenu();
     onTabChange(tabKey);
   };
 
@@ -49,12 +49,12 @@ export default function GalleryToolbar({
   };
 
   return (
-    <section className="customer-toolbar gallery-toolbar" aria-label="Toolbar galeri">
-      <div className="customer-search-shell">
+    <section className="customer-toolbar gallery-toolbar gallery-clean-toolbar" aria-label="Toolbar galeri">
+      <div className="customer-search-shell gallery-clean-search">
         <SearchIcon size={16} aria-hidden="true" />
         <input
           aria-label="Cari foto"
-          placeholder="Cari judul, deskripsi, uploader..."
+          placeholder="Search in Photos..."
           type="search"
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -71,7 +71,7 @@ export default function GalleryToolbar({
               key={tab.key}
               type="button"
               onClick={() => handleTabChange(tab.key)}
-              className={`gallery-filter-pill ${isActive ? 'is-active' : ''}`}
+              className={`gallery-filter-pill gallery-clean-tab ${isActive ? 'is-active' : ''}`}
               aria-pressed={isActive}
             >
               <Icon size={14} />
@@ -93,9 +93,10 @@ export default function GalleryToolbar({
           aria-expanded={isActionMenuOpen}
           aria-controls={actionMenuId}
           onClick={() => setIsActionMenuOpen((current) => !current)}
+          title="Gallery actions"
         >
-          {isActionMenuOpen ? <CloseIcon size={14} /> : <Menu size={14} />}
-          <span>Aksi</span>
+          {isActionMenuOpen ? <CloseIcon size={15} /> : <Menu size={15} />}
+          <span className="gallery-action-label">Actions</span>
         </button>
       </div>
 
@@ -123,7 +124,7 @@ export default function GalleryToolbar({
           className={`customer-back-button ${isSelectMode ? 'border-orange-500 text-orange-400' : ''}`}
         >
           <CheckIcon size={14} />
-          <span>{isSelectMode ? 'Selesai' : 'Pilih'}</span>
+          <span>{isSelectMode ? 'Done' : 'Select'}</span>
         </button>
 
         <button
@@ -132,7 +133,7 @@ export default function GalleryToolbar({
           className="customer-add-button"
         >
           <PlusIcon size={16} />
-          <span>Unggah Foto</span>
+          <span>Upload</span>
         </button>
       </div>
     </section>
