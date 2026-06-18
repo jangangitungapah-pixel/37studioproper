@@ -83,7 +83,7 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
-      allow read: if isApproved() && canAccessBookingData();
+      allow read: if (isApproved() && canAccessBookingData()) || isSignedIn();
       allow create, update: if isApproved() &&
         canAccessBookingData() &&
         isValidString(request.resource.data.customer) &&

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Music,
@@ -13,7 +14,11 @@ import {
   Sliders,
   ChevronRight,
   Flame,
-  Info
+  Info,
+  LogOut,
+  CalendarDays,
+  Clock,
+  LoaderCircle
 } from 'lucide-react';
 import {
   usePricingSettings,
@@ -27,11 +32,95 @@ import {
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, query, where, or, orderBy, onSnapshot } from 'firebase/firestore';
+import { firebaseAuth, firestoreDb } from '../lib/firebase.js';
 import '../styles/admin-auth.css';
 
 export default function ClientLandingPage() {
   const pricingSettings = usePricingSettings();
   const invoiceSettings = useInvoiceSettings();
+
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(() => Boolean(firebaseAuth));
+  const [userBookings, setUserBookings] = useState([]);
+
+  // Form states for simulator (will be filled as soon as auth state resolves)
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+
+  // Client Auth Check
+  useEffect(() => {
+    if (!firebaseAuth) return;
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+      if (!user) {
+        setCurrentUser(null);
+      } else {
+        setCurrentUser(user);
+        
+        // Auto pre-fill
+        if (user.displayName) {
+          setName(user.displayName);
+        }
+        if (user.phoneNumber) {
+          const raw = user.phoneNumber.replace(/^\+/, '');
+          setPhone(raw);
+        }
+      }
+      setAuthLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Real-time Booking History for Client
+  useEffect(() => {
+    if (!currentUser || !firestoreDb) return;
+
+    const emailQueryStr = currentUser.email || '___no_email___';
+    const phoneQueryStr = currentUser.phoneNumber || '___no_phone___';
+    const phoneNormalized = phoneQueryStr.replace(/^\+/, '');
+
+    const bookingsRef = collection(firestoreDb, 'bookings');
+    const q = query(
+      bookingsRef,
+      or(
+        where('email', '==', emailQueryStr),
+        where('phone', '==', phoneQueryStr),
+        where('phone', '==', phoneNormalized),
+        where('customerPhoneKey', '==', phoneNormalized)
+      ),
+      orderBy('date', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const bookingsList = [];
+        snapshot.forEach((docSnap) => {
+          bookingsList.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          });
+        });
+        setUserBookings(bookingsList);
+      },
+      (err) => {
+        console.error('Error fetching client booking history:', err);
+      }
+    );
+
+    return unsubscribe;
+  }, [currentUser]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(firebaseAuth);
+      navigate('/client/login', { replace: true });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
 
   // Pricing options derived from settings
   const sessionOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
@@ -78,9 +167,6 @@ export default function ClientLandingPage() {
     return sessionOptions;
   }, [sessionOptions, recordingTypeOptions]);
 
-  // Form states for simulator
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [sessionType, setSessionType] = useState('rehearsal');
   const [packageId, setPackageId] = useState('none');
   const [recordingTypeId, setRecordingTypeId] = useState('none');
@@ -201,6 +287,18 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     }
   ];
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#050506] flex items-center justify-center font-sans">
+        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#ff8a2a]/10 to-transparent pointer-events-none blur-[120px]" />
+        <div className="flex flex-col items-center gap-4 z-10">
+          <LoaderCircle className="animate-spin text-[#ff8a2a]" size={36} />
+          <p className="text-sm text-[#f7f3ec]/60 tracking-wider">Memuat portal...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] overflow-x-hidden">
       {/* Background radial glow effect */}
@@ -222,12 +320,35 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
           <a href="#location" className="hover:text-white transition-colors">Lokasi</a>
         </nav>
 
-        <a 
-          href="#booking"
-          className="px-4 py-2 rounded-full bg-[var(--ui-accent-soft)] hover:bg-[var(--ui-accent)] text-[var(--ui-accent)] hover:text-white border border-[var(--ui-accent-strong)]/30 hover:border-transparent text-xs md:text-sm font-semibold tracking-wide transition-all shadow-md hover:shadow-orange-500/10"
-        >
-          Booking Sesi
-        </a>
+        <div className="flex items-center gap-4">
+          {currentUser ? (
+            <>
+              <button 
+                onClick={() => navigate('/client/portal')}
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-[var(--ui-accent-strong)] to-[var(--ui-accent)] hover:opacity-90 text-white text-xs font-bold tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-500/10 transition-all hover:scale-[1.02]"
+              >
+                <span>Portal Saya</span>
+                <ArrowRight size={13} />
+              </button>
+              <button 
+                onClick={handleLogout}
+                className="px-3 py-2 rounded-full bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 text-white/70 hover:text-red-400 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                title="Keluar Portal"
+              >
+                <LogOut size={13} />
+                <span className="hidden sm:inline">Keluar</span>
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={() => navigate('/client/login')}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-[var(--ui-accent-strong)] to-[var(--ui-accent)] hover:opacity-90 text-white text-xs font-bold tracking-wider flex items-center gap-1.5 shadow-lg shadow-orange-500/10 transition-all hover:scale-[1.02]"
+            >
+              <span>Masuk Portal</span>
+              <ArrowRight size={13} />
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Hero Section */}
@@ -498,13 +619,17 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                     />
                   </label>
                   <label className="space-y-1.5 block">
-                    <span className="text-xs text-[var(--ui-text-muted)] font-medium">Nomor WhatsApp</span>
+                    <span className="text-xs text-[var(--ui-text-muted)] font-medium flex items-center justify-between">
+                      <span>Nomor WhatsApp</span>
+                      {currentUser?.phoneNumber && <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Terverifikasi</span>}
+                    </span>
                     <input 
                       type="tel" 
                       placeholder="Contoh: 081234..."
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] focus:border-[var(--ui-accent)] outline-none text-white transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] focus:border-[var(--ui-accent)] outline-none text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      disabled={Boolean(currentUser?.phoneNumber)}
                     />
                   </label>
                 </div>
@@ -678,6 +803,125 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 </a>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Booking History Section */}
+        <section id="history" className="pt-24 space-y-8">
+          <div className="text-center space-y-3">
+            <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">RIWAYAT BOOKING</h2>
+            <h3 className="text-2xl md:text-4xl text-white font-bold">Jadwal Sesi Anda</h3>
+            <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
+              Semua riwayat pemesanan studio yang terhubung dengan akun Anda.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-4">
+            {currentUser && (
+              <div className="p-4 rounded-xl bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+                <span className="text-[var(--ui-text-muted)] text-xs text-center sm:text-left">
+                  Anda sedang masuk. Untuk melihat riwayat lengkap, sisa tagihan, dan jadwal kalender aktif:
+                </span>
+                <button
+                  onClick={() => navigate('/client/portal')}
+                  className="px-4 py-2 rounded-lg bg-[var(--ui-accent)] text-black font-bold text-xs flex items-center gap-1.5 hover:opacity-90 transition-all shrink-0 shadow-md shadow-orange-500/10"
+                >
+                  <span>Buka Portal Saya</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
+            )}
+            {!currentUser ? (
+              <div className="p-8 text-center rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] text-sm space-y-3 relative overflow-hidden">
+                {/* Ambient glow decoration */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[120px] rounded-full bg-[var(--ui-accent)]/5 filter blur-[40px] pointer-events-none" />
+                <CalendarDays size={28} className="mx-auto text-white/25 mb-1" />
+                <strong className="text-white">Ingin melihat riwayat booking Anda?</strong>
+                <p className="text-xs max-w-xs mx-auto text-[var(--ui-text-muted)]">Masuk ke Portal Client untuk melihat jadwal sesi latihan atau rekaman aktif Anda secara langsung.</p>
+                <button
+                  onClick={() => navigate('/client/login')}
+                  className="px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-all mt-2"
+                >
+                  <span>Masuk Portal</span>
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            ) : userBookings.length === 0 ? (
+              <div className="p-8 text-center rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] text-sm space-y-2">
+                <CalendarDays size={28} className="mx-auto text-white/25 mb-2" />
+                <strong>Belum ada riwayat booking</strong>
+                <p className="text-xs max-w-xs mx-auto">Silakan lakukan simulasi di kalkulator atas lalu kirim jadwal ke admin studio via WhatsApp.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {userBookings.map((booking) => {
+                  const status = booking.paymentStatus || booking.status || 'pending';
+                  const isVoid = status === 'void' || status === 'cancelled';
+                  
+                  // Helper function to format status badge class
+                  const getStatusBadgeClass = (statusStr) => {
+                    const cleanStatus = statusStr.toLowerCase();
+                    if (cleanStatus === 'lunas') return 'bg-green-500/10 text-green-400 border border-green-500/20';
+                    if (cleanStatus === 'dp') return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+                    if (cleanStatus === 'void' || cleanStatus === 'cancelled') return 'bg-white/5 text-white/40 border border-white/10';
+                    return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                  };
+
+                  const startHourNum = Number(booking.startHour || 0);
+                  const durationNum = Number(booking.durationHours || booking.duration || 1);
+                  const endHourNum = startHourNum + durationNum;
+                  const timeString = `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`;
+
+                  return (
+                    <article 
+                      key={booking.id} 
+                      className={`relative overflow-hidden p-5 rounded-2xl backdrop-blur-md bg-white/[0.02] border border-white/5 hover:border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-all duration-300 ${isVoid ? 'opacity-50' : ''}`}
+                    >
+                      {/* Spatial ambient glow for each booking row */}
+                      {!isVoid && (
+                        <div className={`absolute top-0 right-0 w-[80px] h-[80px] rounded-full filter blur-[40px] opacity-[0.04] pointer-events-none ${status === 'lunas' ? 'bg-green-500' : status === 'dp' ? 'bg-orange-500' : 'bg-amber-500'}`} />
+                      )}
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[var(--ui-text-muted)] font-semibold tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                            {booking.bookingCode || booking.bookingId || 'BKG'}
+                          </span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${getStatusBadgeClass(status)}`}>
+                            {status === 'void' ? 'Void' : status === 'cancelled' ? 'Canceled' : status}
+                          </span>
+                        </div>
+
+                        <h4 className="text-base font-bold text-white leading-tight">
+                          {booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Selesai'}
+                        </h4>
+
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--ui-text-muted)]">
+                          <span className="flex items-center gap-1">
+                            <CalendarDays size={13} className="text-[#ff8a2a]" />
+                            <span>{new Date(booking.date + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock size={13} className="text-[#ff8a2a]" />
+                            <span>{timeString} ({durationNum} Jam)</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="sm:text-right flex sm:flex-col justify-between items-center sm:items-end gap-2 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0 shrink-0">
+                        <span className="text-xs text-[var(--ui-text-muted)]">Total Biaya</span>
+                        <strong className="text-base text-white">{formatRupiah(booking.total || booking.subtotal || 0)}</strong>
+                        {status === 'dp' && booking.dpAmount > 0 && (
+                          <span className="text-[10px] text-orange-400 font-medium">
+                            DP: {formatRupiah(booking.dpAmount)} (Sisa: {formatRupiah((booking.total || 0) - booking.dpAmount)})
+                          </span>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
