@@ -36,6 +36,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, or, orderBy, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../lib/firebase.js';
 import '../styles/admin-auth.css';
+import '../styles/client-portal-polish.css';
 
 export default function ClientLandingPage() {
   const pricingSettings = usePricingSettings();
@@ -300,7 +301,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
   }
 
   return (
-    <div className="theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] overflow-x-hidden">
+    <div className="client-polish-shell theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] overflow-x-hidden">
       {/* Background radial glow effect */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#ff8a2a]/10 to-transparent pointer-events-none blur-[120px]" />
       
