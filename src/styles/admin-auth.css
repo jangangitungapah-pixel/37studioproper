@@ -16569,3 +16569,148 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === GALLERY SCHEDULE SLIM RESTYLE: END === */
+
+/* === GALLERY MOBILE ACTION MENU: START === */
+.gallery-mobile-action-shell {
+  display: none;
+}
+
+.gallery-mobile-action-toggle {
+  min-height: 35px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  border: 1px solid var(--auth-border);
+  border-radius: 13px;
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.04), rgba(255, 255, 255, 0.01)),
+    var(--auth-bg-control);
+  color: var(--auth-text-main);
+  font-family: var(--ui-font-sans, 'Montserrat', ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.68rem;
+  font-weight: 640;
+  letter-spacing: 0.01em;
+}
+
+.gallery-mobile-action-toggle.is-open {
+  border-color: color-mix(in srgb, var(--auth-accent) 42%, transparent);
+  background:
+    linear-gradient(135deg, rgba(255, 138, 42, 0.13), rgba(255, 255, 255, 0.018)),
+    var(--auth-bg-control);
+  color: var(--auth-accent);
+}
+
+.gallery-trash-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  padding-inline: 5px;
+  font-size: 0.58rem;
+  font-weight: 720;
+}
+
+@media (max-width: 767px) {
+  .gallery-page .gallery-toolbar {
+    grid-template-columns: minmax(0, 1fr) 92px !important;
+    grid-template-areas:
+      "search search"
+      "tabs menu"
+      "actions actions" !important;
+    align-items: stretch !important;
+    gap: 7px !important;
+  }
+
+  .gallery-page .gallery-toolbar .customer-search-shell {
+    grid-area: search !important;
+  }
+
+  .gallery-page .gallery-toolbar .gallery-primary-tabs {
+    grid-area: tabs !important;
+  }
+
+  .gallery-page .gallery-mobile-action-shell {
+    grid-area: menu !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .gallery-page .gallery-actions {
+    grid-area: actions !important;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row.gallery-primary-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row.gallery-primary-tabs .gallery-filter-pill {
+    min-height: 35px !important;
+    border-radius: 13px !important;
+    padding-inline: 5px !important;
+    font-size: 0.6rem !important;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row.gallery-primary-tabs .gallery-filter-pill svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row.gallery-primary-tabs .gallery-filter-pill span:not(.gallery-trash-count) {
+    max-width: 58px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gallery-page .gallery-actions {
+    display: none !important;
+  }
+
+  .gallery-page .gallery-actions.is-open {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
+    border: 1px solid color-mix(in srgb, var(--auth-accent) 18%, transparent);
+    border-radius: 15px;
+    background:
+      linear-gradient(135deg, rgba(255, 138, 42, 0.055), rgba(255, 255, 255, 0.01)),
+      rgba(255, 255, 255, 0.018);
+    padding: 7px;
+  }
+
+  .gallery-page .gallery-actions.is-open .customer-back-button,
+  .gallery-page .gallery-actions.is-open .customer-add-button {
+    min-height: 34px !important;
+    border-radius: 12px !important;
+    font-size: 0.65rem !important;
+    font-weight: 640 !important;
+  }
+
+  .gallery-page .gallery-category-row {
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .gallery-page .gallery-toolbar {
+    grid-template-columns: minmax(0, 1fr) 82px !important;
+  }
+
+  .gallery-mobile-action-toggle {
+    font-size: 0.62rem;
+  }
+
+  .gallery-page .gallery-toolbar > .gallery-filter-row.gallery-primary-tabs .gallery-filter-pill {
+    font-size: 0.56rem !important;
+  }
+}
+/* === GALLERY MOBILE ACTION MENU: END === */

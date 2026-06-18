@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { Menu, X as CloseIcon } from 'lucide-react';
+
 export default function GalleryToolbar({
   activeTab,
   CheckIcon,
@@ -17,11 +20,33 @@ export default function GalleryToolbar({
   trashCount,
   TrashIcon,
 }) {
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuId = 'gallery-mobile-action-menu';
+
   const tabItems = [
     { key: 'photos', label: 'Foto', icon: ImageIcon },
     { key: 'albums', label: 'Album', icon: FolderIcon },
     { key: 'trash', label: 'Sampah', icon: TrashIcon },
   ];
+
+  const closeActionMenu = () => {
+    setIsActionMenuOpen(false);
+  };
+
+  const handleTabChange = (tabKey) => {
+    setIsActionMenuOpen(false);
+    onTabChange(tabKey);
+  };
+
+  const handleOpenUpload = () => {
+    closeActionMenu();
+    onOpenUpload();
+  };
+
+  const handleToggleSelectMode = () => {
+    closeActionMenu();
+    onToggleSelectMode();
+  };
 
   return (
     <section className="customer-toolbar gallery-toolbar" aria-label="Toolbar galeri">
@@ -36,7 +61,7 @@ export default function GalleryToolbar({
         />
       </div>
 
-      <div className="gallery-filter-row">
+      <div className="gallery-filter-row gallery-primary-tabs" role="tablist" aria-label="Filter tampilan galeri">
         {tabItems.map((tab) => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
@@ -45,13 +70,14 @@ export default function GalleryToolbar({
             <button
               key={tab.key}
               type="button"
-              onClick={() => onTabChange(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
               className={`gallery-filter-pill ${isActive ? 'is-active' : ''}`}
+              aria-pressed={isActive}
             >
               <Icon size={14} />
               <span>{tab.label}</span>
               {tab.key === 'trash' && trashCount > 0 ? (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold">
+                <span className="gallery-trash-count">
                   {trashCount}
                 </span>
               ) : null}
@@ -60,7 +86,23 @@ export default function GalleryToolbar({
         })}
       </div>
 
-      <div className="gallery-actions flex items-center gap-2 w-full sm:w-auto justify-end">
+      <div className="gallery-mobile-action-shell">
+        <button
+          type="button"
+          className={`gallery-mobile-action-toggle ${isActionMenuOpen ? 'is-open' : ''}`}
+          aria-expanded={isActionMenuOpen}
+          aria-controls={actionMenuId}
+          onClick={() => setIsActionMenuOpen((current) => !current)}
+        >
+          {isActionMenuOpen ? <CloseIcon size={14} /> : <Menu size={14} />}
+          <span>Aksi</span>
+        </button>
+      </div>
+
+      <div
+        id={actionMenuId}
+        className={`gallery-actions flex items-center gap-2 w-full sm:w-auto justify-end ${isActionMenuOpen ? 'is-open' : ''}`}
+      >
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--auth-border)] bg-[var(--auth-bg-control)] text-xs text-[var(--auth-text-muted)] mr-2">
           <GridIcon size={13} className="text-zinc-500" />
           <input
@@ -77,7 +119,7 @@ export default function GalleryToolbar({
 
         <button
           type="button"
-          onClick={onToggleSelectMode}
+          onClick={handleToggleSelectMode}
           className={`customer-back-button ${isSelectMode ? 'border-orange-500 text-orange-400' : ''}`}
         >
           <CheckIcon size={14} />
@@ -86,11 +128,11 @@ export default function GalleryToolbar({
 
         <button
           type="button"
-          onClick={onOpenUpload}
+          onClick={handleOpenUpload}
           className="customer-add-button"
         >
           <PlusIcon size={16} />
-          Unggah Foto
+          <span>Unggah Foto</span>
         </button>
       </div>
     </section>
