@@ -443,6 +443,11 @@ export async function migrateLocalBookingsToFirestore(localBookings) {
           );
 
           batch.set(docRef, cleanBooking);
+
+        const publicSlot = buildClientCalendarSlot(cleanBooking);
+        if (publicSlot) {
+          batch.set(getClientCalendarSlotRef(bookingId), publicSlot, { merge: true });
+        }
         });
 
         await batch.commit();

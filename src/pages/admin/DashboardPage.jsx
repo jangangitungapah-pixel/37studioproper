@@ -549,7 +549,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
-      (data) => setBookings(data),
+      (data) => {
+        setBookings(data);
+        adminBookingRepository.syncClientCalendarSlotsFromBookings(data)
+          .catch((err) => console.error('Gagal sinkron slot client calendar dashboard:', err));
+      },
       (error) => {
         console.error('Gagal memuat booking dashboard:', error);
         setSyncError('Sebagian data booking belum tersinkron.');

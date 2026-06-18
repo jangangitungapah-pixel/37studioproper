@@ -34,6 +34,7 @@ import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions, statusFilters } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import '../styles/admin-auth.css';
+import '../styles/client-portal-calendar.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -597,7 +598,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   }
 
   return (
-    <div className="theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] pb-24 overflow-x-hidden font-sans relative">
+    <div className="client-portal-page theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] pb-24 overflow-x-hidden font-sans relative">
       {/* Background Radial Glow */}
       <div className="absolute top-0 left-0 w-full h-[450px] bg-gradient-to-b from-[#ff8a2a]/8 to-transparent pointer-events-none blur-[110px]" />
 
