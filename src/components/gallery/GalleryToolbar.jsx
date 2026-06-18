@@ -51,10 +51,10 @@ export default function GalleryToolbar({
   return (
     <section className="customer-toolbar gallery-toolbar gallery-clean-toolbar" aria-label="Toolbar galeri">
       <div className="customer-search-shell gallery-clean-search">
-        <SearchIcon size={16} aria-hidden="true" />
+        <SearchIcon size={15} aria-hidden="true" />
         <input
           aria-label="Cari foto"
-          placeholder="Search in Photos..."
+          placeholder="Search"
           type="search"
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -74,7 +74,7 @@ export default function GalleryToolbar({
               className={`gallery-filter-pill gallery-clean-tab ${isActive ? 'is-active' : ''}`}
               aria-pressed={isActive}
             >
-              <Icon size={14} />
+              <Icon size={13} />
               <span>{tab.label}</span>
               {tab.key === 'trash' && trashCount > 0 ? (
                 <span className="gallery-trash-count">
@@ -102,20 +102,19 @@ export default function GalleryToolbar({
 
       <div
         id={actionMenuId}
-        className={`gallery-actions flex items-center gap-2 w-full sm:w-auto justify-end ${isActionMenuOpen ? 'is-open' : ''}`}
+        className={`gallery-action-panel ${isActionMenuOpen ? 'is-open' : ''}`}
       >
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--auth-border)] bg-[var(--auth-bg-control)] text-xs text-[var(--auth-text-muted)] mr-2">
-          <GridIcon size={13} className="text-zinc-500" />
+        <div className="gallery-density-control">
+          <GridIcon size={13} />
           <input
             type="range"
             min={2}
             max={6}
             value={gridColumns}
             onChange={(event) => onGridColumnsChange(parseInt(event.target.value, 10))}
-            className="w-16 accent-orange-500 cursor-pointer h-1 rounded bg-zinc-800"
             title="Kerapatan Grid"
           />
-          <span className="text-[10px] font-bold text-zinc-400 w-4">{gridColumns}x</span>
+          <span>{gridColumns}x</span>
         </div>
 
         <button
@@ -132,7 +131,7 @@ export default function GalleryToolbar({
           onClick={handleOpenUpload}
           className="customer-add-button"
         >
-          <PlusIcon size={16} />
+          <PlusIcon size={15} />
           <span>Upload</span>
         </button>
       </div>

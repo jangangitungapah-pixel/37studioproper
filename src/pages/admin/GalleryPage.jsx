@@ -63,7 +63,7 @@ export default function GalleryPage() {
   const [selectedAlbum, setSelectedAlbum] = useState(null); // null means showing albums menu, string shows details
   const [gridColumns, setGridColumns] = useState(4); // 2 to 6
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
+  const selectedCategoryFilter = 'All';
 
   // Batch Select State
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -768,13 +768,11 @@ export default function GalleryPage() {
               EmptyGalleryState={EmptyGalleryState}
               gridColumns={gridColumns}
               isSelectMode={isSelectMode}
-              onCategoryFilterChange={setSelectedCategoryFilter}
               onDeleteClick={handleSoftDelete}
               onFavoriteClick={handleToggleFavorite}
               onOpenPhoto={setActivePhotoIndex}
               onSelectToggle={handleSelectToggle}
               PhotoCard={PhotoCard}
-              selectedCategoryFilter={selectedCategoryFilter}
               selectedIds={selectedIds}
               timelineGroups={timelineGroups}
             />

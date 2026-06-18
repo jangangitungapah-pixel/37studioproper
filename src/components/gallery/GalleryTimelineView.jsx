@@ -9,31 +9,11 @@ export default function GalleryTimelineView({
   onSelectToggle,
   PhotoCard,
   selectedIds,
-  selectedCategoryFilter,
   categories,
-  onCategoryFilterChange,
   timelineGroups,
 }) {
   return (
     <div className="space-y-6">
-      <div className="gallery-category-row gallery-filter-row">
-        <button
-          onClick={() => onCategoryFilterChange('All')}
-          className={`gallery-filter-pill ${selectedCategoryFilter === 'All' ? 'is-active' : ''}`}
-        >
-          Semua Kategori
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.value}
-            onClick={() => onCategoryFilterChange(cat.value)}
-            className={`gallery-filter-pill ${selectedCategoryFilter === cat.value ? 'is-active' : ''}`}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
-
       {timelineGroups.length === 0 ? (
         <EmptyGalleryState activeTab="photos" />
       ) : (
