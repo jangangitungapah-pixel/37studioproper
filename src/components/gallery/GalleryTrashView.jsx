@@ -1,4 +1,5 @@
 export default function GalleryTrashView({
+  categories,
   displayedImages,
   EmptyGalleryState,
   gridColumns,
@@ -48,6 +49,7 @@ export default function GalleryTrashView({
           {displayedImages.map((img, index) => (
             <PhotoCard
               key={img.id}
+              categories={categories}
               img={img}
               isDeletedTab={true}
               isSelectMode={isSelectMode}

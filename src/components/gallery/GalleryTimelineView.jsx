@@ -59,6 +59,7 @@ export default function GalleryTimelineView({
                 return (
                   <PhotoCard
                     key={img.id}
+                    categories={categories}
                     img={img}
                     isSelectMode={isSelectMode}
                     isSelected={selectedIds.has(img.id)}

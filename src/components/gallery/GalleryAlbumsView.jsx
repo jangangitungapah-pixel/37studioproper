@@ -119,6 +119,7 @@ export default function GalleryAlbumsView({
           {displayedImages.map((img, index) => (
             <PhotoCard
               key={img.id}
+              categories={categories}
               img={img}
               isSelectMode={isSelectMode}
               isSelected={selectedIds.has(img.id)}
