@@ -17,7 +17,9 @@ export function getDisplayedGalleryImages({
   let list = [...filteredActiveImages];
 
   if (activeTab === 'albums' && selectedAlbum) {
-    if (selectedAlbum === 'favorites') {
+    if (selectedAlbum === 'all') {
+      list = [...filteredActiveImages];
+    } else if (selectedAlbum === 'favorites') {
       list = list.filter((img) => img.isFavorite);
     } else if (selectedAlbum === 'recents') {
       list = list.slice(0, 8);
