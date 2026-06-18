@@ -47,11 +47,146 @@ import GalleryLightbox from '../../components/gallery/GalleryLightbox.jsx';
 import AlbumFolderCard from '../../components/gallery/AlbumFolderCard.jsx';
 import EmptyGalleryState from '../../components/gallery/EmptyGalleryState.jsx';
 import PhotoCard from '../../components/gallery/PhotoCard.jsx';
-import { AUDIO_VISUALIZER_BAR_HEIGHTS, CATEGORIES } from '../../utils/galleryConstants.js';
-import { getDisplayedGalleryImages, getFilteredActiveImages, getGalleryTimelineGroups, getTrashedGalleryImages } from '../../utils/galleryImageFilters.js';
-import LofiAmbientSynth from '../../utils/lofiAmbientSynth.js';
 
-export default function GalleryPage() {export default function GalleryPage() {
+// Procedural Lo-fi Ambient Sound Generator using Web Audio API
+class LofiAmbientSynth {
+  constructor() {
+    this.ctx = null;
+    this.isPlaying = false;
+    this.nodes = [];
+    this.chordTimer = null;
+    this.droneOsc = null;
+    this.noise = null;
+    this.mainGain = null;
+    this.filter = null;
+  }
+
+  start(volume = 0.5) {
+    if (this.isPlaying) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // Main output gain (lowered to be ambient and gentle)
+      this.mainGain = this.ctx.createGain();
+      this.mainGain.gain.setValueAtTime(volume * 0.12, this.ctx.currentTime);
+      this.mainGain.connect(this.ctx.destination);
+      
+      // Lowpass filter for cozy muffled lofi sound
+      this.filter = this.ctx.createBiquadFilter();
+      this.filter.type = 'lowpass';
+      this.filter.frequency.setValueAtTime(400, this.ctx.currentTime);
+      this.filter.connect(this.mainGain);
+      
+      // 1. Vinyl Crackle/Rain Noise Generator
+      const bufferSize = 2 * this.ctx.sampleRate;
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      this.noise = this.ctx.createBufferSource();
+      this.noise.buffer = noiseBuffer;
+      this.noise.loop = true;
+      
+      const noiseFilter = this.ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+      noiseFilter.Q.setValueAtTime(2.0, this.ctx.currentTime);
+      
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+      
+      this.noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(this.mainGain);
+      this.noise.start();
+
+      // 2. Mellow Bass Drone
+      this.droneOsc = this.ctx.createOscillator();
+      this.droneOsc.type = 'triangle';
+      this.droneOsc.frequency.setValueAtTime(73.42, this.ctx.currentTime); // D2 key
+      
+      const droneGain = this.ctx.createGain();
+      droneGain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+      
+      this.droneOsc.connect(this.filter);
+      this.droneOsc.connect(droneGain);
+      droneGain.connect(this.mainGain);
+      this.droneOsc.start();
+
+      // 3. Relaxing Pentatonic Chord Arpeggiator (D Major Pentatonic)
+      const scale = [146.83, 164.81, 220.00, 293.66, 329.63, 440.00, 587.33, 659.25];
+      this.chordTimer = setInterval(() => {
+        if (!this.ctx || this.ctx.state === 'suspended') return;
+        const now = this.ctx.currentTime;
+        
+        // Randomly play 1 or 2 soft notes
+        const count = Math.random() > 0.5 ? 2 : 1;
+        for (let k = 0; k < count; k++) {
+          const freq = scale[Math.floor(Math.random() * scale.length)];
+          const osc = this.ctx.createOscillator();
+          const oscGain = this.ctx.createGain();
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          
+          // Gentle lo-fi pluck envelope (fast attack, long release)
+          oscGain.gain.setValueAtTime(0, now);
+          oscGain.gain.linearRampToValueAtTime(0.06, now + 0.15);
+          oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
+          
+          osc.connect(this.filter);
+          osc.connect(oscGain);
+          oscGain.connect(this.mainGain);
+          
+          osc.start(now);
+          osc.stop(now + 3.6);
+        }
+      }, 3500);
+
+      this.isPlaying = true;
+    } catch (err) {
+      console.warn('Web Audio API not supported or blocked:', err);
+    }
+  }
+
+  setVolume(vol) {
+    if (this.mainGain && this.ctx) {
+      this.mainGain.gain.setValueAtTime(vol * 0.12, this.ctx.currentTime);
+    }
+  }
+
+  stop() {
+    if (!this.isPlaying) return;
+    clearInterval(this.chordTimer);
+    if (this.noise) {
+      try { this.noise.stop(); } catch {
+        // Audio nodes can already be stopped by the browser.
+      }
+    }
+    if (this.droneOsc) {
+      try { this.droneOsc.stop(); } catch {
+        // Audio nodes can already be stopped by the browser.
+      }
+    }
+    if (this.ctx) {
+      this.ctx.close();
+    }
+    this.isPlaying = false;
+  }
+}
+
+const CATEGORIES = [
+  { value: 'Control Room', label: 'Ruang Kontrol', color: 'from-orange-500/20 to-amber-600/20' },
+  { value: 'Recording Room', label: 'Ruang Rekaman', color: 'from-blue-500/20 to-indigo-600/20' },
+  { value: 'Instruments', label: 'Instrumen / Alat', color: 'from-emerald-500/20 to-teal-600/20' },
+  { value: 'Events', label: 'Kegiatan / Sesi', color: 'from-purple-500/20 to-pink-600/20' },
+  { value: 'Others', label: 'Lain-lain', color: 'from-gray-500/20 to-slate-600/20' }
+];
+
+const AUDIO_VISUALIZER_BAR_HEIGHTS = [7, 11, 5, 12, 8, 10];
+
+export default function GalleryPage() {
   const [rawImages, setRawImages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -130,25 +265,71 @@ export default function GalleryPage() {export default function GalleryPage() {
   }, []);
 
   // Filter rawImages based on active tab and status
-  const filteredActiveImages = useMemo(() => getFilteredActiveImages(rawImages), [rawImages]);
+  const filteredActiveImages = useMemo(() => {
+    return rawImages.filter(img => !img.isDeleted);
+  }, [rawImages]);
 
-  const trashedImages = useMemo(() => getTrashedGalleryImages(rawImages), [rawImages]);
+  const trashedImages = useMemo(() => {
+    return rawImages.filter(img => img.isDeleted);
+  }, [rawImages]);
 
   // Derived filtered active photos (Search, Album selection, Category Filter)
-  const displayedImages = useMemo(() => getDisplayedGalleryImages({
-    activeTab,
-    filteredActiveImages,
-    searchQuery,
-    selectedAlbum,
-    selectedCategoryFilter,
-    trashedImages,
-  }), [filteredActiveImages, trashedImages, activeTab, selectedAlbum, selectedCategoryFilter, searchQuery]);
+  const displayedImages = useMemo(() => {
+    let list = [...filteredActiveImages];
+
+    // Filter by Album menu selection
+    if (activeTab === 'albums' && selectedAlbum) {
+      if (selectedAlbum === 'favorites') {
+        list = list.filter(img => img.isFavorite);
+      } else if (selectedAlbum === 'recents') {
+        // limit to 8 most recent
+        list = list.slice(0, 8);
+      } else {
+        // category folder
+        list = list.filter(img => img.category === selectedAlbum);
+      }
+    } else if (activeTab === 'trash') {
+      list = [...trashedImages];
+    } else {
+      // main "Photos" tab: Category Filter pills
+      if (selectedCategoryFilter !== 'All') {
+        list = list.filter(img => img.category === selectedCategoryFilter);
+      }
+    }
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(img => 
+        (img.title && img.title.toLowerCase().includes(q)) ||
+        (img.description && img.description.toLowerCase().includes(q)) ||
+        (img.category && img.category.toLowerCase().includes(q)) ||
+        (img.uploadedBy && img.uploadedBy.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [filteredActiveImages, trashedImages, activeTab, selectedAlbum, selectedCategoryFilter, searchQuery]);
 
   // Group photos by Month-Year for the Photo timeline stream
-  const timelineGroups = useMemo(
-    () => getGalleryTimelineGroups(displayedImages, activeTab),
-    [displayedImages, activeTab]
-  );
+  const timelineGroups = useMemo(() => {
+    if (activeTab !== 'photos') return [];
+    
+    const groups = {};
+    displayedImages.forEach(img => {
+      const date = new Date(img.createdAt);
+      const monthYear = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      if (!groups[monthYear]) {
+        groups[monthYear] = [];
+      }
+      groups[monthYear].push(img);
+    });
+
+    return Object.keys(groups).map(monthYear => ({
+      title: monthYear,
+      items: groups[monthYear]
+    }));
+  }, [displayedImages, activeTab]);
 
   // Handle music start/stop
   useEffect(() => {
