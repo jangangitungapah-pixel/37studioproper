@@ -456,18 +456,46 @@ export default function SettingsPage({ currentUser }) {
     };
   }
 
-  function saveAccountSettingsPage(event) {
+  async function saveAccountSettingsPage(event) {
     event.preventDefault();
 
     const nextPreferences = writeAccountPreferences(currentUser?.uid, accountPreferences);
     setAccountPreferences(nextPreferences);
-    setAccountSettingsMessage('Account settings berhasil disimpan di perangkat ini.');
+
+    if (currentUser?.uid) {
+      try {
+        await updateDoc(doc(firestoreDb, 'users', currentUser.uid), {
+          preferences: nextPreferences,
+          updatedAt: new Date().toISOString()
+        });
+        setAccountSettingsMessage('Account settings berhasil disimpan dan disinkronkan ke cloud.');
+      } catch (err) {
+        console.error('Gagal sinkronisasi preferensi ke Firestore:', err);
+        setAccountSettingsMessage('Account settings disimpan secara lokal tetapi gagal disinkronkan ke cloud.');
+      }
+    } else {
+      setAccountSettingsMessage('Account settings berhasil disimpan di perangkat ini.');
+    }
   }
 
-  function resetAccountSettingsPage() {
+  async function resetAccountSettingsPage() {
     const nextPreferences = resetAccountPreferences(currentUser?.uid);
     setAccountPreferences(nextPreferences);
-    setAccountSettingsMessage('Preferensi account lokal dikembalikan ke default.');
+
+    if (currentUser?.uid) {
+      try {
+        await updateDoc(doc(firestoreDb, 'users', currentUser.uid), {
+          preferences: nextPreferences,
+          updatedAt: new Date().toISOString()
+        });
+        setAccountSettingsMessage('Preferensi lokal dikembalikan ke default dan disinkronkan ke cloud.');
+      } catch (err) {
+        console.error('Gagal reset preferensi di Firestore:', err);
+        setAccountSettingsMessage('Preferensi lokal dikembalikan ke default, tetapi gagal disinkronkan ke cloud.');
+      }
+    } else {
+      setAccountSettingsMessage('Preferensi account lokal dikembalikan ke default.');
+    }
   }
 
   async function copyAccountUid() {

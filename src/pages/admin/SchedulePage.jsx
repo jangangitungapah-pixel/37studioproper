@@ -691,9 +691,8 @@ export default function SchedulePage() {
         setScheduleToast({
           kind: 'warning',
           title: 'Database Terputus',
-          message: 'Gagal memuat data dari Firestore. Menampilkan cadangan lokal.'
+          message: 'Koneksi Firestore terganggu. Data mungkin tidak mutakhir.'
         });
-        setBookings(readStoredBookings());
       }
     );
     return unsubscribe;

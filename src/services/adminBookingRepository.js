@@ -161,30 +161,51 @@ export async function migrateLocalBookingsToFirestore(localBookings) {
     return;
   }
 
-  const bookingsRef = collection(firestoreDb, 'bookings');
-  const snapshot = await getDocs(bookingsRef);
-
-  if (snapshot.empty) {
-    const batch = writeBatch(firestoreDb);
-
-    localBookings.forEach((booking) => {
-      const bookingId = booking.id || doc(bookingsRef).id;
-      const docRef = doc(firestoreDb, 'bookings', bookingId);
-      const cleanBooking = normalizeBookingBillingIdentity(
-        {
-          ...booking,
-          id: bookingId,
-          createdAt: booking.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        bookingId
-      );
-
-      batch.set(docRef, cleanBooking);
+  try {
+    const bookingsRef = collection(firestoreDb, 'bookings');
+    const snapshot = await getDocs(bookingsRef);
+    const existingIds = new Set();
+    snapshot.forEach((docSnap) => {
+      existingIds.add(docSnap.id);
     });
 
-    await batch.commit();
-    console.log('Successfully migrated ' + localBookings.length + ' local bookings to Firestore.');
+    const unsyncedBookings = localBookings.filter((booking) => {
+      const bookingId = booking.id || booking.bookingCode;
+      return bookingId && !existingIds.has(bookingId);
+    });
+
+    if (unsyncedBookings.length > 0) {
+      const BATCH_LIMIT = 400;
+      for (let i = 0; i < unsyncedBookings.length; i += BATCH_LIMIT) {
+        const batch = writeBatch(firestoreDb);
+        const chunk = unsyncedBookings.slice(i, i + BATCH_LIMIT);
+
+        chunk.forEach((booking) => {
+          const bookingId = booking.id || doc(bookingsRef).id;
+          const docRef = doc(firestoreDb, 'bookings', bookingId);
+          const cleanBooking = normalizeBookingBillingIdentity(
+            {
+              ...booking,
+              id: bookingId,
+              createdAt: booking.createdAt || new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            bookingId
+          );
+
+          batch.set(docRef, cleanBooking);
+        });
+
+        await batch.commit();
+      }
+      console.log('Successfully migrated ' + unsyncedBookings.length + ' local bookings to Firestore.');
+    }
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('37musicstudio.schedule.bookings.v1');
+    }
+  } catch (error) {
+    console.error('Error during local bookings migration:', error);
   }
 }
 

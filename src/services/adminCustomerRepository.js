@@ -91,24 +91,45 @@ export async function migrateLocalCustomersToFirestore(localCustomers) {
     return;
   }
 
-  const customersRef = collection(firestoreDb, 'customers');
-  const snapshot = await getDocs(customersRef);
-  
-  // Only migrate if Firestore collection is currently empty
-  if (snapshot.empty) {
-    const batch = writeBatch(firestoreDb);
-    localCustomers.forEach((customer) => {
-      const customerId = customer.id || doc(customersRef).id;
-      const docRef = doc(firestoreDb, 'customers', customerId);
-      batch.set(docRef, {
-        ...customer,
-        id: customerId,
-        createdAt: customer.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+  try {
+    const customersRef = collection(firestoreDb, 'customers');
+    const snapshot = await getDocs(customersRef);
+    const existingIds = new Set();
+    snapshot.forEach((docSnap) => {
+      existingIds.add(docSnap.id);
     });
-    await batch.commit();
-    console.log(`Successfully migrated ${localCustomers.length} local customers to Firestore.`);
+
+    const unsyncedCustomers = localCustomers.filter((customer) => {
+      return customer.id && !existingIds.has(customer.id);
+    });
+
+    if (unsyncedCustomers.length > 0) {
+      const BATCH_LIMIT = 400;
+      for (let i = 0; i < unsyncedCustomers.length; i += BATCH_LIMIT) {
+        const batch = writeBatch(firestoreDb);
+        const chunk = unsyncedCustomers.slice(i, i + BATCH_LIMIT);
+
+        chunk.forEach((customer) => {
+          const customerId = customer.id || doc(customersRef).id;
+          const docRef = doc(firestoreDb, 'customers', customerId);
+          batch.set(docRef, {
+            ...customer,
+            id: customerId,
+            createdAt: customer.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        });
+
+        await batch.commit();
+      }
+      console.log(`Successfully migrated ${unsyncedCustomers.length} local customers to Firestore.`);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('37musicstudio.customers.manual.v1');
+    }
+  } catch (error) {
+    console.error('Error during local customers migration:', error);
   }
 }
 

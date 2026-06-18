@@ -17,6 +17,7 @@ import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import { sendNewUserNotificationEmail } from './emailService.js';
 import { defaultAdminPermissions, normalizeAdminPermissions } from '../utils/adminPermissions.js';
+import { ACCOUNT_SETTINGS_STORAGE_KEY } from '../utils/accountSettings.js';
 
 function createUnauthenticatedState(errorMessage = '') {
   return {
@@ -226,6 +227,15 @@ export function subscribeAdminAuth(callback) {
           const hasExplicitRole = Boolean(userData?.role);
           const isOwner = userData?.role === 'owner' || (!hasExplicitRole && isOwnerEmail);
           const isApproved = isOwner || (userData && userData.status === 'approved');
+
+          if (userData?.preferences && typeof window !== 'undefined') {
+            try {
+              const storageKey = ACCOUNT_SETTINGS_STORAGE_KEY + '.' + uid;
+              window.localStorage.setItem(storageKey, JSON.stringify(userData.preferences));
+            } catch (e) {
+              console.warn('Gagal menyimpan preferensi dari Firestore ke local storage:', e);
+            }
+          }
 
           callback({
             errorMessage: '',

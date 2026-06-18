@@ -1357,9 +1357,8 @@ export default function CustomerPage() {
         console.error('Gagal memuat customer dari Firestore:', error);
         setToast({
           title: 'Gagal Memuat',
-          message: 'Gagal memuat data customer dari Firestore. Menggunakan data lokal.',
+          message: 'Koneksi Firestore terganggu. Data customer mungkin tidak mutakhir.',
         });
-        setManualCustomers(readManualCustomers());
       }
     );
     return unsubscribe;
