@@ -51,7 +51,7 @@ import { AUDIO_VISUALIZER_BAR_HEIGHTS, CATEGORIES } from '../../utils/galleryCon
 import { getDisplayedGalleryImages, getFilteredActiveImages, getGalleryTimelineGroups, getTrashedGalleryImages } from '../../utils/galleryImageFilters.js';
 import LofiAmbientSynth from '../../utils/lofiAmbientSynth.js';
 
-export default function GalleryPage() {export default function GalleryPage() {
+export default function GalleryPage() {
   const [rawImages, setRawImages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
