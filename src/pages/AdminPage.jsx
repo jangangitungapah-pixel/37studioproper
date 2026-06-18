@@ -21,6 +21,7 @@ import {
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
+import { adminBookingRepository } from '../services/adminBookingRepository.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
 import '../styles/admin-auth.css';
@@ -326,6 +327,48 @@ export default function AdminPage() {
   useEffect(() => {
     return adminAuthRepository.subscribeAdminAuth(setAuthState);
   }, []);
+
+  useEffect(() => {
+    if (!authState.isReady || !authState.isAuthenticated || !authState.user?.isApproved) {
+      return undefined;
+    }
+
+    const canSyncBookingData = ['dashboard', 'schedule', 'customers', 'billing'].some((pageKey) =>
+      hasAdminPagePermission(authState.user, pageKey)
+    );
+
+    if (!canSyncBookingData) {
+      return undefined;
+    }
+
+    let syncTimerId = 0;
+
+    const unsubscribe = adminBookingRepository.subscribeManualBookings(
+      (data) => {
+        window.clearTimeout(syncTimerId);
+
+        syncTimerId = window.setTimeout(() => {
+          adminBookingRepository.syncClientCalendarSlotsFromBookings(data)
+            .then((syncedCount) => {
+              if (syncedCount > 0) {
+                console.info('[client-calendar] Synced ' + syncedCount + ' slot mirror dari admin booking.');
+              }
+            })
+            .catch((error) => {
+              console.error('[client-calendar] Gagal sinkron slot mirror:', error);
+            });
+        }, 350);
+      },
+      (error) => {
+        console.error('[client-calendar] Gagal membaca booking untuk sync slot:', error);
+      }
+    );
+
+    return () => {
+      window.clearTimeout(syncTimerId);
+      unsubscribe();
+    };
+  }, [authState.isReady, authState.isAuthenticated, authState.user]);
 
   const routeItem = useMemo(
     () => navItems.find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/')),
