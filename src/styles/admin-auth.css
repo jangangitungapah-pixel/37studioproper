@@ -1972,7 +1972,6 @@
 }
 /* === BOOKING FORM MODAL: END === */
 
-
 /* === STUDIO SELECT SCROLL CONTAINER: START === */
 .studio-select-list {
   max-height: min(292px, 42dvh);
@@ -14460,7 +14459,6 @@ body:has(.settings-permission-backdrop) {
 }
 /* === BOOKING FORM MODAL COMPACT REPAIR: END === */
 
-
 /* === BOOKING MODAL SOFT ORANGE BORDERS: START === */
 .booking-modal-panel {
   --booking-border-soft: color-mix(in srgb, var(--auth-accent) 22%, transparent);
@@ -16621,3 +16619,97 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === GALLERY CLEAN TOOLBAR POPOVER: END === */
+
+/* === GALLERY MOBILE TOOLBAR ALIGNMENT: START === */
+@media (max-width: 767px) {
+  .gallery-page {
+    position: relative;
+  }
+
+  .gallery-page .customer-page-title {
+    position: relative;
+    padding-right: clamp(78px, 22vw, 96px);
+    margin-bottom: clamp(10px, 3vw, 14px) !important;
+  }
+
+  .gallery-page .gallery-toolbar.gallery-clean-toolbar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(10px, 3vw, 14px);
+    margin-top: clamp(6px, 2.4vw, 12px) !important;
+    padding-top: 0 !important;
+  }
+
+  .gallery-page .gallery-clean-topbar {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch;
+    gap: 0 !important;
+    margin: 0 !important;
+  }
+
+  .gallery-page .customer-search-shell.gallery-clean-search {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0;
+    justify-self: stretch;
+    min-height: 56px;
+    margin: 0 !important;
+  }
+
+  .gallery-page .customer-search-shell.gallery-clean-search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .gallery-page .gallery-mobile-action-shell {
+    position: absolute;
+    top: clamp(8px, 2.2vw, 12px);
+    right: 0;
+    z-index: 8;
+  }
+
+  .gallery-page .gallery-mobile-action-toggle {
+    width: 58px;
+    height: 58px;
+    min-width: 58px;
+    padding: 0 !important;
+    display: inline-grid;
+    place-items: center;
+    justify-content: center;
+    border-radius: 22px;
+  }
+
+  .gallery-page .gallery-mobile-action-toggle .gallery-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .gallery-page .gallery-action-popover {
+    left: auto;
+    right: 0;
+    top: calc(100% + 10px);
+    transform-origin: top right;
+  }
+
+  .gallery-page .gallery-primary-tabs {
+    width: 100%;
+    margin-top: 0 !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .gallery-page .gallery-mobile-action-toggle .gallery-action-label {
+    display: inline;
+  }
+}
+/* === GALLERY MOBILE TOOLBAR ALIGNMENT: END === */

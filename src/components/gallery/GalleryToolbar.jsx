@@ -67,14 +67,16 @@ export default function GalleryToolbar({
             className={`gallery-mobile-action-toggle ${isActionMenuOpen ? 'is-open' : ''}`}
             aria-expanded={isActionMenuOpen}
             onClick={() => setIsActionMenuOpen((current) => !current)}
-            title="Gallery actions"
+            aria-label={isActionMenuOpen ? 'Tutup menu aksi galeri' : 'Buka menu aksi galeri'}
+            aria-controls={isActionMenuOpen ? 'gallery-mobile-action-menu' : undefined}
+            title={isActionMenuOpen ? 'Tutup aksi galeri' : 'Buka aksi galeri'}
           >
             {isActionMenuOpen ? <CloseIcon size={15} /> : <Menu size={15} />}
             <span className="gallery-action-label">Actions</span>
           </button>
 
           {isActionMenuOpen ? (
-            <div className="gallery-action-popover" role="menu" aria-label="Gallery actions">
+            <div id="gallery-mobile-action-menu" className="gallery-action-popover" role="menu" aria-label="Gallery actions">
               <button
                 type="button"
                 onClick={handleToggleSelectMode}
