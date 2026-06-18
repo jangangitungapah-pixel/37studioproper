@@ -39,6 +39,10 @@ import GalleryAlerts from '../../components/gallery/GalleryAlerts.jsx';
 import GalleryBatchBanner from '../../components/gallery/GalleryBatchBanner.jsx';
 import GalleryHero from '../../components/gallery/GalleryHero.jsx';
 import GalleryToolbar from '../../components/gallery/GalleryToolbar.jsx';
+import GalleryAlbumsView from '../../components/gallery/GalleryAlbumsView.jsx';
+import GalleryTimelineView from '../../components/gallery/GalleryTimelineView.jsx';
+import GalleryTrashView from '../../components/gallery/GalleryTrashView.jsx';
+import GalleryUploadModal from '../../components/gallery/GalleryUploadModal.jsx';
 
 // Procedural Lo-fi Ambient Sound Generator using Web Audio API
 class LofiAmbientSynth {
@@ -935,415 +939,108 @@ export default function GalleryPage() {
         <>
           {/* TAB A: PHOTOS (TIMELINE ROADMAP) */}
           {activeTab === 'photos' && (
-            <div className="space-y-6">
-              
-              {/* Category pills using system .gallery-filter-row & .gallery-filter-pill */}
-              <div className="gallery-category-row gallery-filter-row">
-                <button
-                  onClick={() => setSelectedCategoryFilter('All')}
-                  className={`gallery-filter-pill ${selectedCategoryFilter === 'All' ? 'is-active' : ''}`}
-                >
-                  Semua Kategori
-                </button>
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat.value}
-                    onClick={() => setSelectedCategoryFilter(cat.value)}
-                    className={`gallery-filter-pill ${selectedCategoryFilter === cat.value ? 'is-active' : ''}`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              {timelineGroups.length === 0 ? (
-                <EmptyGalleryState activeTab={activeTab} />
-              ) : (
-                timelineGroups.map(group => (
-                  <div key={group.title} className="space-y-4">
-                    
-                    {/* Sticky Floating timeline date header */}
-                    <div className="sticky top-0 z-20 py-2.5 bg-gradient-to-b from-[var(--ui-bg-page)] via-[var(--ui-bg-page)]/90 to-transparent">
-                      <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-2.5">
-                        <span className="w-1.5 h-4 bg-orange-500 rounded-full" />
-                        <span>{group.title}</span>
-                        <span className="text-[10px] text-zinc-500 font-medium">({group.items.length} Foto)</span>
-                      </h3>
-                    </div>
-
-                    {/* Responsive Grid layout */}
-                    <div 
-                      className="gallery-photo-grid grid gap-4 sm:gap-5"
-                      style={{
-                        gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
-                      }}
-                    >
-                      {group.items.map(img => {
-                        const originalIndex = displayedImages.findIndex(i => i.id === img.id);
-                        return (
-                          <PhotoCard
-                            key={img.id}
-                            img={img}
-                            isSelectMode={isSelectMode}
-                            isSelected={selectedIds.has(img.id)}
-                            onSelectToggle={handleSelectToggle}
-                            onCardClick={() => {
-                              if (isSelectMode) {
-                                handleSelectToggle(img.id);
-                              } else {
-                                setActivePhotoIndex(originalIndex);
-                              }
-                            }}
-                            onFavoriteClick={() => handleToggleFavorite(img)}
-                            onDeleteClick={() => handleSoftDelete(img.id)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <GalleryTimelineView
+              categories={CATEGORIES}
+              displayedImages={displayedImages}
+              EmptyGalleryState={EmptyGalleryState}
+              gridColumns={gridColumns}
+              isSelectMode={isSelectMode}
+              onCategoryFilterChange={setSelectedCategoryFilter}
+              onDeleteClick={handleSoftDelete}
+              onFavoriteClick={handleToggleFavorite}
+              onOpenPhoto={setActivePhotoIndex}
+              onSelectToggle={handleSelectToggle}
+              PhotoCard={PhotoCard}
+              selectedCategoryFilter={selectedCategoryFilter}
+              selectedIds={selectedIds}
+              timelineGroups={timelineGroups}
+            />
           )}
 
           {/* TAB B: ALBUMS MENU OR ALBUM DETAILS */}
           {activeTab === 'albums' && (
-            <div>
-              {selectedAlbum === null ? (
-                // Albums Menu
-                <div className="gallery-album-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                  {/* Virtual Album: All Photos */}
-                  <AlbumFolderCard
-                    title="Semua Foto"
-                    count={filteredActiveImages.length}
-                    coverUrl={filteredActiveImages[0]?.url}
-                    onClick={() => setSelectedAlbum('all')}
-                    icon={ImageIcon}
-                  />
-
-                  {/* Virtual Album: Favorites */}
-                  <AlbumFolderCard
-                    title="Favorit Saya"
-                    count={filteredActiveImages.filter(img => img.isFavorite).length}
-                    coverUrl={filteredActiveImages.find(img => img.isFavorite)?.url}
-                    onClick={() => setSelectedAlbum('favorites')}
-                    icon={Heart}
-                    iconColor="text-red-400"
-                  />
-
-                  {/* Predefined Categories */}
-                  {CATEGORIES.map(cat => {
-                    const catImages = filteredActiveImages.filter(img => img.category === cat.value);
-                    return (
-                      <AlbumFolderCard
-                        key={cat.value}
-                        title={cat.label}
-                        count={catImages.length}
-                        coverUrl={catImages[0]?.url}
-                        onClick={() => setSelectedAlbum(cat.value)}
-                        icon={Folder}
-                      />
-                    );
-                  })}
-
-                  {/* Virtual Album: Recently Added */}
-                  <AlbumFolderCard
-                    title="Terbaru"
-                    count={Math.min(filteredActiveImages.length, 8)}
-                    coverUrl={filteredActiveImages[0]?.url}
-                    onClick={() => setSelectedAlbum('recents')}
-                    icon={Sparkles}
-                    iconColor="text-orange-400"
-                  />
-
-                  {/* Virtual Album: Recycle Bin / Sampah */}
-                  <AlbumFolderCard
-                    title="Baru Dihapus"
-                    count={trashedImages.length}
-                    coverUrl={trashedImages[0]?.url}
-                    onClick={() => {
-                      setActiveTab('trash');
-                      setSelectedAlbum(null);
-                    }}
-                    icon={Trash2}
-                    iconColor="text-red-400"
-                  />
-                </div>
-              ) : (
-                // Album details view
-                <div className="space-y-6">
-                  {/* Back banner */}
-                  <div className="flex items-center justify-between border-b border-[var(--auth-border)] pb-4">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setSelectedAlbum(null)}
-                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <div>
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Album</span>
-                        <h3 className="text-base font-bold text-white">
-                          {selectedAlbum === 'all' && 'Semua Foto'}
-                          {selectedAlbum === 'favorites' && 'Favorit Saya'}
-                          {selectedAlbum === 'recents' && '8 Foto Terbaru'}
-                          {CATEGORIES.find(c => c.value === selectedAlbum)?.label}
-                        </h3>
-                      </div>
-                    </div>
-                    <span className="text-xs text-zinc-500 font-bold">{displayedImages.length} Foto</span>
-                  </div>
-
-                  {displayedImages.length === 0 ? (
-                    <EmptyGalleryState activeTab="albums_detail" />
-                  ) : (
-                    <div 
-                      className="gallery-photo-grid grid gap-4 sm:gap-5"
-                      style={{
-                        gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
-                      }}
-                    >
-                      {displayedImages.map((img, idx) => (
-                        <PhotoCard
-                          key={img.id}
-                          img={img}
-                          isSelectMode={isSelectMode}
-                          isSelected={selectedIds.has(img.id)}
-                          onSelectToggle={handleSelectToggle}
-                          onCardClick={() => {
-                            if (isSelectMode) {
-                              handleSelectToggle(img.id);
-                            } else {
-                              setActivePhotoIndex(idx);
-                            }
-                          }}
-                          onFavoriteClick={() => handleToggleFavorite(img)}
-                          onDeleteClick={() => handleSoftDelete(img.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <GalleryAlbumsView
+              AlbumFolderCard={AlbumFolderCard}
+              BackIcon={ChevronLeft}
+              categories={CATEGORIES}
+              displayedImages={displayedImages}
+              EmptyGalleryState={EmptyGalleryState}
+              filteredActiveImages={filteredActiveImages}
+              FolderIcon={Folder}
+              gridColumns={gridColumns}
+              HeartIcon={Heart}
+              ImageIcon={ImageIcon}
+              isSelectMode={isSelectMode}
+              onDeleteClick={handleSoftDelete}
+              onFavoriteClick={handleToggleFavorite}
+              onOpenPhoto={setActivePhotoIndex}
+              onOpenTrash={() => {
+                setActiveTab('trash');
+                setSelectedAlbum(null);
+              }}
+              onSelectAlbum={setSelectedAlbum}
+              onSelectToggle={handleSelectToggle}
+              PhotoCard={PhotoCard}
+              selectedAlbum={selectedAlbum}
+              selectedIds={selectedIds}
+              SparklesIcon={Sparkles}
+              trashedImages={trashedImages}
+              TrashIcon={Trash2}
+            />
           )}
 
           {/* TAB C: TRASH BIN */}
           {activeTab === 'trash' && (
-            <div className="space-y-6">
-              {/* Trash info banner */}
-              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-[var(--auth-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Trash2 size={16} className="text-red-400" />
-                    <span>Baru Dihapus (Recycle Bin)</span>
-                  </h4>
-                  <p className="text-xs text-[var(--ui-text-muted)]">
-                    Foto di bawah telah dihapus dari galeri publik. Anda dapat memulihkannya atau menghapusnya secara permanen.
-                  </p>
-                </div>
-                {displayedImages.length > 0 && (
-                  <button
-                    onClick={async () => {
-                      if (window.confirm('Kosongkan semua sampah secara permanen? Tindakan ini tidak dapat dibatalkan.')) {
-                        setError('');
-                        try {
-                          const promises = displayedImages.map(img => galleryRepository.deleteGalleryItem(img.id));
-                          await Promise.all(promises);
-                          setSuccess('Tempat sampah berhasil dikosongkan.');
-                        } catch {
-                          setError('Gagal mengosongkan tempat sampah.');
-                        }
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-xs font-bold transition-all"
-                  >
-                    <Trash2 size={13} />
-                    <span>KOSONGKAN SAMPAH</span>
-                  </button>
-                )}
-              </div>
-
-              {displayedImages.length === 0 ? (
-                <EmptyGalleryState activeTab="trash" />
-              ) : (
-                <div 
-                  className="gallery-photo-grid grid gap-4 sm:gap-5"
-                  style={{
-                    gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
-                  }}
-                >
-                  {displayedImages.map((img, idx) => (
-                    <PhotoCard
-                      key={img.id}
-                      img={img}
-                      isDeletedTab={true}
-                      isSelectMode={isSelectMode}
-                      isSelected={selectedIds.has(img.id)}
-                      onSelectToggle={handleSelectToggle}
-                      onCardClick={() => {
-                        if (isSelectMode) {
-                          handleSelectToggle(img.id);
-                        } else {
-                          setActivePhotoIndex(idx);
-                        }
-                      }}
-                      onRestoreClick={() => handleRestore(img.id)}
-                      onDeleteClick={() => handlePermanentDelete(img.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <GalleryTrashView
+              displayedImages={displayedImages}
+              EmptyGalleryState={EmptyGalleryState}
+              gridColumns={gridColumns}
+              isSelectMode={isSelectMode}
+              onEmptyTrash={async () => {
+                if (window.confirm('Kosongkan semua sampah secara permanen? Tindakan ini tidak dapat dibatalkan.')) {
+                  setError('');
+                  try {
+                    const promises = displayedImages.map(img => galleryRepository.deleteGalleryItem(img.id));
+                    await Promise.all(promises);
+                    setSuccess('Tempat sampah berhasil dikosongkan.');
+                  } catch {
+                    setError('Gagal mengosongkan tempat sampah.');
+                  }
+                }
+              }}
+              onOpenPhoto={setActivePhotoIndex}
+              onPermanentDeleteClick={handlePermanentDelete}
+              onRestoreClick={handleRestore}
+              onSelectToggle={handleSelectToggle}
+              PhotoCard={PhotoCard}
+              selectedIds={selectedIds}
+              TrashIcon={Trash2}
+            />
           )}
         </>
       )}
 
       {/* 6. UPLOAD NEW PHOTO MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div 
-            onClick={() => !isUploading && setIsModalOpen(false)}
-            className="absolute inset-0 bg-black/75 backdrop-blur-md" 
-          />
-
-          <div className="relative w-full max-w-lg p-6 rounded-3xl bg-zinc-950 border border-[var(--auth-border)] shadow-2xl space-y-6 animate-in fade-in-50 zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Upload className="text-[var(--ui-accent)] w-5 h-5" />
-                <span>Upload Foto Portofolio</span>
-              </h3>
-              <button
-                type="button"
-                disabled={isUploading}
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-white/5 text-[var(--ui-text-muted)] hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleUploadSubmit} className="space-y-4 text-sm">
-              {/* File Drop/Input Area */}
-              <div className="space-y-1.5">
-                <span className="text-xs text-[var(--ui-text-muted)] font-medium">Pilih File Foto</span>
-                <div 
-                  onClick={() => !isUploading && fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 ${
-                    selectedFile 
-                      ? 'border-orange-500/40 bg-orange-500/5' 
-                      : 'border-white/10 hover:border-white/20 bg-white/5'
-                  }`}
-                >
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    disabled={isUploading}
-                    className="hidden"
-                  />
-                  {selectedFile ? (
-                    <>
-                      <FileImage className="text-[var(--ui-accent)] w-9 h-9" />
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-white max-w-[280px] truncate">{selectedFile.name}</p>
-                        <p className="text-[10px] text-zinc-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="text-zinc-500 w-8 h-8 opacity-60" />
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-semibold text-white">Klik untuk memilih gambar</p>
-                        <p className="text-[10px] text-[var(--ui-text-muted)]">Format JPG, PNG, WEBP (Maks 12MB)</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Title input */}
-              <label className="space-y-1.5 block">
-                <span className="text-xs text-[var(--ui-text-muted)] font-medium">Judul Foto *</span>
-                <input 
-                  type="text" 
-                  placeholder="Contoh: Console Mixing A"
-                  required
-                  disabled={isUploading}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 focus:border-orange-500 outline-none text-white transition-all text-xs"
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                />
-              </label>
-
-              {/* Category Select Radio Grid */}
-              <div className="space-y-1.5 block">
-                <span className="text-xs text-[var(--ui-text-muted)] font-medium">Pilih Kategori / Album</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {CATEGORIES.map(cat => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => setUploadCategory(cat.value)}
-                      className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between h-16 ${
-                        uploadCategory === cat.value
-                          ? 'border-orange-500 bg-orange-500/10 text-white'
-                          : 'border-white/10 bg-white/5 text-zinc-400 hover:border-white/20'
-                      }`}
-                    >
-                      <span className="text-[11px] font-bold block">{cat.label}</span>
-                      <span className="text-[9px] opacity-65 font-medium">{cat.value}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Description Input */}
-              <label className="space-y-1.5 block">
-                <span className="text-xs text-[var(--ui-text-muted)] font-medium">Deskripsi Singkat (Opsional)</span>
-                <textarea 
-                  placeholder="Keterangan singkat mengenai foto..."
-                  rows={2}
-                  disabled={isUploading}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 focus:border-orange-500 outline-none text-white transition-all text-xs resize-none"
-                  value={uploadDesc}
-                  onChange={(e) => setUploadDesc(e.target.value)}
-                />
-              </label>
-
-              {/* Form Actions */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/5">
-                <button
-                  type="button"
-                  disabled={isUploading}
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className="flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl bg-[var(--ui-accent)] hover:bg-[var(--ui-accent-strong)] text-black font-bold text-xs tracking-wider transition-all disabled:opacity-50"
-                >
-                  {isUploading ? (
-                    <>
-                      <LoaderCircle className="animate-spin" size={14} />
-                      <span>Mengupload...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={14} />
-                      <span>Upload & Simpan</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <GalleryUploadModal
+        categories={CATEGORIES}
+        CloseIcon={X}
+        fileInputRef={fileInputRef}
+        FileImageIcon={FileImage}
+        isOpen={isModalOpen}
+        isUploading={isUploading}
+        LoaderIcon={LoaderCircle}
+        onCategoryChange={setUploadCategory}
+        onClose={() => setIsModalOpen(false)}
+        onDescriptionChange={setUploadDesc}
+        onFileChange={handleFileChange}
+        onSubmit={handleUploadSubmit}
+        onTitleChange={setUploadTitle}
+        selectedFile={selectedFile}
+        uploadCategory={uploadCategory}
+        uploadDesc={uploadDesc}
+        UploadIcon={Upload}
+        uploadTitle={uploadTitle}
+      />
 
       {/* 7. CINEMATIC FULLSCREEN LIGHTBOX & MEDIA CENTER */}
       {activePhotoIndex !== null && activePhoto && (
