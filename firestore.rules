@@ -392,6 +392,63 @@ service cloud.firestore {
       allow delete: if isApproved() && canAccessBookingData();
     }
 
+    function validPaymentProof(data, proofId) {
+      return data.keys().hasOnly([
+          'id', 'bookingId', 'bookingCode', 'invoiceNumber',
+          'clientUid', 'customer', 'category', 'amount', 'method',
+          'status', 'proofUrl', 'proofPublicId', 'proofFileName',
+          'proofMimeType', 'clientNote', 'adminNote', 'createdAt',
+          'updatedAt', 'reviewedAt', 'reviewedByUid', 'reviewedByName'
+        ]) &&
+        data.id == proofId &&
+        validString(data.bookingId, 1, 128) &&
+        validString(data.bookingCode, 0, 120) &&
+        validString(data.invoiceNumber, 0, 120) &&
+        validString(data.clientUid, 1, 128) &&
+        validString(data.customer, 1, 120) &&
+        data.category in ['dp', 'pelunasan'] &&
+        validNumber(data.amount, 1, 100000000) &&
+        data.method in ['transfer', 'qris'] &&
+        data.status in ['pending', 'approved', 'rejected'] &&
+        validString(data.proofUrl, 1, 1200) &&
+        validString(data.proofPublicId, 1, 240) &&
+        validString(data.proofFileName, 0, 240) &&
+        validString(data.proofMimeType, 0, 120) &&
+        validString(data.clientNote, 0, 600) &&
+        validString(data.adminNote, 0, 600) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validOptionalString(data, 'reviewedAt', 40) &&
+        validOptionalString(data, 'reviewedByUid', 128) &&
+        validOptionalString(data, 'reviewedByName', 120);
+    }
+
+    function clientCreatesPaymentProof(data, proofId) {
+      return isSignedIn() &&
+        validPaymentProof(data, proofId) &&
+        data.clientUid == request.auth.uid &&
+        data.status == 'pending' &&
+        data.adminNote == '' &&
+        data.reviewedAt == '' &&
+        data.reviewedByUid == '' &&
+        data.reviewedByName == '' &&
+        bookingExists(data.bookingId) &&
+        bookingData(data.bookingId).clientUid == request.auth.uid &&
+        bookingData(data.bookingId).status != 'void' &&
+        bookingData(data.bookingId).paymentStatus != 'void';
+    }
+
+    function adminReviewsPaymentProof() {
+      return validPaymentProof(request.resource.data, resource.id) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status in ['approved', 'rejected'] &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'adminNote', 'reviewedAt', 'reviewedByUid', 'reviewedByName', 'updatedAt'
+        ]) &&
+        request.resource.data.reviewedByUid == request.auth.uid &&
+        validIsoTimestampString(request.resource.data.reviewedAt);
+    }
+
     function validBookingMessage(data, messageId) {
       return data.keys().hasOnly([
           'id', 'bookingId', 'clientUid', 'senderUid', 'senderRole',
@@ -416,6 +473,14 @@ service cloud.firestore {
 
     function bookingData(bookingId) {
       return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    }
+
+    match /paymentProofs/{proofId} {
+      allow read: if (isApproved() && canAccessBookingData()) ||
+        (isClientAccount() && resource.data.clientUid == request.auth.uid);
+      allow create: if clientCreatesPaymentProof(request.resource.data, proofId);
+      allow update: if isApproved() && canAccessBookingData() && adminReviewsPaymentProof();
+      allow delete: if isOwner();
     }
 
     match /bookingMessages/{messageId} {
