@@ -41,6 +41,12 @@ import {
   getPackageOptions
 } from '../settings/pricingSettings.js';
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
+import {
+  defaultStudioSettings,
+  formatBankAccountNumber,
+  getStudioPaymentTerms,
+  useStudioSettings,
+} from '../settings/studioSettings.js';
 import { businessHours, durationOptions, statusFilters } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
@@ -58,7 +64,6 @@ const shortMonthNames = [
   'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
 ];
 const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-const studioBankAccount = '3728902822';
 const historyFilterOptions = [
   { key: 'all', label: 'Semua' },
   { key: 'upcoming', label: 'Mendatang' },
@@ -280,6 +285,9 @@ export default function ClientPortalPage() {
   const navigate = useNavigate();
   const pricingSettings = usePricingSettings();
   const invoiceSettings = useInvoiceSettings();
+  const studioSettings = useStudioSettings();
+  const transferAccountNumber = studioSettings.bankAccountNumber || defaultStudioSettings.bankAccountNumber;
+  const studioPaymentTerms = useMemo(() => getStudioPaymentTerms(studioSettings), [studioSettings]);
 
   // Authentication & Loading States
   const [currentUser, setCurrentUser] = useState(null);
@@ -606,13 +614,13 @@ export default function ClientPortalPage() {
 
   // WhatsApp phone normalization
   const whatsappPhone = useMemo(() => {
-    const rawPhone = invoiceSettings.phone || '';
+    const rawPhone = studioSettings.studioPhone || invoiceSettings.phone || '';
     let cleaned = rawPhone.replace(/\D/g, '');
-    if (cleaned.startsWith('0')) {
-      cleaned = '62' + cleaned.substring(1);
-    }
+    if (cleaned.startsWith('00')) cleaned = cleaned.slice(2);
+    if (cleaned.startsWith('0')) cleaned = '62' + cleaned.substring(1);
+    if (cleaned.startsWith('8')) cleaned = '62' + cleaned;
     return cleaned || '628123456789';
-  }, [invoiceSettings.phone]);
+  }, [invoiceSettings.phone, studioSettings.studioPhone]);
 
   async function submitBookingRequest() {
     if (!currentUser || !simulatorDate || isSubmittingRequest) return;
@@ -704,7 +712,7 @@ export default function ClientPortalPage() {
 
   // Billing WhatsApp redirect
   const getBookingWhatsAppUrl = (booking) => {
-    const studioName = invoiceSettings.studioName || '37 Music Studio';
+    const studioName = studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName;
     const amountToPay = booking.paymentStatus === 'dp'
       ? Math.max(0, (booking.total || 0) - (booking.dpAmount || 0))
       : (booking.total || 0);
@@ -723,7 +731,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   };
 
   const getBookingSupportUrl = (booking) => {
-    const studioName = invoiceSettings.studioName || '37 Music Studio';
+    const studioName = studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName;
     const bookingCode = booking.bookingCode || booking.id || '-';
     const text = `Halo *${studioName}*, saya ingin meminta bantuan terkait booking berikut:\n\n📝 *Kode Booking* : ${bookingCode}\n📅 *Tanggal* : ${booking.date}\n⏰ *Jam* : ${String(booking.startHour).padStart(2, '0')}.00 WIB\n\nMohon bantuannya. Terima kasih!`;
 
@@ -771,7 +779,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       `DTEND:${formatCalendarDate(endDate)}`,
       `SUMMARY:${escapeCalendarText(title + ' - 37 Music Studio')}`,
       `DESCRIPTION:${escapeCalendarText('Kode booking: ' + bookingCode)}`,
-      `LOCATION:${escapeCalendarText(invoiceSettings.address || invoiceSettings.studioName || '37 Music Studio')}`,
+      `LOCATION:${escapeCalendarText(invoiceSettings.address || studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName)}`,
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
@@ -1282,17 +1290,17 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">Bank BCA</span>
-                  <strong className="text-base text-white tracking-wide">3728 - 9028 - 22</strong>
-                  <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">A/N: 37 MUSIC STUDIO</span>
-                  <button className="client-copy-account" type="button" onClick={() => copyText(studioBankAccount, 'Nomor rekening disalin.')}>
+                  <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">{studioSettings.bankName || defaultStudioSettings.bankName}</span>
+                  <strong className="text-base text-white tracking-wide">{formatBankAccountNumber(transferAccountNumber)}</strong>
+                  <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
+                  <button className="client-copy-account" type="button" onClick={() => copyText(transferAccountNumber, 'Nomor rekening disalin.')}>
                     <Copy size={12} /> Salin rekening
                   </button>
                 </div>
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
                   <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">Metode QRIS</span>
-                  <strong className="text-sm text-white">Scan di kasir studio</strong>
-                  <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">Mendukung GoPay, OVO, ShopeePay</span>
+                  <strong className="text-sm text-white">{studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</strong>
+                  <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">{studioSettings.qrisNote || defaultStudioSettings.qrisNote}</span>
                 </div>
               </div>
 
@@ -1301,9 +1309,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   <Info size={12} className="text-orange-400" />
                   <span>Ketentuan Pembayaran:</span>
                 </div>
-                <p>• DP minimal sebesar Rp 50.000 diperlukan untuk mengunci slot jika melakukan booking jarak jauh.</p>
-                <p>• Pelunasan dapat dilakukan langsung di studio sebelum latihan dimulai.</p>
-                <p>• Pembatalan sesi &lt; 24 jam menyebabkan DP hangus.</p>
+                {studioPaymentTerms.map((term, index) => (
+                  <p key={term + '-' + index}>• {term}</p>
+                ))}
               </div>
             </div>
           </div>
@@ -1521,7 +1529,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             <div className="p-5 rounded-xl bg-white/[0.01] border border-white/5 space-y-4 text-xs font-sans">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
-                  <h4 className="font-bold text-white text-sm">{invoiceSettings.studioName || '37 Music Studio'}</h4>
+                  <h4 className="font-bold text-white text-sm">{studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName}</h4>
                   <p className="text-[10px] text-[var(--ui-text-muted)] leading-relaxed max-w-[180px]">{invoiceSettings.address || 'Alamat Studio'}</p>
                 </div>
                 <div className="text-right">

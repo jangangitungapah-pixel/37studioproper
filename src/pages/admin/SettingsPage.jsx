@@ -27,6 +27,12 @@ import {
   useInvoiceSettings,
 } from '../../settings/invoiceSettings.js';
 import {
+  defaultStudioSettings,
+  normalizeStudioSettings,
+  saveStudioSettings,
+  useStudioSettings,
+} from '../../settings/studioSettings.js';
+import {
   formatRupiah,
   getSessionOptions,
   makeSettingItemId,
@@ -138,6 +144,11 @@ export default function SettingsPage({ currentUser }) {
         description: 'Profil admin, akses akun, preferensi login, dan pengaturan lokal.',
       },
       {
+        key: 'studio',
+        label: 'Studio Settings',
+        description: 'Identitas studio, alamat, kontak, rekening transfer, QRIS, dan ketentuan pembayaran.',
+      },
+      {
         key: 'pricing',
         label: 'Pricing and Session',
         description: 'Harga session, discount, recording type, dan paket.',
@@ -164,6 +175,9 @@ export default function SettingsPage({ currentUser }) {
   const remoteInvoiceSettings = useInvoiceSettings();
   const [invoiceSettings, setInvoiceSettings] = useState(() => remoteInvoiceSettings);
   const [invoiceSettingsMessage, setInvoiceSettingsMessage] = useState('');
+  const remoteStudioSettings = useStudioSettings();
+  const [studioSettings, setStudioSettings] = useState(() => remoteStudioSettings);
+  const [studioSettingsMessage, setStudioSettingsMessage] = useState('');
   const [accountPreferences, setAccountPreferences] = useState(() => readAccountPreferences(currentUser?.uid));
   const [accountSettingsMessage, setAccountSettingsMessage] = useState('');
   const [accountProfileForm, setAccountProfileForm] = useState(() => ({
@@ -190,6 +204,16 @@ export default function SettingsPage({ currentUser }) {
       window.cancelAnimationFrame(invoiceFrameId);
     };
   }, [remoteInvoiceSettings]);
+
+  useEffect(() => {
+    const studioFrameId = window.requestAnimationFrame(() => {
+      setStudioSettings(remoteStudioSettings);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(studioFrameId);
+    };
+  }, [remoteStudioSettings]);
 
   useEffect(() => {
     const accountFrameId = window.requestAnimationFrame(() => {
@@ -562,6 +586,88 @@ export default function SettingsPage({ currentUser }) {
     } catch (err) {
       console.error('Gagal mengirim reset password:', err);
       setAccountProfileMessage(err?.message || 'Email reset password belum berhasil dikirim.');
+    }
+  }
+
+  function updateStudioSetting(field) {
+    return (event) => {
+      const value = event.target.value;
+
+      setStudioSettings((current) => normalizeStudioSettings({
+        ...current,
+        [field]: value,
+      }));
+
+      if (studioSettingsMessage) setStudioSettingsMessage('');
+    };
+  }
+
+  function updateStudioTerm(index) {
+    return (event) => {
+      const value = event.target.value;
+
+      setStudioSettings((current) => normalizeStudioSettings({
+        ...current,
+        paymentTerms: (current.paymentTerms || defaultStudioSettings.paymentTerms).map((term, termIndex) =>
+          termIndex === index ? value : term
+        ),
+      }));
+
+      if (studioSettingsMessage) setStudioSettingsMessage('');
+    };
+  }
+
+  function addStudioPaymentTerm() {
+    setStudioSettings((current) => normalizeStudioSettings({
+      ...current,
+      paymentTerms: [...(current.paymentTerms || defaultStudioSettings.paymentTerms), ''],
+    }));
+
+    if (studioSettingsMessage) setStudioSettingsMessage('');
+  }
+
+  function removeStudioPaymentTerm(index) {
+    setStudioSettings((current) => {
+      const nextTerms = (current.paymentTerms || defaultStudioSettings.paymentTerms).filter((_term, termIndex) => termIndex !== index);
+
+      return normalizeStudioSettings({
+        ...current,
+        paymentTerms: nextTerms.length ? nextTerms : defaultStudioSettings.paymentTerms,
+      });
+    });
+
+    if (studioSettingsMessage) setStudioSettingsMessage('');
+  }
+
+  async function saveStudioSettingsPage(event) {
+    event.preventDefault();
+
+    try {
+      const nextSettings = await saveStudioSettings({
+        ...studioSettings,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setStudioSettings(nextSettings);
+      setStudioSettingsMessage('Studio settings berhasil disimpan.');
+    } catch (err) {
+      console.error('Failed to save studio settings:', err);
+      setStudioSettingsMessage('Gagal menyimpan studio settings ke Firestore.');
+    }
+  }
+
+  async function resetStudioSettingsPage() {
+    try {
+      const nextSettings = await saveStudioSettings({
+        ...defaultStudioSettings,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setStudioSettings(nextSettings);
+      setStudioSettingsMessage('Studio settings dikembalikan ke default.');
+    } catch (err) {
+      console.error('Failed to reset studio settings:', err);
+      setStudioSettingsMessage('Gagal reset studio settings.');
     }
   }
 
@@ -1079,6 +1185,149 @@ export default function SettingsPage({ currentUser }) {
               </button>
             </div>
           </section>
+        </section>
+      )}
+
+      {activeSubpage === 'studio' && (
+        <section className="settings-section settings-studio-section">
+          <div className="settings-section-head">
+            <div>
+              <h3>Studio Identity</h3>
+              <p>Data ini menjadi sumber utama untuk client portal, invoice, reminder WhatsApp, dan informasi pembayaran.</p>
+            </div>
+          </div>
+
+          <form className="settings-form settings-studio-form" onSubmit={saveStudioSettingsPage}>
+            <StudioTextField
+              id="studio-setting-name"
+              label="Nama Studio"
+              placeholder="37 Music Studio"
+              value={studioSettings.studioName}
+              onChange={updateStudioSetting('studioName')}
+            />
+
+            <StudioTextField
+              id="studio-setting-phone"
+              inputMode="tel"
+              label="Nomor Telepon / WhatsApp Studio"
+              placeholder="08xxxxxxxxxx"
+              value={studioSettings.studioPhone}
+              onChange={updateStudioSetting('studioPhone')}
+            />
+
+            <label className="settings-textarea-field" htmlFor="studio-setting-address">
+              <span>Alamat Studio</span>
+              <textarea
+                id="studio-setting-address"
+                placeholder="Contoh: Jl. Studio No. 37, Tangerang"
+                value={studioSettings.studioAddress}
+                onChange={updateStudioSetting('studioAddress')}
+              />
+            </label>
+
+            <div className="settings-invoice-preview" aria-label="Preview studio identity">
+              <small>Preview Identitas Studio</small>
+              <strong>{studioSettings.studioName || defaultStudioSettings.studioName}</strong>
+              {studioSettings.studioAddress ? <span>{studioSettings.studioAddress}</span> : null}
+              {studioSettings.studioPhone ? <span>{studioSettings.studioPhone}</span> : null}
+              <em>Dipakai lintas portal</em>
+            </div>
+
+            <div className="settings-section-head settings-studio-subhead">
+              <div>
+                <h3>Transfer & QRIS</h3>
+                <p>Informasi ini tampil di tab Tagihan client dan dipakai untuk instruksi pembayaran.</p>
+              </div>
+            </div>
+
+            <StudioTextField
+              id="studio-setting-bank-name"
+              label="Nama Bank"
+              placeholder="Bank BCA"
+              value={studioSettings.bankName}
+              onChange={updateStudioSetting('bankName')}
+            />
+
+            <StudioTextField
+              id="studio-setting-bank-account"
+              inputMode="numeric"
+              label="Nomor Rekening Transfer"
+              placeholder="3728902822"
+              value={studioSettings.bankAccountNumber}
+              onChange={updateStudioSetting('bankAccountNumber')}
+            />
+
+            <StudioTextField
+              id="studio-setting-bank-holder"
+              label="Nama Pemilik Rekening"
+              placeholder="37 MUSIC STUDIO"
+              value={studioSettings.bankAccountHolder}
+              onChange={updateStudioSetting('bankAccountHolder')}
+            />
+
+            <StudioTextField
+              id="studio-setting-qris-label"
+              label="Label QRIS"
+              placeholder="Scan di kasir studio"
+              value={studioSettings.qrisLabel}
+              onChange={updateStudioSetting('qrisLabel')}
+            />
+
+            <StudioTextField
+              id="studio-setting-qris-note"
+              label="Catatan QRIS"
+              placeholder="Mendukung GoPay, OVO, ShopeePay"
+              value={studioSettings.qrisNote}
+              onChange={updateStudioSetting('qrisNote')}
+            />
+
+            <div className="settings-invoice-preview" aria-label="Preview rekening studio">
+              <small>Preview Pembayaran</small>
+              <strong>{studioSettings.bankName || defaultStudioSettings.bankName}</strong>
+              <span>{studioSettings.bankAccountNumber || defaultStudioSettings.bankAccountNumber}</span>
+              <span>A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
+              <em>{studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</em>
+            </div>
+
+            <label className="settings-textarea-field" htmlFor="studio-setting-payment-term-0">
+              <span>Ketentuan Pembayaran</span>
+              <div className="settings-list">
+                {(studioSettings.paymentTerms || defaultStudioSettings.paymentTerms).map((term, index) => (
+                  <article className="settings-list-item" key={'studio-payment-term-' + index}>
+                    <textarea
+                      id={'studio-setting-payment-term-' + index}
+                      placeholder="Tulis ketentuan pembayaran..."
+                      value={term}
+                      onChange={updateStudioTerm(index)}
+                    />
+                    <div className="settings-row-actions">
+                      <button type="button" onClick={() => removeStudioPaymentTerm(index)}>
+                        <Trash2 size={15} />
+                        Hapus
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </label>
+
+            <div className="settings-form-actions">
+              <button className="settings-mini-button is-ghost" type="button" onClick={addStudioPaymentTerm}>
+                Tambah Ketentuan
+              </button>
+              <button className="settings-mini-button is-ghost" type="button" onClick={resetStudioSettingsPage}>
+                Reset Default
+              </button>
+              <button className="settings-mini-button is-primary" type="submit">
+                <Save size={15} />
+                Simpan Studio Settings
+              </button>
+            </div>
+
+            {studioSettingsMessage ? (
+              <p className="settings-invoice-message" role="status">{studioSettingsMessage}</p>
+            ) : null}
+          </form>
         </section>
       )}
 

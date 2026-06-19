@@ -540,6 +540,25 @@ service cloud.firestore {
       allow delete: if isApproved() && canAccessCustomerData();
     }
 
+    function validStudioSettings(data) {
+      return data.keys().hasOnly([
+          'studioName', 'studioAddress', 'studioPhone',
+          'bankName', 'bankAccountNumber', 'bankAccountHolder',
+          'qrisLabel', 'qrisNote', 'paymentTerms', 'updatedAt'
+        ]) &&
+        validString(data.studioName, 1, 120) &&
+        validString(data.studioAddress, 0, 500) &&
+        validString(data.studioPhone, 0, 32) &&
+        validString(data.bankName, 1, 80) &&
+        validString(data.bankAccountNumber, 1, 80) &&
+        validString(data.bankAccountHolder, 1, 120) &&
+        validString(data.qrisLabel, 0, 160) &&
+        validString(data.qrisNote, 0, 240) &&
+        data.paymentTerms is list &&
+        data.paymentTerms.size() <= 12 &&
+        validOptionalString(data, 'updatedAt', 40);
+    }
+
     function validPricingSettings(data) {
       return data.keys().hasOnly(['sessions', 'discounts', 'recordingTypes', 'packages']) &&
         data.sessions is list && data.sessions.size() > 0 && data.sessions.size() <= 50 &&
@@ -557,6 +576,12 @@ service cloud.firestore {
         validString(data.footer, 1, 500) &&
         data.paperSize in ['80mm', '58mm'] &&
         validOptionalString(data, 'updatedAt', 40);
+    }
+
+    match /settings/studio {
+      allow read: if true;
+      allow create, update: if isApproved() && hasPermission('settings') && validStudioSettings(request.resource.data);
+      allow delete: if false;
     }
 
     match /settings/pricing {

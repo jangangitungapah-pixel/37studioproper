@@ -16,6 +16,7 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { defaultInvoiceSettings, useInvoiceSettings } from '../../settings/invoiceSettings.js';
+import { mergeStudioSettingsIntoInvoiceSettings, useStudioSettings } from '../../settings/studioSettings.js';
 
 const billingFilterOptions = [
   { key: 'all', label: 'Semua', description: 'Semua aktivitas booking' },
@@ -984,7 +985,12 @@ export default function BillingPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
-  const invoiceSettings = useInvoiceSettings();
+  const rawInvoiceSettings = useInvoiceSettings();
+  const studioSettings = useStudioSettings();
+  const invoiceSettings = useMemo(
+    () => mergeStudioSettingsIntoInvoiceSettings(rawInvoiceSettings, studioSettings),
+    [rawInvoiceSettings, studioSettings]
+  );
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
