@@ -47,6 +47,7 @@ import BookingConversationPanel from '../components/booking/BookingConversationP
 import '../styles/admin-auth.css';
 import '../styles/client-portal-calendar.css';
 import '../styles/client-portal-overhaul.css';
+import '../styles/client-portal-calendar-tight.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -122,9 +123,9 @@ function shiftDate(date, viewMode, direction) {
   return addMonths(date, direction);
 }
 function getGridTemplate(viewMode, visibleDayCount) {
-  if (viewMode === 'day') return '86px minmax(238px, 1fr)';
-  if (viewMode === 'week') return '86px repeat(' + visibleDayCount + ', minmax(108px, 1fr))';
-  return '86px repeat(' + visibleDayCount + ', minmax(82px, 1fr))';
+  if (viewMode === 'day') return '70px minmax(220px, 1fr)';
+  if (viewMode === 'week') return '70px repeat(' + visibleDayCount + ', minmax(94px, 1fr))';
+  return '70px repeat(' + visibleDayCount + ', minmax(68px, 1fr))';
 }
 function getSlotSpanRows(booking, startIndex) {
   const duration = Math.max(1, Math.ceil(Number(booking.durationHours) || 1));

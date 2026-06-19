@@ -1,0 +1,318 @@
+/* === CLIENT CALENDAR ULTRA COMPACT SOLID GRID: START === */
+
+.client-portal-page {
+  --client-calendar-hour-solid: #050608;
+  --client-calendar-corner-solid: #050608;
+  --client-calendar-head-solid: #0d0e10;
+  --client-calendar-today-solid: #201309;
+  --client-calendar-cell-solid: #101113;
+  --client-calendar-cell-alt: #141416;
+  --client-calendar-line-tight: rgba(255, 255, 255, 0.155);
+  --client-calendar-row-tight: 40px;
+  --client-calendar-head-tight: 42px;
+}
+
+.client-portal-page .client-calendar-tab {
+  gap: 8px !important;
+}
+
+.client-portal-page .client-calendar-controls {
+  padding: 10px 12px !important;
+  border-radius: 18px !important;
+  gap: 9px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.012)),
+    #0b0b0d !important;
+}
+
+.client-portal-page .client-calendar-controls > div:first-child {
+  gap: 7px !important;
+}
+
+.client-portal-page .client-calendar-controls button {
+  min-height: 34px !important;
+  border-radius: 11px !important;
+  font-weight: 650 !important;
+}
+
+.client-portal-page .client-calendar-controls button[class*="w-8"] {
+  width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+}
+
+.client-portal-page .client-calendar-controls strong {
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] {
+  padding: 3px !important;
+  border-radius: 12px !important;
+  background: #19191b !important;
+}
+
+.client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] button {
+  min-height: 30px !important;
+  padding-inline: 9px !important;
+  border-radius: 9px !important;
+  font-size: 0.66rem !important;
+  font-weight: 680 !important;
+}
+
+.client-portal-page .client-calendar-legend {
+  margin-top: 0 !important;
+  gap: 6px 12px !important;
+  padding-inline: 1px !important;
+  font-size: 0.66rem !important;
+  line-height: 1.2 !important;
+}
+
+.client-portal-page .client-calendar-legend span {
+  gap: 5px !important;
+}
+
+.client-portal-page .client-calendar-grid-shell,
+.client-portal-page .schedule-grid-shell {
+  border-radius: 20px !important;
+  background: #0e0f11 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 18px 54px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.client-portal-page .schedule-grid-scroll {
+  background: #0e0f11 !important;
+}
+
+.client-portal-page .schedule-grid {
+  grid-auto-rows: minmax(var(--client-calendar-row-tight), auto) !important;
+  background: var(--client-calendar-cell-solid) !important;
+  background-image: none !important;
+  border-radius: 0 !important;
+}
+
+/* Solid corner and hour column. No glass. No ghosting. */
+.client-portal-page .schedule-grid-corner {
+  min-height: var(--client-calendar-head-tight) !important;
+  background: var(--client-calendar-corner-solid) !important;
+  background-color: var(--client-calendar-corner-solid) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  border-right: 1px solid var(--client-calendar-line-tight) !important;
+  border-bottom: 1px solid var(--client-calendar-line-tight) !important;
+  border-top-left-radius: 18px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    1px 0 0 rgba(255, 255, 255, 0.07),
+    0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+.client-portal-page .schedule-grid-corner span {
+  font-size: 0.58rem !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.2em !important;
+}
+
+.client-portal-page .schedule-time-cell {
+  min-height: var(--client-calendar-row-tight) !important;
+  background: var(--client-calendar-hour-solid) !important;
+  background-color: var(--client-calendar-hour-solid) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  border-right: 1px solid var(--client-calendar-line-tight) !important;
+  border-bottom: 1px solid var(--client-calendar-line-tight) !important;
+  padding: 0 7px !important;
+  gap: 5px !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 0.56rem !important;
+  font-weight: 560 !important;
+  line-height: 1.1 !important;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.client-portal-page .schedule-time-cell svg {
+  width: 10px !important;
+  height: 10px !important;
+  flex: 0 0 auto;
+  opacity: 0.72 !important;
+}
+
+.client-portal-page .schedule-day-head {
+  min-height: var(--client-calendar-head-tight) !important;
+  background: var(--client-calendar-head-solid) !important;
+  background-color: var(--client-calendar-head-solid) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  border-right: 1px solid var(--client-calendar-line-tight) !important;
+  border-bottom: 1px solid var(--client-calendar-line-tight) !important;
+  gap: 2px !important;
+}
+
+.client-portal-page .schedule-day-head.is-today {
+  background: var(--client-calendar-today-solid) !important;
+  background-image: none !important;
+}
+
+.client-portal-page .schedule-day-head span {
+  font-size: 0.54rem !important;
+  font-weight: 560 !important;
+  opacity: 0.72 !important;
+}
+
+.client-portal-page .schedule-day-head strong {
+  font-size: 0.78rem !important;
+  font-weight: 720 !important;
+}
+
+.client-portal-page .schedule-slot-cell {
+  min-height: var(--client-calendar-row-tight) !important;
+  padding: 2px !important;
+  background: var(--client-calendar-cell-solid) !important;
+  background-color: var(--client-calendar-cell-solid) !important;
+  background-image: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.112) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.112) !important;
+}
+
+.client-portal-page .schedule-slot-cell:nth-child(even) {
+  background: var(--client-calendar-cell-alt) !important;
+}
+
+.client-portal-page .schedule-slot-button {
+  min-height: 34px !important;
+  border-radius: 8px !important;
+}
+
+.client-portal-page .schedule-slot-add-hint {
+  font-size: 0.74rem !important;
+}
+
+.client-portal-page .schedule-booking-block {
+  min-height: calc(100% - 4px) !important;
+  margin: 2px !important;
+  padding: 5px 6px !important;
+  gap: 2px !important;
+  border-radius: 10px !important;
+  border-width: 1px !important;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.client-portal-page .schedule-booking-glow {
+  display: none !important;
+}
+
+.client-portal-page .schedule-booking-topline {
+  gap: 3px !important;
+}
+
+.client-portal-page .schedule-booking-topline strong {
+  font-size: 0.54rem !important;
+  font-weight: 680 !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .schedule-booking-topline em {
+  font-size: 0.48rem !important;
+  font-weight: 620 !important;
+}
+
+.client-portal-page .schedule-booking-title {
+  font-size: 0.5rem !important;
+  font-weight: 560 !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .schedule-booking-meta {
+  font-size: 0.48rem !important;
+  font-weight: 560 !important;
+  line-height: 1.05 !important;
+}
+
+.client-portal-page .schedule-booking-meta b {
+  font-size: 0.48rem !important;
+  font-weight: 660 !important;
+}
+
+.client-portal-page .schedule-booking-block.is-occupied-other {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.026) 0,
+      rgba(255, 255, 255, 0.026) 6px,
+      rgba(255, 255, 255, 0.012) 6px,
+      rgba(255, 255, 255, 0.012) 12px
+    ),
+    #202123 !important;
+}
+
+.client-portal-page .schedule-booking-block.is-occupied-other strong {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-weight: 660 !important;
+}
+
+.client-portal-page .schedule-booking-block.is-occupied-other .schedule-booking-title,
+.client-portal-page .schedule-booking-block.is-occupied-other .schedule-booking-meta {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+@media (max-width: 767px) {
+  .client-portal-page main {
+    padding-inline: 12px !important;
+  }
+
+  .client-portal-page .client-calendar-controls {
+    padding: 9px 10px !important;
+    border-radius: 17px !important;
+  }
+
+  .client-portal-page .client-calendar-controls strong {
+    font-size: 0.8rem !important;
+  }
+
+  .client-portal-page .client-calendar-controls div[class*="bg-white/5"][class*="p-1"] button {
+    min-height: 28px !important;
+    font-size: 0.62rem !important;
+  }
+
+  .client-portal-page .client-calendar-legend {
+    font-size: 0.64rem !important;
+  }
+
+  .client-portal-page .schedule-grid-corner span {
+    font-size: 0.52rem !important;
+  }
+
+  .client-portal-page .schedule-time-cell {
+    padding-inline: 6px !important;
+    font-size: 0.53rem !important;
+  }
+
+  .client-portal-page .schedule-time-cell svg {
+    width: 9px !important;
+    height: 9px !important;
+  }
+
+  .client-portal-page .schedule-booking-block {
+    padding: 4px 5px !important;
+    border-radius: 9px !important;
+  }
+
+  .client-portal-page .schedule-booking-topline strong {
+    font-size: 0.5rem !important;
+  }
+
+  .client-portal-page .schedule-booking-title,
+  .client-portal-page .schedule-booking-meta {
+    font-size: 0.46rem !important;
+  }
+}
+
+/* === CLIENT CALENDAR ULTRA COMPACT SOLID GRID: END === */
