@@ -8,6 +8,7 @@ import {
   identifyOneSignalUser,
   initOneSignal,
   isOneSignalConfigured,
+  ONE_SIGNAL_NATIVE_NOTIFY_BUTTON,
   requestOneSignalPushPermission,
 } from '../../services/oneSignalService.js';
 import '../../styles/onesignal-permission.css';
@@ -74,6 +75,8 @@ export default function OneSignalPermissionWidget() {
   }, [currentUser, isConfigured, isVisibleRoute, role]);
 
   if (!isVisibleRoute || isDismissed) return null;
+
+  if (isConfigured && ONE_SIGNAL_NATIVE_NOTIFY_BUTTON) return null;
 
   const normalizedPermission = permission === true ? 'granted' : permission;
   const isGranted = normalizedPermission === 'granted';

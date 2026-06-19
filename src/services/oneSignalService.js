@@ -1,4 +1,6 @@
-export const ONE_SIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
+export const ONE_SIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '03b8a3dc-1adf-4dfd-8758-6fd0425d6d14';
+export const ONE_SIGNAL_SAFARI_WEB_ID = import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || 'web.onesignal.auto.18c45a69-7bf7-46f8-9483-0a7df130c3b6';
+export const ONE_SIGNAL_NATIVE_NOTIFY_BUTTON = true;
 export const ONE_SIGNAL_WORKER_PATH = 'push/onesignal/OneSignalSDKWorker.js';
 export const ONE_SIGNAL_WORKER_SCOPE = '/push/onesignal/';
 export const ONE_SIGNAL_SDK_URL = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
@@ -8,6 +10,12 @@ let oneSignalScriptPromise = null;
 
 function isBrowser() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+function isLocalhost() {
+  if (!isBrowser()) return false;
+
+  return ['localhost', '127.0.0.1'].includes(window.location.hostname);
 }
 
 function getOneSignalDeferredQueue() {
@@ -27,7 +35,7 @@ export function isOneSignalBrowserSupported() {
     Boolean(ONE_SIGNAL_APP_ID) &&
     'serviceWorker' in navigator &&
     'Notification' in window &&
-    (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    (window.location.protocol === 'https:' || isLocalhost())
   );
 }
 
@@ -151,12 +159,13 @@ export async function initOneSignal() {
   oneSignalInitPromise = runWithOneSignal(async (OneSignal) => {
     try {
       await OneSignal.init({
+        allowLocalhostAsSecureOrigin: true,
         appId: ONE_SIGNAL_APP_ID,
         autoResubscribe: true,
         notificationClickHandlerAction: 'focus',
         notificationClickHandlerMatch: 'origin',
         notifyButton: {
-          enable: false,
+          enable: ONE_SIGNAL_NATIVE_NOTIFY_BUTTON,
         },
         promptOptions: {
           slidedown: {
@@ -173,6 +182,7 @@ export async function initOneSignal() {
             ],
           },
         },
+        safari_web_id: ONE_SIGNAL_SAFARI_WEB_ID,
         serviceWorkerParam: {
           scope: ONE_SIGNAL_WORKER_SCOPE,
         },

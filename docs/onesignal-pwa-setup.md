@@ -64,3 +64,38 @@ https://studio-37.web.app
 4. Login ke client/admin portal.
 5. Klik Aktifkan Notifikasi.
 6. Cek Audience di OneSignal dashboard.
+
+## Official OneSignal Web Snippet Mapping
+
+Dashboard snippet:
+
+```html
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "03b8a3dc-1adf-4dfd-8758-6fd0425d6d14",
+      safari_web_id: "web.onesignal.auto.18c45a69-7bf7-46f8-9483-0a7df130c3b6",
+      notifyButton: {
+        enable: true,
+      },
+    });
+  });
+</script>
+```
+
+Di app React ini snippet tidak ditempel langsung ke `index.html` agar SDK tidak double init.
+
+Mapping dilakukan di:
+
+```txt
+src/services/oneSignalService.js
+```
+
+Tambahan yang tetap dipakai karena app sudah PWA:
+
+```js
+serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js"
+serviceWorkerParam: { scope: "/push/onesignal/" }
+```
