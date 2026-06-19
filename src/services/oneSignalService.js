@@ -1,6 +1,7 @@
 export const ONE_SIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '03b8a3dc-1adf-4dfd-8758-6fd0425d6d14';
 export const ONE_SIGNAL_SAFARI_WEB_ID = import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || 'web.onesignal.auto.18c45a69-7bf7-46f8-9483-0a7df130c3b6';
 export const ONE_SIGNAL_NATIVE_NOTIFY_BUTTON = true;
+export const ONE_SIGNAL_USE_EXTERNAL_ID_LOGIN = false;
 export const ONE_SIGNAL_WORKER_PATH = 'push/onesignal/OneSignalSDKWorker.js';
 export const ONE_SIGNAL_WORKER_SCOPE = '/push/onesignal/';
 export const ONE_SIGNAL_SDK_URL = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
@@ -240,7 +241,7 @@ export async function identifyOneSignalUser(user, role = 'client') {
   await initOneSignal();
 
   return runWithOneSignal(async (OneSignal) => {
-    if (typeof OneSignal.login === 'function') {
+    if (ONE_SIGNAL_USE_EXTERNAL_ID_LOGIN && typeof OneSignal.login === 'function') {
       await OneSignal.login(user.uid);
     }
 
@@ -249,6 +250,7 @@ export async function identifyOneSignalUser(user, role = 'client') {
         app: '37_music_studio',
         email: cleanTagValue(user.email),
         role: cleanTagValue(role),
+        uid: cleanTagValue(user.uid),
       });
     }
 
@@ -262,8 +264,12 @@ export async function logoutOneSignalUser() {
   await initOneSignal();
 
   return runWithOneSignal(async (OneSignal) => {
-    if (typeof OneSignal.logout === 'function') {
+    if (ONE_SIGNAL_USE_EXTERNAL_ID_LOGIN && typeof OneSignal.logout === 'function') {
       await OneSignal.logout();
+    }
+
+    if (typeof OneSignal.User?.removeTags === 'function') {
+      await OneSignal.User.removeTags(['uid', 'email', 'role']);
     }
 
     return getOneSignalState();

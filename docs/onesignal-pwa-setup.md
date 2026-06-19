@@ -99,3 +99,22 @@ Tambahan yang tetap dipakai karena app sudah PWA:
 serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js"
 serviceWorkerParam: { scope: "/push/onesignal/" }
 ```
+
+## External ID Login sementara dimatikan
+
+OneSignal `login(external_id)` valid untuk menyatukan subscription dengan user yang sudah dikenal, tetapi pada setup PWA ini console sempat memunculkan error:
+
+```txt
+Unrecognized operation: login-user
+```
+
+Untuk menjaga subscribe flow tetap stabil, app ini sementara memakai tags tanpa `login()`:
+
+```txt
+app=37_music_studio
+role=admin/client
+uid=<firebase uid>
+email=<firebase email>
+```
+
+Push targeting bisa memakai filter tag `uid` atau `role`.
