@@ -685,6 +685,8 @@ export default function ClientPortalPage() {
           durationHours: actualDuration,
           startHour: Number(simulatorStartHour),
           total: pricingBreakdown.total,
+          email: currentUser?.email || '',
+          uid: currentUser?.uid || '',
         },
       });
 
