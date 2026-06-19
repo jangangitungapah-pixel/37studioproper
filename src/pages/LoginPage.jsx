@@ -15,6 +15,8 @@ import {
 import { RecaptchaVerifier } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
+import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
+import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 import '../styles/firebase-auth.css';
 
@@ -38,6 +40,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roleDecision, setRoleDecision] = useState(null);
   
   // Phone OTP Flow States
   const [isOtpSent, setIsOtpSent] = useState(false);
@@ -54,8 +57,25 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = adminAuthRepository.subscribeAdminAuth((authState) => {
       if (authState.isReady && authState.isAuthenticated) {
-        const target = redirectTo ? redirectTo : '/admin/schedule';
-        navigate(target, { replace: true });
+        const access = authState.user?.access;
+
+        if ([PORTAL_ACCESS.ALLOWED, PORTAL_ACCESS.ADMIN_PENDING].includes(access)) {
+          const target = redirectTo ? redirectTo : '/admin/schedule';
+          navigate(target, { replace: true });
+          return;
+        }
+
+        if (access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+          setRoleDecision({ access, identity: authState.user });
+          setError('Akun ini terdaftar sebagai client dan tidak memiliki izin ke Portal Admin.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        if ([PORTAL_ACCESS.ADMIN_BLOCKED, PORTAL_ACCESS.INVALID_ACCOUNT, PORTAL_ACCESS.MISSING_ACCOUNT].includes(access)) {
+          setError('Request akses admin untuk akun ini sudah ditolak, tidak aktif, atau data role-nya tidak valid.');
+          setIsSubmitting(false);
+        }
       }
     });
 
@@ -157,6 +177,9 @@ export default function LoginPage() {
         setSuccess('Pendaftaran berhasil! Akun Anda telah dibuat.');
       }
     } catch (err) {
+      if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+        setRoleDecision({ access: err.access, identity: err.identity });
+      }
       setError(adminAuthRepository.getAdminAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -230,8 +253,12 @@ export default function LoginPage() {
         throw new Error('Hasil verifikasi tidak ditemukan. Kirim ulang OTP.');
       }
       await verificationResult.confirm(verificationCode);
+      await adminAuthRepository.ensureCurrentAdminAccess();
       setSuccess('Verifikasi berhasil! Mengarahkan...');
     } catch (err) {
+      if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+        setRoleDecision({ access: err.access, identity: err.identity });
+      }
       setError(adminAuthRepository.getAdminAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -256,6 +283,9 @@ export default function LoginPage() {
       }
       // Redirect fallback will leave this page, so do not reset submitting there.
     } catch (err) {
+      if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+        setRoleDecision({ access: err.access, identity: err.identity });
+      }
       setError(adminAuthRepository.getAdminAuthErrorMessage(err));
       setIsSubmitting(false);
     }
@@ -265,6 +295,17 @@ export default function LoginPage() {
     setAuthMode((current) => (current === 'signIn' ? 'signUp' : 'signIn'));
     setError('');
     setSuccess('');
+  }
+
+  async function cancelWrongPortalLogin() {
+    setIsSubmitting(true);
+    try {
+      await adminAuthRepository.signOutAdmin();
+      setRoleDecision(null);
+      setError('Login admin dibatalkan. Akun client tetap tidak diubah.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -533,6 +574,26 @@ export default function LoginPage() {
           <span>Masuk dengan Google</span>
         </button>
       </section>
+      <AccountRoleDecisionDialog
+        badge="Role client terdeteksi"
+        title={roleDecision ? 'Akun ini bukan akun admin' : ''}
+        message="Email atau nomor ini sudah terdaftar sebagai client. Satu akun hanya dapat memiliki satu role, sehingga akses admin tidak diberikan."
+        detail={roleDecision?.identity?.email || roleDecision?.identity?.phoneNumber || ''}
+        isBusy={isSubmitting}
+        actions={[
+          {
+            key: 'open-client',
+            label: 'Lanjut ke Portal Client',
+            onClick: () => navigate('/client/portal', { replace: true }),
+          },
+          {
+            key: 'cancel-admin-login',
+            label: 'Batalkan Login Admin',
+            icon: 'close',
+            onClick: cancelWrongPortalLogin,
+          },
+        ]}
+      />
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Clipboard, Crown, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
@@ -91,6 +91,7 @@ function getAccountRoleLabel(user) {
 function getAccountStatusLabel(user) {
   if (user?.isApproved || user?.status === 'approved') return 'Approved';
   if (user?.status === 'pending') return 'Pending Approval';
+  if (user?.status === 'rejected') return 'Rejected';
 
   return user?.status || 'Unknown';
 }
@@ -247,7 +248,7 @@ export default function SettingsPage({ currentUser }) {
         const list = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
-          if (doc.id !== currentUser?.uid) {
+          if (doc.id !== currentUser?.uid && data.role !== 'client') {
             list.push({ id: doc.id, ...data });
           }
         });
@@ -278,13 +279,16 @@ export default function SettingsPage({ currentUser }) {
     }
   }
 
-  async function handleDeleteUser(userId) {
-    if (window.confirm('Apakah Anda yakin ingin menghapus akun ini? Akun tersebut tidak akan dapat masuk.')) {
+  async function handleRejectUser(userId) {
+    if (window.confirm('Tolak atau nonaktifkan request admin ini? Akun tidak akan mendapat akses admin, tetapi pemilik akun masih dapat memilih beralih menjadi client.')) {
       try {
         const docRef = doc(firestoreDb, 'users', userId);
-        await deleteDoc(docRef);
+        await updateDoc(docRef, {
+          status: 'rejected',
+          updatedAt: new Date().toISOString(),
+        });
       } catch (err) {
-        console.error('Failed to delete user:', err);
+        console.error('Failed to reject admin user:', err);
       }
     }
   }
@@ -1443,7 +1447,7 @@ export default function SettingsPage({ currentUser }) {
           <div className="settings-section-head">
             <div>
               <h3>Daftar Registrasi Admin</h3>
-              <p>Akun baru yang mendaftar melalui Email, Google, atau Nomor HP. Setujui untuk memberi akses atau hapus untuk menolak.</p>
+              <p>Hanya akun dengan role admin yang tampil di sini. Setujui untuk memberi akses atau tolak tanpa menghapus identitas Firebase.</p>
             </div>
           </div>
 
@@ -1504,9 +1508,9 @@ export default function SettingsPage({ currentUser }) {
 
                     <button
                       type="button"
-                      aria-label="Hapus user"
-                      title="Hapus user"
-                      onClick={() => handleDeleteUser(user.id)}
+                      aria-label="Tolak atau nonaktifkan admin"
+                      title="Tolak atau nonaktifkan admin"
+                      onClick={() => handleRejectUser(user.id)}
                       className="settings-mini-button settings-approval-delete-button settings-approval-icon-button"
                     >
                       <Trash2 size={13} />

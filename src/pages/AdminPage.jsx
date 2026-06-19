@@ -24,6 +24,7 @@ import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
+import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
@@ -182,8 +183,20 @@ function AutoApproveView({ currentUser, onLogout }) {
         const data = userSnap.data();
         setTargetUser(data);
 
+        if (data.role !== 'admin') {
+          setStatus('error');
+          setErrorMsg('Akun ini tidak lagi memiliki request admin. Role client tidak dapat disetujui sebagai admin.');
+          return;
+        }
+
         if (data.status === 'approved') {
           setStatus('success');
+          return;
+        }
+
+        if (data.status !== 'pending') {
+          setStatus('error');
+          setErrorMsg('Request admin akun ini sudah ditolak atau tidak aktif.');
           return;
         }
 
@@ -397,6 +410,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated) return;
+    if ([PORTAL_ACCESS.WRONG_PORTAL_CLIENT, PORTAL_ACCESS.ADMIN_BLOCKED, PORTAL_ACCESS.INVALID_ACCOUNT, PORTAL_ACCESS.MISSING_ACCOUNT].includes(authState.user?.access)) {
+      return;
+    }
 
     if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem || !isRoutePermitted) {
       navigate(getPermittedDefaultLandingPath(authState.user), { replace: true });
@@ -419,6 +435,52 @@ export default function AdminPage() {
   if (!authState.isAuthenticated) {
     const redirectTo = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?redirectTo=${redirectTo}`} replace />;
+  }
+
+  if (authState.user?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+    return (
+      <main className="theme-container auth-page" data-auth-surface="wrong-role">
+        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="wrong-role-title">
+          <div className="auth-copy">
+            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
+              <AlertCircle size={14} />
+              <span>Role Client</span>
+            </div>
+            <h1 id="wrong-role-title" style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Akses Admin Tidak Diizinkan</h1>
+            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '22px' }}>
+              Akun <strong>{authState.user?.email || authState.user?.phoneNumber || 'ini'}</strong> terdaftar sebagai client. Satu akun tidak dapat memiliki role client dan admin sekaligus.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <button className="auth-google-btn" type="button" onClick={() => navigate('/client/portal', { replace: true })} style={{ marginTop: 0 }}>
+              <span>Buka Portal Client</span>
+            </button>
+            <button className="auth-google-btn" type="button" onClick={handleLogout} style={{ marginTop: 0, borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}>
+              <span>Keluar Akun</span>
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if ([PORTAL_ACCESS.ADMIN_BLOCKED, PORTAL_ACCESS.INVALID_ACCOUNT, PORTAL_ACCESS.MISSING_ACCOUNT].includes(authState.user?.access)) {
+    return (
+      <main className="theme-container auth-page" data-auth-surface="blocked-role">
+        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="blocked-role-title">
+          <div className="auth-copy">
+            <AlertCircle size={34} style={{ color: 'var(--auth-danger)', margin: '0 auto 14px' }} />
+            <h1 id="blocked-role-title" style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Request Admin Tidak Aktif</h1>
+            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '22px' }}>
+              Request akses admin untuk akun ini telah ditolak atau status role-nya tidak valid.
+            </p>
+          </div>
+          <button className="auth-google-btn" type="button" onClick={handleLogout} style={{ marginTop: 0 }}>
+            <span>Keluar Akun</span>
+          </button>
+        </section>
+      </main>
+    );
   }
 
   // Handle URL-based approval redirect

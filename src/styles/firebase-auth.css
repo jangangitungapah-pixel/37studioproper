@@ -182,3 +182,128 @@
   background: #fbf8f5;
   border-color: var(--auth-border-strong);
 }
+
+.account-role-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 3, 4, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.account-role-dialog {
+  width: min(100%, 430px);
+  padding: 26px;
+  border: 1px solid rgba(255, 138, 42, 0.28);
+  border-radius: 22px;
+  color: #f7f3ec;
+  background: linear-gradient(155deg, rgba(28, 26, 25, 0.98), rgba(10, 10, 12, 0.99));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+  font-family: 'Montserrat', sans-serif;
+}
+
+.account-role-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  color: #ff9b4a;
+  background: rgba(255, 138, 42, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 138, 42, 0.18);
+}
+
+.account-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: #ff9b4a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.account-role-dialog h2 {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: clamp(1.2rem, 4vw, 1.55rem);
+  line-height: 1.25;
+}
+
+.account-role-dialog p {
+  margin: 0;
+  color: rgba(247, 243, 236, 0.7);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.account-role-detail {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  color: rgba(247, 243, 236, 0.78);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.account-role-actions {
+  display: grid;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.account-role-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.account-role-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.account-role-action:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.account-role-action.is-primary {
+  border-color: #ff8a2a;
+  color: #130b05;
+  background: #ff8a2a;
+}
+
+.account-role-action.is-secondary {
+  color: rgba(247, 243, 236, 0.8);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 520px) {
+  .account-role-overlay {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .account-role-dialog {
+    padding: 22px 18px 18px;
+    border-radius: 20px;
+  }
+}

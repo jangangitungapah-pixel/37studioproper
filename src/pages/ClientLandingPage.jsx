@@ -33,8 +33,11 @@ import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, query, where, or, orderBy, onSnapshot } from 'firebase/firestore';
-import { firebaseAuth, firestoreDb } from '../lib/firebase.js';
+import { firebaseAuth } from '../lib/firebase.js';
+import { adminBookingRepository } from '../services/adminBookingRepository.js';
+import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
+import { accountRoleRepository } from '../services/accountRoleRepository.js';
+import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 import '../styles/client-portal-polish.css';
 
@@ -46,6 +49,8 @@ export default function ClientLandingPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(() => Boolean(firebaseAuth));
   const [userBookings, setUserBookings] = useState([]);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [bookingFeedback, setBookingFeedback] = useState('');
 
   // Form states for simulator (will be filled as soon as auth state resolves)
   const [name, setName] = useState('');
@@ -54,11 +59,31 @@ export default function ClientLandingPage() {
   // Client Auth Check
   useEffect(() => {
     if (!firebaseAuth) return;
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+    let checkSequence = 0;
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      const currentSequence = ++checkSequence;
       if (!user) {
         setCurrentUser(null);
-      } else {
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const result = await accountRoleRepository.resolvePortalAccount(user, 'client');
+        if (currentSequence !== checkSequence) return;
+
+        if (result.access !== PORTAL_ACCESS.ALLOWED) {
+          setCurrentUser(null);
+          return;
+        }
+
         setCurrentUser(user);
+        try {
+          await syncClientCustomerProfile(user);
+        } catch (profileError) {
+          console.error('Role client valid, tetapi profil customer belum tersinkron:', profileError);
+        }
         
         // Auto pre-fill
         if (user.displayName) {
@@ -68,50 +93,27 @@ export default function ClientLandingPage() {
           const raw = user.phoneNumber.replace(/^\+/, '');
           setPhone(raw);
         }
+      } catch (error) {
+        console.error('Gagal memeriksa role akun di landing client:', error);
+        if (currentSequence === checkSequence) setCurrentUser(null);
+      } finally {
+        if (currentSequence === checkSequence) setAuthLoading(false);
       }
-      setAuthLoading(false);
     });
     return unsubscribe;
   }, []);
 
   // Real-time Booking History for Client
   useEffect(() => {
-    if (!currentUser || !firestoreDb) return;
+    if (!currentUser) return;
 
-    const emailQueryStr = currentUser.email || '___no_email___';
-    const phoneQueryStr = currentUser.phoneNumber || '___no_phone___';
-    const phoneNormalized = phoneQueryStr.replace(/^\+/, '');
-
-    const bookingsRef = collection(firestoreDb, 'bookings');
-    const q = query(
-      bookingsRef,
-      or(
-        where('email', '==', emailQueryStr),
-        where('phone', '==', phoneQueryStr),
-        where('phone', '==', phoneNormalized),
-        where('customerPhoneKey', '==', phoneNormalized)
-      ),
-      orderBy('date', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const bookingsList = [];
-        snapshot.forEach((docSnap) => {
-          bookingsList.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          });
-        });
-        setUserBookings(bookingsList);
-      },
+    return adminBookingRepository.subscribeClientBookingsForUser(
+      currentUser,
+      (bookingsList) => setUserBookings(bookingsList),
       (err) => {
         console.error('Error fetching client booking history:', err);
       }
     );
-
-    return unsubscribe;
   }, [currentUser]);
 
   const handleLogout = async () => {
@@ -262,6 +264,55 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
 
     return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
   }, [name, phone, sessionType, packageId, recordingTypeId, date, startHour, actualDuration, pricingBreakdown, invoiceSettings, whatsappPhone, pricingSettings.packages, sessionOptions, recordingTypeOptions]);
+
+  async function handleBookingAction(event) {
+    if (!currentUser) return;
+
+    event.preventDefault();
+    if (isSubmittingRequest) return;
+
+    const contactWindow = window.open('about:blank', '_blank');
+    if (contactWindow) contactWindow.opener = null;
+    const selectedPackage = packageOptions.find((item) => item.key === packageId);
+    const selectedSession = sessionOptions.find((item) => item.key === sessionType);
+    const selectedRecording = recordingTypeOptions.find((item) => item.key === recordingTypeId);
+    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
+
+    setIsSubmittingRequest(true);
+    setBookingFeedback('');
+
+    try {
+      await adminBookingRepository.createClientBookingRequest(currentUser, {
+        customer: name || currentUser.displayName || 'Client',
+        phone: phone || currentUser.phoneNumber || '',
+        packageId,
+        packageLabel: selectedPackage?.label || '',
+        pricingMode: pricingBreakdown.mode,
+        sessionType: selectedPackage ? 'package' : sessionType,
+        sessionLabel,
+        recordingTypeId: recordingTypeId === 'none' ? '' : recordingTypeId,
+        recordingTypeLabel: selectedRecording?.label || '',
+        title: sessionLabel,
+        date,
+        startHour: Number(startHour),
+        startTimeLabel: `${String(startHour).padStart(2, '0')}.00`,
+        durationHours: actualDuration,
+        subtotal: pricingBreakdown.subtotal,
+        discountAmount: pricingBreakdown.discountAmount,
+        appliedDiscounts: pricingBreakdown.appliedDiscounts,
+        total: pricingBreakdown.total,
+      });
+
+      setBookingFeedback('Permintaan tersimpan dan sudah masuk ke dashboard admin.');
+      if (contactWindow) contactWindow.location.replace(whatsappUrl);
+    } catch (error) {
+      if (contactWindow) contactWindow.close();
+      console.error('Gagal menyimpan booking request:', error);
+      setBookingFeedback('Gagal menyimpan permintaan. Silakan coba lagi.');
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  }
 
   // Dynamic lists mapping icons to service cards
   const serviceCards = [
@@ -797,11 +848,16 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   href={whatsappUrl}
                   target="_blank" 
                   rel="noopener noreferrer"
+                  onClick={handleBookingAction}
+                  aria-disabled={isSubmittingRequest}
                   className="w-full py-4 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold text-xs tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-green-500/10 transition-transform active:scale-[0.98]"
                 >
                   <Phone size={14} />
-                  <span>KIRIM JADWAL VIA WHATSAPP</span>
+                  <span>{isSubmittingRequest ? 'MENYIMPAN REQUEST...' : currentUser ? 'KIRIM REQUEST + WHATSAPP' : 'KIRIM JADWAL VIA WHATSAPP'}</span>
                 </a>
+                {bookingFeedback ? (
+                  <p className="mt-3 text-center text-xs text-[var(--ui-text-muted)]" role="status">{bookingFeedback}</p>
+                ) : null}
               </div>
             </div>
           </div>

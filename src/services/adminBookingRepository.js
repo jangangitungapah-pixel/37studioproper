@@ -39,6 +39,16 @@ function normalizeBillingDate(value) {
   return String(date.getFullYear()) + String(date.getMonth() + 1).padStart(2, '0') + String(date.getDate()).padStart(2, '0');
 }
 
+function normalizeClientPhone(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = '62' + digits.slice(1);
+  if (digits.startsWith('8')) digits = '62' + digits;
+
+  return digits;
+}
+
 export function createBookingCode(booking, fallbackId = '') {
   const datePart = normalizeBillingDate(booking?.date || booking?.createdAt);
   const seed = [
@@ -236,6 +246,7 @@ export function subscribeClientBookingsForUser(user, callback, onError) {
   const phoneNoPlus = phoneRaw.replace(/^\+/, '');
   const filters = [];
 
+  if (user.uid) filters.push(where('clientUid', '==', user.uid));
   if (email) filters.push(where('email', '==', email));
   if (emailLower && emailLower !== email) filters.push(where('email', '==', emailLower));
   if (phoneRaw) filters.push(where('phone', '==', phoneRaw));
@@ -358,6 +369,62 @@ export async function createManualBooking(booking) {
   return cleanBooking;
 }
 
+export async function createClientBookingRequest(user, booking) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  if (!user?.uid) {
+    throw new Error('Client harus login untuk mengirim permintaan booking.');
+  }
+
+  const bookingId = doc(collection(firestoreDb, 'bookings')).id;
+  const now = new Date().toISOString();
+  const phone = String(user.phoneNumber || booking.phone || '').trim();
+  const total = Math.max(0, Number(booking.total) || 0);
+  const cleanBooking = normalizeBookingBillingIdentity({
+    id: bookingId,
+    customer: String(booking.customer || user.displayName || 'Client').trim().slice(0, 120),
+    phone,
+    customerPhoneKey: normalizeClientPhone(phone),
+    email: String(user.email || '').trim(),
+    clientUid: user.uid,
+    customerId: `auth_${user.uid}`,
+    source: 'clientPortal',
+    bookingRequestStatus: 'submitted',
+    packageId: String(booking.packageId || 'none'),
+    packageLabel: String(booking.packageLabel || ''),
+    pricingMode: String(booking.pricingMode || 'session'),
+    sessionType: String(booking.sessionType || 'rehearsal'),
+    sessionLabel: String(booking.sessionLabel || 'Sesi Studio'),
+    recordingTypeId: String(booking.recordingTypeId || ''),
+    recordingTypeLabel: String(booking.recordingTypeLabel || ''),
+    title: String(booking.title || booking.sessionLabel || 'Permintaan Booking').slice(0, 160),
+    date: String(booking.date || ''),
+    startHour: Number(booking.startHour),
+    startTimeLabel: String(booking.startTimeLabel || ''),
+    durationHours: Number(booking.durationHours),
+    paymentMethod: '',
+    paymentHistory: [],
+    paidAmount: 0,
+    lastPaymentAt: '',
+    lastPaymentMethod: '',
+    paymentStatus: 'pending',
+    status: 'pending',
+    subtotal: Math.max(0, Number(booking.subtotal) || total),
+    discountAmount: Math.max(0, Number(booking.discountAmount) || 0),
+    appliedDiscounts: Array.isArray(booking.appliedDiscounts) ? booking.appliedDiscounts.slice(0, 50) : [],
+    total,
+    dpAmount: 0,
+    invoiceAmount: total,
+    createdAt: now,
+    updatedAt: now,
+  }, bookingId);
+
+  await setDoc(doc(firestoreDb, 'bookings', bookingId), cleanBooking);
+  return cleanBooking;
+}
+
 export async function updateManualBooking(booking) {
   if (!isFirebaseConfigured || !firestoreDb) {
     throw new Error('Firebase belum dikonfigurasi.');
@@ -466,6 +533,7 @@ export async function migrateLocalBookingsToFirestore(localBookings) {
 export const adminBookingRepository = {
   subscribeManualBookings,
   createManualBooking,
+  createClientBookingRequest,
   updateManualBooking,
   deleteManualBooking,
   migrateLocalBookingsToFirestore,

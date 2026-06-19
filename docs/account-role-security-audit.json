@@ -1,0 +1,5 @@
+{
+  "score": 5,
+  "summary": "The one-account-one-role rules use a single users/{uid} authority document, strict role/status pairs, owner-only approval, and one narrowly scoped self-service downgrade from pending or rejected admin to active client.",
+  "findings": []
+}

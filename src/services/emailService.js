@@ -1,5 +1,5 @@
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -64,6 +64,9 @@ export async function sendNewUserNotificationEmail(userDoc) {
     try {
       const mailRef = doc(collection(firestoreDb, 'mail'));
       await setDoc(mailRef, {
+        createdBy: firebaseAuth?.currentUser?.uid || userDoc.uid,
+        type: 'adminApprovalRequest',
+        createdAt: new Date().toISOString(),
         to: 'marsicprod@gmail.com',
         message: {
           subject: `[37 Music Studio] Pendaftaran Admin Baru: ${userDoc.displayName}`,

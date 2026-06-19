@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CalendarDays,
+  CheckCircle2,
   Clock3,
   CreditCard,
   Phone,
@@ -8,7 +9,11 @@ import {
   Tag,
   UserRound,
   X,
+  XCircle,
 } from 'lucide-react';
+import { firebaseAuth } from '../../lib/firebase.js';
+import { getBookingRequestStatusMeta } from '../../services/bookingCommunicationRepository.js';
+import BookingConversationPanel from '../booking/BookingConversationPanel.jsx';
 
 const statusLabelMap = {
   pending: 'Pending',
@@ -120,13 +125,18 @@ export default function BookingDetailModal({
   isOpen,
   onClose,
   onEdit,
+  onRequestStatusChange,
 }) {
+  const [isUpdatingRequest, setIsUpdatingRequest] = useState(false);
   const status = getBookingStatus(booking);
   const statusLabel = statusLabelMap[status] || status;
   const title = booking?.title || booking?.bandName || booking?.sessionLabel || booking?.packageLabel || 'Detail Booking';
   const sessionLabel = booking?.packageLabel || booking?.recordingTypeLabel || booking?.sessionLabel || '-';
   const paidAmount = getPaidAmount(booking, status);
   const invoiceAmount = getInvoiceAmount(booking, paidAmount);
+  const requestStatus = getBookingRequestStatusMeta(booking);
+  const isClientRequest = booking?.source === 'clientPortal' && Boolean(booking?.clientUid);
+  const isLinkedClientBooking = Boolean(booking?.clientUid);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -153,6 +163,17 @@ export default function BookingDetailModal({
   function handleBackdropClick(event) {
     if (event.target === event.currentTarget) {
       onClose();
+    }
+  }
+
+  async function updateRequestStatus(nextStatus) {
+    if (!onRequestStatusChange || isUpdatingRequest) return;
+
+    setIsUpdatingRequest(true);
+    try {
+      await onRequestStatusChange(booking, nextStatus);
+    } finally {
+      setIsUpdatingRequest(false);
     }
   }
 
@@ -205,6 +226,14 @@ export default function BookingDetailModal({
             ) : null}
           </section>
 
+          {requestStatus ? (
+            <section className={'booking-request-state is-' + requestStatus.tone} aria-label="Status request client">
+              <span>Request Client</span>
+              <strong>{requestStatus.label}</strong>
+              {booking.adminResponseNote ? <small>{booking.adminResponseNote}</small> : null}
+            </section>
+          ) : null}
+
           <section className="booking-detail-compact-card" aria-label="Informasi booking">
             <div className="booking-detail-compact-section-title">
               <UserRound size={15} aria-hidden="true" />
@@ -255,9 +284,37 @@ export default function BookingDetailModal({
               </span>
             </div>
           </details>
+
+          {isLinkedClientBooking ? (
+            <BookingConversationPanel
+              booking={booking}
+              role="admin"
+              user={firebaseAuth?.currentUser}
+            />
+          ) : null}
         </div>
 
         <footer className="booking-detail-compact-actions">
+          {isClientRequest && booking.bookingRequestStatus === 'submitted' ? (
+            <>
+              <button className="booking-detail-compact-button is-confirm" disabled={isUpdatingRequest} type="button" onClick={() => updateRequestStatus('confirmed')}>
+                <CheckCircle2 size={15} /> Konfirmasi
+              </button>
+              <button className="booking-detail-compact-button is-reject" disabled={isUpdatingRequest} type="button" onClick={() => updateRequestStatus('rejected')}>
+                <XCircle size={15} /> Tolak
+              </button>
+            </>
+          ) : null}
+          {isClientRequest && booking.bookingRequestStatus === 'cancellation_requested' ? (
+            <>
+              <button className="booking-detail-compact-button is-confirm" disabled={isUpdatingRequest} type="button" onClick={() => updateRequestStatus('cancelled')}>
+                <CheckCircle2 size={15} /> Setujui Batal
+              </button>
+              <button className="booking-detail-compact-button is-reject" disabled={isUpdatingRequest} type="button" onClick={() => updateRequestStatus('confirmed')}>
+                <XCircle size={15} /> Pertahankan
+              </button>
+            </>
+          ) : null}
           <button className="booking-detail-compact-button is-edit" type="button" onClick={() => onEdit(booking)}>
             Edit Booking
           </button>

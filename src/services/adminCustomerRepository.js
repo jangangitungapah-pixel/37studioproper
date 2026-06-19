@@ -7,6 +7,7 @@ import {
   orderBy,
   query,
   setDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -86,6 +87,30 @@ export async function deleteManualCustomer(customerId) {
   await deleteDoc(docRef);
 }
 
+function normalizeCustomerPhone(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = '62' + digits.slice(1);
+  if (digits.startsWith('8')) digits = '62' + digits;
+
+  return digits;
+}
+
+export async function findCustomerByPhone(phone) {
+  if (!isFirebaseConfigured || !firestoreDb) return null;
+
+  const phoneKey = normalizeCustomerPhone(phone);
+  if (!phoneKey) return null;
+
+  const customersRef = collection(firestoreDb, 'customers');
+  const snapshot = await getDocs(query(customersRef, where('phoneKey', '==', phoneKey)));
+  const exactProfile = snapshot.docs.find((customerDoc) => customerDoc.data().authUid);
+  const selected = exactProfile || snapshot.docs[0];
+
+  return selected ? { id: selected.id, ...selected.data() } : null;
+}
+
 export async function migrateLocalCustomersToFirestore(localCustomers) {
   if (!isFirebaseConfigured || !firestoreDb || !Array.isArray(localCustomers) || localCustomers.length === 0) {
     return;
@@ -138,5 +163,6 @@ export const adminCustomerRepository = {
   createManualCustomer,
   updateManualCustomer,
   deleteManualCustomer,
+  findCustomerByPhone,
   migrateLocalCustomersToFirestore,
 };

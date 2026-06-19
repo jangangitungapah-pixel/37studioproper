@@ -6,22 +6,32 @@ import {
   History,
   CreditCard,
   LogOut,
-  User,
-  Sparkles,
   Clock,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
-  AlertCircle,
   Phone,
   Clock3,
   Info,
   Volume2,
-  Receipt
+  Receipt,
+  CalendarPlus,
+  Copy,
+  Check,
+  MessageCircle,
+  MapPin,
+  Search
 } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
+import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
+import { accountRoleRepository } from '../services/accountRoleRepository.js';
+import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import {
+  bookingCommunicationRepository,
+  getBookingRequestStatusMeta,
+} from '../services/bookingCommunicationRepository.js';
 import {
   usePricingSettings,
   formatRupiah,
@@ -33,8 +43,10 @@ import {
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions, statusFilters } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
+import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
 import '../styles/admin-auth.css';
 import '../styles/client-portal-calendar.css';
+import '../styles/client-portal-overhaul.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -45,6 +57,13 @@ const shortMonthNames = [
   'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
 ];
 const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const studioBankAccount = '3728902822';
+const historyFilterOptions = [
+  { key: 'all', label: 'Semua' },
+  { key: 'upcoming', label: 'Mendatang' },
+  { key: 'unpaid', label: 'Belum lunas' },
+  { key: 'completed', label: 'Selesai' },
+];
 
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -272,6 +291,10 @@ export default function ClientPortalPage() {
   const [bookings, setBookings] = useState([]);
   const [calendarSlots, setCalendarSlots] = useState([]);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historyFilter, setHistoryFilter] = useState('all');
+  const [actionFeedback, setActionFeedback] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   // Calendar parameters
   const [calendarViewMode, setCalendarViewMode] = useState('week'); // 'day' | 'week' | 'month'
@@ -290,13 +313,41 @@ export default function ClientPortalPage() {
   // Client Check Auth
   useEffect(() => {
     if (!firebaseAuth) return;
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+    let checkSequence = 0;
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      const currentSequence = ++checkSequence;
       if (!user) {
         navigate('/client/login', { replace: true });
-      } else {
-        setCurrentUser(user);
+        setAuthLoading(false);
+        return;
       }
-      setAuthLoading(false);
+
+      try {
+        const result = await accountRoleRepository.resolvePortalAccount(user, 'client');
+        if (currentSequence !== checkSequence) return;
+
+        if (result.access !== PORTAL_ACCESS.ALLOWED) {
+          setCurrentUser(null);
+          navigate('/client/login', { replace: true });
+          return;
+        }
+
+        setCurrentUser(user);
+        try {
+          await syncClientCustomerProfile(user);
+        } catch (profileError) {
+          console.error('Akses client valid, tetapi profil customer belum tersinkron:', profileError);
+        }
+      } catch (error) {
+        console.error('Gagal memeriksa akses Portal Client:', error);
+        if (currentSequence === checkSequence) {
+          setCurrentUser(null);
+          navigate('/client/login', { replace: true });
+        }
+      } finally {
+        if (currentSequence === checkSequence) setAuthLoading(false);
+      }
     });
     return unsubscribe;
   }, [navigate]);
@@ -335,12 +386,18 @@ export default function ClientPortalPage() {
       const bPhoneKey = (b.customerPhoneKey || '').replace(/^\+/, '');
 
       return (
+        (b.clientUid && b.clientUid === currentUser.uid) ||
         (emailStr && bEmail === emailStr) ||
         (phoneNormalized && bPhone === phoneNormalized) ||
         (phoneNormalized && bPhoneKey === phoneNormalized)
       );
     });
   }, [bookings, currentUser]);
+
+  const unreadAdminMessages = useMemo(
+    () => userBookings.filter((booking) => booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false).length,
+    [userBookings]
+  );
 
   const calendarBookings = useMemo(() => {
     const ownBookingsById = new Map(
@@ -437,6 +494,53 @@ export default function ClientPortalPage() {
       return true;
     });
   }, [userBookings]);
+
+  const upcomingBooking = useMemo(() => {
+    const now = new Date();
+
+    return userBookings
+      .filter((booking) => {
+        const status = getBookingStatus(booking).toLowerCase();
+        if (['cancelled', 'canceled', 'void', 'deleted'].includes(status)) return false;
+        const bookingDate = new Date(`${booking.date}T${String(booking.startHour || 0).padStart(2, '0')}:00:00`);
+        return bookingDate >= now;
+      })
+      .toSorted((first, second) => {
+        const firstDate = new Date(`${first.date}T${String(first.startHour || 0).padStart(2, '0')}:00:00`);
+        const secondDate = new Date(`${second.date}T${String(second.startHour || 0).padStart(2, '0')}:00:00`);
+        return firstDate - secondDate;
+      })[0] || null;
+  }, [userBookings]);
+
+  const recentBookings = useMemo(() => userBookings.slice(0, 3), [userBookings]);
+
+  const filteredHistoryBookings = useMemo(() => {
+    const normalizedQuery = historyQuery.trim().toLowerCase();
+    const now = new Date();
+
+    return userBookings.filter((booking) => {
+      const status = getBookingStatus(booking).toLowerCase();
+      const bookingDate = new Date(`${booking.date}T${String(booking.startHour || 0).padStart(2, '0')}:00:00`);
+      const matchesQuery = !normalizedQuery || [
+        booking.bookingCode,
+        booking.bookingId,
+        booking.sessionLabel,
+        booking.packageLabel,
+        booking.title,
+        booking.date,
+      ].some((value) => String(value || '').toLowerCase().includes(normalizedQuery));
+
+      if (!matchesQuery) return false;
+      if (historyFilter === 'upcoming') {
+        return bookingDate >= now && !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
+      }
+      if (historyFilter === 'unpaid') return status === 'pending' || status === 'dp';
+      if (historyFilter === 'completed') {
+        return bookingDate < now && !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
+      }
+      return true;
+    });
+  }, [historyFilter, historyQuery, userBookings]);
 
   const handleLogout = async () => {
     try {
@@ -545,6 +649,54 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
   }, [currentUser, simulatorDate, simulatorStartHour, actualDuration, simPackageId, simSessionType, simRecordingTypeId, pricingBreakdown, invoiceSettings, whatsappPhone, pricingSettings.packages, sessionOptions, recordingTypeOptions]);
 
+  async function submitBookingRequest() {
+    if (!currentUser || !simulatorDate || isSubmittingRequest) return;
+
+    const contactWindow = window.open('about:blank', '_blank');
+    if (contactWindow) contactWindow.opener = null;
+    const selectedPackage = packageOptions.find((item) => item.key === simPackageId);
+    const selectedSession = sessionOptions.find((item) => item.key === simSessionType);
+    const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
+    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
+
+    setIsSubmittingRequest(true);
+    setActionFeedback('');
+
+    try {
+      await adminBookingRepository.createClientBookingRequest(currentUser, {
+        customer: currentUser.displayName || currentUser.email?.split('@')[0] || 'Client',
+        phone: currentUser.phoneNumber || '',
+        packageId: simPackageId,
+        packageLabel: selectedPackage?.label || '',
+        pricingMode: pricingBreakdown.mode,
+        sessionType: selectedPackage ? 'package' : simSessionType,
+        sessionLabel,
+        recordingTypeId: simRecordingTypeId === 'none' ? '' : simRecordingTypeId,
+        recordingTypeLabel: selectedRecording?.label || '',
+        title: sessionLabel,
+        date: simulatorDate,
+        startHour: Number(simulatorStartHour),
+        startTimeLabel: `${String(simulatorStartHour).padStart(2, '0')}.00`,
+        durationHours: actualDuration,
+        subtotal: pricingBreakdown.subtotal,
+        discountAmount: pricingBreakdown.discountAmount,
+        appliedDiscounts: pricingBreakdown.appliedDiscounts,
+        total: pricingBreakdown.total,
+      });
+
+      setIsSimulatorOpen(false);
+      setActiveTab('history');
+      setActionFeedback('Permintaan booking tersimpan di Firestore dan dikirim ke admin.');
+      if (contactWindow) contactWindow.location.replace(whatsappUrl);
+    } catch (error) {
+      if (contactWindow) contactWindow.close();
+      console.error('Gagal mengirim booking request:', error);
+      setActionFeedback('Permintaan booking gagal disimpan. Silakan coba lagi.');
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  }
+
   // Billing WhatsApp redirect
   const getBookingWhatsAppUrl = (booking) => {
     const studioName = invoiceSettings.studioName || '37 Music Studio';
@@ -565,6 +717,74 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
     return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
   };
 
+  const getBookingSupportUrl = (booking) => {
+    const studioName = invoiceSettings.studioName || '37 Music Studio';
+    const bookingCode = booking.bookingCode || booking.id || '-';
+    const text = `Halo *${studioName}*, saya ingin meminta bantuan terkait booking berikut:\n\n📝 *Kode Booking* : ${bookingCode}\n📅 *Tanggal* : ${booking.date}\n⏰ *Jam* : ${String(booking.startHour).padStart(2, '0')}.00 WIB\n\nMohon bantuannya. Terima kasih!`;
+
+    return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
+  };
+
+  const showActionFeedback = (message) => {
+    setActionFeedback(message);
+    window.setTimeout(() => setActionFeedback(''), 2400);
+  };
+
+  const copyText = async (value, successMessage) => {
+    try {
+      await navigator.clipboard.writeText(String(value || ''));
+      showActionFeedback(successMessage);
+    } catch {
+      showActionFeedback('Tidak dapat menyalin. Silakan salin manual.');
+    }
+  };
+
+  const downloadCalendarEvent = (booking) => {
+    const startHour = Number(booking.startHour) || 0;
+    const duration = Number(booking.durationHours || booking.duration) || 1;
+    const startDate = new Date(`${booking.date}T${String(startHour).padStart(2, '0')}:00:00`);
+    const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000);
+    const title = booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio';
+    const bookingCode = booking.bookingCode || booking.id || '-';
+    const escapeCalendarText = (value) => String(value || '').replaceAll('\\', '\\\\').replaceAll(',', '\\,').replaceAll(';', '\\;').replaceAll('\n', '\\n');
+    const formatCalendarDate = (date) => [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+      'T',
+      String(date.getHours()).padStart(2, '0'),
+      String(date.getMinutes()).padStart(2, '0'),
+      '00',
+    ].join('');
+    const calendarContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//37 Music Studio//Client Portal//ID',
+      'BEGIN:VEVENT',
+      `UID:${escapeCalendarText(booking.id || bookingCode)}@37musicstudio`,
+      `DTSTART:${formatCalendarDate(startDate)}`,
+      `DTEND:${formatCalendarDate(endDate)}`,
+      `SUMMARY:${escapeCalendarText(title + ' - 37 Music Studio')}`,
+      `DESCRIPTION:${escapeCalendarText('Kode booking: ' + bookingCode)}`,
+      `LOCATION:${escapeCalendarText(invoiceSettings.address || invoiceSettings.studioName || '37 Music Studio')}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const calendarBlob = new Blob([calendarContent], { type: 'text/calendar;charset=utf-8' });
+    const calendarUrl = URL.createObjectURL(calendarBlob);
+    const downloadLink = document.createElement('a');
+    downloadLink.href = calendarUrl;
+    downloadLink.download = `booking-${bookingCode}.ics`;
+    downloadLink.click();
+    window.setTimeout(() => URL.revokeObjectURL(calendarUrl), 1000);
+    showActionFeedback('Sesi ditambahkan ke file kalender.');
+  };
+
+  const studioMapsUrl = useMemo(() => {
+    const destination = [invoiceSettings.studioName, invoiceSettings.address].filter(Boolean).join(' ');
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination || '37 Music Studio')}`;
+  }, [invoiceSettings.address, invoiceSettings.studioName]);
+
   // Calendar rendering parameters
   const visibleDays = useMemo(() => getVisibleDays(calendarSelectedDate, calendarViewMode), [calendarSelectedDate, calendarViewMode]);
   const bookingBlocks = useMemo(() => getVisibleBookingBlocks(calendarBookings, visibleDays), [calendarBookings, visibleDays]);
@@ -584,6 +804,23 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   const handleBookingBlockClick = (booking) => {
     setSelectedBookingDetail(booking);
   };
+
+  async function requestCancellation(booking) {
+    if (!currentUser || booking.bookingRequestStatus === 'cancellation_requested') return;
+    const shouldContinue = window.confirm('Kirim permintaan pembatalan ke admin? Slot belum dibatalkan sampai admin menyetujuinya.');
+    if (!shouldContinue) return;
+
+    try {
+      await bookingCommunicationRepository.requestBookingCancellation({ booking, user: currentUser });
+      setSelectedBookingDetail((current) => current?.id === booking.id
+        ? { ...current, bookingRequestStatus: 'cancellation_requested' }
+        : current);
+      showActionFeedback('Permintaan pembatalan dikirim ke admin.');
+    } catch (error) {
+      console.error('Gagal meminta pembatalan booking:', error);
+      showActionFeedback('Permintaan pembatalan belum berhasil dikirim.');
+    }
+  }
 
   if (authLoading) {
     return (
@@ -627,23 +864,18 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       `}</style>
 
       {/* Header Profile Area */}
-      <header className="relative w-full max-w-4xl mx-auto px-4 pt-6 pb-2 flex items-center justify-between border-b border-white/5 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[var(--ui-accent-strong)] to-[var(--ui-accent)] flex items-center justify-center">
-            <Volume2 className="text-white w-4 h-4" />
-          </div>
-          <span className="font-semibold text-sm tracking-wider text-white">37 PORTAL</span>
+      <header className="client-portal-header relative w-full max-w-4xl mx-auto z-10">
+        <div className="client-header-copy">
+          <p>Client Portal</p>
+          <h1>Halo, {currentUser?.displayName?.split(' ')[0] || 'Client'}</h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-right flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-[var(--ui-text-muted)] font-semibold">Aktif</span>
-            <span className="text-xs text-white max-w-[120px] truncate">{currentUser?.displayName || currentUser?.email || 'User'}</span>
-          </div>
           <button
             onClick={handleLogout}
-            className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-            title="Log Out"
+            className="client-logout-button"
+            title="Keluar dari portal"
+            aria-label="Keluar dari portal"
           >
             <LogOut size={14} />
           </button>
@@ -653,78 +885,72 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       {/* Main Content Area based on Tab Selection */}
       <main className="w-full max-w-4xl mx-auto px-4 py-6 relative z-10 min-h-[60vh]">
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Spatial Ambient Greeting Card */}
-            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden flex flex-col gap-3 shadow-xl">
-              <div className="absolute top-0 right-0 w-[140px] h-[140px] rounded-full bg-[var(--ui-accent)]/5 filter blur-[35px] pointer-events-none" />
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                  <User size={18} className="text-[var(--ui-ui-accent)]" />
+          <div className="client-dashboard">
+            <section className="client-next-section" aria-labelledby="next-session-title">
+              <h1 id="next-session-title">Sesi berikutnya</h1>
+              {upcomingBooking ? (
+                <article className="client-next-booking">
+                  <span className="client-next-icon"><Volume2 size={22} /></span>
+                  <span className="client-next-content">
+                    <strong>{upcomingBooking.sessionLabel || upcomingBooking.packageLabel || upcomingBooking.title || 'Sesi Studio'}</strong>
+                    <span><CalendarDays size={15} />{new Date(`${upcomingBooking.date}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                    <span><Clock size={15} />{String(upcomingBooking.startHour).padStart(2, '0')}.00 - {String(Number(upcomingBooking.startHour) + (Number(upcomingBooking.durationHours) || 1)).padStart(2, '0')}.00 WIB</span>
+                    <span className={`client-payment-state is-${getBookingStatus(upcomingBooking)}`}><CreditCard size={15} />{getStatusLabel(getBookingStatus(upcomingBooking))}</span>
+                  </span>
+                  <div className="client-next-actions">
+                    <button type="button" onClick={() => downloadCalendarEvent(upcomingBooking)}><CalendarPlus size={14} />Tambah ke kalender</button>
+                    <button type="button" onClick={() => handleBookingBlockClick(upcomingBooking)}>Lihat detail <ChevronRight size={14} /></button>
+                  </div>
+                </article>
+              ) : (
+                <div className="client-empty-next">
+                  <CalendarDays size={24} />
+                  <div><strong>Belum ada sesi mendatang</strong><span>Pilih jadwal yang cocok untuk sesi berikutnya.</span></div>
                 </div>
-                <div>
-                  <h3 className="text-xs text-[var(--ui-text-muted)] tracking-wider">Selamat Datang</h3>
-                  <h2 className="text-lg text-white font-bold">{currentUser?.displayName || 'Pelanggan Setia'}</h2>
-                </div>
-              </div>
-              <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed">
-                Kelola aktivitas latihan dan rekaman Anda di {invoiceSettings.studioName || '37 Music Studio'} secara transparan dan mudah lewat portal khusus client ini.
-              </p>
-            </div>
+              )}
+            </section>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-1.5">
-                <span className="text-[10px] uppercase text-[var(--ui-text-muted)] tracking-wider font-semibold">Total Booking</span>
-                <strong className="text-2xl text-white">{stats.totalBookings} <span className="text-xs font-normal text-[var(--ui-text-muted)]">kali</span></strong>
-              </div>
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-1.5">
-                <span className="text-[10px] uppercase text-[var(--ui-text-muted)] tracking-wider font-semibold">Sesi Latihan</span>
-                <strong className="text-2xl text-white">{stats.completedBookings} <span className="text-xs font-normal text-[var(--ui-text-muted)]">sesi</span></strong>
-              </div>
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-1.5">
-                <span className="text-[10px] uppercase text-[var(--ui-text-muted)] tracking-wider font-semibold">Total Durasi</span>
-                <strong className="text-2xl text-white">{stats.totalDuration} <span className="text-xs font-normal text-[var(--ui-text-muted)]">jam</span></strong>
-              </div>
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-1.5">
-                <span className="text-[10px] uppercase text-[var(--ui-text-muted)] tracking-wider font-semibold font-bold text-orange-400">Sisa Tagihan</span>
-                <strong className="text-xl text-white truncate">{formatRupiah(stats.unpaidAmount)}</strong>
-              </div>
-            </div>
+            <button className="client-primary-booking" type="button" onClick={() => setActiveTab('calendar')}>
+              <CalendarDays size={20} /> Booking jadwal
+            </button>
 
-            {/* Warning Alert outstanding tagihan */}
             {stats.unpaidAmount > 0 && (
-              <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10 flex items-start gap-3 relative overflow-hidden shadow-lg shadow-red-950/10">
-                <AlertCircle className="text-red-400 w-5 h-5 shrink-0 mt-0.5" />
-                <div className="space-y-2">
-                  <h4 className="text-xs text-white font-bold">Menunggu Pembayaran Sisa Tagihan</h4>
-                  <p className="text-[11px] text-[var(--ui-text-muted)] leading-relaxed">
-                    Anda memiliki total tagihan tertunda sebesar <strong className="text-white">{formatRupiah(stats.unpaidAmount)}</strong> pada {unpaidBookings.length} booking. Harap lakukan pelunasan untuk kelancaran sesi.
-                  </p>
-                  <button
-                    onClick={() => setActiveTab('billing')}
-                    className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-300 text-xs font-semibold flex items-center gap-1 transition-colors"
-                  >
-                    <span>Bayar Sekarang</span>
-                    <ChevronRight size={12} />
-                  </button>
-                </div>
-              </div>
+              <button className="client-billing-prompt" type="button" onClick={() => setActiveTab('billing')}>
+                <span><CreditCard size={20} /></span>
+                <span><small>Sisa tagihan</small><strong>{formatRupiah(stats.unpaidAmount)}</strong></span>
+                <span className="client-billing-action">Lihat tagihan <ChevronRight size={15} /></span>
+              </button>
             )}
 
-            {/* Quick Action: Search Slots */}
-            <div 
-              onClick={() => setActiveTab('calendar')}
-              className="p-5 rounded-2xl bg-gradient-to-r from-orange-600/10 to-amber-600/5 hover:from-orange-600/15 border border-orange-500/15 hover:border-orange-500/20 flex justify-between items-center cursor-pointer transition-all hover:scale-[1.01] group"
-            >
-              <div className="space-y-1">
-                <h4 className="text-sm text-white font-bold flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-orange-400" />
-                  <span>Cari Slot Jadwal Kosong</span>
-                </h4>
-                <p className="text-xs text-[var(--ui-text-muted)]">Lihat grid kalender interaktif untuk memilih slot waktu latihan terbaik Anda.</p>
-              </div>
-              <ChevronRight size={18} className="text-orange-400 group-hover:translate-x-1 transition-transform" />
+            <div className="client-summary-strip">
+              <div><Calendar size={21} /><strong>{stats.totalBookings}</strong><span>booking</span></div>
+              <div><Clock size={21} /><strong>{stats.totalDuration}</strong><span>jam studio</span></div>
             </div>
+
+            {recentBookings.length > 0 && (
+              <section className="client-recent-section">
+                <div className="client-section-heading"><h2>Booking terbaru</h2><button type="button" onClick={() => setActiveTab('history')}>Lihat semua</button></div>
+                <div className="client-recent-list">
+                  {recentBookings.map((booking) => (
+                    <button className={booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? 'has-unread-message' : ''} type="button" key={booking.id} onClick={() => handleBookingBlockClick(booking)}>
+                      <span className="client-recent-icon"><Volume2 size={17} /></span>
+                      <span><strong>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</strong><small>{new Date(`${booking.date}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} · {String(booking.startHour).padStart(2, '0')}.00 WIB</small></span>
+                      {booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? <i className="client-unread-dot" aria-label="Pesan baru dari admin" /> : null}
+                      <ChevronRight size={17} />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="client-help-tools" aria-label="Bantuan client">
+              <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer">
+                <MessageCircle size={16} /><span><strong>Hubungi admin</strong><small>Tanya jadwal atau booking</small></span><ChevronRight size={15} />
+              </a>
+              <a href={studioMapsUrl} target="_blank" rel="noopener noreferrer">
+                <MapPin size={16} /><span><strong>Lokasi studio</strong><small>Buka petunjuk arah</small></span><ChevronRight size={15} />
+              </a>
+            </section>
           </div>
         )}
 
@@ -872,8 +1098,23 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         )}
 
         {activeTab === 'history' && (
-          <div className="space-y-5">
-            <h3 className="text-sm font-bold text-white tracking-wider">Riwayat Booking Saya</h3>
+          <div className="client-history-tab space-y-5">
+            <div className="client-history-heading">
+              <div><span>Booking</span><h3>Riwayat saya</h3></div>
+              <strong>{filteredHistoryBookings.length} data</strong>
+            </div>
+
+            <div className="client-history-tools">
+              <label className="client-history-search">
+                <Search size={15} />
+                <input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} placeholder="Cari kode, layanan, atau tanggal" />
+              </label>
+              <div className="client-history-filters" aria-label="Filter riwayat booking">
+                {historyFilterOptions.map((option) => (
+                  <button className={historyFilter === option.key ? 'is-active' : ''} key={option.key} type="button" onClick={() => setHistoryFilter(option.key)}>{option.label}</button>
+                ))}
+              </div>
+            </div>
             
             {userBookings.length === 0 ? (
               <div className="p-8 text-center rounded-2xl bg-white/[0.01] border border-white/5 text-[var(--ui-text-muted)] text-sm space-y-2">
@@ -881,9 +1122,15 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 <strong>Belum ada riwayat booking</strong>
                 <p className="text-xs max-w-xs mx-auto">Anda belum pernah memesan jadwal sesi latihan atau rekaman.</p>
               </div>
+            ) : filteredHistoryBookings.length === 0 ? (
+              <div className="client-history-empty">
+                <Search size={22} />
+                <strong>Booking tidak ditemukan</strong>
+                <span>Coba ubah kata pencarian atau filter status.</span>
+              </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {userBookings.map((booking) => {
+                {filteredHistoryBookings.map((booking) => {
                   const status = getBookingStatus(booking);
                   const isVoid = status === 'void' || status === 'cancelled';
                   
@@ -909,12 +1156,28 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                     >
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-[var(--ui-text-muted)] font-semibold tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                          <span className="client-booking-code text-[10px] text-[var(--ui-text-muted)] font-semibold tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded">
                             {booking.bookingCode || booking.bookingId || 'BKG'}
+                            <button
+                              type="button"
+                              aria-label="Salin kode booking"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                copyText(booking.bookingCode || booking.bookingId || booking.id, 'Kode booking disalin.');
+                              }}
+                            >
+                              <Copy size={11} />
+                            </button>
                           </span>
                           <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${getStatusBadgeClass(status)}`}>
                             {status === 'void' ? 'Void' : status === 'cancelled' ? 'Canceled' : status}
                           </span>
+                          {getBookingRequestStatusMeta(booking) ? (
+                            <span className={'client-request-badge is-' + getBookingRequestStatusMeta(booking).tone}>
+                              {getBookingRequestStatusMeta(booking).label}
+                            </span>
+                          ) : null}
+                          {booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? <span className="client-message-new">Pesan baru</span> : null}
                         </div>
 
                         <h4 className="text-base font-bold text-white leading-tight">
@@ -1017,6 +1280,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">Bank BCA</span>
                   <strong className="text-base text-white tracking-wide">3728 - 9028 - 22</strong>
                   <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">A/N: 37 MUSIC STUDIO</span>
+                  <button className="client-copy-account" type="button" onClick={() => copyText(studioBankAccount, 'Nomor rekening disalin.')}>
+                    <Copy size={12} /> Salin rekening
+                  </button>
                 </div>
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
                   <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">Metode QRIS</span>
@@ -1040,64 +1306,65 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       </main>
 
       {/* Elegant glassmorphic bottom navigation bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/60 backdrop-blur-xl border-t border-white/10 py-2.5 pb-safe-bottom">
-        <div className="max-w-md mx-auto px-6 flex items-center justify-between">
+      <nav className="client-bottom-nav" aria-label="Navigasi client">
+        <div>
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center gap-1.5 transition-colors relative ${activeTab === 'dashboard' ? 'text-[#ff8a2a]' : 'text-white/40 hover:text-white/70'}`}
+            className={`client-bottom-item ${activeTab === 'dashboard' ? 'is-active' : ''}`}
+            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
           >
-            {activeTab === 'dashboard' && <span className="absolute -top-2 w-1.5 h-1.5 rounded-full bg-[#ff8a2a] shadow-lg shadow-orange-500/50" />}
             <Home size={18} />
-            <span className="text-[10px] font-semibold">Beranda</span>
+            <span>Beranda</span>
           </button>
 
           <button
             onClick={() => setActiveTab('calendar')}
-            className={`flex flex-col items-center gap-1.5 transition-colors relative ${activeTab === 'calendar' ? 'text-[#ff8a2a]' : 'text-white/40 hover:text-white/70'}`}
+            className={`client-bottom-item ${activeTab === 'calendar' ? 'is-active' : ''}`}
+            aria-current={activeTab === 'calendar' ? 'page' : undefined}
           >
-            {activeTab === 'calendar' && <span className="absolute -top-2 w-1.5 h-1.5 rounded-full bg-[#ff8a2a] shadow-lg shadow-orange-500/50" />}
             <Calendar size={18} />
-            <span className="text-[10px] font-semibold">Jadwal</span>
+            <span>Jadwal</span>
           </button>
 
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex flex-col items-center gap-1.5 transition-colors relative ${activeTab === 'history' ? 'text-[#ff8a2a]' : 'text-white/40 hover:text-white/70'}`}
+            className={`client-bottom-item ${activeTab === 'history' ? 'is-active' : ''}`}
+            aria-current={activeTab === 'history' ? 'page' : undefined}
           >
-            {activeTab === 'history' && <span className="absolute -top-2 w-1.5 h-1.5 rounded-full bg-[#ff8a2a] shadow-lg shadow-orange-500/50" />}
             <History size={18} />
-            <span className="text-[10px] font-semibold">Riwayat</span>
+            <span>Riwayat</span>
+            {unreadAdminMessages ? <b className="client-nav-badge">{unreadAdminMessages}</b> : null}
           </button>
 
           <button
             onClick={() => setActiveTab('billing')}
-            className={`flex flex-col items-center gap-1.5 transition-colors relative ${activeTab === 'billing' ? 'text-[#ff8a2a]' : 'text-white/40 hover:text-white/70'}`}
+            className={`client-bottom-item ${activeTab === 'billing' ? 'is-active' : ''}`}
+            aria-current={activeTab === 'billing' ? 'page' : undefined}
           >
-            {activeTab === 'billing' && <span className="absolute -top-2 w-1.5 h-1.5 rounded-full bg-[#ff8a2a] shadow-lg shadow-orange-500/50" />}
             <CreditCard size={18} />
-            <span className="text-[10px] font-semibold">Tagihan</span>
+            <span>Tagihan</span>
           </button>
         </div>
       </nav>
 
       {/* Booking Simulator Modal (Interactive request booking from Empty Slot) */}
       {isSimulatorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-[#0f0f12] border border-white/10 space-y-4 shadow-2xl relative max-h-[85vh] overflow-y-auto">
-            <h3 className="text-base text-white font-bold flex items-center gap-2 border-b border-white/5 pb-3">
+        <div className="client-booking-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="client-booking-modal w-full max-w-md p-6 rounded-2xl bg-[#0f0f12] border border-white/10 space-y-4 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            <h3 className="client-booking-modal-title text-base text-white font-bold flex items-center gap-2 border-b border-white/5 pb-3">
               <CalendarDays size={18} className="text-[#ff8a2a]" />
               <span>Simulasi Booking Baru</span>
             </h3>
 
-            <div className="space-y-4 text-xs">
+            <div className="client-booking-modal-body space-y-4 text-xs">
               {/* Selected Slot Information */}
-              <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-[var(--ui-text-muted)] space-y-1">
+              <div className="client-booking-slot-summary p-3 rounded-lg bg-white/5 border border-white/5 text-[var(--ui-text-muted)] space-y-1">
                 <p>Tanggal Terpilih: <strong className="text-white">{simulatorDate}</strong></p>
                 <p>Mulai Jam: <strong className="text-white">{simulatorStartHour}.00 WIB</strong></p>
               </div>
 
               {/* Selector Mode */}
-              <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-white/5 border border-white/5">
+              <div className="client-booking-mode grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-white/5 border border-white/5">
                 <button
                   type="button"
                   className={`py-2 px-3 text-xs font-semibold rounded-lg transition-all ${simPackageId === 'none' ? 'bg-[#ff8a2a] text-black shadow-md' : 'text-[var(--ui-text-muted)] hover:text-white'}`}
@@ -1123,63 +1390,65 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 </button>
               </div>
 
-              {/* Conditional dropdown selections */}
-              {simPackageId !== 'none' ? (
-                <StudioSelect
-                  label="Pilihan Paket Hemat"
-                  options={packageOptions}
-                  selectedKey={simPackageId}
-                  onChange={handlePackageChange}
-                />
-              ) : (
-                <div className="space-y-3">
+              <div className="client-booking-fields">
+                {/* Conditional dropdown selections */}
+                {simPackageId !== 'none' ? (
                   <StudioSelect
-                    label="Pilih Layanan Studio"
-                    options={sessionOptions}
-                    selectedKey={simSessionType}
-                    onChange={handleSessionTypeChange}
+                    label="Pilihan Paket Hemat"
+                    options={packageOptions}
+                    selectedKey={simPackageId}
+                    onChange={handlePackageChange}
                   />
-
-                  {simSessionType === 'recording' && recordingTypeOptions.length > 0 && (
+                ) : (
+                  <div className="client-booking-service-fields">
                     <StudioSelect
-                      label="Pilihan Jenis Recording"
-                      options={finalRecordingTypeOptions}
-                      selectedKey={simRecordingTypeId}
-                      onChange={setSimRecordingTypeId}
+                      label="Pilih Layanan Studio"
+                      options={sessionOptions}
+                      selectedKey={simSessionType}
+                      onChange={handleSessionTypeChange}
                     />
-                  )}
-                </div>
-              )}
 
-              {/* Duration Picker (Only active for non-package selections) */}
-              {simPackageId === 'none' && simRecordingTypeId === 'none' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <StudioSelect
-                    label="Durasi Sewa"
-                    options={durationOptions}
-                    selectedKey={simDuration}
-                    onChange={setSimDuration}
-                  />
-                  
-                  {simDuration === 'custom' && (
-                    <label className="space-y-1 block">
-                      <span className="text-[10px] text-[var(--ui-text-muted)] font-medium">Durasi Kustom (Jam)</span>
-                      <input 
-                        type="number"
-                        placeholder="Jam..."
-                        min={1}
-                        max={24}
-                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 outline-none text-white focus:border-[#ff8a2a]"
-                        value={simCustomDuration}
-                        onChange={(e) => setSimCustomDuration(e.target.value)}
+                    {simSessionType === 'recording' && recordingTypeOptions.length > 0 && (
+                      <StudioSelect
+                        label="Pilihan Jenis Recording"
+                        options={finalRecordingTypeOptions}
+                        selectedKey={simRecordingTypeId}
+                        onChange={setSimRecordingTypeId}
                       />
-                    </label>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+
+                {/* Duration Picker (Only active for non-package selections) */}
+                {simPackageId === 'none' && simRecordingTypeId === 'none' && (
+                  <div className="client-booking-duration-fields">
+                    <StudioSelect
+                      label="Durasi Sewa"
+                      options={durationOptions}
+                      selectedKey={simDuration}
+                      onChange={setSimDuration}
+                    />
+
+                    {simDuration === 'custom' && (
+                      <label className="client-booking-custom-duration space-y-1 block">
+                        <span className="text-[10px] text-[var(--ui-text-muted)] font-medium">Durasi Kustom (Jam)</span>
+                        <input
+                          type="number"
+                          placeholder="Jam..."
+                          min={1}
+                          max={24}
+                          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 outline-none text-white focus:border-[#ff8a2a]"
+                          value={simCustomDuration}
+                          onChange={(e) => setSimCustomDuration(e.target.value)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Cost Summary Breakdown */}
-              <div className="space-y-2 border-t border-white/5 pt-3">
+              <div className="client-booking-estimate space-y-2 border-t border-white/5 pt-3">
                 <h4 className="font-bold text-white">Rincian Estimasi</h4>
                 <div className="space-y-1.5 text-[11px] text-[var(--ui-text-muted)]">
                   <div className="flex justify-between">
@@ -1204,7 +1473,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </div>
             </div>
 
-            <div className="flex gap-3 pt-3">
+            <div className="client-booking-actions flex gap-3 pt-3">
               <button
                 type="button"
                 onClick={() => setIsSimulatorOpen(false)}
@@ -1212,16 +1481,15 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               >
                 Kembali
               </button>
-              <a 
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setIsSimulatorOpen(false)}
-                className="flex-[2] py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xl transition-transform active:scale-[0.98]"
+              <button
+                type="button"
+                onClick={submitBookingRequest}
+                disabled={isSubmittingRequest}
+                className="flex-[2] py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xl transition-transform active:scale-[0.98]"
               >
                 <Phone size={13} />
-                <span>Pesan via WhatsApp</span>
-              </a>
+                <span>{isSubmittingRequest ? 'Menyimpan...' : 'Kirim Request + WhatsApp'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1236,6 +1504,14 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <span>Detail Invoice Booking</span>
             </h3>
 
+            {getBookingRequestStatusMeta(selectedBookingDetail) ? (
+              <section className={'client-request-state is-' + getBookingRequestStatusMeta(selectedBookingDetail).tone}>
+                <span>Status request</span>
+                <strong>{getBookingRequestStatusMeta(selectedBookingDetail).label}</strong>
+                {selectedBookingDetail.adminResponseNote ? <small>{selectedBookingDetail.adminResponseNote}</small> : null}
+              </section>
+            ) : null}
+
             {/* Visual Invoice Sheet */}
             <div className="p-5 rounded-xl bg-white/[0.01] border border-white/5 space-y-4 text-xs font-sans">
               <div className="flex justify-between items-start">
@@ -1246,6 +1522,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 <div className="text-right">
                   <span className="text-[10px] text-[var(--ui-text-muted)] block">Invoice No:</span>
                   <strong className="text-white text-xs tracking-wide">{selectedBookingDetail.invoiceNumber || 'INV-00000'}</strong>
+                  <button className="client-copy-code" type="button" onClick={() => copyText(selectedBookingDetail.bookingCode || selectedBookingDetail.id, 'Kode booking disalin.')}>
+                    <Copy size={11} /> Salin kode
+                  </button>
                 </div>
               </div>
 
@@ -1303,6 +1582,22 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </div>
             </div>
 
+            {selectedBookingDetail.clientUid ? (
+              <BookingConversationPanel
+                booking={selectedBookingDetail}
+                role="client"
+                user={currentUser}
+              />
+            ) : null}
+
+            <div className="client-detail-utilities">
+              <button type="button" onClick={() => downloadCalendarEvent(selectedBookingDetail)}><CalendarPlus size={13} />Kalender</button>
+              <a href={getBookingSupportUrl(selectedBookingDetail)} target="_blank" rel="noopener noreferrer"><MessageCircle size={13} />Bantuan booking</a>
+              {['submitted', 'confirmed'].includes(selectedBookingDetail.bookingRequestStatus) ? (
+                <button className="is-danger" type="button" onClick={() => requestCancellation(selectedBookingDetail)}>Minta batal</button>
+              ) : null}
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -1328,6 +1623,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </div>
         </div>
       )}
+
+      {actionFeedback ? (
+        <div className="client-action-feedback" role="status" aria-live="polite">
+          <Check size={15} />{actionFeedback}
+        </div>
+      ) : null}
     </div>
   );
 }

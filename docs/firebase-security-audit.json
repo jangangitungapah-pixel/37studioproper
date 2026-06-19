@@ -1,0 +1,18 @@
+{
+  "score": 4,
+  "summary": "Rules apply default-deny access, verified bootstrap ownership, immutable client ownership, permission-scoped admin access, strict booking-message schemas, validated state transitions, and bounded payloads. The remaining risks are low and relate to intentionally public business settings and legacy-compatible booking documents.",
+  "findings": [
+    {
+      "check": "Unauthenticated Access",
+      "severity": "minor",
+      "issue": "settings/pricing and settings/invoice are publicly readable so the unauthenticated client landing page can display prices and studio contact details.",
+      "recommendation": "Keep these documents free of secrets and move any future private settings to a separate admin-only document."
+    },
+    {
+      "check": "Data Validation",
+      "severity": "minor",
+      "issue": "Booking writes validate all security-sensitive fields but accept additional legacy business fields used by billing and scheduling.",
+      "recommendation": "After legacy booking data is normalized, add a hasOnly field allowlist and emulator tests for every booking workflow."
+    }
+  ]
+}

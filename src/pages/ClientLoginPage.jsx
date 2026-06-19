@@ -12,9 +12,14 @@ import {
   KeyRound,
   Volume2
 } from 'lucide-react';
-import { RecaptchaVerifier, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, browserLocalPersistence, setPersistence, signInWithPhoneNumber } from 'firebase/auth';
+import { RecaptchaVerifier, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, browserLocalPersistence, setPersistence, signInWithPhoneNumber, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { getAdminAuthErrorMessage } from '../services/adminAuthRepository.js';
+import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
+import { accountRoleRepository } from '../services/accountRoleRepository.js';
+import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
+import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import '../styles/firebase-auth.css';
 
 export default function ClientLoginPage() {
   const navigate = useNavigate();
@@ -36,6 +41,7 @@ export default function ClientLoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roleDecision, setRoleDecision] = useState(null);
 
   // OTP Flow States
   const [isOtpSent, setIsOtpSent] = useState(false);
@@ -44,12 +50,56 @@ export default function ClientLoginPage() {
 
   const recaptchaContainerRef = useRef(null);
 
-  // Redirect if logged in
+  // Resolve the authoritative role before allowing client access.
   useEffect(() => {
     if (!firebaseAuth) return;
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-      if (user) {
-        navigate('/client/portal', { replace: true });
+    let checkSequence = 0;
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      const currentSequence = ++checkSequence;
+      if (!user) {
+        setRoleDecision(null);
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const result = await accountRoleRepository.resolvePortalAccount(user, 'client');
+        if (currentSequence !== checkSequence) return;
+
+        if (result.access === PORTAL_ACCESS.ALLOWED) {
+          try {
+            await syncClientCustomerProfile(user);
+          } catch (profileError) {
+            console.error('Role client valid, tetapi profil customer belum tersinkron:', profileError);
+          }
+          if (currentSequence === checkSequence) {
+            navigate('/client/portal', { replace: true });
+          }
+          return;
+        }
+
+        setSuccess('');
+        setRoleDecision(result);
+        if (result.access === PORTAL_ACCESS.ADMIN_PENDING_CLIENT_CHOICE) {
+          setError('Akun ini masih memiliki request admin yang menunggu persetujuan.');
+        } else if (result.access === PORTAL_ACCESS.ADMIN_INACTIVE_CLIENT_CHOICE) {
+          setError('Request admin akun ini sudah tidak aktif. Pilih apakah akun akan dialihkan menjadi client.');
+        } else if (result.access === PORTAL_ACCESS.WRONG_PORTAL_ADMIN) {
+          setError('Akun ini memiliki role admin dan tidak dapat digunakan sebagai client.');
+        } else {
+          setError('Role akun tidak valid untuk Portal Client.');
+        }
+      } catch (roleError) {
+        if (currentSequence === checkSequence) {
+          console.error('Gagal memeriksa role akun client:', roleError);
+          const code = roleError?.code || '';
+          setError(code === 'permission-denied' || code === 'firestore/permission-denied'
+            ? 'Akun berhasil login, tetapi data role belum dapat dibuat. Silakan coba lagi setelah beberapa detik.'
+            : 'Koneksi saat memeriksa role akun gagal. Silakan coba lagi.');
+        }
+      } finally {
+        if (currentSequence === checkSequence) setIsSubmitting(false);
       }
     });
     return unsubscribe;
@@ -129,7 +179,7 @@ export default function ClientLoginPage() {
       await setPersistence(firebaseAuth, browserLocalPersistence);
       if (authMode === 'signIn') {
         await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
-        setSuccess('Masuk berhasil! Mengarahkan...');
+        setSuccess('Identitas berhasil diverifikasi. Memeriksa role akun...');
       } else {
         if (password !== confirmPassword) {
           setError('Konfirmasi kata sandi tidak sesuai.');
@@ -137,7 +187,7 @@ export default function ClientLoginPage() {
           return;
         }
         await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
-        setSuccess('Pendaftaran berhasil! Mengarahkan ke portal...');
+        setSuccess('Pendaftaran berhasil. Menyiapkan role client...');
       }
     } catch (err) {
       setError(getAdminAuthErrorMessage(err));
@@ -209,7 +259,7 @@ export default function ClientLoginPage() {
         throw new Error('Hasil verifikasi tidak ditemukan. Kirim ulang OTP.');
       }
       await verificationResult.confirm(verificationCode);
-      setSuccess('Verifikasi berhasil! Mengarahkan...');
+      setSuccess('Verifikasi berhasil. Memeriksa role akun...');
     } catch (err) {
       setError(getAdminAuthErrorMessage(err));
     } finally {
@@ -229,7 +279,7 @@ export default function ClientLoginPage() {
       
       try {
         await signInWithPopup(firebaseAuth, provider);
-        setSuccess('Google login berhasil! Mengarahkan...');
+        setSuccess('Google login berhasil. Memeriksa role akun...');
       } catch (err) {
         if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
           await signInWithRedirect(firebaseAuth, provider);
@@ -242,6 +292,69 @@ export default function ClientLoginPage() {
       setIsSubmitting(false);
     }
   }
+
+  async function continueAsClient() {
+    if (!firebaseAuth?.currentUser) return;
+
+    setIsSubmitting(true);
+    setError('');
+    try {
+      await accountRoleRepository.cancelAdminRequestAndBecomeClient(firebaseAuth.currentUser);
+      await syncClientCustomerProfile(firebaseAuth.currentUser);
+      setRoleDecision(null);
+      navigate('/client/portal', { replace: true });
+    } catch (conversionError) {
+      console.error('Gagal mengubah request admin menjadi akun client:', conversionError);
+      setError('Request admin tidak dapat dibatalkan. Status akun mungkin sudah berubah; silakan muat ulang.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function cancelClientLogin() {
+    setIsSubmitting(true);
+    try {
+      await signOut(firebaseAuth);
+      setRoleDecision(null);
+      setSuccess('');
+      setError('Login sebagai client dibatalkan. Role akun tidak diubah.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const requiresAdminRequestDecision = [
+    PORTAL_ACCESS.ADMIN_PENDING_CLIENT_CHOICE,
+    PORTAL_ACCESS.ADMIN_INACTIVE_CLIENT_CHOICE,
+  ].includes(roleDecision?.access);
+
+  const roleDecisionActions = requiresAdminRequestDecision
+    ? [
+        {
+          key: 'convert-client',
+          label: 'Batalkan Request Admin & Lanjut Client',
+          onClick: continueAsClient,
+        },
+        {
+          key: 'cancel-client-login',
+          label: 'Batalkan Login Client',
+          icon: 'close',
+          onClick: cancelClientLogin,
+        },
+      ]
+    : [
+        {
+          key: 'open-admin',
+          label: 'Buka Portal Admin',
+          onClick: () => navigate('/admin', { replace: true }),
+        },
+        {
+          key: 'cancel-client-login',
+          label: 'Batalkan Login Client',
+          icon: 'close',
+          onClick: cancelClientLogin,
+        },
+      ];
 
   return (
     <div className="relative min-h-screen bg-[#050506] text-[#f7f3ec] flex items-center justify-center p-4 overflow-hidden font-sans">
@@ -550,6 +663,16 @@ export default function ClientLoginPage() {
         </div>
 
       </div>
+      <AccountRoleDecisionDialog
+        badge={requiresAdminRequestDecision ? 'Request admin terdeteksi' : 'Role admin terdeteksi'}
+        title={roleDecision ? (requiresAdminRequestDecision ? 'Tentukan role akun ini' : 'Akun ini bukan akun client') : ''}
+        message={requiresAdminRequestDecision
+          ? 'Akun ini sedang atau pernah didaftarkan sebagai admin. Untuk mencegah dua role, request admin harus dibatalkan sebelum akun dapat digunakan sebagai client.'
+          : 'Akun ini sudah memiliki akses admin. Satu akun tidak dapat digunakan sekaligus sebagai admin dan client.'}
+        detail={roleDecision?.identity?.email || roleDecision?.identity?.phoneNumber || ''}
+        actions={roleDecisionActions}
+        isBusy={isSubmitting}
+      />
     </div>
   );
 }

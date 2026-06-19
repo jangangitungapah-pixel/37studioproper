@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  MessageCircle,
   Plus,
 } from 'lucide-react';
 import BookingFormModal from '../../components/schedule/BookingFormModal.jsx';
@@ -14,6 +15,9 @@ import {
   viewModes,
 } from './scheduleConfig.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
+import { bookingCommunicationRepository } from '../../services/bookingCommunicationRepository.js';
+import { firebaseAuth } from '../../lib/firebase.js';
 
 
 const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
@@ -492,11 +496,13 @@ function CalendarBookingBlock({ block, onBookingClick }) {
   const startLabel = booking.startTimeLabel || String(booking.startHour).padStart(2, '0') + '.00';
   const durationLabel = (Number(booking.durationHours) || block.spanRows) + 'j';
   const priceLabel = formatShortCurrency(booking.total || booking.subtotal || 0);
+  const hasUnreadClientMessage = booking.lastMessageSenderRole === 'client' && booking.lastMessageReadByAdmin === false;
+  const isNewClientRequest = booking.bookingRequestStatus === 'submitted';
 
   return (
     <button
       aria-label={'Booking ' + booking.customer + ' ' + startLabel + ' ' + durationLabel}
-      className={'schedule-booking-block is-' + block.status}
+      className={'schedule-booking-block is-' + block.status + (hasUnreadClientMessage ? ' has-client-message' : '')}
       style={getBookingBlockStyle(block)}
       type="button"
       onClick={() => onBookingClick(booking)}
@@ -504,13 +510,14 @@ function CalendarBookingBlock({ block, onBookingClick }) {
       <span className="schedule-booking-glow" aria-hidden="true" />
       <span className="schedule-booking-topline">
         <strong>{booking.customer}</strong>
-        <em>{statusLabel}</em>
+        <em>{isNewClientRequest ? 'Request' : statusLabel}</em>
       </span>
       <span className="schedule-booking-title">{title}</span>
       <span className="schedule-booking-meta">
         <span>{startLabel} • {durationLabel}</span>
         <b>{priceLabel}</b>
       </span>
+      {hasUnreadClientMessage ? <i className="schedule-booking-message-dot" aria-label="Pesan client belum dibaca" /> : null}
     </button>
   );
 }
@@ -729,6 +736,10 @@ export default function SchedulePage() {
   }, [activeStatuses, bookings]);
   const visibleBookingCount = scheduleStats.visibleCount;
   const paymentStatusCounts = scheduleStats.counts;
+  const requestBookings = useMemo(
+    () => bookings.filter((booking) => ['submitted', 'cancellation_requested'].includes(booking.bookingRequestStatus)),
+    [bookings]
+  );
   const todayIsoDate = toIsoDate(startOfDay(new Date()));
 
   useEffect(() => {
@@ -811,6 +822,17 @@ export default function SchedulePage() {
     }
 
     try {
+      const linkedCustomer = await adminCustomerRepository.findCustomerByPhone(nextBooking.phone);
+
+      if (linkedCustomer) {
+        nextBooking = {
+          ...nextBooking,
+          customerId: linkedCustomer.id,
+          clientUid: linkedCustomer.authUid || nextBooking.clientUid || '',
+          email: linkedCustomer.email || nextBooking.email || '',
+        };
+      }
+
       if (editingBooking?.id) {
         await adminBookingRepository.updateManualBooking(nextBooking);
       } else {
@@ -827,6 +849,28 @@ export default function SchedulePage() {
         message: 'Koneksi ke Firestore bermasalah.'
       });
       return false;
+    }
+  }
+
+  async function updateClientRequestStatus(booking, status) {
+    try {
+      await bookingCommunicationRepository.updateBookingRequestStatus({
+        booking,
+        status,
+        user: firebaseAuth?.currentUser,
+      });
+      setSelectedBookingDetail((current) => current?.id === booking.id
+        ? { ...current, bookingRequestStatus: status }
+        : current);
+      setScheduleToast({
+        kind: 'success',
+        title: 'Status Client Diperbarui',
+        message: status === 'confirmed' ? 'Booking sudah dikonfirmasi ke client.' : 'Keputusan admin sudah dikirim ke portal client.',
+      });
+    } catch (error) {
+      console.error('Gagal memperbarui status request client:', error);
+      setScheduleToast({ kind: 'warning', title: 'Gagal Memperbarui', message: 'Status request client belum tersimpan.' });
+      throw error;
     }
   }
 
@@ -872,6 +916,13 @@ export default function SchedulePage() {
             ))}
           </div>
 
+          {requestBookings.length ? (
+            <button className="schedule-client-request-alert" type="button" onClick={() => openBookingDetail(requestBookings[0])}>
+              <MessageCircle size={14} />
+              <span>{requestBookings.length} request client</span>
+            </button>
+          ) : null}
+
           <div className="schedule-nav">
             <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
               <ChevronLeft size={17} />
@@ -908,6 +959,7 @@ export default function SchedulePage() {
         isOpen={Boolean(selectedBookingDetail)}
         onClose={closeBookingDetail}
         onEdit={editBookingFromDetail}
+        onRequestStatusChange={updateClientRequestStatus}
       />
 
       {scheduleToast ? (

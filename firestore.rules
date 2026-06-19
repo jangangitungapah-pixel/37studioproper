@@ -1,43 +1,61 @@
 rules_version = '2';
+
+// ===============================================================
+// Communication data model
+// ===============================================================
+// bookings/{bookingId}: existing booking fields plus optional request status,
+// response notes, and immutable last-message summary fields.
+// bookingMessages/{messageId}: id, bookingId, clientUid, senderUid,
+// senderRole, senderName, text, type, createdAt, readByAdmin, readByClient.
+// Messages are private to the owning client and approved booking admins.
+// users/{uid}: one authoritative account role. Valid states are owner/approved,
+// admin/pending|approved|rejected, and client/active. Client accounts always
+// have every admin permission disabled.
+// ===============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUserDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isBootstrapOwnerEmail() {
       return isSignedIn() &&
-        request.auth.token.email != null &&
+        request.auth.token.email is string &&
+        request.auth.token.email_verified == true &&
         request.auth.token.email.lower() == 'marsicprod@gmail.com';
     }
 
-    function userHasExplicitRole() {
-      return isSignedIn() && getUserDoc().keys().hasAny(['role']);
+    function userDocExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isOwner() {
-      return isSignedIn() && (
-        getUserDoc().role == 'owner' ||
-        (!userHasExplicitRole() && isBootstrapOwnerEmail())
-      );
+      return isBootstrapOwnerEmail() ||
+        (userDocExists() && getUserData().role == 'owner');
     }
 
     function isApproved() {
-      return isOwner() || (
-        isSignedIn() && getUserDoc().status == 'approved'
-      );
+      return isOwner() ||
+        (userDocExists() &&
+          getUserData().role == 'admin' &&
+          getUserData().status == 'approved');
+    }
+
+    function isClientAccount() {
+      return userDocExists() &&
+        getUserData().role == 'client' &&
+        getUserData().status == 'active';
     }
 
     function hasPermission(page) {
       return isOwner() || (
-        isApproved() && (
-          getUserDoc().permissions == null ||
-          getUserDoc().permissions[page] == true
-        )
+        isApproved() &&
+        getUserData().permissions is map &&
+        getUserData().permissions[page] == true
       );
     }
 
@@ -49,141 +67,600 @@ service cloud.firestore {
     }
 
     function canAccessCustomerData() {
-      return hasPermission('dashboard') ||
-        hasPermission('customers');
+      return hasPermission('dashboard') || hasPermission('customers');
     }
 
     function canAccessBookkeepingData() {
-      return hasPermission('dashboard') ||
-        hasPermission('bookkeeping');
+      return hasPermission('dashboard') || hasPermission('bookkeeping');
     }
 
     function canAccessInventoryData() {
-      return hasPermission('dashboard') ||
-        hasPermission('inventory');
+      return hasPermission('dashboard') || hasPermission('inventory');
     }
 
-    function hasAuthEmail() {
-      return isSignedIn() && request.auth.token.email != null;
+    function validString(value, minSize, maxSize) {
+      return value is string && value.size() >= minSize && value.size() <= maxSize;
     }
 
-    function hasAuthPhone() {
-      return isSignedIn() && request.auth.token.phone_number != null;
+    function validOptionalString(data, field, maxSize) {
+      return !data.keys().hasAny([field]) ||
+        (data[field] is string && data[field].size() <= maxSize);
     }
 
-    function isClientBookingOwner() {
-      return isSignedIn() && (
+    function validNumber(value, minValue, maxValue) {
+      return (value is int || value is float) && value >= minValue && value <= maxValue;
+    }
+
+    function validIsoDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function validIsoTimestampString(value) {
+      return value is string && value.size() >= 10 && value.size() <= 40;
+    }
+
+    function validPermissions(data) {
+      return data is map &&
+        data.keys().hasOnly(['dashboard', 'schedule', 'customers', 'billing', 'bookkeeping', 'inventory', 'gallery', 'settings']) &&
+        data.dashboard is bool && data.schedule is bool &&
+        data.customers is bool && data.billing is bool &&
+        data.bookkeeping is bool && data.inventory is bool &&
+        data.gallery is bool && data.settings is bool;
+    }
+
+    function hasNoAdminPermissions(data) {
+      return validPermissions(data) &&
+        data.dashboard == false && data.schedule == false &&
+        data.customers == false && data.billing == false &&
+        data.bookkeeping == false && data.inventory == false &&
+        data.gallery == false && data.settings == false;
+    }
+
+    function validPreferences(data) {
+      return data is map &&
+        data.keys().hasOnly(['accountNote', 'defaultLandingKey', 'notificationLevel', 'preferredContact']) &&
+        validString(data.accountNote, 0, 240) &&
+        data.defaultLandingKey in ['dashboard', 'schedule', 'billing', 'bookkeeping', 'inventory', 'settings'] &&
+        data.notificationLevel in ['important', 'standard', 'proactive'] &&
+        data.preferredContact in ['email', 'phone', 'none'];
+    }
+
+    function validUser(data, userId) {
+      return data.keys().hasOnly([
+          'uid', 'email', 'phoneNumber', 'displayName', 'provider', 'permissions',
+          'preferences', 'role', 'status', 'createdAt', 'updatedAt',
+          'ownershipTransferredInAt', 'ownershipTransferredOutAt',
+          'adminRequestCancelledAt'
+        ]) &&
+        data.uid == userId &&
+        validString(data.email, 0, 254) &&
+        validString(data.phoneNumber, 0, 32) &&
+        validString(data.displayName, 1, 120) &&
+        validString(data.provider, 1, 80) &&
+        data.role in ['owner', 'admin', 'client'] &&
+        data.status in ['active', 'pending', 'approved', 'rejected'] &&
+        validPermissions(data.permissions) &&
         (
-          hasAuthEmail() &&
-          resource.data.email is string &&
-          resource.data.email.lower() == request.auth.token.email.lower()
+          (data.role == 'owner' && data.status == 'approved') ||
+          (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected']) ||
+          (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions))
+        ) &&
+        (!data.keys().hasAny(['preferences']) || validPreferences(data.preferences)) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validOptionalString(data, 'ownershipTransferredInAt', 40) &&
+        validOptionalString(data, 'ownershipTransferredOutAt', 40) &&
+        validOptionalString(data, 'adminRequestCancelledAt', 40);
+    }
+
+    function authIdentityMatches(data) {
+      return (
+          request.auth.token.email is string &&
+          data.email.lower() == request.auth.token.email.lower()
+        ) || (
+          request.auth.token.phone_number is string &&
+          data.phoneNumber == request.auth.token.phone_number
+        );
+    }
+
+    function isSafeAccountSelfCreate(data) {
+      return (
+          isBootstrapOwnerEmail() &&
+          data.role == 'owner' &&
+          data.status == 'approved'
+        ) || (
+          !isBootstrapOwnerEmail() &&
+          data.role == 'admin' &&
+          data.status == 'pending'
+        ) || (
+          !isBootstrapOwnerEmail() &&
+          data.role == 'client' &&
+          data.status == 'active' &&
+          hasNoAdminPermissions(data.permissions)
+        );
+    }
+
+    function isSafeAdminRequestToClientTransition(userId) {
+      return isSignedIn() &&
+        request.auth.uid == userId &&
+        resource.data.role == 'admin' &&
+        resource.data.status in ['pending', 'rejected'] &&
+        request.resource.data.role == 'client' &&
+        request.resource.data.status == 'active' &&
+        hasNoAdminPermissions(request.resource.data.permissions) &&
+        validIsoTimestampString(request.resource.data.adminRequestCancelledAt) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'role', 'status', 'permissions', 'adminRequestCancelledAt', 'updatedAt'
+        ]);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
+        validUser(request.resource.data, userId) &&
+        authIdentityMatches(request.resource.data) &&
+        isSafeAccountSelfCreate(request.resource.data);
+      allow update: if validUser(request.resource.data, userId) && (
+        isOwner() || (
+          isSignedIn() &&
+          request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'preferences', 'updatedAt'])
+        ) || isSafeAdminRequestToClientTransition(userId)
+      );
+      allow delete: if isOwner();
+    }
+
+    function isClientBookingOwner(data) {
+      return isClientAccount() && (
+        (data.clientUid is string && data.clientUid == request.auth.uid) ||
+        (
+          request.auth.token.email is string &&
+          data.email is string &&
+          data.email.lower() == request.auth.token.email.lower()
         ) ||
         (
-          hasAuthPhone() &&
+          request.auth.token.phone_number is string &&
           (
-            (
-              resource.data.phone is string &&
-              (
-                resource.data.phone == request.auth.token.phone_number ||
-                ('+' + resource.data.phone) == request.auth.token.phone_number
-              )
-            ) ||
-            (
-              resource.data.customerPhoneKey is string &&
-              (
-                resource.data.customerPhoneKey == request.auth.token.phone_number ||
-                ('+' + resource.data.customerPhoneKey) == request.auth.token.phone_number
-              )
-            )
+            (data.phone is string && (
+              data.phone == request.auth.token.phone_number ||
+              ('+' + data.phone) == request.auth.token.phone_number
+            )) ||
+            (data.customerPhoneKey is string && (
+              data.customerPhoneKey == request.auth.token.phone_number ||
+              ('+' + data.customerPhoneKey) == request.auth.token.phone_number
+            ))
           )
         )
       );
     }
 
-    function isValidString(val) {
-      return val is string && val.size() > 0;
+    function validBooking(data) {
+      return validString(data.customer, 1, 120) &&
+        validString(data.phone, 0, 32) &&
+        validIsoDate(data.date) &&
+        validNumber(data.startHour, 0, 23) &&
+        validNumber(data.durationHours, 0.5, 24) &&
+        validNumber(data.total, 0, 100000000) &&
+        data.paymentStatus in ['pending', 'dp', 'lunas', 'void', 'cancelled', 'canceled', 'deleted'] &&
+        data.status in ['pending', 'dp', 'lunas', 'void', 'cancelled', 'canceled', 'deleted'] &&
+        validOptionalString(data, 'email', 254) &&
+        validOptionalString(data, 'clientUid', 128) &&
+        validOptionalString(data, 'title', 160) &&
+        validOptionalString(data, 'sessionLabel', 160) &&
+        validOptionalString(data, 'clientRequestNote', 600) &&
+        validOptionalString(data, 'clientRequestUpdatedAt', 40) &&
+        validOptionalString(data, 'adminResponseNote', 600) &&
+        validOptionalString(data, 'adminResponseAt', 40) &&
+        validOptionalString(data, 'lastMessageId', 128) &&
+        validOptionalString(data, 'lastMessageAt', 40) &&
+        validOptionalString(data, 'lastMessagePreview', 180) &&
+        (!data.keys().hasAny(['bookingRequestStatus']) || data.bookingRequestStatus in ['submitted', 'confirmed', 'rejected', 'cancellation_requested', 'cancelled']) &&
+        (!data.keys().hasAny(['lastMessageSenderRole']) || data.lastMessageSenderRole in ['admin', 'client']) &&
+        (!data.keys().hasAny(['lastMessageReadByAdmin']) || data.lastMessageReadByAdmin is bool) &&
+        (!data.keys().hasAny(['lastMessageReadByClient']) || data.lastMessageReadByClient is bool) &&
+        (!data.keys().hasAny(['paymentHistory']) || (data.paymentHistory is list && data.paymentHistory.size() <= 100)) &&
+        (!data.keys().hasAny(['appliedDiscounts']) || (data.appliedDiscounts is list && data.appliedDiscounts.size() <= 50));
     }
 
-    function isValidNumber(val, minVal) {
-      return (val is int || val is float) && val >= minVal;
+    function validClientMessageSummary(data) {
+      return validString(data.lastMessageId, 1, 128) &&
+        validIsoTimestampString(data.lastMessageAt) &&
+        validString(data.lastMessagePreview, 1, 180) &&
+        data.lastMessageSenderRole == 'client' &&
+        data.lastMessageReadByAdmin == false &&
+        data.lastMessageReadByClient == true;
     }
 
-    match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isOwner() || (
-        isSignedIn() &&
-        request.auth.uid == userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'updatedAt'])
-      );
-      allow delete: if isOwner();
+    function clientMessageExistsAfter(bookingId) {
+      let messageId = request.resource.data.lastMessageId;
+      let messagePath = /databases/$(database)/documents/bookingMessages/$(messageId);
+      return existsAfter(messagePath) &&
+        getAfter(messagePath).data.bookingId == bookingId &&
+        getAfter(messagePath).data.clientUid == request.auth.uid &&
+        getAfter(messagePath).data.senderUid == request.auth.uid &&
+        getAfter(messagePath).data.senderRole == 'client';
     }
 
-    match /clientCalendarSlots/{slotId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isApproved() && canAccessBookingData();
+    function clientSendsBookingMessage(bookingId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'lastMessageId', 'lastMessageAt', 'lastMessagePreview',
+          'lastMessageSenderRole', 'lastMessageReadByAdmin', 'lastMessageReadByClient'
+        ]) &&
+        validClientMessageSummary(request.resource.data) &&
+        clientMessageExistsAfter(bookingId);
+    }
+
+    function clientRequestsBookingCancellation(bookingId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'bookingRequestStatus', 'clientRequestNote', 'clientRequestUpdatedAt',
+          'lastMessageId', 'lastMessageAt', 'lastMessagePreview',
+          'lastMessageSenderRole', 'lastMessageReadByAdmin', 'lastMessageReadByClient'
+        ]) &&
+        resource.data.bookingRequestStatus in ['submitted', 'confirmed'] &&
+        request.resource.data.bookingRequestStatus == 'cancellation_requested' &&
+        validString(request.resource.data.clientRequestNote, 1, 600) &&
+        validIsoTimestampString(request.resource.data.clientRequestUpdatedAt) &&
+        validClientMessageSummary(request.resource.data) &&
+        clientMessageExistsAfter(bookingId) &&
+        getAfter(/databases/$(database)/documents/bookingMessages/$(request.resource.data.lastMessageId)).data.type == 'cancellation';
+    }
+
+    function clientMarksLatestMessageRead() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageReadByClient']) &&
+        resource.data.lastMessageSenderRole == 'admin' &&
+        request.resource.data.lastMessageReadByClient == true;
+    }
+
+    function validClientBookingRequest(data, documentId) {
+      return data.keys().hasOnly([
+          'id', 'bookingId', 'bookingCode', 'invoiceNumber', 'customer', 'phone',
+          'customerPhoneKey', 'email', 'clientUid', 'customerId', 'source',
+          'bookingRequestStatus', 'packageId', 'packageLabel', 'pricingMode',
+          'sessionType', 'sessionLabel', 'recordingTypeId', 'recordingTypeLabel',
+          'title', 'date', 'startHour', 'startTimeLabel', 'durationHours',
+          'paymentMethod', 'paymentHistory', 'paidAmount', 'lastPaymentAt',
+          'lastPaymentMethod', 'paymentStatus', 'status', 'subtotal',
+          'discountAmount', 'appliedDiscounts', 'total', 'dpAmount',
+          'invoiceAmount', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == documentId &&
+        validString(data.bookingId, 1, 80) &&
+        validString(data.bookingCode, 1, 80) &&
+        validString(data.invoiceNumber, 1, 80) &&
+        validString(data.customerPhoneKey, 0, 32) &&
+        validString(data.email, 0, 254) &&
+        validString(data.createdAt, 10, 40) &&
+        validString(data.updatedAt, 10, 40) &&
+        validNumber(data.subtotal, 0, 100000000) &&
+        validNumber(data.discountAmount, 0, 100000000) &&
+        validNumber(data.paidAmount, 0, 0) &&
+        validNumber(data.dpAmount, 0, 0) &&
+        data.invoiceAmount == data.total &&
+        data.paymentHistory is list &&
+        data.paymentHistory.size() == 0;
     }
 
     match /bookings/{bookingId} {
-      allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner();
-      allow create, update: if isApproved() &&
-        canAccessBookingData() &&
-        isValidString(request.resource.data.customer) &&
-        isValidNumber(request.resource.data.total, 0) &&
-        isValidNumber(request.resource.data.durationHours, 0);
+      allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner(resource.data);
+      allow create: if (
+          isApproved() && canAccessBookingData() && validBooking(request.resource.data)
+        ) || (
+          isClientAccount() &&
+          validBooking(request.resource.data) &&
+          validClientBookingRequest(request.resource.data, bookingId) &&
+          isClientBookingOwner(request.resource.data) &&
+          request.resource.data.clientUid == request.auth.uid &&
+          request.resource.data.customerId == ('auth_' + request.auth.uid) &&
+          request.resource.data.source == 'clientPortal' &&
+          request.resource.data.bookingRequestStatus == 'submitted' &&
+          request.resource.data.paymentStatus == 'pending' &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.paidAmount == 0 &&
+          request.resource.data.dpAmount == 0 &&
+          request.resource.data.paymentHistory.size() == 0
+        );
+      allow update: if validBooking(request.resource.data) && (
+        (isApproved() && canAccessBookingData()) ||
+        (
+          isClientBookingOwner(resource.data) &&
+          request.resource.data.clientUid == resource.data.clientUid &&
+          (
+            clientSendsBookingMessage(bookingId) ||
+            clientRequestsBookingCancellation(bookingId) ||
+            clientMarksLatestMessageRead()
+          )
+        )
+      );
       allow delete: if isApproved() && canAccessBookingData();
     }
 
+    function validBookingMessage(data, messageId) {
+      return data.keys().hasOnly([
+          'id', 'bookingId', 'clientUid', 'senderUid', 'senderRole',
+          'senderName', 'text', 'type', 'createdAt', 'readByAdmin', 'readByClient'
+        ]) &&
+        data.id == messageId &&
+        validString(data.bookingId, 1, 128) &&
+        validString(data.clientUid, 1, 128) &&
+        validString(data.senderUid, 1, 128) &&
+        data.senderRole in ['admin', 'client'] &&
+        validString(data.senderName, 1, 120) &&
+        validString(data.text, 1, 600) &&
+        data.type in ['message', 'status', 'cancellation'] &&
+        validIsoTimestampString(data.createdAt) &&
+        data.readByAdmin is bool &&
+        data.readByClient is bool;
+    }
+
+    function bookingExists(bookingId) {
+      return exists(/databases/$(database)/documents/bookings/$(bookingId));
+    }
+
+    function bookingData(bookingId) {
+      return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    }
+
+    match /bookingMessages/{messageId} {
+      allow read: if (isApproved() && canAccessBookingData()) ||
+        (isClientAccount() && resource.data.clientUid == request.auth.uid);
+      allow create: if validBookingMessage(request.resource.data, messageId) &&
+        bookingExists(request.resource.data.bookingId) && (
+          (
+            isApproved() &&
+            canAccessBookingData() &&
+            request.resource.data.senderUid == request.auth.uid &&
+            request.resource.data.senderRole == 'admin' &&
+            request.resource.data.clientUid == bookingData(request.resource.data.bookingId).clientUid &&
+            request.resource.data.readByAdmin == true &&
+            request.resource.data.readByClient == false
+          ) ||
+          (
+            isClientAccount() &&
+            request.resource.data.clientUid == request.auth.uid &&
+            request.resource.data.senderUid == request.auth.uid &&
+            request.resource.data.senderRole == 'client' &&
+            bookingData(request.resource.data.bookingId).clientUid == request.auth.uid &&
+            request.resource.data.readByAdmin == false &&
+            request.resource.data.readByClient == true &&
+            request.resource.data.type in ['message', 'cancellation']
+          )
+        );
+      allow update: if validBookingMessage(request.resource.data, messageId) && (
+        (
+          isApproved() &&
+          canAccessBookingData() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByAdmin']) &&
+          request.resource.data.readByAdmin == true
+        ) ||
+        (
+          isClientAccount() &&
+          resource.data.clientUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByClient']) &&
+          request.resource.data.readByClient == true
+        )
+      );
+      allow delete: if false;
+    }
+
+    function validCalendarSlot(data) {
+      return data.keys().hasOnly(['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt']) &&
+        validString(data.bookingId, 1, 160) &&
+        validIsoDate(data.date) &&
+        validNumber(data.durationHours, 0.5, 24) &&
+        validNumber(data.startHour, 0, 23) &&
+        data.status in ['pending', 'dp', 'lunas'] &&
+        validString(data.sessionLabel, 1, 160) &&
+        validString(data.title, 1, 80) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    match /clientCalendarSlots/{slotId} {
+      allow read: if isApproved() || isClientAccount();
+      allow create, update: if isApproved() && canAccessBookingData() && validCalendarSlot(request.resource.data);
+      allow delete: if isApproved() && canAccessBookingData();
+    }
+
+    function validCustomer(data, customerId) {
+      return data.keys().hasOnly([
+          'id', 'authUid', 'name', 'phone', 'phoneKey', 'email', 'instagram',
+          'notes', 'followUpStatus', 'source', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == customerId &&
+        validString(data.name, 1, 120) &&
+        validString(data.phone, 0, 32) &&
+        validString(data.phoneKey, 0, 32) &&
+        validString(data.email, 0, 254) &&
+        validString(data.instagram, 0, 80) &&
+        validString(data.notes, 0, 2000) &&
+        data.followUpStatus in ['normal', 'follow-up', 'vip', 'watchlist'] &&
+        validOptionalString(data, 'source', 40) &&
+        validOptionalString(data, 'authUid', 128) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    function isOwnClientProfile(customerId, data) {
+      return isClientAccount() &&
+        customerId == ('auth_' + request.auth.uid) &&
+        data.authUid == request.auth.uid &&
+        data.source == 'clientPortal';
+    }
+
+    function clientProfileIdentityMatches(data) {
+      return (
+          request.auth.token.email is string &&
+          data.email is string &&
+          data.email.lower() == request.auth.token.email.lower()
+        ) || (
+          request.auth.token.phone_number is string &&
+          data.phone is string &&
+          data.phone == request.auth.token.phone_number
+        );
+    }
+
     match /customers/{customerId} {
-      allow read: if isApproved() && canAccessCustomerData();
-      allow create, update: if isApproved() &&
-        canAccessCustomerData() &&
-        isValidString(request.resource.data.name) &&
-        isValidString(request.resource.data.phone);
+      allow read: if (isApproved() && canAccessCustomerData()) ||
+        (isClientAccount() && customerId == ('auth_' + request.auth.uid));
+      allow create: if validCustomer(request.resource.data, customerId) && (
+        (isApproved() && canAccessCustomerData()) ||
+        (
+          isOwnClientProfile(customerId, request.resource.data) &&
+          clientProfileIdentityMatches(request.resource.data) &&
+          request.resource.data.followUpStatus == 'normal'
+        )
+      );
+      allow update: if validCustomer(request.resource.data, customerId) && (
+        (isApproved() && canAccessCustomerData()) ||
+        (
+          isOwnClientProfile(customerId, request.resource.data) &&
+          clientProfileIdentityMatches(request.resource.data) &&
+          resource.data.authUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'phoneKey', 'email', 'updatedAt'])
+        )
+      );
       allow delete: if isApproved() && canAccessCustomerData();
     }
 
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isApproved() && hasPermission('settings');
+    function validPricingSettings(data) {
+      return data.keys().hasOnly(['sessions', 'discounts', 'recordingTypes', 'packages']) &&
+        data.sessions is list && data.sessions.size() > 0 && data.sessions.size() <= 50 &&
+        data.discounts is list && data.discounts.size() <= 100 &&
+        data.recordingTypes is list && data.recordingTypes.size() <= 50 &&
+        data.packages is list && data.packages.size() <= 100;
     }
 
-    match /gallery/{imageId} {
+    function validInvoiceSettings(data) {
+      return data.keys().hasOnly(['studioName', 'subtitle', 'phone', 'address', 'footer', 'paperSize', 'updatedAt']) &&
+        validString(data.studioName, 1, 120) &&
+        validString(data.subtitle, 1, 120) &&
+        validString(data.phone, 0, 32) &&
+        validString(data.address, 0, 500) &&
+        validString(data.footer, 1, 500) &&
+        data.paperSize in ['80mm', '58mm'] &&
+        validOptionalString(data, 'updatedAt', 40);
+    }
+
+    match /settings/pricing {
       allow read: if true;
-      allow write: if isApproved() && hasPermission('gallery');
+      allow create, update: if isApproved() && hasPermission('settings') && validPricingSettings(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /settings/invoice {
+      allow read: if true;
+      allow create, update: if isApproved() && hasPermission('settings') && validInvoiceSettings(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if isApproved() && hasPermission('settings');
+    }
+
+    function validBookkeepingEntry(data, entryId) {
+      return data.keys().hasOnly(['id', 'type', 'category', 'title', 'amount', 'date', 'paymentMethod', 'note', 'createdAt', 'updatedAt']) &&
+        data.id == entryId &&
+        data.type in ['income', 'expense'] &&
+        validString(data.category, 1, 80) &&
+        validString(data.title, 1, 160) &&
+        validNumber(data.amount, 0, 1000000000) &&
+        validIsoDate(data.date) &&
+        validString(data.paymentMethod, 1, 80) &&
+        validString(data.note, 0, 2000) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
     }
 
     match /bookkeepingEntries/{entryId} {
       allow read: if isApproved() && canAccessBookkeepingData();
-      allow create, update: if isApproved() &&
-        canAccessBookkeepingData() &&
-        isValidString(request.resource.data.title) &&
-        isValidNumber(request.resource.data.amount, 0) &&
-        (request.resource.data.type == 'income' || request.resource.data.type == 'expense');
+      allow create, update: if isApproved() && canAccessBookkeepingData() && validBookkeepingEntry(request.resource.data, entryId);
       allow delete: if isApproved() && canAccessBookkeepingData();
+    }
+
+    function validInventoryItem(data, itemId) {
+      return data.keys().hasOnly(['id', 'name', 'category', 'type', 'quantity', 'unit', 'minStock', 'condition', 'status', 'location', 'note', 'createdAt', 'updatedAt']) &&
+        data.id == itemId &&
+        validString(data.name, 1, 160) &&
+        validString(data.category, 1, 80) &&
+        validString(data.type, 1, 40) &&
+        validNumber(data.quantity, 0, 1000000) &&
+        validString(data.unit, 1, 40) &&
+        validNumber(data.minStock, 0, 1000000) &&
+        validString(data.condition, 1, 40) &&
+        validString(data.status, 1, 40) &&
+        validString(data.location, 0, 240) &&
+        validString(data.note, 0, 2000) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    function validInventoryMovement(data, movementId) {
+      return data.keys().hasOnly(['id', 'itemId', 'itemName', 'type', 'quantity', 'previousQuantity', 'nextQuantity', 'unit', 'note', 'createdAt']) &&
+        data.id == movementId &&
+        validString(data.itemId, 0, 160) &&
+        validString(data.itemName, 1, 160) &&
+        validString(data.type, 1, 40) &&
+        validNumber(data.quantity, 0, 1000000) &&
+        validNumber(data.previousQuantity, 0, 1000000) &&
+        validNumber(data.nextQuantity, 0, 1000000) &&
+        validString(data.unit, 1, 40) &&
+        validString(data.note, 0, 2000) &&
+        validIsoTimestampString(data.createdAt);
     }
 
     match /inventoryItems/{itemId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update: if isApproved() &&
-        canAccessInventoryData() &&
-        isValidString(request.resource.data.name) &&
-        isValidNumber(request.resource.data.quantity, 0) &&
-        isValidNumber(request.resource.data.minStock, 0);
+      allow create, update: if isApproved() && canAccessInventoryData() && validInventoryItem(request.resource.data, itemId);
       allow delete: if isApproved() && canAccessInventoryData();
     }
 
     match /inventoryMovements/{movementId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create: if isApproved() &&
-        canAccessInventoryData() &&
-        isValidString(request.resource.data.itemName) &&
-        isValidNumber(request.resource.data.quantity, 0);
+      allow create: if isApproved() && canAccessInventoryData() && validInventoryMovement(request.resource.data, movementId);
       allow update, delete: if false;
     }
 
+    function validGalleryItem(data) {
+      return data.keys().hasOnly(['title', 'description', 'url', 'publicId', 'category', 'isFavorite', 'isDeleted', 'uploadedBy', 'createdAt', 'deletedAt']) &&
+        validString(data.title, 1, 180) &&
+        validString(data.description, 0, 2000) &&
+        validString(data.url, 8, 2000) &&
+        validString(data.publicId, 1, 500) &&
+        validString(data.category, 1, 80) &&
+        data.isFavorite is bool &&
+        data.isDeleted is bool &&
+        validString(data.uploadedBy, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['deletedAt']) || data.deletedAt == null || validIsoTimestampString(data.deletedAt));
+    }
+
+    match /gallery/{imageId} {
+      allow read: if isApproved() && hasPermission('gallery');
+      allow create, update: if isApproved() && hasPermission('gallery') && validGalleryItem(request.resource.data);
+      allow delete: if isApproved() && hasPermission('gallery');
+    }
+
+    function validApprovalMail(data) {
+      return data.keys().hasOnly(['createdBy', 'type', 'createdAt', 'to', 'message']) &&
+        data.createdBy == request.auth.uid &&
+        data.type == 'adminApprovalRequest' &&
+        data.to == 'marsicprod@gmail.com' &&
+        validIsoTimestampString(data.createdAt) &&
+        data.message is map &&
+        data.message.keys().hasOnly(['subject', 'html']) &&
+        validString(data.message.subject, 1, 240) &&
+        validString(data.message.html, 1, 20000);
+    }
+
     match /mail/{mailId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() &&
+        userDocExists() &&
+        getUserData().role == 'admin' &&
+        getUserData().status == 'pending' &&
+        validApprovalMail(request.resource.data);
+      allow read, update, delete: if false;
     }
 
     match /{document=**} {

@@ -13,11 +13,16 @@ import {
   signOut,
   updateProfile
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import { sendNewUserNotificationEmail } from './emailService.js';
 import { defaultAdminPermissions, normalizeAdminPermissions } from '../utils/adminPermissions.js';
 import { ACCOUNT_SETTINGS_STORAGE_KEY } from '../utils/accountSettings.js';
+import {
+  createAccountAccessError,
+  ensureAccountIdentity,
+} from './accountRoleRepository.js';
+import { ACCOUNT_ROLES, PORTAL_ACCESS, getPortalAccess } from '../utils/accountRoles.js';
 
 function createUnauthenticatedState(errorMessage = '') {
   return {
@@ -42,7 +47,7 @@ function serializeFirebaseUser(user) {
 function checkIsOwnerEmail(user) {
   if (!user) return false;
   const email = user.email || user.providerData?.find(p => p.email)?.email || '';
-  return String(email).trim().toLowerCase() === 'marsicprod@gmail.com';
+  return user.emailVerified === true && String(email).trim().toLowerCase() === 'marsicprod@gmail.com';
 }
 
 const GOOGLE_REDIRECT_PENDING_KEY = '37musicstudio.auth.googleRedirectPending.v1';
@@ -156,8 +161,37 @@ export function getAdminAuthErrorMessage(error) {
   if (code === 'auth/code-expired') {
     return 'Kode OTP sudah kedaluwarsa. Silakan kirim ulang.';
   }
+  if (code === `account/${PORTAL_ACCESS.WRONG_PORTAL_CLIENT}`) {
+    return 'Akun ini terdaftar sebagai client dan tidak memiliki izin masuk ke Portal Admin.';
+  }
+  if (code === `account/${PORTAL_ACCESS.ADMIN_BLOCKED}`) {
+    return 'Request akun admin ini telah ditolak atau tidak lagi aktif.';
+  }
+  if (String(code).startsWith('account/')) {
+    return 'Role akun ini tidak sesuai untuk Portal Admin.';
+  }
 
   return error?.message || 'Login Firebase gagal. Periksa koneksi dan kredensial Anda.';
+}
+
+async function ensureAdminAccount(user) {
+  const result = await ensureAccountIdentity(user, 'admin');
+  const access = getPortalAccess(result.identity, 'admin');
+
+  if (result.created && result.identity.role === ACCOUNT_ROLES.ADMIN) {
+    sendNewUserNotificationEmail(result.identity).catch((error) =>
+      console.error('Failed to trigger email notification:', error)
+    );
+  }
+
+  return { ...result, access };
+}
+
+function assertAdminPortalIntent(result) {
+  if ([PORTAL_ACCESS.WRONG_PORTAL_CLIENT, PORTAL_ACCESS.ADMIN_BLOCKED, PORTAL_ACCESS.INVALID_ACCOUNT, PORTAL_ACCESS.MISSING_ACCOUNT].includes(result.access)) {
+    throw createAccountAccessError(result.access, result.identity);
+  }
+  return result;
 }
 
 export function subscribeAdminAuth(callback) {
@@ -187,36 +221,29 @@ export function subscribeAdminAuth(callback) {
         return;
       }
 
-      // Check or create Firestore document for the user
       const uid = user.uid;
       const userDocRef = doc(firestoreDb, 'users', uid);
       const isOwnerEmail = checkIsOwnerEmail(user);
 
       try {
-        const userSnap = await getDoc(userDocRef);
-        
-        if (!userSnap.exists()) {
-          const newDoc = {
-            uid: uid,
-            email: user.email || '',
-            phoneNumber: user.phoneNumber || '',
-            displayName: user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'User',
-            provider: user.providerData[0]?.providerId || 'unknown',
-            permissions: defaultAdminPermissions,
-            role: isOwnerEmail ? 'owner' : 'admin',
-            status: isOwnerEmail ? 'approved' : 'pending',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          await setDoc(userDocRef, newDoc);
-          if (!isOwnerEmail) {
-            sendNewUserNotificationEmail(newDoc).catch((err) =>
-              console.error('Failed to trigger email notification:', err)
-            );
-          }
-        }
+        await ensureAdminAccount(user);
       } catch (err) {
         console.error('Error in user doc check/create:', err);
+        callback({
+          errorMessage: getAdminAuthErrorMessage(err),
+          isAuthenticated: true,
+          isReady: true,
+          user: {
+            ...serializeFirebaseUser(user),
+            role: err?.identity?.role || '',
+            status: err?.identity?.status || '',
+            access: err?.access || PORTAL_ACCESS.INVALID_ACCOUNT,
+            permissions: defaultAdminPermissions,
+            isApproved: false,
+            isOwner: false,
+          }
+        });
+        return;
       }
 
       // Listen to real-time status updates in user's Firestore document
@@ -226,7 +253,9 @@ export function subscribeAdminAuth(callback) {
           const userData = docSnap.exists() ? docSnap.data() : null;
           const hasExplicitRole = Boolean(userData?.role);
           const isOwner = userData?.role === 'owner' || (!hasExplicitRole && isOwnerEmail);
-          const isApproved = isOwner || (userData && userData.status === 'approved');
+          const isAdminRole = isOwner || userData?.role === ACCOUNT_ROLES.ADMIN;
+          const isApproved = isOwner || (isAdminRole && userData?.status === 'approved');
+          const access = getPortalAccess(userData, 'admin');
 
           if (userData?.preferences && typeof window !== 'undefined') {
             try {
@@ -247,7 +276,8 @@ export function subscribeAdminAuth(callback) {
               role: userData?.role || (isOwner ? 'owner' : 'admin'),
               isOwner,
               permissions: normalizeAdminPermissions(userData?.permissions),
-              isApproved
+              isApproved,
+              access,
             }
           });
         },
@@ -262,7 +292,8 @@ export function subscribeAdminAuth(callback) {
               status: isOwnerEmail ? 'approved' : 'pending',
                 role: isOwnerEmail ? 'owner' : 'admin',
                 permissions: defaultAdminPermissions,
-              isApproved: isOwnerEmail
+                isApproved: isOwnerEmail,
+                access: isOwnerEmail ? PORTAL_ACCESS.ALLOWED : PORTAL_ACCESS.INVALID_ACCOUNT,
             }
           });
         }
@@ -294,6 +325,8 @@ export async function signInAdmin({ email, password }) {
     String(password || '')
   );
 
+  assertAdminPortalIntent(await ensureAdminAccount(credential.user));
+
   return serializeFirebaseUser(credential.user);
 }
 
@@ -310,6 +343,8 @@ export async function signUpAdmin({ email, password }) {
     String(password || '')
   );
 
+  assertAdminPortalIntent(await ensureAdminAccount(credential.user));
+
   return serializeFirebaseUser(credential.user);
 }
 
@@ -325,6 +360,8 @@ export async function signInWithGoogle() {
   try {
     const credential = await signInWithPopup(firebaseAuth, provider);
     clearGoogleRedirectPending();
+
+    assertAdminPortalIntent(await ensureAdminAccount(credential.user));
 
     return serializeFirebaseUser(credential.user);
   } catch (error) {
@@ -348,6 +385,10 @@ export async function handleRedirectResult() {
     const credential = await getRedirectResult(firebaseAuth);
     clearGoogleRedirectPending();
 
+    if (credential) {
+      assertAdminPortalIntent(await ensureAdminAccount(credential.user));
+    }
+
     return credential ? serializeFirebaseUser(credential.user) : null;
   } catch (error) {
     clearGoogleRedirectPending();
@@ -367,6 +408,16 @@ export async function sendPhoneOTP(phoneNumber, recaptchaVerifier) {
     String(phoneNumber || '').trim(),
     recaptchaVerifier
   );
+}
+
+export async function ensureCurrentAdminAccess() {
+  if (!firebaseAuth?.currentUser) {
+    throw new Error('Akun Firebase belum login.');
+  }
+
+  const result = await ensureAdminAccount(firebaseAuth.currentUser);
+  assertAdminPortalIntent(result);
+  return result;
 }
 
 export async function updateAdminProfile({ displayName }) {
@@ -439,6 +490,7 @@ export const adminAuthRepository = {
   signInWithGoogle,
   handleRedirectResult,
   sendPhoneOTP,
+  ensureCurrentAdminAccess,
   sendAdminPasswordReset,
   signOutAdmin,
   updateAdminProfile,

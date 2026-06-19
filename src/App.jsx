@@ -12,7 +12,7 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>Loading...</div>}>
         <Routes>
-          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/" element={<ClientLandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/client/login" element={<ClientLoginPage />} />
           <Route path="/client/portal" element={<ClientPortalPage />} />

@@ -286,7 +286,7 @@ export default function GalleryPage() {
         category: uploadCategory,
         isFavorite: false,
         isDeleted: false,
-        uploadedBy: currentUser?.displayName || currentUser?.email || 'Admin',
+        uploadedBy: currentUser?.displayName || 'Admin',
         createdAt: new Date().toISOString(),
       };
 
@@ -621,7 +621,7 @@ export default function GalleryPage() {
         category: activePhoto.category || 'Others',
         isFavorite: false,
         isDeleted: false,
-        uploadedBy: currentUser?.displayName || currentUser?.email || 'Admin',
+        uploadedBy: currentUser?.displayName || 'Admin',
         createdAt: new Date().toISOString(),
       };
 
