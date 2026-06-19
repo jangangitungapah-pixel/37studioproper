@@ -18330,3 +18330,234 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === ADMIN PAYMENT PROOF REVIEW: END === */
+
+/* === BOOKING DETAIL WIDE CONVERSATION FIX: START === */
+
+/*
+  Admin Booking Detail:
+  - Modal dibuat hampir full layar.
+  - Area komunikasi booking dibuat full width.
+  - Chat list tidak kepotong oleh tinggi kecil.
+  - Bubble pesan dan tanggal dipaksa wrap/fit rapi.
+*/
+
+.booking-detail-compact-backdrop {
+  align-items: center !important;
+  padding: clamp(8px, 1.6vw, 20px) !important;
+  padding-bottom: calc(clamp(8px, 1.6vw, 20px) + env(safe-area-inset-bottom)) !important;
+}
+
+.booking-detail-compact-panel {
+  width: min(100%, calc(100vw - clamp(16px, 3vw, 40px))) !important;
+  max-width: 1220px !important;
+  max-height: min(94dvh, 920px) !important;
+  border-radius: clamp(18px, 2vw, 30px) !important;
+}
+
+.booking-detail-compact-head {
+  padding: clamp(13px, 1.7vw, 20px) clamp(14px, 2vw, 22px) !important;
+}
+
+.booking-detail-compact-body {
+  grid-template-columns: minmax(280px, 0.86fr) minmax(340px, 1.14fr) !important;
+  align-items: start !important;
+  gap: 12px !important;
+  padding: 12px !important;
+}
+
+.booking-detail-compact-actions {
+  padding: 12px !important;
+}
+
+/* Keep important top rows spanning full modal width. */
+.booking-detail-compact-summary,
+.booking-request-state {
+  grid-column: 1 / -1 !important;
+}
+
+/* Let conversation breathe. This is the main fix. */
+.booking-detail-compact-body > .booking-conversation {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.booking-conversation {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.booking-conversation-head {
+  min-width: 0 !important;
+  padding: 9px 12px !important;
+}
+
+.booking-conversation-head span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.booking-conversation-head small {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.booking-conversation-list {
+  max-height: clamp(220px, 34dvh, 420px) !important;
+  min-height: 170px !important;
+  gap: 9px !important;
+  padding: 12px !important;
+}
+
+.booking-conversation-list article {
+  width: min(100%, 720px) !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  padding: 10px 12px !important;
+}
+
+.booking-conversation-list article.is-own {
+  justify-self: end !important;
+}
+
+.booking-conversation-list article > div {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.booking-conversation-list strong {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.booking-conversation-list time {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.booking-conversation-list p {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.booking-conversation-form {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 9px !important;
+  padding: 10px 12px 12px !important;
+}
+
+.booking-conversation-form textarea {
+  min-width: 0 !important;
+  min-height: 46px !important;
+}
+
+.booking-conversation-form button {
+  min-width: 86px !important;
+}
+
+/* Desktop: use the wider canvas nicely. */
+@media (min-width: 1024px) {
+  .booking-detail-compact-panel {
+    width: min(1220px, calc(100vw - 40px)) !important;
+  }
+
+  .booking-detail-compact-body {
+    grid-template-columns: minmax(360px, 0.92fr) minmax(460px, 1.08fr) !important;
+  }
+
+  .booking-detail-compact-body > .booking-conversation {
+    grid-column: 2 / 3 !important;
+    grid-row: span 3 !important;
+    align-self: stretch !important;
+  }
+
+  .booking-conversation {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+    min-height: 100% !important;
+  }
+
+  .booking-conversation-list {
+    max-height: none !important;
+    min-height: 360px !important;
+  }
+}
+
+/* Tablet and mobile: full-screen sheet, no squeezed chat. */
+@media (max-width: 1023px) {
+  .booking-detail-compact-backdrop {
+    align-items: stretch !important;
+    padding: 8px !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .booking-detail-compact-panel {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 100% !important;
+    height: calc(100dvh - 16px - env(safe-area-inset-bottom)) !important;
+    border-radius: 20px !important;
+  }
+
+  .booking-detail-compact-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow-y: auto !important;
+  }
+
+  .booking-detail-compact-body > .booking-conversation {
+    grid-column: 1 / -1 !important;
+  }
+
+  .booking-conversation-list {
+    max-height: 38dvh !important;
+    min-height: 210px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .booking-detail-compact-backdrop {
+    padding: 0 !important;
+  }
+
+  .booking-detail-compact-panel {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .booking-detail-compact-body {
+    padding: 9px !important;
+  }
+
+  .booking-conversation-list {
+    max-height: 42dvh !important;
+    min-height: 230px !important;
+    padding: 9px !important;
+  }
+
+  .booking-conversation-list article {
+    width: 100% !important;
+  }
+
+  .booking-conversation-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .booking-conversation-form button {
+    width: 100% !important;
+    min-height: 40px !important;
+  }
+}
+
+/* === BOOKING DETAIL WIDE CONVERSATION FIX: END === */
