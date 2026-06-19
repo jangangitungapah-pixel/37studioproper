@@ -1,0 +1,108 @@
+/* === ONESIGNAL PERMISSION WIDGET: START === */
+
+.onesignal-permission-widget {
+  position: fixed;
+  right: clamp(12px, 2vw, 24px);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 160;
+  width: min(420px, calc(100vw - 24px));
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  border: 1px solid var(--ui-border, rgba(255, 255, 255, 0.11));
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 138, 42, 0.18), transparent 34%),
+    color-mix(in srgb, var(--ui-bg-card, #101012) 92%, transparent);
+  color: var(--ui-text-main, #f7f3ec);
+  box-shadow: 0 22px 72px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(22px);
+  padding: 12px;
+}
+
+.onesignal-permission-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ui-border-strong, rgba(255, 147, 64, 0.34));
+  border-radius: 16px;
+  background: var(--ui-accent-soft, rgba(255, 138, 42, 0.16));
+  color: var(--ui-accent, #ff8a2a);
+}
+
+.onesignal-permission-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.onesignal-permission-copy strong {
+  color: var(--ui-text-strong, #fff);
+  font-size: 0.88rem;
+  font-weight: 820;
+  letter-spacing: -0.02em;
+}
+
+.onesignal-permission-copy small,
+.onesignal-permission-copy em {
+  color: var(--ui-text-muted, rgba(247, 243, 236, 0.66));
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.onesignal-permission-copy em {
+  color: var(--ui-accent, #ff8a2a);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.onesignal-permission-action {
+  min-height: 38px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--ui-accent, #ff8a2a), var(--ui-accent-strong, #ff5f15));
+  color: #17100a;
+  padding: 0 14px;
+  font-size: 0.76rem;
+  font-weight: 860;
+  cursor: pointer;
+}
+
+.onesignal-permission-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.onesignal-permission-close {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ui-border, rgba(255, 255, 255, 0.11));
+  border-radius: 999px;
+  background: var(--ui-bg-card, #101012);
+  color: var(--ui-text-main, #f7f3ec);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .onesignal-permission-widget {
+    left: 10px;
+    right: 10px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    width: auto;
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .onesignal-permission-action {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+/* === ONESIGNAL PERMISSION WIDGET: END === */

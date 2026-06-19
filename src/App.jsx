@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import OneSignalPermissionWidget from './components/notifications/OneSignalPermissionWidget.jsx';
 
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
@@ -10,6 +11,7 @@ const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage.jsx'));
 export default function App() {
   return (
     <BrowserRouter>
+      <OneSignalPermissionWidget />
       <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>Loading...</div>}>
         <Routes>
           <Route path="/" element={<ClientLandingPage />} />
