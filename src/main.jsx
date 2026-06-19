@@ -82,6 +82,61 @@ if (typeof window !== 'undefined') {
 }
 /* === STALE DEPLOY CHUNK RECOVERY: END === */
 
+/* === SAFE PWA REGISTRATION: START === */
+function registerSafePwaServiceWorker() {
+  if (typeof window === 'undefined') return;
+  if (!('serviceWorker' in navigator)) return;
+
+  const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const isSecure = window.location.protocol === 'https:' || isLocalhost;
+
+  if (!isSecure) return;
+
+  window.addEventListener('load', () => {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let hasReloadedForUpdate = false;
+
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((registration) => {
+        registration.update().catch(() => {});
+
+        window.setInterval(() => {
+          registration.update().catch(() => {});
+        }, 60 * 60 * 1000);
+
+        if (registration.waiting && hadController) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        registration.addEventListener('updatefound', () => {
+          const nextWorker = registration.installing;
+
+          if (!nextWorker) return;
+
+          nextWorker.addEventListener('statechange', () => {
+            if (nextWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+      })
+      .catch((error) => {
+        console.warn('[pwa] Service worker registration failed:', error);
+      });
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || hasReloadedForUpdate) return;
+
+      hasReloadedForUpdate = true;
+      window.location.reload();
+    });
+  });
+}
+
+registerSafePwaServiceWorker();
+/* === SAFE PWA REGISTRATION: END === */
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />

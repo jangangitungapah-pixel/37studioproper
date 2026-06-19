@@ -1,0 +1,64 @@
+{
+  "name": "37 Music Studio",
+  "short_name": "37 Music",
+  "description": "Portal booking, client, dan admin 37 Music Studio.",
+  "id": "/",
+  "start_url": "/client",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050506",
+  "theme_color": "#050506",
+  "categories": [
+    "music",
+    "business",
+    "productivity"
+  ],
+  "lang": "id-ID",
+  "icons": [
+    {
+      "src": "/icons/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Client Portal",
+      "short_name": "Client",
+      "description": "Buka portal client 37 Music Studio.",
+      "url": "/client",
+      "icons": [
+        {
+          "src": "/icons/pwa-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Admin Portal",
+      "short_name": "Admin",
+      "description": "Buka portal admin 37 Music Studio.",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/icons/pwa-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
