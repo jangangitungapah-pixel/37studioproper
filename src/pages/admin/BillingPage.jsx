@@ -6,6 +6,9 @@ import {
   CreditCard,
   Download,
   PhoneCall,
+  ExternalLink,
+  Image,
+  UploadCloud,
   Printer,
   Search,
   Share2,
@@ -15,6 +18,11 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
+import { firebaseAuth } from '../../lib/firebase.js';
+import {
+  getPaymentProofStatusLabel,
+  paymentProofRepository,
+} from '../../services/paymentProofRepository.js';
 import { defaultInvoiceSettings, useInvoiceSettings } from '../../settings/invoiceSettings.js';
 import { mergeStudioSettingsIntoInvoiceSettings, useStudioSettings } from '../../settings/studioSettings.js';
 
@@ -356,6 +364,28 @@ function getShareText(booking, settings = defaultInvoiceSettings) {
   return lines.join('\n');
 }
 
+function getProofCategoryLabel(category) {
+  if (category === 'pelunasan') return 'Pelunasan';
+  return 'DP';
+}
+
+function getProofMethodLabel(method) {
+  if (method === 'qris') return 'QRIS';
+  if (method === 'transfer') return 'Transfer';
+  return getPaymentMethodLabel(method);
+}
+
+function getProofTone(status) {
+  if (status === 'approved') return 'is-approved';
+  if (status === 'rejected') return 'is-rejected';
+  return 'is-pending';
+}
+
+function findBookingForProof(bookingsById, proof) {
+  if (!proof?.bookingId) return null;
+  return bookingsById.get(proof.bookingId) || null;
+}
+
 function getBillingStats(bookings) {
   return bookings.reduce(
     (stats, booking) => {
@@ -415,6 +445,51 @@ function getCashStats(bookings, range = 'today') {
       count: 0,
       total: 0,
     }
+  );
+}
+
+function PaymentProofReviewQueue({ bookingsById, onOpenProof, proofs }) {
+  const visibleProofs = proofs.slice(0, 6);
+
+  return (
+    <section className="billing-proof-review-card" aria-label="Review bukti pembayaran">
+      <header>
+        <span><UploadCloud size={16} /></span>
+        <div>
+          <small>Bukti Pembayaran</small>
+          <strong>{proofs.length ? proofs.length + ' menunggu review' : 'Tidak ada pending'}</strong>
+        </div>
+      </header>
+
+      {visibleProofs.length ? (
+        <div className="billing-proof-review-list">
+          {visibleProofs.map((proof) => {
+            const booking = findBookingForProof(bookingsById, proof);
+
+            return (
+              <article className="billing-proof-review-row" key={proof.id}>
+                <button type="button" onClick={() => onOpenProof(proof)}>
+                  <span className="billing-proof-thumb">
+                    {proof.proofUrl ? <img alt="" src={proof.proofUrl} loading="lazy" /> : <Image size={16} />}
+                  </span>
+                  <span className="billing-proof-main">
+                    <strong>{proof.customer || booking?.customer || 'Client'}</strong>
+                    <small>{booking ? getInvoiceDisplayNumber(booking) : proof.invoiceNumber || proof.bookingCode || proof.bookingId}</small>
+                    <em>{getProofCategoryLabel(proof.category)} • {getProofMethodLabel(proof.method)} • {formatMoney(proof.amount)}</em>
+                  </span>
+                </button>
+
+                <span className={'billing-proof-status ' + getProofTone(proof.status)}>
+                  {getPaymentProofStatusLabel(proof.status)}
+                </span>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="billing-proof-empty">Belum ada bukti pembayaran yang perlu direview.</p>
+      )}
+    </section>
   );
 }
 
@@ -791,6 +866,113 @@ function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPaym
   );
 }
 
+function PaymentProofReviewModal({
+  adminNote,
+  booking,
+  isReviewing,
+  onAdminNoteChange,
+  onApprove,
+  onClose,
+  onReject,
+  proof,
+}) {
+  if (!proof) return null;
+
+  const canApprove = Boolean(booking) && proof.status === 'pending';
+
+  return (
+    <div className="billing-proof-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget && !isReviewing) onClose();
+    }}>
+      <section className="billing-proof-modal" role="dialog" aria-modal="true" aria-labelledby="billing-proof-modal-title">
+        <header className="billing-proof-modal-head">
+          <div>
+            <p>Review Bukti Pembayaran</p>
+            <h2 id="billing-proof-modal-title">{proof.customer || booking?.customer || 'Client'}</h2>
+            <span>{getProofCategoryLabel(proof.category)} • {formatMoney(proof.amount)}</span>
+          </div>
+
+          <button type="button" aria-label="Tutup review bukti" disabled={isReviewing} onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="billing-proof-modal-body">
+          <a className="billing-proof-image-link" href={proof.proofUrl} target="_blank" rel="noreferrer">
+            {proof.proofUrl ? (
+              <img src={proof.proofUrl} alt={'Bukti pembayaran ' + (proof.customer || 'client')} />
+            ) : (
+              <span><Image size={22} />Bukti tidak tersedia</span>
+            )}
+            <em><ExternalLink size={13} />Buka gambar asli</em>
+          </a>
+
+          <div className="billing-proof-info-grid">
+            <article>
+              <small>Booking</small>
+              <strong>{booking ? getBookingDisplayCode(booking) : proof.bookingCode || proof.bookingId}</strong>
+              <span>{booking ? formatDate(booking.date) + ' • ' + getTimeRange(booking) : proof.invoiceNumber || '-'}</span>
+            </article>
+
+            <article>
+              <small>Invoice</small>
+              <strong>{booking ? getInvoiceDisplayNumber(booking) : proof.invoiceNumber || '-'}</strong>
+              <span>{booking ? getStatusLabel(normalizeStatus(booking)) : 'Booking belum ditemukan'}</span>
+            </article>
+
+            <article>
+              <small>Metode</small>
+              <strong>{getProofMethodLabel(proof.method)}</strong>
+              <span>{proof.createdAt ? formatDate(proof.createdAt) : '-'}</span>
+            </article>
+
+            <article>
+              <small>Status Bukti</small>
+              <strong>{getPaymentProofStatusLabel(proof.status)}</strong>
+              <span>{proof.proofFileName || 'File pembayaran'}</span>
+            </article>
+          </div>
+
+          {proof.clientNote ? (
+            <div className="billing-proof-note">
+              <small>Catatan Client</small>
+              <p>{proof.clientNote}</p>
+            </div>
+          ) : null}
+
+          {!booking ? (
+            <div className="billing-proof-warning">
+              <AlertCircle size={15} />
+              <span>Booking terkait tidak ditemukan. Bukti tidak bisa di-approve otomatis.</span>
+            </div>
+          ) : null}
+
+          <label className="billing-proof-admin-note">
+            <span>Catatan Admin</span>
+            <textarea
+              placeholder="Opsional. Contoh: Bukti valid, transfer masuk BCA."
+              value={adminNote}
+              onChange={(event) => onAdminNoteChange(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <footer className="billing-proof-modal-actions">
+          <button type="button" disabled={isReviewing} onClick={onClose}>
+            Tutup
+          </button>
+          <button className="is-reject" type="button" disabled={isReviewing || proof.status !== 'pending'} onClick={onReject}>
+            Reject
+          </button>
+          <button className="is-approve" type="button" disabled={isReviewing || !canApprove} onClick={onApprove}>
+            {isReviewing ? 'Memproses...' : 'Approve & Catat Bayar'}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 function PaymentRecordModal({ booking, onClose, onSubmit }) {
   const outstanding = getOutstandingAmount(booking);
   const [form, setForm] = useState(() => ({
@@ -985,6 +1167,10 @@ export default function BillingPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
+  const [pendingPaymentProofs, setPendingPaymentProofs] = useState([]);
+  const [selectedPaymentProof, setSelectedPaymentProof] = useState(null);
+  const [paymentProofAdminNote, setPaymentProofAdminNote] = useState('');
+  const [isReviewingPaymentProof, setIsReviewingPaymentProof] = useState(false);
   const rawInvoiceSettings = useInvoiceSettings();
   const studioSettings = useStudioSettings();
   const invoiceSettings = useMemo(
@@ -1009,12 +1195,39 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
+    const unsubscribe = paymentProofRepository.subscribePendingPaymentProofs(
+      (data) => setPendingPaymentProofs(data),
+      (error) => {
+        console.error('Gagal memuat bukti pembayaran pending:', error);
+        setToast({
+          title: 'Bukti pembayaran belum tersinkron',
+          message: 'Daftar bukti pembayaran pending belum bisa dimuat.',
+        });
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (!toast) return undefined;
 
     const timerId = window.setTimeout(() => setToast(null), 4200);
 
     return () => window.clearTimeout(timerId);
   }, [toast]);
+
+  const bookingsById = useMemo(() => {
+    return bookings.reduce((map, booking) => {
+      if (booking?.id) map.set(booking.id, booking);
+      return map;
+    }, new Map());
+  }, [bookings]);
+
+  const selectedPaymentProofBooking = useMemo(
+    () => findBookingForProof(bookingsById, selectedPaymentProof),
+    [bookingsById, selectedPaymentProof]
+  );
 
   const filteredBookings = useMemo(() => {
     const queryText = searchText.trim().toLowerCase();
@@ -1054,6 +1267,81 @@ export default function BillingPage() {
     () => getPaginationSlice(filteredBookings, billingPage, ADMIN_LIST_PAGE_SIZE),
     [billingPage, filteredBookings]
   );
+
+  function openPaymentProofReview(proof) {
+    setSelectedPaymentProof(proof);
+    setPaymentProofAdminNote('');
+  }
+
+  function closePaymentProofReview() {
+    if (isReviewingPaymentProof) return;
+
+    setSelectedPaymentProof(null);
+    setPaymentProofAdminNote('');
+  }
+
+  async function approveSelectedPaymentProof() {
+    if (!selectedPaymentProof || !selectedPaymentProofBooking || isReviewingPaymentProof) return;
+
+    setIsReviewingPaymentProof(true);
+
+    try {
+      const result = await paymentProofRepository.approvePaymentProofAndRecordPayment({
+        adminNote: paymentProofAdminNote,
+        booking: selectedPaymentProofBooking,
+        proof: selectedPaymentProof,
+        reviewer: firebaseAuth?.currentUser || null,
+      });
+
+      setBookings((current) => current.map((booking) =>
+        booking.id === result.booking.id ? result.booking : booking
+      ));
+      setSelectedBooking((current) => (current?.id === result.booking.id ? result.booking : current));
+      setSelectedPaymentProof(null);
+      setPaymentProofAdminNote('');
+      setToast({
+        title: 'Bukti pembayaran disetujui',
+        message: (selectedPaymentProof.customer || selectedPaymentProofBooking.customer || 'Client') + ' membayar ' + formatMoney(selectedPaymentProof.amount) + '.',
+      });
+    } catch (error) {
+      console.error('Gagal approve bukti pembayaran:', error);
+      setToast({
+        title: 'Approve gagal',
+        message: error?.message || 'Bukti pembayaran belum berhasil dikonfirmasi.',
+      });
+    } finally {
+      setIsReviewingPaymentProof(false);
+    }
+  }
+
+  async function rejectSelectedPaymentProof() {
+    if (!selectedPaymentProof || isReviewingPaymentProof) return;
+
+    setIsReviewingPaymentProof(true);
+
+    try {
+      await paymentProofRepository.rejectPaymentProof(
+        selectedPaymentProof,
+        firebaseAuth?.currentUser || null,
+        paymentProofAdminNote
+      );
+
+      setSelectedPaymentProof(null);
+      setPaymentProofAdminNote('');
+      setToast({
+        title: 'Bukti pembayaran ditolak',
+        message: (selectedPaymentProof.customer || 'Client') + ' dapat mengirim ulang bukti pembayaran.',
+      });
+    } catch (error) {
+      console.error('Gagal reject bukti pembayaran:', error);
+      setToast({
+        title: 'Reject gagal',
+        message: error?.message || 'Bukti pembayaran belum berhasil ditolak.',
+      });
+    } finally {
+      setIsReviewingPaymentProof(false);
+    }
+  }
 
   function handleBillingFilterChange(nextFilter) {
     setActiveFilter(nextFilter);
@@ -1189,6 +1477,12 @@ export default function BillingPage() {
         onRangeChange={setActiveCashRange}
       />
 
+      <PaymentProofReviewQueue
+        bookingsById={bookingsById}
+        proofs={pendingPaymentProofs}
+        onOpenProof={openPaymentProofReview}
+      />
+
       <BillingToolbar
         activeFilter={activeFilter}
         searchText={searchText}
@@ -1241,6 +1535,17 @@ export default function BillingPage() {
         booking={selectedVoidBooking}
         onClose={() => setSelectedVoidBooking(null)}
         onSubmit={voidInvoice}
+      />
+
+      <PaymentProofReviewModal
+        adminNote={paymentProofAdminNote}
+        booking={selectedPaymentProofBooking}
+        isReviewing={isReviewingPaymentProof}
+        proof={selectedPaymentProof}
+        onAdminNoteChange={setPaymentProofAdminNote}
+        onApprove={approveSelectedPaymentProof}
+        onClose={closePaymentProofReview}
+        onReject={rejectSelectedPaymentProof}
       />
 
       {toast ? (
