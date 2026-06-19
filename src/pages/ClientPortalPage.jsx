@@ -20,7 +20,10 @@ import {
   Check,
   MessageCircle,
   MapPin,
-  Search
+  Search,
+  UploadCloud,
+  Image,
+  X
 } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
@@ -47,6 +50,14 @@ import {
   getStudioPaymentTerms,
   useStudioSettings,
 } from '../settings/studioSettings.js';
+import { uploadPaymentProofFile } from '../services/cloudinaryUploadService.js';
+import {
+  buildPaymentProofPayload,
+  getPaymentProofStatusLabel,
+  paymentProofCategoryOptions,
+  paymentProofMethodOptions,
+  paymentProofRepository,
+} from '../services/paymentProofRepository.js';
 import { businessHours, durationOptions, statusFilters } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
@@ -54,6 +65,7 @@ import '../styles/admin-auth.css';
 import '../styles/client-portal-calendar.css';
 import '../styles/client-portal-overhaul.css';
 import '../styles/client-portal-calendar-tight.css';
+import '../styles/client-payment-proof.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -304,6 +316,20 @@ export default function ClientPortalPage() {
   const [historyFilter, setHistoryFilter] = useState('all');
   const [actionFeedback, setActionFeedback] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [paymentProofs, setPaymentProofs] = useState([]);
+  const [isSubmittingProof, setIsSubmittingProof] = useState(false);
+  const [selectedProofBooking, setSelectedProofBooking] = useState(null);
+  const [proofCategory, setProofCategory] = useState('dp');
+  const [proofMethod, setProofMethod] = useState('transfer');
+  const [proofAmount, setProofAmount] = useState('');
+  const [proofFile, setProofFile] = useState(null);
+  const [proofNote, setProofNote] = useState('');
+  const [simProofEnabled, setSimProofEnabled] = useState(false);
+  const [simProofCategory, setSimProofCategory] = useState('dp');
+  const [simProofMethod, setSimProofMethod] = useState('transfer');
+  const [simProofAmount, setSimProofAmount] = useState('');
+  const [simProofFile, setSimProofFile] = useState(null);
+  const [simProofNote, setSimProofNote] = useState('');
 
   // Calendar parameters
   const [calendarViewMode, setCalendarViewMode] = useState('week'); // 'day' | 'week' | 'month'
@@ -378,6 +404,17 @@ export default function ClientPortalPage() {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
       (data) => setCalendarSlots(data),
       (err) => console.error('Gagal mengambil slot calendar client:', err)
+    );
+    return unsubscribe;
+  }, [currentUser]);
+
+  // Load payment proofs submitted by current client
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsubscribe = paymentProofRepository.subscribeClientPaymentProofs(
+      currentUser,
+      (data) => setPaymentProofs(data),
+      (err) => console.error('Gagal mengambil bukti pembayaran client:', err)
     );
     return unsubscribe;
   }, [currentUser]);
@@ -523,6 +560,25 @@ export default function ClientPortalPage() {
 
   const recentBookings = useMemo(() => userBookings.slice(0, 3), [userBookings]);
 
+  const paymentProofsByBookingId = useMemo(() => {
+    return paymentProofs.reduce((groups, proof) => {
+      if (!proof.bookingId) return groups;
+
+      if (!groups.has(proof.bookingId)) {
+        groups.set(proof.bookingId, []);
+      }
+
+      groups.get(proof.bookingId).push(proof);
+
+      return groups;
+    }, new Map());
+  }, [paymentProofs]);
+
+  const pendingPaymentProofs = useMemo(
+    () => paymentProofs.filter((proof) => proof.status === 'pending'),
+    [paymentProofs]
+  );
+
   const filteredHistoryBookings = useMemo(() => {
     const normalizedQuery = historyQuery.trim().toLowerCase();
     const now = new Date();
@@ -612,6 +668,136 @@ export default function ClientPortalPage() {
     });
   }, [simSessionType, simPackageId, simRecordingTypeId, simDuration, simCustomDuration, pricingSettings]);
 
+  function getBookingPaymentProofs(booking) {
+    if (!booking?.id) return [];
+
+    return paymentProofsByBookingId.get(booking.id) || [];
+  }
+
+  function getLatestPaymentProof(booking) {
+    return getBookingPaymentProofs(booking)[0] || null;
+  }
+
+  function getProofTone(status) {
+    if (status === 'approved') return 'is-approved';
+    if (status === 'rejected') return 'is-rejected';
+    return 'is-pending';
+  }
+
+  function getOutstandingAmountForBooking(booking) {
+    const status = getBookingStatus(booking).toLowerCase();
+    const total = Number(booking?.total || booking?.subtotal || 0) || 0;
+    const paidAmount = Number(booking?.paidAmount || booking?.dpAmount || 0) || 0;
+
+    if (status === 'lunas') return 0;
+    if (status === 'dp') return Math.max(0, total - paidAmount);
+
+    return total;
+  }
+
+  function getDefaultProofAmount(booking, category = 'dp') {
+    const outstanding = getOutstandingAmountForBooking(booking);
+
+    if (category === 'pelunasan') return outstanding;
+
+    return Math.min(outstanding || 50000, Math.max(50000, Number(booking?.dpAmount || 50000) || 50000));
+  }
+
+  function resetStandaloneProofForm() {
+    setProofCategory('dp');
+    setProofMethod('transfer');
+    setProofAmount('');
+    setProofFile(null);
+    setProofNote('');
+  }
+
+  function resetSimulatorProofForm() {
+    setSimProofEnabled(false);
+    setSimProofCategory('dp');
+    setSimProofMethod('transfer');
+    setSimProofAmount('');
+    setSimProofFile(null);
+    setSimProofNote('');
+  }
+
+  function openPaymentProofModal(booking, initialCategory) {
+    const status = getBookingStatus(booking).toLowerCase();
+    const nextCategory = initialCategory || (status === 'dp' ? 'pelunasan' : 'dp');
+
+    setSelectedProofBooking(booking);
+    setProofCategory(nextCategory);
+    setProofMethod('transfer');
+    setProofAmount(String(getDefaultProofAmount(booking, nextCategory)));
+    setProofFile(null);
+    setProofNote('');
+  }
+
+  function closePaymentProofModal() {
+    if (isSubmittingProof) return;
+
+    setSelectedProofBooking(null);
+    resetStandaloneProofForm();
+  }
+
+  async function submitProofForBooking({ amount, booking, category, clientNote, file, method }) {
+    if (!currentUser) {
+      throw new Error('Client wajib login untuk upload bukti pembayaran.');
+    }
+
+    if (!file) {
+      throw new Error('Pilih file bukti pembayaran terlebih dahulu.');
+    }
+
+    const uploadResult = await uploadPaymentProofFile(file, {
+      bookingId: booking.id,
+      category,
+      clientUid: currentUser.uid,
+    });
+
+    const payload = buildPaymentProofPayload({
+      booking,
+      clientUser: currentUser,
+      file,
+      form: {
+        amount,
+        category,
+        clientNote,
+        method,
+      },
+      uploadResult,
+    });
+
+    return paymentProofRepository.submitPaymentProof(payload);
+  }
+
+  async function submitStandalonePaymentProof() {
+    if (!selectedProofBooking || isSubmittingProof) return;
+
+    setIsSubmittingProof(true);
+    setActionFeedback('');
+
+    try {
+      await submitProofForBooking({
+        amount: Number(proofAmount),
+        booking: selectedProofBooking,
+        category: proofCategory,
+        clientNote: proofNote,
+        file: proofFile,
+        method: proofMethod,
+      });
+
+      closePaymentProofModal();
+      setActionFeedback('Bukti pembayaran berhasil dikirim. Menunggu review admin.');
+      window.setTimeout(() => setActionFeedback(''), 4200);
+    } catch (error) {
+      console.error('Gagal upload bukti pembayaran:', error);
+      setActionFeedback(error?.message || 'Bukti pembayaran gagal dikirim.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+    } finally {
+      setIsSubmittingProof(false);
+    }
+  }
+
   // WhatsApp phone normalization
   const whatsappPhone = useMemo(() => {
     const rawPhone = studioSettings.studioPhone || invoiceSettings.phone || '';
@@ -652,30 +838,63 @@ export default function ClientPortalPage() {
     try {
       await accountRoleRepository.ensureAccountIdentity(currentUser, 'client');
 
-      await adminBookingRepository.createClientBookingRequest(currentUser, {
-        customer: currentUser.displayName || currentUser.email?.split('@')[0] || 'Client',
-        phone: currentUser.phoneNumber || '',
-        packageId: simPackageId,
-        packageLabel: selectedPackage?.label || '',
-        pricingMode: pricingBreakdown.mode,
-        sessionType: selectedPackage ? 'package' : simSessionType,
-        sessionLabel,
-        recordingTypeId: simRecordingTypeId === 'none' ? '' : simRecordingTypeId,
-        recordingTypeLabel: selectedRecording?.label || '',
-        title: sessionLabel,
-        date: simulatorDate,
-        startHour: Number(simulatorStartHour),
-        startTimeLabel: `${String(simulatorStartHour).padStart(2, '0')}.00`,
-        durationHours: actualDuration,
-        subtotal: pricingBreakdown.subtotal,
-        discountAmount: pricingBreakdown.discountAmount,
-        appliedDiscounts: pricingBreakdown.appliedDiscounts,
-        total: pricingBreakdown.total,
-      });
+      let createdBooking = null;
 
+      try {
+        createdBooking = await adminBookingRepository.createClientBookingRequest(currentUser, {
+          customer: currentUser.displayName || currentUser.email?.split('@')[0] || 'Client',
+          phone: currentUser.phoneNumber || '',
+          packageId: simPackageId,
+          packageLabel: selectedPackage?.label || '',
+          pricingMode: pricingBreakdown.mode,
+          sessionType: selectedPackage ? 'package' : simSessionType,
+          sessionLabel,
+          recordingTypeId: simRecordingTypeId === 'none' ? '' : simRecordingTypeId,
+          recordingTypeLabel: selectedRecording?.label || '',
+          title: sessionLabel,
+          date: simulatorDate,
+          startHour: Number(simulatorStartHour),
+          startTimeLabel: `${String(simulatorStartHour).padStart(2, '0')}.00`,
+          durationHours: actualDuration,
+          subtotal: pricingBreakdown.subtotal,
+          discountAmount: pricingBreakdown.discountAmount,
+          appliedDiscounts: pricingBreakdown.appliedDiscounts,
+          total: pricingBreakdown.total,
+        });
+
+        if (simProofEnabled) {
+          if (!simProofFile) {
+            throw new Error('Request tersimpan, tetapi bukti pembayaran belum dipilih.');
+          }
+
+          await submitProofForBooking({
+            amount: Number(simProofAmount || getDefaultProofAmount(createdBooking, simProofCategory)),
+            booking: createdBooking,
+            category: simProofCategory,
+            clientNote: simProofNote,
+            file: simProofFile,
+            method: simProofMethod,
+          });
+        }
+      } catch (innerError) {
+        if (createdBooking) {
+          setIsSimulatorOpen(false);
+          setActiveTab('history');
+          setActionFeedback(innerError?.message || 'Request tersimpan, tetapi bukti pembayaran gagal dikirim.');
+          window.setTimeout(() => setActionFeedback(''), 5200);
+          return;
+        }
+
+        throw innerError;
+      }
+
+      resetSimulatorProofForm();
       setIsSimulatorOpen(false);
       setActiveTab('history');
-      setActionFeedback('Request booking berhasil dikirim ke admin. Statusnya bisa dipantau di Riwayat.');
+      setActionFeedback(simProofEnabled
+        ? 'Request booking dan bukti pembayaran berhasil dikirim. Menunggu review admin.'
+        : 'Request booking berhasil dikirim ke admin. Statusnya bisa dipantau di Riwayat.'
+      );
       window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
       const errorCode = error?.code || error?.name || 'unknown';
@@ -811,6 +1030,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
     setSimRecordingTypeId('none');
     setSimDuration('2');
     setSimCustomDuration('');
+    resetSimulatorProofForm();
     setIsSimulatorOpen(true);
   };
 
@@ -1234,7 +1454,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <span className="text-[11px] uppercase tracking-wider text-[var(--ui-text-muted)] font-semibold">Total Sisa Tagihan Aktif</span>
               <strong className="text-3xl text-white font-bold">{formatRupiah(stats.unpaidAmount)}</strong>
               <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed mt-1">
-                Silakan lakukan transfer sesuai sisa tagihan di bawah, lalu kirim bukti pembayaran ke admin studio via WhatsApp untuk konfirmasi instan.
+                Silakan transfer sesuai sisa tagihan, lalu upload bukti pembayaran. Admin akan review sebelum status pembayaran dianggap berhasil.
               </p>
             </div>
 
@@ -1248,6 +1468,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                     const amountToPay = status === 'dp'
                       ? Math.max(0, (b.total || 0) - (b.dpAmount || 0))
                       : (b.total || 0);
+                    const latestProof = getLatestPaymentProof(b);
+                    const hasPendingProof = latestProof?.status === 'pending';
 
                     return (
                       <div key={b.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1264,15 +1486,30 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                             <span className="text-[10px] text-[var(--ui-text-muted)] block">Harus Dibayar</span>
                             <strong className="text-sm text-orange-400">{formatRupiah(amountToPay)}</strong>
                           </div>
-                          <a
-                            href={getBookingWhatsAppUrl(b)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-lg bg-[#2ecc71] hover:bg-[#27ae60] text-white text-[11px] font-bold flex items-center gap-1 hover:scale-[1.01] transition-transform"
-                          >
-                            <Phone size={11} />
-                            <span>Kirim Bukti WA</span>
-                          </a>
+                          {latestProof ? (
+                            <span className={'client-proof-status ' + getProofTone(latestProof.status)}>
+                              {getPaymentProofStatusLabel(latestProof.status)}
+                            </span>
+                          ) : null}
+                          <div className="client-proof-actions">
+                            <button
+                              className="client-upload-proof-button"
+                              disabled={hasPendingProof}
+                              type="button"
+                              onClick={() => openPaymentProofModal(b)}
+                            >
+                              <UploadCloud size={12} />
+                              <span>{hasPendingProof ? 'Menunggu Review' : 'Upload Bukti'}</span>
+                            </button>
+                            <a
+                              href={getBookingWhatsAppUrl(b)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="client-proof-wa-button"
+                            >
+                              WA
+                            </a>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1484,6 +1721,91 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   </div>
                 </div>
               </div>
+
+              <div className="client-proof-inline-panel">
+                <label className="client-proof-toggle">
+                  <input
+                    checked={simProofEnabled}
+                    type="checkbox"
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setSimProofEnabled(checked);
+                      if (checked && !simProofAmount) {
+                        setSimProofAmount(String(simProofCategory === 'pelunasan'
+                          ? pricingBreakdown.total
+                          : Math.min(pricingBreakdown.total || 50000, 50000)
+                        ));
+                      }
+                    }}
+                  />
+                  <span>
+                    <strong>Bayar DP / pelunasan sekarang</strong>
+                    <small>Upload bukti, status akan pending sampai admin review.</small>
+                  </span>
+                </label>
+
+                {simProofEnabled ? (
+                  <div className="client-proof-form-grid">
+                    <label>
+                      <span>Kategori</span>
+                      <select
+                        value={simProofCategory}
+                        onChange={(event) => {
+                          const nextCategory = event.target.value;
+                          setSimProofCategory(nextCategory);
+                          setSimProofAmount(String(nextCategory === 'pelunasan'
+                            ? pricingBreakdown.total
+                            : Math.min(pricingBreakdown.total || 50000, 50000)
+                          ));
+                        }}
+                      >
+                        {paymentProofCategoryOptions.map((option) => (
+                          <option key={option.key} value={option.key}>{option.label}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      <span>Metode</span>
+                      <select value={simProofMethod} onChange={(event) => setSimProofMethod(event.target.value)}>
+                        {paymentProofMethodOptions.map((option) => (
+                          <option key={option.key} value={option.key}>{option.label}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      <span>Nominal</span>
+                      <input
+                        inputMode="numeric"
+                        min="1"
+                        type="number"
+                        value={simProofAmount}
+                        onChange={(event) => setSimProofAmount(event.target.value)}
+                      />
+                    </label>
+
+                    <label className="client-proof-file-field">
+                      <span>File Bukti</span>
+                      <input
+                        accept="image/*"
+                        type="file"
+                        onChange={(event) => setSimProofFile(event.target.files?.[0] || null)}
+                      />
+                      <small>{simProofFile ? simProofFile.name : 'JPG, PNG, WEBP maks 8 MB'}</small>
+                    </label>
+
+                    <label className="client-proof-note-field">
+                      <span>Catatan</span>
+                      <textarea
+                        value={simProofNote}
+                        placeholder="Opsional. Contoh: Transfer dari BCA a/n Team Mabes."
+                        onChange={(event) => setSimProofNote(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <div className="client-booking-actions flex gap-3 pt-3">
@@ -1522,6 +1844,16 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 <span>Status request</span>
                 <strong>{getBookingRequestStatusMeta(selectedBookingDetail).label}</strong>
                 {selectedBookingDetail.adminResponseNote ? <small>{selectedBookingDetail.adminResponseNote}</small> : null}
+              </section>
+            ) : null}
+
+            {getLatestPaymentProof(selectedBookingDetail) ? (
+              <section className={'client-payment-proof-detail ' + getProofTone(getLatestPaymentProof(selectedBookingDetail).status)}>
+                <span>Status bukti pembayaran</span>
+                <strong>{getPaymentProofStatusLabel(getLatestPaymentProof(selectedBookingDetail).status)}</strong>
+                <small>
+                  {getLatestPaymentProof(selectedBookingDetail).category === 'pelunasan' ? 'Pelunasan' : 'DP'} • {formatRupiah(getLatestPaymentProof(selectedBookingDetail).amount)}
+                </small>
               </section>
             ) : null}
 
@@ -1621,21 +1953,109 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </button>
 
               {getBookingStatus(selectedBookingDetail) !== 'lunas' && !['cancelled', 'canceled', 'void', 'deleted'].includes(getBookingStatus(selectedBookingDetail).toLowerCase()) && (
-                <a
-                  href={getBookingWhatsAppUrl(selectedBookingDetail)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setSelectedBookingDetail(null)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    openPaymentProofModal(selectedBookingDetail);
+                    setSelectedBookingDetail(null);
+                  }}
                   className="flex-1 py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xl transition-all"
                 >
-                  <Phone size={12} />
-                  <span>Kirim Bukti WA</span>
-                </a>
+                  <UploadCloud size={12} />
+                  <span>Upload Bukti</span>
+                </button>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {selectedProofBooking ? (
+        <div className="client-proof-modal-backdrop" role="presentation">
+          <section className="client-proof-modal" role="dialog" aria-modal="true" aria-label="Upload bukti pembayaran">
+            <header>
+              <span><UploadCloud size={16} />Upload Bukti</span>
+              <button aria-label="Tutup upload bukti" type="button" onClick={closePaymentProofModal}>
+                <X size={17} />
+              </button>
+            </header>
+
+            <div className="client-proof-modal-booking">
+              <Image size={16} />
+              <span>
+                <strong>{selectedProofBooking.sessionLabel || selectedProofBooking.packageLabel || selectedProofBooking.title || 'Sesi Studio'}</strong>
+                <small>{selectedProofBooking.date} • {String(selectedProofBooking.startHour).padStart(2, '0')}.00 WIB</small>
+              </span>
+            </div>
+
+            <div className="client-proof-modal-grid">
+              <label>
+                <span>Kategori Pembayaran</span>
+                <select
+                  value={proofCategory}
+                  onChange={(event) => {
+                    const nextCategory = event.target.value;
+                    setProofCategory(nextCategory);
+                    setProofAmount(String(getDefaultProofAmount(selectedProofBooking, nextCategory)));
+                  }}
+                >
+                  {paymentProofCategoryOptions.map((option) => (
+                    <option key={option.key} value={option.key}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Metode</span>
+                <select value={proofMethod} onChange={(event) => setProofMethod(event.target.value)}>
+                  {paymentProofMethodOptions.map((option) => (
+                    <option key={option.key} value={option.key}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Nominal</span>
+                <input
+                  inputMode="numeric"
+                  min="1"
+                  type="number"
+                  value={proofAmount}
+                  onChange={(event) => setProofAmount(event.target.value)}
+                />
+              </label>
+
+              <label className="client-proof-file-field">
+                <span>File Bukti</span>
+                <input
+                  accept="image/*"
+                  type="file"
+                  onChange={(event) => setProofFile(event.target.files?.[0] || null)}
+                />
+                <small>{proofFile ? proofFile.name : 'JPG, PNG, WEBP maks 8 MB'}</small>
+              </label>
+
+              <label className="client-proof-note-field">
+                <span>Catatan Client</span>
+                <textarea
+                  placeholder="Opsional. Contoh: Transfer dari BCA a/n Team Mabes."
+                  value={proofNote}
+                  onChange={(event) => setProofNote(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <footer>
+              <button type="button" onClick={closePaymentProofModal} disabled={isSubmittingProof}>
+                Batal
+              </button>
+              <button type="button" onClick={submitStandalonePaymentProof} disabled={isSubmittingProof || !proofFile}>
+                {isSubmittingProof ? 'Mengirim...' : 'Submit Bukti'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       {actionFeedback ? (
         <div className="client-action-feedback" role="status" aria-live="polite">

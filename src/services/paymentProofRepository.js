@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -165,7 +164,7 @@ export function subscribeClientPaymentProofs(clientUser, callback, onError) {
   }
 
   const proofsRef = collection(firestoreDb, PAYMENT_PROOFS_COLLECTION);
-  const q = query(proofsRef, where('clientUid', '==', clientUser.uid), orderBy('createdAt', 'desc'));
+  const q = query(proofsRef, where('clientUid', '==', clientUser.uid));
 
   return onSnapshot(
     q,
@@ -178,6 +177,10 @@ export function subscribeClientPaymentProofs(clientUser, callback, onError) {
           ...proofDoc.data(),
         }));
       });
+
+      proofs.sort((first, second) =>
+        String(second.createdAt || '').localeCompare(String(first.createdAt || ''))
+      );
 
       callback(proofs);
     },
@@ -200,7 +203,7 @@ export function subscribePaymentProofsForBooking(bookingId, callback, onError) {
   }
 
   const proofsRef = collection(firestoreDb, PAYMENT_PROOFS_COLLECTION);
-  const q = query(proofsRef, where('bookingId', '==', bookingId), orderBy('createdAt', 'desc'));
+  const q = query(proofsRef, where('bookingId', '==', bookingId));
 
   return onSnapshot(
     q,
@@ -213,6 +216,10 @@ export function subscribePaymentProofsForBooking(bookingId, callback, onError) {
           ...proofDoc.data(),
         }));
       });
+
+      proofs.sort((first, second) =>
+        String(second.createdAt || '').localeCompare(String(first.createdAt || ''))
+      );
 
       callback(proofs);
     },
@@ -230,7 +237,7 @@ export function subscribePendingPaymentProofs(callback, onError) {
   }
 
   const proofsRef = collection(firestoreDb, PAYMENT_PROOFS_COLLECTION);
-  const q = query(proofsRef, where('status', '==', 'pending'), orderBy('createdAt', 'desc'));
+  const q = query(proofsRef, where('status', '==', 'pending'));
 
   return onSnapshot(
     q,
@@ -243,6 +250,10 @@ export function subscribePendingPaymentProofs(callback, onError) {
           ...proofDoc.data(),
         }));
       });
+
+      proofs.sort((first, second) =>
+        String(second.createdAt || '').localeCompare(String(first.createdAt || ''))
+      );
 
       callback(proofs);
     },
