@@ -83,14 +83,19 @@ function getSafeBookingStatus(booking) {
 
 function shouldExposeClientCalendarSlot(booking) {
   const status = getSafeBookingStatus(booking);
+  const requestStatus = String(booking?.bookingRequestStatus || '').trim().toLowerCase();
   const hiddenStatuses = ['void', 'cancelled', 'canceled', 'deleted'];
+  const unconfirmedClientRequest =
+    booking?.source === 'clientPortal' &&
+    ['submitted', 'rejected', 'cancelled'].includes(requestStatus);
 
   return Boolean(
     booking?.id &&
     booking?.date &&
     booking?.startHour !== undefined &&
     booking?.startHour !== null &&
-    !hiddenStatuses.includes(status)
+    !hiddenStatuses.includes(status) &&
+    !unconfirmedClientRequest
   );
 }
 

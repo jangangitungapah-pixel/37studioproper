@@ -613,47 +613,25 @@ export default function ClientPortalPage() {
     return cleaned || '628123456789';
   }, [invoiceSettings.phone]);
 
-  // Pre-filled WhatsApp message generator
-  const whatsappUrl = useMemo(() => {
-    const studioName = invoiceSettings.studioName || '37 Music Studio';
-    const formattedDate = simulatorDate ? new Date(simulatorDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
-    const startHourNum = Number(simulatorStartHour);
-    const endHourNum = startHourNum + actualDuration;
-    const timeString = `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`;
-
-    const selectedService = simPackageId !== 'none'
-      ? (() => {
-          const pkg = pricingSettings.packages?.find(p => p.id === simPackageId);
-          return `Paket: ${pkg?.name || 'Paket Studio'}`;
-        })()
-      : (() => {
-          const sess = sessionOptions.find(s => s.key === simSessionType);
-          const sub = simRecordingTypeId !== 'none' ? ` (${recordingTypeOptions.find(r => r.key === simRecordingTypeId)?.label.split(' • ')[0] || ''})` : '';
-          return `Sesi: ${sess?.label || simSessionType}${sub}`;
-        })();
-
-    const clientName = currentUser?.displayName || 'Pelanggan';
-    const clientPhone = currentUser?.phoneNumber || '';
-
-    const text = `Halo *${studioName}*, saya ingin booking slot studio via Client Portal:
-
-👤 *Nama Pelanggan* : ${clientName}
-📞 *Nomor HP* : ${clientPhone || '(Via Google/Email)'}
-🎤 *Layanan* : ${selectedService}
-📅 *Tanggal* : ${formattedDate || simulatorDate}
-⏰ *Waktu* : ${timeString} (${actualDuration} Jam)
-💰 *Estimasi Total* : ${formatRupiah(pricingBreakdown.total)}
-
-Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
-
-    return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
-  }, [currentUser, simulatorDate, simulatorStartHour, actualDuration, simPackageId, simSessionType, simRecordingTypeId, pricingBreakdown, invoiceSettings, whatsappPhone, pricingSettings.packages, sessionOptions, recordingTypeOptions]);
-
   async function submitBookingRequest() {
     if (!currentUser || !simulatorDate || isSubmittingRequest) return;
 
-    const contactWindow = window.open('about:blank', '_blank');
-    if (contactWindow) contactWindow.opener = null;
+    const duplicateRequest = userBookings.find((booking) => {
+      const requestStatus = String(booking.bookingRequestStatus || '').toLowerCase();
+      const sameDate = booking.date === simulatorDate;
+      const sameStart = Number(booking.startHour) === Number(simulatorStartHour);
+
+      return sameDate && sameStart && requestStatus === 'submitted';
+    });
+
+    if (duplicateRequest) {
+      setIsSimulatorOpen(false);
+      setActiveTab('history');
+      setActionFeedback('Request untuk slot ini sudah pernah dikirim. Silakan cek Riwayat.');
+      window.setTimeout(() => setActionFeedback(''), 3600);
+      return;
+    }
+
     const selectedPackage = packageOptions.find((item) => item.key === simPackageId);
     const selectedSession = sessionOptions.find((item) => item.key === simSessionType);
     const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
@@ -686,12 +664,12 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
 
       setIsSimulatorOpen(false);
       setActiveTab('history');
-      setActionFeedback('Permintaan booking tersimpan di Firestore dan dikirim ke admin.');
-      if (contactWindow) contactWindow.location.replace(whatsappUrl);
+      setActionFeedback('Request booking berhasil dikirim ke admin. Statusnya bisa dipantau di Riwayat.');
+      window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
-      if (contactWindow) contactWindow.close();
       console.error('Gagal mengirim booking request:', error);
       setActionFeedback('Permintaan booking gagal disimpan. Silakan coba lagi.');
+      window.setTimeout(() => setActionFeedback(''), 4200);
     } finally {
       setIsSubmittingRequest(false);
     }
@@ -1488,7 +1466,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 className="flex-[2] py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xl transition-transform active:scale-[0.98]"
               >
                 <Phone size={13} />
-                <span>{isSubmittingRequest ? 'Menyimpan...' : 'Kirim Request + WhatsApp'}</span>
+                <span>{isSubmittingRequest ? 'Mengirim...' : 'Kirim Request'}</span>
               </button>
             </div>
           </div>
