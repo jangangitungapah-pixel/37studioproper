@@ -40,6 +40,7 @@ import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 import '../styles/client-portal-polish.css';
+import '../styles/client-landing-compact.css';
 
 export default function ClientLandingPage() {
   const pricingSettings = usePricingSettings();
@@ -320,22 +321,22 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
       id: 'rehearsal',
       title: 'Studio Rehearsal',
       icon: <Music className="text-[var(--ui-accent)] w-6 h-6" />,
-      desc: 'Latihan band reguler dengan instrumen premium standar konser dan akustik ruang berpresisi tinggi.',
-      tags: ['DW Drums', 'Marshall & Fender Amplifiers', 'Vocal Monitors']
+      desc: 'Latihan band dengan instrumen siap pakai.',
+      tags: ['Latihan', 'Band', 'Rehearsal']
     },
     {
       id: 'recording',
       title: 'Professional Recording',
       icon: <Mic className="text-[var(--ui-accent)] w-6 h-6" />,
-      desc: 'Layanan tracking rekaman multi-track dengan vocal booth kedap suara tinggi dan mikrofon berkelas studio dunia.',
-      tags: ['Multi-track', 'Condenser Mics', 'Acoustic Isolation']
+      desc: 'Tracking rekaman untuk vokal dan instrumen.',
+      tags: ['Vokal', 'Instrumen', 'Tracking']
     },
     {
       id: 'mixing',
       title: 'Mixing & Mastering',
       icon: <Sliders className="text-[var(--ui-accent)] w-6 h-6" />,
-      desc: 'Poles karya musik Anda dengan engineer handal untuk karakter sound lebar, punchy, dan siap rilis di platform digital.',
-      tags: ['Industry Standard plugins', 'Balanced Mastering', 'Digital Release Ready']
+      desc: 'Mixing dan mastering agar lagu siap rilis.',
+      tags: ['Mixing', 'Mastering', 'Release']
     }
   ];
 
@@ -352,7 +353,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
   }
 
   return (
-    <div className="client-polish-shell theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] overflow-x-hidden">
+    <div className="client-landing-compact client-polish-shell theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] overflow-x-hidden">
       {/* Background radial glow effect */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#ff8a2a]/10 to-transparent pointer-events-none blur-[120px]" />
       
@@ -410,19 +411,19 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] text-xs text-[var(--ui-accent)] font-semibold tracking-wide">
               <Sparkles size={12} className="animate-pulse" />
-              <span>Premium Music Studio in Town</span>
+              <span>Studio latihan & rekaman</span>
             </div>
             
             <h1 
               className="text-5xl md:text-7xl text-white leading-tight font-normal tracking-wide drop-shadow-md select-none"
               style={{ fontFamily: "'RetroFloral', sans-serif" }}
             >
-              Elevate <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--ui-accent)] via-orange-400 to-amber-500">Your Sound</span>
+              Booking <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--ui-accent)] via-orange-400 to-amber-500">Studio</span>
             </h1>
             
             <p className="text-base md:text-lg text-[var(--ui-text-muted)] max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Mainkan musik dengan fasilitas bintang lima. {invoiceSettings.studioName || '37 Music Studio'} hadir dengan instrumen legendaris, ruangan akustik terkalibrasi, dan kualitas rekaman berstandar internasional.
+              Pilih layanan, cek estimasi biaya, lalu kirim request booking. Admin akan konfirmasi slot dan pembayaran.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
@@ -430,14 +431,14 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 href="#booking" 
                 className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-[var(--ui-accent-strong)] to-[var(--ui-accent)] text-white font-bold text-sm tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-orange-600/30 hover:shadow-orange-600/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                <span>PESAN JADWAL SEKARANG</span>
+                <span>PESAN JADWAL</span>
                 <ArrowRight size={16} />
               </a>
               <a 
                 href="#pricelist" 
                 className="w-full sm:w-auto px-8 py-4 rounded-full bg-[var(--ui-surface-soft)] hover:bg-[var(--ui-control)] text-white border border-[var(--ui-border)] font-bold text-sm tracking-wider flex items-center justify-center gap-2 hover:border-[var(--ui-border-strong)] transition-all"
               >
-                <span>LIHAT DAFTAR HARGA</span>
+                <span>CEK HARGA</span>
               </a>
             </div>
           </div>
@@ -455,12 +456,12 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
             
             <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-[var(--ui-bg-elevated)] backdrop-blur-md border border-[var(--ui-border)] flex items-center justify-between">
               <div>
-                <p className="text-xs text-[var(--ui-text-muted)] uppercase tracking-wider font-semibold">Ready to Jam?</p>
+                <p className="text-xs text-[var(--ui-text-muted)] uppercase tracking-wider font-semibold">Jam Operasional</p>
                 <h3 className="text-sm text-white font-bold">10.00 - 23.00 WIB</h3>
               </div>
               <div className="flex items-center gap-1 text-[var(--ui-accent)] font-semibold text-xs bg-[var(--ui-accent-soft)] px-2.5 py-1.5 rounded-lg border border-[var(--ui-accent-strong)]/20">
                 <Flame size={12} />
-                <span>Slot Terbatas</span>
+                <span>Booking Dulu</span>
               </div>
             </div>
           </div>
@@ -470,9 +471,9 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         <section id="services" className="pt-24 space-y-12">
           <div className="text-center space-y-3">
             <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">FASILITAS STUDIO</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Kualitas Premium Tanpa Kompromi</h3>
+            <h3 className="text-2xl md:text-4xl text-white font-bold">Pilih Kebutuhanmu</h3>
             <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Setiap sudut ruang didesain khusus oleh audio engineer berpengalaman untuk menghasilkan sound terbaik.
+              Latihan, rekaman, mixing, dan mastering dalam satu studio.
             </p>
           </div>
 
@@ -506,9 +507,9 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         <section id="pricelist" className="pt-24 space-y-12">
           <div className="text-center space-y-3">
             <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">DAFTAR HARGA</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Investasi Terbaik Karya Musik Anda</h3>
+            <h3 className="text-2xl md:text-4xl text-white font-bold">Harga Ringkas</h3>
             <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Tarif transparan dengan opsi sewa per jam atau paket hemat khusus.
+              Pilih sewa per jam, paket studio, atau recording.
             </p>
           </div>
 
@@ -643,9 +644,9 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         <section id="booking" className="pt-24 space-y-12">
           <div className="text-center space-y-3">
             <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">PESAN JADWAL</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Booking Kalkulator & Konfirmasi Instan</h3>
+            <h3 className="text-2xl md:text-4xl text-white font-bold">Request Booking</h3>
             <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Simulasikan jadwal dan biaya latihan Anda, lalu konfirmasikan langsung ke admin via WhatsApp untuk validasi instan.
+              Isi data sesi, cek estimasi biaya, lalu kirim request ke admin.
             </p>
           </div>
 
@@ -654,7 +655,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
             <div className="md:col-span-7 p-6 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] space-y-5">
               <h4 className="text-base text-white font-bold flex items-center gap-2 border-b border-[var(--ui-border)] pb-3">
                 <Calendar size={18} className="text-[var(--ui-accent)]" />
-                <span>Isi Rincian Sesi Anda</span>
+                <span>Rincian Sesi</span>
               </h4>
 
               <div className="space-y-4 text-sm">

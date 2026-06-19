@@ -1,0 +1,361 @@
+/* === CLIENT LANDING COMPACT OVERHAUL: START === */
+
+.client-landing-compact {
+  --landing-compact-section-gap: clamp(28px, 6vw, 64px);
+  --landing-compact-card-radius: 18px;
+}
+
+.client-landing-compact main {
+  padding-top: clamp(28px, 5vw, 54px) !important;
+  padding-bottom: clamp(42px, 8vw, 80px) !important;
+}
+
+.client-landing-compact section {
+  scroll-margin-top: 88px;
+}
+
+.client-landing-compact main > section + section {
+  padding-top: var(--landing-compact-section-gap) !important;
+}
+
+.client-landing-compact h1,
+.client-landing-compact h2,
+.client-landing-compact h3,
+.client-landing-compact h4 {
+  letter-spacing: -0.035em;
+}
+
+.client-landing-compact p {
+  text-wrap: pretty;
+}
+
+.client-landing-compact header {
+  min-height: 58px;
+}
+
+.client-landing-compact header span {
+  letter-spacing: 0.12em;
+}
+
+.client-landing-compact main > section:first-child {
+  gap: clamp(18px, 4vw, 44px) !important;
+}
+
+.client-landing-compact main > section:first-child h1 {
+  font-size: clamp(3rem, 10vw, 5.25rem) !important;
+  line-height: 0.9 !important;
+  max-width: 9ch;
+}
+
+.client-landing-compact main > section:first-child p {
+  max-width: 520px;
+  font-size: clamp(0.9rem, 2.4vw, 1.05rem) !important;
+  line-height: 1.55 !important;
+}
+
+.client-landing-compact main > section:first-child a {
+  min-height: 44px;
+  padding-block: 0.78rem !important;
+  padding-inline: 1.25rem !important;
+  border-radius: 14px !important;
+  font-size: 0.72rem !important;
+}
+
+.client-landing-compact main > section:first-child [class*="aspect-"] {
+  border-radius: 20px !important;
+}
+
+.client-landing-compact #services,
+.client-landing-compact #pricelist,
+.client-landing-compact #booking {
+  display: grid;
+  gap: 18px !important;
+}
+
+.client-landing-compact #services > div:first-child,
+.client-landing-compact #pricelist > div:first-child,
+.client-landing-compact #booking > div:first-child {
+  display: grid;
+  gap: 7px !important;
+}
+
+.client-landing-compact #services h2,
+.client-landing-compact #pricelist h2,
+.client-landing-compact #booking h2 {
+  font-size: 0.62rem !important;
+  letter-spacing: 0.18em !important;
+}
+
+.client-landing-compact #services h3,
+.client-landing-compact #pricelist h3,
+.client-landing-compact #booking h3 {
+  font-size: clamp(1.25rem, 5vw, 2rem) !important;
+  line-height: 1.08 !important;
+}
+
+.client-landing-compact #services p,
+.client-landing-compact #pricelist p,
+.client-landing-compact #booking p {
+  font-size: 0.82rem !important;
+  line-height: 1.45 !important;
+}
+
+.client-landing-compact #services .grid {
+  gap: 12px !important;
+}
+
+.client-landing-compact #services .grid > div {
+  padding: 16px !important;
+  border-radius: var(--landing-compact-card-radius) !important;
+  min-height: 0 !important;
+}
+
+.client-landing-compact #services .grid > div > div:first-child {
+  display: grid;
+  gap: 10px !important;
+}
+
+.client-landing-compact #services .grid > div [class*="w-12"][class*="h-12"] {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 14px !important;
+}
+
+.client-landing-compact #services .grid > div h4 {
+  font-size: 0.95rem !important;
+  font-weight: 720 !important;
+}
+
+.client-landing-compact #services .grid > div p {
+  font-size: 0.78rem !important;
+  line-height: 1.45 !important;
+}
+
+.client-landing-compact #services .grid > div > div:last-child {
+  margin-top: 12px !important;
+  padding-top: 10px !important;
+}
+
+.client-landing-compact #services .grid > div > div:last-child span {
+  font-size: 0.58rem !important;
+  padding: 3px 6px !important;
+}
+
+.client-landing-compact #pricelist .grid {
+  gap: 12px !important;
+}
+
+.client-landing-compact #pricelist .grid > div {
+  padding: 16px !important;
+  border-radius: var(--landing-compact-card-radius) !important;
+  min-height: 0 !important;
+}
+
+.client-landing-compact #pricelist .grid > div > div:first-child {
+  gap: 13px !important;
+}
+
+.client-landing-compact #pricelist h4 {
+  font-size: 1rem !important;
+  font-weight: 720 !important;
+}
+
+.client-landing-compact #pricelist .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 12px !important;
+}
+
+.client-landing-compact #pricelist .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 9px !important;
+}
+
+.client-landing-compact #pricelist [class*="border-t"] {
+  padding-top: 10px !important;
+}
+
+.client-landing-compact #pricelist .grid > div p {
+  line-height: 1.35 !important;
+}
+
+.client-landing-compact #pricelist a {
+  min-height: 38px;
+  border-radius: 12px !important;
+  padding-block: 0.65rem !important;
+  font-size: 0.66rem !important;
+}
+
+.client-landing-compact #booking .max-w-4xl {
+  gap: 14px !important;
+}
+
+.client-landing-compact #booking .max-w-4xl > div {
+  border-radius: var(--landing-compact-card-radius) !important;
+}
+
+.client-landing-compact #booking .md\\:col-span-7,
+.client-landing-compact #booking .md\\:col-span-5 {
+  padding: 16px !important;
+}
+
+.client-landing-compact #booking h4 {
+  font-size: 0.95rem !important;
+  padding-bottom: 10px !important;
+}
+
+.client-landing-compact #booking input,
+.client-landing-compact #booking textarea,
+.client-landing-compact #booking select {
+  min-height: 42px !important;
+  border-radius: 12px !important;
+  font-size: 0.88rem !important;
+}
+
+.client-landing-compact #booking label span {
+  font-size: 0.68rem !important;
+}
+
+.client-landing-compact #booking .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 14px !important;
+}
+
+.client-landing-compact #booking .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 10px !important;
+}
+
+.client-landing-compact #booking button,
+.client-landing-compact #booking a {
+  min-height: 42px;
+  border-radius: 12px !important;
+}
+
+@media (max-width: 767px) {
+  .client-landing-compact {
+    --landing-compact-section-gap: 28px;
+  }
+
+  .client-landing-compact header {
+    min-height: 48px;
+    padding: 8px 10px !important;
+  }
+
+  .client-landing-compact header [class*="w-8"][class*="h-8"] {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 10px !important;
+  }
+
+  .client-landing-compact header span {
+    font-size: 0.78rem !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  .client-landing-compact header button {
+    min-height: 32px !important;
+    padding: 0 11px !important;
+    font-size: 0.62rem !important;
+  }
+
+  .client-landing-compact main {
+    padding-inline: 12px !important;
+    padding-top: 24px !important;
+  }
+
+  .client-landing-compact main > section:first-child {
+    text-align: left !important;
+  }
+
+  .client-landing-compact main > section:first-child > div:first-child {
+    text-align: left !important;
+    gap: 12px !important;
+  }
+
+  .client-landing-compact main > section:first-child h1 {
+    font-size: clamp(2.55rem, 15vw, 3.45rem) !important;
+    max-width: 8ch;
+  }
+
+  .client-landing-compact main > section:first-child p {
+    max-width: 100%;
+    margin-inline: 0 !important;
+    font-size: 0.86rem !important;
+  }
+
+  .client-landing-compact main > section:first-child > div:first-child > div:last-child {
+    gap: 8px !important;
+    padding-top: 4px !important;
+  }
+
+  .client-landing-compact main > section:first-child a {
+    width: 100%;
+    min-height: 40px;
+    padding: 0.65rem 1rem !important;
+  }
+
+  .client-landing-compact main > section:first-child > div:nth-child(2) {
+    display: none !important;
+  }
+
+  .client-landing-compact #services {
+    padding-top: 24px !important;
+  }
+
+  .client-landing-compact #services > div:first-child,
+  .client-landing-compact #pricelist > div:first-child,
+  .client-landing-compact #booking > div:first-child {
+    text-align: left !important;
+  }
+
+  .client-landing-compact #services > div:first-child p,
+  .client-landing-compact #pricelist > div:first-child p,
+  .client-landing-compact #booking > div:first-child p {
+    margin-inline: 0 !important;
+  }
+
+  .client-landing-compact #services .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .client-landing-compact #services .grid > div {
+    padding: 13px !important;
+  }
+
+  .client-landing-compact #services .grid > div > div:last-child {
+    display: none !important;
+  }
+
+  .client-landing-compact #pricelist .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .client-landing-compact #pricelist .grid > div {
+    padding: 14px !important;
+  }
+
+  .client-landing-compact #pricelist .grid > div > div:last-child {
+    margin-top: 12px !important;
+  }
+
+  .client-landing-compact #booking {
+    padding-top: 30px !important;
+  }
+
+  .client-landing-compact #booking .max-w-4xl {
+    grid-template-columns: 1fr !important;
+  }
+
+  .client-landing-compact #booking .md\\:col-span-7,
+  .client-landing-compact #booking .md\\:col-span-5 {
+    padding: 14px !important;
+  }
+
+  .client-landing-compact #booking .grid {
+    gap: 10px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .client-landing-compact #booking .max-w-4xl {
+    max-width: 980px !important;
+  }
+}
+
+/* === CLIENT LANDING COMPACT OVERHAUL: END === */
