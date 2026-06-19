@@ -1,3 +1,4 @@
+/* global self, caches, fetch, Response, URL */
 const APP_CACHE = '37musicstudio-app-v1';
 const ASSET_CACHE = '37musicstudio-assets-v1';
 

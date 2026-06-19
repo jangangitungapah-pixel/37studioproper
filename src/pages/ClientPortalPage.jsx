@@ -1593,6 +1593,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           >
             <CreditCard size={18} />
             <span>Tagihan</span>
+            {pendingPaymentProofs.length ? <b className="client-nav-badge">{pendingPaymentProofs.length}</b> : null}
           </button>
         </div>
       </nav>
