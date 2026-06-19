@@ -397,6 +397,7 @@ export async function createClientBookingRequest(user, booking) {
     customerId: `auth_${user.uid}`,
     source: 'clientPortal',
     bookingRequestStatus: 'submitted',
+    clientRequestUpdatedAt: now,
     packageId: String(booking.packageId || 'none'),
     packageLabel: String(booking.packageLabel || ''),
     pricingMode: String(booking.pricingMode || 'session'),

@@ -667,9 +667,31 @@ export default function ClientPortalPage() {
       setActionFeedback('Request booking berhasil dikirim ke admin. Statusnya bisa dipantau di Riwayat.');
       window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
-      console.error('Gagal mengirim booking request:', error);
-      setActionFeedback('Permintaan booking gagal disimpan. Silakan coba lagi.');
-      window.setTimeout(() => setActionFeedback(''), 4200);
+      const errorCode = error?.code || error?.name || 'unknown';
+      const errorMessage = error?.message || String(error || 'Unknown error');
+
+      console.error('Gagal mengirim booking request:', {
+        code: errorCode,
+        message: errorMessage,
+        user: currentUser ? {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          phoneNumber: currentUser.phoneNumber,
+        } : null,
+        payload: {
+          date: simulatorDate,
+          durationHours: actualDuration,
+          startHour: Number(simulatorStartHour),
+          total: pricingBreakdown.total,
+        },
+      });
+
+      const friendlyMessage = errorCode === 'permission-denied'
+        ? 'Request ditolak oleh rules database. Deploy Firestore rules terbaru lalu coba lagi.'
+        : 'Permintaan booking gagal disimpan. Silakan coba lagi.';
+
+      setActionFeedback(friendlyMessage);
+      window.setTimeout(() => setActionFeedback(''), 5200);
     } finally {
       setIsSubmittingRequest(false);
     }

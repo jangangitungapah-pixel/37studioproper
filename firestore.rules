@@ -315,33 +315,79 @@ service cloud.firestore {
         request.resource.data.lastMessageReadByClient == true;
     }
 
+    function isClientBookingCreateOwner(data) {
+      return isSignedIn() &&
+        data.clientUid is string &&
+        data.clientUid == request.auth.uid &&
+        data.customerId is string &&
+        data.customerId == ('auth_' + request.auth.uid) &&
+        (
+          data.email == '' ||
+          (
+            request.auth.token.email is string &&
+            data.email.lower() == request.auth.token.email.lower()
+          )
+        );
+    }
+
     function validClientBookingRequest(data, documentId) {
       return data.keys().hasOnly([
           'id', 'bookingId', 'bookingCode', 'invoiceNumber', 'customer', 'phone',
           'customerPhoneKey', 'email', 'clientUid', 'customerId', 'source',
-          'bookingRequestStatus', 'packageId', 'packageLabel', 'pricingMode',
-          'sessionType', 'sessionLabel', 'recordingTypeId', 'recordingTypeLabel',
-          'title', 'date', 'startHour', 'startTimeLabel', 'durationHours',
-          'paymentMethod', 'paymentHistory', 'paidAmount', 'lastPaymentAt',
-          'lastPaymentMethod', 'paymentStatus', 'status', 'subtotal',
-          'discountAmount', 'appliedDiscounts', 'total', 'dpAmount',
+          'bookingRequestStatus', 'clientRequestUpdatedAt', 'packageId', 'packageLabel',
+          'pricingMode', 'sessionType', 'sessionLabel', 'recordingTypeId',
+          'recordingTypeLabel', 'title', 'date', 'startHour', 'startTimeLabel',
+          'durationHours', 'paymentMethod', 'paymentHistory', 'paidAmount',
+          'lastPaymentAt', 'lastPaymentMethod', 'paymentStatus', 'status',
+          'subtotal', 'discountAmount', 'appliedDiscounts', 'total', 'dpAmount',
           'invoiceAmount', 'createdAt', 'updatedAt'
         ]) &&
         data.id == documentId &&
+        data.clientUid == request.auth.uid &&
+        data.customerId == ('auth_' + request.auth.uid) &&
+        data.source == 'clientPortal' &&
+        data.bookingRequestStatus == 'submitted' &&
+        data.paymentStatus == 'pending' &&
+        data.status == 'pending' &&
         validString(data.bookingId, 1, 80) &&
         validString(data.bookingCode, 1, 80) &&
         validString(data.invoiceNumber, 1, 80) &&
+        validString(data.customer, 1, 120) &&
+        validString(data.phone, 0, 32) &&
         validString(data.customerPhoneKey, 0, 32) &&
         validString(data.email, 0, 254) &&
-        validString(data.createdAt, 10, 40) &&
-        validString(data.updatedAt, 10, 40) &&
+        validString(data.clientUid, 1, 128) &&
+        validString(data.customerId, 1, 160) &&
+        validString(data.source, 1, 40) &&
+        validString(data.packageId, 0, 160) &&
+        validString(data.packageLabel, 0, 160) &&
+        validString(data.pricingMode, 0, 80) &&
+        validString(data.sessionType, 0, 80) &&
+        validString(data.sessionLabel, 1, 160) &&
+        validString(data.recordingTypeId, 0, 160) &&
+        validString(data.recordingTypeLabel, 0, 160) &&
+        validString(data.title, 1, 160) &&
+        validIsoDate(data.date) &&
+        validNumber(data.startHour, 0, 23) &&
+        validString(data.startTimeLabel, 0, 40) &&
+        validNumber(data.durationHours, 0.5, 24) &&
+        data.paymentMethod == '' &&
+        data.paymentHistory is list &&
+        data.paymentHistory.size() == 0 &&
+        data.paidAmount == 0 &&
+        data.lastPaymentAt == '' &&
+        data.lastPaymentMethod == '' &&
         validNumber(data.subtotal, 0, 100000000) &&
         validNumber(data.discountAmount, 0, 100000000) &&
-        validNumber(data.paidAmount, 0, 0) &&
-        validNumber(data.dpAmount, 0, 0) &&
+        data.appliedDiscounts is list &&
+        data.appliedDiscounts.size() <= 50 &&
+        validNumber(data.total, 0, 100000000) &&
+        data.dpAmount == 0 &&
         data.invoiceAmount == data.total &&
-        data.paymentHistory is list &&
-        data.paymentHistory.size() == 0;
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validIsoTimestampString(data.clientRequestUpdatedAt) &&
+        isClientBookingCreateOwner(data);
     }
 
     match /bookings/{bookingId} {
@@ -349,11 +395,9 @@ service cloud.firestore {
       allow create: if (
           isApproved() && canAccessBookingData() && validBooking(request.resource.data)
         ) || (
-          isClientAccount() &&
+          isSignedIn() &&
           validBooking(request.resource.data) &&
-          validClientBookingRequest(request.resource.data, bookingId) &&
-          isClientBookingOwner(request.resource.data) &&
-          request.resource.data.clientUid == request.auth.uid
+          validClientBookingRequest(request.resource.data, bookingId)
         );
       allow update: if validBooking(request.resource.data) && (
         (isApproved() && canAccessBookingData()) ||
