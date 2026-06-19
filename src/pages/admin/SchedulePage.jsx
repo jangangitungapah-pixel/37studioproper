@@ -538,7 +538,14 @@ function CalendarBookingBlock({ block, onBookingClick }) {
   );
 }
 
-function RequestQueueModal({ isOpen, onClose, onOpenRequest, requests }) {
+function RequestQueueModal({
+  isOpen,
+  onClose,
+  onOpenRequest,
+  onQuickAction,
+  pendingActionKey,
+  requests,
+}) {
   if (!isOpen) return null;
 
   const sortedRequests = requests
@@ -557,7 +564,7 @@ function RequestQueueModal({ isOpen, onClose, onOpenRequest, requests }) {
       >
         <header className="schedule-request-modal-header">
           <span>
-            <MessageCircle size={16} />
+            <MessageCircle size={15} />
             Request Client
           </span>
           <button aria-label="Tutup daftar request" type="button" onClick={onClose}>
@@ -576,24 +583,62 @@ function RequestQueueModal({ isOpen, onClose, onOpenRequest, requests }) {
               const requestStatus = String(booking.bookingRequestStatus || 'submitted');
               const isCancellation = requestStatus === 'cancellation_requested';
               const windowLabel = getBookingWindowLabel(booking);
+              const confirmStatus = isCancellation ? 'cancelled' : 'confirmed';
+              const rejectStatus = isCancellation ? 'confirmed' : 'rejected';
+              const confirmLabel = isCancellation ? 'Terima batal' : 'Confirm';
+              const rejectLabel = isCancellation ? 'Tolak batal' : 'Reject';
+              const confirmKey = booking.id + ':' + confirmStatus;
+              const rejectKey = booking.id + ':' + rejectStatus;
+              const isConfirming = pendingActionKey === confirmKey;
+              const isRejecting = pendingActionKey === rejectKey;
+              const isBusy = Boolean(pendingActionKey);
 
               return (
-                <button
+                <article
                   className={'schedule-request-card ' + (isCancellation ? 'is-cancellation' : 'is-submitted')}
                   key={booking.id}
-                  type="button"
-                  onClick={() => onOpenRequest(booking)}
                 >
-                  <span className="schedule-request-card-main">
-                    <strong>{booking.customer || 'Client'}</strong>
-                    <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</small>
-                    <em>{booking.date} • {windowLabel}</em>
-                  </span>
-                  <span className="schedule-request-card-meta">
-                    <b>{isCancellation ? 'Minta batal' : 'Request baru'}</b>
-                    <small>{booking.bookingCode || booking.bookingId || 'BKG'}</small>
-                  </span>
-                </button>
+                  <button
+                    className="schedule-request-card-open"
+                    type="button"
+                    onClick={() => onOpenRequest(booking)}
+                  >
+                    <span className="schedule-request-card-main">
+                      <strong>{booking.customer || 'Client'}</strong>
+                      <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</small>
+                      <em>{booking.date} • {windowLabel}</em>
+                    </span>
+                    <span className="schedule-request-card-meta">
+                      <b>{isCancellation ? 'Minta batal' : 'Request baru'}</b>
+                      <small>{booking.bookingCode || booking.bookingId || 'BKG'}</small>
+                    </span>
+                  </button>
+
+                  <div className="schedule-request-card-actions" aria-label="Quick action request">
+                    <button
+                      className="is-confirm"
+                      disabled={isBusy}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onQuickAction(booking, confirmStatus);
+                      }}
+                    >
+                      {isConfirming ? '...' : confirmLabel}
+                    </button>
+                    <button
+                      className="is-reject"
+                      disabled={isBusy}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onQuickAction(booking, rejectStatus);
+                      }}
+                    >
+                      {isRejecting ? '...' : rejectLabel}
+                    </button>
+                  </div>
+                </article>
               );
             })
           ) : (
@@ -605,7 +650,7 @@ function RequestQueueModal({ isOpen, onClose, onOpenRequest, requests }) {
   );
 }
 
-function CalendarGrid({
+function CalendarGrid({function CalendarGrid({
   activeStatuses,
   bookings,
   onSlotClick,
@@ -764,6 +809,7 @@ export default function SchedulePage() {
   const [scheduleToast, setScheduleToast] = useState(null);
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
   const [isRequestListOpen, setIsRequestListOpen] = useState(false);
+  const [requestActionKey, setRequestActionKey] = useState('');
 
   // One-time local storage migration to Firestore
   useEffect(() => {
@@ -880,6 +926,21 @@ export default function SchedulePage() {
   function openRequestFromList(booking) {
     setIsRequestListOpen(false);
     openBookingDetail(booking);
+  }
+
+  async function handleQuickRequestAction(booking, status) {
+    if (!booking?.id || requestActionKey) return;
+
+    const actionKey = booking.id + ':' + status;
+    setRequestActionKey(actionKey);
+
+    try {
+      await updateClientRequestStatus(booking, status);
+    } catch {
+      // Toast sudah ditangani oleh updateClientRequestStatus.
+    } finally {
+      setRequestActionKey('');
+    }
   }
 
   function editBookingFromDetail(booking) {
@@ -1061,9 +1122,11 @@ export default function SchedulePage() {
 
       <RequestQueueModal
         isOpen={isRequestListOpen}
+        pendingActionKey={requestActionKey}
         requests={requestBookings}
         onClose={closeRequestList}
         onOpenRequest={openRequestFromList}
+        onQuickAction={handleQuickRequestAction}
       />
 
       {scheduleToast ? (
