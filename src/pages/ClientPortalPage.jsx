@@ -641,6 +641,8 @@ export default function ClientPortalPage() {
     setActionFeedback('');
 
     try {
+      await accountRoleRepository.ensureAccountIdentity(currentUser, 'client');
+
       await adminBookingRepository.createClientBookingRequest(currentUser, {
         customer: currentUser.displayName || currentUser.email?.split('@')[0] || 'Client',
         phone: currentUser.phoneNumber || '',
