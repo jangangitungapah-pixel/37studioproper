@@ -118,3 +118,21 @@ email=<firebase email>
 ```
 
 Push targeting bisa memakai filter tag `uid` atau `role`.
+
+## OneSignal Deferred Timeout Fix
+
+Service `oneSignalService.js` pernah memakai `OneSignalDeferred.push()` untuk setiap operasi.
+
+Itu bisa menyebabkan timeout saat callback baru dipush setelah SDK sudah selesai memproses deferred queue.
+
+Strategi terbaru:
+
+```txt
+1. Pakai OneSignalDeferred hanya untuk mengambil instance SDK pertama kali.
+2. Simpan instance di memory.
+3. Init SDK satu kali.
+4. Operasi berikutnya memakai instance langsung.
+5. Hindari nested getOneSignalState() dari dalam callback deferred.
+```
+
+Ini menjaga native OneSignal bell tetap aktif, tetapi tidak membuat queue callback menggantung.
