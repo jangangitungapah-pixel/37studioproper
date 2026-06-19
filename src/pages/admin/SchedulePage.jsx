@@ -650,7 +650,7 @@ function RequestQueueModal({
   );
 }
 
-function CalendarGrid({function CalendarGrid({
+function CalendarGrid({
   activeStatuses,
   bookings,
   onSlotClick,
