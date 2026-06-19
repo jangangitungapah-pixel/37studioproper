@@ -27,7 +27,7 @@ export function isOneSignalBrowserSupported() {
     Boolean(ONE_SIGNAL_APP_ID) &&
     'serviceWorker' in navigator &&
     'Notification' in window &&
-    window.location.protocol === 'https:'
+    (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   );
 }
 
@@ -275,7 +275,7 @@ export async function requestOneSignalPushPermission(user, role = 'client') {
     return getOneSignalState();
   });
 
-  if (user?.uid && state.permission === true || state.permission === 'granted') {
+  if (user?.uid && (state.permission === true || state.permission === 'granted')) {
     await identifyOneSignalUser(user, role);
   }
 

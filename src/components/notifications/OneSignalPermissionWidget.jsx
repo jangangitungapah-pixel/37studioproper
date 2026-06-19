@@ -23,7 +23,7 @@ function getRoleFromPath(pathname) {
 }
 
 function shouldShowOnRoute(pathname) {
-  return pathname.startsWith('/admin') || pathname.startsWith('/client/portal');
+  return pathname.startsWith('/admin') || pathname.startsWith('/client');
 }
 
 export default function OneSignalPermissionWidget() {
@@ -73,13 +73,13 @@ export default function OneSignalPermissionWidget() {
     };
   }, [currentUser, isConfigured, isVisibleRoute, role]);
 
-  if (!isVisibleRoute || !isConfigured || isDismissed) return null;
+  if (!isVisibleRoute || isDismissed) return null;
 
   const normalizedPermission = permission === true ? 'granted' : permission;
   const isGranted = normalizedPermission === 'granted';
   const isDenied = normalizedPermission === 'denied';
 
-  if (isGranted) return null;
+  if (isConfigured && isGranted) return null;
 
   function dismissWidget() {
     setIsDismissed(true);
@@ -87,6 +87,11 @@ export default function OneSignalPermissionWidget() {
   }
 
   async function handleEnableNotifications() {
+    if (!isConfigured) {
+      setStatusText('Isi VITE_ONESIGNAL_APP_ID di .env.local, lalu build dan deploy ulang.');
+      return;
+    }
+
     if (isLoading || isDenied) return;
 
     setIsLoading(true);
@@ -130,13 +135,15 @@ export default function OneSignalPermissionWidget() {
       </span>
 
       <div className="onesignal-permission-copy">
-        <strong>{isDenied ? 'Notifikasi diblokir' : 'Aktifkan notifikasi'}</strong>
+        <strong>{!isConfigured ? 'OneSignal belum dikonfigurasi' : isDenied ? 'Notifikasi diblokir' : 'Aktifkan notifikasi'}</strong>
         <small>
-          {isDenied
-            ? 'Buka pengaturan browser untuk mengizinkan notifikasi 37 Music Studio.'
-            : role === 'admin'
-              ? 'Dapatkan update booking, bukti bayar, dan pesan client.'
-              : 'Dapatkan update booking, tagihan, dan pesan admin.'}
+          {!isConfigured
+            ? 'Widget aktif, tapi App ID belum masuk ke build production.'
+            : isDenied
+              ? 'Buka pengaturan browser untuk mengizinkan notifikasi 37 Music Studio.'
+              : role === 'admin'
+                ? 'Dapatkan update booking, bukti bayar, dan pesan client.'
+                : 'Dapatkan update booking, tagihan, dan pesan admin.'}
         </small>
         {statusText ? <em>{statusText}</em> : null}
       </div>
@@ -147,7 +154,7 @@ export default function OneSignalPermissionWidget() {
         type="button"
         onClick={handleEnableNotifications}
       >
-        {isLoading ? 'Memproses...' : isDenied ? 'Diblokir' : 'Aktifkan'}
+        {!isConfigured ? 'Cek Env' : isLoading ? 'Memproses...' : isDenied ? 'Diblokir' : 'Aktifkan'}
       </button>
     </aside>
   );
