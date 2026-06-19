@@ -88,7 +88,7 @@ service cloud.firestore {
     }
 
     function validNumber(value, minValue, maxValue) {
-      return (value is int || value is float) && value >= minValue && value <= maxValue;
+      return value is number && float(value) >= float(minValue) && float(value) <= float(maxValue);
     }
 
     function validIsoDate(value) {
@@ -216,11 +216,13 @@ service cloud.firestore {
       return isClientAccount() && (
         (data.clientUid is string && data.clientUid == request.auth.uid) ||
         (
+          'email' in request.auth.token &&
           request.auth.token.email is string &&
           data.email is string &&
           data.email.lower() == request.auth.token.email.lower()
         ) ||
         (
+          'phone_number' in request.auth.token &&
           request.auth.token.phone_number is string &&
           (
             (data.phone is string && (
@@ -351,15 +353,7 @@ service cloud.firestore {
           validBooking(request.resource.data) &&
           validClientBookingRequest(request.resource.data, bookingId) &&
           isClientBookingOwner(request.resource.data) &&
-          request.resource.data.clientUid == request.auth.uid &&
-          request.resource.data.customerId == ('auth_' + request.auth.uid) &&
-          request.resource.data.source == 'clientPortal' &&
-          request.resource.data.bookingRequestStatus == 'submitted' &&
-          request.resource.data.paymentStatus == 'pending' &&
-          request.resource.data.status == 'pending' &&
-          request.resource.data.paidAmount == 0 &&
-          request.resource.data.dpAmount == 0 &&
-          request.resource.data.paymentHistory.size() == 0
+          request.resource.data.clientUid == request.auth.uid
         );
       allow update: if validBooking(request.resource.data) && (
         (isApproved() && canAccessBookingData()) ||
