@@ -316,3 +316,139 @@
 }
 
 /* === CLIENT CALENDAR ULTRA COMPACT SOLID GRID: END === */
+
+/* === CLIENT CALENDAR STICKY HOUR LAYER FIX: START === */
+
+/*
+  Sticky layer contract:
+  - Corner JAM harus paling atas.
+  - Hour column harus nutup booking saat horizontal scroll.
+  - Day header tetap di atas cell.
+  - Booking block harus berada di bawah sticky rail.
+*/
+
+.client-portal-page .schedule-grid-shell,
+.client-portal-page .client-calendar-grid-shell {
+  isolation: isolate !important;
+}
+
+.client-portal-page .schedule-grid-scroll {
+  position: relative !important;
+  isolation: isolate !important;
+  background: #0e0f11 !important;
+}
+
+.client-portal-page .schedule-grid {
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+/* Top-left JAM corner: solid wall, always above everything */
+.client-portal-page .schedule-grid-corner {
+  position: sticky !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 90 !important;
+  background: #050608 !important;
+  background-color: #050608 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  box-shadow:
+    2px 0 0 rgba(255, 255, 255, 0.11),
+    0 2px 0 rgba(255, 255, 255, 0.11),
+    14px 0 22px rgba(0, 0, 0, 0.44) !important;
+}
+
+/* Sticky hour rail: solid wall that covers booking blocks during horizontal scroll */
+.client-portal-page .schedule-time-cell {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 80 !important;
+  background: #050608 !important;
+  background-color: #050608 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  box-shadow:
+    2px 0 0 rgba(255, 255, 255, 0.105),
+    12px 0 20px rgba(0, 0, 0, 0.42) !important;
+}
+
+/* Day header sits above booking blocks, but below JAM corner */
+.client-portal-page .schedule-day-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 60 !important;
+  background: #0d0e10 !important;
+  background-color: #0d0e10 !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+.client-portal-page .schedule-day-head.is-today {
+  background: #201309 !important;
+  background-color: #201309 !important;
+  background-image: none !important;
+}
+
+/* Normal cells stay below sticky rail */
+.client-portal-page .schedule-slot-cell {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Booking blocks must never overtake sticky JAM/hour column */
+.client-portal-page .schedule-booking-block {
+  z-index: 8 !important;
+}
+
+.client-portal-page .schedule-booking-block:hover,
+.client-portal-page .schedule-booking-block:focus-visible {
+  z-index: 9 !important;
+}
+
+/* Prevent booking visual overflow from painting over sticky rail */
+.client-portal-page .schedule-booking-block,
+.client-portal-page .schedule-booking-block * {
+  max-width: 100%;
+}
+
+.client-portal-page .schedule-booking-topline,
+.client-portal-page .schedule-booking-title,
+.client-portal-page .schedule-booking-meta {
+  overflow: hidden !important;
+}
+
+/* Mobile extra hardening */
+@media (max-width: 767px) {
+  .client-portal-page .schedule-grid-corner {
+    z-index: 100 !important;
+    background: #050608 !important;
+    background-color: #050608 !important;
+    box-shadow:
+      2px 0 0 rgba(255, 255, 255, 0.12),
+      0 2px 0 rgba(255, 255, 255, 0.12),
+      16px 0 24px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .client-portal-page .schedule-time-cell {
+    z-index: 88 !important;
+    background: #050608 !important;
+    background-color: #050608 !important;
+    box-shadow:
+      2px 0 0 rgba(255, 255, 255, 0.11),
+      14px 0 22px rgba(0, 0, 0, 0.48) !important;
+  }
+
+  .client-portal-page .schedule-day-head {
+    z-index: 58 !important;
+  }
+
+  .client-portal-page .schedule-booking-block {
+    z-index: 6 !important;
+  }
+}
+
+/* === CLIENT CALENDAR STICKY HOUR LAYER FIX: END === */
