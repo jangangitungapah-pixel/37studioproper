@@ -7,9 +7,12 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 
 export const NOTIFICATION_EVENTS_COLLECTION = 'notificationEvents';
+
+const DEFAULT_NOTIFICATION_WORKER_URL = 'https://studio37-onesignal-notification-worker.studio37.workers.dev';
+const NOTIFICATION_WORKER_URL = import.meta.env.VITE_NOTIFICATION_WORKER_URL || DEFAULT_NOTIFICATION_WORKER_URL;
 
 export const NOTIFICATION_EVENT_TYPES = Object.freeze({
   BOOKING_CONFIRMED: 'booking_confirmed',
@@ -183,6 +186,46 @@ export function buildNotificationEventRecord({
   });
 }
 
+export async function dispatchNotificationEventNow(record, user) {
+  if (!record?.id || typeof fetch !== 'function') return null;
+
+  const workerUrl = String(NOTIFICATION_WORKER_URL || '').trim().replace(/\/$/, '');
+  if (!workerUrl) return null;
+
+  const authUser = user || firebaseAuth?.currentUser;
+  if (typeof authUser?.getIdToken !== 'function') return null;
+
+  const token = await authUser.getIdToken();
+
+  const response = await fetch(`${workerUrl}/dispatch`, {
+    body: JSON.stringify({
+      eventId: record.id,
+    }),
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  });
+
+  const text = await response.text();
+  let payload = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { raw: text };
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error || `Realtime dispatch gagal: ${response.status}`);
+  }
+
+  return payload;
+}
+
 export async function createNotificationEvent(input = {}) {
   if (!firestoreDb || !input?.user?.uid) return null;
 
@@ -190,6 +233,10 @@ export async function createNotificationEvent(input = {}) {
   const eventRef = doc(collection(firestoreDb, NOTIFICATION_EVENTS_COLLECTION), record.id);
 
   await setDoc(eventRef, record);
+
+  dispatchNotificationEventNow(record, input.user).catch((error) => {
+    console.warn('[notification-dispatch] Realtime worker dispatch failed, cron fallback will retry:', error);
+  });
 
   return record;
 }
@@ -298,6 +345,7 @@ export const notificationEventRepository = {
   createAdminNotificationEvent,
   createClientNotificationEvent,
   createNotificationEvent,
+  dispatchNotificationEventNow,
   getNotificationEventStatusLabel,
   normalizeNotificationEvent,
   retryNotificationEvent,

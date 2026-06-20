@@ -521,3 +521,34 @@ Cloudflare Cron Trigger memakai format 5 field dan resolusi terkecilnya menit.
 Cron 1 atau 2 detik tidak didukung oleh Cron Trigger.
 Untuk pengiriman push dalam hitungan detik, gunakan backend event-driven seperti Firebase Cloud Functions Firestore trigger.
 ```
+
+## OS Phase 9D-Lite - Realtime Worker Dispatch tanpa Blaze
+
+Phase ini mengganti rencana Cloud Functions dengan Cloudflare Worker dispatch bridge.
+
+Alur:
+
+```txt
+notificationEvents dibuat di Firestore
+-> frontend langsung POST /dispatch ke Cloudflare Worker
+-> Worker verifikasi Firebase ID token
+-> Worker hanya proses event pending yang actorUid / targetUid cocok dengan user token
+-> Worker kirim OneSignal
+-> Cloudflare cron tetap menjadi fallback
+```
+
+Keamanan:
+
+```txt
+Worker Secret tetap hanya untuk admin manual processor.
+OneSignal REST API Key tetap hanya di Cloudflare Worker secret.
+Frontend tidak menyimpan REST API Key dan tidak menyimpan Worker Secret.
+```
+
+Catatan performa:
+
+```txt
+Ini bukan Firebase Cloud Functions.
+Tidak butuh Blaze plan.
+Kecepatan push bergantung pada request /dispatch, verifikasi token, OneSignal, dan OS notification delivery.
+```

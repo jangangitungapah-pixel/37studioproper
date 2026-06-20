@@ -11,7 +11,7 @@ function jsonResponse(payload, init = {}) {
   return new Response(JSON.stringify(payload, null, 2), {
     ...init,
     headers: {
-      'access-control-allow-headers': 'content-type,x-studio37-worker-secret',
+      'access-control-allow-headers': 'authorization,content-type,x-studio37-worker-secret',
       'access-control-allow-methods': 'GET,POST,OPTIONS',
       'access-control-allow-origin': '*',
       'content-type': 'application/json; charset=utf-8',
@@ -569,6 +569,111 @@ async function parseJsonBody(request) {
   return JSON.parse(text);
 }
 
+function getBearerToken(request) {
+  const authorization = request.headers.get('authorization') || '';
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+
+  return match ? match[1].trim() : '';
+}
+
+async function verifyFirebaseIdToken(env, request) {
+  const token = getBearerToken(request);
+
+  if (!token) {
+    const error = new Error('Missing Firebase ID token.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const response = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
+  );
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok || !payload) {
+    const error = new Error('Invalid Firebase ID token.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const projectId = requireEnv(env, 'FIREBASE_PROJECT_ID');
+  const expectedIssuer = `https://securetoken.google.com/${projectId}`;
+  const uid = String(payload.user_id || payload.sub || '').trim();
+  const expiresAt = Number(payload.exp || 0);
+  const now = Math.floor(Date.now() / 1000);
+
+  if (payload.aud !== projectId || payload.iss !== expectedIssuer || !uid || expiresAt <= now) {
+    const error = new Error('Firebase token claim mismatch.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  return {
+    email: String(payload.email || '').trim(),
+    uid,
+  };
+}
+
+function canDispatchRequestedEvent(event, identity) {
+  if (!event || event.status !== 'pending') return false;
+  if (event.actorUid && event.actorUid === identity.uid) return true;
+  if (event.targetMode === 'user' && event.targetUid && event.targetUid === identity.uid) return true;
+
+  return false;
+}
+
+async function processRequestedEvent(env, eventId, identity) {
+  const cleanEventId = String(eventId || '').trim().slice(0, 240);
+
+  if (!cleanEventId) {
+    return {
+      error: 'Missing eventId.',
+      ok: false,
+      statusCode: 400,
+    };
+  }
+
+  const event = await getDocument(env, 'notificationEvents', cleanEventId);
+
+  if (!event) {
+    return {
+      error: 'Notification event not found.',
+      eventId: cleanEventId,
+      ok: false,
+      statusCode: 404,
+    };
+  }
+
+  if (event.status !== 'pending') {
+    return {
+      eventId: cleanEventId,
+      ok: true,
+      skipped: true,
+      status: event.status,
+    };
+  }
+
+  if (!canDispatchRequestedEvent(event, identity)) {
+    return {
+      error: 'Forbidden notification event dispatch.',
+      eventId: cleanEventId,
+      ok: false,
+      statusCode: 403,
+    };
+  }
+
+  const result = await processEvent(env, event, {
+    realtimeDispatch: true,
+  });
+
+  return {
+    ...result,
+    ok: !result.error,
+    realtimeDispatch: true,
+    statusCode: result.error ? 500 : 200,
+  };
+}
+
 async function handleRequest(request, env) {
   const url = new URL(request.url);
 
@@ -584,6 +689,15 @@ async function handleRequest(request, env) {
       service: 'studio37-onesignal-notification-worker',
       time: new Date().toISOString(),
     });
+  }
+
+  if (url.pathname === '/dispatch' && request.method === 'POST') {
+    const identity = await verifyFirebaseIdToken(env, request);
+    const body = await parseJsonBody(request);
+    const result = await processRequestedEvent(env, body.eventId, identity);
+    const statusCode = Number(result.statusCode || 200);
+
+    return jsonResponse(result, { status: statusCode });
   }
 
   if (url.pathname === '/process' && request.method === 'POST') {
