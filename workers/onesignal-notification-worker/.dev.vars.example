@@ -1,0 +1,11 @@
+# Copy file ini menjadi .dev.vars untuk local dev.
+# File .dev.vars sudah di-ignore dan jangan di-commit.
+
+WORKER_SECRET="ganti-dengan-secret-panjang"
+ONESIGNAL_REST_API_KEY="ganti-dengan-onesignal-rest-api-key"
+ONESIGNAL_APP_ID="03b8a3dc-1adf-4dfd-8758-6fd0425d6d14"
+SITE_ORIGIN="https://studio-37.web.app"
+FIREBASE_PROJECT_ID="studio-proper"
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@studio-proper.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nISI_PRIVATE_KEY_SERVICE_ACCOUNT\n-----END PRIVATE KEY-----\n"
+DEFAULT_LIMIT="10"

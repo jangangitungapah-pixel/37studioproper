@@ -294,3 +294,57 @@ client cancellation request
 ```
 
 Semua event dibuat setelah aksi utama sukses. Jika pembuatan event gagal, aksi utama tetap tidak dibatalkan.
+
+## OS Phase 5 - Cloudflare Worker Sender Blueprint
+
+Phase ini menambahkan Worker di:
+
+```txt
+workers/onesignal-notification-worker
+```
+
+Tugas Worker:
+
+```txt
+1. Baca notificationEvents status pending.
+2. Resolve target dari notificationSubscriptions.
+3. Kirim push ke OneSignal REST API.
+4. Update status event menjadi sent atau failed.
+```
+
+Endpoint:
+
+```txt
+GET  /health
+POST /process
+```
+
+Header wajib untuk process:
+
+```txt
+x-studio37-worker-secret: <WORKER_SECRET>
+```
+
+Secret production yang harus diset di Cloudflare:
+
+```txt
+WORKER_SECRET
+ONESIGNAL_REST_API_KEY
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY
+```
+
+Vars non-secret:
+
+```txt
+FIREBASE_PROJECT_ID
+ONESIGNAL_APP_ID
+SITE_ORIGIN
+DEFAULT_LIMIT
+```
+
+Catatan keamanan:
+
+```txt
+OneSignal REST API Key dan Firebase private key tidak pernah masuk frontend.
+```
