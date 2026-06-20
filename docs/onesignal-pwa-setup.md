@@ -248,3 +248,49 @@ React app
 → OneSignal REST API sends push
 → Worker updates status
 ```
+
+## OS Phase 4 - Event Trigger Wiring
+
+Phase ini menghubungkan aksi nyata ke antrean:
+
+```txt
+notificationEvents/{eventId}
+```
+
+Trigger yang sudah dipasang:
+
+```txt
+client booking request
+→ booking_request_created
+→ target admin
+
+client payment proof submit
+→ payment_proof_submitted
+→ target admin
+
+admin approve payment proof
+→ payment_proof_approved
+→ target client
+
+admin reject payment proof
+→ payment_proof_rejected
+→ target client
+
+admin/client booking message
+→ booking_message_created
+→ target lawan bicara
+
+admin confirm booking request
+→ booking_confirmed
+→ target client
+
+admin reject/cancel booking request
+→ booking_rejected
+→ target client
+
+client cancellation request
+→ booking_message_created
+→ target admin
+```
+
+Semua event dibuat setelah aksi utama sukses. Jika pembuatan event gagal, aksi utama tetap tidak dibatalkan.

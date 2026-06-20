@@ -10,6 +10,11 @@ import {
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import { buildBookingPaymentPatch, buildPaymentFromProof } from '../utils/bookingPaymentUtils.js';
+import {
+  createAdminNotificationEvent,
+  createClientNotificationEvent,
+  NOTIFICATION_EVENT_TYPES,
+} from './notificationEventRepository.js';
 
 export const PAYMENT_PROOFS_COLLECTION = 'paymentProofs';
 
@@ -58,6 +63,82 @@ function getBookingDisplayCode(booking) {
 function getInvoiceDisplayNumber(booking) {
   return booking?.invoiceNumber || '';
 }
+
+// >>> STUDIO37 PAYMENT NOTIFICATION HELPERS START
+function getAdminPaymentNotificationUrl(proof) {
+  const id = encodeURIComponent(String(proof?.id || ''));
+
+  return id ? `/admin/billing?paymentProofId=${id}` : '/admin/billing';
+}
+
+function getClientPaymentNotificationUrl(bookingId) {
+  const id = encodeURIComponent(String(bookingId || ''));
+
+  return id ? `/client/portal?bookingId=${id}` : '/client/portal';
+}
+
+function getProofCategoryLabel(category) {
+  return category === 'pelunasan' ? 'pelunasan' : 'DP';
+}
+
+async function safeCreatePaymentProofSubmittedEvent(proof, user) {
+  try {
+    await createAdminNotificationEvent({
+      bookingId: proof.bookingId,
+      message: `${proof.customer || 'Client'} mengirim bukti pembayaran ${getProofCategoryLabel(proof.category)} senilai Rp${Number(proof.amount || 0).toLocaleString('id-ID')}.`,
+      metadata: {
+        amount: Number(proof.amount || 0),
+        bookingCode: proof.bookingCode || '',
+        category: proof.category || '',
+        invoiceNumber: proof.invoiceNumber || '',
+        method: proof.method || '',
+      },
+      paymentProofId: proof.id,
+      priority: 'high',
+      source: 'payment-proof-submit',
+      title: 'Bukti pembayaran baru',
+      type: NOTIFICATION_EVENT_TYPES.PAYMENT_PROOF_SUBMITTED,
+      url: getAdminPaymentNotificationUrl(proof),
+      user,
+    });
+  } catch (error) {
+    console.warn('[notifications] Failed to queue payment proof submitted event:', error);
+  }
+}
+
+async function safeCreatePaymentProofReviewEvent({ booking, proof, reviewer, status }) {
+  try {
+    const isApproved = status === 'approved';
+
+    await createClientNotificationEvent({
+      bookingId: proof.bookingId,
+      message: isApproved
+        ? `Bukti pembayaran ${getProofCategoryLabel(proof.category)} untuk booking ${proof.bookingCode || proof.bookingId} sudah disetujui.`
+        : `Bukti pembayaran ${getProofCategoryLabel(proof.category)} untuk booking ${proof.bookingCode || proof.bookingId} ditolak. Silakan cek catatan admin.`,
+      metadata: {
+        amount: Number(proof.amount || 0),
+        bookingCode: proof.bookingCode || booking?.bookingCode || '',
+        category: proof.category || '',
+        invoiceNumber: proof.invoiceNumber || booking?.invoiceNumber || '',
+        method: proof.method || '',
+        reviewStatus: status,
+      },
+      paymentProofId: proof.id,
+      priority: isApproved ? 'normal' : 'high',
+      source: `payment-proof-${status}`,
+      targetUid: proof.clientUid || booking?.clientUid || '',
+      title: isApproved ? 'Pembayaran disetujui' : 'Pembayaran ditolak',
+      type: isApproved
+        ? NOTIFICATION_EVENT_TYPES.PAYMENT_PROOF_APPROVED
+        : NOTIFICATION_EVENT_TYPES.PAYMENT_PROOF_REJECTED,
+      url: getClientPaymentNotificationUrl(proof.bookingId || booking?.id),
+      user: reviewer,
+    });
+  } catch (error) {
+    console.warn('[notifications] Failed to queue payment proof review event:', error);
+  }
+}
+// <<< STUDIO37 PAYMENT NOTIFICATION HELPERS END
 
 export function getPaymentProofStatusLabel(status) {
   return paymentProofStatusOptions.find((item) => item.key === status)?.label || 'Menunggu Review';
@@ -148,6 +229,7 @@ export async function submitPaymentProof(payload) {
 
   const proofRef = doc(firestoreDb, PAYMENT_PROOFS_COLLECTION, proof.id);
   await setDoc(proofRef, proof);
+  await safeCreatePaymentProofSubmittedEvent(proof, { uid: proof.clientUid, email: '' });
 
   return proof;
 }
@@ -283,7 +365,7 @@ export async function rejectPaymentProof(proof, reviewer, adminNote = '') {
     updatedAt: now,
   });
 
-  return {
+  const rejectedProof = {
     ...cleanProof,
     adminNote: cleanText(adminNote),
     reviewedAt: now,
@@ -292,6 +374,15 @@ export async function rejectPaymentProof(proof, reviewer, adminNote = '') {
     status: 'rejected',
     updatedAt: now,
   };
+
+  await safeCreatePaymentProofReviewEvent({
+    booking: null,
+    proof: rejectedProof,
+    reviewer,
+    status: 'rejected',
+  });
+
+  return rejectedProof;
 }
 
 export async function approvePaymentProofAndRecordPayment({ booking, proof, reviewer, adminNote = '' }) {
@@ -329,18 +420,27 @@ export async function approvePaymentProofAndRecordPayment({ booking, proof, revi
 
   await batch.commit();
 
+  const approvedProof = {
+    ...cleanProof,
+    adminNote: cleanText(adminNote),
+    reviewedAt: now,
+    reviewedByName: cleanText(reviewer?.displayName || reviewer?.email || 'Admin'),
+    reviewedByUid: cleanText(reviewer?.uid),
+    status: 'approved',
+    updatedAt: now,
+  };
+
+  await safeCreatePaymentProofReviewEvent({
+    booking,
+    proof: approvedProof,
+    reviewer,
+    status: 'approved',
+  });
+
   return {
     booking: nextBooking,
     payment,
-    proof: {
-      ...cleanProof,
-      adminNote: cleanText(adminNote),
-      reviewedAt: now,
-      reviewedByName: cleanText(reviewer?.displayName || reviewer?.email || 'Admin'),
-      reviewedByUid: cleanText(reviewer?.uid),
-      status: 'approved',
-      updatedAt: now,
-    },
+    proof: approvedProof,
   };
 }
 

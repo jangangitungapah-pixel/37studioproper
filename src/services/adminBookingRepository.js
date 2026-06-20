@@ -11,6 +11,10 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import {
+  createAdminNotificationEvent,
+  NOTIFICATION_EVENT_TYPES,
+} from './notificationEventRepository.js';
 
 function hashText(value) {
   let hash = 0;
@@ -48,6 +52,38 @@ function normalizeClientPhone(value) {
 
   return digits;
 }
+
+// >>> STUDIO37 BOOKING NOTIFICATION HELPERS START
+function getBookingNotificationUrl(booking) {
+  const id = encodeURIComponent(String(booking?.id || ''));
+
+  return id ? `/admin/schedule?bookingId=${id}` : '/admin/schedule';
+}
+
+async function safeCreateBookingRequestNotificationEvent({ booking, user }) {
+  try {
+    await createAdminNotificationEvent({
+      bookingId: booking.id,
+      message: `${booking.customer || 'Client'} mengirim permintaan booking ${booking.sessionLabel || 'studio'} untuk ${booking.date || 'tanggal belum dipilih'}.`,
+      metadata: {
+        bookingCode: booking.bookingCode || booking.bookingId || '',
+        date: booking.date || '',
+        durationHours: Number(booking.durationHours || 0),
+        startHour: Number(booking.startHour || 0),
+        total: Number(booking.total || 0),
+      },
+      priority: 'high',
+      source: 'client-booking-request',
+      title: 'Permintaan booking baru',
+      type: NOTIFICATION_EVENT_TYPES.BOOKING_REQUEST_CREATED,
+      url: getBookingNotificationUrl(booking),
+      user,
+    });
+  } catch (error) {
+    console.warn('[notifications] Failed to queue booking request event:', error);
+  }
+}
+// <<< STUDIO37 BOOKING NOTIFICATION HELPERS END
 
 export function createBookingCode(booking, fallbackId = '') {
   const datePart = normalizeBillingDate(booking?.date || booking?.createdAt);
@@ -428,6 +464,8 @@ export async function createClientBookingRequest(user, booking) {
   }, bookingId);
 
   await setDoc(doc(firestoreDb, 'bookings', bookingId), cleanBooking);
+  await safeCreateBookingRequestNotificationEvent({ booking: cleanBooking, user });
+
   return cleanBooking;
 }
 
