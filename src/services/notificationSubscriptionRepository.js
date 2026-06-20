@@ -105,8 +105,28 @@ export async function syncNotificationSubscription({
   return record;
 }
 
+export async function fetchNotificationSubscription(uid) {
+  if (!firestoreDb || !uid) return null;
+
+  const subscriptionRef = doc(
+    firestoreDb,
+    NOTIFICATION_SUBSCRIPTIONS_COLLECTION,
+    uid,
+  );
+
+  const snapshot = await getDoc(subscriptionRef);
+
+  if (!snapshot.exists()) return null;
+
+  return {
+    id: snapshot.id,
+    ...snapshot.data(),
+  };
+}
+
 export const notificationSubscriptionRepository = {
   buildNotificationSubscriptionRecord,
+  fetchNotificationSubscription,
   isNotificationSubscriptionActive,
   normalizeNotificationPermission,
   syncNotificationSubscription,

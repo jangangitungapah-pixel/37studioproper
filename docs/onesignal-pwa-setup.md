@@ -450,3 +450,28 @@ Catatan keamanan:
 Badge hanya membaca Firestore notificationEvents.
 Tidak ada OneSignal REST API Key atau Worker Secret di frontend.
 ```
+
+## OS Phase 9 - Notification Readiness & Health Panel
+
+Phase ini menambahkan panel kesehatan di halaman:
+
+```txt
+/admin/notifications
+```
+
+Panel memeriksa:
+
+```txt
+1. Browser Support - HTTPS, Notification API, Service Worker, OneSignal config.
+2. OneSignal Device - permission granted, optedIn, subscriptionId.
+3. Firestore Registry - dokumen notificationSubscriptions user aktif.
+4. Worker Health - endpoint /health Cloudflare Worker.
+5. Queue Health - jumlah pending dan failed event.
+```
+
+Keamanan:
+
+```txt
+Panel health tidak membaca atau menyimpan Worker Secret.
+Panel health hanya memanggil endpoint publik /health dan membaca Firestore sesuai rules.
+```

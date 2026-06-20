@@ -19412,3 +19412,217 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 NOTIFICATION BADGES END */
+
+/* >>> STUDIO37 NOTIFICATION HEALTH PANEL START */
+.notification-health-panel {
+  display: grid;
+  gap: 15px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-xl);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 138, 42, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 42%),
+    var(--auth-bg-card);
+  padding: clamp(16px, 2.4vw, 22px);
+  box-shadow: 0 18px 58px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(20px);
+}
+
+.notification-health-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.notification-health-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.notification-health-head p {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  margin: 0;
+  color: var(--auth-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.notification-health-head h3 {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: clamp(1.24rem, 4vw, 1.8rem);
+  letter-spacing: -0.035em;
+}
+
+.notification-health-head span {
+  color: var(--auth-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.notification-health-head button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 13px;
+  font-size: 0.8rem;
+  font-weight: 880;
+  cursor: pointer;
+}
+
+.notification-health-head button:hover:not(:disabled) {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-accent-soft);
+}
+
+.notification-health-head button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.notification-health-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid rgba(255, 176, 32, 0.28);
+  border-radius: var(--auth-radius-md);
+  background: rgba(255, 176, 32, 0.08);
+  color: #ffd37a;
+  padding: 11px 12px;
+  font-size: 0.82rem;
+}
+
+.notification-health-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.notification-health-card {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 18px;
+  background: var(--auth-bg-soft);
+  padding: 12px;
+}
+
+.notification-health-card div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--auth-text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.notification-health-card strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.98rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-health-card p {
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.notification-health-card.is-success {
+  border-color: rgba(92, 224, 161, 0.26);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(92, 224, 161, 0.11), transparent 34%),
+    var(--auth-bg-soft);
+}
+
+.notification-health-card.is-success div svg {
+  color: #5ce0a1;
+}
+
+.notification-health-card.is-warning {
+  border-color: rgba(255, 176, 32, 0.3);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 176, 32, 0.12), transparent 34%),
+    var(--auth-bg-soft);
+}
+
+.notification-health-card.is-warning div svg {
+  color: #ffcb67;
+}
+
+@media (max-width: 1200px) {
+  .notification-health-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .notification-health-panel {
+    gap: 12px;
+    border-radius: 20px;
+    padding: 12px;
+  }
+
+  .notification-health-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .notification-health-head h3 {
+    font-size: 1.06rem;
+  }
+
+  .notification-health-head span {
+    font-size: 0.7rem;
+  }
+
+  .notification-health-head button {
+    width: 100%;
+    min-height: 38px;
+    border-radius: 13px;
+    font-size: 0.7rem;
+  }
+
+  .notification-health-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .notification-health-card {
+    grid-template-columns: minmax(0, 1fr);
+    border-radius: 15px;
+    padding: 10px;
+  }
+
+  .notification-health-card div {
+    font-size: 0.56rem;
+  }
+
+  .notification-health-card strong {
+    font-size: 0.86rem;
+  }
+
+  .notification-health-card p {
+    font-size: 0.66rem;
+  }
+}
+/* <<< STUDIO37 NOTIFICATION HEALTH PANEL END */

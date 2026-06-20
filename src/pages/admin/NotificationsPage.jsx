@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   BellRing,
   CheckCircle2,
   Clock3,
@@ -10,6 +11,7 @@ import {
   RotateCcw,
   Send,
   ShieldAlert,
+  Wifi,
   XCircle,
 } from 'lucide-react';
 import {
@@ -19,6 +21,16 @@ import {
   retryNotificationEvent,
   subscribeNotificationEvents,
 } from '../../services/notificationEventRepository.js';
+import {
+  getBrowserNotificationPermission,
+  getOneSignalState,
+  isOneSignalBrowserSupported,
+  isOneSignalConfigured,
+} from '../../services/oneSignalService.js';
+import {
+  fetchNotificationSubscription,
+  isNotificationSubscriptionActive,
+} from '../../services/notificationSubscriptionRepository.js';
 import '../../styles/admin-auth.css';
 
 const DEFAULT_WORKER_URL =
@@ -55,6 +67,73 @@ function getStatusIcon(status) {
   if (status === 'processing') return <LoaderCircle className="auth-spin" size={15} />;
 
   return <Clock3 size={15} />;
+}
+
+function getReadinessTone(isReady) {
+  return isReady ? 'success' : 'warning';
+}
+
+function formatHealthValue(value) {
+  if (value === true) return 'Ya';
+  if (value === false) return 'Tidak';
+
+  return String(value || '-');
+}
+
+function createReadinessItem({ helper = '', isReady = false, label, value }) {
+  return {
+    helper,
+    label,
+    tone: getReadinessTone(isReady),
+    value: formatHealthValue(value),
+  };
+}
+
+function buildReadinessItems({ eventStats, oneSignalState, registry, workerHealth }) {
+  const permission = oneSignalState?.permission || getBrowserNotificationPermission();
+  const isBrowserReady = Boolean(isOneSignalConfigured() && isOneSignalBrowserSupported());
+  const isOneSignalReady = Boolean(
+    oneSignalState?.supported &&
+      permission === 'granted' &&
+      oneSignalState?.optedIn &&
+      oneSignalState?.subscriptionId
+  );
+  const isRegistryReady = isNotificationSubscriptionActive(registry);
+  const isWorkerReady = workerHealth?.ok === true;
+  const isQueueReady = Number(eventStats?.failed || 0) === 0;
+
+  return [
+    createReadinessItem({
+      helper: 'App ID, HTTPS, Notification API, dan Service Worker.',
+      isReady: isBrowserReady,
+      label: 'Browser Support',
+      value: isBrowserReady,
+    }),
+    createReadinessItem({
+      helper: 'Permission granted, opted-in, dan subscriptionId tersedia.',
+      isReady: isOneSignalReady,
+      label: 'OneSignal Device',
+      value: oneSignalState?.subscriptionId ? 'Subscribed' : permission,
+    }),
+    createReadinessItem({
+      helper: 'Dokumen notificationSubscriptions milik user aktif.',
+      isReady: isRegistryReady,
+      label: 'Firestore Registry',
+      value: registry?.updatedAt ? 'Synced' : 'Belum synced',
+    }),
+    createReadinessItem({
+      helper: 'Endpoint /health dari Cloudflare Worker.',
+      isReady: isWorkerReady,
+      label: 'Worker Health',
+      value: workerHealth?.message || (isWorkerReady ? 'Online' : 'Belum dicek'),
+    }),
+    createReadinessItem({
+      helper: 'Failed event harus nol untuk kondisi sehat.',
+      isReady: isQueueReady,
+      label: 'Queue Health',
+      value: `${Number(eventStats?.pending || 0)} pending / ${Number(eventStats?.failed || 0)} failed`,
+    }),
+  ];
 }
 
 function createWorkerResult({ tone = 'info', title = 'Worker Result', text = '' } = {}) {
@@ -144,6 +223,14 @@ export default function NotificationsPage({ currentUser }) {
   const [workerEventId, setWorkerEventId] = useState('');
   const [workerResult, setWorkerResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [readinessState, setReadinessState] = useState({
+    isChecking: false,
+    oneSignalState: null,
+    registry: null,
+    workerHealth: null,
+    errorMessage: '',
+    checkedAt: '',
+  });
 
   useEffect(() => {
     const loadingFrameId = window.requestAnimationFrame(() => {
@@ -188,6 +275,93 @@ export default function NotificationsPage({ currentUser }) {
   }, [events]);
 
   const visibleEvents = useMemo(() => events.slice(0, 80), [events]);
+
+  const readinessItems = useMemo(() => buildReadinessItems({
+    eventStats: stats,
+    oneSignalState: readinessState.oneSignalState,
+    registry: readinessState.registry,
+    workerHealth: readinessState.workerHealth,
+  }), [stats, readinessState.oneSignalState, readinessState.registry, readinessState.workerHealth]);
+
+  const readinessScore = useMemo(() => {
+    const readyCount = readinessItems.filter((item) => item.tone === 'success').length;
+
+    return {
+      readyCount,
+      totalCount: readinessItems.length,
+    };
+  }, [readinessItems]);
+
+  async function handleRefreshReadiness({ includeWorker = true, reason = 'manual' } = {}) {
+    setReadinessState((current) => ({
+      ...current,
+      errorMessage: '',
+      isChecking: true,
+    }));
+
+    try {
+      const [oneSignalState, registry] = await Promise.all([
+        getOneSignalState().catch((error) => ({
+          errorMessage: error?.message || 'Gagal membaca OneSignal state.',
+          permission: getBrowserNotificationPermission(),
+          supported: isOneSignalBrowserSupported(),
+        })),
+        fetchNotificationSubscription(currentUser?.uid).catch((error) => ({
+          errorMessage: error?.message || 'Gagal membaca registry subscription.',
+        })),
+      ]);
+
+      let workerHealth = readinessState.workerHealth;
+
+      if (includeWorker && workerUrl.trim()) {
+        const healthResponse = await fetch(`${workerUrl.trim().replace(/\/$/, '')}/health`);
+        const healthPayload = await healthResponse.json();
+
+        workerHealth = {
+          checkedAt: new Date().toISOString(),
+          message: healthPayload?.service || healthPayload?.message || 'Online',
+          ok: healthResponse.ok && healthPayload?.ok !== false,
+          status: healthResponse.status,
+        };
+      }
+
+      setReadinessState({
+        checkedAt: new Date().toISOString(),
+        errorMessage: oneSignalState?.errorMessage || registry?.errorMessage || '',
+        isChecking: false,
+        oneSignalState,
+        registry,
+        workerHealth,
+      });
+
+      if (reason !== 'auto') {
+        setWorkerResult(createWorkerResult({
+          tone: 'info',
+          title: 'Health Check Selesai',
+          text: 'Readiness panel sudah diperbarui.',
+        }));
+      }
+    } catch (error) {
+      setReadinessState((current) => ({
+        ...current,
+        checkedAt: new Date().toISOString(),
+        errorMessage: error?.message || 'Health check gagal.',
+        isChecking: false,
+      }));
+    }
+  }
+
+  useEffect(() => {
+    const readinessFrameId = window.requestAnimationFrame(() => {
+      handleRefreshReadiness({ includeWorker: true, reason: 'auto' }).catch((error) => {
+        console.error('[notification-health] Auto readiness check failed:', error);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(readinessFrameId);
+    };
+  }, [currentUser?.uid]);
 
   async function handleRetryEvent(event) {
     setErrorMessage('');
@@ -315,6 +489,51 @@ export default function NotificationsPage({ currentUser }) {
           <strong>{stats.failed}</strong>
         </article>
       </div>
+
+      <section className="notification-health-panel" aria-labelledby="notification-health-title">
+        <div className="notification-health-head">
+          <div>
+            <p>
+              <Activity size={15} />
+              Readiness Check
+            </p>
+            <h3 id="notification-health-title">Notification Health</h3>
+            <span>
+              {readinessScore.readyCount}/{readinessScore.totalCount} sistem siap
+              {readinessState.checkedAt ? ` · terakhir dicek ${formatDateTime(readinessState.checkedAt)}` : ''}
+            </span>
+          </div>
+
+          <button
+            disabled={readinessState.isChecking}
+            type="button"
+            onClick={() => handleRefreshReadiness({ includeWorker: true })}
+          >
+            {readinessState.isChecking ? <LoaderCircle className="auth-spin" size={15} /> : <Wifi size={15} />}
+            Cek Lagi
+          </button>
+        </div>
+
+        {readinessState.errorMessage ? (
+          <div className="notification-health-alert">
+            <ShieldAlert size={15} />
+            <span>{readinessState.errorMessage}</span>
+          </div>
+        ) : null}
+
+        <div className="notification-health-grid">
+          {readinessItems.map((item) => (
+            <article className={`notification-health-card is-${item.tone}`} key={item.label}>
+              <div>
+                {item.tone === 'success' ? <CheckCircle2 size={16} /> : <ShieldAlert size={16} />}
+                <span>{item.label}</span>
+              </div>
+              <strong>{item.value}</strong>
+              <p>{item.helper}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="notification-console-grid">
         <section className="notification-console-panel">
