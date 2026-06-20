@@ -11,6 +11,9 @@ function jsonResponse(payload, init = {}) {
   return new Response(JSON.stringify(payload, null, 2), {
     ...init,
     headers: {
+      'access-control-allow-headers': 'content-type,x-studio37-worker-secret',
+      'access-control-allow-methods': 'GET,POST,OPTIONS',
+      'access-control-allow-origin': '*',
       'content-type': 'application/json; charset=utf-8',
       ...(init.headers || {}),
     },
@@ -528,6 +531,12 @@ async function parseJsonBody(request) {
 
 async function handleRequest(request, env) {
   const url = new URL(request.url);
+
+  if (request.method === 'OPTIONS') {
+    return jsonResponse({
+      ok: true,
+    });
+  }
 
   if (url.pathname === '/health') {
     return jsonResponse({

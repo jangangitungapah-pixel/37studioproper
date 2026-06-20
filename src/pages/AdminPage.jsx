@@ -17,6 +17,7 @@ import {
   BookOpen,
   Home,
   Image,
+  BellRing,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
@@ -37,6 +38,7 @@ const InventoryPage = lazy(() => import('./admin/InventoryPage.jsx'));
 const SettingsPage = lazy(() => import('./admin/SettingsPage.jsx'));
 const DashboardPage = lazy(() => import('./admin/DashboardPage.jsx'));
 const GalleryPage = lazy(() => import('./admin/GalleryPage.jsx'));
+const NotificationsPage = lazy(() => import('./admin/NotificationsPage.jsx'));
 
 const mobilePrimaryNavKeys = ['dashboard', 'schedule', 'billing'];
 
@@ -47,6 +49,14 @@ const navItems = [
     path: '/admin/dashboard',
     icon: Home,
     title: 'Dashboard',
+  },
+  {
+    key: 'notifications',
+    label: 'Notifikasi',
+    path: '/admin/notifications',
+    icon: BellRing,
+    title: 'Notification Console',
+    permissionKey: 'settings',
   },
   {
     key: 'schedule',
@@ -99,15 +109,19 @@ const navItems = [
   },
 ];
 
+function getNavPermissionKey(item) {
+  return item?.permissionKey || item?.key;
+}
+
 function getFirstPermittedNavItem(user) {
-  return navItems.find((item) => hasAdminPagePermission(user, item.key)) || navItems[0];
+  return navItems.find((item) => hasAdminPagePermission(user, getNavPermissionKey(item))) || navItems[0];
 }
 
 function getPermittedDefaultLandingPath(user) {
   const preferredPath = getAccountDefaultLandingPath(user?.uid);
   const preferredItem = navItems.find((item) => item.path === preferredPath);
 
-  if (preferredItem && hasAdminPagePermission(user, preferredItem.key)) {
+  if (preferredItem && hasAdminPagePermission(user, getNavPermissionKey(preferredItem))) {
     return preferredItem.path;
   }
 
@@ -126,6 +140,7 @@ function getInitialSidebarState() {
 
 function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'dashboard') return <DashboardPage />;
+  if (activeKey === 'notifications') return <NotificationsPage currentUser={currentUser} />;
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
   if (activeKey === 'customers') return <CustomerPage />;
   if (activeKey === 'billing') return <BillingPage />;
@@ -389,11 +404,11 @@ export default function AdminPage() {
   );
 
   const permittedNavItems = useMemo(
-    () => navItems.filter((item) => hasAdminPagePermission(authState.user, item.key)),
+    () => navItems.filter((item) => hasAdminPagePermission(authState.user, getNavPermissionKey(item))),
     [authState.user]
   );
 
-  const isRoutePermitted = !routeItem || hasAdminPagePermission(authState.user, routeItem.key);
+  const isRoutePermitted = !routeItem || hasAdminPagePermission(authState.user, getNavPermissionKey(routeItem));
   const activeItem = isRoutePermitted ? (routeItem || getFirstPermittedNavItem(authState.user)) : getFirstPermittedNavItem(authState.user);
 
   const mobilePrimaryNavItems = useMemo(

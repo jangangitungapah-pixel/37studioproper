@@ -392,3 +392,35 @@ GET /health
 POST /process dryRun
 POST /process live
 ```
+
+## OS Phase 7 - Admin Notification Console
+
+Phase ini menambahkan halaman:
+
+```txt
+/admin/notifications
+```
+
+Fitur:
+
+```txt
+1. Lihat notificationEvents berdasarkan status.
+2. Lihat errorMessage event gagal.
+3. Retry event failed/cancelled menjadi pending.
+4. Cancel event pending.
+5. Process manual ke Cloudflare Worker dari admin console.
+```
+
+Keamanan:
+
+```txt
+Worker Secret tidak disimpan permanen di app.
+Admin harus paste secret saat ingin proses manual.
+Frontend tetap tidak menyimpan OneSignal REST API Key.
+```
+
+Optional env frontend:
+
+```txt
+VITE_NOTIFICATION_WORKER_URL=https://studio37-onesignal-notification-worker.studio37.workers.dev
+```
