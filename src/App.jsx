@@ -7,6 +7,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
 const ClientLandingPage = lazy(() => import('./pages/ClientLandingPage.jsx'));
 const ClientLoginPage = lazy(() => import('./pages/ClientLoginPage.jsx'));
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage.jsx'));
+const PwaLaunchPage = lazy(() => import('./pages/PwaLaunchPage.jsx'));
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
       <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>Loading...</div>}>
         <Routes>
           <Route path="/" element={<ClientLandingPage />} />
+          <Route path="/launch" element={<PwaLaunchPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/client/login" element={<ClientLoginPage />} />
           <Route path="/client/portal" element={<ClientPortalPage />} />
