@@ -811,6 +811,104 @@ service cloud.firestore {
         validString(data.message.html, 1, 20000);
     }
 
+    // >>> STUDIO37 NOTIFICATION EVENT RULES START
+    function validNotificationEvent(data, eventId) {
+      return data.keys().hasOnly([
+          'actorEmail', 'actorRole', 'actorUid', 'attempts',
+          'bookingId', 'channel', 'createdAt', 'errorMessage',
+          'id', 'message', 'metadata', 'paymentProofId',
+          'priority', 'provider', 'sentAt', 'source', 'status',
+          'targetMode', 'targetRole', 'targetUid', 'title',
+          'type', 'updatedAt', 'url'
+        ]) &&
+        data.id == eventId &&
+        data.actorRole in ['admin', 'client', 'system'] &&
+        validString(data.actorUid, 1, 128) &&
+        validString(data.actorEmail, 0, 254) &&
+        validNumber(data.attempts, 0, 20) &&
+        validString(data.bookingId, 0, 160) &&
+        data.channel == 'push' &&
+        validIsoTimestampString(data.createdAt) &&
+        validString(data.errorMessage, 0, 1000) &&
+        validString(data.message, 1, 600) &&
+        data.metadata is map &&
+        validString(data.paymentProofId, 0, 160) &&
+        data.priority in ['low', 'normal', 'high'] &&
+        data.provider == 'onesignal' &&
+        validOptionalString(data, 'sentAt', 40) &&
+        validString(data.source, 1, 80) &&
+        data.status in ['pending', 'processing', 'sent', 'failed', 'cancelled'] &&
+        data.targetMode in ['role', 'user'] &&
+        data.targetRole in ['admin', 'client', 'none'] &&
+        validString(data.targetUid, 0, 128) &&
+        validString(data.title, 1, 180) &&
+        data.type in [
+          'booking_confirmed',
+          'booking_message_created',
+          'booking_rejected',
+          'booking_request_created',
+          'payment_proof_approved',
+          'payment_proof_rejected',
+          'payment_proof_submitted'
+        ] &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.url, 0, 700);
+    }
+
+    function notificationEventActorMatches(data) {
+      return data.actorUid == request.auth.uid &&
+        (
+          (data.actorRole == 'client' && isClientAccount()) ||
+          (data.actorRole == 'admin' && isApproved())
+        );
+    }
+
+    function notificationEventCreateIsPending(data) {
+      return data.status == 'pending' &&
+        data.attempts == 0 &&
+        data.errorMessage == '' &&
+        data.sentAt == '';
+    }
+
+    function notificationEventTargetIsSafe(data) {
+      return (
+          data.targetMode == 'role' &&
+          data.targetRole == 'admin' &&
+          data.targetUid == ''
+        ) || (
+          data.targetMode == 'user' &&
+          data.targetRole == 'client' &&
+          data.targetUid.size() > 0
+        ) || (
+          data.targetMode == 'user' &&
+          data.targetRole == 'admin' &&
+          data.targetUid.size() > 0
+        );
+    }
+
+    match /notificationEvents/{eventId} {
+      allow read: if isSignedIn() && (
+        isApproved() ||
+        resource.data.actorUid == request.auth.uid ||
+        resource.data.targetUid == request.auth.uid
+      );
+
+      allow create: if isSignedIn() &&
+        validNotificationEvent(request.resource.data, eventId) &&
+        notificationEventActorMatches(request.resource.data) &&
+        notificationEventCreateIsPending(request.resource.data) &&
+        notificationEventTargetIsSafe(request.resource.data);
+
+      allow update: if isApproved() &&
+        validNotificationEvent(request.resource.data, eventId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'attempts', 'errorMessage', 'sentAt', 'status', 'updatedAt'
+        ]);
+
+      allow delete: if isOwner();
+    }
+    // <<< STUDIO37 NOTIFICATION EVENT RULES END
+
     match /mail/{mailId} {
       allow create: if isSignedIn() &&
         userDocExists() &&

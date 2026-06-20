@@ -200,3 +200,51 @@ OS Phase 2 - Firestore Subscription Registry
 ```
 
 Registry lokal akan menyimpan mapping Firebase user ke OneSignal subscription state tanpa mengandalkan tag sync frontend.
+
+## OS Phase 3 - Notification Event Queue
+
+Phase ini menambahkan antrean event:
+
+```txt
+notificationEvents/{eventId}
+```
+
+Tujuan:
+
+```txt
+1. App bisa mencatat event notifikasi tanpa memanggil OneSignal REST API dari frontend.
+2. REST API Key OneSignal tetap tidak pernah masuk frontend.
+3. Cloudflare Worker di phase berikutnya tinggal memproses event pending.
+```
+
+Tipe event awal:
+
+```txt
+booking_request_created
+booking_confirmed
+booking_rejected
+booking_message_created
+payment_proof_submitted
+payment_proof_approved
+payment_proof_rejected
+```
+
+Status event:
+
+```txt
+pending
+processing
+sent
+failed
+cancelled
+```
+
+Flow final:
+
+```txt
+React app
+→ create notificationEvents pending
+→ Cloudflare Worker reads/processes
+→ OneSignal REST API sends push
+→ Worker updates status
+```
