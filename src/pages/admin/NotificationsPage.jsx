@@ -57,18 +57,42 @@ function getStatusIcon(status) {
   return <Clock3 size={15} />;
 }
 
-function summarizeWorkerResult(result) {
-  if (!result) return '';
+function createWorkerResult({ tone = 'info', title = 'Worker Result', text = '' } = {}) {
+  return {
+    text: String(text || ''),
+    title: String(title || 'Worker Result'),
+    tone: ['success', 'info', 'warning', 'error'].includes(tone) ? tone : 'info',
+  };
+}
 
-  if (result.error) return result.error;
+function summarizeWorkerResult(result) {
+  if (!result) {
+    return null;
+  }
+
+  if (result.error) {
+    return createWorkerResult({
+      tone: 'error',
+      title: 'Worker Error',
+      text: result.error,
+    });
+  }
 
   const rows = Array.isArray(result.results) ? result.results : [];
 
   if (!rows.length) {
-    return `Processed ${Number(result.count || 0)} event.`;
+    return createWorkerResult({
+      tone: 'info',
+      title: 'Queue Kosong',
+      text: `Processed ${Number(result.count || 0)} event. Tidak ada event pending yang perlu diproses.`,
+    });
   }
 
-  return rows
+  const hasError = rows.some((row) => row.error || (!row.sent && !row.dryRun));
+  const hasSent = rows.some((row) => row.sent);
+  const hasDryRun = rows.some((row) => row.dryRun);
+
+  const text = rows
     .map((row) => {
       const status = row.sent ? 'sent' : row.dryRun ? 'dry-run' : 'failed';
       const subscriptionCount = row.subscriptionCount ?? 0;
@@ -76,6 +100,36 @@ function summarizeWorkerResult(result) {
       return `${row.eventId || 'event'}: ${status}, target=${subscriptionCount}${row.error ? `, error=${row.error}` : ''}`;
     })
     .join('\n');
+
+  if (hasError) {
+    return createWorkerResult({
+      tone: 'error',
+      title: 'Process Bermasalah',
+      text,
+    });
+  }
+
+  if (hasSent) {
+    return createWorkerResult({
+      tone: 'success',
+      title: 'Push Terkirim',
+      text,
+    });
+  }
+
+  if (hasDryRun) {
+    return createWorkerResult({
+      tone: 'info',
+      title: 'Dry-run Berhasil',
+      text,
+    });
+  }
+
+  return createWorkerResult({
+    tone: 'warning',
+    title: 'Worker Selesai',
+    text,
+  });
 }
 
 export default function NotificationsPage({ currentUser }) {
@@ -88,7 +142,7 @@ export default function NotificationsPage({ currentUser }) {
   const [workerLimit, setWorkerLimit] = useState(3);
   const [workerDryRun, setWorkerDryRun] = useState(true);
   const [workerEventId, setWorkerEventId] = useState('');
-  const [workerResult, setWorkerResult] = useState('');
+  const [workerResult, setWorkerResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
@@ -160,17 +214,25 @@ export default function NotificationsPage({ currentUser }) {
     const cleanUrl = workerUrl.trim().replace(/\/$/, '');
 
     if (!cleanUrl) {
-      setWorkerResult('Isi Worker URL dulu.');
+      setWorkerResult(createWorkerResult({
+        tone: 'warning',
+        title: 'Worker URL Kosong',
+        text: 'Isi Worker URL dulu.',
+      }));
       return;
     }
 
     if (!workerSecret.trim()) {
-      setWorkerResult('Isi Worker Secret dulu. Secret tidak disimpan permanen oleh console ini.');
+      setWorkerResult(createWorkerResult({
+        tone: 'warning',
+        title: 'Worker Secret Kosong',
+        text: 'Isi Worker Secret dulu. Secret tidak disimpan permanen oleh console ini.',
+      }));
       return;
     }
 
     setIsProcessing(true);
-    setWorkerResult('');
+    setWorkerResult(null);
 
     try {
       const body = {
@@ -197,9 +259,19 @@ export default function NotificationsPage({ currentUser }) {
         throw new Error(payload?.error || `Worker error: ${response.status}`);
       }
 
-      setWorkerResult(summarizeWorkerResult(payload));
+      const nextWorkerResult = summarizeWorkerResult(payload);
+      setWorkerResult(nextWorkerResult);
+
+      if (!workerDryRun && nextWorkerResult?.tone === 'success') {
+        setWorkerDryRun(true);
+        setWorkerEventId('');
+      }
     } catch (error) {
-      setWorkerResult(error?.message || 'Worker process gagal.');
+      setWorkerResult(createWorkerResult({
+        tone: 'error',
+        title: 'Worker Process Gagal',
+        text: error?.message || 'Worker process gagal.',
+      }));
     } finally {
       setIsProcessing(false);
     }
@@ -396,6 +468,15 @@ export default function NotificationsPage({ currentUser }) {
             />
           </label>
 
+          <div className="notification-worker-inline-actions" aria-label="Aksi cepat worker">
+            <button type="button" onClick={() => setWorkerEventId('')}>
+              Kosongkan Event ID
+            </button>
+            <button type="button" onClick={() => setWorkerDryRun(true)}>
+              Mode Aman
+            </button>
+          </div>
+
           <label className="notification-console-field">
             <span>Limit</span>
             <input
@@ -427,7 +508,13 @@ export default function NotificationsPage({ currentUser }) {
           </button>
 
           {workerResult ? (
-            <pre className="notification-worker-result">{workerResult}</pre>
+            <div
+              className={`notification-worker-result is-${workerResult.tone}`}
+              role={workerResult.tone === 'error' ? 'alert' : 'status'}
+            >
+              <strong>{workerResult.title}</strong>
+              <pre>{workerResult.text}</pre>
+            </div>
           ) : (
             <p className="notification-worker-hint">
               Secret tidak disimpan permanen. Gunakan tombol ini untuk retry manual tanpa buka terminal.
