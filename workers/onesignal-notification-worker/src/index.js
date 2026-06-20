@@ -302,21 +302,13 @@ function stringValue(value) {
   return { stringValue: String(value || '') };
 }
 
-function boolValue(value) {
-  return { booleanValue: Boolean(value) };
-}
-
 
 async function fetchPendingEvents(env, limit = 10) {
-  return runQuery(env, {
+  const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
+  const queryLimit = Math.max(safeLimit, Math.min(100, safeLimit * 5));
+  const rows = await runQuery(env, {
     from: [{ collectionId: 'notificationEvents' }],
-    limit: Math.max(1, Math.min(50, Number(limit) || 10)),
-    orderBy: [
-      {
-        direction: 'ASCENDING',
-        field: { fieldPath: 'createdAt' },
-      },
-    ],
+    limit: queryLimit,
     where: {
       fieldFilter: {
         field: { fieldPath: 'status' },
@@ -325,6 +317,10 @@ async function fetchPendingEvents(env, limit = 10) {
       },
     },
   });
+
+  return rows
+    .sort((first, second) => String(first.createdAt || '').localeCompare(String(second.createdAt || '')))
+    .slice(0, safeLimit);
 }
 
 async function fetchRoleSubscriptions(env, role) {
@@ -332,36 +328,19 @@ async function fetchRoleSubscriptions(env, role) {
     from: [{ collectionId: 'notificationSubscriptions' }],
     limit: 100,
     where: {
-      compositeFilter: {
-        filters: [
-          {
-            fieldFilter: {
-              field: { fieldPath: 'role' },
-              op: 'EQUAL',
-              value: stringValue(role),
-            },
-          },
-          {
-            fieldFilter: {
-              field: { fieldPath: 'permission' },
-              op: 'EQUAL',
-              value: stringValue('granted'),
-            },
-          },
-          {
-            fieldFilter: {
-              field: { fieldPath: 'optedIn' },
-              op: 'EQUAL',
-              value: boolValue(true),
-            },
-          },
-        ],
-        op: 'AND',
+      fieldFilter: {
+        field: { fieldPath: 'role' },
+        op: 'EQUAL',
+        value: stringValue(role),
       },
     },
   });
 
-  return rows.filter((row) => row.subscriptionId);
+  return rows.filter((row) =>
+    row.permission === 'granted' &&
+    row.optedIn === true &&
+    Boolean(row.subscriptionId)
+  );
 }
 
 async function fetchUserSubscription(env, uid) {
