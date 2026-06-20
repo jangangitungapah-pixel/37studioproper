@@ -348,3 +348,47 @@ Catatan keamanan:
 ```txt
 OneSignal REST API Key dan Firebase private key tidak pernah masuk frontend.
 ```
+
+## OS Phase 6 - Worker Deploy + Secret Setup
+
+Phase ini mempromosikan config deployment Worker:
+
+```txt
+workers/onesignal-notification-worker/wrangler.toml
+```
+
+Yang boleh masuk repo:
+
+```txt
+name
+main
+compatibility_date
+crons
+FIREBASE_PROJECT_ID
+ONESIGNAL_APP_ID
+SITE_ORIGIN
+DEFAULT_LIMIT
+```
+
+Yang tidak boleh masuk repo:
+
+```txt
+WORKER_SECRET
+ONESIGNAL_REST_API_KEY
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY
+```
+
+Secret diset lewat:
+
+```txt
+npx wrangler secret put <SECRET_NAME>
+```
+
+Test setelah deploy:
+
+```txt
+GET /health
+POST /process dryRun
+POST /process live
+```

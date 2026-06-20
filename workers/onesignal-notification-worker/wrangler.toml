@@ -1,0 +1,19 @@
+name = "studio37-onesignal-notification-worker"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+FIREBASE_PROJECT_ID = "studio-proper"
+ONESIGNAL_APP_ID = "03b8a3dc-1adf-4dfd-8758-6fd0425d6d14"
+SITE_ORIGIN = "https://studio-37.web.app"
+DEFAULT_LIMIT = "10"
+
+# Jangan taruh secret di [vars].
+# Set secret production pakai:
+# npx wrangler secret put WORKER_SECRET
+# npx wrangler secret put ONESIGNAL_REST_API_KEY
+# npx wrangler secret put FIREBASE_CLIENT_EMAIL
+# npx wrangler secret put FIREBASE_PRIVATE_KEY

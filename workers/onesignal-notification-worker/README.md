@@ -98,3 +98,37 @@ Worker juga punya cron:
 ```
 
 Artinya worker mencoba memproses event pending tiap 5 menit.
+
+## OS Phase 6 - Deploy Checklist
+
+Phase ini memakai file production config:
+
+```txt
+wrangler.toml
+```
+
+Isi `wrangler.toml` hanya vars non-secret.
+
+Secret wajib diset lewat Wrangler:
+
+```txt
+WORKER_SECRET
+ONESIGNAL_REST_API_KEY
+FIREBASE_CLIENT_EMAIL
+FIREBASE_PRIVATE_KEY
+```
+
+Deploy command:
+
+```powershell
+npm run deploy
+```
+
+Manual process command:
+
+```powershell
+curl.exe -X POST "$workerUrl/process" `
+  -H "Content-Type: application/json" `
+  -H "x-studio37-worker-secret: $WORKER_SECRET" `
+  -d "{\"dryRun\":true,\"limit\":3}"
+```
