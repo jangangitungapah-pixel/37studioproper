@@ -145,12 +145,15 @@ export default function OneSignalPermissionWidget() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    syncSubscriptionSnapshot('ready').catch((error) => {
-      console.warn('[onesignal] Subscription registry ready sync failed:', error);
-    });
+    const readySyncId = window.setTimeout(() => {
+      syncSubscriptionSnapshot('ready').catch((error) => {
+        console.warn('[onesignal] Subscription registry ready sync failed:', error);
+      });
+    }, 0);
 
     return () => {
       window.clearInterval(intervalId);
+      window.clearTimeout(readySyncId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentUser?.uid, isConfigured, isVisibleRoute, syncSubscriptionSnapshot]);
