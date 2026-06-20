@@ -1,12 +1,9 @@
 export const ONE_SIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '03b8a3dc-1adf-4dfd-8758-6fd0425d6d14';
 export const ONE_SIGNAL_SAFARI_WEB_ID = import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || 'web.onesignal.auto.18c45a69-7bf7-46f8-9483-0a7df130c3b6';
 export const ONE_SIGNAL_NATIVE_NOTIFY_BUTTON = true;
-export const ONE_SIGNAL_USE_EXTERNAL_ID_LOGIN = false;
 export const ONE_SIGNAL_WORKER_PATH = 'push/onesignal/OneSignalSDKWorker.js';
 export const ONE_SIGNAL_WORKER_SCOPE = '/push/onesignal/';
 export const ONE_SIGNAL_SDK_URL = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-
-const TAG_SYNC_DELAYS_MS = [4500, 14000, 32000];
 
 let oneSignalScriptPromise = null;
 let oneSignalInstancePromise = null;
@@ -29,13 +26,24 @@ function getOneSignalDeferredQueue() {
   return window.OneSignalDeferred;
 }
 
-function getTagSyncStore() {
-  window.__studio37OneSignalTagSync = window.__studio37OneSignalTagSync || {
-    keys: new Set(),
-    timers: new Map(),
-  };
+function markOneSignalScriptLoaded() {
+  const script = document.querySelector('script[data-onesignal-sdk="true"]');
 
-  return window.__studio37OneSignalTagSync;
+  if (script) {
+    script.dataset.loaded = 'true';
+  }
+
+  if (window.OneSignalDeferred) {
+    window.OneSignalDeferred.__loaded = true;
+  }
+}
+
+function settleWithOneSignal(resolve) {
+  if (!window.OneSignal) return false;
+
+  oneSignalInstance = window.OneSignal;
+  resolve(oneSignalInstance);
+  return true;
 }
 
 export function isOneSignalConfigured() {
@@ -59,18 +67,6 @@ export function getBrowserNotificationPermission() {
   return window.Notification.permission;
 }
 
-function markOneSignalScriptLoaded() {
-  const script = document.querySelector('script[data-onesignal-sdk="true"]');
-
-  if (script) {
-    script.dataset.loaded = 'true';
-  }
-
-  if (window.OneSignalDeferred) {
-    window.OneSignalDeferred.__loaded = true;
-  }
-}
-
 function loadOneSignalScript() {
   if (!isBrowser()) {
     return Promise.reject(new Error('OneSignal hanya bisa dimuat di browser.'));
@@ -86,11 +82,19 @@ function loadOneSignalScript() {
 
   oneSignalScriptPromise = new Promise((resolve, reject) => {
     if (existingScript) {
-      existingScript.addEventListener('load', () => {
-        markOneSignalScriptLoaded();
-        resolve();
-      }, { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('Gagal memuat OneSignal SDK.')), { once: true });
+      existingScript.addEventListener(
+        'load',
+        () => {
+          markOneSignalScriptLoaded();
+          resolve();
+        },
+        { once: true },
+      );
+      existingScript.addEventListener(
+        'error',
+        () => reject(new Error('Gagal memuat OneSignal SDK.')),
+        { once: true },
+      );
       return;
     }
 
@@ -100,14 +104,22 @@ function loadOneSignalScript() {
     script.async = true;
     script.dataset.onesignalSdk = 'true';
 
-    script.addEventListener('load', () => {
-      markOneSignalScriptLoaded();
-      resolve();
-    }, { once: true });
+    script.addEventListener(
+      'load',
+      () => {
+        markOneSignalScriptLoaded();
+        resolve();
+      },
+      { once: true },
+    );
 
-    script.addEventListener('error', () => {
-      reject(new Error('Gagal memuat OneSignal SDK.'));
-    }, { once: true });
+    script.addEventListener(
+      'error',
+      () => {
+        reject(new Error('Gagal memuat OneSignal SDK.'));
+      },
+      { once: true },
+    );
 
     document.head.appendChild(script);
   });
@@ -131,29 +143,43 @@ function getOneSignalInstance() {
 
   oneSignalInstancePromise = new Promise((resolve, reject) => {
     let didSettle = false;
+
+    function settle(OneSignal) {
+      if (didSettle) return;
+
+      didSettle = true;
+      window.clearTimeout(timeoutId);
+      oneSignalInstance = OneSignal;
+      resolve(OneSignal);
+    }
+
     const timeoutId = window.setTimeout(() => {
       if (didSettle) return;
 
       didSettle = true;
+      oneSignalInstancePromise = null;
       reject(new Error('OneSignal SDK timeout.'));
     }, 18000);
 
     getOneSignalDeferredQueue().push((OneSignal) => {
-      if (didSettle) return;
-
-      didSettle = true;
-      oneSignalInstance = OneSignal;
-      window.clearTimeout(timeoutId);
-      resolve(OneSignal);
+      settle(OneSignal);
     });
 
-    loadOneSignalScript().catch((error) => {
-      if (didSettle) return;
+    loadOneSignalScript()
+      .then(() => {
+        window.setTimeout(() => {
+          if (didSettle) return;
+          settleWithOneSignal(settle);
+        }, 0);
+      })
+      .catch((error) => {
+        if (didSettle) return;
 
-      didSettle = true;
-      window.clearTimeout(timeoutId);
-      reject(error);
-    });
+        didSettle = true;
+        oneSignalInstancePromise = null;
+        window.clearTimeout(timeoutId);
+        reject(error);
+      });
   });
 
   return oneSignalInstancePromise;
@@ -163,10 +189,6 @@ function isAlreadyInitializedError(error) {
   const message = String(error?.message || error || '').toLowerCase();
 
   return message.includes('already') && message.includes('init');
-}
-
-function cleanTagValue(value) {
-  return String(value || '').trim().slice(0, 120);
 }
 
 function getPermissionFromOneSignal(OneSignal) {
@@ -186,92 +208,22 @@ function buildOneSignalState(OneSignal) {
     optedIn: Boolean(OneSignal?.User?.PushSubscription?.optedIn),
     permission: getPermissionFromOneSignal(OneSignal),
     subscriptionId: OneSignal?.User?.PushSubscription?.id || '',
-    supported: true,
+    supported: isOneSignalBrowserSupported(),
   };
 }
 
-function buildUserTags(user, role) {
+function buildUnsupportedState() {
   return {
-    app: '37_music_studio',
-    email: cleanTagValue(user?.email),
-    role: cleanTagValue(role),
-    uid: cleanTagValue(user?.uid),
+    configured: isOneSignalConfigured(),
+    permission: getBrowserNotificationPermission(),
+    subscriptionId: '',
+    supported: false,
   };
-}
-
-function getTagSyncKey(tags) {
-  return [tags.uid, tags.role, tags.email].filter(Boolean).join('|');
-}
-
-async function syncOneSignalTagsNow(tags, attemptIndex) {
-  const OneSignal = await getOneSignalInstance();
-
-  if (typeof OneSignal.User?.addTags !== 'function') {
-    return buildOneSignalState(OneSignal);
-  }
-
-  try {
-    await OneSignal.User.addTags(tags);
-
-    const store = getTagSyncStore();
-    store.keys.add(getTagSyncKey(tags));
-
-    return buildOneSignalState(OneSignal);
-  } catch (error) {
-    const message = String(error?.message || error || '');
-    console.warn('[onesignal] Tag sync postponed:', {
-      attempt: attemptIndex + 1,
-      message,
-    });
-
-    return buildOneSignalState(OneSignal);
-  }
-}
-
-function scheduleOneSignalTagSync(user, role = 'client') {
-  if (!isBrowser() || !user?.uid || !isOneSignalConfigured()) return null;
-
-  const tags = buildUserTags(user, role);
-  const key = getTagSyncKey(tags);
-  const store = getTagSyncStore();
-
-  if (!key || store.keys.has(key)) {
-    return null;
-  }
-
-  const existingTimers = store.timers.get(key) || [];
-  existingTimers.forEach((timerId) => window.clearTimeout(timerId));
-
-  const nextTimers = TAG_SYNC_DELAYS_MS.map((delay, attemptIndex) => {
-    return window.setTimeout(() => {
-      syncOneSignalTagsNow(tags, attemptIndex).catch((error) => {
-        console.warn('[onesignal] Deferred tag sync failed:', error);
-      });
-    }, delay);
-  });
-
-  store.timers.set(key, nextTimers);
-
-  return buildOneSignalState(oneSignalInstance);
 }
 
 export async function initOneSignal() {
-  if (!isOneSignalConfigured()) {
-    return {
-      configured: false,
-      permission: getBrowserNotificationPermission(),
-      subscriptionId: '',
-      supported: false,
-    };
-  }
-
-  if (!isOneSignalBrowserSupported()) {
-    return {
-      configured: true,
-      permission: getBrowserNotificationPermission(),
-      subscriptionId: '',
-      supported: false,
-    };
+  if (!isOneSignalConfigured() || !isOneSignalBrowserSupported()) {
+    return buildUnsupportedState();
   }
 
   if (oneSignalInitPromise) return oneSignalInitPromise;
@@ -333,22 +285,8 @@ export async function initOneSignal() {
 }
 
 export async function getOneSignalState() {
-  if (!isOneSignalConfigured() || !isBrowser()) {
-    return {
-      configured: false,
-      permission: getBrowserNotificationPermission(),
-      subscriptionId: '',
-      supported: false,
-    };
-  }
-
-  if (!isOneSignalBrowserSupported()) {
-    return {
-      configured: true,
-      permission: getBrowserNotificationPermission(),
-      subscriptionId: '',
-      supported: false,
-    };
+  if (!isOneSignalConfigured() || !isBrowser() || !isOneSignalBrowserSupported()) {
+    return buildUnsupportedState();
   }
 
   const OneSignal = await getOneSignalInstance();
@@ -356,61 +294,22 @@ export async function getOneSignalState() {
   return buildOneSignalState(OneSignal);
 }
 
-export async function identifyOneSignalUser(user, role = 'client') {
-  if (!user?.uid || !isOneSignalConfigured()) {
-    return null;
-  }
-
-  await initOneSignal();
-
-  const OneSignal = await getOneSignalInstance();
-
-  if (ONE_SIGNAL_USE_EXTERNAL_ID_LOGIN && typeof OneSignal.login === 'function') {
-    await OneSignal.login(user.uid);
-  }
-
-  scheduleOneSignalTagSync(user, role);
-
-  return buildOneSignalState(OneSignal);
+export async function identifyOneSignalUser(_user, _role = 'client') {
+  return initOneSignal();
 }
 
 export async function logoutOneSignalUser() {
-  if (!isOneSignalConfigured()) return null;
-
-  await initOneSignal();
-
-  const OneSignal = await getOneSignalInstance();
-
-  if (ONE_SIGNAL_USE_EXTERNAL_ID_LOGIN && typeof OneSignal.logout === 'function') {
-    await OneSignal.logout();
-  }
-
-  if (typeof OneSignal.User?.removeTags === 'function') {
-    try {
-      await OneSignal.User.removeTags(['uid', 'email', 'role']);
-    } catch (error) {
-      console.warn('[onesignal] Remove tags failed:', error);
-    }
-  }
-
-  return buildOneSignalState(OneSignal);
+  return getOneSignalState();
 }
 
-export async function requestOneSignalPushPermission(user, role = 'client') {
+export async function requestOneSignalPushPermission(_user, _role = 'client') {
   await initOneSignal();
 
   const OneSignal = await getOneSignalInstance();
-
   const currentPermission = getPermissionFromOneSignal(OneSignal);
 
   if (currentPermission !== 'granted' && typeof OneSignal.Notifications?.requestPermission === 'function') {
     await OneSignal.Notifications.requestPermission();
-  }
-
-  const nextState = buildOneSignalState(OneSignal);
-
-  if (user?.uid && nextState.permission === 'granted') {
-    scheduleOneSignalTagSync(user, role);
   }
 
   return buildOneSignalState(OneSignal);

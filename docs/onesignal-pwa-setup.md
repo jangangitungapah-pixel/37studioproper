@@ -165,3 +165,38 @@ role=admin/client
 uid=<firebase uid>
 email=<firebase email>
 ```
+
+## OS Phase 1 - Stable Subscription Foundation
+
+Phase ini mengunci OneSignal sebagai subscription layer saja.
+
+Status:
+
+```txt
+✅ OneSignal Web SDK init
+✅ Native OneSignal bell aktif
+✅ Service worker OneSignal memakai subfolder /push/onesignal/
+✅ Safari Web ID masuk config
+✅ Custom permission widget tidak tampil saat native bell aktif
+⏸️ OneSignal.login() frontend dimatikan
+⏸️ OneSignal.User.addTags() frontend dimatikan
+⏸️ OneSignal.User.removeTags() frontend dimatikan
+```
+
+Alasan:
+
+```txt
+Frontend tag sync sempat menghasilkan:
+PATCH /users/by/onesignal_id/... 409 Conflict
+Op failed: set-property tags
+```
+
+Untuk arsitektur final, frontend tidak menyimpan REST API Key dan tidak memaksa identity/tag sync langsung ke OneSignal.
+
+Phase berikutnya:
+
+```txt
+OS Phase 2 - Firestore Subscription Registry
+```
+
+Registry lokal akan menyimpan mapping Firebase user ke OneSignal subscription state tanpa mengandalkan tag sync frontend.

@@ -4,9 +4,7 @@ import { Bell, BellRing, X } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { firebaseAuth } from '../../lib/firebase.js';
 import {
-  getBrowserNotificationPermission,
-  identifyOneSignalUser,
-  initOneSignal,
+  getBrowserNotificationPermission,  initOneSignal,
   isOneSignalConfigured,
   ONE_SIGNAL_NATIVE_NOTIFY_BUTTON,
   requestOneSignalPushPermission,
@@ -57,12 +55,6 @@ export default function OneSignalPermissionWidget() {
         if (!isMounted) return;
 
         setPermission(state.permission || getBrowserNotificationPermission());
-
-        if (currentUser?.uid) {
-          identifyOneSignalUser(currentUser, role).catch((error) => {
-            console.warn('[onesignal] Identify user failed:', error);
-          });
-        }
       })
       .catch((error) => {
         console.warn('[onesignal] Init failed:', error);
@@ -72,7 +64,7 @@ export default function OneSignalPermissionWidget() {
     return () => {
       isMounted = false;
     };
-  }, [currentUser, isConfigured, isVisibleRoute, role]);
+  }, [isConfigured, isVisibleRoute]);
 
   if (!isVisibleRoute || isDismissed) return null;
 
