@@ -19260,3 +19260,155 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 NOTIFICATION CONSOLE POLISH END */
+
+/* >>> STUDIO37 NOTIFICATION BADGES START */
+.admin-nav-item,
+.admin-bottom-item,
+.admin-more-item,
+.admin-notification-shortcut {
+  position: relative;
+}
+
+.admin-topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.admin-notification-shortcut {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 13px;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.admin-notification-shortcut:hover {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-accent-soft);
+}
+
+.admin-notification-badge {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  padding: 0 5px;
+  color: var(--auth-text-strong);
+  font-size: 0.64rem;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+}
+
+.admin-notification-badge.is-danger {
+  border-color: rgba(255, 107, 107, 0.42);
+  background: rgba(255, 107, 107, 0.24);
+  color: #ffb3b3;
+}
+
+.admin-notification-badge.is-warning {
+  border-color: rgba(255, 176, 32, 0.42);
+  background: rgba(255, 176, 32, 0.24);
+  color: #ffd98c;
+}
+
+.admin-notification-badge.is-info {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.admin-notification-badge.is-nav {
+  margin-left: auto;
+}
+
+.admin-notification-badge.is-shortcut {
+  margin-left: 2px;
+}
+
+.admin-notification-badge.is-bottom,
+.admin-notification-badge.is-more {
+  position: absolute;
+  top: 6px;
+  right: 9px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 0.56rem;
+}
+
+.admin-more-item .admin-notification-badge.is-more {
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}
+
+.admin-more-item:has(.admin-notification-badge.is-more) {
+  padding-right: 36px;
+}
+
+.admin-shell.is-sidebar-collapsed .admin-nav-item .admin-notification-badge.is-nav {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  font-size: 0.52rem;
+}
+
+@media (max-width: 767px) {
+  .admin-topbar-actions {
+    gap: 8px;
+  }
+
+  .admin-notification-shortcut {
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 15px;
+    padding: 0;
+  }
+
+  .admin-notification-shortcut span:not(.admin-notification-badge) {
+    display: none;
+  }
+
+  .admin-notification-badge.is-shortcut {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    font-size: 0.55rem;
+  }
+
+  .admin-bottom-item .admin-notification-badge.is-bottom {
+    top: 5px;
+    right: 12px;
+  }
+
+  .admin-more-item .admin-notification-badge.is-more {
+    right: 11px;
+  }
+}
+
+@media (max-width: 390px) {
+  .admin-bottom-item .admin-notification-badge.is-bottom {
+    right: 9px;
+  }
+}
+/* <<< STUDIO37 NOTIFICATION BADGES END */

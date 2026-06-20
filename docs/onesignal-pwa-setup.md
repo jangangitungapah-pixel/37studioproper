@@ -424,3 +424,29 @@ Optional env frontend:
 ```txt
 VITE_NOTIFICATION_WORKER_URL=https://studio37-onesignal-notification-worker.studio37.workers.dev
 ```
+
+## OS Phase 8 - Notification Badge & Bell Center Signal
+
+Phase ini menambahkan indikator notifikasi di Admin Shell:
+
+```txt
+1. Badge di menu Notifikasi desktop.
+2. Shortcut Bell di topbar admin.
+3. Badge di tombol More mobile jika ada pending/failed event.
+4. Badge di item Notifikasi dalam More menu.
+```
+
+Badge dihitung dari `notificationEvents`:
+
+```txt
+failed + pending = angka badge utama
+processing = dot kecil
+sent/cancelled = tidak masuk badge perhatian
+```
+
+Catatan keamanan:
+
+```txt
+Badge hanya membaca Firestore notificationEvents.
+Tidak ada OneSignal REST API Key atau Worker Secret di frontend.
+```

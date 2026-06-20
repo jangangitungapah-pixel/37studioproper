@@ -23,6 +23,10 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
+import {
+  NOTIFICATION_EVENT_STATUSES,
+  subscribeNotificationEvents,
+} from '../services/notificationEventRepository.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
@@ -136,6 +140,103 @@ function getInitialSidebarState() {
   } catch {
     return false;
   }
+}
+
+function createEmptyNotificationSummary(status = 'idle') {
+  return {
+    failed: 0,
+    pending: 0,
+    processing: 0,
+    status,
+    total: 0,
+  };
+}
+
+function createNotificationSummary(events = []) {
+  return events.reduce((summary, event) => {
+    const nextSummary = {
+      ...summary,
+      total: summary.total + 1,
+    };
+
+    if (event.status === NOTIFICATION_EVENT_STATUSES.FAILED) {
+      nextSummary.failed += 1;
+    }
+
+    if (event.status === NOTIFICATION_EVENT_STATUSES.PENDING) {
+      nextSummary.pending += 1;
+    }
+
+    if (event.status === NOTIFICATION_EVENT_STATUSES.PROCESSING) {
+      nextSummary.processing += 1;
+    }
+
+    return nextSummary;
+  }, createEmptyNotificationSummary('ready'));
+}
+
+function getNotificationBadgeCount(summary) {
+  return Math.max(0, Number(summary?.failed || 0) + Number(summary?.pending || 0));
+}
+
+function getNotificationBadgeTone(summary) {
+  if (Number(summary?.failed || 0) > 0) return 'danger';
+  if (Number(summary?.pending || 0) > 0) return 'warning';
+  if (Number(summary?.processing || 0) > 0) return 'info';
+
+  return 'quiet';
+}
+
+function getNotificationBadgeText(summary) {
+  const count = getNotificationBadgeCount(summary);
+
+  if (count > 99) return '99+';
+  if (count > 0) return String(count);
+  if (Number(summary?.processing || 0) > 0) return '•';
+
+  return '';
+}
+
+function getNotificationBadgeLabel(summary) {
+  const failed = Number(summary?.failed || 0);
+  const pending = Number(summary?.pending || 0);
+  const processing = Number(summary?.processing || 0);
+
+  if (failed > 0 && pending > 0) {
+    return `${failed} notifikasi gagal dan ${pending} notifikasi pending`;
+  }
+
+  if (failed > 0) {
+    return `${failed} notifikasi gagal perlu dicek`;
+  }
+
+  if (pending > 0) {
+    return `${pending} notifikasi pending menunggu Worker`;
+  }
+
+  if (processing > 0) {
+    return `${processing} notifikasi sedang diproses`;
+  }
+
+  return 'Tidak ada notifikasi bermasalah';
+}
+
+function AdminNotificationBadge({ summary, variant = 'nav' }) {
+  const text = getNotificationBadgeText(summary);
+
+  if (!text) return null;
+
+  const tone = getNotificationBadgeTone(summary);
+
+  return (
+    <span
+      aria-label={getNotificationBadgeLabel(summary)}
+      className={`admin-notification-badge is-${tone} is-${variant}`}
+      title={getNotificationBadgeLabel(summary)}
+    >
+      {text}
+    </span>
+  );
 }
 
 function renderAdminContent(activeKey, currentUser) {
@@ -351,10 +452,45 @@ export default function AdminPage() {
   const [authState, setAuthState] = useState({ isReady: false, isAuthenticated: false, user: null });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(getInitialSidebarState);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [notificationSummary, setNotificationSummary] = useState(() => createEmptyNotificationSummary());
 
   useEffect(() => {
     return adminAuthRepository.subscribeAdminAuth(setAuthState);
   }, []);
+
+  useEffect(() => {
+    const canWatchNotifications =
+      authState.isReady &&
+      authState.isAuthenticated &&
+      authState.user?.isApproved &&
+      hasAdminPagePermission(authState.user, 'settings');
+
+    if (!canWatchNotifications) {
+      const resetFrameId = window.requestAnimationFrame(() => {
+        setNotificationSummary(createEmptyNotificationSummary('idle'));
+      });
+
+      return () => {
+        window.cancelAnimationFrame(resetFrameId);
+      };
+    }
+
+    const unsubscribe = subscribeNotificationEvents(
+      { status: 'all' },
+      (events) => {
+        setNotificationSummary(createNotificationSummary(events));
+      },
+      (error) => {
+        console.error('[notification-badge] Gagal membaca notification events:', error);
+        setNotificationSummary((current) => ({
+          ...current,
+          status: 'error',
+        }));
+      },
+    );
+
+    return unsubscribe;
+  }, [authState.isReady, authState.isAuthenticated, authState.user]);
 
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated || !authState.user?.isApproved) {
@@ -422,6 +558,9 @@ export default function AdminPage() {
   );
 
   const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
+  const notificationBadgeCount = getNotificationBadgeCount(notificationSummary);
+  const notificationBadgeLabel = getNotificationBadgeLabel(notificationSummary);
+  const shouldShowMoreNotificationBadge = notificationBadgeCount > 0 && mobileMoreNavItems.some((item) => item.key === 'notifications');
 
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated) return;
@@ -597,12 +736,15 @@ export default function AdminPage() {
                 aria-current={isActive ? 'page' : undefined}
                 className={isActive ? 'admin-nav-item is-active' : 'admin-nav-item'}
                 key={item.key}
-                title={item.label}
+                title={item.key === 'notifications' ? notificationBadgeLabel : item.label}
                 type="button"
                 onClick={() => goTo(item.path)}
               >
                 <Icon size={19} />
                 <span className="admin-nav-label">{item.label}</span>
+                {item.key === 'notifications' ? (
+                  <AdminNotificationBadge summary={notificationSummary} />
+                ) : null}
               </button>
             );
           })}
@@ -628,10 +770,23 @@ export default function AdminPage() {
             <h1 id="admin-title">{activeItem.title}</h1>
           </div>
 
-          <button className="admin-shell-icon-button" type="button" onClick={handleLogout}>
-            <LogOut size={18} />
-            <span>Keluar</span>
-          </button>
+          <div className="admin-topbar-actions">
+            <button
+              className="admin-notification-shortcut"
+              title={notificationBadgeLabel}
+              type="button"
+              onClick={() => goTo('/admin/notifications')}
+            >
+              <BellRing size={18} />
+              <span>Notifikasi</span>
+              <AdminNotificationBadge summary={notificationSummary} variant="shortcut" />
+            </button>
+
+            <button className="admin-shell-icon-button" type="button" onClick={handleLogout}>
+              <LogOut size={18} />
+              <span>Keluar</span>
+            </button>
+          </div>
         </header>
 
         <Suspense
@@ -660,6 +815,9 @@ export default function AdminPage() {
             >
               <Icon size={20} />
               <span>{item.label}</span>
+              {item.key === 'notifications' ? (
+                <AdminNotificationBadge summary={notificationSummary} variant="bottom" />
+              ) : null}
             </button>
           );
         })}
@@ -682,6 +840,9 @@ export default function AdminPage() {
                   >
                     <Icon size={17} />
                     <span>{item.label}</span>
+                    {item.key === 'notifications' ? (
+                      <AdminNotificationBadge summary={notificationSummary} variant="more" />
+                    ) : null}
                   </button>
                 );
               })}
@@ -692,11 +853,15 @@ export default function AdminPage() {
             aria-expanded={isMoreMenuOpen}
             aria-haspopup="menu"
             className={isMoreNavActive ? 'admin-bottom-item is-active' : 'admin-bottom-item'}
+            title={shouldShowMoreNotificationBadge ? notificationBadgeLabel : 'More'}
             type="button"
             onClick={() => setIsMoreMenuOpen((current) => !current)}
           >
             <MoreHorizontal size={20} />
             <span>More</span>
+            {shouldShowMoreNotificationBadge ? (
+              <AdminNotificationBadge summary={notificationSummary} variant="bottom" />
+            ) : null}
           </button>
         </div>
       </nav>
