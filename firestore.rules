@@ -194,6 +194,57 @@ service cloud.firestore {
         ]);
     }
 
+    // >>> STUDIO37 NOTIFICATION SUBSCRIPTION RULES START
+    function validNotificationSubscription(data, subscriptionUserId) {
+      return data.keys().hasOnly([
+          'uid', 'role', 'email', 'platform', 'permission', 'optedIn',
+          'oneSignalId', 'subscriptionId', 'userAgent', 'source',
+          'lastSyncReason', 'createdAt', 'updatedAt'
+        ]) &&
+        data.uid == subscriptionUserId &&
+        validString(data.uid, 1, 128) &&
+        data.role in ['admin', 'client'] &&
+        validString(data.email, 0, 254) &&
+        data.platform == 'web' &&
+        data.permission in ['default', 'granted', 'denied', 'unsupported', 'unknown'] &&
+        data.optedIn is bool &&
+        validString(data.oneSignalId, 0, 160) &&
+        validString(data.subscriptionId, 0, 160) &&
+        validString(data.userAgent, 0, 600) &&
+        data.source == 'onesignal-web' &&
+        validString(data.lastSyncReason, 0, 80) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    function notificationSubscriptionIdentityMatches(data) {
+      return data.email == '' || (
+        request.auth.token.email is string &&
+        data.email.lower() == request.auth.token.email.lower()
+      );
+    }
+
+    function notificationSubscriptionRoleMatches(data) {
+      return (data.role == 'client' && isClientAccount()) ||
+        (data.role == 'admin' && isApproved());
+    }
+
+    match /notificationSubscriptions/{subscriptionUserId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == subscriptionUserId ||
+        isApproved()
+      );
+
+      allow create, update: if isSignedIn() &&
+        request.auth.uid == subscriptionUserId &&
+        validNotificationSubscription(request.resource.data, subscriptionUserId) &&
+        notificationSubscriptionIdentityMatches(request.resource.data) &&
+        notificationSubscriptionRoleMatches(request.resource.data);
+
+      allow delete: if isSignedIn() && request.auth.uid == subscriptionUserId;
+    }
+    // <<< STUDIO37 NOTIFICATION SUBSCRIPTION RULES END
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow create: if isSignedIn() &&

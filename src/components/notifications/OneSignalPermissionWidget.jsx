@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, BellRing, X } from 'lucide-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { firebaseAuth } from '../../lib/firebase.js';
+import { syncNotificationSubscription } from '../../services/notificationSubscriptionRepository.js';
 import {
-  getBrowserNotificationPermission,  initOneSignal,
+  getBrowserNotificationPermission,
+  getOneSignalState,
+  initOneSignal,
   isOneSignalConfigured,
   ONE_SIGNAL_NATIVE_NOTIFY_BUTTON,
   requestOneSignalPushPermission,
@@ -25,8 +28,27 @@ function shouldShowOnRoute(pathname) {
   return pathname.startsWith('/admin') || pathname.startsWith('/client');
 }
 
+function normalizeWidgetPermission(permission) {
+  if (permission === true) return 'granted';
+  if (permission === false) return 'default';
+
+  return permission || getBrowserNotificationPermission();
+}
+
+function buildSnapshotKey(user, role, state) {
+  return [
+    user?.uid || '',
+    role,
+    normalizeWidgetPermission(state?.permission),
+    state?.optedIn ? '1' : '0',
+    state?.oneSignalId || '',
+    state?.subscriptionId || '',
+  ].join('|');
+}
+
 export default function OneSignalPermissionWidget() {
   const location = useLocation();
+  const lastSyncKeyRef = useRef('');
   const [currentUser, setCurrentUser] = useState(null);
   const [isDismissed, setIsDismissed] = useState(getInitialDismissed);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,11 +59,43 @@ export default function OneSignalPermissionWidget() {
   const isVisibleRoute = shouldShowOnRoute(location.pathname);
   const isConfigured = isOneSignalConfigured();
 
+  const syncSubscriptionSnapshot = useCallback(
+    async (reason = 'snapshot') => {
+      if (!isVisibleRoute || !isConfigured || !currentUser?.uid) return null;
+
+      const state = await getOneSignalState();
+      const nextPermission = normalizeWidgetPermission(state.permission);
+      const normalizedState = {
+        ...state,
+        permission: nextPermission,
+      };
+
+      setPermission(nextPermission);
+
+      const nextKey = buildSnapshotKey(currentUser, role, normalizedState);
+
+      if (nextKey !== lastSyncKeyRef.current) {
+        lastSyncKeyRef.current = nextKey;
+
+        await syncNotificationSubscription({
+          reason,
+          role,
+          state: normalizedState,
+          user: currentUser,
+        });
+      }
+
+      return normalizedState;
+    },
+    [currentUser, isConfigured, isVisibleRoute, role],
+  );
+
   useEffect(() => {
     if (!firebaseAuth) return undefined;
 
     return onAuthStateChanged(firebaseAuth, (user) => {
       setCurrentUser(user);
+      lastSyncKeyRef.current = '';
     });
   }, []);
 
@@ -54,7 +108,13 @@ export default function OneSignalPermissionWidget() {
       .then((state) => {
         if (!isMounted) return;
 
-        setPermission(state.permission || getBrowserNotificationPermission());
+        setPermission(normalizeWidgetPermission(state.permission));
+
+        if (currentUser?.uid) {
+          syncSubscriptionSnapshot('init').catch((error) => {
+            console.warn('[onesignal] Subscription registry sync failed:', error);
+          });
+        }
       })
       .catch((error) => {
         console.warn('[onesignal] Init failed:', error);
@@ -64,13 +124,42 @@ export default function OneSignalPermissionWidget() {
     return () => {
       isMounted = false;
     };
-  }, [isConfigured, isVisibleRoute]);
+  }, [currentUser?.uid, isConfigured, isVisibleRoute, syncSubscriptionSnapshot]);
+
+  useEffect(() => {
+    if (!isVisibleRoute || !isConfigured || !currentUser?.uid) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      syncSubscriptionSnapshot('poll').catch((error) => {
+        console.warn('[onesignal] Subscription registry poll failed:', error);
+      });
+    }, 15000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState !== 'visible') return;
+
+      syncSubscriptionSnapshot('visible').catch((error) => {
+        console.warn('[onesignal] Subscription registry visibility sync failed:', error);
+      });
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    syncSubscriptionSnapshot('ready').catch((error) => {
+      console.warn('[onesignal] Subscription registry ready sync failed:', error);
+    });
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentUser?.uid, isConfigured, isVisibleRoute, syncSubscriptionSnapshot]);
 
   if (!isVisibleRoute || isDismissed) return null;
 
   if (isConfigured && ONE_SIGNAL_NATIVE_NOTIFY_BUTTON) return null;
 
-  const normalizedPermission = permission === true ? 'granted' : permission;
+  const normalizedPermission = normalizeWidgetPermission(permission);
   const isGranted = normalizedPermission === 'granted';
   const isDenied = normalizedPermission === 'denied';
 
@@ -94,11 +183,23 @@ export default function OneSignalPermissionWidget() {
 
     try {
       const state = await requestOneSignalPushPermission(currentUser, role);
-      const nextPermission = state.permission || getBrowserNotificationPermission();
+      const nextPermission = normalizeWidgetPermission(state.permission);
 
       setPermission(nextPermission);
 
-      if (nextPermission === true || nextPermission === 'granted') {
+      if (currentUser?.uid) {
+        await syncNotificationSubscription({
+          reason: 'manual-permission',
+          role,
+          state: {
+            ...state,
+            permission: nextPermission,
+          },
+          user: currentUser,
+        });
+      }
+
+      if (nextPermission === 'granted') {
         setStatusText('Notifikasi berhasil diaktifkan.');
         window.setTimeout(dismissWidget, 1800);
       } else if (nextPermission === 'denied') {
