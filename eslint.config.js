@@ -39,4 +39,27 @@ export default [
       globals: globals.node,
     },
   },
+  {
+    files: ['workers/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        atob: 'readonly',
+        btoa: 'readonly',
+        clearTimeout: 'readonly',
+        console: 'readonly',
+        crypto: 'readonly',
+        fetch: 'readonly',
+        Headers: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+        setTimeout: 'readonly',
+        TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+      },
+    },
+  },
 ];

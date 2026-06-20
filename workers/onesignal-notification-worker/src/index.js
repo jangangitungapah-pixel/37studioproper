@@ -306,9 +306,6 @@ function boolValue(value) {
   return { booleanValue: Boolean(value) };
 }
 
-function intValue(value) {
-  return { integerValue: String(Math.max(0, Number(value || 0))) };
-}
 
 async function fetchPendingEvents(env, limit = 10) {
   return runQuery(env, {
