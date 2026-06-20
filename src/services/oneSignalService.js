@@ -6,6 +6,8 @@ export const ONE_SIGNAL_WORKER_PATH = 'push/onesignal/OneSignalSDKWorker.js';
 export const ONE_SIGNAL_WORKER_SCOPE = '/push/onesignal/';
 export const ONE_SIGNAL_SDK_URL = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
 
+const TAG_SYNC_DELAYS_MS = [4500, 14000, 32000];
+
 let oneSignalScriptPromise = null;
 let oneSignalInstancePromise = null;
 let oneSignalInitPromise = null;
@@ -25,6 +27,15 @@ function getOneSignalDeferredQueue() {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
   return window.OneSignalDeferred;
+}
+
+function getTagSyncStore() {
+  window.__studio37OneSignalTagSync = window.__studio37OneSignalTagSync || {
+    keys: new Set(),
+    timers: new Map(),
+  };
+
+  return window.__studio37OneSignalTagSync;
 }
 
 export function isOneSignalConfigured() {
@@ -179,6 +190,71 @@ function buildOneSignalState(OneSignal) {
   };
 }
 
+function buildUserTags(user, role) {
+  return {
+    app: '37_music_studio',
+    email: cleanTagValue(user?.email),
+    role: cleanTagValue(role),
+    uid: cleanTagValue(user?.uid),
+  };
+}
+
+function getTagSyncKey(tags) {
+  return [tags.uid, tags.role, tags.email].filter(Boolean).join('|');
+}
+
+async function syncOneSignalTagsNow(tags, attemptIndex) {
+  const OneSignal = await getOneSignalInstance();
+
+  if (typeof OneSignal.User?.addTags !== 'function') {
+    return buildOneSignalState(OneSignal);
+  }
+
+  try {
+    await OneSignal.User.addTags(tags);
+
+    const store = getTagSyncStore();
+    store.keys.add(getTagSyncKey(tags));
+
+    return buildOneSignalState(OneSignal);
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    console.warn('[onesignal] Tag sync postponed:', {
+      attempt: attemptIndex + 1,
+      message,
+    });
+
+    return buildOneSignalState(OneSignal);
+  }
+}
+
+function scheduleOneSignalTagSync(user, role = 'client') {
+  if (!isBrowser() || !user?.uid || !isOneSignalConfigured()) return null;
+
+  const tags = buildUserTags(user, role);
+  const key = getTagSyncKey(tags);
+  const store = getTagSyncStore();
+
+  if (!key || store.keys.has(key)) {
+    return null;
+  }
+
+  const existingTimers = store.timers.get(key) || [];
+  existingTimers.forEach((timerId) => window.clearTimeout(timerId));
+
+  const nextTimers = TAG_SYNC_DELAYS_MS.map((delay, attemptIndex) => {
+    return window.setTimeout(() => {
+      syncOneSignalTagsNow(tags, attemptIndex).catch((error) => {
+        console.warn('[onesignal] Deferred tag sync failed:', error);
+      });
+    }, delay);
+  });
+
+  store.timers.set(key, nextTimers);
+
+  return buildOneSignalState(oneSignalInstance);
+}
+
 export async function initOneSignal() {
   if (!isOneSignalConfigured()) {
     return {
@@ -293,14 +369,7 @@ export async function identifyOneSignalUser(user, role = 'client') {
     await OneSignal.login(user.uid);
   }
 
-  if (typeof OneSignal.User?.addTags === 'function') {
-    await OneSignal.User.addTags({
-      app: '37_music_studio',
-      email: cleanTagValue(user.email),
-      role: cleanTagValue(role),
-      uid: cleanTagValue(user.uid),
-    });
-  }
+  scheduleOneSignalTagSync(user, role);
 
   return buildOneSignalState(OneSignal);
 }
@@ -317,7 +386,11 @@ export async function logoutOneSignalUser() {
   }
 
   if (typeof OneSignal.User?.removeTags === 'function') {
-    await OneSignal.User.removeTags(['uid', 'email', 'role']);
+    try {
+      await OneSignal.User.removeTags(['uid', 'email', 'role']);
+    } catch (error) {
+      console.warn('[onesignal] Remove tags failed:', error);
+    }
   }
 
   return buildOneSignalState(OneSignal);
@@ -337,7 +410,7 @@ export async function requestOneSignalPushPermission(user, role = 'client') {
   const nextState = buildOneSignalState(OneSignal);
 
   if (user?.uid && nextState.permission === 'granted') {
-    await identifyOneSignalUser(user, role);
+    scheduleOneSignalTagSync(user, role);
   }
 
   return buildOneSignalState(OneSignal);

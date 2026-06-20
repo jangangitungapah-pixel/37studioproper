@@ -136,3 +136,32 @@ Strategi terbaru:
 ```
 
 Ini menjaga native OneSignal bell tetap aktif, tetapi tidak membuat queue callback menggantung.
+
+## OneSignal Tags 409 Conflict Fix
+
+Console pernah menampilkan:
+
+```txt
+PATCH OneSignal users/by/onesignal_id/... 409 Conflict
+Op failed: set-property tags
+```
+
+Penyebab paling mungkin: tag sync berjalan terlalu cepat saat OneSignal SDK masih menyelesaikan operasi user/subscription internal.
+
+Strategi terbaru:
+
+```txt
+1. Jangan kirim tags langsung di identifyOneSignalUser().
+2. Jadwalkan tag sync setelah SDK stabil.
+3. Retry ringan di 4.5 detik, 14 detik, dan 32 detik.
+4. Conflict tidak memblokir app, subscription tetap jalan.
+```
+
+Tags yang dikirim:
+
+```txt
+app=37_music_studio
+role=admin/client
+uid=<firebase uid>
+email=<firebase email>
+```
