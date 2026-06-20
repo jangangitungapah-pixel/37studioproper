@@ -326,36 +326,76 @@ async function fetchPendingEvents(env, limit = 10) {
     .slice(0, safeLimit);
 }
 
-async function fetchRoleSubscriptions(env, role) {
-  const rows = await runQuery(env, {
-    from: [{ collectionId: 'notificationSubscriptions' }],
-    limit: 100,
-    where: {
-      fieldFilter: {
-        field: { fieldPath: 'role' },
-        op: 'EQUAL',
-        value: stringValue(role),
-      },
-    },
-  });
-
-  return rows.filter((row) =>
-    row.permission === 'granted' &&
-    row.optedIn === true &&
-    Boolean(row.subscriptionId)
+function isEligibleSubscription(row) {
+  return Boolean(
+    row &&
+      row.permission === 'granted' &&
+      row.optedIn === true &&
+      row.subscriptionId &&
+      row.isActive !== false
   );
 }
 
+function uniqueSubscriptions(rows = []) {
+  const lookup = new Map();
+
+  rows
+    .filter(isEligibleSubscription)
+    .forEach((row) => {
+      if (!lookup.has(row.subscriptionId)) {
+        lookup.set(row.subscriptionId, row);
+      }
+    });
+
+  return [...lookup.values()];
+}
+
+async function fetchRoleSubscriptions(env, role) {
+  const [deviceRows, legacyRows] = await Promise.all([
+    runQuery(env, {
+      from: [{ collectionId: 'notificationSubscriptionDevices' }],
+      limit: 200,
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'role' },
+          op: 'EQUAL',
+          value: stringValue(role),
+        },
+      },
+    }),
+    runQuery(env, {
+      from: [{ collectionId: 'notificationSubscriptions' }],
+      limit: 100,
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'role' },
+          op: 'EQUAL',
+          value: stringValue(role),
+        },
+      },
+    }),
+  ]);
+
+  return uniqueSubscriptions([...deviceRows, ...legacyRows]);
+}
+
 async function fetchUserSubscription(env, uid) {
-  const row = await getDocument(env, 'notificationSubscriptions', uid);
+  const [deviceRows, legacyRow] = await Promise.all([
+    runQuery(env, {
+      from: [{ collectionId: 'notificationSubscriptionDevices' }],
+      limit: 50,
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'uid' },
+          op: 'EQUAL',
+          value: stringValue(uid),
+        },
+      },
+    }),
+    getDocument(env, 'notificationSubscriptions', uid),
+  ]);
 
-  if (!row) return [];
-
-  if (row.permission !== 'granted' || !row.optedIn || !row.subscriptionId) {
-    return [];
-  }
-
-  return [row];
+  return uniqueSubscriptions([...deviceRows, legacyRow].filter(Boolean));
 }
 
 async function resolveSubscriptionsForEvent(env, event) {

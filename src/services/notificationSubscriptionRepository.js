@@ -1,7 +1,8 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 
 export const NOTIFICATION_SUBSCRIPTIONS_COLLECTION = 'notificationSubscriptions';
+export const NOTIFICATION_SUBSCRIPTION_DEVICES_COLLECTION = 'notificationSubscriptionDevices';
 
 function nowIso() {
   return new Date().toISOString();
@@ -9,6 +10,22 @@ function nowIso() {
 
 function cleanString(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
+}
+
+function cleanDocumentIdPart(value, fallback = 'unknown') {
+  const cleaned = String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 120);
+
+  return cleaned || fallback;
+}
+
+export function createNotificationDeviceId(uid, subscriptionId) {
+  return [
+    cleanDocumentIdPart(uid, 'user'),
+    cleanDocumentIdPart(subscriptionId, 'subscription'),
+  ].join('__');
 }
 
 export function normalizeNotificationPermission(permission) {
@@ -102,6 +119,28 @@ export async function syncNotificationSubscription({
 
   await setDoc(subscriptionRef, record, { merge: true });
 
+  if (record.subscriptionId) {
+    const deviceId = createNotificationDeviceId(record.uid, record.subscriptionId);
+    const deviceRecord = {
+      ...record,
+      deviceId,
+      id: deviceId,
+      isActive: isNotificationSubscriptionActive(record),
+      lastSeenAt: record.updatedAt,
+    };
+
+    await setDoc(
+      doc(firestoreDb, NOTIFICATION_SUBSCRIPTION_DEVICES_COLLECTION, deviceId),
+      deviceRecord,
+      { merge: true },
+    );
+
+    return {
+      ...record,
+      activeDeviceId: deviceId,
+    };
+  }
+
   return record;
 }
 
@@ -114,18 +153,41 @@ export async function fetchNotificationSubscription(uid) {
     uid,
   );
 
-  const snapshot = await getDoc(subscriptionRef);
+  const [legacySnapshot, deviceSnapshot] = await Promise.all([
+    getDoc(subscriptionRef),
+    getDocs(query(
+      collection(firestoreDb, NOTIFICATION_SUBSCRIPTION_DEVICES_COLLECTION),
+      where('uid', '==', uid),
+    )),
+  ]);
 
-  if (!snapshot.exists()) return null;
+  const legacyRecord = legacySnapshot.exists()
+    ? { id: legacySnapshot.id, ...legacySnapshot.data() }
+    : null;
+
+  const devices = deviceSnapshot.docs
+    .map((snapshot) => ({
+      id: snapshot.id,
+      ...snapshot.data(),
+    }))
+    .sort((first, second) => String(second.updatedAt || '').localeCompare(String(first.updatedAt || '')));
+
+  const activeDevices = devices.filter(isNotificationSubscriptionActive);
 
   return {
-    id: snapshot.id,
-    ...snapshot.data(),
+    ...(legacyRecord || {}),
+    activeDeviceCount: activeDevices.length,
+    activeDevices,
+    devices,
+    id: uid,
+    latestDevice: activeDevices[0] || devices[0] || null,
+    uid,
   };
 }
 
 export const notificationSubscriptionRepository = {
   buildNotificationSubscriptionRecord,
+  createNotificationDeviceId,
   fetchNotificationSubscription,
   isNotificationSubscriptionActive,
   normalizeNotificationPermission,

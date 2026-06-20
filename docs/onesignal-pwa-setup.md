@@ -475,3 +475,32 @@ Keamanan:
 Panel health tidak membaca atau menyimpan Worker Secret.
 Panel health hanya memanggil endpoint publik /health dan membaca Firestore sesuai rules.
 ```
+
+## OS Phase 9B - Multi-device Subscription Registry
+
+Phase ini mengubah sistem subscription agar satu akun bisa memiliki banyak device aktif.
+
+Struktur baru:
+
+```txt
+notificationSubscriptions/{uid}
+notificationSubscriptionDevices/{uid__subscriptionId}
+```
+
+Catatan:
+
+```txt
+notificationSubscriptions/{uid} tetap dipakai sebagai legacy/latest snapshot.
+notificationSubscriptionDevices dipakai Worker untuk mengirim push ke semua device aktif.
+Worker melakukan dedupe subscriptionId sebelum kirim ke OneSignal.
+```
+
+Testing setelah deploy:
+
+```txt
+1. Buka app admin di setiap device yang ingin menerima push.
+2. Pastikan permission notification granted.
+3. Buka /admin/notifications dan cek Notification Health.
+4. Buat request booking dari client.
+5. Semua device admin yang aktif dan subscribed harus bisa menerima push.
+```

@@ -193,7 +193,6 @@ service cloud.firestore {
           'role', 'status', 'permissions', 'adminRequestCancelledAt', 'updatedAt'
         ]);
     }
-
     // >>> STUDIO37 NOTIFICATION SUBSCRIPTION RULES START
     function validNotificationSubscription(data, subscriptionUserId) {
       return data.keys().hasOnly([
@@ -215,6 +214,34 @@ service cloud.firestore {
         validString(data.lastSyncReason, 0, 80) &&
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
+    }
+
+    function validNotificationSubscriptionDevice(data, deviceId) {
+      return data.keys().hasOnly([
+          'id', 'deviceId', 'uid', 'role', 'email', 'platform', 'permission',
+          'optedIn', 'oneSignalId', 'subscriptionId', 'userAgent', 'source',
+          'lastSyncReason', 'createdAt', 'updatedAt', 'lastSeenAt', 'isActive'
+        ]) &&
+        data.id == deviceId &&
+        data.deviceId == deviceId &&
+        validString(data.id, 1, 260) &&
+        validString(data.deviceId, 1, 260) &&
+        data.uid == request.auth.uid &&
+        validString(data.uid, 1, 128) &&
+        data.role in ['admin', 'client'] &&
+        validString(data.email, 0, 254) &&
+        data.platform == 'web' &&
+        data.permission in ['default', 'granted', 'denied', 'unsupported', 'unknown'] &&
+        data.optedIn is bool &&
+        data.isActive is bool &&
+        validString(data.oneSignalId, 0, 160) &&
+        validString(data.subscriptionId, 1, 160) &&
+        validString(data.userAgent, 0, 600) &&
+        data.source == 'onesignal-web' &&
+        validString(data.lastSyncReason, 0, 80) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validIsoTimestampString(data.lastSeenAt);
     }
 
     function notificationSubscriptionIdentityMatches(data) {
@@ -243,9 +270,25 @@ service cloud.firestore {
 
       allow delete: if isSignedIn() && request.auth.uid == subscriptionUserId;
     }
+
+    match /notificationSubscriptionDevices/{deviceId} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid ||
+        isApproved()
+      );
+
+      allow create, update: if isSignedIn() &&
+        validNotificationSubscriptionDevice(request.resource.data, deviceId) &&
+        notificationSubscriptionIdentityMatches(request.resource.data) &&
+        notificationSubscriptionRoleMatches(request.resource.data);
+
+      allow delete: if isSignedIn() &&
+        resource.data.uid == request.auth.uid;
+    }
     // <<< STUDIO37 NOTIFICATION SUBSCRIPTION RULES END
 
-    match /users/{userId} {
+
+match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow create: if isSignedIn() &&
         request.auth.uid == userId &&
