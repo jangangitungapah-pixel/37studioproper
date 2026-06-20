@@ -504,3 +504,20 @@ Testing setelah deploy:
 4. Buat request booking dari client.
 5. Semua device admin yang aktif dan subscribed harus bisa menerima push.
 ```
+
+## OS Phase 9C - Faster Worker Cron
+
+Notification Worker cron dipercepat:
+
+```txt
+Sebelum: */5 * * * *  = setiap 5 menit
+Sesudah: * * * * *    = setiap 1 menit
+```
+
+Catatan:
+
+```txt
+Cloudflare Cron Trigger memakai format 5 field dan resolusi terkecilnya menit.
+Cron 1 atau 2 detik tidak didukung oleh Cron Trigger.
+Untuk pengiriman push dalam hitungan detik, gunakan backend event-driven seperti Firebase Cloud Functions Firestore trigger.
+```

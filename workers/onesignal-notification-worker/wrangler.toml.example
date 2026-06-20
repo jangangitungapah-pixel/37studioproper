@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-06-01"
 
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["* * * * *"]
 
 [vars]
 FIREBASE_PROJECT_ID = "studio-proper"
