@@ -11,7 +11,7 @@
     "test": "node scripts/smoke-test.cjs && node scripts/account-role-test.mjs && node scripts/operator-fee-mapping-test.mjs"
   },
   "dependencies": {
-    "@fontsource/montserrat": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "exceljs": "^4.4.0",
     "firebase": "^12.14.0",
     "lucide-react": "^1.18.0",

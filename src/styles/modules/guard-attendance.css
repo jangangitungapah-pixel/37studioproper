@@ -528,3 +528,351 @@
     transform: translateY(0);
   }
 }
+
+/* Admin owner attendance approval */
+
+.guard-attendance-owner,
+.guard-attendance-owner-locked {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 112px;
+  color: var(--auth-text);
+}
+
+.guard-attendance-owner-locked,
+.guard-attendance-owner-hero,
+.guard-attendance-owner-message {
+  border: 1px solid var(--auth-border);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+    var(--auth-panel);
+  box-shadow: var(--auth-shadow-soft);
+}
+
+.guard-attendance-owner-locked,
+.guard-attendance-owner-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 16px;
+}
+
+.guard-attendance-owner-locked > svg,
+.guard-attendance-owner-locked > span,
+.guard-attendance-owner-hero > svg,
+.guard-attendance-owner-hero > span {
+  display: inline-grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(90, 200, 250, 0.35);
+  border-radius: 16px;
+  color: var(--auth-accent);
+  background: rgba(90, 200, 250, 0.1);
+}
+
+.guard-attendance-owner-locked p,
+.guard-attendance-owner-hero p,
+.guard-attendance-owner-main small,
+.guard-attendance-owner-main em,
+.guard-attendance-owner-meta span,
+.guard-attendance-owner-note {
+  margin: 0;
+  color: var(--auth-muted);
+}
+
+.guard-attendance-owner-locked h2,
+.guard-attendance-owner-hero h2 {
+  margin: 2px 0 6px;
+  color: var(--auth-text);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.02;
+}
+
+.guard-attendance-owner-locked small,
+.guard-attendance-owner-hero small {
+  display: block;
+  color: var(--auth-text);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.guard-attendance-owner-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guard-attendance-owner-summary article {
+  display: grid;
+  gap: 4px;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid var(--auth-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.guard-attendance-owner-summary small {
+  color: var(--auth-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.guard-attendance-owner-summary strong {
+  color: var(--auth-text);
+  font-size: 1.15rem;
+  line-height: 1.15;
+}
+
+.guard-attendance-owner-summary span {
+  color: var(--auth-muted);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.guard-attendance-owner-toolbar {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.15fr) minmax(150px, 0.75fr) minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--auth-border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.guard-attendance-owner-toolbar input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--auth-text);
+  padding: 0 14px;
+  outline: none;
+}
+
+.guard-attendance-owner-toolbar input:focus {
+  border-color: rgba(90, 200, 250, 0.55);
+  box-shadow: 0 0 0 4px rgba(90, 200, 250, 0.12);
+}
+
+.guard-attendance-owner-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.guard-attendance-owner-filter button,
+.guard-attendance-owner-row footer button {
+  min-height: 40px;
+  border-radius: 999px;
+}
+
+.guard-attendance-owner-message {
+  padding: 12px 14px;
+}
+
+.guard-attendance-owner-list {
+  display: grid;
+  gap: 10px;
+}
+
+.guard-attendance-owner-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--auth-border);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+    var(--auth-panel);
+}
+
+.guard-attendance-owner-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.guard-attendance-owner-main > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.guard-attendance-owner-main small,
+.guard-attendance-owner-main em {
+  display: block;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+.guard-attendance-owner-main strong {
+  color: var(--auth-text);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.guard-attendance-owner-main b {
+  color: var(--auth-text);
+  font-size: 1rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.guard-attendance-owner-main i {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  color: var(--auth-muted);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.guard-attendance-owner-main i.is-approved,
+.guard-attendance-owner-main i.is-disetujui {
+  border-color: rgba(73, 217, 139, 0.35);
+  color: var(--auth-success);
+  background: rgba(73, 217, 139, 0.1);
+}
+
+.guard-attendance-owner-main i.is-pending {
+  border-color: rgba(247, 198, 77, 0.35);
+  color: var(--auth-warning);
+  background: rgba(247, 198, 77, 0.1);
+}
+
+.guard-attendance-owner-main i.is-rejected,
+.guard-attendance-owner-main i.is-void {
+  border-color: rgba(255, 107, 122, 0.35);
+  color: var(--auth-danger);
+  background: rgba(255, 107, 122, 0.1);
+}
+
+.guard-attendance-owner-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guard-attendance-owner-meta span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 0.82rem;
+}
+
+.guard-attendance-owner-note {
+  padding: 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  line-height: 1.45;
+}
+
+.guard-attendance-owner-note.is-danger {
+  border-color: rgba(255, 107, 122, 0.35);
+  color: var(--auth-danger);
+  background: rgba(255, 107, 122, 0.08);
+}
+
+.guard-attendance-owner-row footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guard-attendance-owner-row footer .is-primary {
+  color: #02070a;
+  background: var(--auth-accent);
+  border-color: rgba(90, 200, 250, 0.7);
+}
+
+.guard-attendance-owner-empty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed var(--auth-border-strong);
+  border-radius: 22px;
+  color: var(--auth-muted);
+  text-align: center;
+}
+
+.guard-attendance-owner-empty svg {
+  color: var(--auth-accent);
+}
+
+.guard-attendance-owner-empty h3 {
+  margin: 0;
+  color: var(--auth-text);
+}
+
+.guard-attendance-owner-empty p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .guard-attendance-owner-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-attendance-owner-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .guard-attendance-owner-main i {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .guard-attendance-owner,
+  .guard-attendance-owner-locked {
+    gap: 12px;
+  }
+
+  .guard-attendance-owner-locked,
+  .guard-attendance-owner-hero {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .guard-attendance-owner-locked h2,
+  .guard-attendance-owner-hero h2 {
+    font-size: 1.75rem;
+  }
+
+  .guard-attendance-owner-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .guard-attendance-owner-summary article {
+    min-height: 66px;
+    padding: 10px;
+  }
+
+  .guard-attendance-owner-summary strong {
+    font-size: 1rem;
+  }
+}

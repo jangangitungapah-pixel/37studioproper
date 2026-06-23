@@ -1,303 +1,1007 @@
-﻿/* =========================================
-   UI PRIMITIVES OVERRIDE (MIDNIGHT LINEAR)
-   ========================================= */
-
-/* --- CARDS --- */
-.studio-card {
-  background: var(--ui-surface) !important;
-  border: 1px solid var(--ui-border) !important;
-  border-radius: var(--ui-radius-lg) !important;
-  box-shadow: var(--ui-shadow-glow) !important;
-  backdrop-filter: none !important;
-  color: var(--ui-text) !important;
-}
-
-.studio-card::before {
-  display: none !important; /* Remove old weird gradients */
-}
-
-.studio-card.has-padding-md {
-  padding: var(--ui-padding) !important; /* Shrink padding for mobile-first */
-}
-.studio-card.has-padding-lg {
-  padding: calc(var(--ui-padding) * 1.5) !important;
-}
-
-/* --- BUTTONS --- */
-.studio-button {
-  border-radius: var(--ui-radius-md) !important;
-  font-weight: 500 !important;
-  transition: all 0.2s ease !important;
-  border: 1px solid transparent !important;
-}
-
-.studio-button:active {
-  transform: scale(0.97) !important;
-}
-
-.studio-button.is-primary {
-  background: var(--ui-text-highlight) !important; /* Pure white button */
-  color: var(--ui-bg-base) !important;
-}
-
-.studio-button.is-primary:hover {
-  background: var(--ui-text) !important;
-  box-shadow: 0 0 12px rgba(255,255,255,0.2) !important;
-}
-
-.studio-button.is-secondary {
-  background: transparent !important;
-  border-color: var(--ui-border) !important;
-  color: var(--ui-text) !important;
-}
-
-.studio-button.is-secondary:hover {
-  background: var(--ui-surface-hover) !important;
-  border-color: var(--ui-border-strong) !important;
-}
-
-.studio-button.is-ghost {
-  background: transparent !important;
-  color: var(--ui-text-dim) !important;
-}
-.studio-button.is-ghost:hover {
-  color: var(--ui-text-highlight) !important;
-  background: rgba(255,255,255,0.05) !important;
-}
-
-.studio-button.is-danger {
-  background: var(--ui-danger-bg) !important;
-  color: var(--ui-danger-text) !important;
-  border-color: var(--ui-danger) !important;
-}
-
-/* --- BADGES & PILLS --- */
-.studio-status-pill, .studio-badge {
-  background: transparent !important;
-  border: 1px solid var(--ui-border) !important;
-  border-radius: var(--ui-radius-sm) !important;
-  font-weight: 500 !important;
-  padding: 4px 10px !important;
-  text-transform: capitalize !important;
-}
-
-.studio-status-pill.is-success {
-  background: var(--ui-success-bg) !important;
-  color: var(--ui-success-text) !important;
-  border-color: var(--ui-success-text) !important;
-}
-.studio-status-pill.is-warning, .studio-status-pill.is-pending {
-  background: var(--ui-warning-bg) !important;
-  color: var(--ui-warning-text) !important;
-  border-color: var(--ui-warning-text) !important;
-}
-.studio-status-pill.is-error, .studio-status-pill.is-danger, .studio-status-pill.is-cancelled {
-  background: var(--ui-danger-bg) !important;
-  color: var(--ui-danger-text) !important;
-  border-color: var(--ui-danger-text) !important;
-}
-.studio-status-pill.is-info {
-  background: var(--ui-info-bg) !important;
-  color: var(--ui-info-text) !important;
-  border-color: var(--ui-info-text) !important;
-}
-
-/* --- INPUTS / SELECTS --- */
-input, textarea, select, .studio-select-trigger, .studio-textfield-input {
-  background: #000000 !important; /* Pitch black for inputs */
-  border: 1px solid var(--ui-border) !important;
-  border-radius: var(--ui-radius-md) !important;
-  color: var(--ui-text) !important;
-  padding: 12px 16px !important;
-  transition: all 0.2s ease !important;
-}
-
-input:focus, textarea:focus, select:focus, .studio-select-trigger:focus, .studio-textfield-input:focus {
-  outline: none !important;
-  border-color: var(--ui-border-strong) !important;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.1) !important;
-}
-
-input::placeholder, textarea::placeholder {
-  color: var(--ui-text-dim) !important;
-}
-
-
 /* =========================================
-   PHASE 3: BENTO SHELL OVERRIDES (DESKTOP)
-   ========================================= */
-@media (min-width: 768px) {
-  .admin-shell {
-    padding: var(--ui-padding) !important;
-    gap: var(--ui-gap) !important;
-    background-color: #000000 !important; /* Extremely dark backdrop */
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  .admin-sidebar {
-    height: calc(100vh - (var(--ui-padding) * 2)) !important;
-    border-radius: var(--ui-radius-lg) !important;
-    border: 1px solid var(--ui-border) !important;
-    background-color: var(--ui-surface) !important;
-    box-shadow: var(--ui-shadow-glow) !important;
-    overflow: hidden;
-  }
-
-  .admin-stage {
-    height: calc(100vh - (var(--ui-padding) * 2)) !important;
-    border-radius: var(--ui-radius-lg) !important;
-    border: 1px solid var(--ui-border) !important;
-    background-color: var(--ui-surface) !important;
-    box-shadow: var(--ui-shadow-glow) !important;
-    overflow-y: auto !important;
-    padding: calc(var(--ui-padding) * 1.5) !important;
-    margin: 0 !important;
-  }
-}
-
-/* Fix mobile stage padding so it isn't completely flush with edges */
-@media (max-width: 767px) {
-  .admin-stage {
-    padding: var(--ui-padding) !important;
-    background-color: #000000 !important;
-  }
-}
-
-/* =========================================
-   PHASE 4: ACCORDION & BENTO LISTS
-   ========================================= */
-.bento-accordion {
-  background: var(--ui-surface) !important;
-  border: 1px solid var(--ui-border) !important;
-  border-radius: var(--ui-radius-lg) !important;
-  margin-bottom: 12px;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.bento-accordion[open] {
-  border-color: var(--ui-border-strong) !important;
-  box-shadow: var(--ui-shadow-glow) !important;
-}
-
-.bento-accordion-summary {
-  list-style: none; /* Hide default arrow */
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  background: var(--ui-surface);
-}
-
-.bento-accordion-summary::-webkit-details-marker {
-  display: none;
-}
-
-.bento-accordion-summary:hover {
-  background: var(--ui-surface-hover);
-}
-
-.bento-accordion-content {
-  padding: 16px;
-  border-top: 1px solid var(--ui-border);
-  background: rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.accordion-hint {
-  font-size: 11px;
-  color: var(--ui-primary);
-  opacity: 0.8;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--ui-primary-bg);
-}
-
-/* Force Customer and Billing row lists to adopt bento styling */
-.customer-list, .billing-list, .dashboard-mini-list {
-  display: grid;
-  gap: var(--ui-gap);
-  grid-template-columns: 1fr;
-}
-
-/* =========================================
-   PHASE 4: BENTO SWEEP (CSS ONLY)
+   Midnight Linear + Bento final alignment
+   This layer is intentionally loaded last.
    ========================================= */
 
-/* Make all container lists act as Bento grids */
-.customer-list, .billing-list, .dashboard-mini-list, .dashboard-attention-list, .schedule-timeline, .settings-grid, .inventory-grid {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: var(--ui-gap) !important;
-  padding: 0 !important;
+:root,
+.theme-container,
+.client-portal-page,
+.guard-shift-page {
+  --ml-bg: #030304;
+  --ml-bg-raised: #08090b;
+  --ml-surface: #0d0e10;
+  --ml-surface-2: #121317;
+  --ml-surface-3: #17191d;
+  --ml-border: rgba(255, 255, 255, 0.105);
+  --ml-border-strong: rgba(125, 211, 252, 0.32);
+  --ml-text: #e7e9ee;
+  --ml-text-strong: #ffffff;
+  --ml-text-muted: rgba(231, 233, 238, 0.62);
+  --ml-accent: #7dd3fc;
+  --ml-accent-strong: #38bdf8;
+  --ml-accent-soft: rgba(125, 211, 252, 0.13);
+  --ml-success: #34d399;
+  --ml-success-soft: rgba(52, 211, 153, 0.12);
+  --ml-warning: #fbbf24;
+  --ml-warning-soft: rgba(251, 191, 36, 0.12);
+  --ml-danger: #fb7185;
+  --ml-danger-soft: rgba(251, 113, 133, 0.13);
+  --ml-radius-xs: 10px;
+  --ml-radius-sm: 12px;
+  --ml-radius-md: 16px;
+  --ml-radius-lg: 20px;
+  --ml-radius-xl: 24px;
+  --ml-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  --ml-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.24);
+  --ml-ring: 0 0 0 3px rgba(125, 211, 252, 0.14);
+
+  --ui-bg-base: var(--ml-bg);
+  --ui-bg-page: var(--ml-bg);
+  --ui-bg-card: var(--ml-surface);
+  --ui-bg-elevated: rgba(13, 14, 16, 0.94);
+  --ui-surface: var(--ml-surface);
+  --ui-surface-hover: var(--ml-surface-3);
+  --ui-surface-card: rgba(14, 15, 18, 0.92);
+  --ui-surface-soft: rgba(255, 255, 255, 0.055);
+  --ui-control: rgba(255, 255, 255, 0.065);
+  --ui-text: var(--ml-text);
+  --ui-text-main: var(--ml-text);
+  --ui-text-dim: var(--ml-text-muted);
+  --ui-text-muted: var(--ml-text-muted);
+  --ui-text-highlight: var(--ml-text-strong);
+  --ui-text-strong: var(--ml-text-strong);
+  --ui-border: var(--ml-border);
+  --ui-border-strong: var(--ml-border-strong);
+  --ui-primary: var(--ml-accent);
+  --ui-primary-hover: var(--ml-accent-strong);
+  --ui-primary-bg: var(--ml-accent-soft);
+  --ui-primary-text: var(--ml-accent);
+  --ui-accent: var(--ml-accent);
+  --ui-accent-strong: var(--ml-accent-strong);
+  --ui-accent-soft: var(--ml-accent-soft);
+  --ui-success: var(--ml-success);
+  --ui-success-bg: var(--ml-success-soft);
+  --ui-success-text: #86efac;
+  --ui-warning: var(--ml-warning);
+  --ui-warning-bg: var(--ml-warning-soft);
+  --ui-warning-text: #fde68a;
+  --ui-danger: var(--ml-danger);
+  --ui-danger-bg: var(--ml-danger-soft);
+  --ui-danger-text: #fda4af;
+  --ui-info: var(--ml-accent);
+  --ui-info-bg: var(--ml-accent-soft);
+  --ui-info-text: var(--ml-accent);
+  --ui-radius-lg: var(--ml-radius-lg);
+  --ui-radius-md: var(--ml-radius-md);
+  --ui-radius-sm: var(--ml-radius-sm);
+  --ui-shadow-glow: 0 0 0 1px var(--ml-border), var(--ml-shadow-soft);
+
+  --auth-bg-page: var(--ml-bg);
+  --auth-bg-card: var(--ml-surface);
+  --auth-bg-elevated: var(--ml-surface-2);
+  --auth-bg-soft: rgba(255, 255, 255, 0.055);
+  --auth-bg-control: rgba(255, 255, 255, 0.065);
+  --auth-panel: var(--ml-surface);
+  --auth-text: var(--ml-text);
+  --auth-text-main: var(--ml-text);
+  --auth-text-strong: var(--ml-text-strong);
+  --auth-text-muted: var(--ml-text-muted);
+  --auth-muted: var(--ml-text-muted);
+  --auth-border: var(--ml-border);
+  --auth-border-strong: var(--ml-border-strong);
+  --auth-accent: var(--ml-accent);
+  --auth-accent-strong: var(--ml-accent-strong);
+  --auth-accent-soft: var(--ml-accent-soft);
+  --auth-success: var(--ml-success);
+  --auth-success-soft: var(--ml-success-soft);
+  --auth-warning: var(--ml-warning);
+  --auth-warning-soft: var(--ml-warning-soft);
+  --auth-danger: var(--ml-danger);
+  --auth-danger-soft: var(--ml-danger-soft);
+  --auth-info: var(--ml-accent);
+  --auth-info-soft: var(--ml-accent-soft);
+  --auth-radius-md: var(--ml-radius-md);
+  --auth-radius-lg: var(--ml-radius-lg);
+  --auth-radius-xl: var(--ml-radius-xl);
+  --auth-shadow: var(--ml-shadow);
+  --auth-shadow-soft: var(--ml-shadow-soft);
+  --dashboard-expense: var(--ml-warning);
+  --dashboard-expense-soft: var(--ml-warning-soft);
 }
 
-@media (min-width: 768px) {
-  .dashboard-metric-grid, .inventory-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  min-width: 0;
 }
 
-/* Make all rows act as Bento Cards */
-.customer-row-wrapper, .billing-row, .dashboard-attention-row, .dashboard-chart-card, .dashboard-metric-card, .schedule-row, .inventory-card, .settings-section {
-  background-color: var(--ui-surface) !important;
-  border: 1px solid var(--ui-border) !important;
-  border-radius: var(--ui-radius-lg) !important;
-  box-shadow: var(--ui-shadow-glow) !important;
-  overflow: hidden !important;
-  transition: all 0.2s ease !important;
-  padding: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
+html,
+body,
+#root {
+  min-height: 100%;
+  overflow-x: hidden;
+  background: var(--ml-bg);
 }
 
-.customer-row-wrapper:hover, .billing-row:hover, .dashboard-attention-row:hover, .schedule-row:hover, .inventory-card:hover {
-  border-color: var(--ui-border-strong) !important;
-  transform: translateY(-2px) !important;
+body,
+button,
+input,
+textarea,
+select,
+[style*='Montserrat'],
+[style*='RetroFloral'] {
+  font-family: var(--ui-font-sans) !important;
 }
 
-/* Ensure inner buttons don't have overlapping backgrounds */
-.customer-row, .billing-row-main, .schedule-row-main {
-  background: transparent !important;
-  border: none !important;
-  padding: 16px !important;
-  text-align: left !important;
-  cursor: pointer !important;
+body {
+  color: var(--ml-text) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 30%),
+    linear-gradient(180deg, #050506 0%, var(--ml-bg) 48%, #000 100%) !important;
+}
+
+body * {
+  letter-spacing: 0 !important;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+}
+
+svg {
+  flex-shrink: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.theme-container,
+.auth-page,
+.client-portal-page,
+.client-landing-compact,
+.guard-shift-page,
+.admin-shell {
+  color: var(--ml-text) !important;
+  background: var(--ml-bg) !important;
+}
+
+[class*='blur-[120px]'],
+[class*='blur-[140px]'],
+[class*='blur-[110px]'],
+[class*='blur-[40px]'][class*='bg-orange'],
+[class*='blur-[35px]'][class*='bg-orange'] {
+  display: none !important;
+}
+
+/* Typography */
+.auth-copy h1,
+.admin-topbar h1,
+.admin-empty-panel h2,
+.dashboard-hero h2,
+.customer-page-title h2,
+.customer-detail-title h2,
+.billing-page-title h2,
+.settings-title-block h2,
+.inventory-title-block h2,
+.gallery-page-title h2,
+.guard-shift-brand strong,
+.guard-shift-title strong,
+.client-header-copy h1,
+.client-history-heading h3 {
+  color: var(--ml-text-strong) !important;
+  font-weight: 700 !important;
+  line-height: 1.04 !important;
+}
+
+.auth-copy p,
+.admin-topbar p,
+.admin-empty-panel p,
+.dashboard-hero span,
+.customer-page-title p,
+.customer-detail-title p,
+.billing-page-title p,
+.settings-title-block p,
+.inventory-title-block p,
+.gallery-page-title p,
+.guard-shift-brand small,
+.guard-shift-title small,
+.client-header-copy p {
+  color: var(--ml-text-muted) !important;
+}
+
+.auth-form,
+.auth-field {
+  display: grid !important;
   width: 100% !important;
 }
 
-.customer-row:hover, .billing-row-main:hover, .schedule-row-main:hover {
-  background: rgba(255,255,255,0.03) !important;
+.auth-form {
+  gap: 14px !important;
 }
 
-/* Pseudo-Accordion (Hide details on mobile) */
+.auth-field {
+  gap: 7px !important;
+  color: var(--ml-text) !important;
+}
+
+.auth-field > span {
+  color: var(--ml-text) !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+}
+
+.auth-input-wrap {
+  min-height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 0 13px !important;
+}
+
+.auth-native-input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  min-height: 44px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: var(--ml-text) !important;
+  font-size: 0.84rem !important;
+  line-height: 1.2 !important;
+}
+
+.auth-icon-button {
+  width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ml-text-muted) !important;
+  box-shadow: none !important;
+}
+
+.auth-submit {
+  width: 100% !important;
+  min-height: 48px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 0 16px !important;
+}
+
+.auth-tab-btn.is-active {
+  border-color: var(--ml-border-strong) !important;
+  background: var(--ml-accent-soft) !important;
+  color: var(--ml-text-strong) !important;
+}
+
+/* App shell */
+@media (min-width: 768px) {
+  .admin-shell {
+    min-height: 100dvh;
+    display: grid !important;
+    grid-template-columns: 272px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 14px !important;
+  }
+
+  .admin-shell.is-sidebar-collapsed {
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+  }
+
+  .admin-sidebar {
+    position: sticky !important;
+    top: 14px !important;
+    height: calc(100dvh - 28px) !important;
+    min-height: 0 !important;
+    border: 1px solid var(--ml-border) !important;
+    border-radius: var(--ml-radius-xl) !important;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
+      var(--ml-surface) !important;
+    box-shadow: var(--ml-shadow-soft) !important;
+    overflow: hidden auto !important;
+  }
+
+  .admin-stage {
+    min-height: calc(100dvh - 28px) !important;
+    max-height: calc(100dvh - 28px) !important;
+    overflow: auto !important;
+    border: 1px solid var(--ml-border) !important;
+    border-radius: var(--ml-radius-xl) !important;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+      var(--ml-bg-raised) !important;
+    box-shadow: var(--ml-shadow) !important;
+    padding: 18px !important;
+  }
+}
+
 @media (max-width: 767px) {
-  .customer-list-actions, .billing-row-money, .dashboard-attention-copy small {
-    display: none !important;
+  .admin-shell {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
   }
 
-  /* Show details when the card is hovered or focused */
-  .customer-row-wrapper:hover .customer-list-actions,
-  .customer-row-wrapper:focus-within .customer-list-actions,
-  .billing-row:hover .billing-row-money,
-  .billing-row:focus-within .billing-row-money,
-  .dashboard-attention-row:hover .dashboard-attention-copy small,
-  .dashboard-attention-row:focus-within .dashboard-attention-copy small {
-    display: flex !important;
-    padding: 16px !important;
-    border-top: 1px solid var(--ui-border) !important;
-    background: rgba(0,0,0,0.3) !important;
-    animation: slideDown 0.2s ease-out forwards;
+  .admin-stage {
+    padding: 12px 10px calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .admin-topbar {
+    margin: -12px -10px 12px !important;
+    padding: 12px 10px 10px !important;
+    background: rgba(3, 3, 4, 0.86) !important;
+    backdrop-filter: blur(16px) !important;
   }
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+.admin-nav-item,
+.admin-bottom-item,
+.client-bottom-item {
+  border-radius: var(--ml-radius-md) !important;
 }
 
+.admin-nav-item.is-active,
+.admin-bottom-item.is-active,
+.client-bottom-item.is-active {
+  color: var(--ml-text-strong) !important;
+  background: var(--ml-accent-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--ml-border-strong) !important;
+}
+
+.admin-bottom-nav,
+.client-bottom-nav > div {
+  border: 1px solid var(--ml-border) !important;
+  background: rgba(12, 13, 15, 0.94) !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.46) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+/* Bento surfaces */
+:is(
+  .studio-card,
+  .auth-card,
+  .auth-tabs,
+  .auth-alert,
+  .admin-empty-canvas,
+  .admin-mini-session,
+  .dashboard-hero,
+  .dashboard-chart-card,
+  .dashboard-list-card,
+  .dashboard-mini-card,
+  .dashboard-sync-alert,
+  .dashboard-metric-card,
+  .dashboard-attention-row,
+  .schedule-grid-shell,
+  .schedule-toolbar,
+  .schedule-summary-card,
+  .schedule-row,
+  .booking-detail-panel,
+  .booking-detail-compact-card,
+  .booking-detail-compact-summary,
+  .booking-request-state,
+  .customer-hero-card,
+  .customer-toolbar,
+  .customer-row-wrapper,
+  .customer-detail-card,
+  .customer-contact-card,
+  .customer-empty-state,
+  .billing-hero-card,
+  .billing-toolbar,
+  .billing-reminder-card,
+  .billing-reminder-row,
+  .billing-row,
+  .billing-cash-summary,
+  .billing-cash-grid article,
+  .billing-empty-state,
+  .bookkeeping-summary-card,
+  .bookkeeping-toolbar,
+  .bookkeeping-row,
+  .bookkeeping-modal-panel,
+  .settings-section,
+  .settings-permission-row,
+  .inventory-summary-card,
+  .inventory-toolbar,
+  .inventory-item-card,
+  .inventory-movement-panel,
+  .inventory-attention-panel,
+  .inventory-empty-state,
+  .operator-fee-simple-hero,
+  .operator-fee-simple-summary,
+  .operator-fee-simple-card,
+  .operator-fee-simple-item,
+  .operator-fee-simple-crew,
+  .operator-fee-simple-advanced,
+  .guard-attendance-owner-row,
+  .guard-attendance-summary-card,
+  .guard-shift-card,
+  .guard-shift-date-chip,
+  .client-next-booking,
+  .client-empty-next,
+  .client-billing-prompt,
+  .client-summary-strip,
+  .client-recent-list,
+  .client-history-tools,
+  .client-history-empty,
+  .client-help-tools a,
+  .client-request-state,
+  .client-payment-proof-detail,
+  .onesignal-permission-widget,
+  .gallery-toolbar,
+  .gallery-clean-toolbar,
+  .gallery-photo-card,
+  .gallery-bento-card,
+  .gallery-clean-card,
+  .gallery-action-popover,
+  .gallery-filter-pill,
+  .gallery-density-control,
+  .gallery-batch-banner,
+  .gallery-upload-panel,
+  .gallery-lightbox-panel
+) {
+  border: 1px solid var(--ml-border) !important;
+  border-radius: var(--ml-radius-lg) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.014)),
+    var(--ml-surface) !important;
+  color: var(--ml-text) !important;
+  box-shadow: var(--ml-shadow-soft) !important;
+  backdrop-filter: none !important;
+}
+
+.studio-card::before,
+.auth-card::before,
+.dashboard-hero::before,
+.customer-hero-card::before,
+.billing-hero-card::before,
+.settings-section::before,
+.inventory-summary-card::before {
+  display: none !important;
+}
+
+.studio-card.has-padding-md,
+.studio-card.has-padding-lg,
+.auth-card {
+  padding: clamp(16px, 2.6vw, 24px) !important;
+}
+
+/* Lists and grids keep their original layout, only spacing is normalized. */
+:is(
+  .dashboard-metric-grid,
+  .dashboard-bottom-grid,
+  .customer-hero-grid,
+  .customer-list,
+  .billing-hero-grid,
+  .billing-list,
+  .billing-reminder-list,
+  .settings-grid,
+  .inventory-summary-grid,
+  .inventory-list,
+  .gallery-photo-grid,
+  .operator-fee-simple-grid,
+  .operator-fee-simple-crew-list,
+  .guard-attendance-owner-list
+) {
+  gap: clamp(8px, 1.4vw, 14px) !important;
+}
+
+@media (max-width: 767px) {
+  :is(
+    .dashboard-metric-grid,
+    .dashboard-bottom-grid,
+    .customer-hero-grid,
+    .billing-hero-grid,
+    .inventory-summary-grid
+  ) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  :is(
+    .dashboard-main-grid,
+    .customer-detail-grid,
+    .settings-grid,
+    .operator-fee-simple-grid,
+    .client-help-tools
+  ) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Forms */
+:is(
+  .auth-input-wrap,
+  .studio-input-wrap,
+  .studio-select-trigger,
+  .customer-search-shell,
+  .billing-search-shell,
+  .inventory-search-shell,
+  .client-history-search,
+  .guard-shift-login input,
+  .guard-shift-form select,
+  .guard-shift-form textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select
+) {
+  border: 1px solid var(--ml-border) !important;
+  border-radius: var(--ml-radius-md) !important;
+  background: #050506 !important;
+  color: var(--ml-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+}
+
+:is(
+  .auth-input-wrap,
+  .studio-input-wrap,
+  .studio-select-trigger,
+  .customer-search-shell,
+  .billing-search-shell,
+  .inventory-search-shell,
+  .client-history-search
+):focus-within,
+:is(input, textarea, select, .studio-select-trigger):focus,
+:is(input, textarea, select, .studio-select-trigger):focus-visible {
+  outline: none !important;
+  border-color: var(--ml-border-strong) !important;
+  box-shadow: var(--ml-ring), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(231, 233, 238, 0.42) !important;
+}
+
+.auth-input-wrap input,
+.studio-input-wrap input,
+.auth-input-wrap input:hover,
+.studio-input-wrap input:hover,
+.auth-input-wrap input:focus,
+.studio-input-wrap input:focus,
+.auth-input-wrap input:focus-visible,
+.studio-input-wrap input:focus-visible {
+  width: 100% !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.auth-input-wrap input {
+  height: 44px !important;
+}
+
+.studio-select-list,
+.studio-select-list[data-portal='true'] {
+  border: 1px solid var(--ml-border-strong) !important;
+  border-radius: var(--ml-radius-lg) !important;
+  background: var(--ml-surface-2) !important;
+  color: var(--ml-text) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.68) !important;
+  backdrop-filter: none !important;
+}
+
+.studio-select-option:hover,
+.studio-select-option.is-selected {
+  background: var(--ml-accent-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--ml-border-strong) !important;
+}
+
+.studio-select-dot,
+.client-unread-dot {
+  background: var(--ml-accent) !important;
+  box-shadow: 0 0 0 3px var(--ml-accent-soft) !important;
+}
+
+/* Buttons */
+:is(
+  .studio-button,
+  .auth-submit,
+  .auth-google-btn,
+  .auth-tab-btn,
+  .auth-icon-button,
+  .admin-shell-icon-button,
+  .admin-sidebar-collapse,
+  .admin-logout-button,
+  .guard-shift-ghost-button,
+  .guard-shift-main-button,
+  .booking-button,
+  .booking-detail-compact-button,
+  .settings-mini-button,
+  .inventory-add-button,
+  .inventory-export-button,
+  .inventory-item-actions button,
+  .billing-row-actions a,
+  .billing-row-actions button,
+  .billing-invoice-actions a,
+  .billing-invoice-actions button,
+  .billing-payment-form footer button,
+  .customer-list-actions button,
+  .client-primary-booking,
+  .client-next-actions button,
+  .client-detail-utilities button,
+  .client-detail-utilities a,
+  .client-copy-account,
+  .client-copy-code,
+  .onesignal-permission-action,
+  .gallery-mobile-action-toggle,
+  .gallery-filter-pill,
+  .gallery-desktop-actions button,
+  .gallery-upload-panel button
+) {
+  border-radius: var(--ml-radius-md) !important;
+  font-weight: 650 !important;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, color 140ms ease !important;
+}
+
+:is(button, a[role='button'], .studio-button):active {
+  transform: scale(0.98) !important;
+}
+
+:is(
+  .studio-button.is-primary,
+  .auth-submit,
+  .guard-shift-main-button:not(.is-danger),
+  .booking-button.is-primary,
+  .settings-mini-button.is-primary,
+  .billing-row-actions .is-primary,
+  .billing-invoice-actions .is-primary,
+  .billing-payment-form footer button.is-primary,
+  .inventory-add-button,
+  .client-primary-booking,
+  .onesignal-permission-action,
+  .gallery-upload-panel button[class*='bg-[var(--ui-accent)]']
+),
+.bg-\[\#ff8a2a\],
+.bg-orange-500 {
+  border-color: rgba(255, 255, 255, 0.74) !important;
+  background: #f8fafc !important;
+  color: #030304 !important;
+  box-shadow: 0 12px 24px rgba(248, 250, 252, 0.12) !important;
+}
+
+:is(
+  .studio-button.is-secondary,
+  .studio-button.is-ghost,
+  .auth-google-btn,
+  .guard-shift-ghost-button,
+  .booking-button.is-secondary,
+  .settings-mini-button.is-ghost,
+  .admin-shell-icon-button,
+  .admin-sidebar-collapse,
+  .admin-logout-button
+) {
+  border: 1px solid var(--ml-border) !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  color: var(--ml-text) !important;
+  box-shadow: none !important;
+}
+
+:is(.studio-button.is-danger, .guard-shift-main-button.is-danger, .is-danger) {
+  border-color: rgba(251, 113, 133, 0.34) !important;
+  background: var(--ml-danger-soft) !important;
+  color: #fda4af !important;
+}
+
+button:disabled,
+button[aria-disabled='true'],
+.studio-button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.48 !important;
+  transform: none !important;
+}
+
+/* Status and semantic pills */
+:is(
+  .studio-status-pill,
+  .studio-badge,
+  .billing-status-pill,
+  .booking-detail-compact-status,
+  .booking-request-state,
+  .client-request-badge,
+  .client-message-new,
+  .gallery-trash-count,
+  .accordion-hint
+) {
+  border: 1px solid var(--ml-border) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+  color: var(--ml-text-muted) !important;
+  font-weight: 650 !important;
+  text-transform: none !important;
+}
+
+:is(
+  .studio-status-pill.is-approved,
+  .studio-status-pill.is-active,
+  .studio-status-pill.is-success,
+  .billing-status-pill.is-lunas,
+  .booking-detail-compact-status.is-confirmed,
+  .client-request-badge.is-confirmed,
+  .booking-request-state.is-confirmed
+) {
+  border-color: rgba(52, 211, 153, 0.35) !important;
+  background: var(--ml-success-soft) !important;
+  color: #86efac !important;
+}
+
+:is(
+  .studio-status-pill.is-pending,
+  .studio-status-pill.is-warning,
+  .billing-status-pill.is-pending,
+  .billing-status-pill.is-dp,
+  .booking-request-state.is-pending,
+  .booking-request-state.is-attention,
+  .client-request-badge.is-pending,
+  .client-request-badge.is-attention,
+  .client-message-new
+) {
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  background: var(--ml-warning-soft) !important;
+  color: #fde68a !important;
+}
+
+:is(
+  .studio-status-pill.is-rejected,
+  .studio-status-pill.is-danger,
+  .studio-status-pill.is-error,
+  .billing-status-pill.is-void,
+  .booking-detail-compact-status.is-cancelled
+) {
+  border-color: rgba(251, 113, 133, 0.36) !important;
+  background: var(--ml-danger-soft) !important;
+  color: #fda4af !important;
+}
+
+/* Modals and overlays */
+:is(
+  [class*='modal-backdrop'],
+  [class*='compact-backdrop'],
+  .settings-permission-backdrop,
+  .billing-payment-backdrop,
+  .billing-invoice-backdrop,
+  .inventory-modal-backdrop
+) {
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+:is(
+  [class*='modal-backdrop'] > [role='dialog'],
+  [class*='compact-backdrop'] > [role='dialog'],
+  .booking-modal-panel,
+  .booking-detail-compact-panel,
+  .bookkeeping-modal-panel,
+  .settings-permission-panel,
+  .billing-invoice-panel,
+  .billing-payment-panel,
+  .inventory-modal-panel,
+  .customer-modal-panel,
+  .gallery-upload-modal,
+  .gallery-lightbox
+) {
+  border: 1px solid var(--ml-border-strong) !important;
+  border-radius: var(--ml-radius-xl) !important;
+  background: var(--ml-surface) !important;
+  color: var(--ml-text) !important;
+  box-shadow: 0 28px 78px rgba(0, 0, 0, 0.64) !important;
+  backdrop-filter: none !important;
+}
+
+:is(
+  .booking-modal-head,
+  .booking-form,
+  .booking-form-actions,
+  .customer-modal-head,
+  .customer-form,
+  .bookkeeping-form,
+  .settings-permission-head,
+  .settings-permission-actions,
+  .billing-invoice-head,
+  .billing-invoice-body,
+  .billing-invoice-actions,
+  .billing-payment-head,
+  .billing-payment-form,
+  .inventory-modal-head,
+  .inventory-form,
+  .inventory-form footer
+) {
+  background: var(--ml-surface) !important;
+  color: var(--ml-text) !important;
+}
+
+/* Legacy orange and amber Tailwind utilities mapped to the new accent. */
+.text-\[\#ff8a2a\],
+.text-orange-400,
+.text-orange-500,
+.text-amber-300,
+.text-amber-400,
+.group-hover\:text-\[var\(--ui-accent\)\]:hover,
+.hover\:text-orange-400:hover {
+  color: var(--ml-accent) !important;
+}
+
+.bg-orange-500\/5,
+.bg-orange-500\/10,
+.bg-orange-500\/15,
+.bg-orange-500\/20,
+.bg-amber-500\/10,
+.bg-\[\#ff8a2a\]\/30 {
+  background-color: var(--ml-accent-soft) !important;
+}
+
+.border-orange-500,
+.border-orange-500\/10,
+.border-orange-500\/20,
+.border-orange-500\/40,
+.border-amber-500\/20,
+.border-\[\#ff8a2a\],
+.border-\[\#ff8a2a\]\/50 {
+  border-color: var(--ml-border-strong) !important;
+}
+
+.from-\[\#ff8a2a\]\/10,
+.from-\[\#ff8a2a\]\/8,
+.from-orange-500,
+.from-orange-500\/20,
+.from-\[var\(--ui-accent\)\],
+.from-\[var\(--ui-accent-strong\)\] {
+  --tw-gradient-from: rgba(125, 211, 252, 0.18) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(125, 211, 252, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.via-orange-400 {
+  --tw-gradient-to: rgba(125, 211, 252, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), rgba(125, 211, 252, 0.78) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
+.to-amber-500,
+.to-amber-600\/20,
+.to-\[var\(--ui-accent\)\] {
+  --tw-gradient-to: rgba(56, 189, 248, 0.62) var(--tw-gradient-to-position) !important;
+}
+
+.shadow-orange-500\/5,
+.shadow-orange-500\/10,
+.shadow-orange-500\/20,
+.shadow-orange-500\/25,
+.shadow-orange-600\/30,
+.shadow-orange-600\/50,
+.shadow-orange-900\/5 {
+  --tw-shadow-color: rgba(56, 189, 248, 0.16) !important;
+}
+
+.accent-orange-500 {
+  accent-color: var(--ml-accent) !important;
+}
+
+/* Client and schedule calendar accents */
+.client-portal-page {
+  --client-calendar-border: var(--ml-border);
+  --client-calendar-border-strong: var(--ml-border-strong);
+  --client-calendar-cell-hover: rgba(125, 211, 252, 0.075);
+  --client-calendar-solid-today: #0d1820;
+  --client-calendar-line-compact: rgba(255, 255, 255, 0.105);
+}
+
+.client-portal-page .schedule-day-head.is-today,
+.schedule-day-head.is-today {
+  background: #0d1820 !important;
+}
+
+.client-portal-page .schedule-booking-block,
+.schedule-booking-block {
+  border-color: rgba(125, 211, 252, 0.34) !important;
+  background:
+    linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(255, 255, 255, 0.045)),
+    var(--ml-surface-2) !important;
+  box-shadow: var(--ml-shadow-soft) !important;
+}
+
+.client-portal-page .schedule-booking-glow,
+.schedule-booking-glow {
+  background: rgba(125, 211, 252, 0.16) !important;
+}
+
+.client-portal-page .schedule-booking-meta b,
+.schedule-booking-meta b {
+  color: var(--ml-accent) !important;
+}
+
+/* Guard attendance compacting */
+.guard-shift-shell {
+  max-width: 620px !important;
+  gap: 14px !important;
+  padding: 16px 12px 72px !important;
+}
+
+.guard-shift-hero,
+.guard-shift-card {
+  gap: 12px !important;
+}
+
+.guard-shift-brand span {
+  color: var(--ml-accent) !important;
+  font-weight: 700 !important;
+}
+
+.guard-shift-card {
+  padding: clamp(16px, 4vw, 22px) !important;
+}
+
+.guard-shift-main-button {
+  min-height: 46px !important;
+}
+
+/* Gallery/editor cleanup */
+.gallery-page,
+.gallery-page * {
+  scrollbar-color: rgba(125, 211, 252, 0.42) rgba(255, 255, 255, 0.055);
+}
+
+.gallery-photo-card.is-selected,
+.border-orange-500.ring-2 {
+  border-color: var(--ml-accent) !important;
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.18) !important;
+}
+
+/* Responsive pressure relief */
+@media (max-width: 520px) {
+  body {
+    font-size: 14px;
+  }
+
+  :is(.auth-card, .guard-shift-card, .settings-section, .booking-modal-panel, .billing-payment-panel, .inventory-modal-panel) {
+    border-radius: 18px !important;
+  }
+
+  :is(.customer-row-wrapper, .billing-row, .inventory-item-card, .dashboard-metric-card) {
+    padding: 0 !important;
+  }
+
+  :is(.customer-row, .billing-row-main, .inventory-item-main) {
+    padding: 12px !important;
+  }
+
+  :is(.billing-row-money, .customer-list-actions, .inventory-item-actions) {
+    padding-inline: 12px !important;
+  }
+
+  .admin-bottom-nav {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .client-bottom-nav {
+    left: 10px !important;
+    right: 10px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

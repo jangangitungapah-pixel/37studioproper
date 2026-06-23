@@ -191,8 +191,8 @@
   border-radius: var(--landing-compact-card-radius) !important;
 }
 
-.client-landing-compact #booking .md\\:col-span-7,
-.client-landing-compact #booking .md\\:col-span-5 {
+.client-landing-compact #booking .md\:col-span-7,
+.client-landing-compact #booking .md\:col-span-5 {
   padding: 16px !important;
 }
 
@@ -342,8 +342,8 @@
     grid-template-columns: 1fr !important;
   }
 
-  .client-landing-compact #booking .md\\:col-span-7,
-  .client-landing-compact #booking .md\\:col-span-5 {
+  .client-landing-compact #booking .md\:col-span-7,
+  .client-landing-compact #booking .md\:col-span-5 {
     padding: 14px !important;
   }
 

@@ -1,0 +1,37 @@
+Tugas Anda adalah melakukan audit visual dan struktural menyeluruh terhadap antarmuka (UI) aplikasi ini. Aplikasi baru saja melewati fase perombakan besar (overhaul) yang mengusung tema **Midnight Linear + Bento Box**. Tujuan audit ini adalah untuk memverifikasi apakah semua persyaratan perombakan telah diimplementasikan dengan benar dan perubahannya konsisten di semua halaman (admin dan klien).
+
+Gunakan kriteria berikut untuk mengevaluasi setiap halaman:
+
+1. **Pengecekan Tema Utama (Midnight Linear)**
+   - [ ] Apakah warna latar belakang didominasi hitam pekat (pitch black) dengan kontras yang bersih?
+   - [ ] Apakah komponen kartu dan tombol bebas dari efek jadul seperti gradients, glassmorphism, atau bayangan yang tebal?
+   - [ ] Apakah komponen memiliki efek bercahaya halus (glow shadow) dan border outline tipis yang elegan?
+
+2. **Tipografi & Font**
+   - [ ] Apakah seluruh halaman secara global sudah konsisten menggunakan font keluarga `Inter`?
+   - [ ] Pastikan tidak ada lagi penggunaan font-weight "Bold" yang berlebihan pada judul kartu maupun data. Semua harus terasa ringan namun terbaca jelas.
+
+3. **Integritas Tata Letak & Viewport**
+   - [ ] Lakukan scroll ke kanan atau perkecil jendela browser: Apakah ada elemen yang tumpah keluar dari layar (overflow)? Pastikan tidak ada sumbu X yang bocor.
+   - [ ] Pastikan padding pada kartu tidak terasa boros (terlalu lebar), terutama di layar mobile.
+
+4. **Struktur Bento Box & Desktop Layout**
+   - [ ] Jika dibuka di desktop: Apakah layout halaman admin terasa seperti "Bento Box" di mana bilah navigasi (sidebar) dan panggung utama (stage) mengambang seperti widget dengan border-radius yang seragam?
+   - [ ] Apakah komponen-komponen ringkasan seperti metrik di Dashboard terbagi dalam kotak-kotak grid yang rapi?
+
+5. **Optimalisasi Mobile (Progressive Disclosure / Mode Accordion)**
+   - [ ] Buka halaman daftar kompleks seperti Customer, Billing, atau Dashboard lewat tampilan mobile.
+   - [ ] Apakah baris daftar atau tabel menyembunyikan aksi detail atau informasi tidak penting secara default?
+   - [ ] Lakukan sentuhan (tap) atau hover pada baris tersebut: Apakah menu detail dan aksi sekunder muncul secara halus ke bawah (slide down / accordion behavior)?
+
+6. **Input dan Komponen Primitif**
+   - [ ] Periksa form pengisian data (input teks, dropdown select): Apakah form berwarna pitch black dengan border tipis dan berubah outline terang ketika diklik/fokus?
+   - [ ] Periksa tombol: Apakah tombol (primary, secondary, danger) mengikuti radius yang seragam dan memiliki efek shrink (mengecil sedikit) ketika ditekan?
+   - [ ] Periksa status pill / badge: Apakah pill terlihat elegan dengan kombinasi border warna dan teks (bukan pill blok warna yang terlalu terang)?
+
+Jika ada salah satu poin di atas yang meleset, tidak konsisten, atau masih menggunakan desain peninggalan lama (legacy), harap segera laporkan nama halaman dan letak komponen yang tidak sesuai agar dapat dilakukan pemetaan ulang.
+
+7. **Koneksi Kode & Rendering (Code Mapping & Wiring)**
+   - [ ] Lakukan hard refresh (Ctrl/Cmd + Shift + R): Apakah semua perubahan UI termuat dan langsung terlihat di browser tanpa ada lag pemuatan gaya (FOUC)?
+   - [ ] Periksa kembali perpindahan antar halaman menggunakan navigasi menu: Apakah *class name* baru dan struktur *Bento Grid* berhasil ditarik (*fetched/rendered*) tanpa ada *layout* yang pecah sementara?
+   - [ ] Apakah komponen global (seperti `primitives-override.css`) sudah ter-mapping dengan sempurna menimpa (override) *class* CSS lama di seluruh komponen aplikasi? Pastikan tidak ada bentrok *style* dari fail CSS terpisah.
