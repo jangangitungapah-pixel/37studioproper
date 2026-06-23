@@ -633,3 +633,27 @@ Perubahan:
 5. Detail rule teknis hanya tampil sebagai accordion read-only.
 6. Data model dan integrasi Operator Fee tetap sama.
 ```
+
+## OPF-3E - Compact Fee Settings Mobile UI
+
+Subpage Fee Settings dirampingkan lagi.
+
+Perubahan:
+
+```txt
+1. Hero Fee Settings disembunyikan di mobile karena title Settings sudah ada.
+2. Summary dibuat 2 kolom compact.
+3. Nominal Fee Utama dibuat single-row compact.
+4. Label "Nominal" pada setiap input fee disembunyikan agar tidak repetitif.
+5. Deskripsi panjang pada setiap fee disembunyikan di card compact.
+6. Crew form dan crew list dibuat lebih pendek.
+7. Accordion rule teknis dibuat lebih tipis.
+8. Savebar dibuat lebih pendek.
+```
+
+Scope:
+
+```txt
+CSS-only.
+Tidak mengubah logic, data model, rule calculation, Firestore, atau integrasi pembukuan.
+```

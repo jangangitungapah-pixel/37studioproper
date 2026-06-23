@@ -22606,3 +22606,350 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OPERATOR FEE ULTRA SIMPLE SETTINGS END */
+
+/* >>> STUDIO37 OPERATOR FEE SETTINGS COMPACT MOBILE START */
+.operator-fee-simple {
+  gap: 8px;
+}
+
+.operator-fee-simple .settings-section-head {
+  margin-bottom: 8px;
+}
+
+.operator-fee-simple .settings-section-head h3 {
+  font-size: 0.95rem;
+  font-weight: 560;
+}
+
+.operator-fee-simple .settings-section-head p {
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.operator-fee-simple-hero {
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.operator-fee-simple-hero > span {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+}
+
+.operator-fee-simple-hero p {
+  font-size: 0.54rem;
+  letter-spacing: 0.12em;
+}
+
+.operator-fee-simple-hero h3 {
+  font-size: 1.04rem;
+  line-height: 1.05;
+}
+
+.operator-fee-simple-hero small {
+  max-width: 620px;
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.operator-fee-simple-summary {
+  gap: 6px;
+}
+
+.operator-fee-simple-summary article {
+  gap: 2px;
+  border-radius: 13px;
+  padding: 8px;
+}
+
+.operator-fee-simple-summary small {
+  font-size: 0.48rem;
+  letter-spacing: 0.08em;
+}
+
+.operator-fee-simple-summary strong {
+  font-size: 0.78rem;
+  line-height: 1.05;
+}
+
+.operator-fee-simple-summary span {
+  font-size: 0.55rem;
+  line-height: 1.15;
+}
+
+.operator-fee-simple-card {
+  border-radius: 16px;
+  padding: 9px;
+}
+
+.operator-fee-simple-grid {
+  gap: 6px;
+}
+
+.operator-fee-simple-item {
+  grid-template-columns: minmax(0, 1fr) 112px 42px;
+  gap: 8px;
+  align-items: center;
+  border-radius: 12px;
+  padding: 7px 8px;
+}
+
+.operator-fee-simple-item > div {
+  gap: 2px;
+}
+
+.operator-fee-simple-item strong {
+  font-size: 0.72rem;
+  font-weight: 540;
+  line-height: 1.12;
+}
+
+.operator-fee-simple-item span {
+  display: none;
+}
+
+.operator-fee-simple-item small {
+  width: fit-content;
+  padding: 2px 6px;
+  font-size: 0.48rem;
+  line-height: 1.1;
+}
+
+.operator-fee-simple-item .studio-field {
+  min-width: 0;
+  gap: 0;
+}
+
+.operator-fee-simple-item .studio-field-head {
+  display: none;
+}
+
+.operator-fee-simple-item .studio-input-wrap {
+  min-height: 30px;
+  border-radius: 10px;
+}
+
+.operator-fee-simple-item .studio-native-input {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 0.66rem;
+}
+
+.operator-fee-simple-switch {
+  gap: 1px;
+  font-size: 0.48rem;
+}
+
+.operator-fee-simple-switch input {
+  width: 14px;
+  height: 14px;
+}
+
+.operator-fee-simple-crew-form {
+  gap: 6px;
+}
+
+.operator-fee-simple-crew-form .studio-field {
+  gap: 4px;
+}
+
+.operator-fee-simple-crew-form .studio-field-head {
+  font-size: 0.58rem;
+}
+
+.operator-fee-simple-crew-form .studio-input-wrap,
+.operator-fee-simple-crew-form .studio-select-trigger {
+  min-height: 34px;
+  border-radius: 11px;
+}
+
+.operator-fee-simple-crew-form .studio-native-input,
+.operator-fee-simple-crew-form .studio-select-copy strong {
+  font-size: 0.68rem;
+}
+
+.operator-fee-simple-crew-form .settings-mini-button {
+  min-height: 34px;
+  border-radius: 11px;
+  font-size: 0.62rem;
+}
+
+.operator-fee-simple-crew-list {
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.operator-fee-simple-crew {
+  min-height: 0;
+  border-radius: 12px;
+  padding: 7px 8px;
+}
+
+.operator-fee-simple-crew strong {
+  font-size: 0.7rem;
+}
+
+.operator-fee-simple-crew small {
+  font-size: 0.56rem;
+}
+
+.operator-fee-simple-crew button {
+  min-height: 26px;
+  border-radius: 9px;
+  padding: 0 7px;
+  font-size: 0.52rem;
+}
+
+.operator-fee-simple-advanced {
+  border-radius: 14px;
+}
+
+.operator-fee-simple-advanced summary {
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.operator-fee-simple-advanced summary strong {
+  font-size: 0.7rem;
+}
+
+.operator-fee-simple-advanced summary small {
+  font-size: 0.56rem;
+}
+
+.operator-fee-simple-advanced > div {
+  gap: 5px;
+  padding: 7px;
+}
+
+.operator-fee-simple-advanced article {
+  border-radius: 11px;
+  padding: 6px 7px;
+}
+
+.operator-fee-simple-advanced article strong {
+  font-size: 0.64rem;
+}
+
+.operator-fee-simple-advanced article small,
+.operator-fee-simple-advanced article em {
+  font-size: 0.52rem;
+}
+
+.operator-fee-simple-message {
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 0.62rem;
+}
+
+.operator-fee-simple-savebar {
+  gap: 6px;
+  border-radius: 14px;
+  padding: 7px;
+}
+
+.operator-fee-simple-savebar .settings-mini-button {
+  min-height: 34px;
+  border-radius: 11px;
+  font-size: 0.62rem;
+}
+
+@media (max-width: 767px) {
+  .settings-page.is-fee-settings .settings-title-block {
+    margin-bottom: 6px;
+  }
+
+  .settings-page.is-fee-settings .settings-title-block p {
+    font-size: 0.5rem;
+  }
+
+  .settings-page.is-fee-settings .settings-title-block h2 {
+    font-size: 1.18rem;
+    line-height: 1.05;
+  }
+
+  .settings-page.is-fee-settings .settings-title-block span {
+    font-size: 0.62rem;
+    line-height: 1.25;
+  }
+
+  .operator-fee-simple {
+    gap: 7px;
+    padding-bottom: 82px;
+  }
+
+  .operator-fee-simple-hero {
+    display: none;
+  }
+
+  .operator-fee-simple-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .operator-fee-simple-summary article {
+    min-height: 52px;
+    padding: 7px;
+  }
+
+  .operator-fee-simple-card {
+    padding: 8px;
+  }
+
+  .operator-fee-simple .settings-section-head {
+    margin-bottom: 6px;
+  }
+
+  .operator-fee-simple .settings-section-head h3 {
+    font-size: 0.82rem;
+  }
+
+  .operator-fee-simple .settings-section-head p {
+    font-size: 0.6rem;
+    line-height: 1.25;
+  }
+
+  .operator-fee-simple-grid {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .operator-fee-simple-item {
+    grid-template-columns: minmax(0, 1fr) 104px 38px;
+    gap: 6px;
+    padding: 6px 7px;
+  }
+
+  .operator-fee-simple-item strong {
+    font-size: 0.66rem;
+  }
+
+  .operator-fee-simple-item small {
+    font-size: 0.44rem;
+  }
+
+  .operator-fee-simple-item .studio-input-wrap {
+    min-height: 28px;
+  }
+
+  .operator-fee-simple-item .studio-native-input {
+    height: 28px;
+    font-size: 0.6rem;
+  }
+
+  .operator-fee-simple-crew-form {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .operator-fee-simple-crew-form .studio-field-head {
+    display: none;
+  }
+
+  .operator-fee-simple-savebar {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    grid-template-columns: 1fr 1fr;
+  }
+}
+/* <<< STUDIO37 OPERATOR FEE SETTINGS COMPACT MOBILE END */
