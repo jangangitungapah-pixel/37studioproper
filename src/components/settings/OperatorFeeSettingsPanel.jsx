@@ -862,7 +862,7 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
           </div>
         </form>
 
-        <div className="operator-fee-rule-list">        <div className="operator-fee-rule-list">
+        <div className="operator-fee-rule-list">
           {draft.rules.map((rule) => (
             <article className={rule.active ? 'operator-fee-rule-item' : 'operator-fee-rule-item is-muted'} key={rule.id}>
               <div>
