@@ -111,7 +111,7 @@ function normalizePackage(item) {
     id: cleanText(item?.id, makeSettingItemId('package')),
     name: cleanText(item?.name, 'Paket Studio'),
     detail: cleanText(item?.detail, 'Detail paket belum diisi'),
-    durationHours: toNumber(item?.durationHours, 1),
+    durationHours: toNumber(item?.durationHours),
     price: toNumber(item?.price),
   };
 }
@@ -266,7 +266,7 @@ export function getPackageOptions(settings = getPricingSettings()) {
   return normalizePricingSettings(settings).packages.map((item) => ({
     key: item.id,
     label: item.name,
-    description: item.durationHours + ' jam • ' + formatRupiah(item.price),
+    description: (item.durationHours ? item.durationHours + ' jam' : 'Tanpa durasi studio') + ' • ' + formatRupiah(item.price),
     detail: item.detail,
     durationHours: item.durationHours,
     price: item.price,

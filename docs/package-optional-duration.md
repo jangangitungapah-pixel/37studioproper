@@ -33,3 +33,27 @@ Catatan:
 Jika paket perlu memakai studio utama, isi durasi seperti biasa.
 Jika paket tidak perlu studio utama, kosongkan durasi.
 ```
+
+# Package Optional Duration
+
+Hotfix:
+
+```txt
+Paket sekarang boleh disimpan dengan durasi kosong atau 0.
+Validasi save package hanya mewajibkan nama dan harga.
+```
+
+Contoh paket valid:
+
+```txt
+Nama: Mixing + Mastering 1 Lagu
+Detail: Mixing dan mastering untuk 1 lagu
+Durasi: kosong / 0
+Harga: 500000
+```
+
+Catatan:
+
+```txt
+Durasi kosong berarti paket tidak memakai studio utama dan tidak seharusnya memblok kalender studio.
+```

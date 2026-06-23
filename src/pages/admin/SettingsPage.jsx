@@ -984,7 +984,7 @@ export default function SettingsPage({ currentUser }) {
       price: toNumber(packageForm.price),
     };
 
-    if (!item.name || !item.durationHours || !item.price) return;
+    if (!item.name || !item.price) return;
 
     updateSettings((current) => {
       const exists = current.packages.some((packageItem) => packageItem.id === item.id);
@@ -1005,7 +1005,7 @@ export default function SettingsPage({ currentUser }) {
       id: item.id,
       name: item.name,
       detail: item.detail,
-      durationHours: String(item.durationHours),
+      durationHours: item.durationHours ? String(item.durationHours) : '',
       price: String(item.price),
     });
   }
