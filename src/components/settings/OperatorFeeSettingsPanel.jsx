@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, Pencil, Plus, RefreshCcw, Save, Trash2, UsersRound, WalletCards } from 'lucide-react';
+import { Calculator, Pencil, Plus, RefreshCcw, Save, Trash2, WalletCards } from 'lucide-react';
 import StudioSelect from '../ui/StudioSelect.jsx';
 import StudioTextField from '../ui/StudioTextField.jsx';
 import { usePricingSettings } from '../../settings/pricingSettings.js';

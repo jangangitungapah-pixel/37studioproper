@@ -45,6 +45,9 @@ export function normalizeBookkeepingEntry(entry, fallbackId = '') {
     date: cleanText(source.date, now.slice(0, 10)),
     paymentMethod: cleanText(source.paymentMethod, 'cash'),
     note: cleanText(source.note),
+    source: cleanText(source.source),
+    sourceBookingId: cleanText(source.sourceBookingId),
+    sourceFeeEntryId: cleanText(source.sourceFeeEntryId),
     createdAt: source.createdAt || now,
     updatedAt: source.updatedAt || now,
   };

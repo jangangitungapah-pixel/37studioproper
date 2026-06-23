@@ -175,21 +175,34 @@ export async function voidOperatorFeeEntry(entry, note = '') {
   });
 }
 
+function createSafeBookkeepingId(sourceFeeEntryId) {
+  const cleanId = cleanText(sourceFeeEntryId, 'operator-fee')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 220);
+
+  return 'opfee__' + cleanId;
+}
+
 export function createOperatorFeeBookkeepingPayload(entry, booking = {}) {
   const normalizedEntry = normalizeOperatorFeeEntry(entry);
+  const bookingId = normalizedEntry.bookingId || booking.id || booking.bookingId || '';
+  const bookkeepingEntryId = createSafeBookkeepingId(normalizedEntry.id);
 
   return {
+    id: bookkeepingEntryId,
     amount: normalizedEntry.totalAmount || normalizedEntry.amount,
     category: 'crew',
     date: normalizedEntry.bookingDate || booking.date || new Date().toISOString().slice(0, 10),
     note: [
+      'Auto dari Operator Fee',
       normalizedEntry.note,
       normalizedEntry.bookingCode ? 'Booking: ' + normalizedEntry.bookingCode : '',
       normalizedEntry.personName ? 'Crew: ' + normalizedEntry.personName : '',
+      normalizedEntry.ruleName ? 'Rule: ' + normalizedEntry.ruleName : '',
     ].filter(Boolean).join(' | '),
     paymentMethod: normalizedEntry.paymentMethod || 'cash',
     source: 'operatorFee',
-    sourceBookingId: normalizedEntry.bookingId || booking.id || '',
+    sourceBookingId: bookingId,
     sourceFeeEntryId: normalizedEntry.id,
     title: normalizedEntry.title || 'Operator Fee - ' + (normalizedEntry.personName || 'Crew Studio'),
     type: 'expense',

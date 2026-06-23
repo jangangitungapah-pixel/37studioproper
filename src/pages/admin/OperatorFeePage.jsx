@@ -12,9 +12,12 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+import { createBookkeepingEntry } from '../../services/bookkeepingRepository.js';
 import {
   OPERATOR_FEE_ENTRIES_COLLECTION,
   OPERATOR_FEE_ENTRY_STATUSES,
+  createOperatorFeeBookkeepingPayload,
+  markOperatorFeeEntryPosted,
   markOperatorFeeEntryReviewed,
   subscribeOperatorFeeEntries,
   upsertOperatorFeeEntry,
@@ -394,6 +397,43 @@ export default function OperatorFeePage({ currentUser }) {
     }
   }
 
+  async function postToBookkeeping(row) {
+    const relatedEntries = getEntriesByBooking(entries, row.booking);
+    const postedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+    if (postedEntries.length) {
+      setMessage('Fee ' + getBookingCode(row.booking) + ' sudah pernah diposting ke pembukuan.');
+      return;
+    }
+
+    const reviewedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
+
+    if (!reviewedEntries.length) {
+      setMessage('Mark Reviewed dulu sebelum posting fee ke pembukuan.');
+      return;
+    }
+
+    setBusyBookingId(row.bookingId);
+
+    try {
+      const createdEntries = [];
+
+      for (const entry of reviewedEntries) {
+        const bookkeepingPayload = createOperatorFeeBookkeepingPayload(entry, row.booking);
+        const bookkeepingEntry = await createBookkeepingEntry(bookkeepingPayload);
+        await markOperatorFeeEntryPosted(entry, bookkeepingEntry, currentUser?.uid || '');
+        createdEntries.push(bookkeepingEntry);
+      }
+
+      setMessage(createdEntries.length + ' fee ' + getBookingCode(row.booking) + ' berhasil diposting ke pembukuan.');
+    } catch (error) {
+      console.error('[operator-fee] Gagal posting fee ke pembukuan:', error);
+      setMessage('Posting fee ke pembukuan gagal. Cek koneksi dan Firestore rules.');
+    } finally {
+      setBusyBookingId('');
+    }
+  }
+
   if (!isOwnerAdminUser(currentUser)) {
     return (
       <section className="operator-fee-page operator-fee-locked">
@@ -470,6 +510,7 @@ export default function OperatorFeePage({ currentUser }) {
             const booking = row.booking;
             const isBusy = busyBookingId === row.bookingId;
             const statusTone = getStatusTone(row.status);
+            const canPostToBookkeeping = row.status === 'reviewed' && !isBusy;
 
             return (
               <article className="operator-fee-booking-card" key={row.bookingId}>
@@ -549,13 +590,14 @@ export default function OperatorFeePage({ currentUser }) {
                   </button>
 
                   <button
-                    className="operator-fee-action is-disabled"
-                    disabled
+                    className={row.status === 'posted' ? 'operator-fee-action is-disabled' : 'operator-fee-action is-primary'}
+                    disabled={!canPostToBookkeeping}
                     type="button"
-                    title="Posting ke pembukuan akan dibuat di OPF-5."
+                    title={row.status === 'reviewed' ? 'Post fee reviewed ke pembukuan.' : 'Fee harus reviewed sebelum bisa diposting.'}
+                    onClick={() => postToBookkeeping(row)}
                   >
-                    <CheckCircle2 size={14} />
-                    Post OPF-5
+                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
+                    {row.status === 'posted' ? 'Sudah Posted' : 'Post Pembukuan'}
                   </button>
                 </footer>
               </article>

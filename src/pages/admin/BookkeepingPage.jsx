@@ -262,13 +262,13 @@ function buildExpenseTransactions(entries) {
       return {
         id: entryType + '-' + entry.id,
         entryId: entry.id,
-        source: 'manual',
+        source: entry.source || 'manual',
         type: entryType,
         title: entry.title,
         amount: toNumber(entry.amount),
         date: entry.date,
         method: entry.paymentMethod,
-        note: getOptionLabel(categoryOptions, entry.category, entry.category) + (entry.note ? ' • ' + entry.note : ''),
+        note: (entry.source === 'operatorFee' ? 'Operator Fee • ' : '') + getOptionLabel(categoryOptions, entry.category, entry.category) + (entry.note ? ' • ' + entry.note : ''),
       };
     });
 }

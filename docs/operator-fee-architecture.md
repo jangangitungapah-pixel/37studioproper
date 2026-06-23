@@ -535,3 +535,43 @@ Not implemented yet:
 Posting to bookkeeping.
 That comes in OPF-5.
 ```
+
+## OPF-5 - Post Operator Fee to Bookkeeping
+
+Files patched:
+
+```txt
+src/pages/admin/OperatorFeePage.jsx
+src/services/operatorFeeRepository.js
+src/services/bookkeepingRepository.js
+src/pages/admin/BookkeepingPage.jsx
+firestore.rules
+src/styles/admin-auth.css
+```
+
+Flow implemented:
+
+```txt
+Reviewed operator fee
+-> owner clicks Post Pembukuan
+-> create bookkeepingEntries expense / crew
+-> bookkeeping entry stores source = operatorFee
+-> operatorFeeEntries status becomes posted
+-> operatorFeeEntries stores postedBookkeepingEntryId
+```
+
+Duplicate protection:
+
+```txt
+Bookkeeping entry ID is deterministic:
+opfee__{operatorFeeEntryId}
+```
+
+So posting the same fee again overwrites the same bookkeeping document instead of creating random duplicates.
+The UI also blocks posting if the fee is already posted.
+
+Bookkeeping integration:
+
+```txt
+Bookkeeping rows from Operator Fee show "Operator Fee" in the transaction note.
+```

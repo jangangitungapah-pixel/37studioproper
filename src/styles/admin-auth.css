@@ -22026,3 +22026,21 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OPERATOR FEE PAGE END */
+
+/* >>> STUDIO37 OPERATOR FEE BOOKKEEPING POST START */
+.operator-fee-action.is-primary {
+  border-color: rgba(255, 138, 42, 0.38);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.operator-fee-action.is-primary:not(:disabled):hover {
+  border-color: rgba(255, 138, 42, 0.58);
+  background: rgba(255, 138, 42, 0.16);
+}
+
+.operator-fee-status.is-success + .operator-fee-action,
+.operator-fee-action.is-disabled {
+  color: var(--auth-text-muted);
+}
+/* <<< STUDIO37 OPERATOR FEE BOOKKEEPING POST END */

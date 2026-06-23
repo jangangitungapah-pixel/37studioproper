@@ -772,7 +772,7 @@ match /users/{userId} {
     // <<< STUDIO37 OPERATOR FEE RULES END
 
     function validBookkeepingEntry(data, entryId) {
-      return data.keys().hasOnly(['id', 'type', 'category', 'title', 'amount', 'date', 'paymentMethod', 'note', 'createdAt', 'updatedAt']) &&
+      return data.keys().hasOnly(['id', 'type', 'category', 'title', 'amount', 'date', 'paymentMethod', 'note', 'source', 'sourceBookingId', 'sourceFeeEntryId', 'createdAt', 'updatedAt']) &&
         data.id == entryId &&
         data.type in ['income', 'expense'] &&
         validString(data.category, 1, 80) &&
@@ -781,6 +781,9 @@ match /users/{userId} {
         validIsoDate(data.date) &&
         validString(data.paymentMethod, 1, 80) &&
         validString(data.note, 0, 2000) &&
+        validOptionalString(data, 'source', 80) &&
+        validOptionalString(data, 'sourceBookingId', 160) &&
+        validOptionalString(data, 'sourceFeeEntryId', 240) &&
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
     }
