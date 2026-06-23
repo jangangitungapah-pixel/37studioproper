@@ -22953,3 +22953,224 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OPERATOR FEE SETTINGS COMPACT MOBILE END */
+
+/* >>> STUDIO37 OPERATOR FEE SIMPLE RULES PANEL START */
+.operator-fee-money-input {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.operator-fee-money-input small {
+  color: var(--auth-text-muted);
+  font-size: 0.48rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.operator-fee-money-input input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid var(--auth-border);
+  border-radius: 10px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  padding: 0 8px;
+  font-size: 0.68rem;
+  font-weight: 560;
+  outline: none;
+}
+
+.operator-fee-money-input input:focus {
+  border-color: rgba(255, 138, 42, 0.52);
+  box-shadow: 0 0 0 2px rgba(255, 138, 42, 0.12);
+}
+
+.operator-fee-simple-item {
+  grid-template-columns: minmax(0, 1fr) 118px 38px;
+}
+
+.operator-fee-simple-item-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.operator-fee-simple-item-copy strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.72rem;
+  font-weight: 560;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-simple-item-copy small {
+  width: fit-content;
+  border: 1px solid rgba(255, 138, 42, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 138, 42, 0.08);
+  color: var(--auth-accent);
+  padding: 2px 6px;
+  font-size: 0.46rem;
+  font-weight: 560;
+  line-height: 1.1;
+}
+
+.operator-fee-simple-item .operator-fee-simple-switch span {
+  display: block;
+}
+
+.operator-fee-simple-card.is-add-rule {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 138, 42, 0.11), transparent 34%),
+    var(--auth-bg-card);
+}
+
+.operator-fee-add-rule-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.82fr) minmax(0, 0.82fr) minmax(96px, 120px) auto;
+  gap: 7px;
+  align-items: end;
+}
+
+.operator-fee-add-rule-form .studio-field,
+.operator-fee-add-rule-form .studio-select {
+  min-width: 0;
+}
+
+.operator-fee-add-rule-form .studio-field-head,
+.operator-fee-add-rule-form .studio-select-label {
+  font-size: 0.52rem;
+}
+
+.operator-fee-add-rule-form .studio-input-wrap,
+.operator-fee-add-rule-form .studio-select-trigger {
+  min-height: 34px;
+  border-radius: 11px;
+}
+
+.operator-fee-add-rule-form .studio-native-input,
+.operator-fee-add-rule-form .studio-select-copy strong {
+  font-size: 0.66rem;
+}
+
+.operator-fee-add-rule-form .settings-mini-button {
+  min-height: 34px;
+  border-radius: 11px;
+  font-size: 0.62rem;
+}
+
+.operator-fee-custom-rule-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.operator-fee-custom-rule-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+  background: var(--auth-bg-soft);
+  padding: 7px 8px;
+}
+
+.operator-fee-custom-rule-list span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.operator-fee-custom-rule-list strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.7rem;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-custom-rule-list small {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.56rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-custom-rule-list em {
+  color: var(--auth-accent);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+.operator-fee-custom-rule-list button {
+  min-height: 26px;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 9px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 7px;
+  font-size: 0.52rem;
+  font-weight: 540;
+}
+
+.operator-fee-empty-note {
+  margin: 8px 0 0;
+  border: 1px dashed var(--auth-border);
+  border-radius: 12px;
+  color: var(--auth-text-muted);
+  padding: 8px;
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .operator-fee-simple-item {
+    grid-template-columns: minmax(0, 1fr) 112px 34px;
+    gap: 6px;
+  }
+
+  .operator-fee-money-input small {
+    display: none;
+  }
+
+  .operator-fee-money-input input {
+    min-height: 28px;
+    font-size: 0.62rem;
+  }
+
+  .operator-fee-add-rule-form {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .operator-fee-add-rule-form .studio-field-head {
+    display: none;
+  }
+
+  .operator-fee-add-rule-form .settings-mini-button {
+    width: 100%;
+  }
+
+  .operator-fee-custom-rule-list article {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .operator-fee-custom-rule-list button {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+}
+/* <<< STUDIO37 OPERATOR FEE SIMPLE RULES PANEL END */

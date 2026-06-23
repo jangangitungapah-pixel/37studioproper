@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCcw, Save, Trash2, UsersRound, WalletCards } from 'lucide-react';
+import { Plus, RefreshCcw, Save, Trash2, WalletCards } from 'lucide-react';
 import StudioSelect from '../ui/StudioSelect.jsx';
 import StudioTextField from '../ui/StudioTextField.jsx';
 import { usePricingSettings } from '../../settings/pricingSettings.js';
@@ -30,11 +30,21 @@ const paymentMethodOptions = [
   { key: 'other', label: 'Lainnya', description: 'Metode lain.' },
 ];
 
+const payeeOptions = [
+  { key: OPERATOR_FEE_PERSON_ROLES.GUARD, label: 'Penjaga', description: 'Fee masuk ke penjaga studio.' },
+  { key: OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR, label: 'Operator', description: 'Fee masuk ke operator recording.' },
+];
+
+const simpleCalculationOptions = [
+  { key: OPERATOR_FEE_CALCULATION_MODES.FLAT, label: 'Flat', description: 'Nominal tetap per booking.' },
+  { key: OPERATOR_FEE_CALCULATION_MODES.HOURLY, label: 'Per Jam', description: 'Durasi booking x nominal.' },
+  { key: OPERATOR_FEE_CALCULATION_MODES.PER_BLOCK, label: 'Per Block', description: 'Per kelipatan jam dasar.' },
+];
+
 const simpleFeeControls = [
   {
     id: 'guard-rehearsal-hourly',
     label: 'Penjaga Rehearsal',
-    description: 'Fee penjaga untuk jadwal rehearsal.',
     helper: 'Per jam',
     defaultAmount: 10000,
     rule: {
@@ -59,7 +69,6 @@ const simpleFeeControls = [
   {
     id: 'guard-daily-meal',
     label: 'Uang Makan Penjaga',
-    description: 'Uang makan untuk crew yang bertugas.',
     helper: 'Per orang / hari',
     defaultAmount: 40000,
     isMeal: true,
@@ -85,7 +94,6 @@ const simpleFeeControls = [
   {
     id: 'guard-recording-track-block',
     label: 'Penjaga Recording Track',
-    description: 'Komisi penjaga untuk recording track.',
     helper: 'Per 6 jam session',
     defaultAmount: 50000,
     rule: {
@@ -110,7 +118,6 @@ const simpleFeeControls = [
   {
     id: 'guard-recording-overtime',
     label: 'Overtime Penjaga',
-    description: 'Tambahan jika recording melewati durasi normal.',
     helper: 'Per jam overtime',
     defaultAmount: 10000,
     rule: {
@@ -135,7 +142,6 @@ const simpleFeeControls = [
   {
     id: 'operator-recording-track',
     label: 'Operator Recording Track',
-    description: 'Fee operator untuk recording track.',
     helper: 'Per session',
     defaultAmount: 450000,
     rule: {
@@ -160,7 +166,6 @@ const simpleFeeControls = [
   {
     id: 'operator-recording-live',
     label: 'Operator Recording Live',
-    description: 'Fee operator untuk recording live.',
     helper: 'Per session',
     defaultAmount: 285000,
     rule: {
@@ -185,7 +190,6 @@ const simpleFeeControls = [
   {
     id: 'operator-package-flat',
     label: 'Paket Mixing / Mastering',
-    description: 'Fee untuk paket tanpa blok kalender.',
     helper: 'Flat per paket',
     defaultAmount: 50000,
     rule: {
@@ -209,11 +213,20 @@ const simpleFeeControls = [
   },
 ];
 
+const simpleFeeIds = new Set(simpleFeeControls.map((control) => control.id));
+
 const emptyPersonForm = {
   id: '',
   name: '',
   role: OPERATOR_FEE_PERSON_ROLES.GUARD,
   defaultPaymentMethod: 'cash',
+};
+
+const emptyCustomRuleForm = {
+  targetKey: 'none',
+  payeeRole: OPERATOR_FEE_PERSON_ROLES.GUARD,
+  calculationMode: OPERATOR_FEE_CALCULATION_MODES.FLAT,
+  amount: '',
 };
 
 function toNumberInput(value) {
@@ -281,11 +294,31 @@ function isRuleActive(settings, control) {
   return rule ? rule.active !== false : true;
 }
 
+function getCustomRules(settings) {
+  return settings.rules.filter((rule) => !simpleFeeIds.has(rule.id));
+}
+
+function getCustomRuleTitle(target) {
+  return 'Fee ' + (target?.label || 'Custom Booking');
+}
+
+function createCustomTargetOptions(targetOptions) {
+  return [
+    { key: 'none', label: 'Pilih booking/session', description: 'Ambil dari Pricing Settings.' },
+    ...targetOptions.map((item) => ({
+      ...item,
+      label: item.label,
+      description: item.targetType + ' · otomatis cocok dengan booking',
+    })),
+  ];
+}
+
 export default function OperatorFeeSettingsPanel({ currentUser }) {
   const remoteOperatorFeeSettings = useOperatorFeeSettings();
   const pricingSettings = usePricingSettings();
   const [draft, setDraft] = useState(() => normalizeOperatorFeeSettings(remoteOperatorFeeSettings));
   const [personForm, setPersonForm] = useState(emptyPersonForm);
+  const [customRuleForm, setCustomRuleForm] = useState(emptyCustomRuleForm);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -299,8 +332,10 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
   }, [remoteOperatorFeeSettings]);
 
   const targetOptions = useMemo(() => buildOperatorFeeTargetOptions(pricingSettings), [pricingSettings]);
+  const customTargetOptions = useMemo(() => createCustomTargetOptions(targetOptions), [targetOptions]);
   const activePeople = draft.people.filter((person) => person.active);
   const activeSimpleRules = simpleFeeControls.filter((control) => isRuleActive(draft, control));
+  const customRules = getCustomRules(draft);
   const estimatedMonthlyBase = simpleFeeControls.reduce((total, control) => total + getRuleAmount(draft, control), 0);
 
   function updateSimpleAmount(control, value) {
@@ -357,6 +392,27 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
     };
   }
 
+  function updateCustomRuleValue(field) {
+    return (nextValue) => {
+      setCustomRuleForm((current) => ({
+        ...current,
+        [field]: nextValue,
+      }));
+      if (message) setMessage('');
+    };
+  }
+
+  function updateCustomRuleAmount(event) {
+    const value = event.target.value;
+
+    setCustomRuleForm((current) => ({
+      ...current,
+      amount: value,
+    }));
+
+    if (message) setMessage('');
+  }
+
   function savePerson(event) {
     event.preventDefault();
 
@@ -394,6 +450,67 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
     if (message) setMessage('');
   }
 
+  function addCustomRule(event) {
+    event.preventDefault();
+
+    const target = targetOptions.find((item) => item.key === customRuleForm.targetKey);
+    const amount = toNumberInput(customRuleForm.amount);
+
+    if (!target) {
+      setMessage('Pilih target booking dulu.');
+      return;
+    }
+
+    if (!amount) {
+      setMessage('Isi nominal rules baru.');
+      return;
+    }
+
+    const id = 'custom-' + target.key.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + Date.now().toString(36);
+    const targetLabel = target.label || target.targetLabel || 'Booking Custom';
+
+    const rule = {
+      id,
+      active: true,
+      amount,
+      percentage: 0,
+      baseHours: customRuleForm.calculationMode === OPERATOR_FEE_CALCULATION_MODES.PER_BLOCK ? 1 : 1,
+      overtimeAfterHours: 0,
+      referencePrice: 0,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      targetLabel,
+      matchMode: OPERATOR_FEE_MATCH_MODES.TARGET_ID,
+      keyword: '',
+      payeeRole: customRuleForm.payeeRole,
+      calculationMode: customRuleForm.calculationMode,
+      requireAssignedPerson: true,
+      includeMeal: false,
+      onlyForNoDurationPackage: target.targetType === OPERATOR_FEE_TARGET_TYPES.PACKAGE,
+      bookkeepingCategory: 'crew',
+      name: getCustomRuleTitle(target),
+      titleTemplate: 'Fee Custom - {bookingCode} - {serviceLabel}',
+      note: 'Fee custom untuk ' + targetLabel + '.',
+    };
+
+    setDraft((current) => normalizeOperatorFeeSettings({
+      ...current,
+      rules: [...current.rules, rule],
+    }));
+
+    setCustomRuleForm(emptyCustomRuleForm);
+    setMessage('Rule baru ditambahkan. Rule ini langsung cocok dengan booking yang memakai ' + targetLabel + '.');
+  }
+
+  function deleteCustomRule(ruleId) {
+    setDraft((current) => normalizeOperatorFeeSettings({
+      ...current,
+      rules: current.rules.filter((rule) => rule.id !== ruleId),
+    }));
+
+    if (message) setMessage('');
+  }
+
   async function saveAllSettings() {
     try {
       const nextSettings = await saveOperatorFeeSettings(draft, {
@@ -419,6 +536,7 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
 
       setDraft(nextSettings);
       setPersonForm(emptyPersonForm);
+      setCustomRuleForm(emptyCustomRuleForm);
       setMessage('Fee Settings dikembalikan ke default.');
     } catch (error) {
       console.error('Gagal reset fee settings:', error);
@@ -436,7 +554,7 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
           <p>Owner Only</p>
           <h3>Fee Settings</h3>
           <small>
-            Atur nominal fee internal studio. Rule teknis tetap disimpan di belakang layar agar halaman Operator Fee tetap otomatis.
+            Atur nominal fee internal studio. Rule tambahan langsung terhubung ke booking dari Pricing Settings.
           </small>
         </div>
       </section>
@@ -453,14 +571,14 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
           <span>{simpleFeeControls.length} nominal utama</span>
         </article>
         <article>
-          <small>Total Acuan</small>
-          <strong>{formatOperatorFeeCurrency(estimatedMonthlyBase)}</strong>
-          <span>akumulasi nominal default</span>
+          <small>Rules Tambahan</small>
+          <strong>{customRules.length}</strong>
+          <span>custom booking fee</span>
         </article>
         <article>
-          <small>Pricing Terhubung</small>
-          <strong>{targetOptions.length}</strong>
-          <span>session, recording, package</span>
+          <small>Total Acuan</small>
+          <strong>{formatOperatorFeeCurrency(estimatedMonthlyBase)}</strong>
+          <span>nominal default</span>
         </article>
       </section>
 
@@ -468,29 +586,28 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
         <div className="settings-section-head">
           <div>
             <h3>Nominal Fee Utama</h3>
-            <p>Isi angka yang paling sering dipakai. Ini yang nanti dibaca halaman Operator Fee.</p>
+            <p>Angka harian yang paling sering dipakai.</p>
           </div>
         </div>
 
         <div className="operator-fee-simple-grid">
           {simpleFeeControls.map((control) => (
             <article className="operator-fee-simple-item" key={control.id}>
-              <div>
+              <div className="operator-fee-simple-item-copy">
                 <strong>{control.label}</strong>
-                <span>{control.description}</span>
                 <small>{control.helper}</small>
               </div>
 
-              <StudioTextField
-                id={'simple-fee-' + control.id}
-                inputMode="numeric"
-                label="Nominal"
-                min="0"
-                placeholder={String(control.defaultAmount)}
-                type="number"
-                value={String(getRuleAmount(draft, control))}
-                onChange={(event) => updateSimpleAmount(control, event.target.value)}
-              />
+              <label className="operator-fee-money-input">
+                <small>Nominal</small>
+                <input
+                  inputMode="numeric"
+                  min="0"
+                  type="number"
+                  value={String(getRuleAmount(draft, control))}
+                  onChange={(event) => updateSimpleAmount(control, event.target.value)}
+                />
+              </label>
 
               <label className="operator-fee-simple-switch">
                 <input
@@ -498,18 +615,86 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
                   type="checkbox"
                   onChange={(event) => toggleSimpleRule(control, event.target.checked)}
                 />
-                <span>{isRuleActive(draft, control) ? 'Aktif' : 'Nonaktif'}</span>
+                <span>{isRuleActive(draft, control) ? 'Aktif' : 'Off'}</span>
               </label>
             </article>
           ))}
         </div>
       </section>
 
+      <section className="settings-section operator-fee-simple-card is-add-rule">
+        <div className="settings-section-head">
+          <div>
+            <h3>Tambah Rules</h3>
+            <p>Pilih layanan/package dari Pricing Settings, isi nominal, selesai.</p>
+          </div>
+        </div>
+
+        <form className="operator-fee-add-rule-form" onSubmit={addCustomRule}>
+          <StudioSelect
+            label="Untuk Booking"
+            options={customTargetOptions}
+            selectedKey={customRuleForm.targetKey}
+            onChange={updateCustomRuleValue('targetKey')}
+          />
+
+          <StudioSelect
+            label="Dibayar Ke"
+            options={payeeOptions}
+            selectedKey={customRuleForm.payeeRole}
+            onChange={updateCustomRuleValue('payeeRole')}
+          />
+
+          <StudioSelect
+            label="Hitung"
+            options={simpleCalculationOptions}
+            selectedKey={customRuleForm.calculationMode}
+            onChange={updateCustomRuleValue('calculationMode')}
+          />
+
+          <StudioTextField
+            id="operator-custom-rule-amount"
+            inputMode="numeric"
+            label="Nominal"
+            min="0"
+            placeholder="Contoh 50000"
+            type="number"
+            value={customRuleForm.amount}
+            onChange={updateCustomRuleAmount}
+          />
+
+          <button className="settings-mini-button is-primary" type="submit">
+            <Plus size={14} />
+            Tambah Rule
+          </button>
+        </form>
+
+        {customRules.length ? (
+          <div className="operator-fee-custom-rule-list">
+            {customRules.map((rule) => (
+              <article key={rule.id}>
+                <span>
+                  <strong>{rule.name}</strong>
+                  <small>{rule.targetLabel} · {rule.calculationMode} · {getRoleLabel(rule.payeeRole)}</small>
+                </span>
+                <em>{formatOperatorFeeCurrency(rule.amount)}</em>
+                <button type="button" onClick={() => deleteCustomRule(rule.id)}>
+                  <Trash2 size={13} />
+                  Hapus
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="operator-fee-empty-note">Belum ada rules tambahan.</p>
+        )}
+      </section>
+
       <section className="settings-section operator-fee-simple-card">
         <div className="settings-section-head">
           <div>
             <h3>Crew Studio</h3>
-            <p>Tambahkan nama penjaga atau operator yang akan dipilih di halaman Operator Fee.</p>
+            <p>Nama penjaga/operator yang dipilih di Operator Fee.</p>
           </div>
         </div>
 
@@ -562,7 +747,7 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
       <details className="operator-fee-simple-advanced">
         <summary>
           <strong>Lihat rule teknis</strong>
-          <small>Untuk cek mapping otomatis. Biasanya tidak perlu diubah.</small>
+          <small>Mapping otomatis. Biasanya tidak perlu dibuka.</small>
         </summary>
 
         <div>
