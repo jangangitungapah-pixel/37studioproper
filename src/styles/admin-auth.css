@@ -19877,3 +19877,240 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OWNER DANGER ZONE END */
+
+/* >>> STUDIO37 SCHEDULE UPCOMING TABLE START */
+.schedule-upcoming-panel {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 18px;
+  border: 1px solid var(--auth-border);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 138, 42, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 58%),
+    var(--auth-bg-card);
+  box-shadow: 0 20px 65px rgba(0, 0, 0, 0.18);
+  padding: clamp(14px, 2.2vw, 20px);
+}
+
+.schedule-upcoming-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.schedule-upcoming-head div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.schedule-upcoming-head span {
+  color: var(--auth-accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.schedule-upcoming-head h3,
+.schedule-upcoming-head p {
+  margin: 0;
+}
+
+.schedule-upcoming-head h3 {
+  color: var(--auth-text-strong);
+  font-size: clamp(1.12rem, 3vw, 1.55rem);
+  letter-spacing: -0.04em;
+}
+
+.schedule-upcoming-head p {
+  color: var(--auth-text-muted);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.schedule-upcoming-head > strong {
+  min-width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: 16px;
+  background: var(--auth-accent-soft);
+  color: var(--auth-text-strong);
+  font-size: 1.05rem;
+}
+
+.schedule-upcoming-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--auth-border);
+  border-radius: 18px;
+  background: var(--auth-bg-soft);
+}
+
+.schedule-upcoming-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.schedule-upcoming-table th,
+.schedule-upcoming-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--auth-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.schedule-upcoming-table th {
+  color: var(--auth-text-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.schedule-upcoming-table td {
+  color: var(--auth-text-main);
+  font-size: 0.82rem;
+}
+
+.schedule-upcoming-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.schedule-upcoming-table tbody tr.is-no-duration-package {
+  background: rgba(255, 138, 42, 0.065);
+}
+
+.schedule-upcoming-table button {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.schedule-upcoming-table button strong,
+.schedule-upcoming-table td > span,
+.schedule-upcoming-table td > b {
+  color: var(--auth-text-strong);
+}
+
+.schedule-upcoming-table button small,
+.schedule-upcoming-table td > em {
+  color: var(--auth-text-muted);
+  font-size: 0.7rem;
+  font-style: normal;
+}
+
+.schedule-upcoming-table td > em {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 4px;
+  border: 1px solid rgba(255, 138, 42, 0.28);
+  border-radius: 999px;
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+  padding: 4px 8px;
+  font-weight: 850;
+}
+
+.schedule-upcoming-status {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.schedule-upcoming-status.is-dp {
+  border-color: rgba(255, 138, 42, 0.3);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.schedule-upcoming-status.is-lunas {
+  border-color: rgba(92, 224, 161, 0.28);
+  background: rgba(92, 224, 161, 0.1);
+  color: #7ef0b3;
+}
+
+.schedule-upcoming-empty {
+  margin: 0;
+  border: 1px dashed var(--auth-border);
+  border-radius: 18px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  padding: 14px;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 767px) {
+  .schedule-upcoming-head {
+    align-items: stretch;
+  }
+
+  .schedule-upcoming-head > strong {
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .schedule-upcoming-table {
+    min-width: 0;
+  }
+
+  .schedule-upcoming-table thead {
+    display: none;
+  }
+
+  .schedule-upcoming-table,
+  .schedule-upcoming-table tbody,
+  .schedule-upcoming-table tr,
+  .schedule-upcoming-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .schedule-upcoming-table tr {
+    padding: 10px;
+    border-bottom: 1px solid var(--auth-border);
+  }
+
+  .schedule-upcoming-table tr:last-child {
+    border-bottom: 0;
+  }
+
+  .schedule-upcoming-table td {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    border-bottom: 0;
+    padding: 7px 4px;
+  }
+
+  .schedule-upcoming-table td::before {
+    content: attr(data-label);
+    color: var(--auth-text-muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+/* <<< STUDIO37 SCHEDULE UPCOMING TABLE END */

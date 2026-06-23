@@ -288,6 +288,68 @@ function getBookingWindowLabel(booking) {
   return formatHourLabel(getBookingStartHour(booking)) + '-' + formatHourLabel(getBookingEndHour(booking));
 }
 
+function getBookingStartDateTime(booking) {
+  const dateText = String(booking?.date || '').trim();
+
+  if (!dateText) return null;
+
+  const dateValue = new Date(dateText + 'T00:00:00');
+
+  if (Number.isNaN(dateValue.getTime())) return null;
+
+  const startHour = getBookingStartHour(booking);
+  const wholeHour = Math.floor(startHour);
+  const minutes = Math.round((startHour - wholeHour) * 60);
+
+  dateValue.setHours(wholeHour, minutes, 0, 0);
+
+  return dateValue;
+}
+
+function formatBookingDateLabel(booking) {
+  const startDate = getBookingStartDateTime(booking);
+
+  if (!startDate) return booking?.date || '-';
+
+  return startDate.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    weekday: 'short',
+    year: 'numeric',
+  });
+}
+
+function getUpcomingScheduleTimeLabel(booking) {
+  if (isNoDurationPackageBooking(booking)) {
+    return formatHourLabel(getBookingStartHour(booking)) + ' WIB · tanpa blok kalender';
+  }
+
+  return getBookingWindowLabel(booking) + ' WIB';
+}
+
+function isUpcomingScheduleBooking(booking) {
+  const status = String(getBookingStatus(booking)).toLowerCase();
+  const requestStatus = String(booking?.bookingRequestStatus || '').toLowerCase();
+  const startDate = getBookingStartDateTime(booking);
+
+  if (!startDate) return false;
+  if (['cancelled', 'canceled', 'void', 'deleted'].includes(status)) return false;
+  if (['rejected', 'cancelled'].includes(requestStatus)) return false;
+
+  return startDate >= new Date();
+}
+
+function getUpcomingScheduleBookings(bookings) {
+  return bookings
+    .filter(isUpcomingScheduleBooking)
+    .toSorted((first, second) => {
+      const firstDate = getBookingStartDateTime(first);
+      const secondDate = getBookingStartDateTime(second);
+
+      return (firstDate?.getTime() || 0) - (secondDate?.getTime() || 0);
+    });
+}
+
 function getStudioOpenHour() {
   return businessHours[0]?.start ?? 0;
 }
@@ -660,6 +722,81 @@ function RequestQueueModal({
         </div>
       </section>
     </div>
+  );
+}
+
+function ScheduleUpcomingTable({ bookings, onBookingClick }) {
+  const upcomingBookings = useMemo(() => getUpcomingScheduleBookings(bookings), [bookings]);
+
+  return (
+    <section className="schedule-upcoming-panel" aria-labelledby="schedule-upcoming-title">
+      <header className="schedule-upcoming-head">
+        <div>
+          <span>Operational Radar</span>
+          <h3 id="schedule-upcoming-title">Jadwal Mendatang</h3>
+          <p>
+            Semua booking yang akan datang, termasuk paket tanpa durasi yang tidak muncul sebagai blok kalender.
+          </p>
+        </div>
+        <strong>{upcomingBookings.length}</strong>
+      </header>
+
+      {upcomingBookings.length ? (
+        <div className="schedule-upcoming-table-wrap">
+          <table className="schedule-upcoming-table">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Layanan</th>
+                <th>Tanggal</th>
+                <th>Waktu</th>
+                <th>Status</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcomingBookings.map((booking) => {
+                const noDurationPackage = isNoDurationPackageBooking(booking);
+                const requestMeta = booking.bookingRequestStatus === 'submitted'
+                  ? 'Request'
+                  : booking.bookingRequestStatus === 'confirmed'
+                    ? 'Confirmed'
+                    : '';
+
+                return (
+                  <tr className={noDurationPackage ? 'is-no-duration-package' : ''} key={booking.id || booking.bookingCode}>
+                    <td data-label="Customer">
+                      <button type="button" onClick={() => onBookingClick(booking)}>
+                        <strong>{booking.customer || 'Customer'}</strong>
+                        <small>{booking.bookingCode || booking.bookingId || booking.id || 'BKG'}</small>
+                      </button>
+                    </td>
+                    <td data-label="Layanan">
+                      <span>{booking.packageLabel || booking.sessionLabel || booking.title || 'Sesi Studio'}</span>
+                      {noDurationPackage ? <em>Tanpa blok kalender</em> : null}
+                    </td>
+                    <td data-label="Tanggal">{formatBookingDateLabel(booking)}</td>
+                    <td data-label="Waktu">{getUpcomingScheduleTimeLabel(booking)}</td>
+                    <td data-label="Status">
+                      <span className={'schedule-upcoming-status is-' + getBookingStatus(booking)}>
+                        {requestMeta || getStatusLabel(getBookingStatus(booking))}
+                      </span>
+                    </td>
+                    <td data-label="Total">
+                      <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="schedule-upcoming-empty">
+          Belum ada jadwal mendatang. Semua orbit booking masih lengang.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -1105,6 +1242,11 @@ export default function SchedulePage() {
           </div>
         </div>
       </div>
+
+      <ScheduleUpcomingTable
+        bookings={bookings}
+        onBookingClick={openBookingDetail}
+      />
 
       <CalendarGrid
         activeStatuses={activeStatuses}
