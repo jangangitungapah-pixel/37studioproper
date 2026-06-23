@@ -213,7 +213,6 @@ export default function BookingFormModal({
 
   const recordingSessionKey = getRecordingSessionKey(sessionTypeOptions);
   const isPackageSelected = form.packageId !== 'none';
-  const isNoDurationPackageSelected = isPackageSelected && Number(totals.durationHours || 0) <= 0;
   const isRecordingSessionSelected = !isPackageSelected && isRecordingSessionId(form.sessionType);
   const activeRecordingTypeKey =
     form.recordingTypeId !== 'none'
@@ -270,6 +269,8 @@ export default function BookingFormModal({
       }),
     [activeRecordingTypeKey, form, pricingSettings, shouldShowRecordingType]
   );
+
+  const isNoDurationPackageSelected = isPackageSelected && Number(totals.durationHours || 0) <= 0;
 
   if (!isOpen) return null;
 
