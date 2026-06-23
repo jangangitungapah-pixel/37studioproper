@@ -215,7 +215,7 @@ export default function GuardAttendancePage() {
 
     try {
       await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
-      setMessage('Login berhasil. Membaca status penjaga...');
+      setMessage('');
     } catch (signInError) {
       console.error('[guard-attendance] Login gagal:', signInError);
       setError('Login gagal. Cek email dan password.');

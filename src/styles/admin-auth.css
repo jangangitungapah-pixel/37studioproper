@@ -24684,3 +24684,279 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OWNER GUARD ATTENDANCE APPROVAL END */
+
+/* >>> STUDIO37 GUARD ATTENDANCE COMPACT UI START */
+.guard-attendance-page {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 138, 42, 0.14), transparent 28%),
+    radial-gradient(circle at 100% 22%, rgba(255, 255, 255, 0.035), transparent 26%),
+    var(--auth-bg-page);
+  padding: 14px;
+}
+
+.guard-attendance-shell {
+  width: min(480px, 100%);
+  gap: 10px;
+}
+
+.guard-attendance-head,
+.guard-attendance-card,
+.guard-attendance-status-card,
+.guard-attendance-message {
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    var(--auth-bg-card);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
+}
+
+.guard-attendance-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-radius: 22px;
+  padding: 15px;
+}
+
+.guard-attendance-head p {
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+}
+
+.guard-attendance-head h1 {
+  margin-top: 4px;
+  font-size: clamp(1.55rem, 8vw, 2.35rem);
+  line-height: 0.98;
+}
+
+.guard-attendance-head span {
+  max-width: 28rem;
+  margin-top: 8px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.guard-attendance-head button {
+  width: auto;
+  min-width: 88px;
+  min-height: 36px;
+  border-radius: 999px;
+  background: var(--auth-bg-soft);
+}
+
+.guard-attendance-status-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.guard-attendance-status-card small {
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+}
+
+.guard-attendance-status-card strong {
+  font-size: 1.04rem;
+  line-height: 1.1;
+}
+
+.guard-attendance-status-card span {
+  font-size: 0.68rem;
+}
+
+.guard-attendance-status-card em {
+  justify-self: end;
+  max-width: 150px;
+  border-color: rgba(255, 138, 42, 0.25);
+  background: rgba(255, 138, 42, 0.08);
+  color: var(--auth-accent);
+  font-size: 0.64rem;
+  text-align: center;
+}
+
+.guard-attendance-card {
+  gap: 10px;
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.guard-attendance-card-head {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.guard-attendance-card-head > span {
+  width: 34px;
+  height: 34px;
+  border-radius: 13px;
+}
+
+.guard-attendance-card-head h2 {
+  font-size: 0.98rem;
+  line-height: 1.16;
+}
+
+.guard-attendance-card-head p {
+  margin-top: 3px;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.guard-attendance-form {
+  gap: 8px;
+}
+
+.guard-attendance-form .studio-select-trigger,
+.guard-attendance-form [class*="select-trigger"] {
+  min-height: 44px;
+  border-radius: 14px;
+}
+
+.guard-attendance-form small,
+.guard-attendance-login small {
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+}
+
+.guard-attendance-form textarea {
+  min-height: 74px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.guard-attendance-form textarea::placeholder {
+  color: var(--auth-text-muted);
+  opacity: 0.74;
+}
+
+.guard-attendance-form button.is-primary,
+.guard-attendance-current button {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--auth-accent), color-mix(in srgb, var(--auth-accent) 72%, #ffffff 28%));
+  color: #111;
+  font-size: 0.78rem;
+  font-weight: 760;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 28px rgba(255, 138, 42, 0.16);
+}
+
+.guard-attendance-form button.is-primary:disabled,
+.guard-attendance-current button:disabled {
+  background: var(--auth-bg-control);
+  color: var(--auth-text-muted);
+  box-shadow: none;
+  opacity: 0.58;
+}
+
+.guard-attendance-current {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.guard-attendance-current span {
+  border-radius: 13px;
+  padding: 9px;
+}
+
+.guard-attendance-history {
+  gap: 6px;
+}
+
+.guard-attendance-history article {
+  border-radius: 13px;
+  padding: 8px;
+}
+
+.guard-attendance-history p {
+  border-radius: 13px;
+  padding: 16px 10px;
+  font-size: 0.8rem;
+}
+
+.guard-attendance-message {
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.guard-attendance-message.is-success {
+  border-color: rgba(92, 224, 161, 0.22);
+  background: rgba(92, 224, 161, 0.085);
+}
+
+.guard-attendance-message.is-error {
+  border-color: rgba(248, 113, 113, 0.22);
+  background: rgba(248, 113, 113, 0.085);
+}
+
+@media (max-width: 767px) {
+  .guard-attendance-page {
+    padding: 10px;
+  }
+
+  .guard-attendance-shell {
+    gap: 8px;
+  }
+
+  .guard-attendance-head {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 13px;
+  }
+
+  .guard-attendance-head button {
+    justify-self: stretch;
+    min-height: 38px;
+  }
+
+  .guard-attendance-head h1 {
+    font-size: 1.55rem;
+  }
+
+  .guard-attendance-head span {
+    font-size: 0.68rem;
+  }
+
+  .guard-attendance-status-card {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 11px;
+  }
+
+  .guard-attendance-status-card em {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .guard-attendance-card {
+    padding: 11px;
+  }
+
+  .guard-attendance-card-head {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .guard-attendance-card-head > span {
+    width: 30px;
+    height: 30px;
+  }
+
+  .guard-attendance-card-head h2 {
+    font-size: 0.92rem;
+  }
+
+  .guard-attendance-card-head p {
+    font-size: 0.65rem;
+  }
+
+  .guard-attendance-history p {
+    font-size: 0.72rem;
+  }
+}
+/* <<< STUDIO37 GUARD ATTENDANCE COMPACT UI END */

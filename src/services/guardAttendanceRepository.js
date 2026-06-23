@@ -4,6 +4,7 @@ import {
   onSnapshot,
   query,
   setDoc,
+  where,
   updateDoc,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -379,7 +380,17 @@ export function subscribeGuardAttendanceSessions({
     return () => {};
   }
 
-  const sessionsQuery = query(collection(firestoreDb, GUARD_ATTENDANCE_COLLECTION));
+  const queryConstraints = [];
+
+  if (guardUid) queryConstraints.push(where('guardUid', '==', guardUid));
+  if (date) queryConstraints.push(where('date', '==', date));
+  if (status !== 'all') queryConstraints.push(where('status', '==', status));
+  if (approvalStatus !== 'all') queryConstraints.push(where('approvalStatus', '==', approvalStatus));
+
+  const sessionsQuery = query(
+    collection(firestoreDb, GUARD_ATTENDANCE_COLLECTION),
+    ...queryConstraints
+  );
 
   return onSnapshot(
     sessionsQuery,
