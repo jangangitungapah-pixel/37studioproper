@@ -20405,3 +20405,247 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 BOOKING DETAIL ULTRA COMPACT END */
+
+/* >>> STUDIO37 BOOKING DETAIL READABLE SLIM START */
+.booking-detail-compact-panel {
+  font-weight: 420;
+}
+
+.booking-detail-compact-heading h2 {
+  max-width: min(100%, 620px);
+  overflow: visible;
+  font-weight: 360;
+  line-height: 1.08;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: normal;
+}
+
+.booking-detail-compact-heading p,
+.booking-detail-compact-customer span,
+.booking-detail-compact-status span,
+.booking-detail-compact-quick-grid small,
+.booking-detail-compact-section-title,
+.booking-detail-compact-meta summary {
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.booking-detail-compact-customer strong,
+.booking-detail-compact-status strong,
+.booking-detail-compact-quick-grid strong,
+.booking-detail-compact-money-row strong,
+.booking-detail-compact-button {
+  font-weight: 560;
+}
+
+.booking-detail-compact-customer small,
+.booking-detail-compact-quick-grid strong,
+.booking-detail-compact-money-row span {
+  letter-spacing: -0.01em;
+}
+
+.booking-detail-compact-customer strong,
+.booking-detail-compact-customer small,
+.booking-detail-compact-quick-grid strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.booking-detail-compact-status strong {
+  font-weight: 600;
+}
+
+.booking-detail-compact-money-row.is-total strong,
+.booking-detail-compact-money-row.is-warning strong,
+.booking-detail-compact-money-row.is-paid strong {
+  font-weight: 620;
+}
+
+.booking-detail-compact-quick-grid > span {
+  min-width: 0;
+}
+
+.booking-detail-compact-quick-grid strong {
+  line-height: 1.28;
+  word-break: normal;
+}
+
+.booking-detail-compact-quick-grid .is-highlight strong {
+  font-weight: 560;
+}
+
+@media (max-width: 767px) {
+  .booking-detail-compact-panel {
+    max-height: 92dvh;
+  }
+
+  .booking-detail-compact-head {
+    padding: 12px 14px 9px;
+  }
+
+  .booking-detail-compact-heading p {
+    margin-bottom: 4px;
+    font-size: 0.62rem;
+  }
+
+  .booking-detail-compact-heading h2 {
+    font-size: clamp(1.32rem, 6.1vw, 1.72rem);
+    line-height: 1.12;
+  }
+
+  .booking-detail-compact-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 15px;
+  }
+
+  .booking-detail-compact-body {
+    gap: 7px;
+    padding: 9px 12px 82px;
+  }
+
+  .booking-detail-compact-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    border-radius: 15px;
+    padding: 10px;
+  }
+
+  .booking-detail-compact-customer span,
+  .booking-detail-compact-status span {
+    font-size: 0.58rem;
+  }
+
+  .booking-detail-compact-customer strong {
+    font-size: 0.9rem;
+    line-height: 1.18;
+  }
+
+  .booking-detail-compact-customer small {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
+  .booking-detail-compact-status {
+    min-width: 76px;
+    padding: 6px 9px;
+  }
+
+  .booking-detail-compact-status strong {
+    font-size: 0.78rem;
+  }
+
+  .booking-detail-compact-phone {
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+  }
+
+  .booking-detail-compact-card {
+    border-radius: 15px;
+    padding: 9px 10px;
+  }
+
+  .booking-detail-compact-card.is-slim {
+    padding: 6px 10px;
+  }
+
+  .booking-detail-compact-quick-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .booking-detail-compact-quick-grid > span {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+    border: 0;
+    border-bottom: 1px solid var(--auth-border);
+    border-radius: 0;
+    background: transparent;
+    padding: 7px 0;
+  }
+
+  .booking-detail-compact-quick-grid > span:last-child {
+    border-bottom: 0;
+  }
+
+  .booking-detail-compact-quick-grid > span.is-full {
+    grid-column: auto;
+  }
+
+  .booking-detail-compact-quick-grid > span.is-highlight {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    border: 1px solid rgba(255, 138, 42, 0.25);
+    border-radius: 13px;
+    background: rgba(255, 138, 42, 0.1);
+    margin-top: 5px;
+    padding: 8px 9px;
+  }
+
+  .booking-detail-compact-quick-grid small {
+    font-size: 0.55rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .booking-detail-compact-quick-grid strong {
+    font-size: 0.74rem;
+    line-height: 1.25;
+  }
+
+  .booking-detail-compact-quick-grid .is-highlight strong {
+    font-size: 0.73rem;
+  }
+
+  .booking-detail-compact-section-title {
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+  }
+
+  .booking-detail-compact-money.is-compact .booking-detail-compact-money-row,
+  .booking-detail-compact-money-row {
+    min-height: 0;
+    padding: 6px 0;
+  }
+
+  .booking-detail-compact-money-row span {
+    font-size: 0.74rem;
+  }
+
+  .booking-detail-compact-money-row strong,
+  .booking-detail-compact-money.is-compact .booking-detail-compact-money-row strong {
+    font-size: 0.86rem;
+  }
+
+  .booking-detail-compact-money-row.is-total strong,
+  .booking-detail-compact-money-row.is-warning strong,
+  .booking-detail-compact-money-row.is-paid strong,
+  .booking-detail-compact-money.is-compact .booking-detail-compact-money-row.is-total strong,
+  .booking-detail-compact-money.is-compact .booking-detail-compact-money-row.is-warning strong,
+  .booking-detail-compact-money.is-compact .booking-detail-compact-money-row.is-paid strong {
+    font-size: 0.96rem;
+  }
+
+  .booking-detail-compact-meta summary {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 0.78rem;
+  }
+
+  .booking-detail-compact-actions {
+    gap: 8px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .booking-detail-compact-button {
+    min-height: 42px;
+    border-radius: 15px;
+    font-size: 0.76rem;
+  }
+}
+/* <<< STUDIO37 BOOKING DETAIL READABLE SLIM END */

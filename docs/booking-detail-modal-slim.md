@@ -19,3 +19,15 @@ Tujuan:
 ```txt
 Modal detail terasa seperti quick inspection sheet, bukan invoice panjang.
 ```
+
+## BDM-1B Readable Slim
+
+Perbaikan lanjutan modal detail booking:
+
+```txt
+1. Mengurangi font bold berlebihan.
+2. Judul booking tidak dipaksa satu baris.
+3. Value panjang seperti layanan dan waktu boleh wrap.
+4. Grid informasi booking di mobile berubah jadi list ramping.
+5. Ringkasan harga tetap jelas tanpa typography terlalu berat.
+```
