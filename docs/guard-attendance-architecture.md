@@ -324,3 +324,38 @@ Target:
 Owner/admin menerima notifikasi saat penjaga mengajukan absen.
 Modal approval owner dibuat di fase UI berikutnya.
 ```
+
+## ATT-3 - Guard Attendance Page
+
+Halaman guard dibuat:
+
+```txt
+/guard/attendance
+```
+
+Fitur:
+
+```txt
+1. Login khusus penjaga memakai Firebase Auth.
+2. Guard route tidak masuk Admin Shell.
+3. Hanya akun users/{uid}.role = studio_guard dan status = approved yang bisa memakai halaman.
+4. Penjaga memilih profil dari People / Payee di Fee Settings.
+5. Klik Mulai Jaga membuat guardAttendanceSessions status pending_approval.
+6. Absen pending mengirim notification event ke owner/admin.
+7. Penjaga bisa klik Selesai Jaga.
+8. Riwayat absen sendiri tampil di halaman.
+```
+
+Catatan penting:
+
+```txt
+Approval owner belum dibuat di ATT-3.
+Owner approval modal/panel dibuat di ATT-4.
+```
+
+Business rule:
+
+```txt
+Absen dipakai sebagai bukti jaga per tanggal, bukan cut-off jam booking.
+Jika booking jam 10-12 dan penjaga absen jam 13, fee booking tanggal itu tetap eligible setelah owner approve absen tanggal tersebut.
+```

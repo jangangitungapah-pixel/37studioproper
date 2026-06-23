@@ -6,7 +6,6 @@ import {
   LoaderCircle,
   ShieldAlert,
   UserRound,
-  WalletCards,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';

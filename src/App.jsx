@@ -8,6 +8,7 @@ const ClientLandingPage = lazy(() => import('./pages/ClientLandingPage.jsx'));
 const ClientLoginPage = lazy(() => import('./pages/ClientLoginPage.jsx'));
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage.jsx'));
 const PwaLaunchPage = lazy(() => import('./pages/PwaLaunchPage.jsx'));
+const GuardAttendancePage = lazy(() => import('./pages/guard/GuardAttendancePage.jsx'));
 
 export default function App() {
   return (
@@ -21,6 +22,8 @@ export default function App() {
           <Route path="/client/login" element={<ClientLoginPage />} />
           <Route path="/client/portal" element={<ClientPortalPage />} />
           <Route path="/client" element={<ClientLandingPage />} />
+          <Route path="/guard" element={<Navigate to="/guard/attendance" replace />} />
+          <Route path="/guard/attendance" element={<GuardAttendancePage />} />
           <Route path="/admin/*" element={<AdminPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
