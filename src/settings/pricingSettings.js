@@ -116,11 +116,47 @@ function normalizePackage(item) {
   };
 }
 
+function mergeLockedDefaultSessions(sessionsSource) {
+  const sourceSessions = Array.isArray(sessionsSource) ? sessionsSource : [];
+  const defaultLockedSessions = DEFAULT_PRICING_SETTINGS.sessions.filter((session) => session.locked);
+  const defaultIds = new Set(defaultLockedSessions.map((session) => cleanText(session.id).toLowerCase()));
+  const sourceById = new Map();
+
+  sourceSessions.forEach((session) => {
+    const id = cleanText(session?.id).toLowerCase();
+    if (!id) return;
+
+    sourceById.set(id, session);
+  });
+
+  const lockedSessions = defaultLockedSessions.map((defaultSession) => {
+    const id = cleanText(defaultSession.id).toLowerCase();
+    const existingSession = sourceById.get(id);
+
+    return {
+      ...defaultSession,
+      ...(existingSession || {}),
+      id: defaultSession.id,
+      locked: true,
+    };
+  });
+
+  const customSessions = sourceSessions.filter((session) => {
+    const id = cleanText(session?.id).toLowerCase();
+
+    return id && !defaultIds.has(id);
+  });
+
+  return [...lockedSessions, ...customSessions];
+}
+
 export function normalizePricingSettings(settings) {
   const source = settings && typeof settings === 'object' ? settings : DEFAULT_PRICING_SETTINGS;
-  const sessionsSource = Array.isArray(source.sessions) && source.sessions.length
-    ? source.sessions
-    : DEFAULT_PRICING_SETTINGS.sessions;
+  const sessionsSource = mergeLockedDefaultSessions(
+    Array.isArray(source.sessions) && source.sessions.length
+      ? source.sessions
+      : DEFAULT_PRICING_SETTINGS.sessions
+  );
 
   return {
     sessions: sessionsSource.map(normalizeSession),
