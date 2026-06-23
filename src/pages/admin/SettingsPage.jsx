@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
 import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
+import { OWNER_EMAIL } from '../../constants/appConstants.js';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import OperatorFeeSettingsPanel from '../../components/settings/OperatorFeeSettingsPanel.jsx';
@@ -46,7 +48,6 @@ import {
 } from '../../settings/pricingSettings.js';
 
 
-const OWNER_EMAIL = 'marsicprod@gmail.com';
 const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';
 const DANGER_ZONE_DELETE_BATCH_SIZE = 450;
 
@@ -271,6 +272,7 @@ function FormActions({ editing, onCancel }) {
         <Save size={15} />
         {editing ? 'Update' : 'Simpan'}
       </button>
+      <ConfirmDialog config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </div>
   );
 }
@@ -279,7 +281,10 @@ function EmptyState({ children }) {
   return <p className="settings-empty-text">{children}</p>;
 }
 
-export default function SettingsPage({ currentUser }) {
+export default function SettingsPage({ authState }) {
+  const [confirmConfig, setConfirmConfig] = useState(null);
+  const currentUser = authState?.user || {};
+
   const subpages = useMemo(() => {
     const pages = [
       {
@@ -416,7 +421,7 @@ export default function SettingsPage({ currentUser }) {
   const sessionOptions = useMemo(() => getSessionOptions(settings), [settings]);
 
   useEffect(() => {
-    savePricingSettings(settings);
+    savePricingSettings(settings).catch((err) => console.error('Gagal auto-save pricing:', err));
   }, [settings]);
 
   const approvalUsers = useMemo(
@@ -477,18 +482,23 @@ export default function SettingsPage({ currentUser }) {
     }
   }
 
-  async function handleRejectUser(userId) {
-    if (window.confirm('Tolak atau nonaktifkan request admin ini? Akun tidak akan mendapat akses admin, tetapi pemilik akun masih dapat memilih beralih menjadi client.')) {
-      try {
-        const docRef = doc(firestoreDb, 'users', userId);
-        await updateDoc(docRef, {
-          status: 'rejected',
-          updatedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.error('Failed to reject admin user:', err);
+  function handleRejectUser(userId) {
+    setConfirmConfig({
+      title: 'Tolak Request Admin',
+      message: 'Tolak atau nonaktifkan request admin ini? Akun tidak akan mendapat akses admin, tetapi pemilik akun masih dapat memilih beralih menjadi client.',
+      confirmLabel: 'Tolak Akses',
+      onConfirm: async () => {
+        try {
+          const docRef = doc(firestoreDb, 'users', userId);
+          await updateDoc(docRef, {
+            status: 'rejected',
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Failed to reject admin user:', err);
+        }
       }
-    }
+    });
   }
 
   function openPermissionSettings(user) {
@@ -567,39 +577,41 @@ export default function SettingsPage({ currentUser }) {
     }
 
     const targetLabel = user.displayName || user.email || user.phoneNumber || 'user ini';
-    const confirmed = window.confirm(
-      'Transfer ownership ke ' + targetLabel + '?\\n\\nAkun owner saat ini akan berubah menjadi admin biasa.'
-    );
+    
+    setConfirmConfig({
+      title: 'Transfer Ownership?',
+      message: `Transfer ownership ke ${targetLabel}? Akun owner saat ini akan berubah menjadi admin biasa.`,
+      confirmLabel: 'Ya, Transfer',
+      onConfirm: async () => {
+        try {
+          const now = new Date().toISOString();
+          const batch = writeBatch(firestoreDb);
 
-    if (!confirmed) return;
+          batch.update(doc(firestoreDb, 'users', currentUser.uid), {
+            role: 'admin',
+            status: 'approved',
+            permissions: defaultAdminPermissions,
+            ownershipTransferredOutAt: now,
+            updatedAt: now,
+          });
 
-    try {
-      const now = new Date().toISOString();
-      const batch = writeBatch(firestoreDb);
+          batch.update(doc(firestoreDb, 'users', user.id), {
+            role: 'owner',
+            status: 'approved',
+            permissions: defaultAdminPermissions,
+            ownershipTransferredInAt: now,
+            updatedAt: now,
+          });
 
-      batch.update(doc(firestoreDb, 'users', currentUser.uid), {
-        role: 'admin',
-        status: 'approved',
-        permissions: defaultAdminPermissions,
-        ownershipTransferredOutAt: now,
-        updatedAt: now,
-      });
+          await batch.commit();
 
-      batch.update(doc(firestoreDb, 'users', user.id), {
-        role: 'owner',
-        status: 'approved',
-        permissions: defaultAdminPermissions,
-        ownershipTransferredInAt: now,
-        updatedAt: now,
-      });
-
-      await batch.commit();
-
-      setApprovalSettingsMessage('Ownership berhasil ditransfer ke ' + targetLabel + '.');
-    } catch (err) {
-      console.error('Gagal transfer ownership:', err);
-      setApprovalSettingsMessage('Ownership belum berhasil ditransfer ke Firestore.');
-    }
+          setApprovalSettingsMessage('Ownership berhasil ditransfer ke ' + targetLabel + '.');
+        } catch (err) {
+          console.error('Gagal transfer ownership:', err);
+          setApprovalSettingsMessage('Terjadi kesalahan saat mentransfer ownership.');
+        }
+      }
+    });
   }
 
   function updateSettings(updater) {
@@ -1141,58 +1153,60 @@ export default function SettingsPage({ currentUser }) {
       return;
     }
 
-    const firstConfirm = window.confirm(
-      'Aksi ini akan menghapus data operasional app dari Firestore. Data tidak bisa dikembalikan dari UI. Lanjutkan?'
-    );
+    setConfirmConfig({
+      title: 'Hapus Seluruh Data?',
+      message: 'Aksi ini akan menghapus data operasional app dari Firestore. Data tidak bisa dikembalikan dari UI. Lanjutkan?',
+      confirmLabel: 'Lanjut',
+      onConfirm: () => {
+        setConfirmConfig({
+          title: 'Konfirmasi Terakhir',
+          message: 'Hapus data booking, customer, inventory, pembukuan, gallery metadata, notifikasi, settings, dan akun non-owner?',
+          confirmLabel: 'Ya, Hapus Semua Data',
+          onConfirm: async () => {
+            setDangerIsDeleting(true);
+            setDangerMessage('Proses reset data dimulai...');
+            setDangerProgress(createDangerZoneInitialProgress());
 
-    if (!firstConfirm) return;
+            let totalDeleted = 0;
+            let errorCount = 0;
 
-    const secondConfirm = window.confirm(
-      'Konfirmasi terakhir: hapus data booking, customer, inventory, pembukuan, gallery metadata, notifikasi, settings, dan akun non-owner?'
-    );
+            for (const item of dangerZoneCollections) {
+              setDangerCollectionProgress(item.key, {
+                deleted: 0,
+                error: '',
+                status: 'deleting',
+              });
 
-    if (!secondConfirm) return;
+              try {
+                totalDeleted += await deleteDangerZoneCollection(item);
+              } catch (error) {
+                errorCount += 1;
+                console.error('[danger-zone] Gagal menghapus collection ' + item.collectionName + ':', error);
+                setDangerCollectionProgress(item.key, {
+                  error: error?.message || 'Gagal menghapus collection.',
+                  status: 'error',
+                });
+              }
+            }
 
-    setDangerIsDeleting(true);
-    setDangerMessage('Proses reset data dimulai...');
-    setDangerProgress(createDangerZoneInitialProgress());
+            setDangerIsDeleting(false);
 
-    let totalDeleted = 0;
-    let errorCount = 0;
+            if (errorCount) {
+              setDangerMessage(
+                'Reset selesai sebagian. ' + totalDeleted + ' dokumen terhapus, ' + errorCount + ' collection gagal. Cek detail di bawah.'
+              );
+              return;
+            }
 
-    for (const item of dangerZoneCollections) {
-      setDangerCollectionProgress(item.key, {
-        deleted: 0,
-        error: '',
-        status: 'deleting',
-      });
-
-      try {
-        totalDeleted += await deleteDangerZoneCollection(item);
-      } catch (error) {
-        errorCount += 1;
-        console.error('[danger-zone] Gagal menghapus collection ' + item.collectionName + ':', error);
-        setDangerCollectionProgress(item.key, {
-          error: error?.message || 'Gagal menghapus collection.',
-          status: 'error',
+            setDangerConfirmText('');
+            setDangerFinalCheck(false);
+            setDangerMessage(
+              'Reset selesai. ' + totalDeleted + ' dokumen terhapus. Akun owner aktif tetap dipertahankan.'
+            );
+          }
         });
       }
-    }
-
-    setDangerIsDeleting(false);
-
-    if (errorCount) {
-      setDangerMessage(
-        'Reset selesai sebagian. ' + totalDeleted + ' dokumen terhapus, ' + errorCount + ' collection gagal. Cek detail di bawah.'
-      );
-      return;
-    }
-
-    setDangerConfirmText('');
-    setDangerFinalCheck(false);
-    setDangerMessage(
-      'Reset selesai. ' + totalDeleted + ' dokumen terhapus. Akun owner aktif tetap dipertahankan.'
-    );
+    });
   }
 
   useEffect(() => {

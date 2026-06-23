@@ -45,7 +45,4 @@ if (firebaseApp) {
 }
 export const firestoreDb = db;
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-if (typeof window !== 'undefined') {
-  window.testFirestore = { db, doc, getDoc, setDoc };
-}
+

@@ -1,4 +1,5 @@
-export const OWNER_EMAIL = 'marsicprod@gmail.com';
+import { OWNER_EMAIL } from '../constants/appConstants.js';
+export { OWNER_EMAIL };
 export const STUDIO_GUARD_ROLE = 'studio_guard';
 export const guardPortalPermissionKeys = ['schedule', 'customers', 'billing', 'inventory'];
 
@@ -113,7 +114,7 @@ export function isStudioGuardUser(user) {
 }
 
 export function hasAdminPagePermission(user, pageKey) {
-  if (!user) return true;
+  if (!user) return false; // unauthenticated → no permission
   if (isOwnerAdminUser(user)) return true;
 
   const permissions = normalizeAdminPermissionsForRole(user.permissions, user.role);

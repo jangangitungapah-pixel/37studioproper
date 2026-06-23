@@ -63,7 +63,6 @@ export default function GalleryPage() {
   const [selectedAlbum, setSelectedAlbum] = useState(null); // null means showing albums menu, string shows details
   const [gridColumns, setGridColumns] = useState(4); // 2 to 6
   const [searchQuery, setSearchQuery] = useState('');
-  const selectedCategoryFilter = 'All';
 
   // Batch Select State
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -140,9 +139,9 @@ export default function GalleryPage() {
     filteredActiveImages,
     searchQuery,
     selectedAlbum,
-    selectedCategoryFilter,
+    selectedCategoryFilter: 'All',
     trashedImages,
-  }), [filteredActiveImages, trashedImages, activeTab, selectedAlbum, selectedCategoryFilter, searchQuery]);
+  }), [filteredActiveImages, trashedImages, activeTab, selectedAlbum, searchQuery]);
 
   // Group photos by Month-Year for the Photo timeline stream
   const timelineGroups = useMemo(

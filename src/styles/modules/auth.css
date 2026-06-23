@@ -1,0 +1,288 @@
+﻿/* =========================================
+ * auth.css — Auto-split from admin-auth.css
+ * Domain: AUTH
+ * ========================================= */
+
+/* === LOGIN INPUT NATIVE HIGHLIGHT OVERRIDE: START === */
+.auth-input-wrap,
+.auth-input-wrap *,
+.auth-input-wrap input,
+.auth-input-wrap input:hover,
+.auth-input-wrap input:focus,
+.auth-input-wrap input:focus-visible,
+.auth-input-wrap input:active {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.auth-input-wrap input,
+.auth-input-wrap input:hover,
+.auth-input-wrap input:focus,
+.auth-input-wrap input:focus-visible,
+.auth-input-wrap input:active {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  outline-color: transparent !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  background-clip: padding-box !important;
+  color: var(--auth-text-main) !important;
+  caret-color: var(--auth-accent) !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+.auth-input-wrap input::selection,
+.auth-input-wrap input::-moz-selection {
+  color: var(--auth-text-main) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  text-shadow: none !important;
+}
+
+.auth-input-wrap input::-webkit-contacts-auto-fill-button,
+.auth-input-wrap input::-webkit-credentials-auto-fill-button {
+  visibility: hidden !important;
+  display: none !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  right: 0 !important;
+}
+
+.auth-input-wrap input:-webkit-autofill,
+.auth-input-wrap input:-webkit-autofill:hover,
+.auth-input-wrap input:-webkit-autofill:focus,
+.auth-input-wrap input:-webkit-autofill:active {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: var(--auth-text-main) !important;
+  caret-color: var(--auth-accent) !important;
+  transition: background-color 999999s ease-in-out 0s !important;
+}
+
+.auth-input-wrap:focus-within {
+  border-color: var(--auth-border-strong);
+  box-shadow: 0 0 0 1px rgba(255, 138, 42, 0.34), 0 0 0 5px rgba(255, 138, 42, 0.1);
+}
+
+.auth-input-wrap input[data-com-onepassword-filled],
+.auth-input-wrap input[data-lastpass-icon-root],
+.auth-input-wrap input[data-dashlane-rid] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* === LOGIN INPUT NATIVE HIGHLIGHT OVERRIDE: END === */
+
+/* === LOGIN CARD MOBILE FIRST COMPACT: START === */
+.auth-brand-mark,
+.auth-eyebrow {
+  display: none !important;
+}
+
+.auth-card {
+  width: min(100%, 410px);
+  padding: clamp(20px, 5vw, 30px);
+}
+
+.auth-copy {
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.auth-copy h1 {
+  font-size: clamp(1.82rem, 7vw, 2.38rem);
+  line-height: 1;
+}
+
+.auth-copy p:not(.auth-eyebrow) {
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 767px) {
+  .auth-page {
+    min-height: 100dvh;
+    padding: 16px;
+    place-items: center;
+  }
+
+  .auth-card {
+    width: min(100%, 380px);
+    padding: 20px;
+    border-radius: 26px;
+  }
+
+  .auth-copy {
+    margin-bottom: 16px;
+  }
+
+  .auth-copy h1 {
+    font-size: clamp(1.72rem, 9vw, 2.08rem);
+    letter-spacing: -0.052em;
+  }
+
+  .auth-field {
+    gap: 7px;
+  }
+
+  .auth-form {
+    gap: 14px;
+  }
+
+  .auth-input-wrap {
+    min-height: 50px;
+    border-radius: 16px;
+  }
+
+  .auth-submit {
+    min-height: 52px;
+    border-radius: 16px;
+  }
+}
+/* === LOGIN CARD MOBILE FIRST COMPACT: END === */
+
+/* === LOGIN INPUT FONT SIZE TUNE: START === */
+.auth-input-wrap input,
+.auth-input-wrap input:hover,
+.auth-input-wrap input:focus,
+.auth-input-wrap input:focus-visible,
+.auth-input-wrap input:active,
+.auth-input-wrap input:-webkit-autofill,
+.auth-input-wrap input:-webkit-autofill:hover,
+.auth-input-wrap input:-webkit-autofill:focus,
+.auth-input-wrap input:-webkit-autofill:active {
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  font-size: 0.84rem !important;
+  line-height: 1.25 !important;
+  font-weight: 100 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.auth-input-wrap input::placeholder {
+  font-size: 0.82rem !important;
+  font-weight: 100 !important;
+  opacity: 0.72;
+}
+
+@media (max-width: 767px) {
+  .auth-input-wrap input,
+  .auth-input-wrap input:hover,
+  .auth-input-wrap input:focus,
+  .auth-input-wrap input:focus-visible,
+  .auth-input-wrap input:active,
+  .auth-input-wrap input:-webkit-autofill,
+  .auth-input-wrap input:-webkit-autofill:hover,
+  .auth-input-wrap input:-webkit-autofill:focus,
+  .auth-input-wrap input:-webkit-autofill:active {
+    font-size: 0.8rem !important;
+    line-height: 1.22 !important;
+    font-weight: 100 !important;
+  }
+
+  .auth-input-wrap input::placeholder {
+    font-size: 0.78rem !important;
+    font-weight: 100 !important;
+  }
+}
+/* === LOGIN INPUT FONT SIZE TUNE: END === */
+
+/* === SHARED STUDIO INPUT STANDARD: START === */
+.studio-field {
+  display: grid;
+  gap: 8px;
+}
+
+.studio-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--auth-text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.studio-field-helper {
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-soft);
+  padding: 3px 8px;
+  color: var(--auth-text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.studio-input-wrap {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-control);
+  padding: 0 14px;
+  color: var(--auth-text-muted);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.studio-input-wrap:focus-within {
+  border-color: var(--auth-border-strong);
+  box-shadow: 0 0 0 1px rgba(255, 138, 42, 0.34), 0 0 0 5px rgba(255, 138, 42, 0.1);
+}
+
+.studio-input-icon {
+  display: grid;
+  width: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  color: var(--auth-text-muted);
+}
+
+.studio-native-input,
+.studio-native-input:hover,
+.studio-native-input:focus,
+.studio-native-input:focus-visible,
+.studio-native-input:active {
+  width: 100%;
+  min-width: 0;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--auth-text-main) !important;
+  caret-color: var(--auth-accent) !important;
+  font-family: 'Montserrat', var(--ui-font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+  font-size: 0.8rem !important;
+  font-weight: 100 !important;
+  line-height: 1.22 !important;
+  letter-spacing: 0.01em !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.studio-native-input::placeholder {
+  color: color-mix(in srgb, var(--auth-text-muted) 72%, transparent);
+  font-size: 0.78rem !important;
+  font-weight: 100 !important;
+}
+
+.studio-native-input::selection,
+.studio-native-input::-moz-selection {
+  color: var(--auth-text-main) !important;
+  background: transparent !important;
+}
+/* === SHARED STUDIO INPUT STANDARD: END === */
+

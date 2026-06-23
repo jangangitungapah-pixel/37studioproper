@@ -1,5 +1,7 @@
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { OWNER_EMAIL } from '../constants/appConstants.js';
+
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -37,7 +39,7 @@ export async function sendNewUserNotificationEmail(userDoc) {
           template_id: templateId,
           user_id: publicKey,
           template_params: {
-            to_email: 'marsicprod@gmail.com',
+            to_email: OWNER_EMAIL,
             user_name: userDoc.displayName,
             user_email: userDoc.email || 'Tidak ada',
             user_phone: userDoc.phoneNumber || 'Tidak ada',
@@ -67,7 +69,7 @@ export async function sendNewUserNotificationEmail(userDoc) {
         createdBy: firebaseAuth?.currentUser?.uid || userDoc.uid,
         type: 'adminApprovalRequest',
         createdAt: new Date().toISOString(),
-        to: 'marsicprod@gmail.com',
+        to: OWNER_EMAIL,
         message: {
           subject: `[37 Music Studio] Pendaftaran Admin Baru: ${userDoc.displayName}`,
           html: `

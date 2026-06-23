@@ -1,8 +1,7 @@
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../constants/appConstants.js';
+
 export const MAX_GALLERY_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 export const MAX_PAYMENT_PROOF_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
-
-const CLOUDINARY_CLOUD_NAME = 'dbvlmxvyd';
-const CLOUDINARY_UPLOAD_PRESET = 'studio37_gallery_unsigned';
 
 const allowedImageMimeTypes = new Set([
   'image/avif',

@@ -628,7 +628,7 @@ export default function ClientPortalPage() {
   const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
   const packageOptions = useMemo(() => getPackageOptions(pricingSettings), [pricingSettings]);
 
-  const finalRecordingTypeOptions = useMemo(() => recordingTypeOptions, [recordingTypeOptions]);
+
 
   const handleSessionTypeChange = (val) => {
     setSimSessionType(val);
@@ -1677,7 +1677,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                     {isRecordingSessionId(simSessionType) && recordingTypeOptions.length > 0 && (
                       <StudioSelect
                         label="Pilihan Jenis Recording"
-                        options={finalRecordingTypeOptions}
+                        options={recordingTypeOptions}
                         selectedKey={simRecordingTypeId}
                         onChange={setSimRecordingTypeId}
                       />
