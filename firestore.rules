@@ -758,8 +758,18 @@ match /users/{userId} {
     }
 
     match /settings/{settingId} {
-      allow read, write: if isApproved() && hasPermission('settings');
+      allow read, write: if settingId != 'operatorFees' && isApproved() && hasPermission('settings');
     }
+
+    // >>> STUDIO37 OPERATOR FEE RULES START
+    match /settings/operatorFees {
+      allow read, create, update, delete: if isOwner();
+    }
+
+    match /operatorFeeEntries/{entryId} {
+      allow read, create, update, delete: if isOwner();
+    }
+    // <<< STUDIO37 OPERATOR FEE RULES END
 
     function validBookkeepingEntry(data, entryId) {
       return data.keys().hasOnly(['id', 'type', 'category', 'title', 'amount', 'date', 'paymentMethod', 'note', 'createdAt', 'updatedAt']) &&

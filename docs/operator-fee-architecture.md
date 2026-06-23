@@ -413,3 +413,40 @@ Tidak otomatis mengubah total booking.
 Tidak otomatis membuat expense tanpa review owner.
 Tidak membuka akses operator fee untuk admin biasa.
 ```
+
+## OPF-2 - Foundation Implemented
+
+Files added:
+
+```txt
+src/settings/operatorFeeSettings.js
+src/services/operatorFeeRepository.js
+```
+
+Firestore rules added:
+
+```txt
+settings/operatorFees -> owner only
+operatorFeeEntries -> owner only
+settings wildcard now excludes operatorFees
+```
+
+Available helper layer:
+
+```txt
+useOperatorFeeSettings()
+saveOperatorFeeSettings()
+buildOperatorFeeTargetOptions(pricingSettings)
+createEstimatedOperatorFeeLines({ booking, settings, assignedPeopleByRole })
+subscribeOperatorFeeEntries()
+upsertOperatorFeeEntry()
+createOperatorFeeBookkeepingPayload()
+```
+
+Important behavior:
+
+```txt
+This phase does not create UI yet.
+This phase does not auto-post expenses.
+This phase only prepares the settings, calculation, repository, and owner-only Firestore access.
+```
