@@ -1,4 +1,5 @@
 export const OWNER_EMAIL = 'marsicprod@gmail.com';
+export const STUDIO_GUARD_ROLE = 'studio_guard';
 
 export const adminPermissionPages = [
   {
@@ -69,9 +70,14 @@ export function isOwnerAdminUser(user) {
   return isOwnerEmail(user.email);
 }
 
+export function isStudioGuardUser(user) {
+  return Boolean(user && user.role === STUDIO_GUARD_ROLE && user.status === 'approved');
+}
+
 export function hasAdminPagePermission(user, pageKey) {
   if (!user) return true;
   if (isOwnerAdminUser(user)) return true;
+  if (isStudioGuardUser(user)) return false;
 
   const permissions = user.permissions;
 

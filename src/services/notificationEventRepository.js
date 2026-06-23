@@ -19,6 +19,7 @@ export const NOTIFICATION_EVENT_TYPES = Object.freeze({
   BOOKING_MESSAGE_CREATED: 'booking_message_created',
   BOOKING_REJECTED: 'booking_rejected',
   BOOKING_REQUEST_CREATED: 'booking_request_created',
+  GUARD_ATTENDANCE_SUBMITTED: 'guard_attendance_submitted',
   PAYMENT_PROOF_APPROVED: 'payment_proof_approved',
   PAYMENT_PROOF_REJECTED: 'payment_proof_rejected',
   PAYMENT_PROOF_SUBMITTED: 'payment_proof_submitted',
@@ -61,6 +62,7 @@ function createNotificationEventId(type = 'event') {
 
 function normalizeActorRole(role) {
   if (role === 'admin') return 'admin';
+  if (role === 'guard' || role === 'studio_guard') return 'guard';
   if (role === 'system') return 'system';
 
   return 'client';

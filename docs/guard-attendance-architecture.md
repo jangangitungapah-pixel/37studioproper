@@ -230,3 +230,97 @@ duplicate protection per guard per date
 3. Role studio_guard tidak dapat akses data sensitif admin.
 4. Booking fee dan attendance meal dipisah supaya owner tidak salah baca.
 ```
+
+## ATT-2 - Guard Attendance Foundation
+
+Fondasi absen penjaga dibuat.
+
+Files:
+
+```txt
+src/services/guardAttendanceRepository.js
+src/utils/adminPermissions.js
+src/services/notificationEventRepository.js
+firestore.rules
+```
+
+Role baru:
+
+```txt
+studio_guard
+```
+
+Behavior role:
+
+```txt
+1. studio_guard tidak punya akses admin page.
+2. studio_guard bisa membuat absen miliknya sendiri.
+3. owner bisa membaca, approve, reject, void semua absen.
+4. self-register sebagai studio_guard tidak dibuka. Owner harus assign role ini dari data user.
+```
+
+Status absen:
+
+```txt
+pending_approval
+active
+closed
+rejected
+void
+```
+
+Approval:
+
+```txt
+pending
+approved
+rejected
+```
+
+Flow:
+
+```txt
+Penjaga klik Mulai Jaga
+-> guardAttendanceSessions dibuat status pending_approval
+-> notificationEvents dibuat ke owner/admin
+-> owner approve
+-> absen jadi active atau closed
+-> fee penjaga di tanggal itu boleh dihitung
+```
+
+Catatan bisnis penting:
+
+```txt
+Absen dipakai sebagai bukti jaga harian, bukan cut-off jam booking.
+Jika booking jam 10-12 dan penjaga absen jam 13, fee booking tanggal itu tetap boleh dihitung setelah absen disetujui owner.
+```
+
+Helper siap pakai:
+
+```txt
+hasApprovedGuardAttendanceForDate()
+isGuardFeeLineEligibleByAttendance()
+createGuardMealBookkeepingPayload()
+```
+
+Uang makan:
+
+```txt
+Uang makan tetap dihitung dari attendance approved per guard per tanggal, bukan dari booking.
+Deterministic bookkeeping id:
+guardmeal__{guardPersonId}__{YYYY-MM-DD}
+```
+
+Notifikasi:
+
+```txt
+Event baru:
+guard_attendance_submitted
+```
+
+Target:
+
+```txt
+Owner/admin menerima notifikasi saat penjaga mengajukan absen.
+Modal approval owner dibuat di fase UI berikutnya.
+```

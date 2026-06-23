@@ -51,6 +51,12 @@ service cloud.firestore {
         getUserData().status == 'active';
     }
 
+    function isStudioGuardAccount() {
+      return userDocExists() &&
+        getUserData().role == 'studio_guard' &&
+        getUserData().status == 'approved';
+    }
+
     function hasPermission(page) {
       return isOwner() || (
         isApproved() &&
@@ -137,13 +143,14 @@ service cloud.firestore {
         validString(data.phoneNumber, 0, 32) &&
         validString(data.displayName, 1, 120) &&
         validString(data.provider, 1, 80) &&
-        data.role in ['owner', 'admin', 'client'] &&
+        data.role in ['owner', 'admin', 'client', 'studio_guard'] &&
         data.status in ['active', 'pending', 'approved', 'rejected'] &&
         validPermissions(data.permissions) &&
         (
           (data.role == 'owner' && data.status == 'approved') ||
           (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected']) ||
-          (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions))
+          (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions)) ||
+          (data.role == 'studio_guard' && data.status == 'approved' && hasNoAdminPermissions(data.permissions))
         ) &&
         (!data.keys().hasAny(['preferences']) || validPreferences(data.preferences)) &&
         validIsoTimestampString(data.createdAt) &&
@@ -202,7 +209,7 @@ service cloud.firestore {
         ]) &&
         data.uid == subscriptionUserId &&
         validString(data.uid, 1, 128) &&
-        data.role in ['admin', 'client'] &&
+        data.role in ['admin', 'client', 'studio_guard'] &&
         validString(data.email, 0, 254) &&
         data.platform == 'web' &&
         data.permission in ['default', 'granted', 'denied', 'unsupported', 'unknown'] &&
@@ -253,7 +260,8 @@ service cloud.firestore {
 
     function notificationSubscriptionRoleMatches(data) {
       return (data.role == 'client' && isClientAccount()) ||
-        (data.role == 'admin' && isApproved());
+        (data.role == 'admin' && isApproved()) ||
+        (data.role == 'studio_guard' && isStudioGuardAccount());
     }
 
     match /notificationSubscriptions/{subscriptionUserId} {
@@ -289,6 +297,107 @@ service cloud.firestore {
     }
     // <<< STUDIO37 NOTIFICATION SUBSCRIPTION RULES END
 
+
+    // >>> STUDIO37 GUARD ATTENDANCE RULES START
+    function validGuardAttendanceSession(data, attendanceId) {
+      return data.keys().hasOnly([
+          'id', 'approvalStatus', 'approvedAt', 'approvedByName', 'approvedByUid',
+          'closedAt', 'clockInAt', 'clockOutAt', 'createdAt', 'date',
+          'durationHours', 'guardEmail', 'guardName', 'guardPersonId',
+          'guardUid', 'mealAmount', 'mealEligible', 'note',
+          'ownerActionRequired', 'rejectedAt', 'rejectedByName',
+          'rejectedByUid', 'rejectionReason', 'source', 'status',
+          'updatedAt', 'voidedAt', 'voidedByUid', 'voidReason'
+        ]) &&
+        data.id == attendanceId &&
+        data.approvalStatus in ['pending', 'approved', 'rejected'] &&
+        validString(data.approvedAt, 0, 40) &&
+        validString(data.approvedByName, 0, 120) &&
+        validString(data.approvedByUid, 0, 128) &&
+        validString(data.closedAt, 0, 40) &&
+        validIsoTimestampString(data.clockInAt) &&
+        validString(data.clockOutAt, 0, 40) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoDate(data.date) &&
+        validNumber(data.durationHours, 0, 48) &&
+        validString(data.guardEmail, 0, 254) &&
+        validString(data.guardName, 1, 120) &&
+        validString(data.guardPersonId, 1, 160) &&
+        validString(data.guardUid, 1, 128) &&
+        validNumber(data.mealAmount, 0, 1000000) &&
+        data.mealEligible is bool &&
+        validString(data.note, 0, 1000) &&
+        data.ownerActionRequired is bool &&
+        validString(data.rejectedAt, 0, 40) &&
+        validString(data.rejectedByName, 0, 120) &&
+        validString(data.rejectedByUid, 0, 128) &&
+        validString(data.rejectionReason, 0, 1000) &&
+        data.source == 'guardAttendance' &&
+        data.status in ['pending_approval', 'active', 'closed', 'rejected', 'void'] &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.voidedAt, 0, 40) &&
+        validString(data.voidedByUid, 0, 128) &&
+        validString(data.voidReason, 0, 1000);
+    }
+
+    function guardCreatesOwnAttendance(data) {
+      return isStudioGuardAccount() &&
+        data.guardUid == request.auth.uid &&
+        data.status == 'pending_approval' &&
+        data.approvalStatus == 'pending' &&
+        data.mealEligible == false &&
+        data.ownerActionRequired == true &&
+        data.approvedAt == '' &&
+        data.approvedByUid == '' &&
+        data.rejectedAt == '' &&
+        data.rejectedByUid == '' &&
+        data.voidedAt == '' &&
+        data.voidedByUid == '';
+    }
+
+    function guardClosesOwnAttendance() {
+      return isStudioGuardAccount() &&
+        resource.data.guardUid == request.auth.uid &&
+        request.resource.data.guardUid == resource.data.guardUid &&
+        request.resource.data.guardPersonId == resource.data.guardPersonId &&
+        request.resource.data.date == resource.data.date &&
+        request.resource.data.approvalStatus == resource.data.approvalStatus &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'clockOutAt', 'closedAt', 'durationHours', 'note', 'status', 'updatedAt'
+        ]) &&
+        (
+          (
+            resource.data.approvalStatus == 'approved' &&
+            resource.data.status in ['active', 'pending_approval'] &&
+            request.resource.data.status == 'closed' &&
+            request.resource.data.mealEligible == true
+          ) ||
+          (
+            resource.data.approvalStatus == 'pending' &&
+            resource.data.status == 'pending_approval' &&
+            request.resource.data.status == 'pending_approval' &&
+            request.resource.data.mealEligible == false
+          )
+        );
+    }
+
+    match /guardAttendanceSessions/{attendanceId} {
+      allow read: if isOwner() || (
+        isStudioGuardAccount() &&
+        resource.data.guardUid == request.auth.uid
+      );
+
+      allow create: if validGuardAttendanceSession(request.resource.data, attendanceId) &&
+        guardCreatesOwnAttendance(request.resource.data);
+
+      allow update: if validGuardAttendanceSession(request.resource.data, attendanceId) && (
+        isOwner() ||
+        guardClosesOwnAttendance()
+      );
+
+      allow delete: if isOwner();
+    }
+    // <<< STUDIO37 GUARD ATTENDANCE RULES END
 
 match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
@@ -881,7 +990,7 @@ match /users/{userId} {
           'type', 'updatedAt', 'url'
         ]) &&
         data.id == eventId &&
-        data.actorRole in ['admin', 'client', 'system'] &&
+        data.actorRole in ['admin', 'client', 'guard', 'system'] &&
         validString(data.actorUid, 1, 128) &&
         validString(data.actorEmail, 0, 254) &&
         validNumber(data.attempts, 0, 20) &&
@@ -906,6 +1015,7 @@ match /users/{userId} {
           'booking_message_created',
           'booking_rejected',
           'booking_request_created',
+          'guard_attendance_submitted',
           'payment_proof_approved',
           'payment_proof_rejected',
           'payment_proof_submitted'
@@ -918,7 +1028,8 @@ match /users/{userId} {
       return data.actorUid == request.auth.uid &&
         (
           (data.actorRole == 'client' && isClientAccount()) ||
-          (data.actorRole == 'admin' && isApproved())
+          (data.actorRole == 'admin' && isApproved()) ||
+          (data.actorRole == 'guard' && isStudioGuardAccount())
         );
     }
 
