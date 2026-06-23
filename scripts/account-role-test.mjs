@@ -13,6 +13,7 @@ const adminPending = { role: ACCOUNT_ROLES.ADMIN, status: ACCOUNT_STATUSES.PENDI
 const adminApproved = { role: ACCOUNT_ROLES.ADMIN, status: ACCOUNT_STATUSES.APPROVED };
 const adminRejected = { role: ACCOUNT_ROLES.ADMIN, status: ACCOUNT_STATUSES.REJECTED };
 const owner = { role: ACCOUNT_ROLES.OWNER, status: ACCOUNT_STATUSES.APPROVED };
+const studioGuard = { role: ACCOUNT_ROLES.STUDIO_GUARD, status: ACCOUNT_STATUSES.APPROVED };
 
 const scenarios = [
   [client, 'client', PORTAL_ACCESS.ALLOWED],
@@ -25,6 +26,8 @@ const scenarios = [
   [adminRejected, 'client', PORTAL_ACCESS.ADMIN_INACTIVE_CLIENT_CHOICE],
   [owner, 'admin', PORTAL_ACCESS.ALLOWED],
   [owner, 'client', PORTAL_ACCESS.WRONG_PORTAL_ADMIN],
+  [studioGuard, 'admin', PORTAL_ACCESS.ALLOWED],
+  [studioGuard, 'client', PORTAL_ACCESS.WRONG_PORTAL_ADMIN],
   [null, 'client', PORTAL_ACCESS.MISSING_ACCOUNT],
 ];
 

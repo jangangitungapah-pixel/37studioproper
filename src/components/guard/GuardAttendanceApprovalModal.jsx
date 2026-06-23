@@ -7,7 +7,7 @@ import {
   rejectGuardAttendanceSession,
   subscribeGuardAttendanceSessions,
 } from '../../services/guardAttendanceRepository.js';
-import { isOwnerAdminUser } from '../../utils/adminPermissions.js';
+import { hasAdminPagePermission } from '../../utils/adminPermissions.js';
 
 function formatDateTime(value) {
   if (!value) return '-';
@@ -40,9 +40,10 @@ export default function GuardAttendanceApprovalModal({ currentUser, onOpenPanel 
   const [dismissedId, setDismissedId] = useState('');
   const [busyId, setBusyId] = useState('');
   const [message, setMessage] = useState('');
+  const canManageGuardAttendance = hasAdminPagePermission(currentUser, 'guard-attendance');
 
   useEffect(() => {
-    if (!isOwnerAdminUser(currentUser)) return () => {};
+    if (!canManageGuardAttendance) return () => {};
 
     return subscribeGuardAttendanceSessions(
       {
@@ -55,7 +56,7 @@ export default function GuardAttendanceApprovalModal({ currentUser, onOpenPanel 
         console.error('[guard-attendance-modal] Gagal membaca approval pending:', error);
       }
     );
-  }, [currentUser]);
+  }, [canManageGuardAttendance]);
 
   const activeSession = useMemo(() => {
     if (location.pathname === '/admin/guard-attendance') return null;
@@ -131,7 +132,7 @@ export default function GuardAttendanceApprovalModal({ currentUser, onOpenPanel 
         <div className="guard-attendance-approval-facts">
           <span>
             <small>Status</small>
-            <strong>Menunggu Owner</strong>
+            <strong>Menunggu Approval</strong>
           </span>
           <span>
             <small>Jumlah pending</small>

@@ -4,6 +4,7 @@ export const ACCOUNT_ROLES = Object.freeze({
   OWNER: 'owner',
   ADMIN: 'admin',
   CLIENT: 'client',
+  STUDIO_GUARD: 'studio_guard',
 });
 
 export const ACCOUNT_STATUSES = Object.freeze({
@@ -36,6 +37,10 @@ export function isAdminAccount(identity) {
   return identity?.role === ACCOUNT_ROLES.ADMIN || identity?.role === ACCOUNT_ROLES.OWNER;
 }
 
+export function isAdminPortalAccount(identity) {
+  return isAdminAccount(identity) || identity?.role === ACCOUNT_ROLES.STUDIO_GUARD;
+}
+
 export function isClientAccount(identity) {
   return identity?.role === ACCOUNT_ROLES.CLIENT && identity?.status === ACCOUNT_STATUSES.ACTIVE;
 }
@@ -45,7 +50,7 @@ export function getPortalAccess(identity, portal) {
 
   if (portal === 'admin') {
     if (isClientAccount(identity)) return PORTAL_ACCESS.WRONG_PORTAL_CLIENT;
-    if (!isAdminAccount(identity)) return PORTAL_ACCESS.INVALID_ACCOUNT;
+    if (!isAdminPortalAccount(identity)) return PORTAL_ACCESS.INVALID_ACCOUNT;
     if (identity.status === ACCOUNT_STATUSES.APPROVED) return PORTAL_ACCESS.ALLOWED;
     if (identity.role === ACCOUNT_ROLES.ADMIN && identity.status === ACCOUNT_STATUSES.PENDING) {
       return PORTAL_ACCESS.ADMIN_PENDING;

@@ -1,14 +1,29 @@
 /* global self, caches, fetch, Response, URL */
-const APP_CACHE = '37musicstudio-app-v1';
-const ASSET_CACHE = '37musicstudio-assets-v1';
+const APP_CACHE = '37musicstudio-app-v3';
+const ASSET_CACHE = '37musicstudio-assets-v3';
 
 const CORE_ASSETS = [
   '/offline.html',
   '/manifest.webmanifest',
+  '/manifest-admin.webmanifest',
+  '/manifest-client.webmanifest',
+  '/manifest-guard.webmanifest',
   '/icons/pwa-icon-192.png',
   '/icons/pwa-icon-512.png',
   '/icons/pwa-maskable-512.png',
   '/icons/apple-touch-icon.png',
+  '/icons/admin-icon-192.png',
+  '/icons/admin-icon-512.png',
+  '/icons/admin-maskable-512.png',
+  '/icons/admin-apple-touch-icon.png',
+  '/icons/client-icon-192.png',
+  '/icons/client-icon-512.png',
+  '/icons/client-maskable-512.png',
+  '/icons/client-apple-touch-icon.png',
+  '/icons/guard-icon-192.png',
+  '/icons/guard-icon-512.png',
+  '/icons/guard-maskable-512.png',
+  '/icons/guard-apple-touch-icon.png',
 ];
 
 function isHtmlResponse(response) {
@@ -113,6 +128,9 @@ self.addEventListener('fetch', (event) => {
 
   if (
     url.pathname === '/manifest.webmanifest' ||
+    url.pathname === '/manifest-admin.webmanifest' ||
+    url.pathname === '/manifest-client.webmanifest' ||
+    url.pathname === '/manifest-guard.webmanifest' ||
     url.pathname === '/offline.html' ||
     url.pathname.startsWith('/icons/')
   ) {

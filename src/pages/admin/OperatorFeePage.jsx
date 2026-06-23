@@ -11,6 +11,10 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { createBookkeepingEntry } from '../../services/bookkeepingRepository.js';
 import {
+  isGuardFeeLineEligibleByAttendance,
+  subscribeGuardAttendanceSessions,
+} from '../../services/guardAttendanceRepository.js';
+import {
   OPERATOR_FEE_ENTRIES_COLLECTION,
   OPERATOR_FEE_ENTRY_STATUSES,
   createOperatorFeeBookkeepingPayload,
@@ -25,7 +29,7 @@ import {
   formatOperatorFeeCurrency,
   useOperatorFeeSettings,
 } from '../../settings/operatorFeeSettings.js';
-import { isOwnerAdminUser } from '../../utils/adminPermissions.js';
+import { hasAdminPagePermission } from '../../utils/adminPermissions.js';
 
 const periodOptions = [
   { key: 'today', label: 'Hari Ini', description: 'Booking hari ini' },
@@ -172,14 +176,38 @@ function getEntriesByBooking(entries, booking) {
   );
 }
 
-function getBookingFeeStatus(entries, booking) {
-  const relatedEntries = getEntriesByBooking(entries, booking);
+function getActiveLineIds(lines = []) {
+  return new Set(lines.map((line) => line.id).filter(Boolean));
+}
 
-  if (!relatedEntries.length) return 'estimate';
-  if (relatedEntries.some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)) return 'posted';
-  if (relatedEntries.some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED)) return 'reviewed';
+function getEntriesForLineIds(entries, booking, lineIds) {
+  if (!lineIds?.size) return [];
 
-  return 'draft';
+  return getEntriesByBooking(entries, booking).filter((entry) => lineIds.has(entry.id));
+}
+
+function getEntriesForRow(entries, row) {
+  return getEntriesForLineIds(entries, row.booking, getActiveLineIds(row.lines));
+}
+
+function getBookingFeeStatus(entries, booking, lines) {
+  const lineIds = getActiveLineIds(lines);
+  const relatedEntries = getEntriesForLineIds(entries, booking, lineIds)
+    .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.VOID);
+
+  if (!lineIds.size || !relatedEntries.length) return 'estimate';
+
+  const statusByLineId = relatedEntries.reduce((result, entry) => {
+    result.set(entry.id, entry.status);
+    return result;
+  }, new Map());
+  const lineStatuses = [...lineIds].map((lineId) => statusByLineId.get(lineId) || 'estimate');
+
+  if (lineStatuses.every((status) => status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)) return 'posted';
+  if (lineStatuses.every((status) => [OPERATOR_FEE_ENTRY_STATUSES.REVIEWED, OPERATOR_FEE_ENTRY_STATUSES.POSTED].includes(status))) return 'reviewed';
+  if (lineStatuses.some((status) => [OPERATOR_FEE_ENTRY_STATUSES.DRAFT, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED, OPERATOR_FEE_ENTRY_STATUSES.POSTED].includes(status))) return 'draft';
+
+  return 'estimate';
 }
 
 function getStatusLabel(status) {
@@ -227,10 +255,12 @@ function getSearchBlob(row) {
     row.guardPerson?.name,
     row.operatorPerson?.name,
     row.lines.map((line) => line.ruleName).join(' '),
+    row.blockedLines.map((line) => line.ruleName).join(' '),
   ].join(' ').toLowerCase();
 }
 
 function getRowPrimaryAction(row) {
+  if (!row.lines.length && row.blockedLines.length) return 'Butuh Absen';
   if (!row.lines.length) return 'No Rule';
   if (row.status === 'posted') return 'Posted';
   if (row.status === 'reviewed') return 'Post';
@@ -243,15 +273,17 @@ export default function OperatorFeePage({ currentUser }) {
   const settings = useOperatorFeeSettings();
   const [bookings, setBookings] = useState([]);
   const [entries, setEntries] = useState([]);
+  const [guardSessions, setGuardSessions] = useState([]);
   const [period, setPeriod] = useState('month');
   const [statusFilter, setStatusFilter] = useState('attention');
   const [searchQuery, setSearchQuery] = useState('');
   const [assignments, setAssignments] = useState({});
   const [message, setMessage] = useState('');
   const [busyKey, setBusyKey] = useState('');
+  const canManageOperatorFee = hasAdminPagePermission(currentUser, 'operator-fee');
 
   useEffect(() => {
-    if (!isOwnerAdminUser(currentUser)) return undefined;
+    if (!canManageOperatorFee) return undefined;
 
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
       (nextBookings) => {
@@ -264,10 +296,10 @@ export default function OperatorFeePage({ currentUser }) {
     );
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [canManageOperatorFee]);
 
   useEffect(() => {
-    if (!isOwnerAdminUser(currentUser)) return undefined;
+    if (!canManageOperatorFee) return undefined;
 
     const unsubscribe = subscribeOperatorFeeEntries(
       (nextEntries) => {
@@ -280,7 +312,22 @@ export default function OperatorFeePage({ currentUser }) {
     );
 
     return unsubscribe;
-  }, [currentUser]);
+  }, [canManageOperatorFee]);
+
+  useEffect(() => {
+    if (!canManageOperatorFee) return undefined;
+
+    return subscribeGuardAttendanceSessions(
+      {},
+      (nextSessions) => {
+        setGuardSessions(Array.isArray(nextSessions) ? nextSessions : []);
+      },
+      (error) => {
+        console.error('[operator-fee] Gagal membaca absen penjaga:', error);
+        setMessage('Gagal membaca mapping absen penjaga untuk Operator Fee.');
+      }
+    );
+  }, [canManageOperatorFee]);
 
   const guardOptions = useMemo(() => getPeopleOptions(settings, OPERATOR_FEE_PERSON_ROLES.GUARD), [settings]);
   const operatorOptions = useMemo(() => getPeopleOptions(settings, OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR), [settings]);
@@ -305,7 +352,7 @@ export default function OperatorFeePage({ currentUser }) {
       const operatorId = assignment.operatorId || getDefaultPersonId(settings, OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR);
       const guardPerson = getPersonById(settings, guardId);
       const operatorPerson = getPersonById(settings, operatorId);
-      const lines = createEstimatedOperatorFeeLines({
+      const estimatedLines = createEstimatedOperatorFeeLines({
         assignedPeopleByRole: {
           [OPERATOR_FEE_PERSON_ROLES.GUARD]: guardPerson,
           [OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR]: operatorPerson,
@@ -313,10 +360,13 @@ export default function OperatorFeePage({ currentUser }) {
         booking,
         settings,
       });
+      const lines = estimatedLines.filter((line) => isGuardFeeLineEligibleByAttendance(line, guardSessions));
+      const blockedLines = estimatedLines.filter((line) => !isGuardFeeLineEligibleByAttendance(line, guardSessions));
       const totalFee = lines.reduce((total, line) => total + toNumber(line.amount), 0);
-      const status = getBookingFeeStatus(entries, booking);
+      const status = getBookingFeeStatus(entries, booking, lines);
 
       return {
+        blockedLines,
         booking,
         bookingId,
         guardId,
@@ -328,7 +378,7 @@ export default function OperatorFeePage({ currentUser }) {
         totalFee,
       };
     });
-  }, [activeBookings, assignments, entries, settings]);
+  }, [activeBookings, assignments, entries, guardSessions, settings]);
 
   const filteredRows = useMemo(() => {
     const cleanQuery = searchQuery.trim().toLowerCase();
@@ -401,15 +451,22 @@ export default function OperatorFeePage({ currentUser }) {
     setBusyKey(row.bookingId);
 
     try {
-      const existingEntries = getEntriesByBooking(entries, row.booking);
+      const existingEntries = getEntriesForRow(entries, row);
       const isPosted = existingEntries.some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+      const postedEntryIds = new Set(existingEntries
+        .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
+        .map((entry) => entry.id));
 
-      if (isPosted) {
+      if (isPosted && row.lines.every((line) => postedEntryIds.has(line.id))) {
         setMessage('Fee ' + getBookingCode(row.booking) + ' sudah posted.');
         return;
       }
 
-      await Promise.all(createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.DRAFT).map(upsertOperatorFeeEntry));
+      await Promise.all(
+        createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.DRAFT)
+          .filter((entry) => !postedEntryIds.has(entry.id))
+          .map(upsertOperatorFeeEntry)
+      );
       setMessage('Draft fee ' + getBookingCode(row.booking) + ' disimpan.');
     } catch (error) {
       console.error('[operator-fee] Gagal menyimpan draft fee:', error);
@@ -428,14 +485,20 @@ export default function OperatorFeePage({ currentUser }) {
     setBusyKey(row.bookingId);
 
     try {
-      const relatedEntries = getEntriesByBooking(entries, row.booking)
+      const currentEntries = getEntriesForRow(entries, row);
+      const postedEntryIds = new Set(currentEntries
+        .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
+        .map((entry) => entry.id));
+      const relatedEntries = currentEntries
         .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+      const existingEntryIds = new Set(relatedEntries.map((entry) => entry.id));
+      const missingEntries = createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED)
+        .filter((entry) => !existingEntryIds.has(entry.id) && !postedEntryIds.has(entry.id));
 
-      if (relatedEntries.length) {
-        await Promise.all(relatedEntries.map(markOperatorFeeEntryReviewed));
-      } else {
-        await Promise.all(createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED).map(upsertOperatorFeeEntry));
-      }
+      await Promise.all([
+        ...relatedEntries.map(markOperatorFeeEntryReviewed),
+        ...missingEntries.map(upsertOperatorFeeEntry),
+      ]);
 
       setMessage('Fee ' + getBookingCode(row.booking) + ' sudah reviewed.');
     } catch (error) {
@@ -458,14 +521,20 @@ export default function OperatorFeePage({ currentUser }) {
 
     try {
       for (const row of rowsToReview) {
-        const relatedEntries = getEntriesByBooking(entries, row.booking)
+        const currentEntries = getEntriesForRow(entries, row);
+        const postedEntryIds = new Set(currentEntries
+          .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
+          .map((entry) => entry.id));
+        const relatedEntries = currentEntries
           .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+        const existingEntryIds = new Set(relatedEntries.map((entry) => entry.id));
+        const missingEntries = createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED)
+          .filter((entry) => !existingEntryIds.has(entry.id) && !postedEntryIds.has(entry.id));
 
-        if (relatedEntries.length) {
-          await Promise.all(relatedEntries.map(markOperatorFeeEntryReviewed));
-        } else {
-          await Promise.all(createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED).map(upsertOperatorFeeEntry));
-        }
+        await Promise.all([
+          ...relatedEntries.map(markOperatorFeeEntryReviewed),
+          ...missingEntries.map(upsertOperatorFeeEntry),
+        ]);
       }
 
       setMessage(rowsToReview.length + ' booking berhasil direview. Cek sekilas, lalu Post Reviewed.');
@@ -478,10 +547,10 @@ export default function OperatorFeePage({ currentUser }) {
   }
 
   async function postToBookkeeping(row) {
-    const relatedEntries = getEntriesByBooking(entries, row.booking);
+    const relatedEntries = getEntriesForRow(entries, row);
     const postedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
 
-    if (postedEntries.length) {
+    if (postedEntries.length && postedEntries.length === row.lines.length) {
       setMessage('Fee ' + getBookingCode(row.booking) + ' sudah pernah diposting.');
       return;
     }
@@ -528,7 +597,7 @@ export default function OperatorFeePage({ currentUser }) {
       let postedCount = 0;
 
       for (const row of rowsToPost) {
-        const reviewedEntries = getEntriesByBooking(entries, row.booking)
+        const reviewedEntries = getEntriesForRow(entries, row)
           .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
 
         for (const entry of reviewedEntries) {
@@ -558,12 +627,12 @@ export default function OperatorFeePage({ currentUser }) {
     await markReviewed(row);
   }
 
-  if (!isOwnerAdminUser(currentUser)) {
+  if (!canManageOperatorFee) {
     return (
       <section className="operator-fee-page operator-fee-locked">
         <ShieldAlert size={34} />
-        <h2>Owner Only</h2>
-        <p>Halaman Operator Fee hanya bisa diakses oleh owner aktif.</p>
+        <h2>Akses Operator Fee Belum Aktif</h2>
+        <p>Owner perlu memberi permission Operator Fee untuk akun ini.</p>
       </section>
     );
   }
@@ -689,7 +758,7 @@ export default function OperatorFeePage({ currentUser }) {
                   <span>{getBookingDurationLabel(booking)}</span>
                   <span>Jaga: {row.guardPerson?.name || 'Default'}</span>
                   <span>Operator: {row.operatorPerson?.name || 'Default'}</span>
-                  <span>{row.lines.length} rule</span>
+                  <span>{row.blockedLines.length ? row.blockedLines.length + ' menunggu absen' : row.lines.length + ' rule'}</span>
                 </div>
 
                 <details className="operator-fee-queue-detail">
@@ -717,9 +786,15 @@ export default function OperatorFeePage({ currentUser }) {
                         <small>{line.ruleName}</small>
                         <strong>{formatOperatorFeeCurrency(line.amount)}</strong>
                       </span>
-                    )) : (
+                    )) : !row.blockedLines.length ? (
                       <p>Belum ada rule yang cocok. Tambahkan rule di Settings → Fee Settings.</p>
-                    )}
+                    ) : null}
+                    {row.blockedLines.map((line) => (
+                      <span key={'blocked-' + line.id}>
+                        <small>{line.ruleName} · menunggu absen approved</small>
+                        <strong>{formatOperatorFeeCurrency(line.amount)}</strong>
+                      </span>
+                    ))}
                   </div>
 
                   <div className="operator-fee-queue-detail-actions">

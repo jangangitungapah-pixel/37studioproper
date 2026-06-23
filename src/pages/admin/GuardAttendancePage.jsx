@@ -18,7 +18,7 @@ import {
   voidGuardAttendanceSession,
 } from '../../services/guardAttendanceRepository.js';
 import { formatOperatorFeeCurrency } from '../../settings/operatorFeeSettings.js';
-import { isOwnerAdminUser } from '../../utils/adminPermissions.js';
+import { hasAdminPagePermission } from '../../utils/adminPermissions.js';
 
 const approvalFilterOptions = [
   { key: 'pending', label: 'Pending' },
@@ -92,9 +92,10 @@ export default function GuardAttendancePage({ currentUser }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [busyId, setBusyId] = useState('');
   const [message, setMessage] = useState('');
+  const canManageGuardAttendance = hasAdminPagePermission(currentUser, 'guard-attendance');
 
   useEffect(() => {
-    if (!isOwnerAdminUser(currentUser)) return () => {};
+    if (!canManageGuardAttendance) return () => {};
 
     return subscribeGuardAttendanceSessions(
       {},
@@ -106,7 +107,7 @@ export default function GuardAttendancePage({ currentUser }) {
         setMessage('Gagal membaca data absen penjaga.');
       }
     );
-  }, [currentUser]);
+  }, [canManageGuardAttendance]);
 
   const filteredSessions = useMemo(() => {
     const cleanQuery = searchQuery.trim().toLowerCase();
@@ -195,12 +196,12 @@ export default function GuardAttendancePage({ currentUser }) {
     }
   }
 
-  if (!isOwnerAdminUser(currentUser)) {
+  if (!canManageGuardAttendance) {
     return (
       <section className="guard-attendance-owner guard-attendance-owner-locked">
         <ShieldAlert size={34} />
-        <h2>Owner Only</h2>
-        <p>Approval absen penjaga hanya bisa dibuka oleh owner aktif.</p>
+        <h2>Akses Absen Penjaga Belum Aktif</h2>
+        <p>Owner perlu memberi permission Absen Penjaga untuk akun ini.</p>
       </section>
     );
   }

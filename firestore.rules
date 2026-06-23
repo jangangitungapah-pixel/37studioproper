@@ -9,8 +9,9 @@ rules_version = '2';
 // senderRole, senderName, text, type, createdAt, readByAdmin, readByClient.
 // Messages are private to the owning client and approved booking admins.
 // users/{uid}: one authoritative account role. Valid states are owner/approved,
-// admin/pending|approved|rejected, and client/active. Client accounts always
-// have every admin permission disabled.
+// admin/pending|approved|rejected, client/active, and studio_guard/approved.
+// Client accounts always have every admin permission disabled. Studio guard
+// accounts may only receive schedule, customers, billing, and inventory access.
 // ===============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -41,6 +42,13 @@ service cloud.firestore {
     function isApproved() {
       return isOwner() ||
         (userDocExists() &&
+          getUserData().role in ['admin', 'studio_guard'] &&
+          getUserData().status == 'approved');
+    }
+
+    function isApprovedAdmin() {
+      return isOwner() ||
+        (userDocExists() &&
           getUserData().role == 'admin' &&
           getUserData().status == 'approved');
     }
@@ -62,6 +70,20 @@ service cloud.firestore {
         isApproved() &&
         getUserData().permissions is map &&
         getUserData().permissions[page] == true
+      );
+    }
+
+    function canManageOperatorFees() {
+      return isOwner() || (
+        isApprovedAdmin() &&
+        hasPermission('operator-fee')
+      );
+    }
+
+    function canManageGuardAttendance() {
+      return isOwner() || (
+        isApprovedAdmin() &&
+        hasPermission('guard-attendance')
       );
     }
 
@@ -107,9 +129,14 @@ service cloud.firestore {
 
     function validPermissions(data) {
       return data is map &&
-        data.keys().hasOnly(['dashboard', 'schedule', 'customers', 'billing', 'bookkeeping', 'inventory', 'gallery', 'settings']) &&
+        data.keys().hasOnly([
+          'dashboard', 'schedule', 'customers', 'billing', 'bookkeeping',
+          'operator-fee', 'guard-attendance', 'inventory', 'gallery', 'settings'
+        ]) &&
         data.dashboard is bool && data.schedule is bool &&
         data.customers is bool && data.billing is bool &&
+        (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] is bool) &&
+        (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] is bool) &&
         data.bookkeeping is bool && data.inventory is bool &&
         data.gallery is bool && data.settings is bool;
     }
@@ -118,15 +145,31 @@ service cloud.firestore {
       return validPermissions(data) &&
         data.dashboard == false && data.schedule == false &&
         data.customers == false && data.billing == false &&
-        data.bookkeeping == false && data.inventory == false &&
+        data.bookkeeping == false &&
+        (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] == false) &&
+        (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] == false) &&
+        data.inventory == false &&
         data.gallery == false && data.settings == false;
+    }
+
+    function hasOnlyGuardPortalPermissions(data) {
+      return validPermissions(data) &&
+        data.dashboard == false &&
+        data.bookkeeping == false &&
+        (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] == false) &&
+        (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] == false) &&
+        data.gallery == false &&
+        data.settings == false;
     }
 
     function validPreferences(data) {
       return data is map &&
         data.keys().hasOnly(['accountNote', 'defaultLandingKey', 'notificationLevel', 'preferredContact']) &&
         validString(data.accountNote, 0, 240) &&
-        data.defaultLandingKey in ['dashboard', 'schedule', 'billing', 'bookkeeping', 'inventory', 'settings'] &&
+        data.defaultLandingKey in [
+          'dashboard', 'schedule', 'billing', 'bookkeeping', 'operator-fee',
+          'guard-attendance', 'inventory', 'settings'
+        ] &&
         data.notificationLevel in ['important', 'standard', 'proactive'] &&
         data.preferredContact in ['email', 'phone', 'none'];
     }
@@ -150,7 +193,7 @@ service cloud.firestore {
           (data.role == 'owner' && data.status == 'approved') ||
           (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected']) ||
           (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions)) ||
-          (data.role == 'studio_guard' && data.status == 'approved' && hasNoAdminPermissions(data.permissions))
+          (data.role == 'studio_guard' && data.status == 'approved' && hasOnlyGuardPortalPermissions(data.permissions))
         ) &&
         (!data.keys().hasAny(['preferences']) || validPreferences(data.preferences)) &&
         validIsoTimestampString(data.createdAt) &&
@@ -260,14 +303,14 @@ service cloud.firestore {
 
     function notificationSubscriptionRoleMatches(data) {
       return (data.role == 'client' && isClientAccount()) ||
-        (data.role == 'admin' && isApproved()) ||
+        (data.role == 'admin' && isApprovedAdmin()) ||
         (data.role == 'studio_guard' && isStudioGuardAccount());
     }
 
     match /notificationSubscriptions/{subscriptionUserId} {
       allow read: if isSignedIn() && (
         request.auth.uid == subscriptionUserId ||
-        isApproved()
+        isApprovedAdmin()
       );
 
       allow create, update: if isSignedIn() &&
@@ -282,7 +325,7 @@ service cloud.firestore {
     match /notificationSubscriptionDevices/{deviceId} {
       allow read: if isSignedIn() && (
         resource.data.uid == request.auth.uid ||
-        isApproved()
+        isApprovedAdmin()
       );
 
       allow create, update: if isSignedIn() &&
@@ -382,7 +425,7 @@ service cloud.firestore {
     }
 
     match /guardAttendanceSessions/{attendanceId} {
-      allow read: if isOwner() || (
+      allow read: if canManageGuardAttendance() || (
         isStudioGuardAccount() &&
         resource.data.guardUid == request.auth.uid
       );
@@ -391,7 +434,7 @@ service cloud.firestore {
         guardCreatesOwnAttendance(request.resource.data);
 
       allow update: if validGuardAttendanceSession(request.resource.data, attendanceId) && (
-        isOwner() ||
+        canManageGuardAttendance() ||
         guardClosesOwnAttendance()
       );
 
@@ -743,7 +786,7 @@ match /users/{userId} {
     }
 
     match /clientCalendarSlots/{slotId} {
-      allow read: if isApproved() || isClientAccount();
+      allow read: if (isApproved() && canAccessBookingData()) || isClientAccount();
       allow create, update: if isApproved() && canAccessBookingData() && validCalendarSlot(request.resource.data);
       allow delete: if isApproved() && canAccessBookingData();
     }
@@ -872,11 +915,12 @@ match /users/{userId} {
 
     // >>> STUDIO37 OPERATOR FEE RULES START
     match /settings/operatorFees {
-      allow read, create, update, delete: if isOwner();
+      allow read: if isApproved();
+      allow create, update, delete: if isOwner();
     }
 
     match /operatorFeeEntries/{entryId} {
-      allow read, create, update, delete: if isOwner();
+      allow read, create, update, delete: if canManageOperatorFees();
     }
     // <<< STUDIO37 OPERATOR FEE RULES END
 
@@ -899,7 +943,9 @@ match /users/{userId} {
 
     match /bookkeepingEntries/{entryId} {
       allow read: if isApproved() && canAccessBookkeepingData();
-      allow create, update: if isApproved() && canAccessBookkeepingData() && validBookkeepingEntry(request.resource.data, entryId);
+      allow create, update: if isApproved() &&
+        (canAccessBookkeepingData() || hasPermission('operator-fee')) &&
+        validBookkeepingEntry(request.resource.data, entryId);
       allow delete: if isApproved() && canAccessBookkeepingData();
     }
 
@@ -1028,7 +1074,7 @@ match /users/{userId} {
       return data.actorUid == request.auth.uid &&
         (
           (data.actorRole == 'client' && isClientAccount()) ||
-          (data.actorRole == 'admin' && isApproved()) ||
+          (data.actorRole == 'admin' && isApprovedAdmin()) ||
           (data.actorRole == 'guard' && isStudioGuardAccount())
         );
     }
@@ -1058,7 +1104,7 @@ match /users/{userId} {
 
     match /notificationEvents/{eventId} {
       allow read: if isSignedIn() && (
-        isApproved() ||
+        isApprovedAdmin() ||
         resource.data.actorUid == request.auth.uid ||
         resource.data.targetUid == request.auth.uid
       );
@@ -1069,7 +1115,7 @@ match /users/{userId} {
         notificationEventCreateIsPending(request.resource.data) &&
         notificationEventTargetIsSafe(request.resource.data);
 
-      allow update: if isApproved() &&
+      allow update: if isApprovedAdmin() &&
         validNotificationEvent(request.resource.data, eventId) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'attempts', 'errorMessage', 'sentAt', 'status', 'updatedAt'

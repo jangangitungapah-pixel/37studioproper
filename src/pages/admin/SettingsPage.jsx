@@ -18,8 +18,10 @@ import {
   adminPermissionPages,
   countEnabledAdminPermissions,
   defaultAdminPermissions,
+  defaultGuardPortalPermissions,
+  getAssignablePermissionPages,
   isOwnerAdminUser,
-  normalizeAdminPermissions,
+  normalizeAdminPermissionsForRole,
 } from '../../utils/adminPermissions.js';
 import {
   defaultInvoiceSettings,
@@ -185,12 +187,41 @@ function getAccountRoleLabel(user) {
   return String(user?.email || '').trim().toLowerCase() === OWNER_EMAIL ? 'Owner' : 'Admin';
 }
 
+function getPortalUserRoleLabel(user) {
+  if (user?.role === 'owner') return 'Owner';
+  if (user?.role === 'studio_guard') return 'Guard';
+  if (user?.role === 'admin') return 'Admin';
+
+  return user?.role || 'Unknown';
+}
+
 function getAccountStatusLabel(user) {
   if (user?.isApproved || user?.status === 'approved') return 'Approved';
   if (user?.status === 'pending') return 'Pending Approval';
   if (user?.status === 'rejected') return 'Rejected';
 
   return user?.status || 'Unknown';
+}
+
+function getPortalUserStatusLabel(user) {
+  if (user?.status === 'approved') return 'Approved';
+  if (user?.status === 'pending') return 'Pending';
+  if (user?.status === 'rejected') return 'Rejected';
+  if (user?.status === 'active') return 'Active';
+
+  return user?.status || 'Unknown';
+}
+
+function getPermissionSummary(user) {
+  if (user?.role === 'owner') return 'Full access';
+
+  const pages = getAssignablePermissionPages(user);
+  const permissions = normalizeAdminPermissionsForRole(user?.permissions, user?.role);
+  const enabled = pages.filter((page) => permissions[page.key]);
+
+  if (!enabled.length) return 'Belum ada akses halaman';
+
+  return enabled.map((page) => page.label).join(', ');
 }
 
 function getMaskedUid(uid) {
@@ -277,6 +308,11 @@ export default function SettingsPage({ currentUser }) {
         key: 'fee-settings',
         label: 'Fee Settings',
         description: 'Atur crew, operator, uang makan, dan rule fee internal studio.',
+      });
+      pages.push({
+        key: 'user-settings',
+        label: 'User Settings',
+        description: 'Daftar user admin portal, role, dan akses halaman yang diizinkan owner.',
       });
       pages.push({
         key: 'approvals',
@@ -383,9 +419,19 @@ export default function SettingsPage({ currentUser }) {
     savePricingSettings(settings);
   }, [settings]);
 
-  // Sync users list for approvals
+  const approvalUsers = useMemo(
+    () => registeredUsers.filter((user) => user.id !== currentUser?.uid && user.role === 'admin'),
+    [registeredUsers, currentUser?.uid]
+  );
+
+  const portalUsers = useMemo(
+    () => registeredUsers.filter((user) => ['owner', 'admin', 'studio_guard'].includes(user.role)),
+    [registeredUsers]
+  );
+
+  // Sync users list for owner-only user management pages
   useEffect(() => {
-    if (activeSubpage !== 'approvals' || !isOwnerAdminUser(currentUser)) return;
+    if (!['approvals', 'user-settings'].includes(activeSubpage) || !isOwnerAdminUser(currentUser)) return;
 
     const usersLoadingFrameId = window.requestAnimationFrame(() => {
       setUsersLoading(true);
@@ -400,7 +446,7 @@ export default function SettingsPage({ currentUser }) {
         const list = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
-          if (doc.id !== currentUser?.uid && data.role !== 'client') {
+          if (data.role !== 'client') {
             list.push({ id: doc.id, ...data });
           }
         });
@@ -447,7 +493,7 @@ export default function SettingsPage({ currentUser }) {
 
   function openPermissionSettings(user) {
     setSelectedPermissionUser(user);
-    setPermissionDraft(normalizeAdminPermissions(user.permissions));
+    setPermissionDraft(normalizeAdminPermissionsForRole(user.permissions, user.role));
     setApprovalSettingsMessage('');
   }
 
@@ -458,7 +504,7 @@ export default function SettingsPage({ currentUser }) {
 
   function togglePermissionPage(pageKey) {
     setPermissionDraft((current) => {
-      const normalized = normalizeAdminPermissions(current);
+      const normalized = normalizeAdminPermissionsForRole(current, selectedPermissionUser?.role);
 
       return {
         ...normalized,
@@ -470,7 +516,7 @@ export default function SettingsPage({ currentUser }) {
   }
 
   function grantAllPermissions() {
-    setPermissionDraft(defaultAdminPermissions);
+    setPermissionDraft(selectedPermissionUser?.role === 'studio_guard' ? defaultGuardPortalPermissions : defaultAdminPermissions);
     if (approvalSettingsMessage) setApprovalSettingsMessage('');
   }
 
@@ -482,10 +528,10 @@ export default function SettingsPage({ currentUser }) {
       return;
     }
 
-    const normalized = normalizeAdminPermissions(permissionDraft);
-    const enabledCount = countEnabledAdminPermissions(normalized);
+    const normalized = normalizeAdminPermissionsForRole(permissionDraft, selectedPermissionUser.role);
+    const enabledCount = countEnabledAdminPermissions(normalized, selectedPermissionUser.role);
 
-    if (!enabledCount) {
+    if (!enabledCount && selectedPermissionUser.role !== 'studio_guard') {
       setApprovalSettingsMessage('Minimal aktifkan satu halaman untuk user ini.');
       return;
     }
@@ -1177,7 +1223,9 @@ export default function SettingsPage({ currentUser }) {
       className={
         activeSubpage === 'account'
           ? 'settings-page is-account-settings'
-          : activeSubpage === 'approvals'
+          : activeSubpage === 'user-settings'
+            ? 'settings-page is-user-settings'
+            : activeSubpage === 'approvals'
             ? 'settings-page is-approvals-settings'
             : activeSubpage === 'danger'
               ? 'settings-page is-danger-settings'
@@ -2088,6 +2136,134 @@ export default function SettingsPage({ currentUser }) {
         </section>
       )}
 
+      {activeSubpage === 'user-settings' && isOwnerAdminUser(currentUser) && (
+        <section className="settings-section settings-user-access-section">
+          <div className="settings-section-head">
+            <div>
+              <h3>User Settings</h3>
+              <p>Daftar akun yang bisa masuk admin portal. Owner dapat mengatur akses halaman admin dan guard dari sini.</p>
+            </div>
+          </div>
+
+          <div className="settings-list settings-user-access-list">
+            {usersLoading ? (
+              <p className="settings-empty-text">Memuat daftar user admin portal...</p>
+            ) : portalUsers.length ? (
+              portalUsers.map((user) => {
+                const assignablePages = getAssignablePermissionPages(user);
+                const enabledCount = countEnabledAdminPermissions(user.permissions, user.role);
+                const canEditPermissions = user.role !== 'owner';
+
+                return (
+                  <article className="settings-list-item settings-user-access-item" key={user.id}>
+                    <div>
+                      <strong>{user.displayName || user.email || user.phoneNumber || 'User'}</strong>
+                      <span>{user.email || user.phoneNumber || getMaskedUid(user.id)}</span>
+                      <small className="settings-user-permission-summary">{getPermissionSummary(user)}</small>
+                    </div>
+
+                    <div className="settings-user-access-meta" aria-label="Role dan permission user">
+                      <span>{getPortalUserRoleLabel(user)}</span>
+                      <em>{getPortalUserStatusLabel(user)}</em>
+                      <small>
+                        {user.role === 'owner'
+                          ? 'Full access'
+                          : enabledCount + '/' + assignablePages.length + ' halaman'}
+                      </small>
+                    </div>
+
+                    <div className="settings-row-actions settings-approval-actions">
+                      {canEditPermissions ? (
+                        <button
+                          type="button"
+                          aria-label="Atur akses halaman user"
+                          title="Atur akses halaman user"
+                          onClick={() => openPermissionSettings(user)}
+                          className="settings-mini-button settings-permission-open-button"
+                        >
+                          <SlidersHorizontal size={14} />
+                          Akses
+                        </button>
+                      ) : (
+                        <span className="settings-owner-status-pill" title="Owner full access" aria-label="Owner full access">
+                          <Crown size={13} />
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <p className="settings-empty-text">Belum ada user admin portal selain client.</p>
+            )}
+          </div>
+
+          {approvalSettingsMessage ? (
+            <p className="settings-invoice-message" role="status">{approvalSettingsMessage}</p>
+          ) : null}
+
+          {selectedPermissionUser ? (
+            <div
+              className="settings-permission-backdrop"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) closePermissionSettings();
+              }}
+            >
+              <form className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="permission-panel-title" onSubmit={savePermissionSettings}>
+                <header className="settings-permission-head">
+                  <div>
+                    <small>{getPortalUserRoleLabel(selectedPermissionUser)} Permission</small>
+                    <h3 id="permission-panel-title">{selectedPermissionUser.displayName || selectedPermissionUser.email || 'Admin User'}</h3>
+                    <span>{selectedPermissionUser.email || selectedPermissionUser.phoneNumber || selectedPermissionUser.id}</span>
+                  </div>
+
+                  <button type="button" aria-label="Tutup permission settings" onClick={closePermissionSettings}>
+                    <X size={16} />
+                  </button>
+                </header>
+
+                <div className="settings-permission-grid" aria-label="Daftar permission halaman admin">
+                  {getAssignablePermissionPages(selectedPermissionUser).map((page) => {
+                    const enabled = Boolean(permissionDraft[page.key]);
+
+                    return (
+                      <button
+                        className={enabled ? 'settings-permission-row is-enabled' : 'settings-permission-row'}
+                        key={page.key}
+                        type="button"
+                        onClick={() => togglePermissionPage(page.key)}
+                      >
+                        <span className="settings-permission-toggle" aria-hidden="true">
+                          {enabled ? '✓' : ''}
+                        </span>
+
+                        <span>
+                          <strong>{page.label}</strong>
+                          <small>{page.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <footer className="settings-permission-actions">
+                  <button className="settings-mini-button is-ghost" type="button" onClick={grantAllPermissions}>
+                    Full Access
+                  </button>
+                  <button className="settings-mini-button" type="button" onClick={closePermissionSettings}>
+                    Batal
+                  </button>
+                  <button className="settings-mini-button is-primary" type="submit">
+                    Simpan Permission
+                  </button>
+                </footer>
+              </form>
+            </div>
+          ) : null}
+        </section>
+      )}
+
       {activeSubpage === 'approvals' && (
         <section className="settings-section">
           <div className="settings-section-head">
@@ -2100,8 +2276,8 @@ export default function SettingsPage({ currentUser }) {
           <div className="settings-list">
             {usersLoading ? (
               <p className="settings-empty-text">Memuat daftar user...</p>
-            ) : registeredUsers.length ? (
-              registeredUsers.map((user) => (
+            ) : approvalUsers.length ? (
+              approvalUsers.map((user) => (
                 <article className="settings-list-item" key={user.id}>
                   <div>
                     <strong>{user.displayName || 'User'}</strong>
@@ -2145,7 +2321,7 @@ export default function SettingsPage({ currentUser }) {
                     <button
                       type="button"
                       aria-label="Atur permission halaman user"
-                      title={'Permission: ' + countEnabledAdminPermissions(user.permissions) + '/' + adminPermissionPages.length}
+                      title={'Permission: ' + countEnabledAdminPermissions(user.permissions, user.role) + '/' + adminPermissionPages.length}
                       onClick={() => openPermissionSettings(user)}
                       className="settings-mini-button settings-permission-open-button settings-approval-icon-button"
                     >

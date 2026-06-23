@@ -101,8 +101,6 @@ const navItems = [
     path: '/admin/operator-fee',
     icon: HandCoins,
     title: 'Operator Fee',
-    ownerOnly: true,
-    permissionKey: 'bookkeeping',
   },
   {
     key: 'guard-attendance',
@@ -110,8 +108,6 @@ const navItems = [
     path: '/admin/guard-attendance',
     icon: UserCheck,
     title: 'Absen Penjaga',
-    ownerOnly: true,
-    permissionKey: 'bookkeeping',
   },
   {
     key: 'inventory',
@@ -147,7 +143,7 @@ function canAccessNavItem(user, item) {
 }
 
 function getFirstPermittedNavItem(user) {
-  return navItems.find((item) => canAccessNavItem(user, item)) || navItems[0];
+  return navItems.find((item) => canAccessNavItem(user, item)) || null;
 }
 
 function getPermittedDefaultLandingPath(user) {
@@ -158,7 +154,7 @@ function getPermittedDefaultLandingPath(user) {
     return preferredItem.path;
   }
 
-  return getFirstPermittedNavItem(user).path;
+  return getFirstPermittedNavItem(user)?.path || '/admin';
 }
 
 function getInitialSidebarState() {
@@ -576,7 +572,9 @@ export default function AdminPage() {
   );
 
   const isRoutePermitted = !routeItem || canAccessNavItem(authState.user, routeItem);
-  const activeItem = isRoutePermitted ? (routeItem || getFirstPermittedNavItem(authState.user)) : getFirstPermittedNavItem(authState.user);
+  const activeItem = isRoutePermitted
+    ? (routeItem || getFirstPermittedNavItem(authState.user) || navItems[0])
+    : (getFirstPermittedNavItem(authState.user) || navItems[0]);
 
   const mobilePrimaryNavItems = useMemo(
     () => permittedNavItems.filter((item) => mobilePrimaryNavKeys.includes(item.key)),
@@ -591,6 +589,7 @@ export default function AdminPage() {
   const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
   const notificationBadgeCount = getNotificationBadgeCount(notificationSummary);
   const notificationBadgeLabel = getNotificationBadgeLabel(notificationSummary);
+  const canOpenNotifications = hasAdminPagePermission(authState.user, 'settings');
   const shouldShowMoreNotificationBadge = notificationBadgeCount > 0 && mobileMoreNavItems.some((item) => item.key === 'notifications');
 
   useEffect(() => {
@@ -599,10 +598,12 @@ export default function AdminPage() {
       return;
     }
 
+    if (!permittedNavItems.length) return;
+
     if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem || !isRoutePermitted) {
       navigate(getPermittedDefaultLandingPath(authState.user), { replace: true });
     }
-  }, [location.pathname, navigate, routeItem, isRoutePermitted, authState.isReady, authState.isAuthenticated, authState.user]);
+  }, [location.pathname, navigate, routeItem, isRoutePermitted, permittedNavItems.length, authState.isReady, authState.isAuthenticated, authState.user]);
 
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();
@@ -699,6 +700,25 @@ export default function AdminPage() {
             onClick={handleLogout}
             style={{ marginTop: '0', width: '100%', borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}
           >
+            <span>Keluar Akun</span>
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!permittedNavItems.length) {
+    return (
+      <main className="theme-container auth-page" data-auth-surface="no-admin-pages">
+        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="no-admin-pages-title">
+          <div className="auth-copy">
+            <AlertCircle size={34} style={{ color: 'var(--auth-accent)', margin: '0 auto 14px' }} />
+            <h1 id="no-admin-pages-title" style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Akses Halaman Belum Diatur</h1>
+            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '22px' }}>
+              Akun <strong>{authState.user?.email || authState.user?.phoneNumber || 'ini'}</strong> sudah aktif, tetapi owner belum memberi akses halaman admin portal.
+            </p>
+          </div>
+          <button className="auth-google-btn" type="button" onClick={handleLogout} style={{ marginTop: 0 }}>
             <span>Keluar Akun</span>
           </button>
         </section>
@@ -806,16 +826,18 @@ export default function AdminPage() {
           </div>
 
           <div className="admin-topbar-actions">
-            <button
-              className="admin-notification-shortcut"
-              title={notificationBadgeLabel}
-              type="button"
-              onClick={() => goTo('/admin/notifications')}
-            >
-              <BellRing size={18} />
-              <span>Notifikasi</span>
-              <AdminNotificationBadge summary={notificationSummary} variant="shortcut" />
-            </button>
+            {canOpenNotifications ? (
+              <button
+                className="admin-notification-shortcut"
+                title={notificationBadgeLabel}
+                type="button"
+                onClick={() => goTo('/admin/notifications')}
+              >
+                <BellRing size={18} />
+                <span>Notifikasi</span>
+                <AdminNotificationBadge summary={notificationSummary} variant="shortcut" />
+              </button>
+            ) : null}
 
             <button className="admin-shell-icon-button" type="button" onClick={handleLogout}>
               <LogOut size={18} />

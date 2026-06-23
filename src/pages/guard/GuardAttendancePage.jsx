@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import {
@@ -52,11 +53,28 @@ function formatDate(value) {
   }).format(date);
 }
 
+function formatCurrency(value) {
+  const amount = Number(value) || 0;
+
+  return new Intl.NumberFormat('id-ID', {
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+    style: 'currency',
+  }).format(amount);
+}
+
 function getApprovalLabel(status) {
   if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) return 'Disetujui';
   if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED) return 'Ditolak';
 
   return 'Menunggu owner';
+}
+
+function getApprovalTone(status) {
+  if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) return 'approved';
+  if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED) return 'rejected';
+
+  return 'pending';
 }
 
 function getStatusLabel(session) {
@@ -107,6 +125,7 @@ async function readGuardAccount(user) {
 }
 
 export default function GuardAttendancePage() {
+  const navigate = useNavigate();
   const settings = useOperatorFeeSettings();
   const isAuthAvailable = isFirebaseConfigured && Boolean(firebaseAuth);
 
@@ -182,6 +201,9 @@ export default function GuardAttendancePage() {
     () => sessions.find(isActiveLikeSession) || null,
     [sessions]
   );
+  const recentSessions = useMemo(() => sessions.slice(0, 8), [sessions]);
+  const mealAmount = settings.options?.mealPerPersonPerDay || 40000;
+  const todayLabel = formatDate(new Date().toISOString());
 
   const visibleGuardOptions = useMemo(() => {
     if (guardOptions.length) return guardOptions;
@@ -274,7 +296,7 @@ export default function GuardAttendancePage() {
     try {
       await createGuardAttendanceCheckIn({
         guardPerson: selectedGuardPerson,
-        mealAmount: settings.options?.mealPerPersonPerDay || 40000,
+        mealAmount,
         note,
         user: authUser,
       });
@@ -320,12 +342,26 @@ export default function GuardAttendancePage() {
             <small>Absensi harian untuk validasi fee dan uang makan.</small>
           </div>
 
-          {authUser ? (
-            <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>
-              <LogOut size={15} />
-              Keluar
-            </button>
-          ) : null}
+          <div className="guard-shift-hero-actions">
+            <span className="guard-shift-date-chip">
+              <Clock3 size={14} />
+              {todayLabel}
+            </span>
+
+            {canUseGuardPage ? (
+              <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={() => navigate('/admin')}>
+                <ShieldCheck size={15} />
+                Admin Portal
+              </button>
+            ) : null}
+
+            {authUser ? (
+              <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>
+                <LogOut size={15} />
+                Keluar
+              </button>
+            ) : null}
+          </div>
         </header>
 
         {!isReady ? (
@@ -385,15 +421,27 @@ export default function GuardAttendancePage() {
         ) : null}
 
         {canUseGuardPage ? (
-          <>
+          <section className="guard-shift-workspace" aria-label="Panel absen penjaga">
             <section className="guard-shift-status">
               <span className={currentSession ? 'is-on' : ''} aria-hidden="true">
                 <Clock3 size={18} />
               </span>
-              <div>
+              <div className="guard-shift-status-copy">
                 <small>Status hari ini</small>
                 <strong>{getStatusLabel(currentSession)}</strong>
-                <em>{currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Siap absen'}</em>
+                <em className={'is-' + getApprovalTone(currentSession?.approvalStatus)}>
+                  {currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Siap absen'}
+                </em>
+              </div>
+              <div className="guard-shift-status-facts" aria-label="Ringkasan shift">
+                <article>
+                  <small>Profil</small>
+                  <strong>{selectedGuardPerson.name}</strong>
+                </article>
+                <article>
+                  <small>Uang makan</small>
+                  <strong>{formatCurrency(mealAmount)}</strong>
+                </article>
               </div>
             </section>
 
@@ -466,7 +514,7 @@ export default function GuardAttendancePage() {
               )}
             </section>
 
-            <section className="guard-shift-card">
+            <section className="guard-shift-card is-history">
               <div className="guard-shift-title">
                 <span aria-hidden="true">
                   <UserRound size={18} />
@@ -478,13 +526,16 @@ export default function GuardAttendancePage() {
               </div>
 
               <div className="guard-shift-history">
-                {sessions.length ? sessions.slice(0, 8).map((session) => (
+                {recentSessions.length ? recentSessions.map((session) => (
                   <article key={session.id}>
                     <div>
                       <strong>{formatDate(session.date)}</strong>
-                      <span>{formatDateTime(session.clockInAt)}</span>
+                      <span>
+                        {formatDateTime(session.clockInAt)}
+                        {session.clockOutAt ? ' - ' + formatDateTime(session.clockOutAt) : ' - Belum selesai'}
+                      </span>
                     </div>
-                    <em className={'is-' + session.approvalStatus}>
+                    <em className={'is-' + getApprovalTone(session.approvalStatus)}>
                       {getApprovalLabel(session.approvalStatus)}
                     </em>
                   </article>
@@ -493,7 +544,7 @@ export default function GuardAttendancePage() {
                 )}
               </div>
             </section>
-          </>
+          </section>
         ) : null}
 
         {(notice || error) ? (

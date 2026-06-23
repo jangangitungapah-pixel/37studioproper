@@ -16,7 +16,10 @@ import {
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import { sendNewUserNotificationEmail } from './emailService.js';
-import { defaultAdminPermissions, normalizeAdminPermissions } from '../utils/adminPermissions.js';
+import {
+  defaultAdminPermissions,
+  normalizeAdminPermissionsForRole,
+} from '../utils/adminPermissions.js';
 import { ACCOUNT_SETTINGS_STORAGE_KEY } from '../utils/accountSettings.js';
 import {
   createAccountAccessError,
@@ -238,7 +241,9 @@ export function subscribeAdminAuth(callback) {
             role: err?.identity?.role || '',
             status: err?.identity?.status || '',
             access: err?.access || PORTAL_ACCESS.INVALID_ACCOUNT,
-            permissions: defaultAdminPermissions,
+            permissions: err?.identity
+              ? normalizeAdminPermissionsForRole(err.identity.permissions, err.identity.role)
+              : defaultAdminPermissions,
             isApproved: false,
             isOwner: false,
           }
@@ -253,8 +258,10 @@ export function subscribeAdminAuth(callback) {
           const userData = docSnap.exists() ? docSnap.data() : null;
           const hasExplicitRole = Boolean(userData?.role);
           const isOwner = userData?.role === 'owner' || (!hasExplicitRole && isOwnerEmail);
-          const isAdminRole = isOwner || userData?.role === ACCOUNT_ROLES.ADMIN;
-          const isApproved = isOwner || (isAdminRole && userData?.status === 'approved');
+          const isAdminPortalRole = isOwner ||
+            userData?.role === ACCOUNT_ROLES.ADMIN ||
+            userData?.role === ACCOUNT_ROLES.STUDIO_GUARD;
+          const isApproved = isOwner || (isAdminPortalRole && userData?.status === 'approved');
           const access = getPortalAccess(userData, 'admin');
 
           if (userData?.preferences && typeof window !== 'undefined') {
@@ -275,7 +282,7 @@ export function subscribeAdminAuth(callback) {
               status: userData?.status || (isApproved ? 'approved' : 'pending'),
               role: userData?.role || (isOwner ? 'owner' : 'admin'),
               isOwner,
-              permissions: normalizeAdminPermissions(userData?.permissions),
+              permissions: normalizeAdminPermissionsForRole(userData?.permissions, userData?.role),
               isApproved,
               access,
             }

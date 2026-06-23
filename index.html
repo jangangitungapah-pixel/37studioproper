@@ -13,9 +13,100 @@
       <meta name="apple-mobile-web-app-title" content="37 Music" />
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="msapplication-TileColor" content="#050506" />
-      <link rel="manifest" href="/manifest.webmanifest" />
       <link rel="icon" type="image/png" sizes="192x192" href="/icons/pwa-icon-192.png" />
       <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+      <script>
+        (() => {
+          const portalManifest = {
+            guard: {
+              appName: '37 Studio Guard',
+              manifest: '/manifest-guard.webmanifest',
+              icon: '/icons/guard-icon-192.png',
+              appleIcon: '/icons/guard-apple-touch-icon.png',
+            },
+            admin: {
+              appName: '37 Studio Admin',
+              manifest: '/manifest-admin.webmanifest',
+              icon: '/icons/admin-icon-192.png',
+              appleIcon: '/icons/admin-apple-touch-icon.png',
+            },
+            client: {
+              appName: '37 Studio Client',
+              manifest: '/manifest-client.webmanifest',
+              icon: '/icons/client-icon-192.png',
+              appleIcon: '/icons/client-apple-touch-icon.png',
+            },
+          };
+          const fallbackPortal = {
+            appName: '37 Music Studio',
+            manifest: '/manifest.webmanifest',
+            icon: '/icons/pwa-icon-192.png',
+            appleIcon: '/icons/apple-touch-icon.png',
+          };
+
+          const resolvePortal = () => {
+            const firstPath = window.location.pathname.split('/').filter(Boolean)[0];
+            return portalManifest[firstPath] || fallbackPortal;
+          };
+
+          const setMetaContent = (name, content) => {
+            document.querySelector(`meta[name="${name}"]`)?.setAttribute('content', content);
+          };
+
+          const syncLink = (selector, rel, href, attributes = {}) => {
+            const link = document.querySelector(selector) || document.createElement('link');
+            link.rel = rel;
+            link.href = href;
+
+            Object.entries(attributes).forEach(([name, value]) => {
+              link.setAttribute(name, value);
+            });
+
+            if (!link.isConnected) {
+              document.head.appendChild(link);
+            }
+          };
+
+          const syncPortalManifest = () => {
+            const portal = resolvePortal();
+            const manifestLink =
+              document.querySelector('link[rel="manifest"][data-portal-manifest="true"]') ||
+              document.querySelector('link[rel="manifest"]') ||
+              document.createElement('link');
+
+            manifestLink.rel = 'manifest';
+            manifestLink.dataset.portalManifest = 'true';
+
+            if (manifestLink.getAttribute('href') !== portal.manifest) {
+              manifestLink.href = portal.manifest;
+            }
+
+            if (!manifestLink.isConnected) {
+              document.head.appendChild(manifestLink);
+            }
+
+            setMetaContent('application-name', portal.appName);
+            setMetaContent('apple-mobile-web-app-title', portal.appName);
+            syncLink('link[rel="icon"]', 'icon', portal.icon, { type: 'image/png', sizes: '192x192' });
+            syncLink('link[rel="apple-touch-icon"]', 'apple-touch-icon', portal.appleIcon, { sizes: '180x180' });
+          };
+
+          const queueManifestSync = () => window.setTimeout(syncPortalManifest, 0);
+
+          ['pushState', 'replaceState'].forEach((methodName) => {
+            const originalMethod = window.history[methodName];
+
+            window.history[methodName] = function patchedHistoryMethod(...args) {
+              const result = originalMethod.apply(this, args);
+              queueManifestSync();
+              return result;
+            };
+          });
+
+          window.addEventListener('popstate', syncPortalManifest);
+          syncPortalManifest();
+        })();
+      </script>
   </head>
   <body>
     <div id="root"></div>

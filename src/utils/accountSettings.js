@@ -12,6 +12,8 @@ export const accountLandingOptions = [
   { key: 'schedule', label: 'Schedule', description: 'Langsung ke kalender booking' },
   { key: 'billing', label: 'Billing', description: 'Langsung ke invoice dan pembayaran' },
   { key: 'bookkeeping', label: 'Pembukuan', description: 'Langsung ke cashflow studio' },
+  { key: 'operator-fee', label: 'Operator Fee', description: 'Langsung ke review fee crew' },
+  { key: 'guard-attendance', label: 'Absen Penjaga', description: 'Langsung ke approval absen penjaga' },
   { key: 'inventory', label: 'Inventory', description: 'Langsung ke stock dan asset' },
   { key: 'settings', label: 'Settings', description: 'Langsung ke pengaturan admin' },
 ];
@@ -32,7 +34,9 @@ const landingPathMap = {
   billing: '/admin/billing',
   bookkeeping: '/admin/bookkeeping',
   dashboard: '/admin/dashboard',
+  'guard-attendance': '/admin/guard-attendance',
   inventory: '/admin/inventory',
+  'operator-fee': '/admin/operator-fee',
   schedule: '/admin/schedule',
   settings: '/admin/settings',
 };

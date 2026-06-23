@@ -1,9 +1,9 @@
 {
-  "name": "37 Music Studio",
-  "short_name": "37 Music",
-  "description": "Portal booking, client, dan admin 37 Music Studio.",
-  "id": "/launch",
-  "start_url": "/launch",
+  "name": "37 Studio Guard",
+  "short_name": "37 Guard",
+  "description": "Portal penjaga 37 Music Studio.",
+  "id": "/guard",
+  "start_url": "/guard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -17,19 +17,19 @@
   "lang": "id-ID",
   "icons": [
     {
-      "src": "/icons/pwa-icon-192.png",
+      "src": "/icons/guard-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/pwa-icon-512.png",
+      "src": "/icons/guard-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/pwa-maskable-512.png",
+      "src": "/icons/guard-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -37,13 +37,13 @@
   ],
   "shortcuts": [
     {
-      "name": "Client Portal",
-      "short_name": "Client",
-      "description": "Buka portal client 37 Music Studio.",
-      "url": "/client",
+      "name": "Absen Penjaga",
+      "short_name": "Absen",
+      "description": "Buka absensi penjaga.",
+      "url": "/guard/attendance",
       "icons": [
         {
-          "src": "/icons/client-icon-192.png",
+          "src": "/icons/guard-icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -51,7 +51,7 @@
     {
       "name": "Admin Portal",
       "short_name": "Admin",
-      "description": "Buka portal admin 37 Music Studio.",
+      "description": "Buka portal admin.",
       "url": "/admin",
       "icons": [
         {
@@ -61,13 +61,13 @@
       ]
     },
     {
-      "name": "Guard Portal",
-      "short_name": "Guard",
-      "description": "Buka portal penjaga 37 Music Studio.",
-      "url": "/guard",
+      "name": "Client Portal",
+      "short_name": "Client",
+      "description": "Buka portal client.",
+      "url": "/client",
       "icons": [
         {
-          "src": "/icons/guard-icon-192.png",
+          "src": "/icons/client-icon-192.png",
           "sizes": "192x192"
         }
       ]

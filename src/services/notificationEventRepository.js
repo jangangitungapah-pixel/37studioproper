@@ -12,7 +12,8 @@ import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase
 export const NOTIFICATION_EVENTS_COLLECTION = 'notificationEvents';
 
 const DEFAULT_NOTIFICATION_WORKER_URL = 'https://studio37-onesignal-notification-worker.studio37.workers.dev';
-const NOTIFICATION_WORKER_URL = import.meta.env.VITE_NOTIFICATION_WORKER_URL || DEFAULT_NOTIFICATION_WORKER_URL;
+const notificationEnv = import.meta.env || {};
+const NOTIFICATION_WORKER_URL = notificationEnv.VITE_NOTIFICATION_WORKER_URL || DEFAULT_NOTIFICATION_WORKER_URL;
 
 export const NOTIFICATION_EVENT_TYPES = Object.freeze({
   BOOKING_CONFIRMED: 'booking_confirmed',
