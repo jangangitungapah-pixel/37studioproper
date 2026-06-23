@@ -20880,3 +20880,410 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 BOOKING DETAIL MOBILE FULL WIDTH END */
+
+/* >>> STUDIO37 BILLING POS READABLE SLIM START */
+.billing-page {
+  font-weight: 410;
+}
+
+.billing-page strong,
+.billing-page b,
+.billing-page button,
+.billing-page a {
+  font-weight: 560;
+}
+
+.billing-page small,
+.billing-page em {
+  font-weight: 500;
+}
+
+.billing-row-main strong,
+.billing-reminder-row strong,
+.billing-proof-review-row strong {
+  font-weight: 540;
+}
+
+.billing-row-money strong,
+.billing-cash-grid strong,
+.billing-hero-card strong {
+  font-weight: 560;
+}
+
+@media (max-width: 767px) {
+  .admin-stage:has(.billing-page) {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .billing-page {
+    gap: 7px;
+  }
+
+  .billing-hero-grid {
+    gap: 6px;
+  }
+
+  .billing-hero-card {
+    min-height: 62px;
+    gap: 2px;
+    border-radius: 14px;
+    padding: 8px;
+  }
+
+  .billing-hero-card > span {
+    width: 22px;
+    height: 22px;
+    border-radius: 8px;
+  }
+
+  .billing-hero-card > span svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .billing-hero-card small {
+    min-height: 0;
+    font-size: 0.44rem;
+    font-weight: 560;
+    letter-spacing: 0.08em;
+    line-height: 1;
+  }
+
+  .billing-hero-card strong {
+    font-size: 0.72rem;
+    font-weight: 560;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .billing-hero-card em {
+    min-height: 0;
+    overflow: hidden;
+    font-size: 0.48rem;
+    font-weight: 390;
+    line-height: 1.12;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .billing-cash-summary {
+    gap: 7px;
+    border-radius: 17px;
+    padding: 9px;
+  }
+
+  .billing-cash-summary header {
+    grid-template-columns: minmax(0, 1fr) minmax(118px, 150px);
+    gap: 8px;
+    align-items: center;
+  }
+
+  .billing-cash-summary header small {
+    font-size: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+  }
+
+  .billing-cash-summary header strong {
+    font-size: 0.88rem;
+    font-weight: 560;
+    line-height: 1.05;
+  }
+
+  .billing-cash-summary header span {
+    font-size: 0.58rem;
+    line-height: 1.18;
+  }
+
+  .billing-cash-range .studio-select-trigger {
+    min-height: 35px;
+    border-radius: 12px;
+    padding: 6px 9px;
+  }
+
+  .billing-cash-range .studio-select-label {
+    font-size: 0.46rem;
+    font-weight: 560;
+  }
+
+  .billing-cash-range .studio-select-copy strong {
+    font-size: 0.62rem;
+    font-weight: 540;
+  }
+
+  .billing-cash-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .billing-cash-grid article {
+    min-height: 45px;
+    border-radius: 12px;
+    padding: 7px;
+  }
+
+  .billing-cash-grid small {
+    font-size: 0.44rem;
+    font-weight: 560;
+    letter-spacing: 0.08em;
+  }
+
+  .billing-cash-grid strong {
+    font-size: 0.62rem;
+    font-weight: 540;
+    line-height: 1.08;
+  }
+
+  .billing-proof-review-card,
+  .billing-reminder-card {
+    gap: 7px;
+    border-radius: 17px;
+    padding: 9px;
+  }
+
+  .billing-proof-review-card header,
+  .billing-reminder-card header {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+  }
+
+  .billing-proof-review-card header > span,
+  .billing-reminder-card header > span {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+
+  .billing-proof-review-card header small,
+  .billing-reminder-card header small {
+    font-size: 0.48rem;
+    font-weight: 560;
+    letter-spacing: 0.1em;
+  }
+
+  .billing-proof-review-card header strong,
+  .billing-reminder-card header strong {
+    font-size: 0.76rem;
+    font-weight: 540;
+    letter-spacing: -0.01em;
+  }
+
+  .billing-proof-empty {
+    min-height: 64px;
+    border-radius: 14px;
+    padding: 12px;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .billing-toolbar {
+    gap: 6px;
+    border-radius: 16px;
+    padding: 8px;
+  }
+
+  .billing-search-shell {
+    min-height: 36px;
+    grid-template-columns: 16px minmax(0, 1fr);
+    border-radius: 12px;
+    padding: 0 10px;
+  }
+
+  .billing-search-shell svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .billing-search-shell input {
+    font-size: 0.7rem;
+    font-weight: 390;
+  }
+
+  .billing-filter-select .studio-select-trigger {
+    min-height: 36px;
+    border-radius: 12px;
+    padding: 6px 10px;
+  }
+
+  .billing-filter-select .studio-select-label {
+    font-size: 0.47rem;
+    font-weight: 560;
+  }
+
+  .billing-filter-select .studio-select-copy strong {
+    font-size: 0.64rem;
+    font-weight: 540;
+  }
+
+  .billing-list {
+    gap: 7px;
+  }
+
+  .billing-row {
+    gap: 7px;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .billing-row-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .billing-row-main span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .billing-row-main small,
+  .billing-row-main em {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .billing-row-main small {
+    font-size: 0.5rem;
+    font-weight: 520;
+    letter-spacing: 0.04em;
+  }
+
+  .billing-row-main strong {
+    overflow: hidden;
+    font-size: 0.84rem;
+    font-weight: 540;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .billing-row-main em {
+    font-size: 0.58rem;
+    font-weight: 390;
+    line-height: 1.16;
+  }
+
+  .billing-status-pill {
+    align-self: start;
+    padding: 4px 8px;
+    font-size: 0.48rem;
+    font-weight: 620;
+  }
+
+  .billing-row-money {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border-top: 1px solid color-mix(in srgb, var(--auth-border) 72%, transparent);
+    padding-top: 6px;
+  }
+
+  .billing-row-money span {
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 4px 6px;
+  }
+
+  .billing-row-money span + span {
+    border-left: 1px solid color-mix(in srgb, var(--auth-border) 68%, transparent);
+  }
+
+  .billing-row-money small {
+    margin-bottom: 2px;
+    font-size: 0.45rem;
+    font-weight: 560;
+    letter-spacing: 0.08em;
+  }
+
+  .billing-row-money strong {
+    overflow: hidden;
+    font-size: 0.72rem;
+    font-weight: 520;
+    line-height: 1.08;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .billing-row-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .billing-row-actions a,
+  .billing-row-actions button {
+    min-height: 30px;
+    border-radius: 10px;
+    padding: 0 8px;
+    font-size: 0.56rem;
+    font-weight: 540;
+  }
+
+  .billing-row-actions .is-primary {
+    min-width: 0;
+  }
+
+  .billing-reminder-list {
+    gap: 6px;
+  }
+
+  .billing-reminder-row {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px;
+    border-radius: 14px;
+    padding: 8px;
+  }
+
+  .billing-reminder-row button:first-child {
+    min-width: 0;
+  }
+
+  .billing-reminder-row strong {
+    overflow: hidden;
+    font-size: 0.74rem;
+    font-weight: 540;
+    line-height: 1.12;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .billing-reminder-row small {
+    overflow: hidden;
+    font-size: 0.52rem;
+    font-weight: 390;
+    line-height: 1.14;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .billing-reminder-row em {
+    align-self: center;
+    font-size: 0.66rem;
+    font-weight: 560;
+  }
+
+  .billing-reminder-row span {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .billing-reminder-row a,
+  .billing-reminder-row span button {
+    min-height: 28px;
+    border-radius: 10px;
+    padding: 0 9px;
+    font-size: 0.55rem;
+    font-weight: 540;
+  }
+}
+/* <<< STUDIO37 BILLING POS READABLE SLIM END */
