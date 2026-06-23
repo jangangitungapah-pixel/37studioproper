@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   HandCoins,
   LoaderCircle,
-  Save,
   ShieldAlert,
   UserRound,
   WalletCards,
@@ -31,16 +29,17 @@ import {
 import { isOwnerAdminUser } from '../../utils/adminPermissions.js';
 
 const periodOptions = [
-  { key: 'today', label: 'Hari Ini', description: 'Jadwal hari ini' },
-  { key: 'month', label: 'Bulan Ini', description: 'Jadwal bulan berjalan' },
-  { key: 'all', label: 'Semua', description: 'Semua jadwal aktif' },
+  { key: 'today', label: 'Hari Ini', description: 'Booking hari ini' },
+  { key: 'month', label: 'Bulan Ini', description: 'Booking bulan berjalan' },
+  { key: 'all', label: 'Semua', description: 'Semua booking aktif' },
 ];
 
 const statusOptions = [
-  { key: 'all', label: 'Semua Status', description: 'Estimate, draft, reviewed, posted' },
-  { key: 'estimate', label: 'Estimate', description: 'Belum disimpan sebagai draft' },
-  { key: 'draft', label: 'Draft', description: 'Sudah tersimpan, belum review' },
-  { key: 'reviewed', label: 'Reviewed', description: 'Sudah dicek owner' },
+  { key: 'attention', label: 'Perlu Aksi', description: 'Estimate, draft, reviewed' },
+  { key: 'all', label: 'Semua Status', description: 'Semua fee' },
+  { key: 'estimate', label: 'Estimate', description: 'Belum direview' },
+  { key: 'draft', label: 'Draft', description: 'Draft belum review' },
+  { key: 'reviewed', label: 'Siap Post', description: 'Sudah reviewed' },
   { key: 'posted', label: 'Posted', description: 'Sudah masuk pembukuan' },
 ];
 
@@ -62,6 +61,10 @@ function getBookingId(booking) {
 
 function getBookingCode(booking) {
   return cleanText(booking?.bookingCode || booking?.invoiceNumber || booking?.id, 'BKG');
+}
+
+function getBookingCustomer(booking) {
+  return cleanText(booking?.customer || booking?.customerName || booking?.name, 'Customer');
 }
 
 function getBookingServiceLabel(booking) {
@@ -92,14 +95,13 @@ function formatBookingDate(value) {
   return new Intl.DateTimeFormat('id-ID', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric',
   }).format(date);
 }
 
 function getBookingDurationLabel(booking) {
   const duration = toNumber(booking?.durationHours || booking?.duration);
 
-  return duration > 0 ? duration + ' jam' : 'Tanpa durasi studio';
+  return duration > 0 ? duration + ' jam' : 'Tanpa blok';
 }
 
 function isBookingActive(booking) {
@@ -146,7 +148,7 @@ function getPeopleOptions(settings, role) {
     }));
 
   return [
-    { key: 'none', label: 'Belum dipilih', description: 'Fee masih bisa dihitung sebagai estimasi.' },
+    { key: 'none', label: 'Belum dipilih', description: 'Pakai label default.' },
     ...people,
   ];
 }
@@ -183,10 +185,10 @@ function getBookingFeeStatus(entries, booking) {
 
 function getStatusLabel(status) {
   if (status === 'posted') return 'Posted';
-  if (status === 'reviewed') return 'Reviewed';
+  if (status === 'reviewed') return 'Siap Post';
   if (status === 'draft') return 'Draft';
 
-  return 'Estimate';
+  return 'Perlu Review';
 }
 
 function getStatusTone(status) {
@@ -197,7 +199,7 @@ function getStatusTone(status) {
   return 'muted';
 }
 
-function buildEntryFromLine(line, booking, person) {
+function buildEntryFromLine(line, booking, person, status = OPERATOR_FEE_ENTRY_STATUSES.DRAFT) {
   return {
     ...line,
     id: line.id,
@@ -211,9 +213,31 @@ function buildEntryFromLine(line, booking, person) {
     paymentMethod: person?.defaultPaymentMethod || 'cash',
     personId: cleanText(person?.id || line.personId),
     personName: cleanText(person?.name || line.personName, 'Crew Studio'),
-    status: OPERATOR_FEE_ENTRY_STATUSES.DRAFT,
+    status,
     totalAmount: line.amount,
   };
+}
+
+function getSearchBlob(row) {
+  const booking = row.booking;
+
+  return [
+    getBookingCode(booking),
+    getBookingCustomer(booking),
+    getBookingServiceLabel(booking),
+    row.guardPerson?.name,
+    row.operatorPerson?.name,
+    row.lines.map((line) => line.ruleName).join(' '),
+  ].join(' ').toLowerCase();
+}
+
+function getRowPrimaryAction(row) {
+  if (!row.lines.length) return 'No Rule';
+  if (row.status === 'posted') return 'Posted';
+  if (row.status === 'reviewed') return 'Post';
+  if (row.status === 'draft') return 'Review';
+
+  return 'Review';
 }
 
 export default function OperatorFeePage({ currentUser }) {
@@ -221,10 +245,11 @@ export default function OperatorFeePage({ currentUser }) {
   const [bookings, setBookings] = useState([]);
   const [entries, setEntries] = useState([]);
   const [period, setPeriod] = useState('month');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('attention');
+  const [searchQuery, setSearchQuery] = useState('');
   const [assignments, setAssignments] = useState({});
   const [message, setMessage] = useState('');
-  const [busyBookingId, setBusyBookingId] = useState('');
+  const [busyKey, setBusyKey] = useState('');
 
   useEffect(() => {
     if (!isOwnerAdminUser(currentUser)) return undefined;
@@ -307,8 +332,24 @@ export default function OperatorFeePage({ currentUser }) {
   }, [activeBookings, assignments, entries, settings]);
 
   const filteredRows = useMemo(() => {
-    return rows.filter((row) => statusFilter === 'all' || row.status === statusFilter);
-  }, [rows, statusFilter]);
+    const cleanQuery = searchQuery.trim().toLowerCase();
+
+    return rows.filter((row) => {
+      const statusMatches = statusFilter === 'all'
+        ? true
+        : statusFilter === 'attention'
+          ? row.status !== 'posted'
+          : row.status === statusFilter;
+
+      const searchMatches = !cleanQuery || getSearchBlob(row).includes(cleanQuery);
+
+      return statusMatches && searchMatches;
+    });
+  }, [rows, searchQuery, statusFilter]);
+
+  const actionRows = useMemo(() => filteredRows.filter((row) => row.lines.length && row.status !== 'posted'), [filteredRows]);
+  const reviewableRows = useMemo(() => actionRows.filter((row) => row.status === 'estimate' || row.status === 'draft'), [actionRows]);
+  const postableRows = useMemo(() => filteredRows.filter((row) => row.status === 'reviewed'), [filteredRows]);
 
   const summary = useMemo(() => {
     return rows.reduce((result, row) => ({
@@ -318,10 +359,12 @@ export default function OperatorFeePage({ currentUser }) {
       reviewed: result.reviewed + (row.status === 'reviewed' ? row.totalFee : 0),
       total: result.total + row.totalFee,
       needsReview: result.needsReview + (row.status === 'estimate' || row.status === 'draft' ? 1 : 0),
+      readyPost: result.readyPost + (row.status === 'reviewed' ? 1 : 0),
     }), {
       draft: 0,
       estimate: 0,
       posted: 0,
+      readyPost: 0,
       reviewed: 0,
       total: 0,
       needsReview: 0,
@@ -340,60 +383,98 @@ export default function OperatorFeePage({ currentUser }) {
     if (message) setMessage('');
   }
 
+  function createEntryPayloads(row, status = OPERATOR_FEE_ENTRY_STATUSES.DRAFT) {
+    return row.lines.map((line) => {
+      const person = line.payeeRole === OPERATOR_FEE_PERSON_ROLES.GUARD
+        ? row.guardPerson
+        : row.operatorPerson;
+
+      return buildEntryFromLine(line, row.booking, person, status);
+    });
+  }
+
   async function saveDraft(row) {
     if (!row.lines.length) {
       setMessage('Belum ada rule fee yang cocok untuk booking ini.');
       return;
     }
 
-    setBusyBookingId(row.bookingId);
+    setBusyKey(row.bookingId);
 
     try {
       const existingEntries = getEntriesByBooking(entries, row.booking);
       const isPosted = existingEntries.some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
 
       if (isPosted) {
-        setMessage('Booking ini sudah posted ke pembukuan. Draft tidak diubah.');
+        setMessage('Fee ' + getBookingCode(row.booking) + ' sudah posted.');
         return;
       }
 
-      const entryPayloads = row.lines.map((line) => {
-        const person = line.payeeRole === OPERATOR_FEE_PERSON_ROLES.GUARD
-          ? row.guardPerson
-          : row.operatorPerson;
-
-        return buildEntryFromLine(line, row.booking, person);
-      });
-
-      await Promise.all(entryPayloads.map(upsertOperatorFeeEntry));
-      setMessage('Draft fee ' + getBookingCode(row.booking) + ' berhasil disimpan.');
+      await Promise.all(createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.DRAFT).map(upsertOperatorFeeEntry));
+      setMessage('Draft fee ' + getBookingCode(row.booking) + ' disimpan.');
     } catch (error) {
       console.error('[operator-fee] Gagal menyimpan draft fee:', error);
       setMessage('Draft fee gagal disimpan.');
     } finally {
-      setBusyBookingId('');
+      setBusyKey('');
     }
   }
 
   async function markReviewed(row) {
-    const relatedEntries = getEntriesByBooking(entries, row.booking)
-      .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
-
-    if (!relatedEntries.length) {
-      setMessage('Simpan draft fee terlebih dahulu sebelum review.');
+    if (!row.lines.length) {
+      setMessage('Belum ada rule fee yang cocok untuk booking ini.');
       return;
     }
 
-    setBusyBookingId(row.bookingId);
+    setBusyKey(row.bookingId);
 
     try {
-      await Promise.all(relatedEntries.map(markOperatorFeeEntryReviewed));
-      setMessage('Fee ' + getBookingCode(row.booking) + ' ditandai reviewed.');
+      const relatedEntries = getEntriesByBooking(entries, row.booking)
+        .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+      if (relatedEntries.length) {
+        await Promise.all(relatedEntries.map(markOperatorFeeEntryReviewed));
+      } else {
+        await Promise.all(createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED).map(upsertOperatorFeeEntry));
+      }
+
+      setMessage('Fee ' + getBookingCode(row.booking) + ' sudah reviewed.');
     } catch (error) {
       console.error('[operator-fee] Gagal mark reviewed:', error);
       setMessage('Gagal menandai fee sebagai reviewed.');
     } finally {
-      setBusyBookingId('');
+      setBusyKey('');
+    }
+  }
+
+  async function reviewMany(targetRows) {
+    const rowsToReview = targetRows.filter((row) => row.lines.length && row.status !== 'posted' && row.status !== 'reviewed');
+
+    if (!rowsToReview.length) {
+      setMessage('Tidak ada fee yang perlu direview di filter ini.');
+      return;
+    }
+
+    setBusyKey('bulk-review');
+
+    try {
+      for (const row of rowsToReview) {
+        const relatedEntries = getEntriesByBooking(entries, row.booking)
+          .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        if (relatedEntries.length) {
+          await Promise.all(relatedEntries.map(markOperatorFeeEntryReviewed));
+        } else {
+          await Promise.all(createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED).map(upsertOperatorFeeEntry));
+        }
+      }
+
+      setMessage(rowsToReview.length + ' booking berhasil direview. Cek sekilas, lalu Post Reviewed.');
+    } catch (error) {
+      console.error('[operator-fee] Gagal bulk review:', error);
+      setMessage('Bulk review gagal.');
+    } finally {
+      setBusyKey('');
     }
   }
 
@@ -402,18 +483,18 @@ export default function OperatorFeePage({ currentUser }) {
     const postedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
 
     if (postedEntries.length) {
-      setMessage('Fee ' + getBookingCode(row.booking) + ' sudah pernah diposting ke pembukuan.');
+      setMessage('Fee ' + getBookingCode(row.booking) + ' sudah pernah diposting.');
       return;
     }
 
     const reviewedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
 
     if (!reviewedEntries.length) {
-      setMessage('Mark Reviewed dulu sebelum posting fee ke pembukuan.');
+      setMessage('Review fee dulu sebelum posting ke pembukuan.');
       return;
     }
 
-    setBusyBookingId(row.bookingId);
+    setBusyKey(row.bookingId);
 
     try {
       const createdEntries = [];
@@ -425,13 +506,57 @@ export default function OperatorFeePage({ currentUser }) {
         createdEntries.push(bookkeepingEntry);
       }
 
-      setMessage(createdEntries.length + ' fee ' + getBookingCode(row.booking) + ' berhasil diposting ke pembukuan.');
+      setMessage(createdEntries.length + ' fee ' + getBookingCode(row.booking) + ' diposting ke pembukuan.');
     } catch (error) {
       console.error('[operator-fee] Gagal posting fee ke pembukuan:', error);
       setMessage('Posting fee ke pembukuan gagal. Cek koneksi dan Firestore rules.');
     } finally {
-      setBusyBookingId('');
+      setBusyKey('');
     }
+  }
+
+  async function postMany(targetRows) {
+    const rowsToPost = targetRows.filter((row) => row.status === 'reviewed');
+
+    if (!rowsToPost.length) {
+      setMessage('Tidak ada fee reviewed yang siap diposting.');
+      return;
+    }
+
+    setBusyKey('bulk-post');
+
+    try {
+      let postedCount = 0;
+
+      for (const row of rowsToPost) {
+        const reviewedEntries = getEntriesByBooking(entries, row.booking)
+          .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
+
+        for (const entry of reviewedEntries) {
+          const bookkeepingPayload = createOperatorFeeBookkeepingPayload(entry, row.booking);
+          const bookkeepingEntry = await createBookkeepingEntry(bookkeepingPayload);
+          await markOperatorFeeEntryPosted(entry, bookkeepingEntry, currentUser?.uid || '');
+          postedCount += 1;
+        }
+      }
+
+      setMessage(postedCount + ' fee berhasil diposting ke pembukuan.');
+    } catch (error) {
+      console.error('[operator-fee] Gagal bulk post:', error);
+      setMessage('Bulk post gagal. Cek koneksi dan Firestore rules.');
+    } finally {
+      setBusyKey('');
+    }
+  }
+
+  async function handlePrimaryAction(row) {
+    if (row.status === 'posted' || !row.lines.length) return;
+    if (row.status === 'reviewed') {
+      await postToBookkeeping(row);
+      return;
+    }
+
+    await markReviewed(row);
   }
 
   if (!isOwnerAdminUser(currentUser)) {
@@ -445,44 +570,67 @@ export default function OperatorFeePage({ currentUser }) {
   }
 
   return (
-    <section className="operator-fee-page" aria-labelledby="operator-fee-title">
-      <section className="operator-fee-hero">
+    <section className="operator-fee-queue" aria-labelledby="operator-fee-title">
+      <section className="operator-fee-queue-hero">
         <span aria-hidden="true">
-          <HandCoins size={24} />
+          <HandCoins size={22} />
         </span>
         <div>
           <p>Owner Workspace</p>
           <h2 id="operator-fee-title">Operator Fee</h2>
-          <small>
-            Estimasi fee internal berdasarkan jadwal, rule Fee Settings, dan assignment crew/operator.
-          </small>
+          <small>Review cepat fee crew dari jadwal booking. Bulk dulu, cek detail hanya saat perlu.</small>
         </div>
       </section>
 
-      <section className="operator-fee-summary" aria-label="Ringkasan operator fee">
+      <section className="operator-fee-queue-summary" aria-label="Ringkasan operator fee">
         <article>
-          <small>Estimasi Total</small>
-          <strong>{formatOperatorFeeCurrency(summary.total)}</strong>
-          <span>{rows.length} booking aktif</span>
-        </article>
-        <article>
-          <small>Belum Review</small>
+          <small>Perlu Review</small>
           <strong>{summary.needsReview}</strong>
-          <span>estimate / draft</span>
+          <span>{formatOperatorFeeCurrency(summary.estimate + summary.draft)}</span>
         </article>
         <article>
-          <small>Reviewed</small>
-          <strong>{formatOperatorFeeCurrency(summary.reviewed)}</strong>
-          <span>siap posting nanti</span>
+          <small>Siap Post</small>
+          <strong>{summary.readyPost}</strong>
+          <span>{formatOperatorFeeCurrency(summary.reviewed)}</span>
         </article>
         <article>
           <small>Posted</small>
           <strong>{formatOperatorFeeCurrency(summary.posted)}</strong>
-          <span>sudah masuk pembukuan</span>
+          <span>masuk pembukuan</span>
         </article>
       </section>
 
-      <section className="operator-fee-toolbar">
+      <section className="operator-fee-queue-actions" aria-label="Aksi cepat operator fee">
+        <button
+          disabled={busyKey !== '' || !reviewableRows.length}
+          type="button"
+          onClick={() => reviewMany(filteredRows)}
+        >
+          {busyKey === 'bulk-review' ? <LoaderCircle className="auth-spin" size={14} /> : <ClipboardCheck size={14} />}
+          Review Semua
+          <small>{reviewableRows.length} booking</small>
+        </button>
+
+        <button
+          disabled={busyKey !== '' || !postableRows.length}
+          type="button"
+          onClick={() => postMany(filteredRows)}
+        >
+          {busyKey === 'bulk-post' ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
+          Post Reviewed
+          <small>{postableRows.length} booking</small>
+        </button>
+      </section>
+
+      <section className="operator-fee-queue-toolbar">
+        <input
+          aria-label="Cari operator fee"
+          placeholder="Cari customer, booking, layanan..."
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
+
         <StudioSelect
           label="Periode"
           options={periodOptions}
@@ -499,115 +647,107 @@ export default function OperatorFeePage({ currentUser }) {
       </section>
 
       {message ? (
-        <p className="operator-fee-page-message" role="status">
+        <p className="operator-fee-queue-message" role="status">
           {message}
         </p>
       ) : null}
 
-      <section className="operator-fee-list" aria-label="Daftar jadwal operator fee">
+      <section className="operator-fee-queue-list" aria-label="Daftar operator fee">
         {filteredRows.length ? (
           filteredRows.map((row) => {
             const booking = row.booking;
-            const isBusy = busyBookingId === row.bookingId;
+            const isBusy = busyKey === row.bookingId;
             const statusTone = getStatusTone(row.status);
-            const canPostToBookkeeping = row.status === 'reviewed' && !isBusy;
+            const primaryActionLabel = getRowPrimaryAction(row);
+            const primaryDisabled = busyKey !== '' || row.status === 'posted' || !row.lines.length;
 
             return (
-              <article className="operator-fee-booking-card" key={row.bookingId}>
-                <header>
-                  <div>
-                    <small>{getBookingCode(booking)}</small>
-                    <strong>{booking.customer || 'Customer'}</strong>
-                    <span>{getBookingServiceLabel(booking)}</span>
+              <article className="operator-fee-queue-row" key={row.bookingId}>
+                <div className="operator-fee-queue-main">
+                  <span>
+                    <small>{getBookingCode(booking)} · {formatBookingDate(booking.date)}</small>
+                    <strong>{getBookingCustomer(booking)}</strong>
+                    <em>{getBookingServiceLabel(booking)}</em>
+                  </span>
+
+                  <b>{formatOperatorFeeCurrency(row.totalFee)}</b>
+
+                  <i className={'operator-fee-status is-' + statusTone}>
+                    {getStatusLabel(row.status)}
+                  </i>
+
+                  <button
+                    disabled={primaryDisabled}
+                    type="button"
+                    onClick={() => handlePrimaryAction(row)}
+                  >
+                    {isBusy ? <LoaderCircle className="auth-spin" size={13} /> : null}
+                    {primaryActionLabel}
+                  </button>
+                </div>
+
+                <div className="operator-fee-queue-mini">
+                  <span>{getBookingDurationLabel(booking)}</span>
+                  <span>Jaga: {row.guardPerson?.name || 'Default'}</span>
+                  <span>Operator: {row.operatorPerson?.name || 'Default'}</span>
+                  <span>{row.lines.length} rule</span>
+                </div>
+
+                <details className="operator-fee-queue-detail">
+                  <summary>Detail & override crew</summary>
+
+                  <div className="operator-fee-queue-detail-grid">
+                    <StudioSelect
+                      label="Penjaga"
+                      options={guardOptions}
+                      selectedKey={row.guardId}
+                      onChange={(value) => updateAssignment(row.bookingId, 'guardId', value)}
+                    />
+
+                    <StudioSelect
+                      label="Operator"
+                      options={operatorOptions}
+                      selectedKey={row.operatorId}
+                      onChange={(value) => updateAssignment(row.bookingId, 'operatorId', value)}
+                    />
                   </div>
 
-                  <em className={'operator-fee-status is-' + statusTone}>
-                    {getStatusLabel(row.status)}
-                  </em>
-                </header>
+                  <div className="operator-fee-queue-lines">
+                    {row.lines.length ? row.lines.map((line) => (
+                      <span key={line.id}>
+                        <small>{line.ruleName}</small>
+                        <strong>{formatOperatorFeeCurrency(line.amount)}</strong>
+                      </span>
+                    )) : (
+                      <p>Belum ada rule yang cocok. Tambahkan rule di Settings → Fee Settings.</p>
+                    )}
+                  </div>
 
-                <div className="operator-fee-booking-meta">
-                  <span>
-                    <CalendarDays size={14} />
-                    {formatBookingDate(booking.date)}
-                  </span>
-                  <span>
-                    <WalletCards size={14} />
-                    {getBookingDurationLabel(booking)}
-                  </span>
-                  <span>
-                    <HandCoins size={14} />
-                    {formatOperatorFeeCurrency(row.totalFee)}
-                  </span>
-                </div>
-
-                <div className="operator-fee-assignment-grid">
-                  <StudioSelect
-                    label="Penjaga Studio"
-                    options={guardOptions}
-                    selectedKey={row.guardId}
-                    onChange={(value) => updateAssignment(row.bookingId, 'guardId', value)}
-                  />
-
-                  <StudioSelect
-                    label="Operator Recording"
-                    options={operatorOptions}
-                    selectedKey={row.operatorId}
-                    onChange={(value) => updateAssignment(row.bookingId, 'operatorId', value)}
-                  />
-                </div>
-
-                <div className="operator-fee-line-list">
-                  {row.lines.length ? row.lines.map((line) => (
-                    <span key={line.id}>
-                      <small>{line.ruleName}</small>
-                      <strong>{formatOperatorFeeCurrency(line.amount)}</strong>
-                    </span>
-                  )) : (
-                    <p>Belum ada rule yang cocok. Tambahkan rule di Settings → Fee Settings.</p>
-                  )}
-                </div>
-
-                <footer>
-                  <button
-                    className="operator-fee-action"
-                    disabled={isBusy || row.status === 'posted'}
-                    type="button"
-                    onClick={() => saveDraft(row)}
-                  >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <Save size={14} />}
-                    Simpan Draft
-                  </button>
-
-                  <button
-                    className="operator-fee-action"
-                    disabled={isBusy || row.status === 'estimate' || row.status === 'posted'}
-                    type="button"
-                    onClick={() => markReviewed(row)}
-                  >
-                    <ClipboardCheck size={14} />
-                    Mark Reviewed
-                  </button>
-
-                  <button
-                    className={row.status === 'posted' ? 'operator-fee-action is-disabled' : 'operator-fee-action is-primary'}
-                    disabled={!canPostToBookkeeping}
-                    type="button"
-                    title={row.status === 'reviewed' ? 'Post fee reviewed ke pembukuan.' : 'Fee harus reviewed sebelum bisa diposting.'}
-                    onClick={() => postToBookkeeping(row)}
-                  >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
-                    {row.status === 'posted' ? 'Sudah Posted' : 'Post Pembukuan'}
-                  </button>
-                </footer>
+                  <div className="operator-fee-queue-detail-actions">
+                    <button
+                      disabled={busyKey !== '' || row.status === 'posted' || !row.lines.length}
+                      type="button"
+                      onClick={() => saveDraft(row)}
+                    >
+                      Simpan Draft
+                    </button>
+                    <button
+                      disabled={busyKey !== '' || row.status === 'posted' || !row.lines.length}
+                      type="button"
+                      onClick={() => markReviewed(row)}
+                    >
+                      Mark Reviewed
+                    </button>
+                  </div>
+                </details>
               </article>
             );
           })
         ) : (
           <section className="operator-fee-empty">
             <UserRound size={30} />
-            <h3>Tidak ada jadwal fee</h3>
-            <p>Belum ada booking aktif yang cocok dengan filter saat ini.</p>
+            <h3>Tidak ada fee di filter ini</h3>
+            <p>Ubah periode, status, atau pencarian.</p>
           </section>
         )}
       </section>

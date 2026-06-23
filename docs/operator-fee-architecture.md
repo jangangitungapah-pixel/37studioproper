@@ -657,3 +657,32 @@ Scope:
 CSS-only.
 Tidak mengubah logic, data model, rule calculation, Firestore, atau integrasi pembukuan.
 ```\n## OPF-3F - Compact Fee Settings + Simple Add Rules\n\nPerubahan:\n\n1. Nominal fee utama kembali terlihat sebagai input angka compact.\n2. Tambah Rules dibuat simpel:\n   - pilih target booking dari Pricing Settings\n   - pilih penerima fee\n   - pilih cara hitung\n   - isi nominal\n   - klik Tambah Rule\n3. Rule baru langsung memakai targetId dan targetType dari Pricing Settings, sehingga otomatis cocok dengan booking yang memakai session, recording type, atau package tersebut.\n4. Rules tambahan tampil sebagai list pendek dan bisa dihapus.\n5. Tidak mengubah integrasi Operator Fee ke Pembukuan.\n
+
+## OPF-4B - Operator Fee Approval Queue Overhaul
+
+Halaman Operator Fee diubah dari card detail per booking menjadi approval queue.
+
+Perubahan:
+
+```txt
+1. Owner tidak perlu cek satu per satu dari card besar.
+2. Ditambah search customer / booking / layanan.
+3. Ditambah filter action-first:
+   - Perlu Aksi
+   - Estimate
+   - Draft
+   - Siap Post
+   - Posted
+4. Ditambah bulk action:
+   - Review Semua
+   - Post Reviewed
+5. Row booking dibuat compact:
+   - booking code
+   - customer
+   - layanan
+   - total fee
+   - status
+   - satu tombol utama
+6. Detail fee dan override crew dipindah ke dropdown per row.
+7. Logic integrasi Pembukuan tetap sama.
+```

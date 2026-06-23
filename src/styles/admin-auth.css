@@ -23174,3 +23174,555 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OPERATOR FEE SIMPLE RULES PANEL END */
+
+/* >>> STUDIO37 OPERATOR FEE APPROVAL QUEUE START */
+.operator-fee-queue {
+  display: grid;
+  gap: 9px;
+  padding-bottom: 96px;
+}
+
+.operator-fee-queue-hero,
+.operator-fee-queue-summary article,
+.operator-fee-queue-actions,
+.operator-fee-queue-toolbar,
+.operator-fee-queue-row,
+.operator-fee-queue-message {
+  border: 1px solid var(--auth-border);
+  background: var(--auth-bg-card);
+}
+
+.operator-fee-queue-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 138, 42, 0.14), transparent 34%),
+    var(--auth-bg-card);
+  padding: 13px;
+}
+
+.operator-fee-queue-hero > span {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.operator-fee-queue-hero p,
+.operator-fee-queue-hero h2,
+.operator-fee-queue-hero small {
+  margin: 0;
+}
+
+.operator-fee-queue-hero p {
+  color: var(--auth-accent);
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.operator-fee-queue-hero h2 {
+  color: var(--auth-text-strong);
+  font-size: clamp(1.28rem, 4vw, 1.8rem);
+  font-weight: 430;
+  letter-spacing: -0.055em;
+}
+
+.operator-fee-queue-hero small {
+  display: block;
+  margin-top: 3px;
+  color: var(--auth-text-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.operator-fee-queue-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.operator-fee-queue-summary article {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border-radius: 14px;
+  padding: 9px;
+}
+
+.operator-fee-queue-summary small {
+  color: var(--auth-text-muted);
+  font-size: 0.52rem;
+  font-weight: 680;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.operator-fee-queue-summary strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.84rem;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-queue-summary span {
+  color: var(--auth-text-muted);
+  font-size: 0.58rem;
+}
+
+.operator-fee-queue-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.operator-fee-queue-actions button {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid rgba(255, 138, 42, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 138, 42, 0.08);
+  color: var(--auth-accent);
+  padding: 0 10px;
+  font-size: 0.68rem;
+  font-weight: 560;
+}
+
+.operator-fee-queue-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.operator-fee-queue-actions button small {
+  color: var(--auth-text-muted);
+  font-size: 0.55rem;
+  font-weight: 520;
+}
+
+.operator-fee-queue-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 180px) minmax(150px, 180px);
+  gap: 7px;
+  align-items: end;
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.operator-fee-queue-toolbar input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  padding: 0 12px;
+  font-size: 0.74rem;
+  outline: none;
+}
+
+.operator-fee-queue-toolbar input:focus {
+  border-color: rgba(255, 138, 42, 0.48);
+  box-shadow: 0 0 0 2px rgba(255, 138, 42, 0.1);
+}
+
+.operator-fee-queue-toolbar .studio-select-label,
+.operator-fee-queue-toolbar .studio-field-head {
+  font-size: 0.5rem;
+}
+
+.operator-fee-queue-toolbar .studio-select-trigger {
+  min-height: 40px;
+  border-radius: 12px;
+}
+
+.operator-fee-queue-message {
+  border-radius: 13px;
+  color: var(--auth-accent);
+  padding: 9px 11px;
+  font-size: 0.68rem;
+}
+
+.operator-fee-queue-list {
+  display: grid;
+  gap: 6px;
+}
+
+.operator-fee-queue-row {
+  display: grid;
+  gap: 6px;
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.operator-fee-queue-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.operator-fee-queue-main span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.operator-fee-queue-main small,
+.operator-fee-queue-main em {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-queue-main small {
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.operator-fee-queue-main strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.78rem;
+  font-weight: 560;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-queue-main em {
+  font-size: 0.6rem;
+  font-style: normal;
+}
+
+.operator-fee-queue-main b {
+  color: var(--auth-accent);
+  font-size: 0.72rem;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.operator-fee-queue-main i {
+  width: fit-content;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-main);
+  padding: 5px 7px;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.operator-fee-queue-main i.is-success {
+  border-color: rgba(92, 224, 161, 0.28);
+  background: rgba(92, 224, 161, 0.09);
+  color: #7ef0b3;
+}
+
+.operator-fee-queue-main i.is-info {
+  border-color: rgba(94, 234, 212, 0.24);
+  background: rgba(94, 234, 212, 0.08);
+  color: #5eead4;
+}
+
+.operator-fee-queue-main i.is-warning {
+  border-color: rgba(255, 214, 102, 0.24);
+  background: rgba(255, 214, 102, 0.08);
+  color: #ffd666;
+}
+
+.operator-fee-queue-main button {
+  min-height: 30px;
+  min-width: 76px;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 138, 42, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 138, 42, 0.08);
+  color: var(--auth-accent);
+  padding: 0 9px;
+  font-size: 0.6rem;
+  font-weight: 560;
+}
+
+.operator-fee-queue-main button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.operator-fee-queue-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.operator-fee-queue-mini span {
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  padding: 3px 7px;
+  font-size: 0.52rem;
+  line-height: 1.1;
+}
+
+.operator-fee-queue-detail {
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+  background: var(--auth-bg-soft);
+  overflow: hidden;
+}
+
+.operator-fee-queue-detail summary {
+  min-height: 32px;
+  cursor: pointer;
+  color: var(--auth-text-muted);
+  padding: 8px 9px;
+  font-size: 0.58rem;
+  font-weight: 560;
+  list-style: none;
+}
+
+.operator-fee-queue-detail summary::-webkit-details-marker {
+  display: none;
+}
+
+.operator-fee-queue-detail-grid,
+.operator-fee-queue-lines,
+.operator-fee-queue-detail-actions {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--auth-border);
+  padding: 7px;
+}
+
+.operator-fee-queue-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fee-queue-lines {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fee-queue-lines span,
+.operator-fee-queue-lines p {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--auth-border);
+  border-radius: 10px;
+  background: var(--auth-bg-control);
+  padding: 7px;
+}
+
+.operator-fee-queue-lines small {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.56rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-queue-lines strong {
+  color: var(--auth-text-strong);
+  font-size: 0.66rem;
+  font-weight: 560;
+}
+
+.operator-fee-queue-lines p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: 0.62rem;
+}
+
+.operator-fee-queue-detail-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fee-queue-detail-actions button {
+  min-height: 30px;
+  border: 1px solid var(--auth-border);
+  border-radius: 10px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  font-size: 0.58rem;
+  font-weight: 540;
+}
+
+.operator-fee-queue-detail-actions button:disabled {
+  opacity: 0.5;
+}
+
+@media (max-width: 1023px) {
+  .operator-fee-queue-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .operator-fee-queue-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .operator-fee-queue-main i,
+  .operator-fee-queue-main button {
+    justify-self: end;
+  }
+
+  .operator-fee-queue-detail-grid,
+  .operator-fee-queue-lines {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .operator-fee-queue {
+    gap: 7px;
+    padding-bottom: 88px;
+  }
+
+  .operator-fee-queue-hero {
+    display: none;
+  }
+
+  .operator-fee-queue-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .operator-fee-queue-summary article {
+    min-height: 52px;
+    border-radius: 12px;
+    padding: 7px;
+  }
+
+  .operator-fee-queue-summary small {
+    font-size: 0.44rem;
+  }
+
+  .operator-fee-queue-summary strong {
+    font-size: 0.66rem;
+  }
+
+  .operator-fee-queue-summary span {
+    font-size: 0.48rem;
+  }
+
+  .operator-fee-queue-actions {
+    gap: 5px;
+    border-radius: 13px;
+    padding: 6px;
+  }
+
+  .operator-fee-queue-actions button {
+    min-height: 34px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5px;
+    padding: 0 8px;
+    font-size: 0.58rem;
+  }
+
+  .operator-fee-queue-actions button small {
+    display: none;
+  }
+
+  .operator-fee-queue-toolbar {
+    gap: 5px;
+    border-radius: 13px;
+    padding: 6px;
+  }
+
+  .operator-fee-queue-toolbar input,
+  .operator-fee-queue-toolbar .studio-select-trigger {
+    min-height: 34px;
+    border-radius: 11px;
+    font-size: 0.64rem;
+  }
+
+  .operator-fee-queue-toolbar .studio-select-label {
+    display: none;
+  }
+
+  .operator-fee-queue-row {
+    gap: 5px;
+    border-radius: 13px;
+    padding: 7px;
+  }
+
+  .operator-fee-queue-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .operator-fee-queue-main b {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 0.64rem;
+  }
+
+  .operator-fee-queue-main i {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 4px 6px;
+    font-size: 0.48rem;
+  }
+
+  .operator-fee-queue-main button {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 28px;
+    border-radius: 9px;
+    font-size: 0.56rem;
+  }
+
+  .operator-fee-queue-main strong {
+    font-size: 0.7rem;
+  }
+
+  .operator-fee-queue-main small,
+  .operator-fee-queue-main em,
+  .operator-fee-queue-mini span {
+    font-size: 0.48rem;
+  }
+
+  .operator-fee-queue-mini {
+    gap: 4px;
+  }
+
+  .operator-fee-queue-mini span {
+    padding: 3px 6px;
+  }
+
+  .operator-fee-queue-detail summary {
+    min-height: 28px;
+    padding: 7px 8px;
+    font-size: 0.52rem;
+  }
+
+  .operator-fee-queue-detail-grid,
+  .operator-fee-queue-lines,
+  .operator-fee-queue-detail-actions {
+    gap: 5px;
+    padding: 6px;
+  }
+}
+/* <<< STUDIO37 OPERATOR FEE APPROVAL QUEUE END */
