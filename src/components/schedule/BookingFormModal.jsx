@@ -21,6 +21,7 @@ import {
   usePricingSettings,
   getRecordingTypeOptions,
   getSessionOptions,
+  isRecordingSessionId,
   resolveBookingPricing,
 } from '../../settings/pricingSettings.js';
 
@@ -212,13 +213,13 @@ export default function BookingFormModal({
 
   const recordingSessionKey = getRecordingSessionKey(sessionTypeOptions);
   const isPackageSelected = form.packageId !== 'none';
+  const isRecordingSessionSelected = !isPackageSelected && isRecordingSessionId(form.sessionType);
   const activeRecordingTypeKey =
     form.recordingTypeId !== 'none'
       ? form.recordingTypeId
       : recordingTypeOptions[0]?.key || 'none';
   const shouldShowRecordingType =
-    !isPackageSelected &&
-    form.sessionType === recordingSessionKey &&
+    isRecordingSessionSelected &&
     recordingTypeOptions.length > 0;
 
   useEffect(() => {
@@ -306,7 +307,7 @@ export default function BookingFormModal({
         }
 
         if (field === 'sessionType') {
-          next.recordingTypeId = nextValue === recordingSessionKey ? recordingTypeOptions[0]?.key || 'none' : 'none';
+          next.recordingTypeId = isRecordingSessionId(nextValue) ? recordingTypeOptions[0]?.key || 'none' : 'none';
         }
 
         if (field === 'paymentStatus' && nextValue !== 'dp') {
@@ -340,6 +341,16 @@ export default function BookingFormModal({
 
     if (!cleanName || !cleanPhone || !form.date || !form.startHour) {
       setError('Nama, No HP, tanggal, dan jam wajib diisi.');
+      return;
+    }
+
+    if (isRecordingSessionSelected && !recordingTypeOptions.length) {
+      setError('Recording Type belum tersedia. Tambahkan harga Recording Type di Settings terlebih dahulu.');
+      return;
+    }
+
+    if (isRecordingSessionSelected && activeRecordingTypeKey === 'none') {
+      setError('Pilih Tipe Recording terlebih dahulu.');
       return;
     }
 
@@ -507,6 +518,12 @@ export default function BookingFormModal({
               />
             ) : null}
 
+            {isRecordingSessionSelected ? (
+              <p className="booking-price-note">
+                Harga dan durasi Recording mengikuti Tipe Recording. Tidak ada tarif Recording per jam.
+              </p>
+            ) : null}
+
             <StudioTextField
               icon={CalendarDays}
               id="booking-date"
@@ -527,14 +544,14 @@ export default function BookingFormModal({
 
             <StudioSelect
               inlineList
-              disabled={isPackageSelected || Boolean(totals.recordingType)}
+              disabled={isPackageSelected || isRecordingSessionSelected}
               label="Durasi"
               options={durationOptions}
               selectedKey={form.duration}
               onChange={updateValue('duration')}
             />
 
-            {form.duration === 'custom' && !isPackageSelected && !totals.recordingType ? (
+            {form.duration === 'custom' && !isPackageSelected && !isRecordingSessionSelected ? (
               <StudioTextField
                 helper="Jam"
                 icon={Clock3}

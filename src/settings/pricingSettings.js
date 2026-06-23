@@ -16,8 +16,8 @@ export const DEFAULT_PRICING_SETTINGS = {
     {
       id: 'recording',
       name: 'Recording',
-      description: 'Tracking rekaman',
-      price: 150000,
+      description: 'Harga dan durasi mengikuti Recording Type',
+      price: 0,
       locked: true,
     },
     {
@@ -68,14 +68,22 @@ function cleanText(value, fallback = '') {
   return text || fallback;
 }
 
+export function isRecordingSessionId(sessionId) {
+  return String(sessionId || '').trim().toLowerCase() === 'recording';
+}
+
 function normalizeSession(item, index) {
   const fallback = DEFAULT_PRICING_SETTINGS.sessions[index] || DEFAULT_PRICING_SETTINGS.sessions[0];
+  const id = cleanText(item?.id, fallback?.id || makeSettingItemId('session'));
+  const isRecording = isRecordingSessionId(id);
 
   return {
-    id: cleanText(item?.id, fallback?.id || makeSettingItemId('session')),
+    id,
     name: cleanText(item?.name, fallback?.name || 'Session'),
-    description: cleanText(item?.description, fallback?.description || 'Session studio'),
-    price: toNumber(item?.price, fallback?.price || 0),
+    description: isRecording
+      ? cleanText(item?.description, 'Harga dan durasi mengikuti Recording Type')
+      : cleanText(item?.description, fallback?.description || 'Session studio'),
+    price: isRecording ? 0 : toNumber(item?.price, fallback?.price || 0),
     locked: Boolean(item?.locked),
   };
 }
@@ -230,13 +238,18 @@ export function usePricingSettings() {
 }
 
 export function getSessionOptions(settings = getPricingSettings()) {
-  return normalizePricingSettings(settings).sessions.map((item) => ({
-    key: item.id,
-    label: item.name,
-    description: item.description,
-    rate: item.price,
-    price: item.price,
-  }));
+  return normalizePricingSettings(settings).sessions.map((item) => {
+    const isRecording = isRecordingSessionId(item.id);
+
+    return {
+      key: item.id,
+      label: item.name,
+      description: isRecording ? 'Pilih Recording Type untuk harga dan durasi' : item.description,
+      priceMode: isRecording ? 'recording-type' : 'hourly',
+      rate: isRecording ? 0 : item.price,
+      price: isRecording ? 0 : item.price,
+    };
+  });
 }
 
 export function getRecordingTypeOptions(settings = getPricingSettings()) {

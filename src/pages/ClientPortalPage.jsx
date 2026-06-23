@@ -39,6 +39,7 @@ import {
   usePricingSettings,
   formatRupiah,
   resolveBookingPricing,
+  isRecordingSessionId,
   getSessionOptions,
   getRecordingTypeOptions,
   getPackageOptions
@@ -621,17 +622,12 @@ export default function ClientPortalPage() {
   const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
   const packageOptions = useMemo(() => getPackageOptions(pricingSettings), [pricingSettings]);
 
-  const finalRecordingTypeOptions = useMemo(() => {
-    return [
-      { key: 'none', label: 'Sewa Flat Per Jam', description: 'Tarif reguler per jam' },
-      ...recordingTypeOptions
-    ];
-  }, [recordingTypeOptions]);
+  const finalRecordingTypeOptions = useMemo(() => recordingTypeOptions, [recordingTypeOptions]);
 
   const handleSessionTypeChange = (val) => {
     setSimSessionType(val);
     setSimPackageId('none');
-    setSimRecordingTypeId('none');
+    setSimRecordingTypeId(isRecordingSessionId(val) ? recordingTypeOptions[0]?.key || 'none' : 'none');
   };
 
   const handlePackageChange = (val) => {
@@ -648,11 +644,16 @@ export default function ClientPortalPage() {
       const selectedPkg = pricingSettings.packages?.find(p => p.id === simPackageId);
       return selectedPkg ? Number(selectedPkg.durationHours) : 2;
     }
+    if (simPackageId === 'none' && isRecordingSessionId(simSessionType)) {
+      const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
+      return selectedRecording ? Number(selectedRecording.durationHours) || 0 : 0;
+    }
+
     if (simDuration === 'custom') {
       return Math.max(1, Number(simCustomDuration) || 1);
     }
     return Number(simDuration) || 2;
-  }, [simPackageId, simDuration, simCustomDuration, pricingSettings.packages]);
+  }, [simPackageId, simSessionType, simRecordingTypeId, simDuration, simCustomDuration, pricingSettings.packages, recordingTypeOptions]);
 
   // Resolve pricing via utility
   const pricingBreakdown = useMemo(() => {
@@ -663,7 +664,7 @@ export default function ClientPortalPage() {
       paymentStatus: 'pending',
       dpAmount: 0,
       pricingSettings,
-      recordingTypeId: simRecordingTypeId,
+      recordingTypeId: isRecordingSessionId(simSessionType) ? simRecordingTypeId : 'none',
       sessionId: simSessionType,
     });
   }, [simSessionType, simPackageId, simRecordingTypeId, simDuration, simCustomDuration, pricingSettings]);
@@ -830,7 +831,14 @@ export default function ClientPortalPage() {
     const selectedPackage = packageOptions.find((item) => item.key === simPackageId);
     const selectedSession = sessionOptions.find((item) => item.key === simSessionType);
     const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
+    const isRecordingRequest = simPackageId === 'none' && isRecordingSessionId(simSessionType);
     const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
+
+    if (isRecordingRequest && !selectedRecording) {
+      setActionFeedback('Pilih jenis recording terlebih dahulu. Harga Recording diambil dari Recording Type.');
+      window.setTimeout(() => setActionFeedback(''), 4200);
+      return;
+    }
 
     setIsSubmittingRequest(true);
     setActionFeedback('');
@@ -1622,6 +1630,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   onClick={() => {
                     setSimPackageId('none');
                     setSimSessionType('rehearsal');
+                    setSimRecordingTypeId('none');
                   }}
                 >
                   Sewa Reguler
@@ -1659,7 +1668,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                       onChange={handleSessionTypeChange}
                     />
 
-                    {simSessionType === 'recording' && recordingTypeOptions.length > 0 && (
+                    {isRecordingSessionId(simSessionType) && recordingTypeOptions.length > 0 && (
                       <StudioSelect
                         label="Pilihan Jenis Recording"
                         options={finalRecordingTypeOptions}
@@ -1667,11 +1676,17 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                         onChange={setSimRecordingTypeId}
                       />
                     )}
+
+                    {isRecordingSessionId(simSessionType) && !recordingTypeOptions.length ? (
+                      <p className="text-[11px] leading-relaxed text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+                        Belum ada Recording Type. Hubungi admin untuk menentukan paket recording.
+                      </p>
+                    ) : null}
                   </div>
                 )}
 
                 {/* Duration Picker (Only active for non-package selections) */}
-                {simPackageId === 'none' && simRecordingTypeId === 'none' && (
+                {simPackageId === 'none' && !isRecordingSessionId(simSessionType) && (
                   <div className="client-booking-duration-fields">
                     <StudioSelect
                       label="Durasi Sewa"

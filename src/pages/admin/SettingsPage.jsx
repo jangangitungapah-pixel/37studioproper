@@ -35,6 +35,7 @@ import {
 import {
   formatRupiah,
   getSessionOptions,
+  isRecordingSessionId,
   makeSettingItemId,
   normalizePricingSettings,
   usePricingSettings,
@@ -831,11 +832,16 @@ export default function SettingsPage({ currentUser }) {
     const cleanName = sessionForm.name.trim();
     if (!cleanName) return;
 
+    const itemId = sessionForm.id || makeSettingItemId('session');
+    const isRecordingSession = isRecordingSessionId(itemId);
+
     const item = {
-      id: sessionForm.id || makeSettingItemId('session'),
+      id: itemId,
       name: cleanName,
-      description: sessionForm.description.trim() || 'Session studio',
-      price: toNumber(sessionForm.price),
+      description: isRecordingSession
+        ? 'Harga dan durasi mengikuti Recording Type'
+        : sessionForm.description.trim() || 'Session studio',
+      price: isRecordingSession ? 0 : toNumber(sessionForm.price),
       locked: sessionForm.id ? settings.sessions.find((session) => session.id === sessionForm.id)?.locked : false,
     };
 
@@ -1710,7 +1716,7 @@ export default function SettingsPage({ currentUser }) {
         <div className="settings-section-head">
           <div>
             <h3>Session List</h3>
-            <p>Harga default untuk Rehearsal, Recording, Mixing, Mastering, dan session tambahan.</p>
+            <p>Harga session reguler per jam. Khusus Recording, harga dan durasi diambil dari Recording Type.</p>
           </div>
         </div>
 
@@ -1722,7 +1728,7 @@ export default function SettingsPage({ currentUser }) {
                   <strong>{item.name}</strong>
                   <span>{item.description}</span>
                 </div>
-                <em>{formatRupiah(item.price)}</em>
+                <em>{isRecordingSessionId(item.id) ? 'Harga dari Recording Type' : formatRupiah(item.price) + ' / jam'}</em>
                 <div className="settings-row-actions">
                   <button type="button" onClick={() => editSession(item)}>
                     <Edit3 size={15} />
@@ -1755,16 +1761,22 @@ export default function SettingsPage({ currentUser }) {
             value={sessionForm.description}
             onChange={updateForm(setSessionForm, 'description')}
           />
-          <StudioTextField
-            id="setting-session-price"
-            inputMode="numeric"
-            label="Harga Session"
-            min="0"
-            placeholder="Contoh 100000"
-            type="number"
-            value={sessionForm.price}
-            onChange={updateForm(setSessionForm, 'price')}
-          />
+          {isRecordingSessionId(sessionForm.id) ? (
+            <p className="settings-empty-text">
+              Recording tidak punya harga per jam. Atur harga dan durasi dari bagian Recording Type.
+            </p>
+          ) : (
+            <StudioTextField
+              id="setting-session-price"
+              inputMode="numeric"
+              label="Harga Session / Jam"
+              min="0"
+              placeholder="Contoh 100000"
+              type="number"
+              value={sessionForm.price}
+              onChange={updateForm(setSessionForm, 'price')}
+            />
+          )}
           <FormActions editing={Boolean(sessionForm.id)} onCancel={() => setSessionForm(emptySessionForm)} />
         </form>
       </section>
@@ -1839,7 +1851,7 @@ export default function SettingsPage({ currentUser }) {
         <div className="settings-section-head">
           <div>
             <h3>Recording Type</h3>
-            <p>Pilihan tambahan yang muncul saat booking memilih session Recording.</p>
+            <p>Sumber harga dan durasi untuk session Recording. Tidak ada harga Recording per jam.</p>
           </div>
         </div>
 
