@@ -417,6 +417,10 @@ export function calculateOperatorFeeRuleAmount(rule, booking) {
   return amount;
 }
 
+function isBookingScopedOperatorFeeRule(rule) {
+  return rule.calculationMode !== OPERATOR_FEE_CALCULATION_MODES.DAILY;
+}
+
 export function buildOperatorFeeTargetOptions(pricingSettings = {}) {
   const sessions = Array.isArray(pricingSettings.sessions) ? pricingSettings.sessions : [];
   const recordingTypes = Array.isArray(pricingSettings.recordingTypes) ? pricingSettings.recordingTypes : [];
@@ -456,6 +460,7 @@ export function createEstimatedOperatorFeeLines({
 
   return normalizedSettings.rules
     .filter((rule) => doesOperatorFeeRuleMatchBooking(rule, booking))
+    .filter(isBookingScopedOperatorFeeRule)
     .map((rule) => {
       const person = assignedPeopleByRole[rule.payeeRole] || null;
       const amount = calculateOperatorFeeRuleAmount(rule, booking);
