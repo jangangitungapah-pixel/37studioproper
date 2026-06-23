@@ -21,3 +21,17 @@ Behavior:
 4. Klik customer / kode booking membuka detail booking.
 5. Calendar grid tetap fokus ke booking yang memakai slot studio utama.
 ```
+
+
+## SCH-1B Compact List
+
+Tabel jadwal mendatang dibuat lebih ramping:
+
+```txt
+Customer + layanan
+Tanggal + waktu
+Status ringkas + total
+Badge Tanpa blok untuk paket tanpa durasi
+```
+
+Detail panjang tidak ditampilkan di list. Klik item untuk membuka modal detail booking.

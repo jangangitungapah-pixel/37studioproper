@@ -19881,161 +19881,163 @@ body:has(.settings-permission-backdrop) {
 /* >>> STUDIO37 SCHEDULE UPCOMING TABLE START */
 .schedule-upcoming-panel {
   display: grid;
-  gap: 14px;
-  margin: 16px 0 18px;
+  gap: 10px;
+  margin: 14px 0 16px;
   border: 1px solid var(--auth-border);
-  border-radius: 24px;
+  border-radius: 22px;
   background:
-    radial-gradient(circle at 8% 0%, rgba(255, 138, 42, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.052), transparent 58%),
+    radial-gradient(circle at 8% 0%, rgba(255, 138, 42, 0.1), transparent 32%),
     var(--auth-bg-card);
-  box-shadow: 0 20px 65px rgba(0, 0, 0, 0.18);
-  padding: clamp(14px, 2.2vw, 20px);
+  padding: clamp(12px, 2vw, 16px);
 }
 
 .schedule-upcoming-head {
   display: flex;
   justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
+  gap: 12px;
+  align-items: center;
 }
 
 .schedule-upcoming-head div {
   min-width: 0;
   display: grid;
-  gap: 5px;
+  gap: 2px;
 }
 
 .schedule-upcoming-head span {
   color: var(--auth-accent);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
-.schedule-upcoming-head h3,
-.schedule-upcoming-head p {
-  margin: 0;
-}
-
 .schedule-upcoming-head h3 {
+  margin: 0;
   color: var(--auth-text-strong);
-  font-size: clamp(1.12rem, 3vw, 1.55rem);
+  font-size: clamp(1rem, 3vw, 1.28rem);
   letter-spacing: -0.04em;
 }
 
-.schedule-upcoming-head p {
-  color: var(--auth-text-muted);
-  font-size: 0.83rem;
-  line-height: 1.45;
-}
-
 .schedule-upcoming-head > strong {
-  min-width: 44px;
-  height: 44px;
+  min-width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border: 1px solid var(--auth-border-strong);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--auth-accent-soft);
   color: var(--auth-text-strong);
-  font-size: 1.05rem;
+  font-size: 0.98rem;
 }
 
-.schedule-upcoming-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--auth-border);
-  border-radius: 18px;
-  background: var(--auth-bg-soft);
+.schedule-upcoming-list {
+  display: grid;
+  gap: 8px;
 }
 
-.schedule-upcoming-table {
-  width: 100%;
-  min-width: 760px;
-  border-collapse: collapse;
-}
-
-.schedule-upcoming-table th,
-.schedule-upcoming-table td {
-  padding: 12px;
-  border-bottom: 1px solid var(--auth-border);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.schedule-upcoming-table th {
-  color: var(--auth-text-muted);
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.schedule-upcoming-table td {
-  color: var(--auth-text-main);
-  font-size: 0.82rem;
-}
-
-.schedule-upcoming-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.schedule-upcoming-table tbody tr.is-no-duration-package {
-  background: rgba(255, 138, 42, 0.065);
-}
-
-.schedule-upcoming-table button {
+.schedule-upcoming-item {
   width: 100%;
   min-width: 0;
   display: grid;
-  gap: 3px;
-  border: 0;
-  background: transparent;
-  color: inherit;
+  grid-template-columns: minmax(0, 1.15fr) minmax(150px, 0.86fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-main);
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
-  padding: 0;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
-.schedule-upcoming-table button strong,
-.schedule-upcoming-table td > span,
-.schedule-upcoming-table td > b {
+.schedule-upcoming-item:hover {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-bg-control);
+  transform: translateY(-1px);
+}
+
+.schedule-upcoming-item.is-no-duration-package {
+  border-color: rgba(255, 138, 42, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 138, 42, 0.09), transparent 58%),
+    var(--auth-bg-soft);
+}
+
+.schedule-upcoming-main,
+.schedule-upcoming-meta,
+.schedule-upcoming-side {
+  min-width: 0;
+  display: grid;
+}
+
+.schedule-upcoming-main {
+  gap: 3px;
+}
+
+.schedule-upcoming-main strong {
+  overflow: hidden;
   color: var(--auth-text-strong);
+  font-size: 0.88rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.schedule-upcoming-table button small,
-.schedule-upcoming-table td > em {
+.schedule-upcoming-main small,
+.schedule-upcoming-meta span {
+  overflow: hidden;
   color: var(--auth-text-muted);
-  font-size: 0.7rem;
-  font-style: normal;
+  font-size: 0.73rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.schedule-upcoming-table td > em {
-  display: inline-flex;
-  width: fit-content;
-  margin-top: 4px;
-  border: 1px solid rgba(255, 138, 42, 0.28);
-  border-radius: 999px;
-  background: var(--auth-accent-soft);
-  color: var(--auth-accent);
-  padding: 4px 8px;
-  font-weight: 850;
+.schedule-upcoming-meta {
+  gap: 3px;
 }
 
+.schedule-upcoming-meta b {
+  overflow: hidden;
+  color: var(--auth-text-main);
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-upcoming-side {
+  justify-items: end;
+  gap: 4px;
+}
+
+.schedule-upcoming-side em,
 .schedule-upcoming-status {
   display: inline-flex;
   width: fit-content;
-  border: 1px solid var(--auth-border);
   border-radius: 999px;
-  background: var(--auth-bg-control);
-  color: var(--auth-text-main);
-  padding: 6px 9px;
-  font-size: 0.72rem;
+  font-style: normal;
   font-weight: 850;
   white-space: nowrap;
+}
+
+.schedule-upcoming-side em {
+  border: 1px solid rgba(255, 138, 42, 0.3);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+  padding: 3px 7px;
+  font-size: 0.64rem;
+}
+
+.schedule-upcoming-status {
+  border: 1px solid var(--auth-border);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 4px 8px;
+  font-size: 0.66rem;
 }
 
 .schedule-upcoming-status.is-dp {
@@ -20050,67 +20052,356 @@ body:has(.settings-permission-backdrop) {
   color: #7ef0b3;
 }
 
+.schedule-upcoming-side > b {
+  color: var(--auth-text-strong);
+  font-size: 0.82rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.schedule-upcoming-more,
 .schedule-upcoming-empty {
   margin: 0;
   border: 1px dashed var(--auth-border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--auth-bg-soft);
   color: var(--auth-text-muted);
-  padding: 14px;
-  font-size: 0.86rem;
+  padding: 10px 11px;
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
 @media (max-width: 767px) {
-  .schedule-upcoming-head {
-    align-items: stretch;
+  .schedule-upcoming-panel {
+    gap: 9px;
+    margin: 12px 0 14px;
+    border-radius: 20px;
+    padding: 11px;
   }
 
   .schedule-upcoming-head > strong {
-    min-width: 40px;
-    height: 40px;
+    min-width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    font-size: 0.9rem;
   }
 
-  .schedule-upcoming-table {
-    min-width: 0;
+  .schedule-upcoming-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    border-radius: 15px;
+    padding: 10px;
   }
 
-  .schedule-upcoming-table thead {
+  .schedule-upcoming-main {
+    grid-column: 1;
+  }
+
+  .schedule-upcoming-meta {
+    grid-column: 1;
+  }
+
+  .schedule-upcoming-side {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .schedule-upcoming-main strong {
+    font-size: 0.84rem;
+  }
+
+  .schedule-upcoming-main small,
+  .schedule-upcoming-meta span,
+  .schedule-upcoming-meta b {
+    font-size: 0.7rem;
+  }
+
+  .schedule-upcoming-status {
     display: none;
   }
 
-  .schedule-upcoming-table,
-  .schedule-upcoming-table tbody,
-  .schedule-upcoming-table tr,
-  .schedule-upcoming-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .schedule-upcoming-table tr {
-    padding: 10px;
-    border-bottom: 1px solid var(--auth-border);
-  }
-
-  .schedule-upcoming-table tr:last-child {
-    border-bottom: 0;
-  }
-
-  .schedule-upcoming-table td {
-    display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
-    gap: 10px;
-    align-items: start;
-    border-bottom: 0;
-    padding: 7px 4px;
-  }
-
-  .schedule-upcoming-table td::before {
-    content: attr(data-label);
-    color: var(--auth-text-muted);
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  .schedule-upcoming-side > b {
+    font-size: 0.76rem;
   }
 }
 /* <<< STUDIO37 SCHEDULE UPCOMING TABLE END */
+
+/* >>> STUDIO37 BOOKING DETAIL ULTRA COMPACT START */
+.booking-detail-compact-panel {
+  max-height: min(92dvh, 760px);
+}
+
+.booking-detail-compact-head {
+  padding: 14px 16px 12px;
+}
+
+.booking-detail-compact-heading {
+  min-width: 0;
+}
+
+.booking-detail-compact-heading p {
+  margin: 0 0 5px;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+.booking-detail-compact-heading h2 {
+  max-width: min(100%, 520px);
+  overflow: hidden;
+  font-size: clamp(1.45rem, 7vw, 2.15rem);
+  line-height: 1;
+  letter-spacing: -0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-detail-compact-close {
+  width: 46px;
+  height: 46px;
+  border-radius: 18px;
+}
+
+.booking-detail-compact-body {
+  gap: 10px;
+  padding: 12px 14px 92px;
+}
+
+.booking-detail-compact-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.booking-detail-compact-customer {
+  min-width: 0;
+}
+
+.booking-detail-compact-customer span,
+.booking-detail-compact-status span {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+.booking-detail-compact-customer strong {
+  overflow: hidden;
+  font-size: 1rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-detail-compact-customer small {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-detail-compact-status {
+  min-width: 96px;
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.booking-detail-compact-status strong {
+  font-size: 0.88rem;
+  line-height: 1.1;
+}
+
+.booking-detail-compact-phone {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+}
+
+.booking-request-state {
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+
+.booking-detail-compact-card {
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.booking-detail-compact-card.is-slim {
+  padding: 10px;
+}
+
+.booking-detail-compact-section-title {
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.booking-detail-compact-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.booking-detail-compact-quick-grid > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: var(--auth-bg-soft);
+  padding: 9px 10px;
+}
+
+.booking-detail-compact-quick-grid > span.is-full {
+  grid-column: 1 / -1;
+}
+
+.booking-detail-compact-quick-grid > span.is-highlight {
+  border-color: rgba(255, 138, 42, 0.28);
+  background: var(--auth-accent-soft);
+}
+
+.booking-detail-compact-quick-grid small {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.booking-detail-compact-quick-grid strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.82rem;
+  line-height: 1.22;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-detail-compact-quick-grid .is-highlight strong {
+  color: var(--auth-accent);
+  white-space: normal;
+}
+
+.booking-detail-compact-money.is-compact {
+  gap: 0;
+}
+
+.booking-detail-compact-money.is-compact .booking-detail-compact-money-row {
+  min-height: 0;
+  padding: 8px 0;
+}
+
+.booking-detail-compact-money.is-compact .booking-detail-compact-money-row span {
+  font-size: 0.82rem;
+}
+
+.booking-detail-compact-money.is-compact .booking-detail-compact-money-row strong {
+  font-size: 0.95rem;
+}
+
+.booking-detail-compact-money.is-compact .booking-detail-compact-money-row.is-total strong,
+.booking-detail-compact-money.is-compact .booking-detail-compact-money-row.is-warning strong,
+.booking-detail-compact-money.is-compact .booking-detail-compact-money-row.is-paid strong {
+  font-size: 1.02rem;
+}
+
+.booking-detail-compact-meta {
+  border-radius: 16px;
+}
+
+.booking-detail-compact-meta summary {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+}
+
+.booking-detail-compact-actions {
+  gap: 9px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+}
+
+.booking-detail-compact-button {
+  min-height: 46px;
+  border-radius: 17px;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 767px) {
+  .booking-detail-compact-panel {
+    max-height: 92dvh;
+  }
+
+  .booking-detail-compact-head {
+    padding: 12px 14px 10px;
+  }
+
+  .booking-detail-compact-heading h2 {
+    font-size: clamp(1.35rem, 7vw, 1.95rem);
+  }
+
+  .booking-detail-compact-close {
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
+  }
+
+  .booking-detail-compact-body {
+    gap: 8px;
+    padding: 10px 12px 84px;
+  }
+
+  .booking-detail-compact-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .booking-detail-compact-status {
+    min-width: 84px;
+    padding: 7px 10px;
+  }
+
+  .booking-detail-compact-phone {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+
+  .booking-detail-compact-card {
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .booking-detail-compact-quick-grid {
+    gap: 7px;
+  }
+
+  .booking-detail-compact-quick-grid > span {
+    border-radius: 13px;
+    padding: 8px;
+  }
+
+  .booking-detail-compact-money.is-compact .booking-detail-compact-money-row {
+    padding: 7px 0;
+  }
+
+  .booking-detail-compact-actions {
+    padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+  }
+
+  .booking-detail-compact-button {
+    min-height: 44px;
+  }
+}
+/* <<< STUDIO37 BOOKING DETAIL ULTRA COMPACT END */

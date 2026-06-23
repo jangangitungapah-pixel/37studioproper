@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  CalendarDays,
   CheckCircle2,
-  Clock3,
   CreditCard,
   Phone,
   ReceiptText,
-  Tag,
-  UserRound,
   X,
   XCircle,
 } from 'lucide-react';
@@ -56,12 +52,24 @@ function formatHourLabel(hourValue) {
 function getDurationHours(booking) {
   const duration = Number(booking?.durationHours);
 
-  return Number.isFinite(duration) && duration > 0 ? duration : 1;
+  return Number.isFinite(duration) && duration > 0 ? duration : 0;
+}
+
+function isNoDurationPackageBooking(booking) {
+  const hasPackage = Boolean(booking?.packageId && booking.packageId !== 'none') || booking?.pricingMode === 'package';
+
+  return hasPackage && Number(booking?.durationHours || booking?.duration || 0) <= 0;
 }
 
 function getBookingWindowLabel(booking) {
   const startHour = Number(booking?.startHour) || 0;
-  const endHour = startHour + getDurationHours(booking);
+  const durationHours = getDurationHours(booking);
+
+  if (isNoDurationPackageBooking(booking) || durationHours <= 0) {
+    return formatHourLabel(startHour) + ' WIB · tanpa blok kalender';
+  }
+
+  const endHour = startHour + durationHours;
 
   return formatHourLabel(startHour) + ' - ' + formatHourLabel(endHour);
 }
@@ -97,20 +105,6 @@ function getPaidAmount(booking, status) {
   return 0;
 }
 
-function CompactItem({ icon: Icon, label, value }) {
-  return (
-    <div className="booking-detail-compact-item">
-      <span className="booking-detail-compact-icon">
-        <Icon size={14} aria-hidden="true" />
-      </span>
-      <span className="booking-detail-compact-copy">
-        <small>{label}</small>
-        <strong>{value || '-'}</strong>
-      </span>
-    </div>
-  );
-}
-
 function MoneyItem({ label, value, tone }) {
   return (
     <div className={tone ? 'booking-detail-compact-money-row is-' + tone : 'booking-detail-compact-money-row'}>
@@ -135,6 +129,7 @@ export default function BookingDetailModal({
   const paidAmount = getPaidAmount(booking, status);
   const invoiceAmount = getInvoiceAmount(booking, paidAmount);
   const requestStatus = getBookingRequestStatusMeta(booking);
+  const noDurationPackage = isNoDurationPackageBooking(booking);
   const isClientRequest = booking?.source === 'clientPortal' && Boolean(booking?.clientUid);
   const isLinkedClientBooking = Boolean(booking?.clientUid);
 
@@ -234,32 +229,43 @@ export default function BookingDetailModal({
             </section>
           ) : null}
 
-          <section className="booking-detail-compact-card" aria-label="Informasi booking">
-            <div className="booking-detail-compact-section-title">
-              <UserRound size={15} aria-hidden="true" />
-              <span>Informasi Booking</span>
-            </div>
-
-            <div className="booking-detail-compact-grid">
-              <CompactItem icon={Phone} label="No HP" value={booking.phone} />
-              <CompactItem icon={CalendarDays} label="Tanggal" value={formatDateLabel(booking.date)} />
-              <CompactItem icon={Clock3} label="Jam" value={getBookingWindowLabel(booking)} />
-              <CompactItem icon={Tag} label="Session" value={sessionLabel} />
+          <section className="booking-detail-compact-card is-slim" aria-label="Informasi booking">
+            <div className="booking-detail-compact-quick-grid">
+              <span>
+                <small>No HP</small>
+                <strong>{booking.phone || '-'}</strong>
+              </span>
+              <span>
+                <small>Tanggal</small>
+                <strong>{formatDateLabel(booking.date)}</strong>
+              </span>
+              <span>
+                <small>Waktu</small>
+                <strong>{getBookingWindowLabel(booking)}</strong>
+              </span>
+              <span>
+                <small>Layanan</small>
+                <strong>{sessionLabel}</strong>
+              </span>
+              {noDurationPackage ? (
+                <span className="is-full is-highlight">
+                  <small>Catatan</small>
+                  <strong>Paket tanpa durasi studio, tidak memblok kalender.</strong>
+                </span>
+              ) : null}
             </div>
           </section>
 
-          <section className="booking-detail-compact-card" aria-label="Ringkasan harga">
+          <section className="booking-detail-compact-card is-price-compact" aria-label="Ringkasan harga">
             <div className="booking-detail-compact-section-title">
               <ReceiptText size={15} aria-hidden="true" />
-              <span>Ringkasan Harga</span>
+              <span>Harga</span>
             </div>
 
-            <div className="booking-detail-compact-money">
-              <MoneyItem label="Subtotal" value={booking.subtotal} />
-              <MoneyItem label="Diskon" value={booking.discountAmount} tone="discount" />
+            <div className="booking-detail-compact-money is-compact">
               <MoneyItem label="Total" value={booking.total} tone="total" />
-              <MoneyItem label={status === 'dp' ? 'DP Terbayar' : 'Terbayar'} value={paidAmount} />
-              <MoneyItem label="Sisa Tagihan" value={invoiceAmount} tone={invoiceAmount > 0 ? 'warning' : 'paid'} />
+              <MoneyItem label="Terbayar" value={paidAmount} />
+              <MoneyItem label="Sisa" value={invoiceAmount} tone={invoiceAmount > 0 ? 'warning' : 'paid'} />
             </div>
           </section>
 

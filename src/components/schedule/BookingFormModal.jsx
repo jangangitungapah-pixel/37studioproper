@@ -134,10 +134,6 @@ function getDurationHours(form) {
   return Math.max(0, Number(form.duration) || 0);
 }
 
-function getRecordingSessionKey(sessionOptions) {
-  return sessionOptions.find((item) => item.key === 'recording')?.key || 'recording';
-}
-
 function makePaymentRecordId() {
   return 'pay_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 7);
 }
@@ -211,7 +207,6 @@ export default function BookingFormModal({
     [pricingSettings]
   );
 
-  const recordingSessionKey = getRecordingSessionKey(sessionTypeOptions);
   const isPackageSelected = form.packageId !== 'none';
   const isRecordingSessionSelected = !isPackageSelected && isRecordingSessionId(form.sessionType);
   const activeRecordingTypeKey =

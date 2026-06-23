@@ -727,6 +727,8 @@ function RequestQueueModal({
 
 function ScheduleUpcomingTable({ bookings, onBookingClick }) {
   const upcomingBookings = useMemo(() => getUpcomingScheduleBookings(bookings), [bookings]);
+  const previewBookings = upcomingBookings.slice(0, 8);
+  const remainingCount = Math.max(0, upcomingBookings.length - previewBookings.length);
 
   return (
     <section className="schedule-upcoming-panel" aria-labelledby="schedule-upcoming-title">
@@ -734,66 +736,57 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
         <div>
           <span>Operational Radar</span>
           <h3 id="schedule-upcoming-title">Jadwal Mendatang</h3>
-          <p>
-            Semua booking yang akan datang, termasuk paket tanpa durasi yang tidak muncul sebagai blok kalender.
-          </p>
         </div>
         <strong>{upcomingBookings.length}</strong>
       </header>
 
-      {upcomingBookings.length ? (
-        <div className="schedule-upcoming-table-wrap">
-          <table className="schedule-upcoming-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Layanan</th>
-                <th>Tanggal</th>
-                <th>Waktu</th>
-                <th>Status</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {upcomingBookings.map((booking) => {
-                const noDurationPackage = isNoDurationPackageBooking(booking);
-                const requestMeta = booking.bookingRequestStatus === 'submitted'
-                  ? 'Request'
-                  : booking.bookingRequestStatus === 'confirmed'
-                    ? 'Confirmed'
-                    : '';
+      {previewBookings.length ? (
+        <div className="schedule-upcoming-list" aria-label="Daftar jadwal mendatang">
+          {previewBookings.map((booking) => {
+            const noDurationPackage = isNoDurationPackageBooking(booking);
+            const requestMeta = booking.bookingRequestStatus === 'submitted'
+              ? 'Request'
+              : booking.bookingRequestStatus === 'confirmed'
+                ? 'Confirmed'
+                : '';
+            const statusText = requestMeta || getStatusLabel(getBookingStatus(booking));
+            const serviceLabel = booking.packageLabel || booking.sessionLabel || booking.title || 'Sesi Studio';
 
-                return (
-                  <tr className={noDurationPackage ? 'is-no-duration-package' : ''} key={booking.id || booking.bookingCode}>
-                    <td data-label="Customer">
-                      <button type="button" onClick={() => onBookingClick(booking)}>
-                        <strong>{booking.customer || 'Customer'}</strong>
-                        <small>{booking.bookingCode || booking.bookingId || booking.id || 'BKG'}</small>
-                      </button>
-                    </td>
-                    <td data-label="Layanan">
-                      <span>{booking.packageLabel || booking.sessionLabel || booking.title || 'Sesi Studio'}</span>
-                      {noDurationPackage ? <em>Tanpa blok kalender</em> : null}
-                    </td>
-                    <td data-label="Tanggal">{formatBookingDateLabel(booking)}</td>
-                    <td data-label="Waktu">{getUpcomingScheduleTimeLabel(booking)}</td>
-                    <td data-label="Status">
-                      <span className={'schedule-upcoming-status is-' + getBookingStatus(booking)}>
-                        {requestMeta || getStatusLabel(getBookingStatus(booking))}
-                      </span>
-                    </td>
-                    <td data-label="Total">
-                      <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            return (
+              <button
+                className={'schedule-upcoming-item ' + (noDurationPackage ? 'is-no-duration-package' : '')}
+                key={booking.id || booking.bookingCode}
+                type="button"
+                onClick={() => onBookingClick(booking)}
+              >
+                <span className="schedule-upcoming-main">
+                  <strong>{booking.customer || 'Customer'}</strong>
+                  <small>{serviceLabel}</small>
+                </span>
+
+                <span className="schedule-upcoming-meta">
+                  <span>{formatBookingDateLabel(booking)}</span>
+                  <b>{getUpcomingScheduleTimeLabel(booking)}</b>
+                </span>
+
+                <span className="schedule-upcoming-side">
+                  {noDurationPackage ? <em>Tanpa blok</em> : null}
+                  <i className={'schedule-upcoming-status is-' + getBookingStatus(booking)}>{statusText}</i>
+                  <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
+                </span>
+              </button>
+            );
+          })}
+
+          {remainingCount ? (
+            <p className="schedule-upcoming-more">
+              +{remainingCount} jadwal lain. Geser tanggal atau buka detail booking untuk cek lanjutan.
+            </p>
+          ) : null}
         </div>
       ) : (
         <p className="schedule-upcoming-empty">
-          Belum ada jadwal mendatang. Semua orbit booking masih lengang.
+          Belum ada jadwal mendatang.
         </p>
       )}
     </section>

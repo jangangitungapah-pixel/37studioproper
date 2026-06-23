@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   BellRing,
@@ -292,7 +292,7 @@ export default function NotificationsPage({ currentUser }) {
     };
   }, [readinessItems]);
 
-  async function handleRefreshReadiness({ includeWorker = true, reason = 'manual' } = {}) {
+  const handleRefreshReadiness = useCallback(async ({ includeWorker = true, reason = 'manual' } = {}) {
     setReadinessState((current) => ({
       ...current,
       errorMessage: '',
@@ -311,7 +311,7 @@ export default function NotificationsPage({ currentUser }) {
         })),
       ]);
 
-      let workerHealth = readinessState.workerHealth;
+      let workerHealth = null;
 
       if (includeWorker && workerUrl.trim()) {
         const healthResponse = await fetch(`${workerUrl.trim().replace(/\/$/, '')}/health`);
@@ -349,7 +349,7 @@ export default function NotificationsPage({ currentUser }) {
         isChecking: false,
       }));
     }
-  }
+  }, [currentUser?.uid, workerUrl]);
 
   useEffect(() => {
     const readinessFrameId = window.requestAnimationFrame(() => {
@@ -361,7 +361,7 @@ export default function NotificationsPage({ currentUser }) {
     return () => {
       window.cancelAnimationFrame(readinessFrameId);
     };
-  }, [currentUser?.uid]);
+  }, [handleRefreshReadiness]);
 
   async function handleRetryEvent(event) {
     setErrorMessage('');
