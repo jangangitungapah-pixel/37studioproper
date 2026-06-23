@@ -33,9 +33,15 @@ import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import GuardAttendanceApprovalModal from '../components/guard/GuardAttendanceApprovalModal.jsx';
+import AdminSidebar from '../components/admin/AdminSidebar.jsx';
+import AdminTopbar from '../components/admin/AdminTopbar.jsx';
+import AdminBottomNav from '../components/admin/AdminBottomNav.jsx';
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
+
+import AccessState from '../components/ui/AccessState.jsx';
+import AutoApprovePage from './admin/AutoApprovePage.jsx';
 
 const SchedulePage = lazy(() => import('./admin/SchedulePage.jsx'));
 const CustomerPage = lazy(() => import('./admin/CustomerPage.jsx'));
@@ -200,69 +206,6 @@ function createNotificationSummary(events = []) {
   }, createEmptyNotificationSummary('ready'));
 }
 
-function getNotificationBadgeCount(summary) {
-  return Math.max(0, Number(summary?.failed || 0) + Number(summary?.pending || 0));
-}
-
-function getNotificationBadgeTone(summary) {
-  if (Number(summary?.failed || 0) > 0) return 'danger';
-  if (Number(summary?.pending || 0) > 0) return 'warning';
-  if (Number(summary?.processing || 0) > 0) return 'info';
-
-  return 'quiet';
-}
-
-function getNotificationBadgeText(summary) {
-  const count = getNotificationBadgeCount(summary);
-
-  if (count > 99) return '99+';
-  if (count > 0) return String(count);
-  if (Number(summary?.processing || 0) > 0) return '•';
-
-  return '';
-}
-
-function getNotificationBadgeLabel(summary) {
-  const failed = Number(summary?.failed || 0);
-  const pending = Number(summary?.pending || 0);
-  const processing = Number(summary?.processing || 0);
-
-  if (failed > 0 && pending > 0) {
-    return `${failed} notifikasi gagal dan ${pending} notifikasi pending`;
-  }
-
-  if (failed > 0) {
-    return `${failed} notifikasi gagal perlu dicek`;
-  }
-
-  if (pending > 0) {
-    return `${pending} notifikasi pending menunggu Worker`;
-  }
-
-  if (processing > 0) {
-    return `${processing} notifikasi sedang diproses`;
-  }
-
-  return 'Tidak ada notifikasi bermasalah';
-}
-
-function AdminNotificationBadge({ summary, variant = 'nav' }) {
-  const text = getNotificationBadgeText(summary);
-
-  if (!text) return null;
-
-  const tone = getNotificationBadgeTone(summary);
-
-  return (
-    <span
-      aria-label={getNotificationBadgeLabel(summary)}
-      className={`admin-notification-badge is-${tone} is-${variant}`}
-      title={getNotificationBadgeLabel(summary)}
-    >
-      {text}
-    </span>
-  );
-}
 
 function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'dashboard') return <DashboardPage />;
@@ -277,200 +220,6 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'gallery') return <GalleryPage />;
 
   return <SchedulePage />;
-}
-
-function AutoApproveView({ currentUser, onLogout }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [status, setStatus] = useState('loading'); // 'loading' | 'confirm' | 'success' | 'error'
-  const [errorMsg, setErrorMsg] = useState('');
-  const [targetUser, setTargetUser] = useState(null);
-
-  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const targetUid = queryParams.get('uid');
-
-  useEffect(() => {
-    if (!targetUid) {
-      const missingUidFrameId = window.requestAnimationFrame(() => {
-        setStatus('error');
-        setErrorMsg('Tautan persetujuan tidak lengkap (UID tidak ditemukan).');
-      });
-
-      return () => {
-        window.cancelAnimationFrame(missingUidFrameId);
-      };
-    }
-
-    if (!isOwnerAdminUser(currentUser)) {
-      const ownerGuardFrameId = window.requestAnimationFrame(() => {
-        setStatus('error');
-        setErrorMsg('Hanya owner aktif yang diizinkan untuk menyetujui akun baru.');
-      });
-
-      return () => {
-        window.cancelAnimationFrame(ownerGuardFrameId);
-      };
-    }
-
-    async function loadTargetUser() {
-      try {
-        const userRef = doc(firestoreDb, 'users', targetUid);
-        const userSnap = await getDoc(userRef);
-
-        if (!userSnap.exists()) {
-          setStatus('error');
-          setErrorMsg('Akun user yang ingin disetujui tidak ditemukan di database.');
-          return;
-        }
-
-        const data = userSnap.data();
-        setTargetUser(data);
-
-        if (data.role !== 'admin') {
-          setStatus('error');
-          setErrorMsg('Akun ini tidak lagi memiliki request admin. Role client tidak dapat disetujui sebagai admin.');
-          return;
-        }
-
-        if (data.status === 'approved') {
-          setStatus('success');
-          return;
-        }
-
-        if (data.status !== 'pending') {
-          setStatus('error');
-          setErrorMsg('Request admin akun ini sudah ditolak atau tidak aktif.');
-          return;
-        }
-
-        setStatus('confirm');
-      } catch (err) {
-        console.error('Failed to load approval target:', err);
-        setStatus('error');
-        setErrorMsg('Gagal memuat user dari Firestore. Periksa koneksi atau database.');
-      }
-    }
-
-    loadTargetUser();
-  }, [targetUid, currentUser]);
-
-  async function approveTargetUser() {
-    if (!targetUid) return;
-
-    try {
-      await updateDoc(doc(firestoreDb, 'users', targetUid), {
-        status: 'approved',
-        updatedAt: new Date().toISOString()
-      });
-
-      setTargetUser((current) => current ? { ...current, status: 'approved' } : current);
-      setStatus('success');
-    } catch (err) {
-      console.error('Failed to approve user:', err);
-      setStatus('error');
-      setErrorMsg('Gagal menyetujui user di Firestore. Periksa koneksi atau database.');
-    }
-  }
-
-  return (
-    <main className="theme-container auth-page" data-auth-surface="approve">
-      <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="approve-title">
-        {status === 'loading' && (
-          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <LoaderCircle size={36} className="auth-spin mb-4" style={{ color: 'var(--auth-accent)' }} />
-            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Memuat Persetujuan...</h1>
-            <p style={{ fontSize: '0.88rem', opacity: 0.8 }}>Sistem sedang memverifikasi akun baru.</p>
-          </div>
-        )}
-
-        {status === 'confirm' && (
-          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
-              <ShieldCheck size={14} />
-              <span>Konfirmasi</span>
-            </div>
-            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Setujui Akun Ini?</h1>
-            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '24px' }}>
-              Akun <strong>{targetUser?.displayName || targetUser?.email || 'User'}</strong> ({targetUser?.email || targetUser?.phoneNumber || 'No HP'}) akan diberi akses admin.
-            </p>
-            <div style={{ display: 'grid', gap: '10px', width: '100%' }}>
-              <button 
-                className="auth-google-btn" 
-                type="button" 
-                onClick={approveTargetUser}
-                style={{ marginTop: '0', width: '100%', background: 'var(--auth-accent)', color: '#fff', borderColor: 'var(--auth-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <ShieldCheck size={16} />
-                <span>Setujui Akun</span>
-              </button>
-              <button 
-                className="auth-google-btn" 
-                type="button" 
-                onClick={() => navigate('/admin/settings')}
-                style={{ marginTop: '0', width: '100%' }}
-              >
-                <span>Batal</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {status === 'success' && (
-          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[#2ecc71]/30 bg-[#2ecc71]/10 text-xs font-semibold uppercase tracking-[0.15em] text-[#2ecc71]">
-              <ShieldCheck size={14} />
-              <span>Sukses</span>
-            </div>
-            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Persetujuan Berhasil</h1>
-            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '24px' }}>
-              Akun <strong>{targetUser?.displayName || targetUser?.email || 'User'}</strong> ({targetUser?.email || targetUser?.phoneNumber || 'No HP'}) sekarang sudah aktif dan dapat mengakses Scheduler.
-            </p>
-            <button 
-              className="auth-google-btn" 
-              type="button" 
-              onClick={() => navigate('/admin/dashboard')}
-              style={{ marginTop: '0', width: '100%', background: 'var(--auth-accent)', color: '#fff', borderColor: 'var(--auth-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <Home size={16} />
-              <span>Ke Dashboard</span>
-            </button>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="auth-copy" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-danger)] bg-[var(--auth-danger)]/10 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-danger)]">
-              <AlertCircle size={14} />
-              <span>Gagal</span>
-            </div>
-            <h1 id="approve-title" style={{ fontSize: '1.7rem', marginBottom: '12px' }}>Gagal Menyetujui</h1>
-            <p style={{ fontSize: '0.88rem', color: 'var(--auth-danger)', lineHeight: '1.6', marginBottom: '24px' }}>
-              {errorMsg}
-            </p>
-            {!isOwnerAdminUser(currentUser) ? (
-              <button 
-                className="auth-google-btn" 
-                type="button" 
-                onClick={onLogout}
-                style={{ marginTop: '0', width: '100%', borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}
-              >
-                <span>Keluar & Login Sebagai Owner</span>
-              </button>
-            ) : (
-              <button 
-                className="auth-google-btn" 
-                type="button" 
-                onClick={() => navigate('/admin/dashboard')}
-                style={{ marginTop: '0', width: '100%' }}
-              >
-                <span>Kembali ke Dashboard</span>
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-    </main>
-  );
 }
 
 export default function AdminPage() {
@@ -625,104 +374,96 @@ export default function AdminPage() {
 
   if (authState.user?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
     return (
-      <main className="theme-container auth-page" data-auth-surface="wrong-role">
-        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="wrong-role-title">
-          <div className="auth-copy">
-            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
-              <AlertCircle size={14} />
-              <span>Role Client</span>
-            </div>
-            <h1 id="wrong-role-title" style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Akses Admin Tidak Diizinkan</h1>
-            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '22px' }}>
-              Akun <strong>{authState.user?.email || authState.user?.phoneNumber || 'ini'}</strong> terdaftar sebagai client. Satu akun tidak dapat memiliki role client dan admin sekaligus.
-            </p>
-          </div>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            <button className="auth-google-btn" type="button" onClick={() => navigate('/client/portal', { replace: true })} style={{ marginTop: 0 }}>
-              <span>Buka Portal Client</span>
-            </button>
-            <button className="auth-google-btn" type="button" onClick={handleLogout} style={{ marginTop: 0, borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}>
-              <span>Keluar Akun</span>
-            </button>
-          </div>
-        </section>
-      </main>
+      <AccessState
+        icon={AlertCircle}
+        statusLabel="Role Client"
+        statusType="neutral"
+        title="Akses Admin Tidak Diizinkan"
+        description={
+          <>
+            Akun <strong>{authState.user?.email || authState.user?.phoneNumber || 'ini'}</strong> terdaftar sebagai client. Satu akun tidak dapat memiliki role client dan admin sekaligus.
+          </>
+        }
+        primaryAction={{
+          label: 'Buka Portal Client',
+          onClick: () => navigate('/client/portal', { replace: true }),
+          variant: 'secondary'
+        }}
+        secondaryAction={{
+          label: 'Keluar Akun',
+          onClick: handleLogout,
+          variant: 'danger'
+        }}
+      />
     );
   }
 
   if ([PORTAL_ACCESS.ADMIN_BLOCKED, PORTAL_ACCESS.INVALID_ACCOUNT, PORTAL_ACCESS.MISSING_ACCOUNT].includes(authState.user?.access)) {
     return (
-      <main className="theme-container auth-page" data-auth-surface="blocked-role">
-        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="blocked-role-title">
-          <div className="auth-copy">
-            <AlertCircle size={34} style={{ color: 'var(--auth-danger)', margin: '0 auto 14px' }} />
-            <h1 id="blocked-role-title" style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Request Admin Tidak Aktif</h1>
-            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '22px' }}>
-              Request akses admin untuk akun ini telah ditolak atau status role-nya tidak valid.
-            </p>
-          </div>
-          <button className="auth-google-btn" type="button" onClick={handleLogout} style={{ marginTop: 0 }}>
-            <span>Keluar Akun</span>
-          </button>
-        </section>
-      </main>
+      <AccessState
+        icon={AlertCircle}
+        iconColorClass="text-danger"
+        title="Request Admin Tidak Aktif"
+        description="Request akses admin untuk akun ini telah ditolak atau status role-nya tidak valid."
+        primaryAction={{
+          label: 'Keluar Akun',
+          onClick: handleLogout,
+          variant: 'secondary'
+        }}
+      />
     );
   }
 
   // Handle URL-based approval redirect
   const isApprovePath = location.pathname === '/admin/approve' || location.pathname === '/admin/approve/';
   if (isApprovePath) {
-    return <AutoApproveView currentUser={authState.user} onLogout={handleLogout} />;
+    return <AutoApprovePage currentUser={authState.user} onLogout={handleLogout} />;
   }
 
   if (!authState.user?.isApproved) {
     return (
-      <main className="theme-container auth-page" data-auth-surface="pending">
-        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="pending-title">
-          <div className="auth-copy">
-            <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-3 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
-              <LoaderCircle size={14} className="auth-spin" />
-              <span>Akses Tertunda</span>
-            </div>
-            <h1 id="pending-title" style={{ fontSize: '1.9rem', marginBottom: '12px' }}>Menunggu Persetujuan</h1>
-            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '20px' }}>
-              Akun Anda <strong>{authState.user?.email || authState.user?.phoneNumber || 'admin'}</strong> berhasil dibuat tetapi belum aktif.
-            </p>
-            <div className="auth-alert" style={{ textAlign: 'left', fontSize: '0.82rem', marginBottom: '24px' }}>
-              <span>
-                Harap hubungi pemilik studio di <strong>marsicprod@gmail.com</strong> untuk memberikan persetujuan akses bagi akun Anda. Halaman ini akan diperbarui secara otomatis setelah disetujui.
-              </span>
-            </div>
-          </div>
-          <button 
-            className="auth-google-btn" 
-            type="button" 
-            onClick={handleLogout}
-            style={{ marginTop: '0', width: '100%', borderColor: 'var(--auth-danger)', color: 'var(--auth-danger)' }}
-          >
-            <span>Keluar Akun</span>
-          </button>
-        </section>
-      </main>
+      <AccessState
+        icon={LoaderCircle}
+        isLoadingIcon={true}
+        statusLabel="Akses Tertunda"
+        statusType="neutral"
+        title="Menunggu Persetujuan"
+        description={
+          <>
+            Akun Anda <strong>{authState.user?.email || authState.user?.phoneNumber || 'admin'}</strong> berhasil dibuat tetapi belum aktif.
+          </>
+        }
+        alertMessage={
+          <>
+            Harap hubungi pemilik studio di <strong>marsicprod@gmail.com</strong> untuk memberikan persetujuan akses bagi akun Anda. Halaman ini akan diperbarui secara otomatis setelah disetujui.
+          </>
+        }
+        primaryAction={{
+          label: 'Keluar Akun',
+          onClick: handleLogout,
+          variant: 'danger'
+        }}
+      />
     );
   }
 
   if (!permittedNavItems.length) {
     return (
-      <main className="theme-container auth-page" data-auth-surface="no-admin-pages">
-        <section className="auth-card" style={{ textAlign: 'center' }} aria-labelledby="no-admin-pages-title">
-          <div className="auth-copy">
-            <AlertCircle size={34} style={{ color: 'var(--auth-accent)', margin: '0 auto 14px' }} />
-            <h1 id="no-admin-pages-title" style={{ fontSize: '1.8rem', marginBottom: '12px' }}>Akses Halaman Belum Diatur</h1>
-            <p style={{ fontSize: '0.88rem', lineHeight: '1.6', marginBottom: '22px' }}>
-              Akun <strong>{authState.user?.email || authState.user?.phoneNumber || 'ini'}</strong> sudah aktif, tetapi owner belum memberi akses halaman admin portal.
-            </p>
-          </div>
-          <button className="auth-google-btn" type="button" onClick={handleLogout} style={{ marginTop: 0 }}>
-            <span>Keluar Akun</span>
-          </button>
-        </section>
-      </main>
+      <AccessState
+        icon={AlertCircle}
+        iconColorClass="text-accent"
+        title="Akses Halaman Belum Diatur"
+        description={
+          <>
+            Akun <strong>{authState.user?.email || authState.user?.phoneNumber || 'ini'}</strong> sudah aktif, tetapi owner belum memberi akses halaman admin portal.
+          </>
+        }
+        primaryAction={{
+          label: 'Keluar Akun',
+          onClick: handleLogout,
+          variant: 'secondary'
+        }}
+      />
     );
   }
 
@@ -759,92 +500,27 @@ export default function AdminPage() {
         currentUser={authState.user}
         onOpenPanel={() => goTo('/admin/guard-attendance')}
       />
-      <aside className="admin-sidebar" aria-label="Navigasi admin desktop">
-        <div className="admin-sidebar-brand">
-          <div className="admin-sidebar-logo" aria-hidden="true">
-            <Music2 size={24} />
-          </div>
-
-          <div className="admin-sidebar-copy">
-            <strong>37 Music</strong>
-            <span>Admin Portal</span>
-          </div>
-
-          <button
-            aria-label={isSidebarCollapsed ? 'Buka sidebar' : 'Tutup sidebar'}
-            className="admin-sidebar-collapse"
-            title={isSidebarCollapsed ? 'Buka sidebar' : 'Tutup sidebar'}
-            type="button"
-            onClick={toggleSidebar}
-          >
-            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
-        </div>
-
-        <nav className="admin-sidebar-nav" aria-label="Menu admin">
-          {permittedNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeItem.key === item.key;
-
-            return (
-              <button
-                aria-current={isActive ? 'page' : undefined}
-                className={isActive ? 'admin-nav-item is-active' : 'admin-nav-item'}
-                key={item.key}
-                title={item.key === 'notifications' ? notificationBadgeLabel : item.label}
-                type="button"
-                onClick={() => goTo(item.path)}
-              >
-                <Icon size={19} />
-                <span className="admin-nav-label">{item.label}</span>
-                {item.key === 'notifications' ? (
-                  <AdminNotificationBadge summary={notificationSummary} />
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="admin-sidebar-footer">
-          <div className="admin-mini-session">
-            <span>Login sebagai</span>
-            <strong>{authState.user?.displayName || authState.user?.email || 'admin'}</strong>
-          </div>
-
-          <button className="admin-logout-button" type="button" onClick={handleLogout}>
-            <LogOut size={18} />
-            <span className="admin-logout-label">Keluar</span>
-          </button>
-        </div>
-      </aside>
+      <AdminSidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        toggleSidebar={toggleSidebar}
+        permittedNavItems={permittedNavItems}
+        activeItem={activeItem}
+        goTo={goTo}
+        notificationSummary={notificationSummary}
+        notificationBadgeLabel={notificationBadgeLabel}
+        user={authState.user}
+        onLogout={handleLogout}
+      />
 
       <section className="admin-stage" aria-labelledby="admin-title">
-        <header className="admin-topbar">
-          <div>
-            <p>Admin Shell</p>
-            <h1 id="admin-title">{activeItem.title}</h1>
-          </div>
-
-          <div className="admin-topbar-actions">
-            {canOpenNotifications ? (
-              <button
-                className="admin-notification-shortcut"
-                title={notificationBadgeLabel}
-                type="button"
-                onClick={() => goTo('/admin/notifications')}
-              >
-                <BellRing size={18} />
-                <span>Notifikasi</span>
-                <AdminNotificationBadge summary={notificationSummary} variant="shortcut" />
-              </button>
-            ) : null}
-
-            <button className="admin-shell-icon-button" type="button" onClick={handleLogout}>
-              <LogOut size={18} />
-              <span>Keluar</span>
-            </button>
-          </div>
-        </header>
+        <AdminTopbar
+          activeItem={activeItem}
+          canOpenNotifications={canOpenNotifications}
+          notificationBadgeLabel={notificationBadgeLabel}
+          goTo={goTo}
+          notificationSummary={notificationSummary}
+          onLogout={handleLogout}
+        />
 
         <Suspense
           fallback={
@@ -857,71 +533,18 @@ export default function AdminPage() {
         </Suspense>
       </section>
 
-      <nav className="admin-bottom-nav" aria-label="Navigasi admin mobile">
-        {mobilePrimaryNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeItem.key === item.key;
-
-          return (
-            <button
-              aria-current={isActive ? 'page' : undefined}
-              className={isActive ? 'admin-bottom-item is-active' : 'admin-bottom-item'}
-              key={item.key}
-              type="button"
-              onClick={() => goTo(item.path)}
-            >
-              <Icon size={20} />
-              <span>{item.label}</span>
-              {item.key === 'notifications' ? (
-                <AdminNotificationBadge summary={notificationSummary} variant="bottom" />
-              ) : null}
-            </button>
-          );
-        })}
-
-        <div className={isMoreMenuOpen ? 'admin-bottom-more is-open' : 'admin-bottom-more'}>
-          {isMoreMenuOpen ? (
-            <div className="admin-bottom-more-menu" role="menu" aria-label="Menu admin tambahan">
-              {mobileMoreNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeItem.key === item.key;
-
-                return (
-                  <button
-                    aria-current={isActive ? 'page' : undefined}
-                    className={isActive ? 'admin-more-item is-active' : 'admin-more-item'}
-                    key={item.key}
-                    role="menuitem"
-                    type="button"
-                    onClick={() => goTo(item.path)}
-                  >
-                    <Icon size={17} />
-                    <span>{item.label}</span>
-                    {item.key === 'notifications' ? (
-                      <AdminNotificationBadge summary={notificationSummary} variant="more" />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-
-          <button
-            aria-expanded={isMoreMenuOpen}
-            aria-haspopup="menu"
-            className={isMoreNavActive ? 'admin-bottom-item is-active' : 'admin-bottom-item'}
-            title={shouldShowMoreNotificationBadge ? notificationBadgeLabel : 'More'}
-            type="button"
-            onClick={() => setIsMoreMenuOpen((current) => !current)}
-          >
-            <MoreHorizontal size={20} />
-            <span>More</span>
-            {shouldShowMoreNotificationBadge ? (
-              <AdminNotificationBadge summary={notificationSummary} variant="bottom" />
-            ) : null}
-          </button>
-        </div>
-      </nav>
+      <AdminBottomNav
+        mobilePrimaryNavItems={mobilePrimaryNavItems}
+        activeItem={activeItem}
+        goTo={goTo}
+        notificationSummary={notificationSummary}
+        isMoreMenuOpen={isMoreMenuOpen}
+        setIsMoreMenuOpen={setIsMoreMenuOpen}
+        mobileMoreNavItems={mobileMoreNavItems}
+        shouldShowMoreNotificationBadge={shouldShowMoreNotificationBadge}
+        notificationBadgeLabel={notificationBadgeLabel}
+        isMoreNavActive={isMoreNavActive}
+      />
     </main>
   );
 }

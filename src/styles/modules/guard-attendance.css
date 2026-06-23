@@ -1,0 +1,530 @@
+/* =========================================
+ * guard-attendance.css
+ * Domain: GUARD
+ * Scope: Guard Attendance Portal
+ * ========================================= */
+
+.guard-shift-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--auth-bg-page);
+  color: var(--auth-text-main);
+  font-family: inherit;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.guard-shift-shell {
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.guard-shift-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+@media (min-width: 540px) {
+  .guard-shift-hero {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.guard-shift-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.guard-shift-brand span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--auth-accent);
+  margin-bottom: 4px;
+}
+
+.guard-shift-brand strong {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--auth-text-strong);
+  margin-bottom: 6px;
+}
+
+.guard-shift-brand small {
+  font-size: 0.85rem;
+  color: var(--auth-text-muted);
+  line-height: 1.4;
+}
+
+.guard-shift-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.guard-shift-date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--auth-bg-soft);
+  border: 1px solid var(--auth-border);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--auth-border);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--auth-text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guard-shift-ghost-button:hover {
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-ghost-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.guard-shift-card {
+  background: var(--auth-bg-card);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-lg, 24px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.guard-shift-card.is-loading,
+.guard-shift-card.is-locked {
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-card.is-locked svg {
+  color: var(--auth-danger);
+  margin-bottom: 8px;
+}
+
+.guard-shift-card.is-locked strong {
+  font-size: 1.1rem;
+  color: var(--auth-text-strong);
+  margin-bottom: 4px;
+}
+
+.guard-shift-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.guard-shift-title > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-accent);
+  flex-shrink: 0;
+}
+
+.guard-shift-title div {
+  display: flex;
+  flex-direction: column;
+}
+
+.guard-shift-title strong {
+  font-size: 1.1rem;
+  color: var(--auth-text-strong);
+  margin-bottom: 4px;
+}
+
+.guard-shift-title small {
+  font-size: 0.85rem;
+  color: var(--auth-text-muted);
+  line-height: 1.4;
+}
+
+.guard-shift-login {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guard-shift-login label,
+.guard-shift-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guard-shift-login span,
+.guard-shift-form span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--auth-text-main);
+}
+
+.guard-shift-login input,
+.guard-shift-form select,
+.guard-shift-form textarea {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--auth-bg-control);
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+  color: var(--auth-text-strong);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.guard-shift-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.guard-shift-login input:focus,
+.guard-shift-form select:focus,
+.guard-shift-form textarea:focus {
+  outline: none;
+  border-color: var(--auth-accent);
+}
+
+.guard-shift-main-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  background: var(--auth-accent);
+  color: #fff; /* Always white text on accent button */
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.guard-shift-main-button:hover:not(:disabled) {
+  background: var(--auth-accent-strong);
+  transform: translateY(-1px);
+}
+
+.guard-shift-main-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.guard-shift-main-button.is-danger {
+  background: var(--auth-danger);
+}
+
+.guard-shift-main-button.is-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.guard-shift-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.guard-shift-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 16px;
+  background: var(--auth-bg-card);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-lg, 24px);
+  padding: 20px;
+}
+
+.guard-shift-status > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-status > span.is-on {
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.guard-shift-status-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guard-shift-status-copy small {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-status-copy strong {
+  font-size: 1.1rem;
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-status-copy em {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  width: fit-content;
+  margin-top: 2px;
+}
+
+.guard-shift-status-copy em.is-pending {
+  background: rgba(241, 196, 15, 0.15);
+  color: #f1c40f;
+  border: 1px solid rgba(241, 196, 15, 0.3);
+}
+
+.guard-shift-status-copy em.is-approved {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.guard-shift-status-copy em.is-rejected {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.guard-shift-status-facts {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--auth-border);
+}
+
+@media (min-width: 480px) {
+  .guard-shift-status {
+    grid-template-columns: auto 1fr auto;
+  }
+  .guard-shift-status-facts {
+    grid-column: auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    border-left: 1px dashed var(--auth-border);
+    padding-left: 16px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+  }
+}
+
+.guard-shift-status-facts article {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guard-shift-status-facts small {
+  font-size: 0.75rem;
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-status-facts strong {
+  font-size: 0.95rem;
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guard-shift-current {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--auth-bg-soft);
+  border-radius: 16px;
+  border: 1px solid var(--auth-border);
+}
+
+.guard-shift-current article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--auth-border);
+}
+
+.guard-shift-current article:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.guard-shift-current small {
+  font-size: 0.85rem;
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-current strong {
+  font-size: 0.95rem;
+  color: var(--auth-text-strong);
+  text-align: right;
+}
+
+.guard-shift-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.guard-shift-history article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--auth-bg-soft);
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+}
+
+.guard-shift-history article div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guard-shift-history article strong {
+  font-size: 0.95rem;
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-history article span {
+  font-size: 0.8rem;
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-history article em {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.guard-shift-history article em.is-pending {
+  background: rgba(241, 196, 15, 0.15);
+  color: #f1c40f;
+}
+
+.guard-shift-history article em.is-approved {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.guard-shift-history article em.is-rejected {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.guard-shift-history p {
+  text-align: center;
+  color: var(--auth-text-muted);
+  font-size: 0.9rem;
+  padding: 20px 0;
+}
+
+.guard-shift-feedback {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: 90%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guard-shift-feedback p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: var(--auth-shadow);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.guard-shift-feedback p.is-success {
+  background: var(--auth-bg-elevated);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  color: #2ecc71;
+}
+
+.guard-shift-feedback p.is-error {
+  background: var(--auth-bg-elevated);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  color: #e74c3c;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

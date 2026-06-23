@@ -1,4 +1,4 @@
-﻿/* =========================================
+/* =========================================
  * shared.css — Auto-split from admin-auth.css
  * Domain: SHARED
  * ========================================= */
@@ -1000,4 +1000,376 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* === ADMIN MODAL OPAQUE MOBILE FIX: END === */
+
+/* === STUDIO BUTTON PRIMITIVE: START === */
+.studio-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--auth-radius-md, 18px);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.studio-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.studio-button.is-size-sm {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  border-radius: 14px;
+}
+
+.studio-button.is-size-md {
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  min-height: 48px;
+}
+
+.studio-button.is-size-lg {
+  padding: 16px 24px;
+  font-size: 1.05rem;
+  min-height: 56px;
+}
+
+.studio-button.is-size-icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 14px;
+}
+
+.studio-button.is-primary {
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(255, 104, 28, 0.25);
+}
+
+.studio-button.is-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 104, 28, 0.35);
+}
+
+.studio-button.is-secondary {
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  border-color: var(--auth-border);
+}
+
+.studio-button.is-secondary:hover:not(:disabled) {
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-strong);
+  border-color: var(--auth-border-strong);
+}
+
+.studio-button.is-ghost {
+  background: transparent;
+  color: var(--auth-text-muted);
+}
+
+.studio-button.is-ghost:hover:not(:disabled) {
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-strong);
+}
+
+.studio-button.is-danger {
+  background: var(--auth-danger);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.25);
+}
+
+.studio-button.is-danger:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.studio-button-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* === STUDIO BUTTON PRIMITIVE: END === */
+
+/* === STUDIO CARD PRIMITIVE: START === */
+.studio-card {
+  position: relative;
+  background: var(--auth-bg-card);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--auth-radius-xl, 24px);
+  overflow: hidden;
+}
+
+.studio-card.is-elevated {
+  box-shadow: var(--auth-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.studio-card.is-elevated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 149, 64, 0.4), transparent 40%, rgba(255, 255, 255, 0.05));
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.studio-card.is-flat {
+  background: var(--auth-bg-soft);
+  box-shadow: none;
+}
+
+.studio-card.is-outline {
+  background: transparent;
+  box-shadow: none;
+}
+
+.studio-card.has-padding-none {
+  padding: 0;
+}
+
+.studio-card.has-padding-sm {
+  padding: 16px;
+}
+
+.studio-card.has-padding-md {
+  padding: clamp(24px, 4vw, 36px);
+}
+
+.studio-card.has-padding-lg {
+  padding: clamp(32px, 5vw, 48px);
+}
+/* === STUDIO CARD PRIMITIVE: END === */
+
+/* === STUDIO BADGE PRIMITIVE: START === */
+.studio-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.studio-badge.is-shape-pill {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.studio-badge.is-shape-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+}
+
+.studio-badge.is-danger {
+  background: var(--auth-danger);
+  color: #fff;
+}
+
+.studio-badge.is-warning {
+  background: var(--auth-warning);
+  color: #fff;
+}
+
+.studio-badge.is-info {
+  background: var(--auth-info);
+  color: #fff;
+}
+
+.studio-badge.is-success {
+  background: var(--auth-success);
+  color: #fff;
+}
+
+.studio-badge.is-quiet {
+  background: var(--auth-bg-control);
+  color: var(--auth-text-muted);
+}
+/* === STUDIO BADGE PRIMITIVE: END === */
+
+/* === STUDIO STATUS PILL PRIMITIVE: START === */
+.studio-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+}
+
+.studio-status-pill.is-pending {
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+  border-color: rgba(241, 196, 15, 0.3);
+}
+
+.studio-status-pill.is-approved,
+.studio-status-pill.is-active {
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+  border-color: rgba(46, 204, 113, 0.3);
+}
+
+.studio-status-pill.is-rejected {
+  background: var(--auth-danger);
+  color: #fff;
+}
+
+.studio-status-pill.is-neutral {
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  border-color: var(--auth-border);
+}
+/* === STUDIO STATUS PILL PRIMITIVE: END === */
+
+/* === STUDIO STATE COMPONENTS: START === */
+.studio-empty-state,
+.studio-error-state,
+.studio-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 24px;
+  border-radius: var(--auth-radius-lg, 24px);
+  background: var(--auth-bg-soft);
+  border: 1px dashed var(--auth-border);
+}
+
+.studio-loading-state.is-full-height {
+  min-height: 400px;
+  flex: 1;
+}
+
+.studio-empty-orb {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-muted);
+  margin-bottom: 20px;
+}
+
+.studio-empty-icon,
+.studio-error-icon,
+.studio-loading-spinner {
+  color: var(--auth-text-muted);
+}
+
+.studio-error-icon {
+  color: var(--auth-danger);
+  margin-bottom: 16px;
+}
+
+.studio-loading-spinner {
+  color: var(--auth-accent);
+  margin-bottom: 16px;
+}
+
+.studio-empty-title,
+.studio-error-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--auth-text-strong);
+  margin: 0 0 8px 0;
+}
+
+.studio-empty-desc,
+.studio-error-desc,
+.studio-loading-text {
+  font-size: 0.9rem;
+  color: var(--auth-text-muted);
+  margin: 0;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.studio-empty-action,
+.studio-error-action {
+  margin-top: 24px;
+}
+/* === STUDIO STATE COMPONENTS: END === */
+
+/* === STUDIO FEEDBACK ALERT: START === */
+.studio-feedback-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--auth-radius-md, 16px);
+  border: 1px solid transparent;
+}
+
+.studio-feedback-alert.is-info {
+  background: var(--auth-info-soft);
+  border-color: rgba(52, 152, 219, 0.3);
+  color: var(--auth-info);
+}
+
+.studio-feedback-alert.is-success {
+  background: var(--auth-success-soft);
+  border-color: rgba(46, 204, 113, 0.3);
+  color: var(--auth-success);
+}
+
+.studio-feedback-alert.is-warning {
+  background: var(--auth-warning-soft);
+  border-color: rgba(241, 196, 15, 0.3);
+  color: var(--auth-warning);
+}
+
+.studio-feedback-alert.is-error {
+  background: var(--auth-danger);
+  border-color: rgba(231, 76, 60, 0.3);
+  color: #fff;
+}
+.studio-feedback-alert.is-error .studio-feedback-icon,
+.studio-feedback-alert.is-error .studio-feedback-title,
+.studio-feedback-alert.is-error .studio-feedback-desc {
+  color: #fff;
+}
+
+.studio-feedback-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.studio-feedback-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.studio-feedback-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.studio-feedback-desc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+/* === STUDIO FEEDBACK ALERT: END === */
+
 

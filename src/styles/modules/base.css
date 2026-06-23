@@ -1,4 +1,4 @@
-﻿/* =========================================
+/* =========================================
  * base.css — CSS variables, theme tokens, and reset.
  * Auto-split from admin-auth.css — this is the canonical variables file.
  * ========================================= */
@@ -20,6 +20,12 @@
   --auth-accent-strong: var(--ui-accent-strong, #ff5f15);
   --auth-accent-soft: var(--ui-accent-soft, rgba(255, 138, 42, 0.16));
   --auth-danger: var(--ui-danger, #ff6b6b);
+  --auth-success: var(--ui-success, #2ecc71);
+  --auth-success-soft: var(--ui-success-soft, rgba(46, 204, 113, 0.15));
+  --auth-warning: var(--ui-warning, #f1c40f);
+  --auth-warning-soft: var(--ui-warning-soft, rgba(241, 196, 15, 0.15));
+  --auth-info: var(--ui-info, #3498db);
+  --auth-info-soft: var(--ui-info-soft, rgba(52, 152, 219, 0.15));
   --auth-shadow: 0 24px 90px rgba(0, 0, 0, 0.52);
   --auth-radius-xl: 32px;
   --auth-radius-lg: 24px;
@@ -44,6 +50,9 @@
   --auth-border: var(--ui-border, rgba(24, 20, 16, 0.1));
   --auth-border-strong: var(--ui-border-strong, rgba(255, 118, 28, 0.28));
   --auth-accent-soft: var(--ui-accent-soft, rgba(255, 124, 31, 0.14));
+  --auth-success-soft: var(--ui-success-soft, rgba(39, 174, 96, 0.12));
+  --auth-warning-soft: var(--ui-warning-soft, rgba(243, 156, 18, 0.12));
+  --auth-info-soft: var(--ui-info-soft, rgba(41, 128, 185, 0.12));
   --auth-shadow: 0 24px 70px rgba(111, 66, 24, 0.18);
 }
 
