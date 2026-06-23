@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clipboard, Crown, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { AlertTriangle, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
+import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
@@ -43,6 +43,95 @@ import {
 
 
 const OWNER_EMAIL = 'marsicprod@gmail.com';
+const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';
+const DANGER_ZONE_DELETE_BATCH_SIZE = 450;
+
+const dangerZoneCollections = [
+  {
+    key: 'bookings',
+    label: 'Booking & invoice',
+    collectionName: 'bookings',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'paymentProofs',
+    label: 'Bukti pembayaran',
+    collectionName: 'paymentProofs',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'bookingMessages',
+    label: 'Pesan booking',
+    collectionName: 'bookingMessages',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'clientCalendarSlots',
+    label: 'Slot kalender client',
+    collectionName: 'clientCalendarSlots',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'customers',
+    label: 'Customer profile',
+    collectionName: 'customers',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'bookkeepingEntries',
+    label: 'Pembukuan',
+    collectionName: 'bookkeepingEntries',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'inventoryItems',
+    label: 'Inventory items',
+    collectionName: 'inventoryItems',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'inventoryMovements',
+    label: 'Inventory movements',
+    collectionName: 'inventoryMovements',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'gallery',
+    label: 'Gallery metadata',
+    collectionName: 'gallery',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'notificationEvents',
+    label: 'Notification events',
+    collectionName: 'notificationEvents',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'notificationSubscriptions',
+    label: 'Notification subscriptions legacy',
+    collectionName: 'notificationSubscriptions',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'notificationSubscriptionDevices',
+    label: 'Notification subscription devices',
+    collectionName: 'notificationSubscriptionDevices',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'settings',
+    label: 'Remote app settings',
+    collectionName: 'settings',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'users',
+    label: 'Admin/client account docs',
+    collectionName: 'users',
+    preserveCurrentOwner: true,
+  },
+];
 
 const emptySessionForm = {
   id: '',
@@ -115,6 +204,28 @@ function getOptionLabel(options, key, fallback = '-') {
   return options.find((item) => item.key === key)?.label || fallback;
 }
 
+function createDangerZoneInitialProgress() {
+  return dangerZoneCollections.reduce((progress, item) => ({
+    ...progress,
+    [item.key]: {
+      deleted: 0,
+      error: '',
+      status: 'idle',
+    },
+  }), {});
+}
+
+function getDangerZoneProgressSummary(progress) {
+  return dangerZoneCollections.reduce((summary, item) => {
+    const row = progress[item.key] || {};
+
+    return {
+      deleted: summary.deleted + Number(row.deleted || 0),
+      errors: summary.errors + (row.error ? 1 : 0),
+    };
+  }, { deleted: 0, errors: 0 });
+}
+
 function FormActions({ editing, onCancel }) {
   return (
     <div className="settings-form-actions">
@@ -165,6 +276,11 @@ export default function SettingsPage({ currentUser }) {
         label: 'Persetujuan Admin',
         description: 'Menyetujui atau menghapus akun admin pendaftaran baru.',
       });
+      pages.push({
+        key: 'danger',
+        label: 'Danger Zone',
+        description: 'Reset data operasional app. Aksi ini hanya untuk owner dan tidak bisa dibatalkan.',
+      });
     }
     return pages;
   }, [currentUser]);
@@ -184,6 +300,11 @@ export default function SettingsPage({ currentUser }) {
     displayName: currentUser?.displayName || '',
   }));
   const [accountProfileMessage, setAccountProfileMessage] = useState('');
+  const [dangerConfirmText, setDangerConfirmText] = useState('');
+  const [dangerFinalCheck, setDangerFinalCheck] = useState(false);
+  const [dangerIsDeleting, setDangerIsDeleting] = useState(false);
+  const [dangerMessage, setDangerMessage] = useState('');
+  const [dangerProgress, setDangerProgress] = useState(createDangerZoneInitialProgress);
 
   useEffect(() => {
     const settingsFrameId = window.requestAnimationFrame(() => {
@@ -894,6 +1015,128 @@ export default function SettingsPage({ currentUser }) {
     return sessionOptions.find((item) => item.key === sessionId)?.label || 'Session';
   }
 
+  function setDangerCollectionProgress(key, patch) {
+    setDangerProgress((current) => ({
+      ...current,
+      [key]: {
+        ...(current[key] || {}),
+        ...patch,
+      },
+    }));
+  }
+
+  async function deleteDangerZoneCollection(item) {
+    const snapshot = await getDocs(collection(firestoreDb, item.collectionName));
+    const docsToDelete = snapshot.docs.filter((snapshotDoc) => {
+      if (item.preserveCurrentOwner && snapshotDoc.id === currentUser?.uid) return false;
+
+      return true;
+    });
+
+    if (!docsToDelete.length) {
+      setDangerCollectionProgress(item.key, {
+        deleted: 0,
+        error: '',
+        status: 'empty',
+      });
+
+      return 0;
+    }
+
+    let deletedCount = 0;
+
+    for (let index = 0; index < docsToDelete.length; index += DANGER_ZONE_DELETE_BATCH_SIZE) {
+      const chunk = docsToDelete.slice(index, index + DANGER_ZONE_DELETE_BATCH_SIZE);
+      const batch = writeBatch(firestoreDb);
+
+      chunk.forEach((snapshotDoc) => {
+        batch.delete(snapshotDoc.ref);
+      });
+
+      await batch.commit();
+
+      deletedCount += chunk.length;
+      setDangerCollectionProgress(item.key, {
+        deleted: deletedCount,
+        error: '',
+        status: 'deleting',
+      });
+    }
+
+    setDangerCollectionProgress(item.key, {
+      deleted: deletedCount,
+      error: '',
+      status: 'done',
+    });
+
+    return deletedCount;
+  }
+
+  async function handleDangerZoneDeleteAllData() {
+    if (!isOwnerAdminUser(currentUser)) {
+      setDangerMessage('Aksi ini hanya tersedia untuk owner.');
+      return;
+    }
+
+    if (dangerConfirmText !== DANGER_ZONE_CONFIRM_TEXT || !dangerFinalCheck) {
+      setDangerMessage('Ketik teks konfirmasi dan aktifkan checkbox final terlebih dahulu.');
+      return;
+    }
+
+    const firstConfirm = window.confirm(
+      'Aksi ini akan menghapus data operasional app dari Firestore. Data tidak bisa dikembalikan dari UI. Lanjutkan?'
+    );
+
+    if (!firstConfirm) return;
+
+    const secondConfirm = window.confirm(
+      'Konfirmasi terakhir: hapus data booking, customer, inventory, pembukuan, gallery metadata, notifikasi, settings, dan akun non-owner?'
+    );
+
+    if (!secondConfirm) return;
+
+    setDangerIsDeleting(true);
+    setDangerMessage('Proses reset data dimulai...');
+    setDangerProgress(createDangerZoneInitialProgress());
+
+    let totalDeleted = 0;
+    let errorCount = 0;
+
+    for (const item of dangerZoneCollections) {
+      setDangerCollectionProgress(item.key, {
+        deleted: 0,
+        error: '',
+        status: 'deleting',
+      });
+
+      try {
+        totalDeleted += await deleteDangerZoneCollection(item);
+      } catch (error) {
+        errorCount += 1;
+        console.error('[danger-zone] Gagal menghapus collection ' + item.collectionName + ':', error);
+        setDangerCollectionProgress(item.key, {
+          error: error?.message || 'Gagal menghapus collection.',
+          status: 'error',
+        });
+      }
+    }
+
+    setDangerIsDeleting(false);
+
+    if (errorCount) {
+      setDangerMessage(
+        'Reset selesai sebagian. ' + totalDeleted + ' dokumen terhapus, ' + errorCount + ' collection gagal. Cek detail di bawah.'
+      );
+      return;
+    }
+
+    setDangerConfirmText('');
+    setDangerFinalCheck(false);
+    setDangerMessage(
+      'Reset selesai. ' + totalDeleted + ' dokumen terhapus. Akun owner aktif tetap dipertahankan.'
+    );
+  }
+
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
 
@@ -924,7 +1167,9 @@ export default function SettingsPage({ currentUser }) {
           ? 'settings-page is-account-settings'
           : activeSubpage === 'approvals'
             ? 'settings-page is-approvals-settings'
-            : 'settings-page'
+            : activeSubpage === 'danger'
+              ? 'settings-page is-danger-settings'
+              : 'settings-page'
       }
       aria-labelledby="settings-title"
     >
@@ -1185,6 +1430,134 @@ export default function SettingsPage({ currentUser }) {
               </button>
             </div>
           </section>
+        </section>
+      )}
+
+      {activeSubpage === 'danger' && isOwnerAdminUser(currentUser) && (
+        <section className="settings-section settings-owner-danger-zone" aria-label="Danger zone reset data app">
+          <div className="settings-danger-hero">
+            <span className="settings-danger-icon" aria-hidden="true">
+              <DatabaseZap size={24} />
+            </span>
+            <div>
+              <p>Owner Only</p>
+              <h3>Hapus Seluruh Data App</h3>
+              <span>
+                Reset data operasional Firestore untuk testing ulang atau mulai dari nol. Aksi ini tidak menghapus Firebase Auth users dan tidak menghapus file eksternal Cloudinary.
+              </span>
+            </div>
+          </div>
+
+          <div className="settings-danger-alert">
+            <ShieldAlert size={18} />
+            <div>
+              <strong>Aksi permanen</strong>
+              <p>
+                Data booking, customer, bukti pembayaran, pesan, inventory, pembukuan, gallery metadata, settings, dan notifikasi akan dihapus. Akun owner yang sedang login tetap dipertahankan agar app tidak terkunci.
+              </p>
+            </div>
+          </div>
+
+          <div className="settings-danger-collections" aria-label="Daftar data yang akan dihapus">
+            {dangerZoneCollections.map((item) => {
+              const progress = dangerProgress[item.key] || {};
+              const statusLabel =
+                progress.status === 'done'
+                  ? 'Selesai'
+                  : progress.status === 'empty'
+                    ? 'Kosong'
+                    : progress.status === 'error'
+                      ? 'Gagal'
+                      : progress.status === 'deleting'
+                        ? 'Menghapus'
+                        : 'Siap';
+
+              return (
+                <article className={'settings-danger-collection is-' + (progress.status || 'idle')} key={item.key}>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.collectionName}{item.preserveCurrentOwner ? ' · owner aktif dipertahankan' : ''}</small>
+                  </span>
+                  <em>{statusLabel} · {Number(progress.deleted || 0)} docs</em>
+                  {progress.error ? <p>{progress.error}</p> : null}
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="settings-danger-confirm">
+            <label htmlFor="danger-confirm-text">
+              <span>Ketik teks konfirmasi</span>
+              <strong>{DANGER_ZONE_CONFIRM_TEXT}</strong>
+              <input
+                autoComplete="off"
+                disabled={dangerIsDeleting}
+                id="danger-confirm-text"
+                placeholder={DANGER_ZONE_CONFIRM_TEXT}
+                value={dangerConfirmText}
+                onChange={(event) => {
+                  setDangerConfirmText(event.target.value);
+                  if (dangerMessage) setDangerMessage('');
+                }}
+              />
+            </label>
+
+            <label className="settings-danger-check" htmlFor="danger-final-check">
+              <input
+                checked={dangerFinalCheck}
+                disabled={dangerIsDeleting}
+                id="danger-final-check"
+                type="checkbox"
+                onChange={(event) => {
+                  setDangerFinalCheck(event.target.checked);
+                  if (dangerMessage) setDangerMessage('');
+                }}
+              />
+              <span>Saya paham data operasional akan dihapus permanen dari Firestore.</span>
+            </label>
+          </div>
+
+          {dangerMessage ? (
+            <p className="settings-danger-message" role="status">
+              <AlertTriangle size={15} />
+              {dangerMessage}
+            </p>
+          ) : null}
+
+          <div className="settings-danger-summary">
+            <span>Total terhapus: <strong>{getDangerZoneProgressSummary(dangerProgress).deleted}</strong></span>
+            <span>Error collection: <strong>{getDangerZoneProgressSummary(dangerProgress).errors}</strong></span>
+          </div>
+
+          <div className="settings-form-actions settings-danger-actions">
+            <button
+              className="settings-mini-button is-ghost"
+              disabled={dangerIsDeleting}
+              type="button"
+              onClick={() => {
+                setDangerConfirmText('');
+                setDangerFinalCheck(false);
+                setDangerMessage('');
+                setDangerProgress(createDangerZoneInitialProgress());
+              }}
+            >
+              Reset Form
+            </button>
+
+            <button
+              className="settings-mini-button is-danger"
+              disabled={
+                dangerIsDeleting ||
+                dangerConfirmText !== DANGER_ZONE_CONFIRM_TEXT ||
+                !dangerFinalCheck
+              }
+              type="button"
+              onClick={handleDangerZoneDeleteAllData}
+            >
+              <Trash2 size={15} />
+              {dangerIsDeleting ? 'Menghapus Data...' : 'Hapus Seluruh Data App'}
+            </button>
+          </div>
         </section>
       )}
 
