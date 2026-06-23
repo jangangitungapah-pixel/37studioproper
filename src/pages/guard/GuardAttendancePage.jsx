@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import {
+  AlertCircle,
   CheckCircle2,
   Clock3,
   LoaderCircle,
   LogIn,
   LogOut,
-  ShieldAlert,
+  ShieldCheck,
   UserRound,
   XCircle,
 } from 'lucide-react';
-import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import {
   GUARD_ATTENDANCE_APPROVAL_STATUSES,
   GUARD_ATTENDANCE_STATUSES,
@@ -26,7 +26,6 @@ import {
   useOperatorFeeSettings,
 } from '../../settings/operatorFeeSettings.js';
 import '../../styles/admin-auth.css';
-
 
 function formatDateTime(value) {
   if (!value) return '-';
@@ -57,17 +56,17 @@ function getApprovalLabel(status) {
   if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) return 'Disetujui';
   if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED) return 'Ditolak';
 
-  return 'Menunggu Owner';
+  return 'Menunggu owner';
 }
 
 function getStatusLabel(session) {
-  if (!session) return 'Belum Absen';
-  if (session.status === GUARD_ATTENDANCE_STATUSES.CLOSED) return 'Selesai Jaga';
-  if (session.status === GUARD_ATTENDANCE_STATUSES.ACTIVE) return 'Sedang Jaga';
+  if (!session) return 'Belum absen';
+  if (session.status === GUARD_ATTENDANCE_STATUSES.CLOSED) return 'Selesai jaga';
+  if (session.status === GUARD_ATTENDANCE_STATUSES.ACTIVE) return 'Sedang jaga';
   if (session.status === GUARD_ATTENDANCE_STATUSES.REJECTED) return 'Ditolak';
   if (session.status === GUARD_ATTENDANCE_STATUSES.VOID) return 'Void';
 
-  return 'Menunggu Approval';
+  return 'Menunggu approval';
 }
 
 function isActiveLikeSession(session) {
@@ -85,7 +84,6 @@ function getGuardPeople(settings) {
     .map((person) => ({
       key: person.id,
       label: person.name,
-      description: person.defaultPaymentMethod || 'cash',
     }));
 }
 
@@ -111,6 +109,7 @@ async function readGuardAccount(user) {
 export default function GuardAttendancePage() {
   const settings = useOperatorFeeSettings();
   const isAuthAvailable = isFirebaseConfigured && Boolean(firebaseAuth);
+
   const [authUser, setAuthUser] = useState(null);
   const [guardAccount, setGuardAccount] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -118,26 +117,25 @@ export default function GuardAttendancePage() {
   const [note, setNote] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
   const [isReady, setIsReady] = useState(!isAuthAvailable);
   const [isBusy, setIsBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [notice, setNotice] = useState('');
   const [error, setError] = useState(isAuthAvailable ? '' : 'Firebase belum dikonfigurasi.');
 
   const guardOptions = useMemo(() => getGuardPeople(settings), [settings]);
 
   useEffect(() => {
-    if (!isAuthAvailable) {
-      return () => {};
-    }
+    if (!isAuthAvailable) return () => {};
 
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       setAuthUser(user || null);
-      setSessions([]);
+      setNotice('');
       setError('');
-      setMessage('');
 
       if (!user) {
         setGuardAccount(null);
+        setSessions([]);
         setIsReady(true);
         return;
       }
@@ -147,7 +145,7 @@ export default function GuardAttendancePage() {
         setGuardAccount(account);
 
         if (account?.role !== STUDIO_GUARD_ROLE || account?.status !== 'approved') {
-          setError('Akun ini belum terdaftar sebagai Penjaga Studio aktif.');
+          setError('Akun ini belum aktif sebagai Penjaga Studio.');
         }
       } catch (readError) {
         console.error('[guard-attendance] Gagal membaca akun penjaga:', readError);
@@ -166,7 +164,7 @@ export default function GuardAttendancePage() {
       return () => {};
     }
 
-    const unsubscribe = subscribeGuardAttendanceSessions(
+    return subscribeGuardAttendanceSessions(
       {
         guardUid: authUser.uid,
       },
@@ -178,8 +176,6 @@ export default function GuardAttendancePage() {
         setError('Gagal membaca riwayat absen.');
       }
     );
-
-    return unsubscribe;
   }, [authUser?.uid, guardAccount?.role, guardAccount?.status]);
 
   const currentSession = useMemo(
@@ -187,7 +183,16 @@ export default function GuardAttendancePage() {
     [sessions]
   );
 
-  const effectiveGuardPersonId = selectedGuardPersonId || guardOptions[0]?.key || authUser?.uid || '';
+  const visibleGuardOptions = useMemo(() => {
+    if (guardOptions.length) return guardOptions;
+
+    return [{
+      key: authUser?.uid || 'guard',
+      label: authUser?.displayName || authUser?.email || 'Penjaga Studio',
+    }];
+  }, [authUser, guardOptions]);
+
+  const effectiveGuardPersonId = selectedGuardPersonId || visibleGuardOptions[0]?.key || authUser?.uid || '';
 
   const selectedGuardPerson = useMemo(() => {
     const person = settings.people.find((item) => item.id === effectiveGuardPersonId);
@@ -195,14 +200,23 @@ export default function GuardAttendancePage() {
     if (person) return person;
 
     return {
-      id: authUser?.uid || '',
-      name: guardAccount?.displayName || authUser?.displayName || authUser?.email || 'Penjaga Studio',
+      id: effectiveGuardPersonId || authUser?.uid || '',
+      name: authUser?.displayName || authUser?.email || 'Penjaga Studio',
       defaultPaymentMethod: 'cash',
     };
-  }, [authUser, effectiveGuardPersonId, guardAccount, settings.people]);
+  }, [authUser, effectiveGuardPersonId, settings.people]);
+
+  const canUseGuardPage = authUser &&
+    guardAccount?.role === STUDIO_GUARD_ROLE &&
+    guardAccount?.status === 'approved';
 
   async function handleSignIn(event) {
     event.preventDefault();
+
+    if (!isAuthAvailable) {
+      setError('Firebase belum dikonfigurasi.');
+      return;
+    }
 
     if (!email.trim() || !password) {
       setError('Isi email dan password penjaga.');
@@ -211,11 +225,10 @@ export default function GuardAttendancePage() {
 
     setIsBusy(true);
     setError('');
-    setMessage('');
+    setNotice('');
 
     try {
       await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
-      setMessage('');
     } catch (signInError) {
       console.error('[guard-attendance] Login gagal:', signInError);
       setError('Login gagal. Cek email dan password.');
@@ -227,7 +240,7 @@ export default function GuardAttendancePage() {
   async function handleLogout() {
     setIsBusy(true);
     setError('');
-    setMessage('');
+    setNotice('');
 
     try {
       await signOut(firebaseAuth);
@@ -235,7 +248,6 @@ export default function GuardAttendancePage() {
       setPassword('');
       setGuardAccount(null);
       setSessions([]);
-      setMessage('Logout berhasil.');
     } catch (logoutError) {
       console.error('[guard-attendance] Logout gagal:', logoutError);
       setError('Logout gagal.');
@@ -257,21 +269,21 @@ export default function GuardAttendancePage() {
 
     setIsBusy(true);
     setError('');
-    setMessage('');
+    setNotice('');
 
     try {
       await createGuardAttendanceCheckIn({
         guardPerson: selectedGuardPerson,
-        mealAmount: settings.options.mealPerPersonPerDay,
+        mealAmount: settings.options?.mealPerPersonPerDay || 40000,
         note,
         user: authUser,
       });
 
       setNote('');
-      setMessage('Absen masuk dikirim. Tunggu approval owner.');
+      setNotice('Absen dikirim. Tunggu approval owner.');
     } catch (checkInError) {
       console.error('[guard-attendance] Absen masuk gagal:', checkInError);
-      setError('Absen masuk gagal. Pastikan akun punya role Penjaga Studio.');
+      setError('Absen gagal. Coba ulang atau hubungi owner.');
     } finally {
       setIsBusy(false);
     }
@@ -285,11 +297,11 @@ export default function GuardAttendancePage() {
 
     setIsBusy(true);
     setError('');
-    setMessage('');
+    setNotice('');
 
     try {
       await closeGuardAttendanceSession(currentSession, authUser);
-      setMessage('Selesai jaga tersimpan.');
+      setNotice('Selesai jaga tersimpan.');
     } catch (checkOutError) {
       console.error('[guard-attendance] Selesai jaga gagal:', checkOutError);
       setError('Selesai jaga gagal.');
@@ -298,22 +310,18 @@ export default function GuardAttendancePage() {
     }
   }
 
-  const canUseGuardPage = authUser &&
-    guardAccount?.role === STUDIO_GUARD_ROLE &&
-    guardAccount?.status === 'approved';
-
   return (
-    <main className="guard-attendance-page">
-      <section className="guard-attendance-shell">
-        <header className="guard-attendance-head">
-          <div>
-            <p>37 Studio Guard</p>
-            <h1>Absen Penjaga</h1>
-            <span>Mulai jaga, tunggu approval owner, lalu tutup shift saat selesai.</span>
+    <main className="guard-shift-page">
+      <section className="guard-shift-shell">
+        <header className="guard-shift-hero">
+          <div className="guard-shift-brand">
+            <span>37 Studio Guard</span>
+            <strong>Absen Penjaga</strong>
+            <small>Absensi harian untuk validasi fee dan uang makan.</small>
           </div>
 
           {authUser ? (
-            <button type="button" onClick={handleLogout} disabled={isBusy}>
+            <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>
               <LogOut size={15} />
               Keluar
             </button>
@@ -321,27 +329,27 @@ export default function GuardAttendancePage() {
         </header>
 
         {!isReady ? (
-          <section className="guard-attendance-card is-center">
+          <section className="guard-shift-card is-loading">
             <LoaderCircle className="auth-spin" size={24} />
-            <p>Membaca status login...</p>
+            <p>Membaca akun...</p>
           </section>
         ) : null}
 
         {isReady && !authUser ? (
-          <section className="guard-attendance-card">
-            <div className="guard-attendance-card-head">
+          <section className="guard-shift-card">
+            <div className="guard-shift-title">
               <span aria-hidden="true">
                 <LogIn size={18} />
               </span>
               <div>
-                <h2>Login Penjaga</h2>
-                <p>Gunakan akun yang sudah diberi role Penjaga Studio oleh owner.</p>
+                <strong>Login Penjaga</strong>
+                <small>Masuk dengan akun yang sudah dibuat owner.</small>
               </div>
             </div>
 
-            <form className="guard-attendance-login" onSubmit={handleSignIn}>
+            <form className="guard-shift-login" onSubmit={handleSignIn}>
               <label>
-                <small>Email</small>
+                <span>Email</span>
                 <input
                   autoComplete="email"
                   type="email"
@@ -351,7 +359,7 @@ export default function GuardAttendancePage() {
               </label>
 
               <label>
-                <small>Password</small>
+                <span>Password</span>
                 <input
                   autoComplete="current-password"
                   type="password"
@@ -360,8 +368,8 @@ export default function GuardAttendancePage() {
                 />
               </label>
 
-              <button type="submit" disabled={isBusy}>
-                {isBusy ? <LoaderCircle className="auth-spin" size={15} /> : <LogIn size={15} />}
+              <button className="guard-shift-main-button" type="submit" disabled={isBusy}>
+                {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <LogIn size={16} />}
                 Masuk
               </button>
             </form>
@@ -369,51 +377,55 @@ export default function GuardAttendancePage() {
         ) : null}
 
         {isReady && authUser && !canUseGuardPage ? (
-          <section className="guard-attendance-card is-center">
-            <ShieldAlert size={30} />
-            <h2>Akses Penjaga Belum Aktif</h2>
-            <p>Akun ini belum punya role studio_guard approved. Owner perlu mengubah role akun ini dulu.</p>
+          <section className="guard-shift-card is-locked">
+            <ShieldCheck size={26} />
+            <strong>Akses belum aktif</strong>
+            <p>Akun ini belum punya role Penjaga Studio approved.</p>
           </section>
         ) : null}
 
         {canUseGuardPage ? (
           <>
-            <section className="guard-attendance-status-card">
+            <section className="guard-shift-status">
+              <span className={currentSession ? 'is-on' : ''} aria-hidden="true">
+                <Clock3 size={18} />
+              </span>
               <div>
-                <small>Status Hari Ini</small>
+                <small>Status hari ini</small>
                 <strong>{getStatusLabel(currentSession)}</strong>
-                <span>{currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Belum ada sesi aktif'}</span>
+                <em>{currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Siap absen'}</em>
               </div>
-
-              <em className={currentSession ? 'is-active' : ''}>
-                {currentSession ? formatDateTime(currentSession.clockInAt) : 'Siap absen'}
-              </em>
             </section>
 
-            <section className="guard-attendance-card">
-              <div className="guard-attendance-card-head">
+            <section className="guard-shift-card is-action">
+              <div className="guard-shift-title">
                 <span aria-hidden="true">
                   <Clock3 size={18} />
                 </span>
                 <div>
-                  <h2>{currentSession ? 'Shift Sedang Berjalan' : 'Mulai Jaga'}</h2>
-                  <p>
-                    Approval owner berlaku untuk tanggal absen. Booking di tanggal yang sama tetap bisa dihitung meski jam absen lebih lambat.
-                  </p>
+                  <strong>{currentSession ? 'Shift aktif' : 'Mulai jaga'}</strong>
+                  <small>Approval berlaku per tanggal, bukan batas jam booking.</small>
                 </div>
               </div>
 
               {!currentSession ? (
-                <div className="guard-attendance-form">
-                  <StudioSelect
-                    label="Profil Penjaga"
-                    options={guardOptions.length ? guardOptions : [{ key: authUser.uid, label: authUser.email || 'Penjaga Studio', description: 'Fallback akun login' }]}
-                    selectedKey={effectiveGuardPersonId}
-                    onChange={setSelectedGuardPersonId}
-                  />
+                <div className="guard-shift-form">
+                  <label>
+                    <span>Profil penjaga</span>
+                    <select
+                      value={effectiveGuardPersonId}
+                      onChange={(event) => setSelectedGuardPersonId(event.target.value)}
+                    >
+                      {visibleGuardOptions.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
                   <label>
-                    <small>Catatan</small>
+                    <span>Catatan</span>
                     <textarea
                       placeholder="Opsional, contoh: shift sore."
                       value={note}
@@ -421,52 +433,57 @@ export default function GuardAttendancePage() {
                     />
                   </label>
 
-                  <button className="is-primary" type="button" disabled={isBusy} onClick={handleCheckIn}>
-                    {isBusy ? <LoaderCircle className="auth-spin" size={15} /> : <CheckCircle2 size={15} />}
+                  <button
+                    className="guard-shift-main-button"
+                    type="button"
+                    disabled={isBusy || !effectiveGuardPersonId}
+                    onClick={handleCheckIn}
+                  >
+                    {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <CheckCircle2 size={16} />}
                     Mulai Jaga
                   </button>
                 </div>
               ) : (
-                <div className="guard-attendance-current">
-                  <span>
+                <div className="guard-shift-current">
+                  <article>
                     <small>Penjaga</small>
                     <strong>{currentSession.guardName}</strong>
-                  </span>
-                  <span>
-                    <small>Approval</small>
-                    <strong>{getApprovalLabel(currentSession.approvalStatus)}</strong>
-                  </span>
-                  <span>
+                  </article>
+                  <article>
                     <small>Mulai</small>
                     <strong>{formatDateTime(currentSession.clockInAt)}</strong>
-                  </span>
+                  </article>
+                  <article>
+                    <small>Approval</small>
+                    <strong>{getApprovalLabel(currentSession.approvalStatus)}</strong>
+                  </article>
 
-                  <button type="button" disabled={isBusy} onClick={handleCheckOut}>
-                    {isBusy ? <LoaderCircle className="auth-spin" size={15} /> : <XCircle size={15} />}
+                  <button className="guard-shift-main-button is-danger" type="button" disabled={isBusy} onClick={handleCheckOut}>
+                    {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <XCircle size={16} />}
                     Selesai Jaga
                   </button>
                 </div>
               )}
             </section>
 
-            <section className="guard-attendance-card">
-              <div className="guard-attendance-card-head">
+            <section className="guard-shift-card">
+              <div className="guard-shift-title">
                 <span aria-hidden="true">
                   <UserRound size={18} />
                 </span>
                 <div>
-                  <h2>Riwayat Absen</h2>
-                  <p>Owner akan approve atau reject absen dari panel owner.</p>
+                  <strong>Riwayat</strong>
+                  <small>Absen terbaru dari akun ini.</small>
                 </div>
               </div>
 
-              <div className="guard-attendance-history">
-                {sessions.length ? sessions.slice(0, 12).map((session) => (
+              <div className="guard-shift-history">
+                {sessions.length ? sessions.slice(0, 8).map((session) => (
                   <article key={session.id}>
-                    <span>
+                    <div>
                       <strong>{formatDate(session.date)}</strong>
-                      <small>{formatDateTime(session.clockInAt)} · {session.clockOutAt ? formatDateTime(session.clockOutAt) : 'belum selesai'}</small>
-                    </span>
+                      <span>{formatDateTime(session.clockInAt)}</span>
+                    </div>
                     <em className={'is-' + session.approvalStatus}>
                       {getApprovalLabel(session.approvalStatus)}
                     </em>
@@ -479,12 +496,21 @@ export default function GuardAttendancePage() {
           </>
         ) : null}
 
-        {message ? (
-          <p className="guard-attendance-message is-success" role="status">{message}</p>
-        ) : null}
-
-        {error ? (
-          <p className="guard-attendance-message is-error" role="alert">{error}</p>
+        {(notice || error) ? (
+          <aside className="guard-shift-feedback">
+            {notice ? (
+              <p className="is-success">
+                <CheckCircle2 size={15} />
+                {notice}
+              </p>
+            ) : null}
+            {error ? (
+              <p className="is-error">
+                <AlertCircle size={15} />
+                {error}
+              </p>
+            ) : null}
+          </aside>
         ) : null}
       </section>
     </main>
