@@ -493,3 +493,45 @@ Fee Settings contains:
 
 This phase still does not create the main Operator Fee page.
 That comes next in OPF-4.
+
+## OPF-4 - Operator Fee Page Implemented
+
+Files added / patched:
+
+```txt
+src/pages/admin/OperatorFeePage.jsx
+src/pages/AdminPage.jsx
+src/styles/admin-auth.css
+```
+
+Route:
+
+```txt
+/admin/operator-fee
+```
+
+Access:
+
+```txt
+Owner only.
+```
+
+Current features:
+
+```txt
+1. Reads active bookings from Schedule data.
+2. Reads Fee Settings from settings/operatorFees.
+3. Reads saved fee entries from operatorFeeEntries.
+4. Estimates fee lines using createEstimatedOperatorFeeLines().
+5. Allows assigning guard and recording operator per booking.
+6. Allows saving estimated lines as Draft entries.
+7. Allows marking Draft entries as Reviewed.
+8. Shows status Estimate, Draft, Reviewed, Posted.
+```
+
+Not implemented yet:
+
+```txt
+Posting to bookkeeping.
+That comes in OPF-5.
+```

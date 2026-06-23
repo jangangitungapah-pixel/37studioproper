@@ -17,6 +17,7 @@ import {
   BookOpen,
   Home,
   Image,
+  HandCoins,
   BellRing,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -43,6 +44,7 @@ const SettingsPage = lazy(() => import('./admin/SettingsPage.jsx'));
 const DashboardPage = lazy(() => import('./admin/DashboardPage.jsx'));
 const GalleryPage = lazy(() => import('./admin/GalleryPage.jsx'));
 const NotificationsPage = lazy(() => import('./admin/NotificationsPage.jsx'));
+const OperatorFeePage = lazy(() => import('./admin/OperatorFeePage.jsx'));
 
 const mobilePrimaryNavKeys = ['dashboard', 'schedule', 'billing'];
 
@@ -91,6 +93,15 @@ const navItems = [
     title: 'Pembukuan',
   },
   {
+    key: 'operator-fee',
+    label: 'Operator Fee',
+    path: '/admin/operator-fee',
+    icon: HandCoins,
+    title: 'Operator Fee',
+    ownerOnly: true,
+    permissionKey: 'bookkeeping',
+  },
+  {
     key: 'inventory',
     label: 'Inventory',
     path: '/admin/inventory',
@@ -117,15 +128,21 @@ function getNavPermissionKey(item) {
   return item?.permissionKey || item?.key;
 }
 
+function canAccessNavItem(user, item) {
+  if (item?.ownerOnly) return isOwnerAdminUser(user);
+
+  return hasAdminPagePermission(user, getNavPermissionKey(item));
+}
+
 function getFirstPermittedNavItem(user) {
-  return navItems.find((item) => hasAdminPagePermission(user, getNavPermissionKey(item))) || navItems[0];
+  return navItems.find((item) => canAccessNavItem(user, item)) || navItems[0];
 }
 
 function getPermittedDefaultLandingPath(user) {
   const preferredPath = getAccountDefaultLandingPath(user?.uid);
   const preferredItem = navItems.find((item) => item.path === preferredPath);
 
-  if (preferredItem && hasAdminPagePermission(user, getNavPermissionKey(preferredItem))) {
+  if (preferredItem && canAccessNavItem(user, preferredItem)) {
     return preferredItem.path;
   }
 
@@ -246,6 +263,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'customers') return <CustomerPage />;
   if (activeKey === 'billing') return <BillingPage />;
   if (activeKey === 'bookkeeping') return <BookkeepingPage />;
+  if (activeKey === 'operator-fee') return <OperatorFeePage currentUser={currentUser} />;
   if (activeKey === 'inventory') return <InventoryPage />;
   if (activeKey === 'gallery') return <GalleryPage />;
 
@@ -540,11 +558,11 @@ export default function AdminPage() {
   );
 
   const permittedNavItems = useMemo(
-    () => navItems.filter((item) => hasAdminPagePermission(authState.user, getNavPermissionKey(item))),
+    () => navItems.filter((item) => canAccessNavItem(authState.user, item)),
     [authState.user]
   );
 
-  const isRoutePermitted = !routeItem || hasAdminPagePermission(authState.user, getNavPermissionKey(routeItem));
+  const isRoutePermitted = !routeItem || canAccessNavItem(authState.user, routeItem);
   const activeItem = isRoutePermitted ? (routeItem || getFirstPermittedNavItem(authState.user)) : getFirstPermittedNavItem(authState.user);
 
   const mobilePrimaryNavItems = useMemo(

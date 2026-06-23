@@ -21621,3 +21621,408 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 OPERATOR FEE SETTINGS END */
+
+/* >>> STUDIO37 OPERATOR FEE PAGE START */
+.operator-fee-page {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 96px;
+}
+
+.operator-fee-hero,
+.operator-fee-summary article,
+.operator-fee-toolbar,
+.operator-fee-booking-card,
+.operator-fee-empty,
+.operator-fee-page-message,
+.operator-fee-locked {
+  border: 1px solid var(--auth-border);
+  background: var(--auth-bg-card);
+}
+
+.operator-fee-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 138, 42, 0.16), transparent 34%),
+    var(--auth-bg-card);
+  padding: 18px;
+}
+
+.operator-fee-hero > span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 18px;
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.operator-fee-hero p,
+.operator-fee-hero h2,
+.operator-fee-hero small {
+  margin: 0;
+}
+
+.operator-fee-hero p {
+  color: var(--auth-accent);
+  font-size: 0.72rem;
+  font-weight: 760;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.operator-fee-hero h2 {
+  color: var(--auth-text-strong);
+  font-size: clamp(1.55rem, 4vw, 2.3rem);
+  font-weight: 430;
+  letter-spacing: -0.06em;
+}
+
+.operator-fee-hero small {
+  display: block;
+  margin-top: 5px;
+  color: var(--auth-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.operator-fee-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.operator-fee-summary article {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border-radius: 18px;
+  padding: 13px;
+}
+
+.operator-fee-summary small {
+  color: var(--auth-text-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.operator-fee-summary strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 1.02rem;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-summary span {
+  color: var(--auth-text-muted);
+  font-size: 0.7rem;
+}
+
+.operator-fee-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border-radius: 20px;
+  padding: 12px;
+}
+
+.operator-fee-page-message {
+  border-radius: 16px;
+  color: var(--auth-accent);
+  padding: 11px 13px;
+  font-size: 0.78rem;
+}
+
+.operator-fee-list {
+  display: grid;
+  gap: 10px;
+}
+
+.operator-fee-booking-card {
+  display: grid;
+  gap: 11px;
+  border-radius: 22px;
+  padding: 14px;
+}
+
+.operator-fee-booking-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.operator-fee-booking-card header div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.operator-fee-booking-card header small,
+.operator-fee-booking-card header span {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-booking-card header small {
+  font-size: 0.68rem;
+  font-weight: 680;
+  letter-spacing: 0.06em;
+}
+
+.operator-fee-booking-card header strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 1rem;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-booking-card header span {
+  font-size: 0.75rem;
+}
+
+.operator-fee-status {
+  width: fit-content;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-main);
+  padding: 6px 9px;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.operator-fee-status.is-success {
+  border-color: rgba(92, 224, 161, 0.28);
+  background: rgba(92, 224, 161, 0.1);
+  color: #7ef0b3;
+}
+
+.operator-fee-status.is-info {
+  border-color: rgba(94, 234, 212, 0.24);
+  background: rgba(94, 234, 212, 0.09);
+  color: #5eead4;
+}
+
+.operator-fee-status.is-warning {
+  border-color: rgba(255, 214, 102, 0.24);
+  background: rgba(255, 214, 102, 0.09);
+  color: #ffd666;
+}
+
+.operator-fee-booking-meta,
+.operator-fee-assignment-grid,
+.operator-fee-line-list,
+.operator-fee-booking-card footer {
+  display: grid;
+  gap: 8px;
+}
+
+.operator-fee-booking-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.operator-fee-booking-meta span {
+  min-width: 0;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-main);
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.operator-fee-booking-meta svg {
+  flex: 0 0 auto;
+  color: var(--auth-accent);
+}
+
+.operator-fee-assignment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fee-line-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fee-line-list span,
+.operator-fee-line-list p {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: var(--auth-bg-soft);
+  padding: 9px;
+}
+
+.operator-fee-line-list small {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-line-list strong {
+  color: var(--auth-text-strong);
+  font-size: 0.82rem;
+  font-weight: 560;
+}
+
+.operator-fee-line-list p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: 0.76rem;
+}
+
+.operator-fee-booking-card footer {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.operator-fee-action {
+  min-height: 38px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 14px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 12px;
+  font-size: 0.72rem;
+  font-weight: 580;
+}
+
+.operator-fee-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.operator-fee-action:not(:disabled):hover {
+  border-color: var(--auth-border-strong);
+}
+
+.operator-fee-action.is-disabled {
+  color: var(--auth-text-muted);
+}
+
+.operator-fee-empty,
+.operator-fee-locked {
+  display: grid;
+  place-items: center;
+  gap: 9px;
+  min-height: 220px;
+  border-radius: 24px;
+  color: var(--auth-text-muted);
+  text-align: center;
+  padding: 24px;
+}
+
+.operator-fee-empty h3,
+.operator-fee-locked h2,
+.operator-fee-empty p,
+.operator-fee-locked p {
+  margin: 0;
+}
+
+.operator-fee-empty h3,
+.operator-fee-locked h2 {
+  color: var(--auth-text-strong);
+  font-weight: 560;
+}
+
+@media (max-width: 1023px) {
+  .operator-fee-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operator-fee-booking-meta,
+  .operator-fee-assignment-grid,
+  .operator-fee-line-list,
+  .operator-fee-booking-card footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .operator-fee-page {
+    gap: 10px;
+  }
+
+  .operator-fee-hero {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+    padding: 13px;
+  }
+
+  .operator-fee-hero > span {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .operator-fee-hero h2 {
+    font-size: 1.48rem;
+  }
+
+  .operator-fee-summary,
+  .operator-fee-toolbar {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .operator-fee-summary article {
+    border-radius: 15px;
+    padding: 10px;
+  }
+
+  .operator-fee-booking-card {
+    gap: 9px;
+    border-radius: 18px;
+    padding: 11px;
+  }
+
+  .operator-fee-booking-card header strong {
+    font-size: 0.9rem;
+  }
+
+  .operator-fee-booking-card header span {
+    white-space: normal;
+  }
+
+  .operator-fee-booking-meta span,
+  .operator-fee-line-list span {
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  .operator-fee-action {
+    min-height: 34px;
+    border-radius: 12px;
+    font-size: 0.66rem;
+  }
+}
+/* <<< STUDIO37 OPERATOR FEE PAGE END */
