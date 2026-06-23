@@ -450,3 +450,46 @@ This phase does not create UI yet.
 This phase does not auto-post expenses.
 This phase only prepares the settings, calculation, repository, and owner-only Firestore access.
 ```
+
+## OPF-3 - Fee Settings Subpage Implemented
+
+Files added / patched:
+
+```txt
+src/components/settings/OperatorFeeSettingsPanel.jsx
+src/pages/admin/SettingsPage.jsx
+src/styles/admin-auth.css
+```
+
+Subpage added:
+
+```txt
+/admin/settings -> Fee Settings
+```
+
+Access:
+
+```txt
+Owner only.
+```
+
+Fee Settings contains:
+
+```txt
+1. People / Payee list
+2. Default options
+3. Fee rule editor
+4. Target mapping from Pricing Settings:
+   - sessions
+   - recordingTypes
+   - packages
+5. Keyword rule support for flexible matching:
+   - track
+   - live
+   - mixing
+   - mastering
+6. Save to settings/operatorFees
+```
+
+This phase still does not create the main Operator Fee page.
+That comes next in OPF-4.

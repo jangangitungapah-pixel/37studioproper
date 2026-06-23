@@ -21287,3 +21287,337 @@ body:has(.settings-permission-backdrop) {
   }
 }
 /* <<< STUDIO37 BILLING POS READABLE SLIM END */
+
+/* >>> STUDIO37 OPERATOR FEE SETTINGS START */
+.operator-fee-settings {
+  display: grid;
+  gap: 12px;
+}
+
+.operator-fee-settings-hero {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 138, 42, 0.14), transparent 36%),
+    var(--auth-bg-card);
+}
+
+.operator-fee-settings-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 17px;
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.operator-fee-settings-hero p,
+.operator-fee-settings-hero h3,
+.operator-fee-settings-hero span {
+  margin: 0;
+}
+
+.operator-fee-settings-hero p {
+  color: var(--auth-accent);
+  font-size: 0.7rem;
+  font-weight: 720;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.operator-fee-settings-hero h3 {
+  color: var(--auth-text-strong);
+  font-size: clamp(1.16rem, 3vw, 1.55rem);
+  font-weight: 520;
+  letter-spacing: -0.04em;
+}
+
+.operator-fee-settings-hero span {
+  display: block;
+  margin-top: 5px;
+  color: var(--auth-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.48;
+}
+
+.operator-fee-settings-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.operator-fee-settings-summary article {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--auth-border);
+  border-radius: 17px;
+  background: var(--auth-bg-soft);
+  padding: 12px;
+}
+
+.operator-fee-settings-summary small {
+  color: var(--auth-text-muted);
+  font-size: 0.62rem;
+  font-weight: 680;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.operator-fee-settings-summary strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 1rem;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-settings-summary span {
+  color: var(--auth-text-muted);
+  font-size: 0.68rem;
+}
+
+.operator-fee-options-grid,
+.operator-fee-form-grid,
+.operator-fee-rule-form {
+  display: grid;
+  gap: 10px;
+}
+
+.operator-fee-options-grid {
+  grid-template-columns: minmax(0, 1.1fr) repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.operator-fee-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fee-rule-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.operator-fee-check {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background: var(--auth-bg-soft);
+  padding: 11px;
+}
+
+.operator-fee-check input {
+  margin-top: 3px;
+  accent-color: var(--auth-accent);
+}
+
+.operator-fee-check span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.operator-fee-check strong {
+  color: var(--auth-text-strong);
+  font-size: 0.78rem;
+  font-weight: 560;
+}
+
+.operator-fee-check small {
+  color: var(--auth-text-muted);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.operator-fee-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: end;
+}
+
+.operator-fee-list,
+.operator-fee-rule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.operator-fee-list-item,
+.operator-fee-rule-item {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-soft);
+  padding: 10px;
+}
+
+.operator-fee-list-item {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.operator-fee-rule-item {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.operator-fee-list-item.is-muted,
+.operator-fee-rule-item.is-muted {
+  opacity: 0.58;
+}
+
+.operator-fee-list-item span,
+.operator-fee-rule-item div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.operator-fee-list-item strong,
+.operator-fee-rule-item strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: 0.82rem;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-list-item small,
+.operator-fee-rule-item small,
+.operator-fee-rule-item span {
+  overflow: hidden;
+  color: var(--auth-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operator-fee-list-item em,
+.operator-fee-rule-item em {
+  width: fit-content;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-bg-control);
+  color: var(--auth-accent);
+  padding: 5px 8px;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.operator-fee-list-item div,
+.operator-fee-rule-item div:last-child {
+  display: flex;
+  gap: 6px;
+  justify-content: end;
+}
+
+.operator-fee-list-item button,
+.operator-fee-rule-item button {
+  min-height: 30px;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 11px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 9px;
+  font-size: 0.62rem;
+  font-weight: 560;
+}
+
+.operator-fee-message {
+  margin: 0;
+  border: 1px solid rgba(103, 232, 165, 0.28);
+  border-radius: 15px;
+  background: rgba(103, 232, 165, 0.1);
+  color: #67e8a5;
+  padding: 10px 12px;
+  font-size: 0.76rem;
+}
+
+.operator-fee-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: end;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), transparent),
+    var(--auth-bg-card);
+  padding: 10px;
+}
+
+@media (max-width: 1023px) {
+  .operator-fee-settings-summary,
+  .operator-fee-options-grid,
+  .operator-fee-form-grid,
+  .operator-fee-rule-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .operator-fee-rule-item,
+  .operator-fee-list-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operator-fee-list-item div,
+  .operator-fee-rule-item div:last-child {
+    justify-content: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .operator-fee-settings {
+    gap: 9px;
+  }
+
+  .operator-fee-settings-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .operator-fee-settings-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .operator-fee-settings-summary,
+  .operator-fee-options-grid,
+  .operator-fee-form-grid,
+  .operator-fee-rule-form {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .operator-fee-settings-summary article,
+  .operator-fee-check,
+  .operator-fee-list-item,
+  .operator-fee-rule-item {
+    border-radius: 14px;
+    padding: 9px;
+  }
+
+  .operator-fee-savebar {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-radius: 15px;
+    padding: 8px;
+  }
+}
+/* <<< STUDIO37 OPERATOR FEE SETTINGS END */

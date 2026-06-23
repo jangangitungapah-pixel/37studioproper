@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeB
 import { firestoreDb } from '../../lib/firebase.js';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
+import OperatorFeeSettingsPanel from '../../components/settings/OperatorFeeSettingsPanel.jsx';
 import { adminAuthRepository } from '../../services/adminAuthRepository.js';
 import {
   accountContactOptions,
@@ -272,6 +273,11 @@ export default function SettingsPage({ currentUser }) {
       }
     ];
     if (isOwnerAdminUser(currentUser)) {
+      pages.push({
+        key: 'fee-settings',
+        label: 'Fee Settings',
+        description: 'Atur crew, operator, uang makan, dan rule fee internal studio.',
+      });
       pages.push({
         key: 'approvals',
         label: 'Persetujuan Admin',
@@ -1175,7 +1181,9 @@ export default function SettingsPage({ currentUser }) {
             ? 'settings-page is-approvals-settings'
             : activeSubpage === 'danger'
               ? 'settings-page is-danger-settings'
-              : 'settings-page'
+              : activeSubpage === 'fee-settings'
+                ? 'settings-page is-fee-settings'
+                : 'settings-page'
       }
       aria-labelledby="settings-title"
     >
@@ -1437,6 +1445,10 @@ export default function SettingsPage({ currentUser }) {
             </div>
           </section>
         </section>
+      )}
+
+      {activeSubpage === 'fee-settings' && isOwnerAdminUser(currentUser) && (
+        <OperatorFeeSettingsPanel currentUser={currentUser} />
       )}
 
       {activeSubpage === 'danger' && isOwnerAdminUser(currentUser) && (
