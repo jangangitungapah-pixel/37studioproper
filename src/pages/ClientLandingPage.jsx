@@ -211,7 +211,7 @@ export default function ClientLandingPage() {
   const actualDuration = useMemo(() => {
     if (packageId !== 'none') {
       const selectedPkg = pricingSettings.packages?.find(p => p.id === packageId);
-      return selectedPkg ? Number(selectedPkg.durationHours) : 2;
+      return selectedPkg ? Math.max(0, Number(selectedPkg.durationHours) || 0) : 0;
     }
     if (duration === 'custom') {
       return Math.max(1, Number(customDuration) || 1);
@@ -239,7 +239,9 @@ export default function ClientLandingPage() {
     const formattedDate = date ? new Date(date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
     const startHourNum = Number(startHour);
     const endHourNum = startHourNum + actualDuration;
-    const timeString = `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`;
+    const timeString = actualDuration
+      ? `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`
+      : 'Tanpa jadwal studio utama';
 
     const selectedService = packageId !== 'none'
       ? (() => {
@@ -258,7 +260,7 @@ export default function ClientLandingPage() {
 📞 *Nomor HP* : ${phone || '(Belum diisi)'}
 🎤 *Layanan* : ${selectedService}
 📅 *Tanggal* : ${formattedDate || date}
-⏰ *Waktu* : ${timeString} (${actualDuration} Jam)
+⏰ *Waktu* : ${actualDuration ? timeString + ' (' + actualDuration + ' Jam)' : timeString}
 💰 *Estimasi Total* : ${formatRupiah(pricingBreakdown.total)}
 
 Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;

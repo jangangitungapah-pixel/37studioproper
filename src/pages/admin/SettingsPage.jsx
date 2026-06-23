@@ -917,7 +917,7 @@ export default function SettingsPage({ currentUser }) {
     setDiscountForm({
       id: item.id,
       nominal: String(item.nominal),
-      durationHours: String(item.durationHours),
+      durationHours: item.durationHours ? String(item.durationHours) : '',
       sessionId: item.sessionId,
     });
   }
@@ -940,7 +940,7 @@ export default function SettingsPage({ currentUser }) {
       price: toNumber(recordingForm.price),
     };
 
-    if (!item.name || !item.durationHours || !item.price) return;
+    if (!item.name || !item.price) return;
 
     updateSettings((current) => {
       const exists = current.recordingTypes.some((recording) => recording.id === item.id);
@@ -1918,7 +1918,7 @@ export default function SettingsPage({ currentUser }) {
         <div className="settings-section-head">
           <div>
             <h3>Paket</h3>
-            <p>Paket booking khusus. Kalau paket dipilih di form booking, session dan durasi akan terkunci.</p>
+            <p>Paket booking khusus. Durasi boleh dikosongkan untuk paket non-studio utama seperti mixing, mastering, editing, atau remote work.</p>
           </div>
         </div>
 
@@ -1928,7 +1928,7 @@ export default function SettingsPage({ currentUser }) {
               <article className="settings-list-item" key={item.id}>
                 <div>
                   <strong>{item.name}</strong>
-                  <span>{item.detail} • {item.durationHours} jam</span>
+                  <span>{item.detail} • {item.durationHours ? item.durationHours + ' jam' : 'Tanpa durasi studio'}</span>
                 </div>
                 <em>{formatRupiah(item.price)}</em>
                 <div className="settings-row-actions">
@@ -1966,9 +1966,9 @@ export default function SettingsPage({ currentUser }) {
           <StudioTextField
             id="setting-package-duration"
             inputMode="decimal"
-            label="Durasi Paket"
+            label="Durasi Paket (Opsional)"
             min="0"
-            placeholder="Contoh 4"
+            placeholder="Kosongkan jika tidak memakai studio utama"
             step="0.5"
             type="number"
             value={packageForm.durationHours}

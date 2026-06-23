@@ -150,6 +150,12 @@ function getSlotSpanRows(booking, startIndex) {
   const availableRows = businessHours.length - startIndex;
   return Math.max(1, Math.min(duration, availableRows));
 }
+
+function isNoDurationPackageBooking(booking) {
+  const hasPackage = Boolean(booking?.packageId && booking.packageId !== 'none') || booking?.pricingMode === 'package';
+
+  return hasPackage && Number(booking?.durationHours || booking?.duration || 0) <= 0;
+}
 function getBookingStatus(booking) {
   return booking.paymentStatus || booking.status || 'pending';
 }
@@ -184,7 +190,7 @@ function getVisibleBookingBlocks(bookings, visibleDays) {
       const bookingStatusLower = (booking.paymentStatus || booking.status || 'pending').toLowerCase();
       const isCancelled = ['cancelled', 'canceled', 'void', 'deleted'].includes(bookingStatusLower);
 
-      if (dayIndex === -1 || startIndex === -1 || isCancelled || !activeStatuses.includes(status)) {
+      if (dayIndex === -1 || startIndex === -1 || isCancelled || isNoDurationPackageBooking(booking) || !activeStatuses.includes(status)) {
         return null;
       }
 
@@ -642,7 +648,7 @@ export default function ClientPortalPage() {
   const actualDuration = useMemo(() => {
     if (simPackageId !== 'none') {
       const selectedPkg = pricingSettings.packages?.find(p => p.id === simPackageId);
-      return selectedPkg ? Number(selectedPkg.durationHours) : 2;
+      return selectedPkg ? Math.max(0, Number(selectedPkg.durationHours) || 0) : 0;
     }
     if (simPackageId === 'none' && isRecordingSessionId(simSessionType)) {
       const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
@@ -1719,7 +1725,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 <div className="space-y-1.5 text-[11px] text-[var(--ui-text-muted)]">
                   <div className="flex justify-between">
                     <span>Durasi:</span>
-                    <span className="text-white font-semibold">{actualDuration} Jam</span>
+                    <span className="text-white font-semibold">{actualDuration ? actualDuration + ' Jam' : 'Tanpa durasi studio'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Subtotal:</span>

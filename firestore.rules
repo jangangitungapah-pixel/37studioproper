@@ -339,7 +339,7 @@ match /users/{userId} {
         validString(data.phone, 0, 32) &&
         validIsoDate(data.date) &&
         validNumber(data.startHour, 0, 23) &&
-        validNumber(data.durationHours, 0.5, 24) &&
+        validNumber(data.durationHours, 0, 24) &&
         validNumber(data.total, 0, 100000000) &&
         data.paymentStatus in ['pending', 'dp', 'lunas', 'void', 'cancelled', 'canceled', 'deleted'] &&
         data.status in ['pending', 'dp', 'lunas', 'void', 'cancelled', 'canceled', 'deleted'] &&
@@ -447,7 +447,7 @@ match /users/{userId} {
         validString(data.sessionLabel, 1, 160) &&
         validIsoDate(data.date) &&
         validNumber(data.startHour, 0, 23) &&
-        validNumber(data.durationHours, 0.5, 24) &&
+        validNumber(data.durationHours, 0, 24) &&
         validNumber(data.subtotal, 0, 100000000) &&
         validNumber(data.discountAmount, 0, 100000000) &&
         validNumber(data.total, 0, 100000000) &&

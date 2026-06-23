@@ -213,6 +213,7 @@ export default function BookingFormModal({
 
   const recordingSessionKey = getRecordingSessionKey(sessionTypeOptions);
   const isPackageSelected = form.packageId !== 'none';
+  const isNoDurationPackageSelected = isPackageSelected && Number(totals.durationHours || 0) <= 0;
   const isRecordingSessionSelected = !isPackageSelected && isRecordingSessionId(form.sessionType);
   const activeRecordingTypeKey =
     form.recordingTypeId !== 'none'
@@ -354,7 +355,7 @@ export default function BookingFormModal({
       return;
     }
 
-    if (!totals.durationHours) {
+    if (!isNoDurationPackageSelected && !totals.durationHours) {
       setError('Durasi booking harus lebih dari 0 jam.');
       return;
     }
@@ -498,6 +499,12 @@ export default function BookingFormModal({
               selectedKey={form.packageId}
               onChange={updateValue('packageId')}
             />
+
+            {isNoDurationPackageSelected ? (
+              <p className="booking-price-note">
+                Paket ini tidak memakai durasi studio utama. Jadwal tidak akan memblok kalender studio.
+              </p>
+            ) : null}
 
             <StudioSelect
               inlineList

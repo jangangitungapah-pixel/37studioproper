@@ -233,6 +233,12 @@ function getBookingStatus(booking) {
   return booking.paymentStatus || booking.status || 'pending';
 }
 
+function isNoDurationPackageBooking(booking) {
+  const hasPackage = Boolean(booking?.packageId && booking.packageId !== 'none') || booking?.pricingMode === 'package';
+
+  return hasPackage && Number(booking?.durationHours || booking?.duration || 0) <= 0;
+}
+
 function getStatusLabel(status) {
   return statusFilters.find((item) => item.key === status)?.label || status;
 }
@@ -277,6 +283,8 @@ function formatHourLabel(hourValue) {
 }
 
 function getBookingWindowLabel(booking) {
+  if (isNoDurationPackageBooking(booking)) return 'Tanpa durasi studio';
+
   return formatHourLabel(getBookingStartHour(booking)) + '-' + formatHourLabel(getBookingEndHour(booking));
 }
 
@@ -292,8 +300,11 @@ function shouldHideBookingFromCalendarGrid(booking) {
   const requestStatus = String(booking?.bookingRequestStatus || '').trim().toLowerCase();
 
   return (
-    booking?.source === 'clientPortal' &&
-    ['submitted', 'rejected', 'cancelled'].includes(requestStatus)
+    isNoDurationPackageBooking(booking) ||
+    (
+      booking?.source === 'clientPortal' &&
+      ['submitted', 'rejected', 'cancelled'].includes(requestStatus)
+    )
   );
 }
 
@@ -317,6 +328,8 @@ function doBookingIntervalsOverlap(firstBooking, secondBooking) {
 }
 
 function getBookingConflictIssue(nextBooking, currentBookings) {
+  if (isNoDurationPackageBooking(nextBooking)) return null;
+
   const startHour = getBookingStartHour(nextBooking);
   const endHour = getBookingEndHour(nextBooking);
   const durationHours = getBookingDurationHours(nextBooking);
