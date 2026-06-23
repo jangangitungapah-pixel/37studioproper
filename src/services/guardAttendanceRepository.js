@@ -61,7 +61,7 @@ function getDurationHours(startIso, endIso) {
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
 
-  return Math.max(0, Math.round(((end.getTime() - start.getTime()) / 36_000) ) / 100);
+  return Math.max(0, Math.round(((end.getTime() - start.getTime()) / 3_600_000) * 100) / 100);
 }
 
 export function makeGuardAttendanceId({ guardPersonId = '', guardUid = '', date = '' } = {}) {

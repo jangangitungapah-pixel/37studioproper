@@ -18,6 +18,7 @@ import {
   Home,
   Image,
   HandCoins,
+  UserCheck,
   BellRing,
 } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -31,6 +32,7 @@ import {
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import GuardAttendanceApprovalModal from '../components/guard/GuardAttendanceApprovalModal.jsx';
 import '../styles/admin-auth.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
@@ -45,6 +47,7 @@ const DashboardPage = lazy(() => import('./admin/DashboardPage.jsx'));
 const GalleryPage = lazy(() => import('./admin/GalleryPage.jsx'));
 const NotificationsPage = lazy(() => import('./admin/NotificationsPage.jsx'));
 const OperatorFeePage = lazy(() => import('./admin/OperatorFeePage.jsx'));
+const GuardAttendancePage = lazy(() => import('./admin/GuardAttendancePage.jsx'));
 
 const mobilePrimaryNavKeys = ['dashboard', 'schedule', 'billing'];
 
@@ -98,6 +101,15 @@ const navItems = [
     path: '/admin/operator-fee',
     icon: HandCoins,
     title: 'Operator Fee',
+    ownerOnly: true,
+    permissionKey: 'bookkeeping',
+  },
+  {
+    key: 'guard-attendance',
+    label: 'Absen Penjaga',
+    path: '/admin/guard-attendance',
+    icon: UserCheck,
+    title: 'Absen Penjaga',
     ownerOnly: true,
     permissionKey: 'bookkeeping',
   },
@@ -264,6 +276,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'billing') return <BillingPage />;
   if (activeKey === 'bookkeeping') return <BookkeepingPage />;
   if (activeKey === 'operator-fee') return <OperatorFeePage currentUser={currentUser} />;
+  if (activeKey === 'guard-attendance') return <GuardAttendancePage currentUser={currentUser} />;
   if (activeKey === 'inventory') return <InventoryPage />;
   if (activeKey === 'gallery') return <GalleryPage />;
 
@@ -722,6 +735,10 @@ export default function AdminPage() {
 
   return (
     <main className={shellClassName} data-auth-surface="admin" data-admin-active={activeItem.key}>
+      <GuardAttendanceApprovalModal
+        currentUser={authState.user}
+        onOpenPanel={() => goTo('/admin/guard-attendance')}
+      />
       <aside className="admin-sidebar" aria-label="Navigasi admin desktop">
         <div className="admin-sidebar-brand">
           <div className="admin-sidebar-logo" aria-hidden="true">

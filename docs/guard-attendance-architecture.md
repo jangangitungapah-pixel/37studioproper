@@ -359,3 +359,50 @@ Business rule:
 Absen dipakai sebagai bukti jaga per tanggal, bukan cut-off jam booking.
 Jika booking jam 10-12 dan penjaga absen jam 13, fee booking tanggal itu tetap eligible setelah owner approve absen tanggal tersebut.
 ```
+
+## ATT-4 - Owner Guard Attendance Approval Panel
+
+Owner panel dibuat:
+
+```txt
+/admin/guard-attendance
+```
+
+Fitur:
+
+```txt
+1. Owner melihat semua absen penjaga.
+2. Filter approval:
+   - Pending
+   - Approved
+   - Rejected
+   - Semua
+3. Filter tanggal.
+4. Search nama/email/tanggal.
+5. Approve absen.
+6. Reject absen dengan alasan.
+7. Void absen approved jika salah.
+8. Summary pending, approved hari ini, dan uang makan dari absen approved.
+```
+
+Modal owner:
+
+```txt
+GuardAttendanceApprovalModal muncul otomatis di Admin Shell jika ada absen pending.
+Modal tidak muncul saat owner sedang berada di /admin/guard-attendance.
+```
+
+Business rule:
+
+```txt
+Absen approved berlaku per tanggal.
+Jam absen tidak menjadi cut-off booking.
+Booking jam 10-12 tetap eligible walau penjaga absen jam 13, selama absen tanggal itu approved.
+```
+
+Catatan teknis:
+
+```txt
+ATT-4 belum mem-filter fee penjaga di Operator Fee berdasarkan attendance.
+Integrasi eligibility fee dilakukan di ATT-5.
+```
