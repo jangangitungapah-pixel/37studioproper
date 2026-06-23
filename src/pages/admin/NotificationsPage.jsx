@@ -292,7 +292,7 @@ export default function NotificationsPage({ currentUser }) {
     };
   }, [readinessItems]);
 
-  const handleRefreshReadiness = useCallback(async ({ includeWorker = true, reason = 'manual' } = {}) {
+  const handleRefreshReadiness = useCallback(async ({ includeWorker = true, reason = 'manual' } = {}) => {
     setReadinessState((current) => ({
       ...current,
       errorMessage: '',
