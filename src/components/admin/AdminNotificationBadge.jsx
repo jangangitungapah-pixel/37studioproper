@@ -1,5 +1,3 @@
-import React from 'react';
-
 function getNotificationBadgeCount(summary) {
   return Math.max(0, Number(summary?.failed || 0) + Number(summary?.pending || 0));
 }

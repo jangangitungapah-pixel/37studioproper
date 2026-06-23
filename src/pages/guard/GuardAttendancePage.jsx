@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import {
@@ -125,7 +124,6 @@ async function readGuardAccount(user) {
 }
 
 export default function GuardAttendancePage() {
-  const navigate = useNavigate();
   const settings = useOperatorFeeSettings();
   const isAuthAvailable = isFirebaseConfigured && Boolean(firebaseAuth);
 

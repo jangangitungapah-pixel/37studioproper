@@ -272,7 +272,6 @@ function FormActions({ editing, onCancel }) {
         <Save size={15} />
         {editing ? 'Update' : 'Simpan'}
       </button>
-      <ConfirmDialog config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </div>
   );
 }
@@ -283,7 +282,7 @@ function EmptyState({ children }) {
 
 export default function SettingsPage({ authState }) {
   const [confirmConfig, setConfirmConfig] = useState(null);
-  const currentUser = authState?.user || {};
+  const currentUser = useMemo(() => authState?.user || {}, [authState?.user]);
 
   const subpages = useMemo(() => {
     const pages = [
@@ -1233,7 +1232,8 @@ export default function SettingsPage({ authState }) {
   const accountNotificationLabel = getOptionLabel(accountNotificationOptions, accountPreferences.notificationLevel, 'Penting Saja');
 
   return (
-    <section
+    <>
+      <section
       className={
         activeSubpage === 'account'
           ? 'settings-page is-account-settings'
@@ -2425,6 +2425,8 @@ export default function SettingsPage({ authState }) {
 
         </section>
       )}
-    </section>
+      </section>
+      <ConfirmDialog config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+    </>
   );
 }

@@ -1,0 +1,246 @@
+{
+  "generatedAt": "2026-06-23T19:34:17.611Z",
+  "git": {
+    "branch": "main",
+    "lastCommit": "7278db1 Add comprehensive UI audit prompt for Midnight Linear + Bento Box overhaul",
+    "status": "M .firebase/hosting.ZGlzdA.cache\n?? docs/ui-overhaul-damage-audit.json\n?? docs/ui-overhaul-damage-audit.md\n?? docs/ui-precision-damage-audit.json\n?? docs/ui-precision-damage-audit.md\n?? scripts/audit-ui-overhaul-damage.cjs\n?? scripts/precision-ui-damage-audit.cjs\n?? scripts/transfer-mobile-shell-audit.cjs"
+  },
+  "importedModules": [
+    "./modules/base.css",
+    "./modules/shared.css",
+    "./modules/auth.css",
+    "./modules/admin-shell.css",
+    "./modules/schedule.css",
+    "./modules/booking.css",
+    "./modules/customer.css",
+    "./modules/billing.css",
+    "./modules/settings.css",
+    "./modules/inventory.css",
+    "./modules/bookkeeping.css",
+    "./modules/dashboard.css",
+    "./modules/gallery.css",
+    "./modules/operator-fee.css",
+    "./modules/notifications.css",
+    "./modules/guard-attendance.css",
+    "./modules/primitives-override.css"
+  ],
+  "blocks": {
+    "adminShell": {
+      "paddingBottom": "calc(90px + env(safe-area-inset-bottom))"
+    },
+    "adminStage": {
+      "padding": "18px"
+    },
+    "adminTopbar": {
+      "position": "sticky",
+      "margin": "-18px -18px 16px",
+      "padding": "16px 18px 12px"
+    },
+    "adminTopbarH1": {
+      "fontSize": "clamp(1.48rem, 8vw, 2.1rem)",
+      "lineHeight": "1"
+    },
+    "adminBottomNav": {
+      "position": "fixed",
+      "left": "12px",
+      "right": "12px",
+      "bottom": "calc(12px + env(safe-area-inset-bottom))",
+      "zIndex": "30",
+      "gridTemplateColumns": "repeat(2, minmax(0, 1fr))",
+      "padding": "8px",
+      "borderRadius": "24px"
+    }
+  },
+  "classCoverage": [
+    {
+      "className": "admin-shell",
+      "inAdminShellCss": true,
+      "inPrimitivesOverrideCss": true,
+      "usedInAdminPage": true,
+      "usedInBottomNav": false,
+      "usedInTopbar": true
+    },
+    {
+      "className": "admin-stage",
+      "inAdminShellCss": true,
+      "inPrimitivesOverrideCss": true,
+      "usedInAdminPage": true,
+      "usedInBottomNav": false,
+      "usedInTopbar": false
+    },
+    {
+      "className": "admin-topbar",
+      "inAdminShellCss": true,
+      "inPrimitivesOverrideCss": true,
+      "usedInAdminPage": false,
+      "usedInBottomNav": false,
+      "usedInTopbar": true
+    },
+    {
+      "className": "admin-bottom-nav",
+      "inAdminShellCss": true,
+      "inPrimitivesOverrideCss": true,
+      "usedInAdminPage": false,
+      "usedInBottomNav": true,
+      "usedInTopbar": false
+    },
+    {
+      "className": "admin-bottom-item",
+      "inAdminShellCss": true,
+      "inPrimitivesOverrideCss": true,
+      "usedInAdminPage": false,
+      "usedInBottomNav": true,
+      "usedInTopbar": false
+    },
+    {
+      "className": "admin-shell-icon-button",
+      "inAdminShellCss": true,
+      "inPrimitivesOverrideCss": true,
+      "usedInAdminPage": false,
+      "usedInBottomNav": false,
+      "usedInTopbar": true
+    },
+    {
+      "className": "admin-notification-badge",
+      "inAdminShellCss": false,
+      "inPrimitivesOverrideCss": false,
+      "usedInAdminPage": false,
+      "usedInBottomNav": false,
+      "usedInTopbar": false
+    },
+    {
+      "className": "admin-notification-shortcut",
+      "inAdminShellCss": false,
+      "inPrimitivesOverrideCss": false,
+      "usedInAdminPage": false,
+      "usedInBottomNav": false,
+      "usedInTopbar": true
+    },
+    {
+      "className": "admin-topbar-actions",
+      "inAdminShellCss": false,
+      "inPrimitivesOverrideCss": false,
+      "usedInAdminPage": false,
+      "usedInBottomNav": false,
+      "usedInTopbar": true
+    },
+    {
+      "className": "admin-page-loading",
+      "inAdminShellCss": false,
+      "inPrimitivesOverrideCss": false,
+      "usedInAdminPage": true,
+      "usedInBottomNav": false,
+      "usedInTopbar": false
+    }
+  ],
+  "guardCoverage": [
+    {
+      "className": "guard-shift-page",
+      "inGuardCss": true
+    },
+    {
+      "className": "guard-shift-shell",
+      "inGuardCss": true
+    },
+    {
+      "className": "guard-shift-card",
+      "inGuardCss": true
+    },
+    {
+      "className": "guard-shift-hero",
+      "inGuardCss": true
+    },
+    {
+      "className": "guard-shift-main-button",
+      "inGuardCss": true
+    },
+    {
+      "className": "guard-shift-history",
+      "inGuardCss": true
+    }
+  ],
+  "fileStats": [
+    {
+      "key": "adminShellCss",
+      "file": "src/styles/modules/admin-shell.css",
+      "exists": true,
+      "lines": 352,
+      "hexColors": 1,
+      "inlineStyles": 0
+    },
+    {
+      "key": "primitivesOverrideCss",
+      "file": "src/styles/modules/primitives-override.css",
+      "exists": true,
+      "lines": 1008,
+      "hexColors": 33,
+      "inlineStyles": 0
+    },
+    {
+      "key": "adminAuthCss",
+      "file": "src/styles/admin-auth.css",
+      "exists": true,
+      "lines": 39,
+      "hexColors": 0,
+      "inlineStyles": 0
+    },
+    {
+      "key": "adminPage",
+      "file": "src/pages/AdminPage.jsx",
+      "exists": true,
+      "lines": 557,
+      "hexColors": 0,
+      "inlineStyles": 4
+    },
+    {
+      "key": "adminBottomNav",
+      "file": "src/components/admin/AdminBottomNav.jsx",
+      "exists": true,
+      "lines": 84,
+      "hexColors": 0,
+      "inlineStyles": 0
+    },
+    {
+      "key": "adminTopbar",
+      "file": "src/components/admin/AdminTopbar.jsx",
+      "exists": true,
+      "lines": 41,
+      "hexColors": 0,
+      "inlineStyles": 0
+    },
+    {
+      "key": "guardCss",
+      "file": "src/styles/modules/guard-attendance.css",
+      "exists": true,
+      "lines": 879,
+      "hexColors": 10,
+      "inlineStyles": 0
+    }
+  ],
+  "findings": [
+    {
+      "severity": "P1",
+      "area": "Mobile Shell",
+      "problem": ".admin-bottom-nav fixed, rawan overlap content.",
+      "recommendation": "Pastikan .admin-shell/.admin-stage/page wrapper punya padding-bottom cukup dan section terakhir punya scroll margin."
+    },
+    {
+      "severity": "P1",
+      "area": "Mobile Shell",
+      "problem": "Bottom nav terdeteksi repeat(2), padahal screenshot menunjukkan 4 item.",
+      "recommendation": "Verifikasi override layer. Samakan CSS final dengan jumlah item aktual: Dashboard, Schedule, Billing, More."
+    },
+    {
+      "severity": "P1",
+      "area": "Mobile Topbar",
+      "problem": "Title mobile memakai clamp dengan 8vw, terlihat terlalu besar di screenshot.",
+      "recommendation": "Compact mobile topbar: kecilkan h1 clamp, rapikan action Notifikasi/Keluar."
+    },
+    {
+      "severity": "P1",
+      "area": "CSS Coverage",
+      "problem": "4 admin shell class tidak ditemukan di admin-shell/primitives CSS.",
+      "recommendation": "admin-notification-badge, admin-notification-shortcut, admin-topbar-actions, admin-page-loading"
+    }
+  ]
+}

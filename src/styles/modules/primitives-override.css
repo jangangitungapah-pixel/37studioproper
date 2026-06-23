@@ -995,6 +995,317 @@ button[aria-disabled='true'],
   }
 }
 
+/* === UI-D1A ADMIN MOBILE SHELL RESCUE: START === */
+.admin-page-loading {
+  min-height: 40vh !important;
+  display: grid !important;
+  place-items: center !important;
+  color: var(--auth-accent) !important;
+}
+
+.auth-spin {
+  animation: ui-d1a-auth-spin 860ms linear infinite;
+  transform-origin: center;
+}
+
+@keyframes ui-d1a-auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.admin-notification-badge {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: 999px;
+  background: var(--auth-accent-soft);
+  color: var(--auth-text-strong);
+  padding: 0 5px;
+  font-size: 0.6rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.admin-notification-badge.is-danger {
+  border-color: color-mix(in srgb, var(--auth-danger) 62%, transparent);
+  background: color-mix(in srgb, var(--auth-danger) 18%, transparent);
+  color: var(--auth-text-strong);
+}
+
+.admin-notification-badge.is-warning {
+  border-color: color-mix(in srgb, var(--auth-warning) 54%, transparent);
+  background: var(--auth-warning-soft);
+  color: var(--auth-text-strong);
+}
+
+.admin-notification-badge.is-info,
+.admin-notification-badge.is-quiet {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-accent-soft);
+  color: var(--auth-text-strong);
+}
+
+@media (max-width: 767px) {
+  .admin-shell {
+    --admin-mobile-bottom-nav-height: 64px;
+    --admin-mobile-bottom-nav-offset: calc(8px + env(safe-area-inset-bottom));
+    --admin-mobile-safe-bottom: calc(
+      var(--admin-mobile-bottom-nav-height) + var(--admin-mobile-bottom-nav-offset) + 24px
+    );
+    min-height: 100dvh !important;
+    padding-bottom: var(--admin-mobile-safe-bottom) !important;
+    overflow-x: clip !important;
+  }
+
+  .admin-stage {
+    min-height: 100dvh !important;
+    padding: 8px 9px calc(var(--admin-mobile-safe-bottom) + 16px) !important;
+    scroll-padding-top: 64px !important;
+    scroll-padding-bottom: calc(var(--admin-mobile-safe-bottom) + 16px) !important;
+  }
+
+  .admin-stage::after {
+    content: '';
+    display: block;
+    height: 12px;
+  }
+
+  .admin-page-loading {
+    min-height: min(42dvh, 360px) !important;
+    padding: 24px 12px calc(var(--admin-mobile-safe-bottom) + 12px) !important;
+  }
+
+  .admin-topbar {
+    min-height: 52px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin: -8px -9px 10px !important;
+    padding: calc(8px + env(safe-area-inset-top)) 9px 8px !important;
+    border-bottom: 1px solid var(--auth-border) !important;
+    background: color-mix(in srgb, var(--auth-bg-page) 88%, transparent) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .admin-topbar > div:first-child {
+    min-width: 0 !important;
+  }
+
+  .admin-topbar p {
+    margin: 0 0 2px !important;
+    color: var(--auth-text-muted) !important;
+    font-size: 0.58rem !important;
+    line-height: 1 !important;
+    letter-spacing: 0.06em !important;
+  }
+
+  .admin-topbar h1 {
+    max-width: min(58vw, 280px) !important;
+    overflow: hidden !important;
+    color: var(--auth-text-strong) !important;
+    font-size: clamp(1.02rem, 5vw, 1.32rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.04em !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-topbar-actions {
+    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px !important;
+  }
+
+  .admin-notification-shortcut,
+  .admin-topbar-actions .admin-shell-icon-button {
+    position: relative !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    border: 1px solid var(--auth-border) !important;
+    border-radius: 12px !important;
+    background: var(--auth-bg-control) !important;
+    color: var(--auth-text-main) !important;
+    padding: 0 9px !important;
+    font-size: 0.68rem !important;
+    font-weight: 750 !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+  }
+
+  .admin-notification-shortcut > span:not(.admin-notification-badge),
+  .admin-topbar-actions .admin-shell-icon-button > span {
+    display: none !important;
+  }
+
+  .admin-notification-shortcut .admin-notification-badge.is-shortcut {
+    position: absolute !important;
+    top: -5px !important;
+    right: -5px !important;
+  }
+
+  .admin-bottom-nav {
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: var(--admin-mobile-bottom-nav-offset) !important;
+    z-index: 900 !important;
+    min-height: var(--admin-mobile-bottom-nav-height) !important;
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    border: 1px solid var(--auth-border) !important;
+    border-radius: 20px !important;
+    background: color-mix(in srgb, var(--auth-bg-elevated) 94%, transparent) !important;
+    padding: 6px !important;
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.44) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+  }
+
+  .admin-bottom-nav > .admin-bottom-item,
+  .admin-bottom-more {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  .admin-bottom-more {
+    position: static !important;
+    display: flex !important;
+  }
+
+  .admin-bottom-more > .admin-bottom-item {
+    width: 100% !important;
+  }
+
+  .admin-bottom-item {
+    position: relative !important;
+    min-height: 50px !important;
+    display: grid !important;
+    place-items: center !important;
+    gap: 2px !important;
+    border-radius: 14px !important;
+    padding: 4px 2px !important;
+    color: var(--auth-text-muted) !important;
+    font-size: 0.6rem !important;
+    font-weight: 780 !important;
+    line-height: 1.05 !important;
+  }
+
+  .admin-bottom-item svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .admin-bottom-item > span:not(.admin-notification-badge) {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-bottom-item .admin-notification-badge.is-bottom {
+    position: absolute !important;
+    top: 4px !important;
+    right: clamp(7px, 18%, 14px) !important;
+  }
+
+  .admin-bottom-item.is-active {
+    background: var(--auth-accent-soft) !important;
+    color: var(--auth-text-strong) !important;
+    box-shadow: inset 0 0 0 1px var(--auth-border-strong) !important;
+  }
+
+  .admin-bottom-more-menu {
+    position: fixed !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    bottom: calc(
+      var(--admin-mobile-bottom-nav-height) + var(--admin-mobile-bottom-nav-offset) + 8px
+    ) !important;
+    z-index: 910 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    max-height: min(42dvh, 318px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    border: 1px solid var(--auth-border-strong) !important;
+    border-radius: 20px !important;
+    background: color-mix(in srgb, var(--auth-bg-elevated) 96%, var(--auth-bg-page) 4%) !important;
+    padding: 8px !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+  }
+
+  .admin-more-item {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    border: 1px solid var(--auth-border) !important;
+    border-radius: 14px !important;
+    background: var(--auth-bg-control) !important;
+    color: var(--auth-text-main) !important;
+    padding: 0 10px !important;
+    font-size: 0.68rem !important;
+    font-weight: 760 !important;
+    text-align: left !important;
+    cursor: pointer !important;
+  }
+
+  .admin-more-item svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .admin-more-item span:not(.admin-notification-badge) {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-more-item .admin-notification-badge.is-more {
+    margin-left: auto !important;
+  }
+
+  .admin-more-item.is-active {
+    border-color: var(--auth-border-strong) !important;
+    background: var(--auth-accent-soft) !important;
+    color: var(--auth-text-strong) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .admin-topbar h1 {
+    max-width: min(52vw, 220px) !important;
+  }
+
+  .admin-bottom-item {
+    font-size: 0.56rem !important;
+  }
+
+  .admin-bottom-more-menu {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* === UI-D1A ADMIN MOBILE SHELL RESCUE: END === */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
