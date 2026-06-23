@@ -255,6 +255,71 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
     if (message) setMessage('');
   }
 
+  function applyRulePreset(presetKey) {
+    const presetMap = {
+      rehearsalGuard: {
+        name: 'Fee Penjaga Rehearsal',
+        payeeRole: OPERATOR_FEE_PERSON_ROLES.GUARD,
+        calculationMode: OPERATOR_FEE_CALCULATION_MODES.HOURLY,
+        amount: '10000',
+        baseHours: '1',
+        overtimeAfterHours: '',
+        referencePrice: '',
+        includeMeal: true,
+        keyword: '',
+        note: 'Penjaga studio dibayar per jam rehearsal.',
+      },
+      recordingOperator: {
+        name: 'Fee Operator Recording',
+        payeeRole: OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR,
+        calculationMode: OPERATOR_FEE_CALCULATION_MODES.FLAT,
+        amount: '450000',
+        baseHours: '6',
+        overtimeAfterHours: '',
+        referencePrice: '950000',
+        includeMeal: false,
+        keyword: 'track',
+        note: 'Operator recording dibayar flat per session.',
+      },
+      recordingOvertime: {
+        name: 'Overtime Penjaga Recording',
+        payeeRole: OPERATOR_FEE_PERSON_ROLES.GUARD,
+        calculationMode: OPERATOR_FEE_CALCULATION_MODES.OVERTIME_HOURLY,
+        amount: '10000',
+        baseHours: '1',
+        overtimeAfterHours: '6',
+        referencePrice: '',
+        includeMeal: false,
+        keyword: 'track',
+        note: 'Tambahan fee penjaga jika recording melewati jam normal.',
+      },
+      packageFlat: {
+        name: 'Fee Paket Non-Studio',
+        payeeRole: OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR,
+        calculationMode: OPERATOR_FEE_CALCULATION_MODES.FLAT,
+        amount: '50000',
+        baseHours: '1',
+        overtimeAfterHours: '',
+        referencePrice: '',
+        includeMeal: false,
+        onlyForNoDurationPackage: true,
+        keyword: 'mixing',
+        note: 'Fee flat untuk paket tanpa blok kalender seperti mixing/mastering.',
+      },
+    };
+
+    const preset = presetMap[presetKey];
+    if (!preset) return;
+
+    setRuleForm((current) => ({
+      ...current,
+      ...preset,
+      titleTemplate: current.titleTemplate || 'Operator Fee - {bookingCode} - {serviceLabel}',
+    }));
+
+    if (message) setMessage('');
+  }
+
   function savePerson(event) {
     event.preventDefault();
 
@@ -591,163 +656,200 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
           </div>
         </div>
 
-        <form className="operator-fee-rule-form" onSubmit={saveRule}>
-          <StudioTextField
-            id="operator-rule-name"
-            label="Nama Rule"
-            placeholder="Contoh: Fee Operator Recording Track"
-            value={ruleForm.name}
-            onChange={updateRuleField('name')}
-          />
-
-          <StudioSelect
-            label="Target Pricing"
-            options={targetOptions}
-            selectedKey={ruleForm.targetKey}
-            onChange={handleTargetChange}
-          />
-
-          <StudioSelect
-            label="Match Mode"
-            options={matchModeOptions}
-            selectedKey={ruleForm.matchMode}
-            onChange={updateRuleValue('matchMode')}
-          />
-
-          <StudioTextField
-            id="operator-rule-keyword"
-            label="Keyword"
-            placeholder="track / live / mixing"
-            value={ruleForm.keyword}
-            onChange={updateRuleField('keyword')}
-          />
-
-          <StudioSelect
-            label="Penerima Fee"
-            options={payeeRoleOptions}
-            selectedKey={ruleForm.payeeRole}
-            onChange={updateRuleValue('payeeRole')}
-          />
-
-          <StudioSelect
-            label="Mode Hitung"
-            options={calculationModeOptions}
-            selectedKey={ruleForm.calculationMode}
-            onChange={updateRuleValue('calculationMode')}
-          />
-
-          <StudioTextField
-            id="operator-rule-amount"
-            inputMode="numeric"
-            label="Amount"
-            min="0"
-            placeholder="Contoh 50000"
-            type="number"
-            value={ruleForm.amount}
-            onChange={updateRuleField('amount')}
-          />
-
-          <StudioTextField
-            id="operator-rule-percentage"
-            inputMode="numeric"
-            label="Percentage"
-            min="0"
-            placeholder="Opsional"
-            type="number"
-            value={ruleForm.percentage}
-            onChange={updateRuleField('percentage')}
-          />
-
-          <StudioTextField
-            id="operator-rule-base-hours"
-            inputMode="numeric"
-            label="Base Hours"
-            min="0"
-            placeholder="6"
-            type="number"
-            value={ruleForm.baseHours}
-            onChange={updateRuleField('baseHours')}
-          />
-
-          <StudioTextField
-            id="operator-rule-overtime"
-            inputMode="numeric"
-            label="Overtime After"
-            min="0"
-            placeholder="6"
-            type="number"
-            value={ruleForm.overtimeAfterHours}
-            onChange={updateRuleField('overtimeAfterHours')}
-          />
-
-          <StudioTextField
-            id="operator-rule-reference"
-            inputMode="numeric"
-            label="Reference Price"
-            min="0"
-            placeholder="950000"
-            type="number"
-            value={ruleForm.referencePrice}
-            onChange={updateRuleField('referencePrice')}
-          />
-
-          <StudioTextField
-            id="operator-rule-title"
-            label="Judul Pembukuan"
-            placeholder="Operator Fee - {bookingCode}"
-            value={ruleForm.titleTemplate}
-            onChange={updateRuleField('titleTemplate')}
-          />
-
-          <label className="operator-fee-check">
-            <input
-              checked={ruleForm.active}
-              type="checkbox"
-              onChange={updateRuleBoolean('active')}
-            />
+        <div className="operator-fee-rule-helper" aria-label="Panduan rule fee">
+          <div>
+            <strong>Rule sederhana dulu, detail belakangan.</strong>
             <span>
-              <strong>Rule aktif</strong>
-              <small>Rule dipakai saat estimasi fee.</small>
+              Pilih target harga, siapa penerima fee, cara hitung, dan nominalnya. Field rumit seperti keyword, overtime, dan judul pembukuan sekarang disimpan di Pengaturan Lanjutan.
             </span>
-          </label>
+          </div>
 
-          <label className="operator-fee-check">
-            <input
-              checked={ruleForm.requireAssignedPerson}
-              type="checkbox"
-              onChange={updateRuleBoolean('requireAssignedPerson')}
+          <div className="operator-fee-preset-row" aria-label="Preset rule cepat">
+            <button type="button" onClick={() => applyRulePreset('rehearsalGuard')}>
+              Rehearsal / Jam
+            </button>
+            <button type="button" onClick={() => applyRulePreset('recordingOperator')}>
+              Operator Recording
+            </button>
+            <button type="button" onClick={() => applyRulePreset('recordingOvertime')}>
+              Overtime
+            </button>
+            <button type="button" onClick={() => applyRulePreset('packageFlat')}>
+              Paket Flat
+            </button>
+          </div>
+        </div>
+
+        <form className="operator-fee-rule-form is-simple" onSubmit={saveRule}>
+          <div className="operator-fee-rule-basic-grid">
+            <StudioTextField
+              id="operator-rule-name"
+              label="Nama Rule"
+              placeholder="Contoh: Fee Operator Recording Track"
+              value={ruleForm.name}
+              onChange={updateRuleField('name')}
             />
-            <span>
-              <strong>Wajib assigned person</strong>
-              <small>Fee baru final saat crew/operator sudah dipilih.</small>
-            </span>
-          </label>
 
-          <label className="operator-fee-check">
-            <input
-              checked={ruleForm.includeMeal}
-              type="checkbox"
-              onChange={updateRuleBoolean('includeMeal')}
+            <StudioSelect
+              label="Target Pricing"
+              options={targetOptions}
+              selectedKey={ruleForm.targetKey}
+              onChange={handleTargetChange}
             />
-            <span>
-              <strong>Include meal</strong>
-              <small>Rule boleh menambahkan uang makan.</small>
-            </span>
-          </label>
 
-          <label className="operator-fee-check">
-            <input
-              checked={ruleForm.onlyForNoDurationPackage}
-              type="checkbox"
-              onChange={updateRuleBoolean('onlyForNoDurationPackage')}
+            <StudioSelect
+              label="Penerima Fee"
+              options={payeeRoleOptions}
+              selectedKey={ruleForm.payeeRole}
+              onChange={updateRuleValue('payeeRole')}
             />
-            <span>
-              <strong>Khusus paket tanpa durasi</strong>
-              <small>Cocok untuk mixing/mastering non-studio utama.</small>
-            </span>
-          </label>
 
-          <div className="operator-fee-form-actions">
+            <StudioSelect
+              label="Cara Hitung"
+              options={calculationModeOptions}
+              selectedKey={ruleForm.calculationMode}
+              onChange={updateRuleValue('calculationMode')}
+            />
+
+            <StudioTextField
+              id="operator-rule-amount"
+              inputMode="numeric"
+              label="Nominal Fee"
+              min="0"
+              placeholder="Contoh 50000"
+              type="number"
+              value={ruleForm.amount}
+              onChange={updateRuleField('amount')}
+            />
+
+            <label className="operator-fee-check is-compact">
+              <input
+                checked={ruleForm.active}
+                type="checkbox"
+                onChange={updateRuleBoolean('active')}
+              />
+              <span>
+                <strong>Rule aktif</strong>
+                <small>Dipakai saat menghitung fee.</small>
+              </span>
+            </label>
+          </div>
+
+          <details className="operator-fee-advanced">
+            <summary>
+              <span>
+                <strong>Pengaturan Lanjutan</strong>
+                <small>Keyword, percentage, overtime, template pembukuan, dan rule khusus.</small>
+              </span>
+            </summary>
+
+            <div className="operator-fee-advanced-grid">
+              <StudioSelect
+                label="Match Mode"
+                options={matchModeOptions}
+                selectedKey={ruleForm.matchMode}
+                onChange={updateRuleValue('matchMode')}
+              />
+
+              <StudioTextField
+                id="operator-rule-keyword"
+                label="Keyword"
+                placeholder="track / live / mixing"
+                value={ruleForm.keyword}
+                onChange={updateRuleField('keyword')}
+              />
+
+              <StudioTextField
+                id="operator-rule-percentage"
+                inputMode="numeric"
+                label="Percentage"
+                min="0"
+                placeholder="Opsional"
+                type="number"
+                value={ruleForm.percentage}
+                onChange={updateRuleField('percentage')}
+              />
+
+              <StudioTextField
+                id="operator-rule-base-hours"
+                inputMode="numeric"
+                label="Base Hours"
+                min="0"
+                placeholder="6"
+                type="number"
+                value={ruleForm.baseHours}
+                onChange={updateRuleField('baseHours')}
+              />
+
+              <StudioTextField
+                id="operator-rule-overtime"
+                inputMode="numeric"
+                label="Overtime After"
+                min="0"
+                placeholder="6"
+                type="number"
+                value={ruleForm.overtimeAfterHours}
+                onChange={updateRuleField('overtimeAfterHours')}
+              />
+
+              <StudioTextField
+                id="operator-rule-reference"
+                inputMode="numeric"
+                label="Reference Price"
+                min="0"
+                placeholder="950000"
+                type="number"
+                value={ruleForm.referencePrice}
+                onChange={updateRuleField('referencePrice')}
+              />
+
+              <StudioTextField
+                id="operator-rule-title"
+                label="Judul Pembukuan"
+                placeholder="Operator Fee - {bookingCode}"
+                value={ruleForm.titleTemplate}
+                onChange={updateRuleField('titleTemplate')}
+              />
+
+              <label className="operator-fee-check">
+                <input
+                  checked={ruleForm.requireAssignedPerson}
+                  type="checkbox"
+                  onChange={updateRuleBoolean('requireAssignedPerson')}
+                />
+                <span>
+                  <strong>Wajib assigned person</strong>
+                  <small>Fee baru final saat crew/operator sudah dipilih.</small>
+                </span>
+              </label>
+
+              <label className="operator-fee-check">
+                <input
+                  checked={ruleForm.includeMeal}
+                  type="checkbox"
+                  onChange={updateRuleBoolean('includeMeal')}
+                />
+                <span>
+                  <strong>Include meal</strong>
+                  <small>Rule boleh menambahkan uang makan.</small>
+                </span>
+              </label>
+
+              <label className="operator-fee-check">
+                <input
+                  checked={ruleForm.onlyForNoDurationPackage}
+                  type="checkbox"
+                  onChange={updateRuleBoolean('onlyForNoDurationPackage')}
+                />
+                <span>
+                  <strong>Khusus paket tanpa durasi</strong>
+                  <small>Cocok untuk mixing/mastering non-studio utama.</small>
+                </span>
+              </label>
+            </div>
+          </details>
+
+          <div className="operator-fee-form-actions is-sticky-lite">
             {ruleForm.id ? (
               <button className="settings-mini-button is-ghost" type="button" onClick={() => setRuleForm(emptyRuleForm)}>
                 Batal Edit
@@ -760,7 +862,7 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
           </div>
         </form>
 
-        <div className="operator-fee-rule-list">
+        <div className="operator-fee-rule-list">        <div className="operator-fee-rule-list">
           {draft.rules.map((rule) => (
             <article className={rule.active ? 'operator-fee-rule-item' : 'operator-fee-rule-item is-muted'} key={rule.id}>
               <div>

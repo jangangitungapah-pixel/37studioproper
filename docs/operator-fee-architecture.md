@@ -575,3 +575,39 @@ Bookkeeping integration:
 ```txt
 Bookkeeping rows from Operator Fee show "Operator Fee" in the transaction note.
 ```
+
+## OPF-3B - Simplified Fee Rules UI
+
+Fee Rules UI disederhanakan.
+
+Perubahan:
+
+```txt
+1. Form utama hanya menampilkan field penting:
+   - Nama Rule
+   - Target Pricing
+   - Penerima Fee
+   - Cara Hitung
+   - Nominal Fee
+   - Rule Aktif
+
+2. Field teknis dipindah ke Pengaturan Lanjutan:
+   - Match Mode
+   - Keyword
+   - Percentage
+   - Base Hours
+   - Overtime After
+   - Reference Price
+   - Judul Pembukuan
+   - Require Assigned Person
+   - Include Meal
+   - Khusus Paket Tanpa Durasi
+
+3. Ditambah preset cepat:
+   - Rehearsal / Jam
+   - Operator Recording
+   - Overtime
+   - Paket Flat
+
+4. Tidak mengubah model data, calculation logic, Firestore rules, atau integrasi Operator Fee.
+```

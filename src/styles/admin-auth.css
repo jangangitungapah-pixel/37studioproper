@@ -22044,3 +22044,180 @@ body:has(.settings-permission-backdrop) {
   color: var(--auth-text-muted);
 }
 /* <<< STUDIO37 OPERATOR FEE BOOKKEEPING POST END */
+
+/* >>> STUDIO37 OPERATOR FEE RULES SIMPLE UI START */
+.operator-fee-rule-helper {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 138, 42, 0.2);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 138, 42, 0.13), transparent 34%),
+    var(--auth-bg-soft);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.operator-fee-rule-helper div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.operator-fee-rule-helper strong {
+  color: var(--auth-text-strong);
+  font-size: 0.88rem;
+  font-weight: 560;
+}
+
+.operator-fee-rule-helper span {
+  color: var(--auth-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.operator-fee-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.operator-fee-preset-row button {
+  min-height: 32px;
+  border: 1px solid rgba(255, 138, 42, 0.26);
+  border-radius: 999px;
+  background: rgba(255, 138, 42, 0.08);
+  color: var(--auth-accent);
+  padding: 0 11px;
+  font-size: 0.64rem;
+  font-weight: 560;
+}
+
+.operator-fee-rule-form.is-simple {
+  display: grid;
+  gap: 10px;
+}
+
+.operator-fee-rule-basic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.operator-fee-check.is-compact {
+  min-height: 54px;
+  align-self: end;
+}
+
+.operator-fee-advanced {
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-bg-soft);
+  overflow: hidden;
+}
+
+.operator-fee-advanced summary {
+  min-height: 50px;
+  display: grid;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 12px;
+  list-style: none;
+}
+
+.operator-fee-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.operator-fee-advanced summary span {
+  display: grid;
+  gap: 3px;
+  position: relative;
+  padding-right: 28px;
+}
+
+.operator-fee-advanced summary span::after {
+  content: "⌄";
+  position: absolute;
+  right: 0;
+  top: 2px;
+  color: var(--auth-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.operator-fee-advanced[open] summary span::after {
+  content: "⌃";
+}
+
+.operator-fee-advanced summary strong {
+  color: var(--auth-text-strong);
+  font-size: 0.82rem;
+  font-weight: 560;
+}
+
+.operator-fee-advanced summary small {
+  color: var(--auth-text-muted);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.operator-fee-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  border-top: 1px solid var(--auth-border);
+  padding: 10px;
+}
+
+.operator-fee-form-actions.is-sticky-lite {
+  position: sticky;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 5;
+  justify-content: end;
+  border: 1px solid var(--auth-border);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    var(--auth-bg-card);
+  padding: 8px;
+}
+
+@media (max-width: 767px) {
+  .operator-fee-rule-helper {
+    border-radius: 15px;
+    padding: 10px;
+  }
+
+  .operator-fee-preset-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operator-fee-preset-row button {
+    width: 100%;
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 0.58rem;
+  }
+
+  .operator-fee-rule-basic-grid,
+  .operator-fee-advanced-grid {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .operator-fee-advanced summary {
+    min-height: 44px;
+    padding: 9px 10px;
+  }
+
+  .operator-fee-advanced-grid {
+    padding: 8px;
+  }
+
+  .operator-fee-form-actions.is-sticky-lite {
+    grid-template-columns: 1fr;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+}
+/* <<< STUDIO37 OPERATOR FEE RULES SIMPLE UI END */
