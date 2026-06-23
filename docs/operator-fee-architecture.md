@@ -611,3 +611,25 @@ Perubahan:
 
 4. Tidak mengubah model data, calculation logic, Firestore rules, atau integrasi Operator Fee.
 ```
+
+## OPF-3D - Ultra Simple Fee Settings
+
+Fee Settings di-overhaul agar lebih to the point.
+
+Perubahan:
+
+```txt
+1. Form Fee Rules kompleks dihapus dari tampilan utama.
+2. Owner hanya mengatur nominal fee utama:
+   - Penjaga Rehearsal
+   - Uang Makan Penjaga
+   - Penjaga Recording Track
+   - Overtime Penjaga
+   - Operator Recording Track
+   - Operator Recording Live
+   - Paket Mixing / Mastering
+3. Crew Studio dibuat lebih sederhana.
+4. Rule teknis tetap tersimpan di belakang layar.
+5. Detail rule teknis hanya tampil sebagai accordion read-only.
+6. Data model dan integrasi Operator Fee tetap sama.
+```
