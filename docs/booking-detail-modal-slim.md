@@ -31,3 +31,16 @@ Perbaikan lanjutan modal detail booking:
 4. Grid informasi booking di mobile berubah jadi list ramping.
 5. Ringkasan harga tetap jelas tanpa typography terlalu berat.
 ```
+
+## BDM-1C Mobile Full Width
+
+Perbaikan lanjutan untuk modal detail booking mobile:
+
+```txt
+1. Panel mobile dibuat 100vw dan 100dvh.
+2. Border radius panel mobile dihilangkan agar full kanan-kiri.
+3. Font bold dikurangi lagi.
+4. Informasi booking dibuat lebih tipis.
+5. Value panjang boleh wrap agar tidak kepotong.
+6. Footer action lebih pendek.
+```
