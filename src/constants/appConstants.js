@@ -4,7 +4,7 @@
  */
 
 const viteEnv = import.meta.env || {};
-const nodeEnv = typeof process !== 'undefined' ? process.env || {} : {};
+const nodeEnv = globalThis.process?.env || {};
 
 function readEnv(key, fallback = '') {
   return viteEnv[key] || nodeEnv[key] || fallback;

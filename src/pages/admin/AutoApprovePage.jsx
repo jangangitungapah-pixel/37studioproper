@@ -28,7 +28,6 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
     }
 
     if (!isOwnerAdminUser(currentUser)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('error');
       setErrorMsg('Hanya owner aktif yang diizinkan untuk menyetujui akun baru.');
       return;

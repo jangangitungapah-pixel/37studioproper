@@ -15,8 +15,6 @@ import {
   UserCheck,
   BellRing,
 } from 'lucide-react';
-import { doc } from 'firebase/firestore';
-import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
 import {
