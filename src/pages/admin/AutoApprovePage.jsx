@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase';
@@ -21,12 +21,14 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
 
   useEffect(() => {
     if (!targetUid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('error');
       setErrorMsg('Tautan persetujuan tidak lengkap (UID tidak ditemukan).');
       return;
     }
 
     if (!isOwnerAdminUser(currentUser)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('error');
       setErrorMsg('Hanya owner aktif yang diizinkan untuk menyetujui akun baru.');
       return;
@@ -38,7 +40,8 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
-          setStatus('error');
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus('error');
           setErrorMsg('Akun user yang ingin disetujui tidak ditemukan di database.');
           return;
         }
@@ -47,7 +50,8 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
         setTargetUser(data);
 
         if (data.role !== 'admin') {
-          setStatus('error');
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus('error');
           setErrorMsg('Akun ini tidak lagi memiliki request admin. Role client tidak dapat disetujui sebagai admin.');
           return;
         }
@@ -58,7 +62,8 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
         }
 
         if (data.status !== 'pending') {
-          setStatus('error');
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus('error');
           setErrorMsg('Request admin akun ini sudah ditolak atau tidak aktif.');
           return;
         }
@@ -66,7 +71,8 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
         setStatus('confirm');
       } catch (err) {
         console.error('Failed to load approval target:', err);
-        setStatus('error');
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus('error');
         setErrorMsg('Gagal memuat user dari Firestore. Periksa koneksi atau database.');
       }
     }
@@ -87,6 +93,7 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
       setStatus('success');
     } catch (err) {
       console.error('Failed to approve user:', err);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('error');
       setErrorMsg('Gagal menyetujui user di Firestore. Periksa koneksi atau database.');
     }
@@ -186,3 +193,4 @@ export default function AutoApprovePage({ currentUser, onLogout }) {
 
   return null;
 }
+

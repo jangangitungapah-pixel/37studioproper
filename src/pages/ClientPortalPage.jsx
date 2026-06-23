@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -6,21 +6,13 @@ import {
   History,
   CreditCard,
   LogOut,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
   CalendarDays,
   Phone,
-  Clock3,
-  Info,
-  Volume2,
   Receipt,
   CalendarPlus,
   Copy,
   Check,
   MessageCircle,
-  MapPin,
-  Search,
   UploadCloud,
   Image,
   X
@@ -47,7 +39,6 @@ import {
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import {
   defaultStudioSettings,
-  formatBankAccountNumber,
   getStudioPaymentTerms,
   useStudioSettings,
 } from '../settings/studioSettings.js';
@@ -62,11 +53,20 @@ import {
 import { businessHours, durationOptions, statusFilters } from './admin/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
+import ClientDashboardTab from '../components/client/ClientDashboardTab.jsx';
+import ClientCalendarTab from '../components/client/ClientCalendarTab.jsx';
+import ClientHistoryTab from '../components/client/ClientHistoryTab.jsx';
+import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
+
+
+
+
 import '../styles/admin-auth.css';
 import '../styles/client-portal-calendar.css';
 import '../styles/client-portal-overhaul.css';
 import '../styles/client-portal-calendar-tight.css';
 import '../styles/client-payment-proof.css';
+import '../styles/client-portal-bento-override.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -293,7 +293,7 @@ function ClientCalendarBookingBlock({ block, onBookingClick, isOwn }) {
       </span>
       <span className="schedule-booking-title">{title}</span>
       <span className="schedule-booking-meta">
-        <span>{startLabel} • {durationLabel}</span>
+        <span>{startLabel} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ {durationLabel}</span>
         {isOwn && <b>{priceLabel}</b>}
       </span>
     </button>
@@ -838,7 +838,7 @@ export default function ClientPortalPage() {
     const selectedSession = sessionOptions.find((item) => item.key === simSessionType);
     const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
     const isRecordingRequest = simPackageId === 'none' && isRecordingSessionId(simSessionType);
-    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
+    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ')[0] || selectedSession?.label || 'Sesi Studio';
 
     if (isRecordingRequest && !selectedRecording) {
       setActionFeedback('Pilih jenis recording terlebih dahulu. Harga Recording diambil dari Recording Type.');
@@ -952,11 +952,11 @@ export default function ClientPortalPage() {
 
     const text = `Halo *${studioName}*, saya ingin melakukan pelunasan tagihan booking berikut:
 
-📝 *Kode Booking* : ${booking.bookingCode || booking.id}
-👤 *Nama* : ${currentUser?.displayName || 'Pelanggan'}
-📅 *Tanggal Sesi* : ${booking.date}
-⏰ *Jam* : ${String(booking.startHour).padStart(2, '0')}.00
-💰 *Sisa Tagihan* : ${formatRupiah(amountToPay)}
+ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â *Kode Booking* : ${booking.bookingCode || booking.id}
+ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ *Nama* : ${currentUser?.displayName || 'Pelanggan'}
+ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ *Tanggal Sesi* : ${booking.date}
+ÃƒÂ¢Ã‚ÂÃ‚Â° *Jam* : ${String(booking.startHour).padStart(2, '0')}.00
+ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â° *Sisa Tagihan* : ${formatRupiah(amountToPay)}
 
 Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
@@ -966,7 +966,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   const getBookingSupportUrl = (booking) => {
     const studioName = studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName;
     const bookingCode = booking.bookingCode || booking.id || '-';
-    const text = `Halo *${studioName}*, saya ingin meminta bantuan terkait booking berikut:\n\n📝 *Kode Booking* : ${bookingCode}\n📅 *Tanggal* : ${booking.date}\n⏰ *Jam* : ${String(booking.startHour).padStart(2, '0')}.00 WIB\n\nMohon bantuannya. Terima kasih!`;
+    const text = `Halo *${studioName}*, saya ingin meminta bantuan terkait booking berikut:\n\nÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â *Kode Booking* : ${bookingCode}\nÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ *Tanggal* : ${booking.date}\nÃƒÂ¢Ã‚ÂÃ‚Â° *Jam* : ${String(booking.startHour).padStart(2, '0')}.00 WIB\n\nMohon bantuannya. Terima kasih!`;
 
     return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
   };
@@ -1132,441 +1132,73 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       {/* Main Content Area based on Tab Selection */}
       <main className="w-full max-w-4xl mx-auto px-4 py-6 relative z-10 min-h-[60vh]">
         {activeTab === 'dashboard' && (
-          <div className="client-dashboard">
-            <section className="client-next-section" aria-labelledby="next-session-title">
-              <h1 id="next-session-title">Sesi berikutnya</h1>
-              {upcomingBooking ? (
-                <article className="client-next-booking">
-                  <span className="client-next-icon"><Volume2 size={22} /></span>
-                  <span className="client-next-content">
-                    <strong>{upcomingBooking.sessionLabel || upcomingBooking.packageLabel || upcomingBooking.title || 'Sesi Studio'}</strong>
-                    <span><CalendarDays size={15} />{new Date(`${upcomingBooking.date}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                    <span><Clock size={15} />{String(upcomingBooking.startHour).padStart(2, '0')}.00 - {String(Number(upcomingBooking.startHour) + (Number(upcomingBooking.durationHours) || 1)).padStart(2, '0')}.00 WIB</span>
-                    <span className={`client-payment-state is-${getBookingStatus(upcomingBooking)}`}><CreditCard size={15} />{getStatusLabel(getBookingStatus(upcomingBooking))}</span>
-                  </span>
-                  <div className="client-next-actions">
-                    <button type="button" onClick={() => downloadCalendarEvent(upcomingBooking)}><CalendarPlus size={14} />Tambah ke kalender</button>
-                    <button type="button" onClick={() => handleBookingBlockClick(upcomingBooking)}>Lihat detail <ChevronRight size={14} /></button>
-                  </div>
-                </article>
-              ) : (
-                <div className="client-empty-next">
-                  <CalendarDays size={24} />
-                  <div><strong>Belum ada sesi mendatang</strong><span>Pilih jadwal yang cocok untuk sesi berikutnya.</span></div>
-                </div>
-              )}
-            </section>
-
-            <button className="client-primary-booking" type="button" onClick={() => setActiveTab('calendar')}>
-              <CalendarDays size={20} /> Booking jadwal
-            </button>
-
-            {stats.unpaidAmount > 0 && (
-              <button className="client-billing-prompt" type="button" onClick={() => setActiveTab('billing')}>
-                <span><CreditCard size={20} /></span>
-                <span><small>Sisa tagihan</small><strong>{formatRupiah(stats.unpaidAmount)}</strong></span>
-                <span className="client-billing-action">Lihat tagihan <ChevronRight size={15} /></span>
-              </button>
-            )}
-
-            <div className="client-summary-strip">
-              <div><Calendar size={21} /><strong>{stats.totalBookings}</strong><span>booking</span></div>
-              <div><Clock size={21} /><strong>{stats.totalDuration}</strong><span>jam studio</span></div>
-            </div>
-
-            {recentBookings.length > 0 && (
-              <section className="client-recent-section">
-                <div className="client-section-heading"><h2>Booking terbaru</h2><button type="button" onClick={() => setActiveTab('history')}>Lihat semua</button></div>
-                <div className="client-recent-list">
-                  {recentBookings.map((booking) => (
-                    <button className={booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? 'has-unread-message' : ''} type="button" key={booking.id} onClick={() => handleBookingBlockClick(booking)}>
-                      <span className="client-recent-icon"><Volume2 size={17} /></span>
-                      <span><strong>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</strong><small>{new Date(`${booking.date}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} · {String(booking.startHour).padStart(2, '0')}.00 WIB</small></span>
-                      {booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? <i className="client-unread-dot" aria-label="Pesan baru dari admin" /> : null}
-                      <ChevronRight size={17} />
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section className="client-help-tools" aria-label="Bantuan client">
-              <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer">
-                <MessageCircle size={16} /><span><strong>Hubungi admin</strong><small>Tanya jadwal atau booking</small></span><ChevronRight size={15} />
-              </a>
-              <a href={studioMapsUrl} target="_blank" rel="noopener noreferrer">
-                <MapPin size={16} /><span><strong>Lokasi studio</strong><small>Buka petunjuk arah</small></span><ChevronRight size={15} />
-              </a>
-            </section>
-          </div>
+          <ClientDashboardTab
+            upcomingBooking={upcomingBooking}
+            stats={stats}
+            recentBookings={recentBookings}
+            whatsappPhone={whatsappPhone}
+            studioMapsUrl={studioMapsUrl}
+            setActiveTab={setActiveTab}
+            handleBookingBlockClick={handleBookingBlockClick}
+            downloadCalendarEvent={downloadCalendarEvent}
+          />
         )}
 
         {activeTab === 'calendar' && (
-          <div className="client-calendar-tab space-y-4">
-            {/* Calendar Controls Bar */}
-            <div className="client-calendar-controls flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
-              {/* Left Side: Navigation */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCalendarSelectedDate(shiftDate(calendarSelectedDate, calendarViewMode, -1))}
-                  className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  onClick={() => setCalendarSelectedDate(startOfDay(new Date()))}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-white/10 transition-colors"
-                >
-                  Hari Ini
-                </button>
-                <button
-                  onClick={() => setCalendarSelectedDate(shiftDate(calendarSelectedDate, calendarViewMode, 1))}
-                  className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-
-              {/* Title Date */}
-              <strong className="text-sm text-white font-semibold">
-                {formatRangeLabel(calendarSelectedDate, calendarViewMode)}
-              </strong>
-
-              {/* View Modes */}
-              <div className="flex bg-white/5 p-1 rounded-lg border border-white/10 self-start sm:self-auto">
-                {['day', 'week', 'month'].map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setCalendarViewMode(mode)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${calendarViewMode === mode ? 'bg-[#ff8a2a] text-black shadow-md' : 'text-white/60 hover:text-white'}`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Helper Hint */}
-            <div className="client-calendar-legend text-[11px] text-[var(--ui-text-muted)] flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-[#ff8a2a]/30 border border-[#ff8a2a]/50" />
-                <span>Booking Anda</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded bg-white/5 border border-white/10" />
-                <span>Terisi (Sesi Lain)</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-white/70">
-                <span className="font-semibold text-orange-400">+</span>
-                <span>Klik sel kosong untuk pesan</span>
-              </span>
-            </div>
-
-            {/* Calendar Grid Section */}
-            <div className="client-calendar-grid-shell schedule-grid-shell rounded-2xl border border-white/5 overflow-hidden">
-              <div className="schedule-grid-scroll">
-                <div
-                  className={`schedule-grid schedule-grid--${calendarViewMode}`}
-                  style={{ gridTemplateColumns }}
-                >
-                  {/* Corner Cell */}
-                  <div className="schedule-grid-corner" style={{ gridColumn: '1', gridRow: '1' }}>
-                    <span>{calendarViewMode === 'month' ? monthNames[calendarSelectedDate.getMonth()] : 'Jam'}</span>
-                  </div>
-
-                  {/* Day Columns Head */}
-                  {visibleDays.map((day, dayIndex) => {
-                    const dayIso = toIsoDate(day);
-                    const isToday = isSameDay(day, startOfDay(new Date()));
-                    const dayHeadClassName = `schedule-day-head ${isToday ? 'is-today' : ''}`;
-
-                    return (
-                      <div
-                        className={dayHeadClassName}
-                        key={dayIso}
-                        style={{ gridColumn: String(dayIndex + 2), gridRow: '1' }}
-                      >
-                        <span>{dayNames[day.getDay()]}</span>
-                        <strong>{day.getDate()}</strong>
-                      </div>
-                    );
-                  })}
-
-                  {/* Grid Rows / Cells */}
-                  {businessHours.map((hour, hourIndex) => (
-                    <div className="schedule-row-fragment" key={hour.key}>
-                      <div
-                        className="schedule-time-cell"
-                        style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
-                      >
-                        <Clock3 size={12} aria-hidden="true" />
-                        <span>{hour.rangeLabel}</span>
-                      </div>
-
-                      {visibleDays.map((day, dayIndex) => {
-                        const cellKey = toIsoDate(day) + '-' + hour.key;
-                        return (
-                          <div
-                            className="schedule-slot-cell"
-                            key={cellKey}
-                            style={{ gridColumn: String(dayIndex + 2), gridRow: String(hourIndex + 2) }}
-                          >
-                            <button
-                              aria-label={`Pesan slot ${toIsoDate(day)} jam ${hour.label}`}
-                              className="schedule-slot-button"
-                              type="button"
-                              onClick={() => handleSlotClick({ date: toIsoDate(day), startHour: String(hour.start) })}
-                            >
-                              <span className="schedule-slot-add-hint" aria-hidden="true">+</span>
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-
-                  {/* Booking Blocks Overlay */}
-                  {bookingBlocks.map((block) => {
-                    const isOwn = Boolean(block.booking.isOwnClientBooking);
-
-                    return (
-                      <ClientCalendarBookingBlock
-                        block={block}
-                        key={block.booking.id || block.dayKey + '-' + block.startIndex + '-' + block.booking.customer}
-                        onBookingClick={handleBookingBlockClick}
-                        isOwn={isOwn}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
+          <ClientCalendarTab
+            calendarSelectedDate={calendarSelectedDate}
+            calendarViewMode={calendarViewMode}
+            setCalendarSelectedDate={setCalendarSelectedDate}
+            setCalendarViewMode={setCalendarViewMode}
+            gridTemplateColumns={gridTemplateColumns}
+            visibleDays={visibleDays}
+            businessHours={businessHours}
+            handleSlotClick={handleSlotClick}
+            bookingBlocks={bookingBlocks}
+            handleBookingBlockClick={handleBookingBlockClick}
+            getStatusLabel={getStatusLabel}
+            ClientCalendarBookingBlock={ClientCalendarBookingBlock}
+            shiftDate={shiftDate}
+            startOfDay={startOfDay}
+            formatRangeLabel={formatRangeLabel}
+            monthNames={monthNames}
+            toIsoDate={toIsoDate}
+            isSameDay={isSameDay}
+            dayNames={dayNames}
+          />
         )}
 
         {activeTab === 'history' && (
-          <div className="client-history-tab space-y-5">
-            <div className="client-history-heading">
-              <div><span>Booking</span><h3>Riwayat saya</h3></div>
-              <strong>{filteredHistoryBookings.length} data</strong>
-            </div>
-
-            <div className="client-history-tools">
-              <label className="client-history-search">
-                <Search size={15} />
-                <input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} placeholder="Cari kode, layanan, atau tanggal" />
-              </label>
-              <div className="client-history-filters" aria-label="Filter riwayat booking">
-                {historyFilterOptions.map((option) => (
-                  <button className={historyFilter === option.key ? 'is-active' : ''} key={option.key} type="button" onClick={() => setHistoryFilter(option.key)}>{option.label}</button>
-                ))}
-              </div>
-            </div>
-            
-            {userBookings.length === 0 ? (
-              <div className="p-8 text-center rounded-2xl bg-white/[0.01] border border-white/5 text-[var(--ui-text-muted)] text-sm space-y-2">
-                <CalendarDays size={28} className="mx-auto text-white/20 mb-2" />
-                <strong>Belum ada riwayat booking</strong>
-                <p className="text-xs max-w-xs mx-auto">Anda belum pernah memesan jadwal sesi latihan atau rekaman.</p>
-              </div>
-            ) : filteredHistoryBookings.length === 0 ? (
-              <div className="client-history-empty">
-                <Search size={22} />
-                <strong>Booking tidak ditemukan</strong>
-                <span>Coba ubah kata pencarian atau filter status.</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {filteredHistoryBookings.map((booking) => {
-                  const status = getBookingStatus(booking);
-                  const isVoid = status === 'void' || status === 'cancelled';
-                  
-                  // Helper function to format status badge class
-                  const getStatusBadgeClass = (statusStr) => {
-                    const cleanStatus = statusStr.toLowerCase();
-                    if (cleanStatus === 'lunas') return 'bg-green-500/10 text-green-400 border border-green-500/20';
-                    if (cleanStatus === 'dp') return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
-                    if (cleanStatus === 'void' || cleanStatus === 'cancelled') return 'bg-white/5 text-white/40 border border-white/10';
-                    return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
-                  };
-
-                  const startHourNum = Number(booking.startHour || 0);
-                  const durationNum = Number(booking.durationHours || booking.duration || 1);
-                  const endHourNum = startHourNum + durationNum;
-                  const timeString = `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`;
-
-                  return (
-                    <article
-                      key={booking.id}
-                      onClick={() => handleBookingBlockClick(booking)}
-                      className={`relative overflow-hidden p-5 rounded-2xl backdrop-blur-md bg-white/[0.02] border border-white/5 hover:border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer transition-all duration-300 ${isVoid ? 'opacity-55' : ''}`}
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="client-booking-code text-[10px] text-[var(--ui-text-muted)] font-semibold tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded">
-                            {booking.bookingCode || booking.bookingId || 'BKG'}
-                            <button
-                              type="button"
-                              aria-label="Salin kode booking"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                copyText(booking.bookingCode || booking.bookingId || booking.id, 'Kode booking disalin.');
-                              }}
-                            >
-                              <Copy size={11} />
-                            </button>
-                          </span>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${getStatusBadgeClass(status)}`}>
-                            {status === 'void' ? 'Void' : status === 'cancelled' ? 'Canceled' : status}
-                          </span>
-                          {getBookingRequestStatusMeta(booking) ? (
-                            <span className={'client-request-badge is-' + getBookingRequestStatusMeta(booking).tone}>
-                              {getBookingRequestStatusMeta(booking).label}
-                            </span>
-                          ) : null}
-                          {booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? <span className="client-message-new">Pesan baru</span> : null}
-                        </div>
-
-                        <h4 className="text-base font-bold text-white leading-tight">
-                          {booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Selesai'}
-                        </h4>
-
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--ui-text-muted)]">
-                          <span className="flex items-center gap-1">
-                            <CalendarDays size={13} className="text-[#ff8a2a]" />
-                            <span>{new Date(booking.date + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock size={13} className="text-[#ff8a2a]" />
-                            <span>{timeString} ({durationNum} Jam)</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="sm:text-right flex sm:flex-col justify-between items-center sm:items-end gap-2 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0 shrink-0">
-                        <span className="text-xs text-[var(--ui-text-muted)]">Estimasi Total</span>
-                        <strong className="text-base text-white">{formatRupiah(booking.total || booking.subtotal || 0)}</strong>
-                        {status === 'dp' && booking.dpAmount > 0 && (
-                          <span className="text-[10px] text-orange-400 font-medium">
-                            Sisa: {formatRupiah((booking.total || 0) - booking.dpAmount)}
-                          </span>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ClientHistoryTab
+            filteredHistoryBookings={filteredHistoryBookings}
+            userBookings={userBookings}
+            historyQuery={historyQuery}
+            setHistoryQuery={setHistoryQuery}
+            historyFilter={historyFilter}
+            setHistoryFilter={setHistoryFilter}
+            historyFilterOptions={historyFilterOptions}
+            handleBookingBlockClick={handleBookingBlockClick}
+            getBookingStatus={getBookingStatus}
+            copyText={copyText}
+          />
         )}
-
         {activeTab === 'billing' && (
-          <div className="space-y-6">
-            {/* Outstanding balance header */}
-            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2 relative overflow-hidden shadow-xl">
-              <div className="absolute top-0 right-0 w-[140px] h-[140px] rounded-full bg-orange-500/5 filter blur-[35px] pointer-events-none" />
-              <span className="text-[11px] uppercase tracking-wider text-[var(--ui-text-muted)] font-semibold">Total Sisa Tagihan Aktif</span>
-              <strong className="text-3xl text-white font-bold">{formatRupiah(stats.unpaidAmount)}</strong>
-              <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed mt-1">
-                Silakan transfer sesuai sisa tagihan, lalu upload bukti pembayaran. Admin akan review sebelum status pembayaran dianggap berhasil.
-              </p>
-            </div>
-
-            {/* List of unpaid bookings */}
-            {unpaidBookings.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-xs uppercase tracking-wider text-[var(--ui-text-muted)] font-semibold">Daftar Tagihan Pending / DP</h4>
-                <div className="space-y-3">
-                  {unpaidBookings.map((b) => {
-                    const status = getBookingStatus(b);
-                    const amountToPay = status === 'dp'
-                      ? Math.max(0, (b.total || 0) - (b.dpAmount || 0))
-                      : (b.total || 0);
-                    const latestProof = getLatestPaymentProof(b);
-                    const hasPendingProof = latestProof?.status === 'pending';
-
-                    return (
-                      <div key={b.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div className="space-y-1">
-                          <span className="text-[9px] uppercase tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[var(--ui-text-muted)]">
-                            {b.bookingCode || 'BKG'}
-                          </span>
-                          <h5 className="text-sm text-white font-bold">{b.sessionLabel || b.packageLabel || b.title || 'Sesi Latihan'}</h5>
-                          <p className="text-[11px] text-[var(--ui-text-muted)]">{b.date} • {b.startHour}.00 WIB ({b.durationHours} Jam)</p>
-                        </div>
-
-                        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0">
-                          <div className="text-left sm:text-right">
-                            <span className="text-[10px] text-[var(--ui-text-muted)] block">Harus Dibayar</span>
-                            <strong className="text-sm text-orange-400">{formatRupiah(amountToPay)}</strong>
-                          </div>
-                          {latestProof ? (
-                            <span className={'client-proof-status ' + getProofTone(latestProof.status)}>
-                              {getPaymentProofStatusLabel(latestProof.status)}
-                            </span>
-                          ) : null}
-                          <div className="client-proof-actions">
-                            <button
-                              className="client-upload-proof-button"
-                              disabled={hasPendingProof}
-                              type="button"
-                              onClick={() => openPaymentProofModal(b)}
-                            >
-                              <UploadCloud size={12} />
-                              <span>{hasPendingProof ? 'Menunggu Review' : 'Upload Bukti'}</span>
-                            </button>
-                            <a
-                              href={getBookingWhatsAppUrl(b)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="client-proof-wa-button"
-                            >
-                              WA
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Payment instructions */}
-            <div className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 space-y-4">
-              <h4 className="text-xs uppercase tracking-wider text-white font-bold flex items-center gap-1.5">
-                <Receipt size={14} className="text-[#ff8a2a]" />
-                <span>Informasi Rekening Studio</span>
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">{studioSettings.bankName || defaultStudioSettings.bankName}</span>
-                  <strong className="text-base text-white tracking-wide">{formatBankAccountNumber(transferAccountNumber)}</strong>
-                  <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
-                  <button className="client-copy-account" type="button" onClick={() => copyText(transferAccountNumber, 'Nomor rekening disalin.')}>
-                    <Copy size={12} /> Salin rekening
-                  </button>
-                </div>
-                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
-                  <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">Metode QRIS</span>
-                  <strong className="text-sm text-white">{studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</strong>
-                  <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">{studioSettings.qrisNote || defaultStudioSettings.qrisNote}</span>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-orange-500/5 border border-orange-500/10 text-[11px] text-[var(--ui-text-muted)] leading-relaxed space-y-1">
-                <div className="flex items-center gap-1 text-white font-bold mb-1">
-                  <Info size={12} className="text-orange-400" />
-                  <span>Ketentuan Pembayaran:</span>
-                </div>
-                {studioPaymentTerms.map((term, index) => (
-                  <p key={term + '-' + index}>• {term}</p>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ClientBillingTab
+            stats={stats}
+            unpaidBookings={unpaidBookings}
+            getBookingStatus={getBookingStatus}
+            getLatestPaymentProof={getLatestPaymentProof}
+            getProofTone={getProofTone}
+            openPaymentProofModal={openPaymentProofModal}
+            getBookingWhatsAppUrl={getBookingWhatsAppUrl}
+            studioSettings={studioSettings}
+            transferAccountNumber={transferAccountNumber}
+            studioPaymentTerms={studioPaymentTerms}
+            copyText={copyText}
+          />
         )}
+
+
       </main>
 
       {/* Elegant glassmorphic bottom navigation bar */}
@@ -1874,7 +1506,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 <span>Status bukti pembayaran</span>
                 <strong>{getPaymentProofStatusLabel(getLatestPaymentProof(selectedBookingDetail).status)}</strong>
                 <small>
-                  {getLatestPaymentProof(selectedBookingDetail).category === 'pelunasan' ? 'Pelunasan' : 'DP'} • {formatRupiah(getLatestPaymentProof(selectedBookingDetail).amount)}
+                  {getLatestPaymentProof(selectedBookingDetail).category === 'pelunasan' ? 'Pelunasan' : 'DP'} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ {formatRupiah(getLatestPaymentProof(selectedBookingDetail).amount)}
                 </small>
               </section>
             ) : null}
@@ -2006,7 +1638,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <Image size={16} />
               <span>
                 <strong>{selectedProofBooking.sessionLabel || selectedProofBooking.packageLabel || selectedProofBooking.title || 'Sesi Studio'}</strong>
-                <small>{selectedProofBooking.date} • {String(selectedProofBooking.startHour).padStart(2, '0')}.00 WIB</small>
+                <small>{selectedProofBooking.date} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ {String(selectedProofBooking.startHour).padStart(2, '0')}.00 WIB</small>
               </span>
             </div>
 
@@ -2106,3 +1738,12 @@ function LoaderCircleWrapper({ className, size }) {
     </svg>
   );
 }
+
+
+
+
+
+
+
+
+

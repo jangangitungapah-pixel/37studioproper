@@ -1,0 +1,114 @@
+﻿
+/* =========================================
+   PHASE 5: CLIENT PORTAL BENTO SWEEP (MIDNIGHT LINEAR)
+   ========================================= */
+
+/* Base Reset & Core Surface */
+.cp-shell, .cp-landing {
+  background-color: var(--ui-bg-base) !important;
+  color: var(--ui-text) !important;
+}
+
+/* Make all cards Bento Box */
+.cp-card, .cp-ticket, .cp-invoice-card, .cp-schedule-card, .cp-history-card, .cp-band-card, .cp-auth-card, .cp-modal-content {
+  background-color: var(--ui-surface) !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: var(--ui-shadow-glow) !important;
+  backdrop-filter: none !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Remove weird gradients */
+.cp-card::before, .cp-ticket::before, .cp-invoice-card::before, .cp-auth-card::after {
+  display: none !important;
+}
+
+/* Buttons */
+.cp-button, .cp-ticket-action, .cp-fab {
+  border-radius: var(--ui-radius-md) !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.cp-button.is-primary, .cp-ticket-action.is-primary, .cp-fab {
+  background: var(--ui-text-highlight) !important;
+  color: var(--ui-bg-base) !important;
+}
+
+.cp-button.is-primary:hover, .cp-fab:hover {
+  background: var(--ui-text) !important;
+  box-shadow: 0 0 12px rgba(255,255,255,0.2) !important;
+}
+
+.cp-button.is-secondary, .cp-ticket-action.is-secondary {
+  background: transparent !important;
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text) !important;
+}
+
+.cp-button.is-secondary:hover {
+  background: var(--ui-surface-hover) !important;
+  border-color: var(--ui-border-strong) !important;
+}
+
+/* Header & Nav */
+.cp-topbar, .cp-bottom-nav {
+  background-color: var(--ui-surface) !important;
+  border-color: var(--ui-border) !important;
+  backdrop-filter: none !important;
+}
+
+.cp-nav-item.is-active {
+  color: var(--ui-text-highlight) !important;
+}
+
+/* Inputs */
+.cp-input, .cp-select, .cp-textarea {
+  background: #000000 !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-md) !important;
+  color: var(--ui-text) !important;
+  padding: 12px 16px !important;
+}
+
+.cp-input:focus, .cp-select:focus, .cp-textarea:focus {
+  outline: none !important;
+  border-color: var(--ui-border-strong) !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1) !important;
+}
+
+/* Typography tweaks */
+.cp-title, .cp-hero h1 {
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Calendar specifics */
+.cp-calendar-grid, .cp-calendar-header {
+  border-color: var(--ui-border) !important;
+}
+.cp-calendar-cell {
+  border-color: var(--ui-border) !important;
+}
+.cp-calendar-slot.is-available {
+  background: transparent !important;
+  border: 1px solid var(--ui-border) !important;
+  color: var(--ui-text) !important;
+}
+.cp-calendar-slot.is-available:hover {
+  border-color: var(--ui-primary) !important;
+  color: var(--ui-primary) !important;
+}
+.cp-calendar-slot.is-selected {
+  background: var(--ui-primary) !important;
+  color: var(--ui-bg-base) !important;
+  border-color: var(--ui-primary) !important;
+}
+.cp-calendar-slot.is-booked, .cp-calendar-slot.is-locked {
+  background: rgba(255,255,255,0.05) !important;
+  color: var(--ui-text-dim) !important;
+  border: 1px dashed var(--ui-border) !important;
+}

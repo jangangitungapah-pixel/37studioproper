@@ -348,12 +348,6 @@ export default function GuardAttendancePage() {
               {todayLabel}
             </span>
 
-            {canUseGuardPage ? (
-              <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={() => navigate('/admin')}>
-                <ShieldCheck size={15} />
-                Admin Portal
-              </button>
-            ) : null}
 
             {authUser ? (
               <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>

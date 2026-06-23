@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -41,6 +41,7 @@ import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 import '../styles/client-portal-polish.css';
 import '../styles/client-landing-compact.css';
+import '../styles/client-portal-bento-override.css';
 
 export default function ClientLandingPage() {
   const pricingSettings = usePricingSettings();
@@ -250,18 +251,18 @@ export default function ClientLandingPage() {
       })()
       : (() => {
       const sess = sessionOptions.find(s => s.key === sessionType);
-      const sub = recordingTypeId !== 'none' ? ` (${recordingTypeOptions.find(r => r.key === recordingTypeId)?.label.split(' • ')[0] || ''})` : '';
+      const sub = recordingTypeId !== 'none' ? ` (${recordingTypeOptions.find(r => r.key === recordingTypeId)?.label.split(' â€¢ ')[0] || ''})` : '';
         return `Sesi: ${sess?.label || sessionType}${sub}`;
       })();
 
     const text = `Halo *${studioName}*, saya ingin booking slot studio:
 
-👤 *Nama Pelanggan* : ${name || '(Belum diisi)'}
-📞 *Nomor HP* : ${phone || '(Belum diisi)'}
-🎤 *Layanan* : ${selectedService}
-📅 *Tanggal* : ${formattedDate || date}
-⏰ *Waktu* : ${actualDuration ? timeString + ' (' + actualDuration + ' Jam)' : timeString}
-💰 *Estimasi Total* : ${formatRupiah(pricingBreakdown.total)}
+ðŸ‘¤ *Nama Pelanggan* : ${name || '(Belum diisi)'}
+ðŸ“ž *Nomor HP* : ${phone || '(Belum diisi)'}
+ðŸŽ¤ *Layanan* : ${selectedService}
+ðŸ“… *Tanggal* : ${formattedDate || date}
+â° *Waktu* : ${actualDuration ? timeString + ' (' + actualDuration + ' Jam)' : timeString}
+ðŸ’° *Estimasi Total* : ${formatRupiah(pricingBreakdown.total)}
 
 Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
 
@@ -279,7 +280,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     const selectedPackage = packageOptions.find((item) => item.key === packageId);
     const selectedSession = sessionOptions.find((item) => item.key === sessionType);
     const selectedRecording = recordingTypeOptions.find((item) => item.key === recordingTypeId);
-    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
+    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' â€¢ ')[0] || selectedSession?.label || 'Sesi Studio';
 
     setIsSubmittingRequest(true);
     setBookingFeedback('');
@@ -633,7 +634,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 <div className="text-xs text-[var(--ui-text-muted)] space-y-1 mt-1">
                   {discountOptions.map((disc) => (
                     <p key={disc.key}>
-                      • Potongan harga senilai <strong className="text-white">{formatRupiah(disc.nominal)}</strong> untuk sesi <strong className="text-white">{disc.description.split(' • ')[1]}</strong> minimal sewa <strong className="text-white">{disc.description.split(' • ')[0]}</strong>.
+                      â€¢ Potongan harga senilai <strong className="text-white">{formatRupiah(disc.nominal)}</strong> untuk sesi <strong className="text-white">{disc.description.split(' â€¢ ')[1]}</strong> minimal sewa <strong className="text-white">{disc.description.split(' â€¢ ')[0]}</strong>.
                     </p>
                   ))}
                 </div>
@@ -1075,10 +1076,11 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
             <div className="w-5 h-5 rounded bg-[var(--ui-accent)] flex items-center justify-center text-black font-extrabold text-[10px]">37</div>
             <span className="font-semibold text-white">37 Music Studio</span>
           </div>
-          <p>© {new Date().getFullYear()} {invoiceSettings.studioName || '37 Music Studio'}. All rights reserved.</p>
+          <p>Â© {new Date().getFullYear()} {invoiceSettings.studioName || '37 Music Studio'}. All rights reserved.</p>
           <p className="text-[10px]">Built for Musicians.</p>
         </div>
       </footer>
     </div>
   );
 }
+

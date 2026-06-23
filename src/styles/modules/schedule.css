@@ -1868,3 +1868,21 @@
 }
 /* === SCHEDULE REQUEST QUEUE MODAL: END === */
 
+
+/* === EXTRACTED FROM SHARED.CSS === */
+.schedule-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.schedule-segment,
+.schedule-filter-row {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .schedule-actions {
+    width: min(100%, 760px);
+    grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) auto;
+    align-items: center;
+  }
+}

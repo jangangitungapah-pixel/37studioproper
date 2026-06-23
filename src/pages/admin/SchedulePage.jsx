@@ -1,3 +1,4 @@
+﻿import StatusPill from '../../components/ui/StatusPill.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronLeft,
@@ -321,7 +322,7 @@ function formatBookingDateLabel(booking) {
 
 function getUpcomingScheduleTimeLabel(booking) {
   if (isNoDurationPackageBooking(booking)) {
-    return formatHourLabel(getBookingStartHour(booking)) + ' WIB · tanpa blok kalender';
+    return formatHourLabel(getBookingStartHour(booking)) + ' WIB Â· tanpa blok kalender';
   }
 
   return getBookingWindowLabel(booking) + ' WIB';
@@ -601,11 +602,11 @@ function CalendarBookingBlock({ block, onBookingClick }) {
       <span className="schedule-booking-glow" aria-hidden="true" />
       <span className="schedule-booking-topline">
         <strong>{booking.customer}</strong>
-        <em>{isNewClientRequest ? 'Request' : statusLabel}</em>
+        <StatusPill status={block.status}>{isNewClientRequest ? 'Request' : statusLabel}</StatusPill>
       </span>
       <span className="schedule-booking-title">{title}</span>
       <span className="schedule-booking-meta">
-        <span>{startLabel} • {durationLabel}</span>
+        <span>{startLabel} â€¢ {durationLabel}</span>
         <b>{priceLabel}</b>
       </span>
       {hasUnreadClientMessage ? <i className="schedule-booking-message-dot" aria-label="Pesan client belum dibaca" /> : null}
@@ -643,7 +644,7 @@ function RequestQueueModal({
             Request Client
           </span>
           <button aria-label="Tutup daftar request" type="button" onClick={onClose}>
-            ×
+            Ã—
           </button>
         </header>
 
@@ -681,7 +682,7 @@ function RequestQueueModal({
                     <span className="schedule-request-card-main">
                       <strong>{booking.customer || 'Client'}</strong>
                       <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</small>
-                      <em>{booking.date} • {windowLabel}</em>
+                      <em>{booking.date} â€¢ {windowLabel}</em>
                     </span>
                     <span className="schedule-request-card-meta">
                       <b>{isCancellation ? 'Minta batal' : 'Request baru'}</b>
@@ -1295,10 +1296,12 @@ export default function SchedulePage() {
             type="button"
             onClick={() => setScheduleToast(null)}
           >
-            ×
+            Ã—
           </button>
         </aside>
       ) : null}
     </section>
   );
 }
+
+

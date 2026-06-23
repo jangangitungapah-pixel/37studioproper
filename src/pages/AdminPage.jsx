@@ -1,18 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+﻿import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   CalendarDays,
   CreditCard,
   UsersRound,
-  LogOut,
-  Music2,
-  MoreHorizontal,
   PackageOpen,
-  PanelLeftClose,
-  PanelLeftOpen,
   Settings,
   LoaderCircle,
-  ShieldCheck,
   AlertCircle,
   BookOpen,
   Home,
@@ -21,7 +15,7 @@ import {
   UserCheck,
   BellRing,
 } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
@@ -171,6 +165,19 @@ function getInitialSidebarState() {
   } catch {
     return false;
   }
+}
+
+function getNotificationBadgeCount(summary) {
+  if (!summary) return 0;
+  return (summary.failed || 0) + (summary.pending || 0) + (summary.processing || 0);
+}
+
+function getNotificationBadgeLabel(summary) {
+  if (!summary) return '';
+  if (summary.failed > 0) return 'error';
+  if (summary.processing > 0) return 'processing';
+  if (summary.pending > 0) return 'pending';
+  return '';
 }
 
 function createEmptyNotificationSummary(status = 'idle') {
@@ -391,8 +398,7 @@ export default function AdminPage() {
         }}
         secondaryAction={{
           label: 'Keluar Akun',
-          onClick: handleLogout,
-          variant: 'danger'
+          onClick: handleLogout, variant: 'danger'
         }}
       />
     );
@@ -407,8 +413,7 @@ export default function AdminPage() {
         description="Request akses admin untuk akun ini telah ditolak atau status role-nya tidak valid."
         primaryAction={{
           label: 'Keluar Akun',
-          onClick: handleLogout,
-          variant: 'secondary'
+          onClick: handleLogout, variant: 'secondary'
         }}
       />
     );
@@ -440,8 +445,7 @@ export default function AdminPage() {
         }
         primaryAction={{
           label: 'Keluar Akun',
-          onClick: handleLogout,
-          variant: 'danger'
+          onClick: handleLogout, variant: 'danger'
         }}
       />
     );
@@ -460,8 +464,7 @@ export default function AdminPage() {
         }
         primaryAction={{
           label: 'Keluar Akun',
-          onClick: handleLogout,
-          variant: 'secondary'
+          onClick: handleLogout, variant: 'secondary'
         }}
       />
     );
@@ -548,3 +551,6 @@ export default function AdminPage() {
     </main>
   );
 }
+
+
+

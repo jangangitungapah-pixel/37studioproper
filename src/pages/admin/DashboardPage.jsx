@@ -1,3 +1,4 @@
+﻿import StatusPill from '../../components/ui/StatusPill.jsx';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -477,9 +478,9 @@ function DashboardUpcoming({ bookings, onOpenSchedule }) {
             <article key={booking.id || booking.createdAt || booking.date}>
               <span>
                 <strong>{booking.customer || booking.bandName || booking.title || 'Booking'}</strong>
-                <small>{formatShortDate(booking.date || booking.createdAt)} • {booking.startTimeLabel || booking.startHour || 'Jam belum diisi'}</small>
+                <small>{formatShortDate(booking.date || booking.createdAt)} â€¢ {booking.startTimeLabel || booking.startHour || 'Jam belum diisi'}</small>
               </span>
-              <em>{getBookingStatus(booking)}</em>
+              <StatusPill status={getBookingStatus(booking)}>{getBookingStatus(booking)}</StatusPill>
             </article>
           ))}
         </div>
@@ -710,3 +711,5 @@ export default function DashboardPage() {
     </section>
   );
 }
+
+

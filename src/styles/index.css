@@ -1,0 +1,61 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  color-scheme: dark;
+  color: var(--ui-text);
+  background-color: var(--ui-bg-base);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global resets for the overhaul */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  /* Prevent text from clipping out of the viewport */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-width: 320px;
+  background-color: var(--ui-bg-base);
+  color: var(--ui-text);
+  overflow-x: hidden; /* Prevent horizontal scrolling / clipping */
+}
+
+a {
+  color: var(--ui-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600; /* No heavy 700 bold, keep it sleek */
+  color: var(--ui-text-highlight);
+  line-height: 1.2;
+}
+
+p {
+  font-weight: 400;
+  color: var(--ui-text-dim);
+}
+
+/* Base resets for forms */
+input, button, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}

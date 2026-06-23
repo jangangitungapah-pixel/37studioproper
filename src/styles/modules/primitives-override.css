@@ -1,0 +1,303 @@
+﻿/* =========================================
+   UI PRIMITIVES OVERRIDE (MIDNIGHT LINEAR)
+   ========================================= */
+
+/* --- CARDS --- */
+.studio-card {
+  background: var(--ui-surface) !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: var(--ui-shadow-glow) !important;
+  backdrop-filter: none !important;
+  color: var(--ui-text) !important;
+}
+
+.studio-card::before {
+  display: none !important; /* Remove old weird gradients */
+}
+
+.studio-card.has-padding-md {
+  padding: var(--ui-padding) !important; /* Shrink padding for mobile-first */
+}
+.studio-card.has-padding-lg {
+  padding: calc(var(--ui-padding) * 1.5) !important;
+}
+
+/* --- BUTTONS --- */
+.studio-button {
+  border-radius: var(--ui-radius-md) !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.studio-button:active {
+  transform: scale(0.97) !important;
+}
+
+.studio-button.is-primary {
+  background: var(--ui-text-highlight) !important; /* Pure white button */
+  color: var(--ui-bg-base) !important;
+}
+
+.studio-button.is-primary:hover {
+  background: var(--ui-text) !important;
+  box-shadow: 0 0 12px rgba(255,255,255,0.2) !important;
+}
+
+.studio-button.is-secondary {
+  background: transparent !important;
+  border-color: var(--ui-border) !important;
+  color: var(--ui-text) !important;
+}
+
+.studio-button.is-secondary:hover {
+  background: var(--ui-surface-hover) !important;
+  border-color: var(--ui-border-strong) !important;
+}
+
+.studio-button.is-ghost {
+  background: transparent !important;
+  color: var(--ui-text-dim) !important;
+}
+.studio-button.is-ghost:hover {
+  color: var(--ui-text-highlight) !important;
+  background: rgba(255,255,255,0.05) !important;
+}
+
+.studio-button.is-danger {
+  background: var(--ui-danger-bg) !important;
+  color: var(--ui-danger-text) !important;
+  border-color: var(--ui-danger) !important;
+}
+
+/* --- BADGES & PILLS --- */
+.studio-status-pill, .studio-badge {
+  background: transparent !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-sm) !important;
+  font-weight: 500 !important;
+  padding: 4px 10px !important;
+  text-transform: capitalize !important;
+}
+
+.studio-status-pill.is-success {
+  background: var(--ui-success-bg) !important;
+  color: var(--ui-success-text) !important;
+  border-color: var(--ui-success-text) !important;
+}
+.studio-status-pill.is-warning, .studio-status-pill.is-pending {
+  background: var(--ui-warning-bg) !important;
+  color: var(--ui-warning-text) !important;
+  border-color: var(--ui-warning-text) !important;
+}
+.studio-status-pill.is-error, .studio-status-pill.is-danger, .studio-status-pill.is-cancelled {
+  background: var(--ui-danger-bg) !important;
+  color: var(--ui-danger-text) !important;
+  border-color: var(--ui-danger-text) !important;
+}
+.studio-status-pill.is-info {
+  background: var(--ui-info-bg) !important;
+  color: var(--ui-info-text) !important;
+  border-color: var(--ui-info-text) !important;
+}
+
+/* --- INPUTS / SELECTS --- */
+input, textarea, select, .studio-select-trigger, .studio-textfield-input {
+  background: #000000 !important; /* Pitch black for inputs */
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-md) !important;
+  color: var(--ui-text) !important;
+  padding: 12px 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+input:focus, textarea:focus, select:focus, .studio-select-trigger:focus, .studio-textfield-input:focus {
+  outline: none !important;
+  border-color: var(--ui-border-strong) !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--ui-text-dim) !important;
+}
+
+
+/* =========================================
+   PHASE 3: BENTO SHELL OVERRIDES (DESKTOP)
+   ========================================= */
+@media (min-width: 768px) {
+  .admin-shell {
+    padding: var(--ui-padding) !important;
+    gap: var(--ui-gap) !important;
+    background-color: #000000 !important; /* Extremely dark backdrop */
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .admin-sidebar {
+    height: calc(100vh - (var(--ui-padding) * 2)) !important;
+    border-radius: var(--ui-radius-lg) !important;
+    border: 1px solid var(--ui-border) !important;
+    background-color: var(--ui-surface) !important;
+    box-shadow: var(--ui-shadow-glow) !important;
+    overflow: hidden;
+  }
+
+  .admin-stage {
+    height: calc(100vh - (var(--ui-padding) * 2)) !important;
+    border-radius: var(--ui-radius-lg) !important;
+    border: 1px solid var(--ui-border) !important;
+    background-color: var(--ui-surface) !important;
+    box-shadow: var(--ui-shadow-glow) !important;
+    overflow-y: auto !important;
+    padding: calc(var(--ui-padding) * 1.5) !important;
+    margin: 0 !important;
+  }
+}
+
+/* Fix mobile stage padding so it isn't completely flush with edges */
+@media (max-width: 767px) {
+  .admin-stage {
+    padding: var(--ui-padding) !important;
+    background-color: #000000 !important;
+  }
+}
+
+/* =========================================
+   PHASE 4: ACCORDION & BENTO LISTS
+   ========================================= */
+.bento-accordion {
+  background: var(--ui-surface) !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.bento-accordion[open] {
+  border-color: var(--ui-border-strong) !important;
+  box-shadow: var(--ui-shadow-glow) !important;
+}
+
+.bento-accordion-summary {
+  list-style: none; /* Hide default arrow */
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: var(--ui-surface);
+}
+
+.bento-accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.bento-accordion-summary:hover {
+  background: var(--ui-surface-hover);
+}
+
+.bento-accordion-content {
+  padding: 16px;
+  border-top: 1px solid var(--ui-border);
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.accordion-hint {
+  font-size: 11px;
+  color: var(--ui-primary);
+  opacity: 0.8;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--ui-primary-bg);
+}
+
+/* Force Customer and Billing row lists to adopt bento styling */
+.customer-list, .billing-list, .dashboard-mini-list {
+  display: grid;
+  gap: var(--ui-gap);
+  grid-template-columns: 1fr;
+}
+
+/* =========================================
+   PHASE 4: BENTO SWEEP (CSS ONLY)
+   ========================================= */
+
+/* Make all container lists act as Bento grids */
+.customer-list, .billing-list, .dashboard-mini-list, .dashboard-attention-list, .schedule-timeline, .settings-grid, .inventory-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--ui-gap) !important;
+  padding: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .dashboard-metric-grid, .inventory-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  }
+}
+
+/* Make all rows act as Bento Cards */
+.customer-row-wrapper, .billing-row, .dashboard-attention-row, .dashboard-chart-card, .dashboard-metric-card, .schedule-row, .inventory-card, .settings-section {
+  background-color: var(--ui-surface) !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: var(--ui-shadow-glow) !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.customer-row-wrapper:hover, .billing-row:hover, .dashboard-attention-row:hover, .schedule-row:hover, .inventory-card:hover {
+  border-color: var(--ui-border-strong) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Ensure inner buttons don't have overlapping backgrounds */
+.customer-row, .billing-row-main, .schedule-row-main {
+  background: transparent !important;
+  border: none !important;
+  padding: 16px !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  width: 100% !important;
+}
+
+.customer-row:hover, .billing-row-main:hover, .schedule-row-main:hover {
+  background: rgba(255,255,255,0.03) !important;
+}
+
+/* Pseudo-Accordion (Hide details on mobile) */
+@media (max-width: 767px) {
+  .customer-list-actions, .billing-row-money, .dashboard-attention-copy small {
+    display: none !important;
+  }
+
+  /* Show details when the card is hovered or focused */
+  .customer-row-wrapper:hover .customer-list-actions,
+  .customer-row-wrapper:focus-within .customer-list-actions,
+  .billing-row:hover .billing-row-money,
+  .billing-row:focus-within .billing-row-money,
+  .dashboard-attention-row:hover .dashboard-attention-copy small,
+  .dashboard-attention-row:focus-within .dashboard-attention-copy small {
+    display: flex !important;
+    padding: 16px !important;
+    border-top: 1px solid var(--ui-border) !important;
+    background: rgba(0,0,0,0.3) !important;
+    animation: slideDown 0.2s ease-out forwards;
+  }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
