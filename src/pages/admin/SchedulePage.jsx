@@ -130,10 +130,10 @@ function shiftDate(date, viewMode, direction) {
 }
 
 function getGridTemplate(viewMode, visibleDayCount) {
-  if (viewMode === 'day') return '112px minmax(280px, 1fr)';
-  if (viewMode === 'week') return '112px repeat(' + visibleDayCount + ', minmax(126px, 1fr))';
+  if (viewMode === 'day') return 'var(--schedule-time-col, 112px) minmax(220px, 1fr)';
+  if (viewMode === 'week') return 'var(--schedule-time-col, 112px) repeat(' + visibleDayCount + ', minmax(var(--schedule-week-day-col, 126px), 1fr))';
 
-  return '112px repeat(' + visibleDayCount + ', minmax(92px, 1fr))';
+  return 'var(--schedule-time-col, 112px) repeat(' + visibleDayCount + ', minmax(var(--schedule-month-day-col, 92px), 1fr))';
 }
 
 function readStoredBookings() {
@@ -902,7 +902,7 @@ function CalendarGrid({
                 style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
               >
                 <Clock3 size={14} aria-hidden="true" />
-                <span>{hour.rangeLabel || hour.description || hour.label}</span>
+                <span>{hour.shortLabel || hour.label || hour.rangeLabel || hour.description}</span>
               </div>
 
               {visibleDays.map((day, dayIndex) => {
