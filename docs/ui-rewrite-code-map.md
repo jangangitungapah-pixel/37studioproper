@@ -359,11 +359,14 @@ Client portal CSS imports:
 
 ```txt
 src/styles/admin-auth.css
-src/styles/client-portal-calendar.css
-src/styles/client-portal-overhaul.css
-src/styles/client-portal-calendar-tight.css
-src/styles/client-payment-proof.css
-src/styles/client-portal-bento-override.css
+src/styles/client-portal.css
+```
+
+Client landing CSS imports:
+
+```txt
+src/styles/admin-auth.css
+src/styles/client-landing.css
 ```
 
 ---
@@ -375,6 +378,7 @@ src/styles/client-portal-bento-override.css
 | `src/index.css` | global reset, font, root token |
 | `src/styles/modules/base.css` | base admin/auth token bridge |
 | `src/styles/modules/shared.css` | shared UI primitives |
+| `src/styles/modules/modal.css` | shared modal primitives and confirm dialog |
 | `src/styles/modules/auth.css` | admin login/auth pages |
 | `src/styles/modules/admin-shell.css` | admin sidebar/topbar/bottom nav/stage |
 | `src/styles/modules/schedule.css` | admin schedule page |
@@ -389,14 +393,10 @@ src/styles/client-portal-bento-override.css
 | `src/styles/modules/operator-fee.css` | admin operator fee page |
 | `src/styles/modules/notifications.css` | admin notification page |
 | `src/styles/modules/guard-attendance.css` | guard attendance |
-| `src/styles/firebase-auth.css` | client auth |
-| `src/styles/client-portal-calendar.css` | client calendar |
-| `src/styles/client-portal-overhaul.css` | client portal shell/visual |
-| `src/styles/client-portal-calendar-tight.css` | client calendar compact layer |
-| `src/styles/client-payment-proof.css` | client payment proof |
-| `src/styles/client-portal-bento-override.css` | candidate for migration/removal |
-| `src/styles/client-landing-compact.css` | candidate for rewrite/removal |
-| `src/styles/client-portal-polish.css` | candidate for merge |
+| `src/styles/firebase-auth.css` | shared Firebase auth helpers and role dialog support |
+| `src/styles/client-auth.css` | client login surface |
+| `src/styles/client-portal.css` | client portal tabs, calendar, billing, proof upload |
+| `src/styles/client-landing.css` | client public landing and booking entry |
 
 Rewrite rule:
 
@@ -440,8 +440,11 @@ Rule:
 | 5 | `inventory.css`, `operator-fee.css`, `notifications.css` | operational modules alignment |
 | 6 | `schedule.css`, `booking.css` | calendar dan booking modal cleanup |
 | 7 | client portal CSS | migrate override ke owner files |
-| 8 | landing/auth CSS dan JSX seperlunya | semantic classes dan token alignment |
-| 9 | largest JSX files dan dead CSS | split dan debt cleanup |
+| 8 | client login and auth surfaces | semantic classes dan token alignment |
+| 9 | client landing | migrate polish/compact layers to owner CSS |
+| 10 | settings and gallery | remaining admin surfaces owner rewrite |
+| 11 | shared controls and modal primitives | split modal owner from shared primitives |
+| 12 | guard attendance and final CSS sweep | final guard surface rewrite and CSS audit doc |
 
 ---
 
