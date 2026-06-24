@@ -806,13 +806,6 @@ function ScheduleMobileAgenda({
   const [focusedDayIso, setFocusedDayIso] = useState(() => toIsoDate(selectedDate));
   const todayIso = toIsoDate(startOfDay(new Date()));
 
-  useEffect(() => {
-    const hasFocusedDay = visibleDays.some((day) => toIsoDate(day) === focusedDayIso);
-
-    if (!hasFocusedDay) {
-      setFocusedDayIso(visibleDays[0] ? toIsoDate(visibleDays[0]) : toIsoDate(selectedDate));
-    }
-  }, [focusedDayIso, selectedDate, visibleDays]);
 
   const focusedDay = visibleDays.find((day) => toIsoDate(day) === focusedDayIso) || visibleDays[0] || selectedDate;
   const safeFocusedDayIso = toIsoDate(focusedDay);
