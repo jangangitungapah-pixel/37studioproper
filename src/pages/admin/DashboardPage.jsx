@@ -373,7 +373,7 @@ function DashboardChart({ chartData, range, onRangeChange }) {
         <div>
           <small>Pembukuan</small>
           <strong>Cashflow Studio</strong>
-          <span>Pemasukan, pengeluaran, dan saldo bersih.</span>
+          <span>Masuk, keluar, saldo.</span>
         </div>
 
         <div className="dashboard-chart-filter">
@@ -387,7 +387,7 @@ function DashboardChart({ chartData, range, onRangeChange }) {
       </header>
 
       <div className="dashboard-chart-shell">
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={chartData} margin={{ top: 8, right: 10, bottom: 24, left: -6 }}>
             <CartesianGrid stroke="var(--dashboard-chart-grid)" strokeDasharray="3 3" />
             <XAxis
@@ -485,7 +485,7 @@ function DashboardUpcoming({ bookings, onOpenSchedule }) {
           ))}
         </div>
       ) : (
-        <p className="dashboard-empty-copy">Belum ada booking terdekat. Kalender lagi lapang.</p>
+        <p className="dashboard-empty-copy">Belum ada booking terdekat.</p>
       )}
     </section>
   );
@@ -516,7 +516,7 @@ function DashboardAttention({ inventoryItems, openInvoices, onOpenBilling, onOpe
 
           <span className="dashboard-attention-copy">
             <strong>Invoice belum lunas</strong>
-            <small>Pending atau DP yang perlu follow-up.</small>
+            <small>Perlu follow-up.</small>
           </span>
 
           <b>{openInvoices}</b>
@@ -529,7 +529,7 @@ function DashboardAttention({ inventoryItems, openInvoices, onOpenBilling, onOpe
 
           <span className="dashboard-attention-copy">
             <strong>Inventory dicek</strong>
-            <small>Low stock, maintenance, rusak, atau hilang.</small>
+            <small>Stock / maintenance.</small>
           </span>
 
           <b>{attentionItems.length}</b>
@@ -614,12 +614,12 @@ export default function DashboardPage() {
         <div>
           <p>Studio Command Center</p>
           <h2>Ringkasan Hari Ini</h2>
-          <span>Overview singkat dari schedule, billing, customer, inventory, dan pembukuan.</span>
+          <span>Operasional studio hari ini.</span>
         </div>
 
         <button type="button" onClick={() => navigate('/admin/schedule')}>
           <CalendarDays size={16} />
-          Buka Schedule
+          Buka
         </button>
       </section>
 
@@ -635,28 +635,28 @@ export default function DashboardPage() {
           icon={CalendarDays}
           label="Booking Hari Ini"
           value={stats.todayBookings}
-          helper="Jadwal aktif hari ini"
+          helper="Hari ini"
           tone="is-schedule"
         />
         <DashboardMetricCard
           icon={CreditCard}
           label="Outstanding"
           value={formatCurrency(stats.outstanding)}
-          helper={stats.openInvoices + ' invoice perlu follow-up'}
+          helper={stats.openInvoices + ' invoice'}
           tone="is-billing"
         />
         <DashboardMetricCard
           icon={WalletCards}
           label="Saldo Bulan Ini"
           value={formatCurrency(stats.net)}
-          helper={'Masuk ' + formatCurrency(stats.cashIn)}
+          helper={'Masuk ' + formatCompactCurrency(stats.cashIn)}
           tone="is-bookkeeping"
         />
         <DashboardMetricCard
           icon={UsersRound}
           label="Customer"
           value={stats.customers}
-          helper="Gabungan booking dan manual"
+          helper="Total unik"
           tone="is-customer"
         />
       </section>
@@ -686,25 +686,25 @@ export default function DashboardPage() {
       <section className="dashboard-bottom-grid">
         <article className="dashboard-mini-card is-income">
           <span><ArrowUpRight size={16} /></span>
-          <small>Pemasukan Bulan Ini</small>
+          <small>Pemasukan</small>
           <strong>{formatCurrency(stats.cashIn)}</strong>
         </article>
 
         <article className="dashboard-mini-card is-expense">
           <span><ArrowDownRight size={16} /></span>
-          <small>Pengeluaran Bulan Ini</small>
+          <small>Pengeluaran</small>
           <strong>{formatCurrency(stats.cashOut)}</strong>
         </article>
 
         <article className="dashboard-mini-card is-inventory">
           <span><Wrench size={16} /></span>
-          <small>Inventory Attention</small>
+          <small>Inventory</small>
           <strong>{stats.inventoryAttention} item</strong>
         </article>
 
         <article className="dashboard-mini-card is-bookkeeping">
           <span><ReceiptText size={16} /></span>
-          <small>Transaksi Cashflow</small>
+          <small>Transaksi</small>
           <strong>{stats.transactions.length}</strong>
         </article>
       </section>
