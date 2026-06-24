@@ -672,7 +672,7 @@ export default function GalleryPage() {
   }, [activePhoto]);
 
   return (
-    <section className="customer-page gallery-page pb-28 md:pb-8" aria-labelledby="gallery-page-title">
+    <section className="gallery-page" aria-labelledby="gallery-page-title">
       
       {/* 1. COHESIVE CRM TITLE BLOCK */}
       <div className="customer-page-title">
@@ -753,9 +753,9 @@ export default function GalleryPage() {
 
       {/* 5. MAIN VIEWS CONTENT */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-24 space-y-4">
-          <LoaderCircle className="animate-spin text-[var(--ui-accent)]" size={36} />
-          <span className="text-xs text-[var(--ui-text-muted)] tracking-wider">Memuat galeri berkualitas studio...</span>
+        <div className="gallery-loading-state">
+          <LoaderCircle className="gallery-loading-spinner" size={36} />
+          <span>Memuat galeri berkualitas studio...</span>
         </div>
       ) : (
         <>
