@@ -639,5 +639,4 @@ export default function ClientLoginPage() {
       />
     </main>
   );
-  );
 }
