@@ -41,7 +41,6 @@ import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 import '../styles/client-portal-polish.css';
 import '../styles/client-landing-compact.css';
-import '../styles/client-portal-bento-override.css';
 
 export default function ClientLandingPage() {
   const pricingSettings = usePricingSettings();
