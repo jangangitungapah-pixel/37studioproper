@@ -1,0 +1,409 @@
+/* Client Landing: Studio OS public booking surface. Owner file, no override layer. */
+.client-landing-page,
+.client-landing-loading {
+  position: relative;
+  min-height: 100dvh;
+  isolation: isolate;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 14% 0%, var(--studio-accent-soft), transparent 28rem),
+    radial-gradient(circle at 86% 92%, var(--studio-accent-glow), transparent 28rem),
+    linear-gradient(145deg, var(--studio-bg-app), var(--studio-bg-page) 54%, var(--studio-bg-shell));
+  color: var(--auth-text-main);
+  font-family: var(--ui-font-sans);
+}
+
+.client-landing-loading {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.client-landing-loading-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-sm);
+  letter-spacing: 0.08em;
+}
+
+.client-landing-spin {
+  color: var(--auth-accent);
+  animation: client-landing-spin 0.8s linear infinite;
+}
+
+.client-landing-bg-glow {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 500px;
+  pointer-events: none;
+  background: radial-gradient(circle at 18% 0%, var(--studio-accent-glow), transparent 34rem);
+  filter: blur(80px);
+  opacity: 0.8;
+}
+
+.client-landing-header,
+.client-landing-main {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding-inline: clamp(14px, 4vw, 28px);
+}
+
+.client-landing-header {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--auth-border);
+  padding-block: 12px;
+}
+
+.client-landing-brand,
+.client-landing-nav,
+.client-landing-top-action,
+.client-landing-button,
+.client-landing-kicker,
+.client-landing-hours-card,
+.client-landing-hours-card > div:last-child {
+  display: inline-flex;
+  align-items: center;
+}
+
+.client-landing-brand {
+  min-width: 0;
+  gap: 10px;
+}
+
+.client-landing-brand-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--studio-radius-md);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: var(--studio-text-inverse);
+  box-shadow: 0 16px 34px var(--studio-accent-glow);
+}
+
+.client-landing-brand-text {
+  color: var(--auth-text-strong);
+  font-size: 1rem;
+  font-weight: 820;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
+.client-landing-nav {
+  gap: 20px;
+}
+
+.client-landing-nav-link {
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-sm);
+  font-weight: 680;
+  text-decoration: none;
+}
+
+.client-landing-nav-link:hover {
+  color: var(--auth-text-strong);
+}
+
+.client-landing-top-action,
+.client-landing-button {
+  min-height: 42px;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-full);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 14px;
+  font-size: var(--studio-text-xs);
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.client-landing-top-action.is-primary,
+.client-landing-button.is-primary {
+  border-color: var(--auth-accent);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: var(--studio-text-inverse);
+  box-shadow: 0 16px 34px var(--studio-accent-glow);
+}
+
+.client-landing-top-action.is-secondary {
+  color: var(--auth-text-muted);
+}
+
+.client-landing-top-action.is-secondary:hover {
+  border-color: color-mix(in srgb, var(--auth-danger) 30%, var(--auth-border));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
+
+.client-landing-main {
+  padding-block: clamp(28px, 5vw, 64px) clamp(52px, 8vw, 90px);
+}
+
+.client-landing-main > section {
+  scroll-margin-top: 88px;
+}
+
+.client-landing-main > section + section {
+  padding-top: clamp(42px, 8vw, 88px);
+}
+
+.client-landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 56px);
+}
+
+.client-landing-hero-copy {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+}
+
+.client-landing-kicker {
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-full);
+  background: var(--auth-bg-soft);
+  color: var(--auth-accent);
+  padding: 7px 12px;
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  letter-spacing: 0.08em;
+}
+
+.client-landing-hero-title {
+  max-width: 9ch;
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: clamp(3rem, 10vw, 5.35rem);
+  font-weight: 780;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+  user-select: none;
+}
+
+.client-landing-hero-accent {
+  color: var(--auth-accent);
+}
+
+.client-landing-hero-text {
+  max-width: 55ch;
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: clamp(0.95rem, 2vw, 1.08rem);
+  line-height: 1.65;
+}
+
+.client-landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.client-landing-button {
+  min-height: 48px;
+  border-radius: var(--studio-radius-lg);
+  padding-inline: 22px;
+}
+
+.client-landing-hero-visual {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-2xl);
+  background: var(--auth-bg-card);
+  box-shadow: var(--studio-shadow-float);
+}
+
+.client-landing-hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 700ms ease;
+}
+
+.client-landing-hero-visual:hover .client-landing-hero-image {
+  transform: scale(1.05);
+}
+
+.client-landing-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--studio-bg-page) 86%, transparent));
+}
+
+.client-landing-hours-card {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  background: color-mix(in srgb, var(--auth-bg-elevated) 88%, transparent);
+  padding: 14px;
+  backdrop-filter: blur(14px);
+}
+
+.client-landing-hours-card p {
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.client-landing-hours-card h3 {
+  margin: 3px 0 0;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
+}
+
+.client-landing-hours-card > div:last-child {
+  gap: 6px;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+  padding: 7px 10px;
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+}
+
+.client-landing-page :where(section[id]) > div:first-child {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.client-landing-page :where(section[id]) h2 {
+  color: var(--auth-accent);
+}
+
+.client-landing-page :where(section[id]) h3,
+.client-landing-page :where(h4, h5) {
+  color: var(--auth-text-strong);
+}
+
+.client-landing-page :where(section[id]) p {
+  color: var(--auth-text-muted);
+  line-height: 1.55;
+}
+
+.client-landing-page :where(input, textarea) {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.client-landing-page :where(input, textarea):focus {
+  box-shadow: 0 0 0 4px var(--auth-accent-soft);
+}
+
+@keyframes client-landing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .client-landing-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .client-landing-hero-copy {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .client-landing-hero-visual {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 767px) {
+  .client-landing-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    min-height: 58px;
+    background: color-mix(in srgb, var(--studio-bg-page) 92%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .client-landing-nav {
+    display: none;
+  }
+
+  .client-landing-brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .client-landing-brand-text {
+    font-size: 0.84rem;
+  }
+
+  .client-landing-top-action {
+    min-height: 36px;
+    padding-inline: 11px;
+  }
+
+  .client-landing-main {
+    padding-block-start: 24px;
+  }
+
+  .client-landing-hero-copy {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .client-landing-hero-title {
+    font-size: clamp(2.55rem, 15vw, 3.45rem);
+    max-width: 8ch;
+  }
+
+  .client-landing-hero-text {
+    max-width: 100%;
+  }
+
+  .client-landing-hero-actions,
+  .client-landing-button {
+    width: 100%;
+  }
+
+  .client-landing-hero-visual {
+    display: none;
+  }
+
+  .client-landing-page :where(section[id]) > div:first-child {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .client-landing-main > section + section {
+    padding-top: 42px;
+  }
+}
