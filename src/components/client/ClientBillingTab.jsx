@@ -18,8 +18,8 @@ export default function ClientBillingTab({
   copyText
 }) {
   return (
-    <div className="space-y-6">
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2 relative overflow-hidden shadow-xl">
+    <div className="client-billing-tab">
+      <div className="client-billing-summary-card">
         <div className="absolute top-0 right-0 w-[140px] h-[140px] rounded-full bg-orange-500/5 filter blur-[35px] pointer-events-none" />
         <span className="text-[11px] uppercase tracking-wider text-[var(--ui-text-muted)] font-semibold">Total Sisa Tagihan Aktif</span>
         <strong className="text-3xl text-white font-bold">{formatRupiah(stats.unpaidAmount)}</strong>
@@ -41,7 +41,7 @@ export default function ClientBillingTab({
               const hasPendingProof = latestProof?.status === 'pending';
 
               return (
-                <div key={b.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div key={b.id} className="client-billing-item">
                   <div className="space-y-1">
                     <span className="text-[9px] uppercase tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[var(--ui-text-muted)]">
                       {b.bookingCode || 'BKG'}
@@ -87,14 +87,14 @@ export default function ClientBillingTab({
         </div>
       )}
 
-      <div className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 space-y-4">
+      <div className="client-payment-info-card">
         <h4 className="text-xs uppercase tracking-wider text-white font-bold flex items-center gap-1.5">
           <Receipt size={14} className="text-[#ff8a2a]" />
           <span>Informasi Rekening Studio</span>
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+          <div className="client-payment-method-card">
             <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">{studioSettings.bankName || defaultStudioSettings.bankName}</span>
             <strong className="text-base text-white tracking-wide">{formatBankAccountNumber(transferAccountNumber)}</strong>
             <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
@@ -102,14 +102,14 @@ export default function ClientBillingTab({
               <Copy size={12} /> Salin rekening
             </button>
           </div>
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+          <div className="client-payment-method-card">
             <span className="text-[10px] text-[var(--ui-text-muted)] uppercase block">Metode QRIS</span>
             <strong className="text-sm text-white">{studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</strong>
             <span className="text-[11px] text-[var(--ui-text-muted)] block mt-1">{studioSettings.qrisNote || defaultStudioSettings.qrisNote}</span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-orange-500/5 border border-orange-500/10 text-[11px] text-[var(--ui-text-muted)] leading-relaxed space-y-1">
+        <div className="client-payment-terms-card">
           <div className="flex items-center gap-1 text-white font-bold mb-1">
             <Info size={12} className="text-orange-400" />
             <span>Ketentuan Pembayaran:</span>

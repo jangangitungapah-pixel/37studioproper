@@ -34,7 +34,7 @@ export default function ClientHistoryTab({
       </div>
       
       {userBookings.length === 0 ? (
-        <div className="p-8 text-center rounded-2xl bg-white/[0.01] border border-white/5 text-[var(--ui-text-muted)] text-sm space-y-2">
+        <div className="client-history-empty">
           <CalendarDays size={28} className="mx-auto text-white/20 mb-2" />
           <strong>Belum ada riwayat booking</strong>
           <p className="text-xs max-w-xs mx-auto">Anda belum pernah memesan jadwal sesi latihan atau rekaman.</p>
@@ -68,7 +68,7 @@ export default function ClientHistoryTab({
               <article
                 key={booking.id}
                 onClick={() => handleBookingBlockClick(booking)}
-                className={`relative overflow-hidden p-5 rounded-2xl backdrop-blur-md bg-white/[0.02] border border-white/5 hover:border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 cursor-pointer transition-all duration-300 ${isVoid ? 'opacity-55' : ''}`}
+                className={`client-history-card ${isVoid ? 'is-void' : ''}`}
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">

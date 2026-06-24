@@ -62,11 +62,7 @@ import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
 
 
 import '../styles/admin-auth.css';
-import '../styles/client-portal-calendar.css';
-import '../styles/client-portal-overhaul.css';
-import '../styles/client-portal-calendar-tight.css';
-import '../styles/client-payment-proof.css';
-import '../styles/client-portal-bento-override.css';
+import '../styles/client-portal.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -1082,34 +1078,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   }
 
   return (
-    <div className="client-portal-page theme-container min-h-screen bg-[#050506] text-[var(--ui-text-main)] pb-24 overflow-x-hidden font-sans relative">
+    <div className="client-portal-page theme-container">
       {/* Background Radial Glow */}
-      <div className="absolute top-0 left-0 w-full h-[450px] bg-gradient-to-b from-[#ff8a2a]/8 to-transparent pointer-events-none blur-[110px]" />
-
-      {/* Dynamic Style Override Inject for Occupied Slots */}
-      <style>{`
-        .schedule-booking-block.is-occupied-other {
-          border-color: rgba(255, 255, 255, 0.05) !important;
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.02)) !important;
-          color: rgba(255, 255, 255, 0.22) !important;
-          cursor: not-allowed !important;
-          box-shadow: none !important;
-        }
-        .schedule-booking-block.is-occupied-other::before {
-          background: rgba(255, 255, 255, 0.1) !important;
-        }
-        .schedule-booking-block.is-occupied-other .schedule-booking-glow {
-          display: none !important;
-        }
-        .schedule-booking-block.is-occupied-other strong {
-          color: rgba(255, 255, 255, 0.25) !important;
-          font-weight: 400 !important;
-        }
-        .schedule-booking-block.is-occupied-other .schedule-booking-title {
-          color: rgba(255, 255, 255, 0.15) !important;
-        }
-      `}</style>
-
+      <div className="client-portal-bg-glow" aria-hidden="true" />
       {/* Header Profile Area */}
       <header className="client-portal-header relative w-full max-w-4xl mx-auto z-10">
         <div className="client-header-copy">
@@ -1130,7 +1101,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       </header>
 
       {/* Main Content Area based on Tab Selection */}
-      <main className="w-full max-w-4xl mx-auto px-4 py-6 relative z-10 min-h-[60vh]">
+      <main className="client-portal-main">
         {activeTab === 'dashboard' && (
           <ClientDashboardTab
             upcomingBooking={upcomingBooking}
@@ -1246,22 +1217,22 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
       {/* Booking Simulator Modal (Interactive request booking from Empty Slot) */}
       {isSimulatorOpen && (
-        <div className="client-booking-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="client-booking-modal w-full max-w-md p-6 rounded-2xl bg-[#0f0f12] border border-white/10 space-y-4 shadow-2xl relative max-h-[85vh] overflow-y-auto">
-            <h3 className="client-booking-modal-title text-base text-white font-bold flex items-center gap-2 border-b border-white/5 pb-3">
+        <div className="client-booking-modal-backdrop">
+          <div className="client-booking-modal">
+            <h3 className="client-booking-modal-title">
               <CalendarDays size={18} className="text-[#ff8a2a]" />
               <span>Simulasi Booking Baru</span>
             </h3>
 
-            <div className="client-booking-modal-body space-y-4 text-xs">
+            <div className="client-booking-modal-body">
               {/* Selected Slot Information */}
-              <div className="client-booking-slot-summary p-3 rounded-lg bg-white/5 border border-white/5 text-[var(--ui-text-muted)] space-y-1">
+              <div className="client-booking-slot-summary">
                 <p>Tanggal Terpilih: <strong className="text-white">{simulatorDate}</strong></p>
                 <p>Mulai Jam: <strong className="text-white">{simulatorStartHour}.00 WIB</strong></p>
               </div>
 
               {/* Selector Mode */}
-              <div className="client-booking-mode grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-white/5 border border-white/5">
+              <div className="client-booking-mode">
                 <button
                   type="button"
                   className={`py-2 px-3 text-xs font-semibold rounded-lg transition-all ${simPackageId === 'none' ? 'bg-[#ff8a2a] text-black shadow-md' : 'text-[var(--ui-text-muted)] hover:text-white'}`}
@@ -1352,7 +1323,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </div>
 
               {/* Cost Summary Breakdown */}
-              <div className="client-booking-estimate space-y-2 border-t border-white/5 pt-3">
+              <div className="client-booking-estimate">
                 <h4 className="font-bold text-white">Rincian Estimasi</h4>
                 <div className="space-y-1.5 text-[11px] text-[var(--ui-text-muted)]">
                   <div className="flex justify-between">
@@ -1462,7 +1433,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </div>
             </div>
 
-            <div className="client-booking-actions flex gap-3 pt-3">
+            <div className="client-booking-actions">
               <button
                 type="button"
                 onClick={() => setIsSimulatorOpen(false)}
@@ -1486,9 +1457,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
       {/* Booking Detail Modal (To view invoices, receipts, and DP breakdown) */}
       {selectedBookingDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-[#0f0f12] border border-white/10 space-y-4 shadow-2xl relative max-h-[85vh] overflow-y-auto">
-            <h3 className="text-base text-white font-bold flex items-center gap-2 border-b border-white/5 pb-3">
+        <div className="client-detail-modal-backdrop">
+          <div className="client-detail-modal">
+            <h3 className="client-detail-modal-title">
               <Receipt size={18} className="text-[#ff8a2a]" />
               <span>Detail Invoice Booking</span>
             </h3>
