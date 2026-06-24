@@ -322,7 +322,7 @@ function formatBookingDateLabel(booking) {
 
 function getUpcomingScheduleTimeLabel(booking) {
   if (isNoDurationPackageBooking(booking)) {
-    return formatHourLabel(getBookingStartHour(booking)) + ' WIB Â· tanpa blok kalender';
+    return formatHourLabel(getBookingStartHour(booking)) + ' WIB - tanpa blok kalender';
   }
 
   return getBookingWindowLabel(booking) + ' WIB';
@@ -806,7 +806,6 @@ function ScheduleMobileAgenda({
   const [focusedDayIso, setFocusedDayIso] = useState(() => toIsoDate(selectedDate));
   const todayIso = toIsoDate(startOfDay(new Date()));
 
-
   const focusedDay = visibleDays.find((day) => toIsoDate(day) === focusedDayIso) || visibleDays[0] || selectedDate;
   const safeFocusedDayIso = toIsoDate(focusedDay);
   const focusedDayLabel = focusedDay.toLocaleDateString('id-ID', {
@@ -835,6 +834,55 @@ function ScheduleMobileAgenda({
     )
   ).length;
   const emptySlotCount = Math.max(0, businessHours.length - occupiedSlotCount);
+  const agendaRows = useMemo(() => {
+    const consumedHourKeys = new Set();
+
+    return businessHours.reduce((rows, hour) => {
+      if (consumedHourKeys.has(hour.key)) return rows;
+
+      const hourStart = Number(hour.start);
+      const hourEnd = Number(hour.end);
+      const slotBookings = dayBookings.filter((booking) => Number(getBookingStartHour(booking)) === hourStart);
+
+      if (slotBookings.length) {
+        slotBookings.forEach((booking) => {
+          const bookingEndHour = getBookingEndHour(booking);
+
+          businessHours.forEach((candidateHour) => {
+            const candidateStart = Number(candidateHour.start);
+
+            if (candidateStart > hourStart && candidateStart < bookingEndHour) {
+              consumedHourKeys.add(candidateHour.key);
+            }
+          });
+        });
+
+        rows.push({
+          bookings: slotBookings,
+          hour,
+          key: 'booked-' + hour.key,
+          type: 'booked',
+        });
+
+        return rows;
+      }
+
+      const isCoveredByPreviousBooking = dayBookings.some((booking) =>
+        getBookingStartHour(booking) < hourEnd &&
+        getBookingEndHour(booking) > hourStart
+      );
+
+      if (isCoveredByPreviousBooking) return rows;
+
+      rows.push({
+        hour,
+        key: 'empty-' + hour.key,
+        type: 'empty',
+      });
+
+      return rows;
+    }, []);
+  }, [dayBookings]);
 
   return (
     <section className="schedule-mobile-agenda" aria-label="Agenda mobile">
@@ -882,19 +930,18 @@ function ScheduleMobileAgenda({
       </div>
 
       <div className="schedule-mobile-timeline">
-        {businessHours.map((hour) => {
-          const slotBookings = dayBookings.filter((booking) => Number(getBookingStartHour(booking)) === Number(hour.start));
-          const occupyingBooking = dayBookings.find((booking) =>
-            getBookingStartHour(booking) < Number(hour.end) &&
-            getBookingEndHour(booking) > Number(hour.start)
-          );
+        {agendaRows.map((row) => {
+          if (row.type === 'booked') {
+            const firstBooking = row.bookings[0];
+            const timeLabel = row.bookings.length === 1
+              ? getBookingWindowLabel(firstBooking)
+              : row.hour.shortLabel || row.hour.label;
 
-          if (slotBookings.length) {
             return (
-              <article className="schedule-mobile-slot is-booked" key={hour.key}>
-                <span className="schedule-mobile-slot-time">{hour.shortLabel || hour.label}</span>
+              <article className="schedule-mobile-slot is-booked" key={row.key}>
+                <span className="schedule-mobile-slot-time">{timeLabel}</span>
                 <div className="schedule-mobile-slot-body">
-                  {slotBookings.map((booking) => {
+                  {row.bookings.map((booking) => {
                     const status = getBookingStatus(booking);
 
                     return (
@@ -908,7 +955,7 @@ function ScheduleMobileAgenda({
                           <strong>{booking.customer || 'Customer'}</strong>
                           <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi studio'}</small>
                         </span>
-                        <em>{getBookingWindowLabel(booking)}</em>
+                        <em>{getStatusLabel(status)}</em>
                         <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
                       </button>
                     );
@@ -918,32 +965,13 @@ function ScheduleMobileAgenda({
             );
           }
 
-          if (occupyingBooking) {
-            return (
-              <article className="schedule-mobile-slot is-occupied" key={hour.key}>
-                <span className="schedule-mobile-slot-time">{hour.shortLabel || hour.label}</span>
-                <button
-                  className={'schedule-mobile-booking is-muted is-' + getBookingStatus(occupyingBooking)}
-                  type="button"
-                  onClick={() => onBookingClick(occupyingBooking)}
-                >
-                  <span>
-                    <strong>Terisi</strong>
-                    <small>{occupyingBooking.customer || 'Booking aktif'}</small>
-                  </span>
-                  <em>{getBookingWindowLabel(occupyingBooking)}</em>
-                </button>
-              </article>
-            );
-          }
-
           return (
-            <article className="schedule-mobile-slot is-empty" key={hour.key}>
-              <span className="schedule-mobile-slot-time">{hour.shortLabel || hour.label}</span>
+            <article className="schedule-mobile-slot is-empty" key={row.key}>
+              <span className="schedule-mobile-slot-time">{row.hour.shortLabel || row.hour.label}</span>
               <button
                 className="schedule-mobile-empty-slot"
                 type="button"
-                onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(hour.start) })}
+                onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(row.hour.start) })}
               >
                 <span>Kosong</span>
                 <b>Tambah</b>
