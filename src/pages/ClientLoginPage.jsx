@@ -20,6 +20,7 @@ import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/firebase-auth.css';
+import '../styles/client-auth.css';
 
 export default function ClientLoginPage() {
   const navigate = useNavigate();
@@ -357,36 +358,25 @@ export default function ClientLoginPage() {
       ];
 
   return (
-    <div className="relative min-h-screen bg-[#050506] text-[#f7f3ec] flex items-center justify-center p-4 overflow-hidden font-sans">
-      {/* Background Spatial Glow Effects */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-orange-600/10 blur-[140px] pointer-events-none animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/10 blur-[130px] pointer-events-none" />
+    <main className="client-auth-page theme-container">
+      <div className="client-auth-bg-glow is-primary" aria-hidden="true" />
+      <div className="client-auth-bg-glow is-secondary" aria-hidden="true" />
 
-      {/* Main Container */}
-      <div className="relative w-full max-w-[420px] z-10 transition-all duration-300">
-        
-        {/* Brand/Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center gap-2.5 mb-4 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-xs font-semibold uppercase tracking-wider text-[var(--ui-accent)] shadow-inner">
-            <Volume2 size={14} className="text-[#ff8a2a]" />
-            <span>37 Studio Jam Portal</span>
+      <section className="client-auth-shell" aria-labelledby="client-login-title">
+        <header className="client-auth-header">
+          <div className="client-auth-brand-pill">
+            <Volume2 size={14} aria-hidden="true" />
+            <span>37 Studio Client Access</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Client Portal
-          </h1>
-          <p className="text-sm text-[#f7f3ec]/60">
-            Masuk untuk mengakses jadwal, booking sesi, dan data musik Anda.
-          </p>
-        </div>
+          <h1 id="client-login-title" className="client-auth-title">Client Portal</h1>
+          <p className="client-auth-subtitle">Masuk untuk mengakses jadwal, booking sesi, dan data musik Anda.</p>
+        </header>
 
-        {/* Spatial Card */}
-        <div className="backdrop-blur-2xl bg-white/[0.03] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)] shadow-orange-900/5">
-          
-          {/* Tab buttons */}
-          <div className="flex border-b border-white/10 mb-6">
+        <div className="client-auth-card">
+          <div className="client-auth-tabs" role="tablist" aria-label="Metode login client">
             <button
               type="button"
-              className={`flex-1 pb-3 text-sm font-semibold tracking-wide border-b-2 transition-all flex items-center justify-center gap-2 ${activeTab === 'email' ? 'border-[#ff8a2a] text-white' : 'border-transparent text-white/40 hover:text-white/70'}`}
+              className={'client-auth-tab ' + (activeTab === 'email' ? 'is-active' : '')}
               onClick={() => {
                 setActiveTab('email');
                 setError('');
@@ -398,7 +388,7 @@ export default function ClientLoginPage() {
             </button>
             <button
               type="button"
-              className={`flex-1 pb-3 text-sm font-semibold tracking-wide border-b-2 transition-all flex items-center justify-center gap-2 ${activeTab === 'phone' ? 'border-[#ff8a2a] text-white' : 'border-transparent text-white/40 hover:text-white/70'}`}
+              className={'client-auth-tab ' + (activeTab === 'phone' ? 'is-active' : '')}
               onClick={() => {
                 setActiveTab('phone');
                 setError('');
@@ -410,114 +400,104 @@ export default function ClientLoginPage() {
             </button>
           </div>
 
-          {/* Alerts */}
-          {error && (
-            <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 text-xs flex items-start gap-2.5 animate-fadeIn">
-              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          {error ? (
+            <div className="client-auth-alert is-error" role="alert">
+              <AlertCircle size={16} aria-hidden="true" />
               <span>{error}</span>
             </div>
-          )}
+          ) : null}
 
-          {success && (
-            <div className="mb-4 p-3 rounded-lg border border-green-500/20 bg-green-500/10 text-green-400 text-xs flex items-start gap-2.5">
-              <ShieldCheck size={16} className="shrink-0 mt-0.5" />
+          {success ? (
+            <div className="client-auth-alert is-success" role="status">
+              <ShieldCheck size={16} aria-hidden="true" />
               <span>{success}</span>
             </div>
-          )}
+          ) : null}
 
           <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
 
-          {/* Email Form */}
           {activeTab === 'email' && (
-            <form onSubmit={handleEmailAuth} className="space-y-4" noValidate>
-              <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-white/60 tracking-wider">Email Client</span>
-                <div className="relative flex items-center">
-                  <Mail className="absolute left-3.5 text-white/30 w-4 h-4" />
+            <form onSubmit={handleEmailAuth} className="client-auth-form" noValidate>
+              <label className="client-auth-field">
+                <span>Email Client</span>
+                <div className="client-auth-input-wrap">
+                  <Mail className="client-auth-input-icon" size={17} aria-hidden="true" />
                   <input
                     type="email"
                     placeholder="nama@email.com"
-                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 focus:border-[#ff8a2a] outline-none text-white text-sm tracking-wide transition-colors"
+                    className="client-auth-input"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     disabled={isSubmitting}
                     required
                   />
                 </div>
-              </div>
+              </label>
 
-              <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-white/60 tracking-wider">Password</span>
-                <div className="relative flex items-center">
-                  <LockKeyhole className="absolute left-3.5 text-white/30 w-4 h-4" />
+              <label className="client-auth-field">
+                <span>Password</span>
+                <div className="client-auth-input-wrap">
+                  <LockKeyhole className="client-auth-input-icon" size={17} aria-hidden="true" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Password Anda"
-                    className="w-full pl-11 pr-11 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 focus:border-[#ff8a2a] outline-none text-white text-sm tracking-wide transition-colors"
+                    className="client-auth-input"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(event) => setPassword(event.target.value)}
                     disabled={isSubmitting}
                     required
                   />
                   <button
                     type="button"
-                    className="absolute right-3.5 text-white/30 hover:text-white/70 transition-colors"
+                    className="client-auth-icon-button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-              </div>
+              </label>
 
               {authMode === 'signUp' && (
-                <div className="space-y-1.5 animate-fadeIn">
-                  <span className="text-xs font-semibold text-white/60 tracking-wider">Konfirmasi Password</span>
-                  <div className="relative flex items-center">
-                    <LockKeyhole className="absolute left-3.5 text-white/30 w-4 h-4" />
+                <label className="client-auth-field">
+                  <span>Konfirmasi Password</span>
+                  <div className="client-auth-input-wrap">
+                    <LockKeyhole className="client-auth-input-icon" size={17} aria-hidden="true" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="Ulangi Password"
-                      className="w-full pl-11 pr-11 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 focus:border-[#ff8a2a] outline-none text-white text-sm tracking-wide transition-colors"
+                      className="client-auth-input"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
                       disabled={isSubmitting}
                       required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3.5 text-white/30 hover:text-white/70 transition-colors"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                  >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
+                    />
+                    <button
+                      type="button"
+                      className="client-auth-icon-button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </label>
               )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 mt-2 rounded-xl bg-[#ff8a2a] hover:bg-[#ff5f15] text-black font-bold text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-orange-500/10 active:scale-[0.98] transition-all"
-              >
+              <button type="submit" disabled={isSubmitting} className="client-auth-submit">
                 {isSubmitting ? (
-                  <LoaderCircle className="animate-spin" size={18} />
+                  <LoaderCircle className="client-auth-spin" size={18} />
                 ) : (
                   <ShieldCheck size={18} />
                 )}
-                <span>
-                  {isSubmitting ? 'Memproses...' : authMode === 'signIn' ? 'Masuk Portal' : 'Daftar Portal'}
-                </span>
+                <span>{isSubmitting ? 'Memproses...' : authMode === 'signIn' ? 'Masuk Portal' : 'Daftar Portal'}</span>
               </button>
 
-              <div className="text-center text-xs text-white/40 mt-4">
-                <span>
-                  {authMode === 'signIn' ? 'Belum terdaftar?' : 'Sudah punya akun?'}
-                </span>
+              <div className="client-auth-mode-toggle">
+                <span>{authMode === 'signIn' ? 'Belum terdaftar?' : 'Sudah punya akun?'}</span>
                 <button
                   type="button"
-                  className="text-[#ff8a2a] hover:underline ml-1 font-bold"
+                  className="client-auth-mode-link"
                   onClick={() => {
                     setAuthMode(authMode === 'signIn' ? 'signUp' : 'signIn');
                     setError('');
@@ -531,34 +511,29 @@ export default function ClientLoginPage() {
             </form>
           )}
 
-          {/* Phone Form */}
           {activeTab === 'phone' && (
-            <div className="space-y-4">
+            <div className="client-auth-form">
               {!isOtpSent ? (
-                <form onSubmit={handleSendOTP} className="space-y-4" noValidate>
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-white/60 tracking-wider">Nomor HP (WhatsApp)</span>
-                    <div className="relative flex items-center">
-                      <Phone className="absolute left-3.5 text-white/30 w-4 h-4" />
+                <form onSubmit={handleSendOTP} className="client-auth-form" noValidate>
+                  <label className="client-auth-field">
+                    <span>Nomor HP (WhatsApp)</span>
+                    <div className="client-auth-input-wrap">
+                      <Phone className="client-auth-input-icon" size={17} aria-hidden="true" />
                       <input
                         type="tel"
                         placeholder="Contoh: 08123456789"
-                        className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 focus:border-[#ff8a2a] outline-none text-white text-sm tracking-wide transition-colors"
+                        className="client-auth-input"
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        onChange={(event) => setPhoneNumber(event.target.value)}
                         disabled={isSubmitting}
                         required
                       />
                     </div>
-                  </div>
+                  </label>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3.5 mt-2 rounded-xl bg-[#ff8a2a] hover:bg-[#ff5f15] text-black font-bold text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-orange-500/10 active:scale-[0.98] transition-all"
-                  >
+                  <button type="submit" disabled={isSubmitting} className="client-auth-submit">
                     {isSubmitting ? (
-                      <LoaderCircle className="animate-spin" size={18} />
+                      <LoaderCircle className="client-auth-spin" size={18} />
                     ) : (
                       <ShieldCheck size={18} />
                     )}
@@ -566,43 +541,39 @@ export default function ClientLoginPage() {
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleVerifyOTP} className="space-y-4" noValidate>
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-white/60 tracking-wider">Kode OTP</span>
-                    <div className="relative flex items-center">
-                      <KeyRound className="absolute left-3.5 text-white/30 w-4 h-4" />
+                <form onSubmit={handleVerifyOTP} className="client-auth-form" noValidate>
+                  <label className="client-auth-field">
+                    <span>Kode OTP</span>
+                    <div className="client-auth-input-wrap">
+                      <KeyRound className="client-auth-input-icon" size={17} aria-hidden="true" />
                       <input
                         type="text"
                         placeholder="6 Digit OTP"
                         maxLength={6}
-                        className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 focus:border-[#ff8a2a] outline-none text-white text-sm tracking-wide transition-colors text-center"
+                        className="client-auth-input is-centered"
                         value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value)}
+                        onChange={(event) => setVerificationCode(event.target.value)}
                         disabled={isSubmitting}
                         required
                       />
                     </div>
-                  </div>
+                  </label>
 
-                  <div className="flex justify-between items-center text-xs text-white/40">
+                  <div className="client-auth-resend-row">
                     <span>Belum menerima kode?</span>
                     <button
                       type="button"
-                      className="text-[#ff8a2a] font-semibold hover:underline"
+                      className="client-auth-mode-link"
                       onClick={handleSendOTP}
                       disabled={resendTimer > 0 || isSubmitting}
                     >
-                      {resendTimer > 0 ? `Kirim Ulang (${resendTimer}s)` : 'Kirim Ulang'}
+                      {resendTimer > 0 ? 'Kirim Ulang (' + resendTimer + 's)' : 'Kirim Ulang'}
                     </button>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3.5 mt-2 rounded-xl bg-[#ff8a2a] hover:bg-[#ff5f15] text-black font-bold text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-orange-500/10 active:scale-[0.98] transition-all"
-                  >
+                  <button type="submit" disabled={isSubmitting} className="client-auth-submit">
                     {isSubmitting ? (
-                      <LoaderCircle className="animate-spin" size={18} />
+                      <LoaderCircle className="client-auth-spin" size={18} />
                     ) : (
                       <ShieldCheck size={18} />
                     )}
@@ -611,7 +582,7 @@ export default function ClientLoginPage() {
 
                   <button
                     type="button"
-                    className="w-full text-center text-xs text-white/40 hover:text-white/60 hover:underline transition-colors mt-2"
+                    className="client-auth-text-button"
                     onClick={() => {
                       setIsOtpSent(false);
                       setVerificationCode('');
@@ -627,22 +598,17 @@ export default function ClientLoginPage() {
             </div>
           )}
 
-          {/* Social Divider */}
-          <div className="relative my-6 text-center text-xs text-white/20">
-            <hr className="border-white/10" />
-            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#0a0a0d] px-3 font-semibold tracking-wider">
-              ATAU
-            </span>
+          <div className="client-auth-divider">
+            <span>atau</span>
           </div>
 
-          {/* Google Sign In */}
           <button
             type="button"
-            className="w-full py-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] text-white text-xs font-semibold tracking-wider flex items-center justify-center gap-3 transition-colors active:scale-[0.99]"
+            className="client-auth-google-button"
             onClick={handleGoogleSignIn}
             disabled={isSubmitting}
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" className="shrink-0">
+            <svg viewBox="0 0 24 24" width="16" height="16" className="client-auth-google-icon" aria-hidden="true">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
@@ -652,17 +618,15 @@ export default function ClientLoginPage() {
           </button>
         </div>
 
-        {/* Back Link */}
-        <div className="text-center mt-6">
-          <button
-            onClick={() => navigate('/login')}
-            className="text-xs text-white/30 hover:text-white/60 hover:underline transition-colors flex items-center gap-1.5 mx-auto font-medium"
-          >
-            <span>Masuk sebagai Admin Portal</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/login')}
+          className="client-auth-back-link"
+        >
+          Masuk sebagai Admin Portal
+        </button>
+      </section>
 
-      </div>
       <AccountRoleDecisionDialog
         badge={requiresAdminRequestDecision ? 'Request admin terdeteksi' : 'Role admin terdeteksi'}
         title={roleDecision ? (requiresAdminRequestDecision ? 'Tentukan role akun ini' : 'Akun ini bukan akun client') : ''}
@@ -673,6 +637,7 @@ export default function ClientLoginPage() {
         actions={roleDecisionActions}
         isBusy={isSubmitting}
       />
-    </div>
+    </main>
+  );
   );
 }

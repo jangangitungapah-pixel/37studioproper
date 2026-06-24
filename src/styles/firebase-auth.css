@@ -1,97 +1,105 @@
-/* === FIREBASE AUTH TABBED INTERFACE & CUSTOM CONTROLS === */
-
+/* Firebase Auth Controls: shared auth tabs, Google button, reCAPTCHA and role decision dialog. */
 .auth-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 20px;
-  padding: 4px;
+  margin-bottom: 18px;
+  padding: 6px;
   border: 1px solid var(--auth-border);
-  border-radius: var(--auth-radius-md);
+  border-radius: var(--studio-radius-lg);
   background: var(--auth-bg-soft);
 }
 
 .auth-tab-btn {
   flex: 1;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 40px;
-  border: 0;
-  border-radius: 12px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--auth-text-muted);
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--studio-radius-md);
   background: transparent;
+  color: var(--auth-text-muted);
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
   cursor: pointer;
-  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
 .auth-tab-btn:hover {
   color: var(--auth-text-main);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--auth-bg-control);
 }
 
 .auth-tab-btn.is-active {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-bg-card);
   color: var(--auth-text-strong);
-  background: var(--auth-bg-elevated);
-  box-shadow: inset 0 0 0 1px var(--auth-border), 0 4px 12px rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 0 0 1px var(--studio-border-soft);
 }
 
-/* Auth Subtitle Mode */
 .auth-mode-toggle {
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
   margin-top: 12px;
-  font-size: 0.82rem;
   color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
 }
 
-.auth-mode-link {
+.auth-mode-link,
+.auth-resend-btn {
   border: 0;
   background: transparent;
   color: var(--auth-accent);
-  font-weight: 700;
+  padding: 0;
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  font-weight: 780;
   cursor: pointer;
-  padding: 0 4px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 180ms ease;
 }
 
-.auth-mode-link:hover {
+.auth-mode-link:hover,
+.auth-resend-btn:hover:not(:disabled) {
   color: var(--auth-accent-strong);
 }
 
-/* Google Sign-in Button */
+.auth-mode-link:disabled,
+.auth-resend-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .auth-google-btn {
+  width: 100%;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-height: 52px;
-  width: 100%;
   margin-top: 14px;
   border: 1px solid var(--auth-border);
-  border-radius: 18px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--auth-text-strong);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  font: inherit;
+  font-size: var(--studio-text-sm);
+  font-weight: 760;
   cursor: pointer;
-  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
 .auth-google-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
   border-color: var(--auth-border-strong);
+  background: var(--auth-bg-card);
   transform: translateY(-1px);
 }
 
 .auth-google-btn:disabled {
-  opacity: 0.58;
   cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .auth-google-icon {
@@ -100,200 +108,202 @@
   flex-shrink: 0;
 }
 
-/* Divider */
+.auth-divider {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  margin: 16px 0;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--auth-border);
+}
+
+.auth-divider::after {
+  content: attr(data-label);
+}
+
+.auth-divider {
+  overflow: hidden;
+}
+
+.auth-divider:not(:empty) {
+  background: transparent;
+}
+
+.auth-divider:not(:empty)::after {
+  content: none;
+}
+
+.auth-divider {
+  text-align: center;
+}
+
+.auth-divider::before {
+  z-index: 0;
+}
+
+.auth-divider {
+  isolation: isolate;
+}
+
+.auth-divider {
+  color: var(--auth-text-muted);
+}
+
+.auth-divider {
+  line-height: 1;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
-  text-align: center;
-  margin: 16px 0;
-  color: var(--auth-text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  gap: 12px;
 }
 
 .auth-divider::before,
 .auth-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid var(--auth-border);
+  border-top: 1px solid var(--auth-border);
 }
 
-.auth-divider:not(:empty)::before {
-  margin-right: 12px;
+.auth-resend-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
 }
 
-.auth-divider:not(:empty)::after {
-  margin-left: 12px;
-}
-
-/* Recaptcha */
 #recaptcha-container {
   margin-top: 10px;
   display: flex;
   justify-content: center;
 }
 
-/* OTP Resend Timer */
-.auth-resend-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-  font-size: 0.8rem;
-  color: var(--auth-text-muted);
-}
-
-.auth-resend-btn {
-  border: 0;
-  background: transparent;
-  color: var(--auth-accent);
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0;
-  transition: color 180ms ease;
-}
-
-.auth-resend-btn:disabled {
-  color: var(--auth-text-muted);
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Theme adaptation for light mode */
-[data-theme='light'] .auth-tab-btn.is-active,
-.theme-light .auth-tab-btn.is-active,
-.light .auth-tab-btn.is-active {
-  background: #fff;
-  box-shadow: inset 0 0 0 1px var(--auth-border), 0 4px 10px rgba(0, 0, 0, 0.06);
-}
-
-[data-theme='light'] .auth-google-btn,
-.theme-light .auth-google-btn,
-.light .auth-google-btn {
-  background: #ffffff;
-  border-color: rgba(24, 20, 16, 0.12);
-}
-
-[data-theme='light'] .auth-google-btn:hover:not(:disabled),
-.theme-light .auth-google-btn:hover:not(:disabled),
-.light .auth-google-btn:hover:not(:disabled) {
-  background: #fbf8f5;
-  border-color: var(--auth-border-strong);
-}
-
 .account-role-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop);
   display: grid;
   place-items: center;
+  background: rgba(15, 12, 9, 0.66);
   padding: 18px;
-  background: rgba(3, 3, 4, 0.82);
   backdrop-filter: blur(12px);
 }
 
 .account-role-dialog {
-  width: min(100%, 430px);
-  padding: 26px;
-  border: 1px solid rgba(255, 138, 42, 0.28);
-  border-radius: 22px;
-  color: #f7f3ec;
-  background: linear-gradient(155deg, rgba(28, 26, 25, 0.98), rgba(10, 10, 12, 0.99));
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
-  font-family: 'Montserrat', sans-serif;
+  width: min(100%, 440px);
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-xl);
+  background:
+    radial-gradient(circle at 0% 0%, var(--studio-accent-soft), transparent 34%),
+    var(--auth-bg-elevated);
+  color: var(--auth-text-main);
+  box-shadow: var(--studio-shadow-float);
+  padding: 24px;
+  font-family: var(--ui-font-sans);
 }
 
 .account-role-icon {
-  display: grid;
-  place-items: center;
   width: 46px;
   height: 46px;
-  margin-bottom: 18px;
-  border-radius: 14px;
-  color: #ff9b4a;
-  background: rgba(255, 138, 42, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 138, 42, 0.18);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
 }
 
 .account-role-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 10px;
-  color: #ff9b4a;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.13em;
+  color: var(--auth-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 820;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .account-role-dialog h2 {
-  margin: 0 0 10px;
-  color: #fff;
+  margin: 0;
+  color: var(--auth-text-strong);
   font-size: clamp(1.2rem, 4vw, 1.55rem);
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .account-role-dialog p {
   margin: 0;
-  color: rgba(247, 243, 236, 0.7);
-  font-size: 0.84rem;
-  line-height: 1.65;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-sm);
+  line-height: 1.6;
 }
 
 .account-role-detail {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 14px;
-  color: rgba(247, 243, 236, 0.78);
-  background: rgba(255, 255, 255, 0.035);
-  font-size: 0.75rem;
-  line-height: 1.55;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  padding: 11px 12px;
+  font-size: var(--studio-text-xs);
+  line-height: 1.5;
 }
 
 .account-role-actions {
   display: grid;
   gap: 9px;
-  margin-top: 22px;
 }
 
 .account-role-action {
+  min-height: 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 46px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
   padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 14px;
-  font-family: inherit;
-  font-size: 0.78rem;
+  font: inherit;
+  font-size: var(--studio-text-xs);
   font-weight: 800;
   cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
 .account-role-action:hover:not(:disabled) {
-  transform: translateY(-1px);
+  border-color: var(--auth-border-strong);
 }
 
 .account-role-action:disabled {
-  opacity: 0.58;
   cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .account-role-action.is-primary {
-  border-color: #ff8a2a;
-  color: #130b05;
-  background: #ff8a2a;
+  border-color: var(--auth-accent);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: var(--studio-text-inverse);
 }
 
 .account-role-action.is-secondary {
-  color: rgba(247, 243, 236, 0.8);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-main);
 }
 
 @media (max-width: 520px) {
@@ -303,7 +313,7 @@
   }
 
   .account-role-dialog {
-    padding: 22px 18px 18px;
-    border-radius: 20px;
+    border-radius: var(--studio-radius-lg);
+    padding: 20px;
   }
 }
