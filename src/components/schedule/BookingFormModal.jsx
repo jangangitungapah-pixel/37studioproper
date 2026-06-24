@@ -640,12 +640,19 @@ export default function BookingFormModal({
           </section>
 
           <footer className="booking-form-actions">
-            <button className="booking-button is-secondary" type="button" onClick={onClose}>
-              Batal
-            </button>
-            <button className="booking-button is-primary" type="submit">
-              {editingBooking ? 'Simpan Perubahan' : 'Simpan'}
-            </button>
+            <div className="booking-form-action-total" aria-label="Tagihan booking">
+              <span>Tagihan</span>
+              <strong>{formatRupiah(totals.invoiceAmount)}</strong>
+            </div>
+
+            <div className="booking-form-action-buttons">
+              <button className="booking-button is-secondary" type="button" onClick={onClose}>
+                Batal
+              </button>
+              <button className="booking-button is-primary" type="submit">
+                {editingBooking ? 'Simpan Perubahan' : 'Simpan'}
+              </button>
+            </div>
           </footer>
         </form>
       </section>

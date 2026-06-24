@@ -794,6 +794,174 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
   );
 }
 
+function ScheduleMobileAgenda({
+  activeStatuses,
+  bookings,
+  onBookingClick,
+  onSlotClick,
+  selectedDate,
+  viewMode,
+}) {
+  const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
+  const [focusedDayIso, setFocusedDayIso] = useState(() => toIsoDate(selectedDate));
+  const todayIso = toIsoDate(startOfDay(new Date()));
+
+  useEffect(() => {
+    const hasFocusedDay = visibleDays.some((day) => toIsoDate(day) === focusedDayIso);
+
+    if (!hasFocusedDay) {
+      setFocusedDayIso(visibleDays[0] ? toIsoDate(visibleDays[0]) : toIsoDate(selectedDate));
+    }
+  }, [focusedDayIso, selectedDate, visibleDays]);
+
+  const focusedDay = visibleDays.find((day) => toIsoDate(day) === focusedDayIso) || visibleDays[0] || selectedDate;
+  const safeFocusedDayIso = toIsoDate(focusedDay);
+  const focusedDayLabel = focusedDay.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    weekday: 'short',
+  });
+  const dayBookings = useMemo(
+    () => bookings
+      .filter((booking) => {
+        const status = getBookingStatus(booking);
+
+        return (
+          booking.date === safeFocusedDayIso &&
+          activeStatuses.includes(status) &&
+          isBookingScheduleActive(booking)
+        );
+      })
+      .toSorted((first, second) => getBookingStartHour(first) - getBookingStartHour(second)),
+    [activeStatuses, bookings, safeFocusedDayIso]
+  );
+  const occupiedSlotCount = businessHours.filter((hour) =>
+    dayBookings.some((booking) =>
+      getBookingStartHour(booking) < Number(hour.end) &&
+      getBookingEndHour(booking) > Number(hour.start)
+    )
+  ).length;
+  const emptySlotCount = Math.max(0, businessHours.length - occupiedSlotCount);
+
+  return (
+    <section className="schedule-mobile-agenda" aria-label="Agenda mobile">
+      <header className="schedule-mobile-agenda-head">
+        <span>
+          <small>Agenda</small>
+          <strong>{focusedDayLabel}</strong>
+        </span>
+        <button
+          type="button"
+          onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(getStudioOpenHour()) })}
+        >
+          <Plus size={14} />
+          Tambah
+        </button>
+      </header>
+
+      <div className="schedule-mobile-day-strip" aria-label="Pilih tanggal">
+        {visibleDays.map((day) => {
+          const dayIso = toIsoDate(day);
+          const dayBookingCount = bookings.filter((booking) => booking.date === dayIso && isBookingScheduleActive(booking)).length;
+
+          return (
+            <button
+              className={
+                'schedule-mobile-day-chip' +
+                (dayIso === safeFocusedDayIso ? ' is-active' : '') +
+                (dayIso === todayIso ? ' is-today' : '')
+              }
+              key={dayIso}
+              type="button"
+              onClick={() => setFocusedDayIso(dayIso)}
+            >
+              <span>{dayNames[day.getDay()]}</span>
+              <strong>{day.getDate()}</strong>
+              {dayBookingCount ? <i>{dayBookingCount}</i> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="schedule-mobile-agenda-summary" aria-label="Ringkasan hari">
+        <span><strong>{dayBookings.length}</strong> booking</span>
+        <span><strong>{emptySlotCount}</strong> slot kosong</span>
+      </div>
+
+      <div className="schedule-mobile-timeline">
+        {businessHours.map((hour) => {
+          const slotBookings = dayBookings.filter((booking) => Number(getBookingStartHour(booking)) === Number(hour.start));
+          const occupyingBooking = dayBookings.find((booking) =>
+            getBookingStartHour(booking) < Number(hour.end) &&
+            getBookingEndHour(booking) > Number(hour.start)
+          );
+
+          if (slotBookings.length) {
+            return (
+              <article className="schedule-mobile-slot is-booked" key={hour.key}>
+                <span className="schedule-mobile-slot-time">{hour.shortLabel || hour.label}</span>
+                <div className="schedule-mobile-slot-body">
+                  {slotBookings.map((booking) => {
+                    const status = getBookingStatus(booking);
+
+                    return (
+                      <button
+                        className={'schedule-mobile-booking is-' + status}
+                        key={booking.id || booking.date + '-' + booking.startHour + '-' + booking.customer}
+                        type="button"
+                        onClick={() => onBookingClick(booking)}
+                      >
+                        <span>
+                          <strong>{booking.customer || 'Customer'}</strong>
+                          <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi studio'}</small>
+                        </span>
+                        <em>{getBookingWindowLabel(booking)}</em>
+                        <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          }
+
+          if (occupyingBooking) {
+            return (
+              <article className="schedule-mobile-slot is-occupied" key={hour.key}>
+                <span className="schedule-mobile-slot-time">{hour.shortLabel || hour.label}</span>
+                <button
+                  className={'schedule-mobile-booking is-muted is-' + getBookingStatus(occupyingBooking)}
+                  type="button"
+                  onClick={() => onBookingClick(occupyingBooking)}
+                >
+                  <span>
+                    <strong>Terisi</strong>
+                    <small>{occupyingBooking.customer || 'Booking aktif'}</small>
+                  </span>
+                  <em>{getBookingWindowLabel(occupyingBooking)}</em>
+                </button>
+              </article>
+            );
+          }
+
+          return (
+            <article className="schedule-mobile-slot is-empty" key={hour.key}>
+              <span className="schedule-mobile-slot-time">{hour.shortLabel || hour.label}</span>
+              <button
+                className="schedule-mobile-empty-slot"
+                type="button"
+                onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(hour.start) })}
+              >
+                <span>Kosong</span>
+                <b>Tambah</b>
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 function CalendarGrid({
   activeStatuses,
   bookings,
@@ -1240,6 +1408,15 @@ export default function SchedulePage() {
       <ScheduleUpcomingTable
         bookings={bookings}
         onBookingClick={openBookingDetail}
+      />
+
+      <ScheduleMobileAgenda
+        activeStatuses={activeStatuses}
+        bookings={bookings}
+        onBookingClick={openBookingDetail}
+        onSlotClick={openBookingModal}
+        selectedDate={selectedDate}
+        viewMode={viewMode}
       />
 
       <CalendarGrid
