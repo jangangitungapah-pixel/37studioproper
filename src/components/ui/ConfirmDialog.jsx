@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AlertTriangle, Info, Trash2, X } from 'lucide-react';
 import Button from './Button.jsx';
 import '../../styles/modules/shared.css';
+import '../../styles/modules/modal.css';
 
 const VARIANT_ICONS = {
   danger: Trash2,

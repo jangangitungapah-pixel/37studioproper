@@ -13,6 +13,7 @@
 
 /* 2. Shared UI components (StudioSelect, StudioInput, StudioButton, etc.) */
 @import './modules/shared.css';
+@import './modules/modal.css';
 
 /* 3. Auth pages (Login admin, Login client) */
 @import './modules/auth.css';
