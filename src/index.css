@@ -13,56 +13,147 @@
 
 :root {
   --ui-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-brand: 'RetroFloral', var(--ui-font-sans);
   color-scheme: dark;
 
-  --ui-bg-page: #030304;
-  --ui-bg-elevated: rgba(12, 13, 15, 0.92);
-  --ui-bg-card: #0d0e10;
-  --ui-surface-card: rgba(16, 17, 20, 0.9);
-  --ui-surface-soft: rgba(255, 255, 255, 0.055);
-  --ui-control: rgba(255, 255, 255, 0.065);
+  /* Studio OS dark palette */
+  --studio-bg-app: #0f0d0b;
+  --studio-bg-page: #15110e;
+  --studio-bg-shell: #100d0b;
+  --studio-surface-1: #1d1814;
+  --studio-surface-2: #251f1a;
+  --studio-surface-3: #2f2821;
+  --studio-surface-glass: rgba(29, 24, 20, 0.86);
+  --studio-surface-inverse: #f8f3ea;
 
-  --ui-text-main: #e7e9ee;
-  --ui-text-strong: #ffffff;
-  --ui-text-muted: rgba(231, 233, 238, 0.62);
+  --studio-text-strong: #fff8ed;
+  --studio-text-main: #eadfcc;
+  --studio-text-muted: #b8a995;
+  --studio-text-subtle: #8f806f;
+  --studio-text-inverse: #1b1510;
 
-  --ui-border: rgba(255, 255, 255, 0.11);
-  --ui-border-strong: rgba(125, 211, 252, 0.32);
+  --studio-border-soft: rgba(255, 244, 228, 0.1);
+  --studio-border: rgba(255, 244, 228, 0.16);
+  --studio-border-strong: rgba(255, 204, 128, 0.36);
 
-  --ui-accent: #7dd3fc;
-  --ui-accent-strong: #38bdf8;
-  --ui-accent-soft: rgba(125, 211, 252, 0.13);
-  --ui-danger: #fb7185;
-  --ui-danger-soft: rgba(251, 113, 133, 0.12);
-  --ui-success: #34d399;
-  --ui-success-soft: rgba(52, 211, 153, 0.12);
-  --ui-warning: #fbbf24;
-  --ui-warning-soft: rgba(251, 191, 36, 0.12);
+  --studio-accent: #d98b2b;
+  --studio-accent-strong: #f0a64a;
+  --studio-accent-muted: #a86117;
+  --studio-accent-soft: rgba(217, 139, 43, 0.16);
+  --studio-accent-glow: rgba(217, 139, 43, 0.26);
 
-  --ui-shadow-soft: 0 18px 52px rgba(0, 0, 0, 0.42);
+  --studio-success: #44c08a;
+  --studio-success-soft: rgba(68, 192, 138, 0.16);
+  --studio-warning: #e0a12f;
+  --studio-warning-soft: rgba(224, 161, 47, 0.16);
+  --studio-danger: #e35d6a;
+  --studio-danger-soft: rgba(227, 93, 106, 0.16);
+  --studio-info: #73a7ff;
+  --studio-info-soft: rgba(115, 167, 255, 0.16);
+
+  --studio-radius-sm: 10px;
+  --studio-radius-md: 14px;
+  --studio-radius-lg: 18px;
+  --studio-radius-xl: 24px;
+  --studio-radius-2xl: 30px;
+  --studio-radius-full: 9999px;
+
+  --studio-space-1: 4px;
+  --studio-space-2: 8px;
+  --studio-space-3: 12px;
+  --studio-space-4: 16px;
+  --studio-space-5: 20px;
+  --studio-space-6: 24px;
+  --studio-space-8: 32px;
+
+  --studio-text-xs: 0.75rem;
+  --studio-text-sm: 0.8125rem;
+  --studio-text-body: 0.875rem;
+  --studio-text-md: 0.9375rem;
+  --studio-text-lg: 1.125rem;
+
+  --studio-shadow-card: 0 18px 46px rgba(0, 0, 0, 0.24);
+  --studio-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.18);
+  --studio-shadow-float: 0 24px 70px rgba(0, 0, 0, 0.34);
+
+  --z-base: 1;
+  --z-sticky: 40;
+  --z-bottom-nav: 80;
+  --z-menu: 160;
+  --z-dropdown: 240;
+  --z-toast: 500;
+  --z-modal-backdrop: 1000;
+  --z-modal-panel: 1010;
+  --z-critical: 2000;
+
+  /* Backward compatible ui aliases */
+  --ui-bg-page: var(--studio-bg-page);
+  --ui-bg-elevated: var(--studio-surface-glass);
+  --ui-bg-card: var(--studio-surface-1);
+  --ui-surface-card: var(--studio-surface-1);
+  --ui-surface-soft: var(--studio-surface-2);
+  --ui-control: var(--studio-surface-2);
+  --ui-text-main: var(--studio-text-main);
+  --ui-text-strong: var(--studio-text-strong);
+  --ui-text-muted: var(--studio-text-muted);
+  --ui-border: var(--studio-border);
+  --ui-border-strong: var(--studio-border-strong);
+  --ui-accent: var(--studio-accent);
+  --ui-accent-strong: var(--studio-accent-strong);
+  --ui-accent-soft: var(--studio-accent-soft);
+  --ui-danger: var(--studio-danger);
+  --ui-danger-soft: var(--studio-danger-soft);
+  --ui-success: var(--studio-success);
+  --ui-success-soft: var(--studio-success-soft);
+  --ui-warning: var(--studio-warning);
+  --ui-warning-soft: var(--studio-warning-soft);
+  --ui-shadow-soft: var(--studio-shadow-soft);
 }
 
 [data-theme='light'] {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --ui-bg-page: #030304;
-  --ui-bg-elevated: rgba(12, 13, 15, 0.92);
-  --ui-bg-card: #0d0e10;
-  --ui-surface-card: rgba(16, 17, 20, 0.9);
-  --ui-surface-soft: rgba(255, 255, 255, 0.055);
-  --ui-control: rgba(255, 255, 255, 0.065);
-  --ui-text-main: #e7e9ee;
-  --ui-text-strong: #ffffff;
-  --ui-text-muted: rgba(231, 233, 238, 0.62);
-  --ui-border: rgba(255, 255, 255, 0.11);
-  --ui-border-strong: rgba(125, 211, 252, 0.32);
-  --ui-accent: #7dd3fc;
-  --ui-accent-strong: #38bdf8;
-  --ui-accent-soft: rgba(125, 211, 252, 0.13);
-  --ui-shadow-soft: 0 18px 52px rgba(0, 0, 0, 0.42);
+  /* Studio OS light palette */
+  --studio-bg-app: #f3eee5;
+  --studio-bg-page: #f7f1e8;
+  --studio-bg-shell: #efe5d7;
+  --studio-surface-1: #fffaf2;
+  --studio-surface-2: #f5ecdf;
+  --studio-surface-3: #eadcc9;
+  --studio-surface-glass: rgba(255, 250, 242, 0.9);
+  --studio-surface-inverse: #17110d;
+
+  --studio-text-strong: #201812;
+  --studio-text-main: #382c22;
+  --studio-text-muted: #756657;
+  --studio-text-subtle: #968675;
+  --studio-text-inverse: #fff8ed;
+
+  --studio-border-soft: rgba(48, 35, 24, 0.08);
+  --studio-border: rgba(48, 35, 24, 0.14);
+  --studio-border-strong: rgba(164, 95, 24, 0.28);
+
+  --studio-accent: #b66b19;
+  --studio-accent-strong: #934f10;
+  --studio-accent-muted: #d8953c;
+  --studio-accent-soft: rgba(182, 107, 25, 0.13);
+  --studio-accent-glow: rgba(182, 107, 25, 0.18);
+
+  --studio-success: #16805c;
+  --studio-success-soft: #e5f7ee;
+  --studio-warning: #a96505;
+  --studio-warning-soft: #fff4db;
+  --studio-danger: #c33b4a;
+  --studio-danger-soft: #fff0f1;
+  --studio-info: #2563eb;
+  --studio-info-soft: #eff6ff;
+
+  --studio-shadow-card: 0 16px 42px rgba(72, 48, 25, 0.1);
+  --studio-shadow-soft: 0 8px 24px rgba(72, 48, 25, 0.08);
+  --studio-shadow-float: 0 24px 70px rgba(72, 48, 25, 0.16);
 }
-
-* {
+* {* {
   box-sizing: border-box;
 }
 
@@ -77,8 +168,8 @@ body {
   min-height: 100dvh;
   margin: 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 32%),
-    linear-gradient(180deg, #050506 0%, var(--ui-bg-page) 52%, #000 100%);
+    radial-gradient(circle at top left, var(--studio-accent-soft), transparent 30rem),
+    linear-gradient(180deg, var(--studio-bg-app) 0%, var(--studio-bg-page) 58%, var(--studio-bg-shell) 100%);
   color: var(--ui-text-main);
   font-family: var(--ui-font-sans);
   text-rendering: optimizeLegibility;
@@ -87,8 +178,8 @@ body {
 
 [data-theme='light'] body {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 32%),
-    linear-gradient(180deg, #050506 0%, var(--ui-bg-page) 52%, #000 100%);
+    radial-gradient(circle at top left, rgba(182, 107, 25, 0.12), transparent 30rem),
+    linear-gradient(180deg, var(--studio-bg-app) 0%, var(--studio-bg-page) 58%, var(--studio-bg-shell) 100%);
 }
 
 button,
