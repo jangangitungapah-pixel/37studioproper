@@ -1,12 +1,11 @@
-/* =========================================
- * notifications.css - Admin notification console
- * ========================================= */
-
+/* Notifications: Studio OS push notification console. Owner file, no override layer. */
 .notification-console-page {
+  width: min(100%, 1560px);
   display: grid;
-  gap: 14px;
-  padding-bottom: 112px;
-  color: var(--auth-text);
+  gap: 18px;
+  margin: 0 auto;
+  padding-bottom: 18px;
+  color: var(--auth-text-main);
 }
 
 .notification-console-hero,
@@ -16,27 +15,26 @@
 .notification-console-alert,
 .notification-worker-result {
   border: 1px solid var(--auth-border);
-  border-radius: 24px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
-    var(--auth-panel);
+  border-radius: var(--studio-radius-xl);
+  background: var(--auth-bg-card);
   box-shadow: var(--auth-shadow-soft);
 }
 
 .notification-console-hero {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
   align-items: start;
-  padding: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, var(--studio-accent-soft), transparent 34%),
+    var(--auth-bg-card);
+  padding: clamp(18px, 3vw, 28px);
 }
 
 .notification-console-hero > svg,
 .notification-console-hero > span,
 .notification-health-card svg,
-.notification-worker-panel > svg {
-  color: var(--auth-accent);
-}
+.notification-worker-panel > svg { color: var(--auth-accent); }
 
 .notification-console-hero > svg,
 .notification-console-hero > span {
@@ -44,14 +42,12 @@
   width: 48px;
   height: 48px;
   place-items: center;
-  border: 1px solid rgba(90, 200, 250, 0.35);
-  border-radius: 16px;
-  background: rgba(90, 200, 250, 0.1);
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-accent-soft);
 }
 
-.notification-console-hero-copy {
-  min-width: 0;
-}
+.notification-console-hero-copy { min-width: 0; }
 
 .notification-console-kicker,
 .notification-console-operator,
@@ -59,14 +55,22 @@
 .notification-console-panel-head small,
 .notification-event-main p,
 .notification-worker-hint,
-.notification-console-field span {
-  color: var(--auth-muted);
+.notification-console-field span,
+.notification-console-stats span,
+.notification-event-meta dt,
+.notification-health-card span,
+.notification-console-field label {
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
 }
 
 .notification-console-kicker {
-  margin: 0 0 4px;
-  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
   font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -75,63 +79,56 @@
 .notification-console-panel-head h3,
 .notification-worker-panel h3 {
   margin: 0;
-  color: var(--auth-text);
+  color: var(--auth-text-strong);
   font-weight: 800;
   line-height: 1.08;
 }
 
 .notification-console-hero h2 {
-  font-size: 1.9rem;
+  font-size: clamp(1.65rem, 5vw, 2.45rem);
+  letter-spacing: -0.06em;
 }
 
 .notification-console-hero-copy > p:not(.notification-console-kicker) {
   margin: 8px 0 0;
-  color: var(--auth-text);
-  font-size: 1rem;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-body);
   line-height: 1.55;
 }
 
 .notification-console-operator {
   display: inline-flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  margin-top: 10px;
-  font-size: 0.9rem;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-full);
+  background: var(--auth-bg-soft);
+  padding: 8px 12px;
 }
 
-.notification-console-operator strong {
-  color: var(--auth-text);
-}
+.notification-console-operator strong { color: var(--auth-text-strong); }
 
 .notification-console-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 12px;
 }
 
 .notification-console-stats article {
   display: grid;
-  gap: 3px;
-  min-height: 72px;
-  padding: 12px;
+  gap: 4px;
+  min-height: 86px;
+  padding: 14px;
   border: 1px solid var(--auth-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.notification-console-stats span,
-.notification-event-meta dt,
-.notification-health-card span,
-.notification-console-field label {
-  color: var(--auth-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-card);
+  box-shadow: var(--auth-shadow-soft);
 }
 
 .notification-console-stats strong {
-  color: var(--auth-text);
-  font-size: 1.25rem;
+  color: var(--auth-text-strong);
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
   line-height: 1.1;
 }
 
@@ -139,7 +136,7 @@
 .notification-console-panel,
 .notification-worker-panel {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   padding: 14px;
 }
 
@@ -151,19 +148,64 @@
   align-items: flex-start;
 }
 
-.notification-health-head small,
-.notification-console-panel-head small {
+.notification-health-head p,
+.notification-console-panel-head p {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 5px;
+  color: var(--auth-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.notification-health-head span {
   display: block;
-  margin-top: 4px;
+  margin-top: 5px;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+}
+
+.notification-health-head button,
+.notification-console-tabs button,
+.notification-event-actions button,
+.notification-worker-action,
+.notification-worker-inline-actions button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 13px;
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.notification-console-tabs button.is-active,
+.notification-worker-action {
+  border-color: var(--auth-accent);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: var(--studio-text-inverse);
 }
 
 .notification-health-alert,
 .notification-console-alert {
-  padding: 10px 12px;
-  border-color: rgba(247, 198, 77, 0.3);
-  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--auth-border));
+  border-radius: var(--studio-radius-md);
   color: var(--auth-warning);
-  background: rgba(247, 198, 77, 0.1);
+  background: var(--auth-warning-soft);
 }
 
 .notification-health-grid {
@@ -174,11 +216,11 @@
 
 .notification-health-card {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   padding: 12px;
   border: 1px solid var(--auth-border);
-  border-radius: 18px;
-  background: rgba(0, 0, 0, 0.24);
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-soft);
 }
 
 .notification-health-card > div {
@@ -188,31 +230,26 @@
 }
 
 .notification-health-card strong {
-  color: var(--auth-text);
+  color: var(--auth-text-strong);
   line-height: 1.2;
 }
 
 .notification-health-card p {
   margin: 0;
-  color: var(--auth-muted);
-  line-height: 1.4;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  line-height: 1.45;
 }
 
-.notification-health-card.is-ok {
-  border-color: rgba(73, 217, 139, 0.26);
-}
-
-.notification-health-card.is-warning {
-  border-color: rgba(247, 198, 77, 0.3);
-}
-
-.notification-health-card.is-danger {
-  border-color: rgba(255, 107, 122, 0.3);
-}
+.notification-health-card.is-ok,
+.notification-health-card.is-success { border-color: color-mix(in srgb, var(--auth-success) 34%, var(--auth-border)); }
+.notification-health-card.is-warning { border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--auth-border)); }
+.notification-health-card.is-danger,
+.notification-health-card.is-error { border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--auth-border)); }
 
 .notification-console-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
   gap: 14px;
   align-items: start;
 }
@@ -225,22 +262,14 @@
   gap: 8px;
 }
 
-.notification-console-tabs button,
-.notification-event-actions button,
-.notification-worker-action,
-.notification-worker-inline-actions button {
-  min-height: 40px;
-  border-radius: 999px;
-}
-
 .notification-console-empty {
   display: grid;
-  min-height: 154px;
+  min-height: 160px;
   place-items: center;
-  padding: 20px;
+  padding: 22px;
   border: 1px dashed var(--auth-border-strong);
-  border-radius: 20px;
-  color: var(--auth-muted);
+  border-radius: var(--studio-radius-lg);
+  color: var(--auth-text-muted);
   text-align: center;
 }
 
@@ -251,22 +280,19 @@
 
 .notification-event-card {
   display: grid;
-  gap: 10px;
+  gap: 11px;
   padding: 12px;
   border: 1px solid var(--auth-border);
-  border-radius: 18px;
-  background: rgba(0, 0, 0, 0.24);
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-soft);
 }
 
-.notification-event-main {
-  display: grid;
-  gap: 5px;
-}
+.notification-event-main { display: grid; gap: 6px; }
 
 .notification-event-main h4 {
   margin: 0;
-  color: var(--auth-text);
-  font-size: 1rem;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
 }
 
 .notification-event-main p {
@@ -277,35 +303,38 @@
 .notification-status-pill {
   display: inline-flex;
   width: max-content;
-  min-height: 28px;
+  min-height: 30px;
   align-items: center;
+  gap: 6px;
   padding: 0 10px;
   border: 1px solid var(--auth-border);
-  border-radius: 999px;
-  color: var(--auth-muted);
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 0.76rem;
+  border-radius: var(--studio-radius-full);
+  color: var(--auth-text-muted);
+  background: var(--auth-bg-control);
+  font-size: 0.6875rem;
   font-weight: 800;
 }
 
 .notification-status-pill.is-sent,
 .notification-status-pill.is-ok {
-  border-color: rgba(73, 217, 139, 0.35);
+  border-color: color-mix(in srgb, var(--auth-success) 34%, var(--auth-border));
   color: var(--auth-success);
-  background: rgba(73, 217, 139, 0.1);
+  background: var(--auth-success-soft);
 }
 
-.notification-status-pill.is-pending {
-  border-color: rgba(247, 198, 77, 0.35);
+.notification-status-pill.is-pending,
+.notification-status-pill.is-processing {
+  border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--auth-border));
   color: var(--auth-warning);
-  background: rgba(247, 198, 77, 0.1);
+  background: var(--auth-warning-soft);
 }
 
 .notification-status-pill.is-failed,
-.notification-status-pill.is-error {
-  border-color: rgba(255, 107, 122, 0.35);
+.notification-status-pill.is-error,
+.notification-status-pill.is-cancelled {
+  border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--auth-border));
   color: var(--auth-danger);
-  background: rgba(255, 107, 122, 0.1);
+  background: var(--auth-danger-soft);
 }
 
 .notification-event-meta {
@@ -317,54 +346,58 @@
 
 .notification-event-meta div {
   display: grid;
-  gap: 2px;
-  padding: 8px;
+  gap: 3px;
+  padding: 9px;
   border: 1px solid var(--auth-border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-card);
 }
 
 .notification-event-meta dd {
   margin: 0;
-  color: var(--auth-text);
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
   overflow-wrap: anywhere;
 }
 
 .notification-event-error {
   padding: 10px;
-  border: 1px solid rgba(255, 107, 122, 0.35);
-  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--auth-danger) 34%, var(--auth-border));
+  border-radius: var(--studio-radius-md);
   color: var(--auth-danger);
-  background: rgba(255, 107, 122, 0.09);
+  background: var(--auth-danger-soft);
   overflow-wrap: anywhere;
 }
 
 .notification-console-field {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .notification-console-field input {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--auth-border);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.5);
-  color: var(--auth-text);
-  padding: 0 14px;
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 0 13px;
+  font: inherit;
+  font-size: var(--studio-text-sm);
   outline: none;
 }
 
 .notification-console-field input:focus {
-  border-color: rgba(90, 200, 250, 0.55);
-  box-shadow: 0 0 0 4px rgba(90, 200, 250, 0.12);
+  border-color: var(--auth-border-strong);
+  box-shadow: 0 0 0 4px var(--auth-accent-soft);
 }
 
 .notification-console-check {
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  color: var(--auth-text);
+  color: var(--auth-text-main);
+  font-size: var(--studio-text-sm);
   line-height: 1.4;
 }
 
@@ -375,69 +408,32 @@
   accent-color: var(--auth-accent);
 }
 
-.notification-worker-action {
-  width: 100%;
-  justify-content: center;
-}
+.notification-worker-action { width: 100%; }
 
 .notification-worker-result {
-  padding: 10px 12px;
-  color: var(--auth-text);
+  padding: 11px 12px;
+  color: var(--auth-text-main);
 }
 
-.notification-worker-result.is-success {
-  border-color: rgba(73, 217, 139, 0.35);
-}
-
-.notification-worker-result.is-error {
-  border-color: rgba(255, 107, 122, 0.35);
-}
+.notification-worker-result.is-success { border-color: color-mix(in srgb, var(--auth-success) 34%, var(--auth-border)); }
+.notification-worker-result.is-error { border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--auth-border)); }
 
 .notification-worker-hint {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: var(--studio-text-sm);
   line-height: 1.45;
 }
 
 @media (max-width: 820px) {
-  .notification-console-grid {
-    grid-template-columns: 1fr;
-  }
+  .notification-console-grid { grid-template-columns: 1fr; }
+  .notification-console-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
-  .notification-console-page {
-    gap: 12px;
-  }
-
-  .notification-console-hero {
-    grid-template-columns: 1fr;
-    padding: 14px;
-  }
-
-  .notification-console-hero h2 {
-    font-size: 1.75rem;
-  }
-
-  .notification-console-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .notification-console-stats article {
-    min-height: 64px;
-    padding: 9px;
-  }
-
-  .notification-console-stats strong {
-    font-size: 1.05rem;
-  }
-
+  .notification-console-page { gap: 14px; padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .notification-console-hero { grid-template-columns: 1fr; padding: 16px; }
   .notification-health-head,
-  .notification-console-panel-head {
-    display: grid;
-  }
-
-  .notification-event-meta {
-    grid-template-columns: 1fr;
-  }
+  .notification-console-panel-head { display: grid; }
+  .notification-console-stats,
+  .notification-event-meta { grid-template-columns: 1fr; }
 }
