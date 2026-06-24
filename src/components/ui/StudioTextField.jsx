@@ -16,7 +16,9 @@ function collapseNativeInputSelection(event) {
 
 export default function StudioTextField({
   autoComplete = 'off',
+  className = '',
   disabled = false,
+  error = '',
   helper,
   icon: Icon,
   id,
@@ -27,6 +29,7 @@ export default function StudioTextField({
   onChange,
   onFocus,
   placeholder,
+  readOnly = false,
   required = false,
   step,
   type = 'text',
@@ -38,9 +41,20 @@ export default function StudioTextField({
   }
 
   return (
-    <label className={disabled ? 'studio-field is-disabled' : 'studio-field'} htmlFor={id}>
+    <label
+      className={[
+        'studio-field',
+        disabled ? 'is-disabled' : '',
+        error ? 'has-error' : '',
+        className,
+      ].filter(Boolean).join(' ')}
+      htmlFor={id}
+    >
       <span className="studio-field-head">
-        <span>{label}</span>
+        <span className="studio-field-label">
+          {label}
+          {required ? <span aria-hidden="true" className="studio-field-required">*</span> : null}
+        </span>
         {helper ? <span className="studio-field-helper">{helper}</span> : null}
       </span>
 
@@ -65,13 +79,18 @@ export default function StudioTextField({
           onChange={onChange}
           onFocus={handleFocus}
           placeholder={placeholder}
+          readOnly={readOnly}
           required={required}
           spellCheck={false}
           step={step}
           type={type}
           value={value}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
         />
       </span>
+
+      {error ? <span className="studio-field-error" id={`${id}-error`}>{error}</span> : null}
     </label>
   );
 }

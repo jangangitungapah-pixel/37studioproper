@@ -478,7 +478,7 @@ function DashboardUpcoming({ bookings, onOpenSchedule }) {
             <article key={booking.id || booking.createdAt || booking.date}>
               <span>
                 <strong>{booking.customer || booking.bandName || booking.title || 'Booking'}</strong>
-                <small>{formatShortDate(booking.date || booking.createdAt)} â€¢ {booking.startTimeLabel || booking.startHour || 'Jam belum diisi'}</small>
+                <small>{formatShortDate(booking.date || booking.createdAt)} · {booking.startTimeLabel || booking.startHour || 'Jam belum diisi'}</small>
               </span>
               <StatusPill status={getBookingStatus(booking)}>{getBookingStatus(booking)}</StatusPill>
             </article>

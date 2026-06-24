@@ -12,7 +12,7 @@ export default function AdminTopbar({
   return (
     <header className="admin-topbar">
       <div>
-        <p>Admin Shell</p>
+        <p>37 Music Studio</p>
         <h1 id="admin-title">{activeItem.title}</h1>
       </div>
 

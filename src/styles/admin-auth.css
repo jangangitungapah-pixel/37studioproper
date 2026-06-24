@@ -33,6 +33,3 @@
 @import './modules/operator-fee.css';
 @import './modules/notifications.css';
 @import './modules/guard-attendance.css';
-
-/* Final visual alignment layer. Keep this last. */
-@import './modules/primitives-override.css';

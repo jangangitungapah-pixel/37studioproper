@@ -1,4 +1,5 @@
 import { ADMIN_LIST_PAGE_SIZE, clampPage } from '../../utils/pagination.js';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function PaginationControls({
   label = 'data',
@@ -33,10 +34,11 @@ export default function PaginationControls({
           disabled={safePage <= 1}
           onClick={() => goToPage(safePage - 1)}
         >
+          <ChevronLeft aria-hidden="true" size={15} />
           Sebelumnya
         </button>
 
-        <span>
+        <span aria-current="page">
           {safePage} / {totalPages}
         </span>
 
@@ -46,6 +48,7 @@ export default function PaginationControls({
           onClick={() => goToPage(safePage + 1)}
         >
           Berikutnya
+          <ChevronRight aria-hidden="true" size={15} />
         </button>
       </div>
     </nav>

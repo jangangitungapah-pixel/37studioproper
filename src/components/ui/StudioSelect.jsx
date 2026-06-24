@@ -44,6 +44,7 @@ function getFloatingListStyle(rect) {
 }
 
 export default function StudioSelect({
+  className = '',
   disabled = false,
   helper,
   inlineList = false,
@@ -166,6 +167,7 @@ export default function StudioSelect({
     'studio-select',
     isOpen ? 'is-open' : '',
     disabled ? 'is-disabled' : '',
+    className,
   ]
     .filter(Boolean)
     .join(' ');
@@ -215,6 +217,9 @@ export default function StudioSelect({
           </button>
         );
       })}
+      {!options.length ? (
+        <div className="studio-select-empty">Belum ada opsi.</div>
+      ) : null}
     </div>
   ) : null;
 

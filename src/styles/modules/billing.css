@@ -614,13 +614,6 @@
     flex: 1 1 auto;
   }
 
-  .admin-bottom-nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .admin-bottom-item {
-    font-size: 0.5rem;
-  }
 }
 
 @media print {
@@ -997,26 +990,6 @@
     font-size: 0.56rem;
   }
 
-  .admin-bottom-nav {
-    left: 22px;
-    right: 22px;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    gap: 4px;
-    padding: 5px;
-    border-radius: 20px;
-  }
-
-  .admin-bottom-item {
-    min-height: 48px;
-    border-radius: 15px;
-    font-size: 0.5rem;
-    font-weight: 650;
-  }
-
-  .admin-bottom-item svg {
-    width: 16px;
-    height: 16px;
-  }
 }
 
 @media (min-width: 768px) {

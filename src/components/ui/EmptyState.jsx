@@ -2,16 +2,20 @@ import { forwardRef } from 'react';
 import '../../styles/modules/shared.css';
 
 const EmptyState = forwardRef(function EmptyState(
-  { icon: Icon, title, description, action, className = '', ...props },
+  { icon: Icon, title, description, action, children, className = '', ...props },
   ref
 ) {
+  const body = description || children;
+
   return (
     <div ref={ref} className={`studio-empty-state ${className}`} {...props}>
-      <div className="studio-empty-orb">
-        {Icon && <Icon size={32} className="studio-empty-icon" />}
-      </div>
+      {Icon ? (
+        <span className="studio-state-icon is-neutral" aria-hidden="true">
+          <Icon size={22} />
+        </span>
+      ) : null}
       {title && <h3 className="studio-empty-title">{title}</h3>}
-      {description && <p className="studio-empty-desc">{description}</p>}
+      {body ? <div className="studio-empty-desc">{body}</div> : null}
       {action && <div className="studio-empty-action">{action}</div>}
     </div>
   );

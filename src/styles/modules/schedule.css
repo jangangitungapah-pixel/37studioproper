@@ -495,18 +495,6 @@
   font-weight: 360 !important;
 }
 
-.admin-bottom-item {
-  font-weight: 560 !important;
-}
-
-.admin-topbar p {
-  font-weight: 500 !important;
-}
-
-.admin-topbar h1 {
-  font-weight: 330 !important;
-}
-
 @media (max-width: 767px) {
   .schedule-payment-counters {
     margin-top: -2px;

@@ -1,9 +1,8 @@
 import { Component } from 'react';
+import { AlertTriangle, RotateCcw } from 'lucide-react';
+import Button from './Button.jsx';
+import '../../styles/modules/shared.css';
 
-/**
- * React Error Boundary — menangkap runtime errors dari child components
- * agar tidak crash seluruh aplikasi menjadi white screen.
- */
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -21,67 +20,30 @@ export default class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          background: '#050506',
-          color: '#f7f3ec',
-          fontFamily: 'Montserrat, sans-serif',
-          padding: '32px',
-          textAlign: 'center',
-        }}>
-          <div style={{ maxWidth: '440px' }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '20px',
-              background: 'linear-gradient(135deg, #ff8a2a, #ff5f15)',
-              display: 'grid',
-              placeItems: 'center',
-              margin: '0 auto 24px',
-              fontSize: '28px',
-            }}>
-              ⚠
-            </div>
-            <h1 style={{ fontSize: '1.5rem', margin: '0 0 12px', letterSpacing: '-0.04em' }}>
-              Terjadi Kesalahan
-            </h1>
-            <p style={{ margin: '0 0 24px', color: 'rgba(247,243,236,0.6)', lineHeight: 1.6, fontSize: '0.9rem' }}>
-              Halaman ini mengalami error yang tidak terduga. Coba muat ulang halaman, atau hubungi admin jika masalah berlanjut.
+        <main className="studio-fatal-page">
+          <section className="studio-fatal-panel" role="alert">
+            <span className="studio-state-icon is-error" aria-hidden="true">
+              <AlertTriangle size={24} />
+            </span>
+            <h1>Terjadi Kesalahan</h1>
+            <p>
+              Halaman mengalami error yang tidak terduga. Muat ulang halaman, atau hubungi admin
+              jika masalah berlanjut.
             </p>
-            {this.state.error && (
-              <pre style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '12px',
-                fontSize: '0.75rem',
-                textAlign: 'left',
-                color: '#ff6b6b',
-                overflowX: 'auto',
-                marginBottom: '24px',
-              }}>
-                {this.state.error.message}
-              </pre>
-            )}
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                background: 'linear-gradient(135deg, #ff8a2a, #ff5f15)',
-                border: 'none',
-                borderRadius: '14px',
-                color: '#fff',
-                fontWeight: '800',
-                fontSize: '0.9rem',
-                padding: '12px 24px',
-                cursor: 'pointer',
-              }}
-            >
+
+            {this.state.error ? (
+              <details className="studio-fatal-details">
+                <summary>Detail teknis</summary>
+                <pre>{this.state.error.message}</pre>
+              </details>
+            ) : null}
+
+            <Button onClick={() => window.location.reload()}>
+              <RotateCcw aria-hidden="true" size={16} />
               Muat Ulang Halaman
-            </button>
-          </div>
-        </div>
+            </Button>
+          </section>
+        </main>
       );
     }
 

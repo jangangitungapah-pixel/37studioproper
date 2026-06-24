@@ -23,46 +23,42 @@ const AccessState = forwardRef(function AccessState(
   ref
 ) {
   return (
-    <main className={`theme-container auth-page ${className}`} {...props}>
+    <main className={`theme-container auth-page studio-access-page ${className}`} {...props}>
       <Card
         ref={ref}
         variant="elevated"
         padding="md"
-        className="auth-card text-center"
+        className="auth-card studio-access-card"
       >
-        <div className="auth-copy flex flex-col items-center">
+        <div className="auth-copy studio-access-copy">
           {statusLabel ? (
-            <StatusPill status={statusType} className="mb-3">
+            <StatusPill status={statusType}>
               {isLoadingIcon && <LoaderCircle size={14} className="auth-spin" />}
               {!isLoadingIcon && <Icon size={14} />}
               <span>{statusLabel}</span>
             </StatusPill>
           ) : (
-            <Icon
-              size={34}
-              className={`mb-4 mx-auto ${isLoadingIcon ? 'auth-spin' : ''} ${iconColorClass}`}
-            />
+            <span className={`studio-access-icon ${iconColorClass}`}>
+              <Icon size={26} className={isLoadingIcon ? 'auth-spin' : ''} />
+            </span>
           )}
 
-          <h1 className="text-2xl font-bold mb-3 text-[var(--auth-text-strong)]">{title}</h1>
+          <h1>{title}</h1>
 
-          <p className="text-[0.88rem] leading-relaxed mb-6 text-[var(--auth-text-muted)]">
-            {description}
-          </p>
+          <div className="studio-access-description">{description}</div>
 
           {alertMessage && (
-            <FeedbackAlert variant="warning" className="text-left w-full mb-6">
+            <FeedbackAlert variant="warning">
               {alertMessage}
             </FeedbackAlert>
           )}
         </div>
 
-        <div className="grid gap-3 w-full">
+        <div className="studio-access-actions">
           {primaryAction && (
             <Button
               variant={primaryAction.variant || 'primary'}
               onClick={primaryAction.onClick}
-              className="w-full"
             >
               {primaryAction.label}
             </Button>
@@ -71,7 +67,6 @@ const AccessState = forwardRef(function AccessState(
             <Button
               variant={secondaryAction.variant || 'secondary'}
               onClick={secondaryAction.onClick}
-              className="w-full"
             >
               {secondaryAction.label}
             </Button>

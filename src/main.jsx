@@ -9,7 +9,6 @@ import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/inter/800.css';
 import './index.css';
-import './styles/modules/primitives-override.css';
 
 /* === STALE DEPLOY CHUNK RECOVERY: START === */
 const STALE_DEPLOY_RELOAD_KEY = '37studio.stale-deploy-reload.v1';

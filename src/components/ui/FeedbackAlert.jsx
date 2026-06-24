@@ -16,10 +16,15 @@ const FeedbackAlert = forwardRef(function FeedbackAlert(
   const Icon = CustomIcon || ICONS[variant] || Info;
   
   return (
-    <div ref={ref} className={`studio-feedback-alert is-${variant} ${className}`} role="alert" {...props}>
-      <div className="studio-feedback-icon">
-        <Icon size={20} />
-      </div>
+    <div
+      ref={ref}
+      className={`studio-feedback-alert is-${variant} ${className}`}
+      role={variant === 'error' ? 'alert' : 'status'}
+      {...props}
+    >
+      <span className="studio-feedback-icon" aria-hidden="true">
+        <Icon size={18} />
+      </span>
       <div className="studio-feedback-content">
         {title && <h4 className="studio-feedback-title">{title}</h4>}
         <div className="studio-feedback-desc">{children}</div>

@@ -8,8 +8,10 @@ const ErrorState = forwardRef(function ErrorState(
   ref
 ) {
   return (
-    <div ref={ref} className={`studio-error-state ${className}`} {...props}>
-      <AlertCircle size={36} className="studio-error-icon" />
+    <div ref={ref} className={`studio-error-state ${className}`} role="alert" {...props}>
+      <span className="studio-state-icon is-error" aria-hidden="true">
+        <AlertCircle size={22} />
+      </span>
       <h3 className="studio-error-title">{title}</h3>
       {message && <p className="studio-error-desc">{message}</p>}
       {onRetry && (

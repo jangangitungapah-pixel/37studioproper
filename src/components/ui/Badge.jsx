@@ -5,11 +5,7 @@ const Badge = forwardRef(function Badge(
   { children, className = '', variant = 'quiet', shape = 'pill', ...props },
   ref
 ) {
-  const baseClass = 'studio-badge';
-  const variantClass = `is-${variant}`; // 'danger' | 'warning' | 'info' | 'success' | 'quiet'
-  const shapeClass = `is-shape-${shape}`; // 'pill' | 'circle'
-  
-  const combinedClassName = [baseClass, variantClass, shapeClass, className]
+  const combinedClassName = ['studio-badge', `is-${variant}`, `is-shape-${shape}`, className]
     .filter(Boolean)
     .join(' ');
 
