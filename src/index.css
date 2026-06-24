@@ -153,7 +153,7 @@
   --studio-shadow-soft: 0 8px 24px rgba(72, 48, 25, 0.08);
   --studio-shadow-float: 0 24px 70px rgba(72, 48, 25, 0.16);
 }
-* {* {
+* {
   box-sizing: border-box;
 }
 
