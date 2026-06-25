@@ -115,7 +115,11 @@ function formatRangeLabel(date, viewMode) {
     const start = getWeekStart(date);
     const end = addDays(start, 6);
 
-    return start.getDate() + ' ' + shortMonthNames[start.getMonth()] + ' - ' + end.getDate() + ' ' + shortMonthNames[end.getMonth()] + ' ' + end.getFullYear();
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return start.getDate() + '-' + end.getDate() + ' ' + shortMonthNames[end.getMonth()] + ' ' + end.getFullYear();
+    }
+
+    return start.getDate() + ' ' + shortMonthNames[start.getMonth()] + '-' + end.getDate() + ' ' + shortMonthNames[end.getMonth()] + ' ' + end.getFullYear();
   }
 
   return monthNames[date.getMonth()] + ' ' + date.getFullYear();
@@ -832,12 +836,13 @@ function CalendarGrid({
 
       const containerRect = scrollContainer.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
+      const stickyTimeColumnWidth = Number.parseFloat(window.getComputedStyle(scrollContainer).getPropertyValue('--schedule-time-col')) || 62;
       const targetLeft =
         scrollContainer.scrollLeft +
         targetRect.left -
         containerRect.left -
-        containerRect.width / 2 +
-        targetRect.width / 2;
+        stickyTimeColumnWidth -
+        8;
 
       scrollContainer.scrollIntoView({
         behavior: 'smooth',

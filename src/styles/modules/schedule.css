@@ -1,12 +1,12 @@
 /* Schedule: Studio OS mobile grid schedule. Owner file, no override layer. */
 .schedule-page {
   --schedule-time-col: 62px;
-  --schedule-month-day-col: 96px;
-  --schedule-week-day-col: 112px;
+  --schedule-month-day-col: 104px;
+  --schedule-week-day-col: 116px;
   width: min(100%, 1560px);
   min-width: 0;
   display: grid;
-  gap: 12px;
+  gap: 11px;
   margin: 0 auto;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
   color: var(--auth-text-main);
@@ -17,11 +17,6 @@
 .schedule-calendar-surface {
   min-width: 0;
   display: grid;
-}
-
-.schedule-toolbar,
-.schedule-workspace,
-.schedule-calendar-surface {
   gap: 10px;
 }
 
@@ -38,9 +33,9 @@
   overflow: hidden;
   margin: 0;
   color: var(--auth-text-strong);
-  font-size: clamp(1.2rem, 6vw, 1.55rem);
+  font-size: clamp(1.08rem, 5.4vw, 1.38rem);
   font-weight: 680;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.042em;
   line-height: 1.08;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -48,9 +43,9 @@
 
 .schedule-nav {
   display: inline-grid;
-  grid-template-columns: 36px auto 36px;
+  grid-template-columns: 34px minmax(68px, auto) 34px;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-lg);
   background: var(--auth-bg-card);
@@ -79,7 +74,7 @@
   color: var(--auth-text-main);
   padding: 0 8px;
   font-size: var(--studio-text-xs);
-  font-weight: 620;
+  font-weight: 640;
   white-space: nowrap;
 }
 
@@ -92,7 +87,7 @@
 .schedule-command-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(108px, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(106px, auto);
   align-items: stretch;
   gap: 8px;
 }
@@ -213,7 +208,7 @@
 }
 
 .schedule-upcoming-head {
-  min-height: 38px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -224,13 +219,13 @@
 .schedule-upcoming-head h3 {
   margin: 0;
   color: var(--auth-text-strong);
-  font-size: 0.95rem;
-  font-weight: 680;
-  letter-spacing: -0.025em;
+  font-size: 0.92rem;
+  font-weight: 660;
+  letter-spacing: -0.022em;
 }
 
 .schedule-upcoming-head > span {
-  min-width: 26px;
+  min-width: 25px;
   height: 24px;
   display: inline-grid;
   place-items: center;
@@ -250,9 +245,9 @@
 .schedule-upcoming-item {
   width: 100%;
   min-width: 0;
-  min-height: 52px;
+  min-height: 50px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(78px, auto) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, auto) auto;
   align-items: center;
   gap: 8px;
   border: 0;
@@ -408,6 +403,7 @@
   width: 100%;
   overflow: auto;
   overscroll-behavior: contain;
+  scroll-padding-left: calc(var(--schedule-time-col) + 10px);
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
@@ -540,7 +536,7 @@
 }
 
 .schedule-slot-cell {
-  background: color-mix(in srgb, var(--auth-bg-soft) 44%, transparent);
+  background: color-mix(in srgb, var(--auth-bg-soft) 40%, transparent);
 }
 
 .schedule-slot-button {
@@ -577,8 +573,8 @@
   display: grid;
   align-self: stretch;
   align-content: start;
-  gap: 2px;
-  margin: 2px;
+  gap: 1px;
+  margin: 3px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--auth-accent) 34%, var(--auth-border));
   border-left: 3px solid var(--auth-accent);
@@ -615,9 +611,9 @@
 }
 
 .schedule-booking-topline {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 4px;
 }
 
@@ -636,7 +632,9 @@
 }
 
 .schedule-booking-topline .status-pill {
-  display: none;
+  max-width: 42px;
+  padding-inline: 6px;
+  font-size: 0.625rem;
 }
 
 .schedule-booking-title {
@@ -646,9 +644,9 @@
 }
 
 .schedule-booking-meta {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 4px;
   margin-top: auto;
   color: var(--auth-text-muted);
@@ -900,10 +898,27 @@
   }
 }
 
+@media (max-width: 380px) {
+  .schedule-page {
+    --schedule-time-col: 58px;
+    --schedule-month-day-col: 98px;
+    --schedule-week-day-col: 108px;
+  }
+
+  .schedule-heading-row {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-nav {
+    justify-self: stretch;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+  }
+}
+
 @media (min-width: 768px) {
   .schedule-page {
     --schedule-time-col: 112px;
-    --schedule-month-day-col: 96px;
+    --schedule-month-day-col: 100px;
     --schedule-week-day-col: 132px;
     gap: 18px;
     padding-bottom: 0;
@@ -919,8 +934,8 @@
   }
 
   .schedule-command-row {
-    grid-template-columns: minmax(260px, 0.8fr) minmax(132px, auto);
     width: min(100%, 720px);
+    grid-template-columns: minmax(260px, 0.8fr) minmax(132px, auto);
   }
 
   .schedule-command-row .studio-select-label {
@@ -995,6 +1010,8 @@
 
   .schedule-booking-topline .status-pill {
     display: inline-flex;
+    max-width: none;
+    font-size: var(--studio-text-xs);
   }
 
   .schedule-request-modal-backdrop {
