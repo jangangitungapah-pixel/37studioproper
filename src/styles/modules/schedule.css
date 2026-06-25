@@ -1,12 +1,12 @@
 /* Schedule: Studio OS mobile grid schedule. Owner file, no override layer. */
 .schedule-page {
-  --schedule-time-col: 62px;
-  --schedule-month-day-col: 104px;
-  --schedule-week-day-col: 116px;
+  --schedule-time-col: 58px;
+  --schedule-month-day-col: 100px;
+  --schedule-week-day-col: 110px;
   width: min(100%, 1560px);
   min-width: 0;
   display: grid;
-  gap: 11px;
+  gap: 8px;
   margin: 0 auto;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
   color: var(--auth-text-main);
@@ -17,7 +17,7 @@
 .schedule-calendar-surface {
   min-width: 0;
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .schedule-heading-row {
@@ -25,7 +25,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .schedule-heading-row h2 {
@@ -33,35 +33,37 @@
   overflow: hidden;
   margin: 0;
   color: var(--auth-text-strong);
-  font-size: clamp(1.08rem, 5.4vw, 1.38rem);
-  font-weight: 680;
-  letter-spacing: -0.042em;
-  line-height: 1.08;
+  font-size: clamp(1rem, 4.8vw, 1.22rem);
+  font-weight: 660;
+  letter-spacing: -0.038em;
+  line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .schedule-nav {
   display: inline-grid;
-  grid-template-columns: 34px minmax(68px, auto) 34px;
+  grid-template-columns: 30px minmax(58px, auto) 30px;
   align-items: center;
   gap: 2px;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-card);
-  padding: 3px;
+  padding: 2px;
 }
 
-.schedule-nav button,
-.schedule-add-button,
-.schedule-status-filter,
-.schedule-client-request-alert,
-.schedule-request-modal-header button,
-.schedule-request-card-actions button,
-.schedule-toast-close {
-  border: 0;
-  font: inherit;
-  cursor: pointer;
+.schedule-nav button {
+  min-width: 0;
+  min-height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--studio-radius-sm);
+  background: transparent;
+  color: var(--auth-text-main);
+  padding: 0 7px;
+  font-size: var(--studio-text-xs);
+  font-weight: 620;
+  white-space: nowrap;
 }
 
 .schedule-nav button {
@@ -87,20 +89,33 @@
 .schedule-command-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(106px, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(98px, auto);
   align-items: stretch;
-  gap: 8px;
+  gap: 7px;
 }
 
 .schedule-command-row .studio-select,
 .schedule-command-row .schedule-add-button {
-  min-width: 0;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--auth-accent);
+  border-radius: var(--studio-radius-md);
+  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  color: var(--studio-text-inverse);
+  padding: 0 10px;
+  font-size: var(--studio-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8px 16px var(--studio-accent-glow);
 }
 
 .schedule-command-row .studio-select-trigger {
-  min-height: 40px;
-  border-radius: var(--studio-radius-lg);
-  padding: 5px 10px;
+  min-height: 34px;
+  border-radius: var(--studio-radius-md);
+  padding: 4px 9px;
 }
 
 .schedule-command-row .studio-select-label,
@@ -134,7 +149,7 @@
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  gap: 6px;
 }
 
 .schedule-status-row.has-request {
@@ -144,18 +159,18 @@
 .schedule-status-filter,
 .schedule-client-request-alert {
   min-width: 0;
-  min-height: 36px;
+  min-height: 31px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-card);
   color: var(--auth-text-muted);
-  padding: 0 9px;
+  padding: 0 8px;
   font-size: var(--studio-text-xs);
-  font-weight: 620;
+  font-weight: 610;
   white-space: nowrap;
 }
 
@@ -208,7 +223,7 @@
 }
 
 .schedule-upcoming-head {
-  min-height: 36px;
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -372,12 +387,9 @@
 }
 
 .schedule-upcoming-more,
-.schedule-upcoming-empty,
-.schedule-request-empty {
-  margin: 0;
-  color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
-  line-height: 1.35;
+.schedule-upcoming-empty {
+  border-top: 1px solid color-mix(in srgb, var(--auth-border) 76%, transparent);
+  padding: 6px 2px;
 }
 
 .schedule-upcoming-more,
@@ -428,9 +440,7 @@
 .schedule-day-head,
 .schedule-time-cell,
 .schedule-slot-cell {
-  min-width: 0;
-  border-right: 1px solid color-mix(in srgb, var(--auth-border) 74%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--auth-border) 74%, transparent);
+  background: color-mix(in srgb, var(--auth-bg-soft) 18%, var(--auth-bg-card));
 }
 
 .schedule-grid-corner,
@@ -576,32 +586,34 @@
   gap: 1px;
   margin: 3px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--auth-accent) 34%, var(--auth-border));
+  isolation: isolate;
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 38%, var(--auth-border));
   border-left: 3px solid var(--auth-accent);
   border-radius: var(--studio-radius-sm);
-  background: var(--auth-bg-card);
+  background: color-mix(in srgb, var(--auth-accent) 16%, var(--auth-bg-elevated));
   color: var(--auth-text-strong);
   padding: 5px 6px;
   text-align: left;
   cursor: pointer;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--auth-bg-elevated) 80%, transparent);
 }
 
 .schedule-booking-block.is-pending {
-  border-color: color-mix(in srgb, var(--auth-warning) 40%, var(--auth-border));
+  border-color: color-mix(in srgb, var(--auth-warning) 48%, var(--auth-border));
   border-left-color: var(--auth-warning);
-  background: var(--auth-warning-soft);
+  background: color-mix(in srgb, var(--auth-warning) 20%, var(--auth-bg-elevated));
 }
 
 .schedule-booking-block.is-dp {
-  border-color: color-mix(in srgb, var(--auth-info) 40%, var(--auth-border));
+  border-color: color-mix(in srgb, var(--auth-info) 48%, var(--auth-border));
   border-left-color: var(--auth-info);
-  background: var(--auth-info-soft);
+  background: color-mix(in srgb, var(--auth-info) 20%, var(--auth-bg-elevated));
 }
 
 .schedule-booking-block.is-lunas {
-  border-color: color-mix(in srgb, var(--auth-success) 40%, var(--auth-border));
+  border-color: color-mix(in srgb, var(--auth-success) 52%, var(--auth-border));
   border-left-color: var(--auth-success);
-  background: var(--auth-success-soft);
+  background: color-mix(in srgb, var(--auth-success) 22%, var(--auth-bg-elevated));
 }
 
 .schedule-booking-topline,
