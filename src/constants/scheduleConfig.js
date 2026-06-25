@@ -5,9 +5,9 @@
  */
 
 export const viewModes = [
-  { key: 'day', label: 'Day', description: 'Fokus satu tanggal' },
-  { key: 'week', label: 'Week', description: 'Tujuh hari aktif' },
-  { key: 'month', label: 'Month', description: 'Satu bulan penuh' },
+  { key: 'day', label: 'Hari', description: 'Fokus satu tanggal' },
+  { key: 'week', label: 'Minggu', description: 'Tujuh hari aktif' },
+  { key: 'month', label: 'Bulan', description: 'Satu bulan penuh' },
 ];
 
 export const statusFilters = [

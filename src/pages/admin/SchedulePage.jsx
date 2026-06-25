@@ -1,4 +1,4 @@
-﻿import StatusPill from '../../components/ui/StatusPill.jsx';
+import StatusPill from '../../components/ui/StatusPill.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronLeft,
@@ -22,6 +22,16 @@ import { firebaseAuth } from '../../lib/firebase.js';
 
 
 const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
+const SCHEDULE_QA_PREVIEW_BOOKINGS = [
+  { id: 'qa-1', customer: 'Budi Santoso', sessionLabel: 'Recording', date: '2026-06-25', startHour: 10, durationHours: 2, paymentStatus: 'dp', total: 600000, bookingRequestStatus: 'confirmed' },
+  { id: 'qa-2', customer: 'Andi Pratama', sessionLabel: 'Latihan Band', date: '2026-06-25', startHour: 13, durationHours: 1, paymentStatus: 'pending', total: 150000, bookingRequestStatus: 'submitted', lastMessageSenderRole: 'client', lastMessageReadByAdmin: false },
+  { id: 'qa-3', customer: 'Dewi Lestari', sessionLabel: 'Mixing', date: '2026-06-25', startHour: 16, durationHours: 2, paymentStatus: 'lunas', total: 450000, bookingRequestStatus: 'confirmed' },
+  { id: 'qa-4', customer: 'Raka Project', sessionLabel: 'Rehearsal', date: '2026-06-26', startHour: 11, durationHours: 2, paymentStatus: 'pending', total: 220000, bookingRequestStatus: 'submitted' },
+  { id: 'qa-5', customer: 'Nadia Putri', sessionLabel: 'Mastering', date: '2026-06-27', startHour: 14, durationHours: 2, paymentStatus: 'lunas', total: 700000, bookingRequestStatus: 'confirmed' },
+  { id: 'qa-6', customer: 'Fajar Audio', packageId: 'qa-package', packageLabel: 'Paket Produksi', pricingMode: 'package', date: '2026-06-28', startHour: 10, durationHours: 0, paymentStatus: 'dp', total: 1200000, bookingRequestStatus: 'confirmed' },
+];
+
+const isScheduleQaPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('schedulePreview');
 
 const monthNames = [
   'Januari',
@@ -316,13 +326,12 @@ function formatBookingDateLabel(booking) {
     day: 'numeric',
     month: 'short',
     weekday: 'short',
-    year: 'numeric',
   });
 }
 
 function getUpcomingScheduleTimeLabel(booking) {
   if (isNoDurationPackageBooking(booking)) {
-    return formatHourLabel(getBookingStartHour(booking)) + ' WIB - tanpa blok kalender';
+    return formatHourLabel(getBookingStartHour(booking)) + ' WIB';
   }
 
   return getBookingWindowLabel(booking) + ' WIB';
@@ -599,14 +608,13 @@ function CalendarBookingBlock({ block, onBookingClick }) {
       type="button"
       onClick={() => onBookingClick(booking)}
     >
-      <span className="schedule-booking-glow" aria-hidden="true" />
       <span className="schedule-booking-topline">
         <strong>{booking.customer}</strong>
         <StatusPill status={block.status}>{isNewClientRequest ? 'Request' : statusLabel}</StatusPill>
       </span>
       <span className="schedule-booking-title">{title}</span>
       <span className="schedule-booking-meta">
-        <span>{startLabel} â€¢ {durationLabel}</span>
+        <span>{startLabel} • {durationLabel}</span>
         <b>{priceLabel}</b>
       </span>
       {hasUnreadClientMessage ? <i className="schedule-booking-message-dot" aria-label="Pesan client belum dibaca" /> : null}
@@ -644,7 +652,7 @@ function RequestQueueModal({
             Request Client
           </span>
           <button aria-label="Tutup daftar request" type="button" onClick={onClose}>
-            Ã—
+            ×
           </button>
         </header>
 
@@ -682,7 +690,7 @@ function RequestQueueModal({
                     <span className="schedule-request-card-main">
                       <strong>{booking.customer || 'Client'}</strong>
                       <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</small>
-                      <em>{booking.date} â€¢ {windowLabel}</em>
+                      <em>{booking.date} • {windowLabel}</em>
                     </span>
                     <span className="schedule-request-card-meta">
                       <b>{isCancellation ? 'Minta batal' : 'Request baru'}</b>
@@ -728,17 +736,15 @@ function RequestQueueModal({
 
 function ScheduleUpcomingTable({ bookings, onBookingClick }) {
   const upcomingBookings = useMemo(() => getUpcomingScheduleBookings(bookings), [bookings]);
-  const previewBookings = upcomingBookings.slice(0, 8);
-  const remainingCount = Math.max(0, upcomingBookings.length - previewBookings.length);
+  const previewBookings = upcomingBookings.slice(0, 6);
+  const mobileRemainingCount = Math.max(0, upcomingBookings.length - 2);
+  const desktopRemainingCount = Math.max(0, upcomingBookings.length - previewBookings.length);
 
   return (
     <section className="schedule-upcoming-panel" aria-labelledby="schedule-upcoming-title">
       <header className="schedule-upcoming-head">
-        <div>
-          <span>Operational Radar</span>
-          <h3 id="schedule-upcoming-title">Jadwal Mendatang</h3>
-        </div>
-        <strong>{upcomingBookings.length}</strong>
+        <h3 id="schedule-upcoming-title">Jadwal Mendatang</h3>
+        <span>{upcomingBookings.length}</span>
       </header>
 
       {previewBookings.length ? (
@@ -774,21 +780,22 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
                   {noDurationPackage ? <em>Tanpa blok</em> : null}
                   <i className={'schedule-upcoming-status is-' + getBookingStatus(booking)}>{statusText}</i>
                   <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
+                  <ChevronRight size={14} aria-hidden="true" />
                 </span>
               </button>
             );
           })}
 
-          {remainingCount ? (
-            <p className="schedule-upcoming-more">
-              +{remainingCount} jadwal lain. Geser tanggal atau buka detail booking untuk cek lanjutan.
-            </p>
+          {mobileRemainingCount ? (
+            <p className="schedule-upcoming-more is-mobile">+{mobileRemainingCount} jadwal lainnya</p>
+          ) : null}
+
+          {desktopRemainingCount ? (
+            <p className="schedule-upcoming-more is-desktop">+{desktopRemainingCount} jadwal lainnya</p>
           ) : null}
         </div>
       ) : (
-        <p className="schedule-upcoming-empty">
-          Belum ada jadwal mendatang.
-        </p>
+        <p className="schedule-upcoming-empty">Belum ada jadwal mendatang.</p>
       )}
     </section>
   );
@@ -804,6 +811,7 @@ function ScheduleMobileAgenda({
 }) {
   const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
   const [focusedDayIso, setFocusedDayIso] = useState(() => toIsoDate(selectedDate));
+  const focusedDayRef = useRef(null);
   const todayIso = toIsoDate(startOfDay(new Date()));
 
   const focusedDay = visibleDays.find((day) => toIsoDate(day) === focusedDayIso) || visibleDays[0] || selectedDate;
@@ -827,83 +835,53 @@ function ScheduleMobileAgenda({
       .toSorted((first, second) => getBookingStartHour(first) - getBookingStartHour(second)),
     [activeStatuses, bookings, safeFocusedDayIso]
   );
-  const occupiedSlotCount = businessHours.filter((hour) =>
-    dayBookings.some((booking) =>
-      getBookingStartHour(booking) < Number(hour.end) &&
-      getBookingEndHour(booking) > Number(hour.start)
-    )
-  ).length;
-  const emptySlotCount = Math.max(0, businessHours.length - occupiedSlotCount);
-  const agendaRows = useMemo(() => {
-    const consumedHourKeys = new Set();
-
-    return businessHours.reduce((rows, hour) => {
-      if (consumedHourKeys.has(hour.key)) return rows;
-
+  const availableHours = useMemo(() => {
+    return businessHours.filter((hour) => {
       const hourStart = Number(hour.start);
       const hourEnd = Number(hour.end);
-      const slotBookings = dayBookings.filter((booking) => Number(getBookingStartHour(booking)) === hourStart);
 
-      if (slotBookings.length) {
-        slotBookings.forEach((booking) => {
-          const bookingEndHour = getBookingEndHour(booking);
-
-          businessHours.forEach((candidateHour) => {
-            const candidateStart = Number(candidateHour.start);
-
-            if (candidateStart > hourStart && candidateStart < bookingEndHour) {
-              consumedHourKeys.add(candidateHour.key);
-            }
-          });
-        });
-
-        rows.push({
-          bookings: slotBookings,
-          hour,
-          key: 'booked-' + hour.key,
-          type: 'booked',
-        });
-
-        return rows;
-      }
-
-      const isCoveredByPreviousBooking = dayBookings.some((booking) =>
+      return !dayBookings.some((booking) =>
         getBookingStartHour(booking) < hourEnd &&
         getBookingEndHour(booking) > hourStart
       );
-
-      if (isCoveredByPreviousBooking) return rows;
-
-      rows.push({
-        hour,
-        key: 'empty-' + hour.key,
-        type: 'empty',
-      });
-
-      return rows;
-    }, []);
+    });
   }, [dayBookings]);
+  const bookingCountsByDay = useMemo(() => {
+    return bookings.reduce((counts, booking) => {
+      const status = getBookingStatus(booking);
+
+      if (!activeStatuses.includes(status) || !isBookingScheduleActive(booking)) {
+        return counts;
+      }
+
+      counts.set(booking.date, (counts.get(booking.date) || 0) + 1);
+      return counts;
+    }, new Map());
+  }, [activeStatuses, bookings]);
+
+
+
+  useEffect(() => {
+    focusedDayRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    });
+  }, [safeFocusedDayIso]);
 
   return (
     <section className="schedule-mobile-agenda" aria-label="Agenda mobile">
       <header className="schedule-mobile-agenda-head">
         <span>
-          <small>Agenda</small>
           <strong>{focusedDayLabel}</strong>
+          <small>{dayBookings.length} booking • {availableHours.length} slot tersedia</small>
         </span>
-        <button
-          type="button"
-          onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(getStudioOpenHour()) })}
-        >
-          <Plus size={14} />
-          Tambah
-        </button>
       </header>
 
       <div className="schedule-mobile-day-strip" aria-label="Pilih tanggal">
         {visibleDays.map((day) => {
           const dayIso = toIsoDate(day);
-          const dayBookingCount = bookings.filter((booking) => booking.date === dayIso && isBookingScheduleActive(booking)).length;
+          const dayBookingCount = bookingCountsByDay.get(dayIso) || 0;
 
           return (
             <button
@@ -913,6 +891,7 @@ function ScheduleMobileAgenda({
                 (dayIso === todayIso ? ' is-today' : '')
               }
               key={dayIso}
+              ref={dayIso === safeFocusedDayIso ? focusedDayRef : null}
               type="button"
               onClick={() => setFocusedDayIso(dayIso)}
             >
@@ -924,65 +903,63 @@ function ScheduleMobileAgenda({
         })}
       </div>
 
-      <div className="schedule-mobile-agenda-summary" aria-label="Ringkasan hari">
-        <span><strong>{dayBookings.length}</strong> booking</span>
-        <span><strong>{emptySlotCount}</strong> slot kosong</span>
-      </div>
-
-      <div className="schedule-mobile-timeline">
-        {agendaRows.map((row) => {
-          if (row.type === 'booked') {
-            const firstBooking = row.bookings[0];
-            const timeLabel = row.bookings.length === 1
-              ? getBookingWindowLabel(firstBooking)
-              : row.hour.shortLabel || row.hour.label;
+      <div className="schedule-mobile-booking-list" aria-label="Booking pada tanggal terpilih">
+        {dayBookings.length ? (
+          dayBookings.map((booking) => {
+            const status = getBookingStatus(booking);
 
             return (
-              <article className="schedule-mobile-slot is-booked" key={row.key}>
-                <span className="schedule-mobile-slot-time">{timeLabel}</span>
-                <div className="schedule-mobile-slot-body">
-                  {row.bookings.map((booking) => {
-                    const status = getBookingStatus(booking);
-
-                    return (
-                      <button
-                        className={'schedule-mobile-booking is-' + status}
-                        key={booking.id || booking.date + '-' + booking.startHour + '-' + booking.customer}
-                        type="button"
-                        onClick={() => onBookingClick(booking)}
-                      >
-                        <span>
-                          <strong>{booking.customer || 'Customer'}</strong>
-                          <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi studio'}</small>
-                        </span>
-                        <em>{getStatusLabel(status)}</em>
-                        <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
-                      </button>
-                    );
-                  })}
-                </div>
-              </article>
-            );
-          }
-
-          return (
-            <article className="schedule-mobile-slot is-empty" key={row.key}>
-              <span className="schedule-mobile-slot-time">{row.hour.shortLabel || row.hour.label}</span>
               <button
-                className="schedule-mobile-empty-slot"
+                className={'schedule-mobile-booking is-' + status}
+                key={booking.id || booking.date + '-' + booking.startHour + '-' + booking.customer}
                 type="button"
-                onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(row.hour.start) })}
+                onClick={() => onBookingClick(booking)}
               >
-                <span>Kosong</span>
-                <b>Tambah</b>
+                <span className="schedule-mobile-booking-time">{getBookingWindowLabel(booking)}</span>
+                <span className="schedule-mobile-booking-main">
+                  <strong>{booking.customer || 'Customer'}</strong>
+                  <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi studio'}</small>
+                </span>
+                <span className="schedule-mobile-booking-side">
+                  <em>{getStatusLabel(status)}</em>
+                  <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
+                </span>
+                <ChevronRight size={14} aria-hidden="true" />
               </button>
-            </article>
-          );
-        })}
+            );
+          })
+        ) : (
+          <p className="schedule-mobile-booking-empty">Belum ada booking di tanggal ini.</p>
+        )}
       </div>
+
+      <section className="schedule-mobile-availability" aria-labelledby="schedule-mobile-availability-title">
+        <header>
+          <span id="schedule-mobile-availability-title">Slot tersedia</span>
+          <strong>{availableHours.length}</strong>
+        </header>
+
+        {availableHours.length ? (
+          <div className="schedule-mobile-slot-grid">
+            {availableHours.map((hour) => (
+              <button
+                key={hour.key}
+                type="button"
+                onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(hour.start) })}
+              >
+                <span>{hour.shortLabel || hour.label}</span>
+                <Plus size={12} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p>Semua slot operasional sudah terisi.</p>
+        )}
+      </section>
     </section>
   );
 }
+
 function CalendarGrid({
   activeStatuses,
   bookings,
@@ -1134,7 +1111,7 @@ export default function SchedulePage() {
   const [viewMode, setViewMode] = useState('month');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeStatuses, setActiveStatuses] = useState(() => statusFilters.map((item) => item.key));
-  const [bookings, setBookings] = useState([]);
+  const [bookings, setBookings] = useState(() => isScheduleQaPreview ? SCHEDULE_QA_PREVIEW_BOOKINGS : []);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
@@ -1146,6 +1123,8 @@ export default function SchedulePage() {
 
   // One-time local storage migration to Firestore
   useEffect(() => {
+    if (isScheduleQaPreview) return undefined;
+
     const local = readStoredBookings();
     if (local && local.length > 0) {
       adminBookingRepository.migrateLocalBookingsToFirestore(local)
@@ -1155,6 +1134,8 @@ export default function SchedulePage() {
 
   // Subscribe to real-time Firestore bookings
   useEffect(() => {
+    if (isScheduleQaPreview) return undefined;
+
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
       (data) => {
         setBookings(data);
@@ -1231,6 +1212,14 @@ export default function SchedulePage() {
 
     setSelectedDate(todayDate);
     setTodayFocusRequest((current) => current + 1);
+  }
+
+  function toggleStatusFilter(status) {
+    setActiveStatuses((current) => (
+      current.includes(status)
+        ? current.filter((item) => item !== status)
+        : [...current, status]
+    ));
   }
 
   function openBookingModal(slot) {
@@ -1368,89 +1357,93 @@ export default function SchedulePage() {
   return (
     <section className="schedule-page" aria-labelledby="schedule-calendar-title">
       <div className="schedule-toolbar">
-        <div className="schedule-title-block">
+        <div className="schedule-heading-row">
           <h2 id="schedule-calendar-title">{rangeLabel}</h2>
-        </div>
-
-        <div className="schedule-actions" aria-label="Kontrol kalender">
-          <div className="schedule-primary-controls">
-            <StudioSelect
-              label="View Mode"
-              options={viewModes}
-              selectedKey={viewMode}
-              onChange={setViewMode}
-            />
-
-            <button className="schedule-add-button" type="button" onClick={() => openBookingModal()}>
-              <Plus size={17} />
-              Tambah
-            </button>
-          </div>
-
-          <StudioSelect
-            label="Quick Filter"
-            helper={visibleBookingCount + ' tampil'}
-            multiple
-            options={statusFilters}
-            placeholder="Tidak ada status"
-            selectedKeys={activeStatuses}
-            onChange={setActiveStatuses}
-          />
-
-          <div className="schedule-payment-counters" aria-label="Ringkasan status pembayaran">
-            {statusFilters.map((item, index) => (
-              <span className={'schedule-payment-counter is-' + item.key} key={item.key}>
-                <span>{item.label}</span>
-                <strong>{paymentStatusCounts[item.key] || 0}</strong>
-                {index < statusFilters.length - 1 ? <i aria-hidden="true">|</i> : null}
-              </span>
-            ))}
-          </div>
-
-          {requestBookings.length ? (
-            <button className="schedule-client-request-alert" type="button" onClick={() => setIsRequestListOpen(true)}>
-              <MessageCircle size={14} />
-              <span>{requestBookings.length} request client</span>
-            </button>
-          ) : null}
 
           <div className="schedule-nav">
             <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
               <ChevronLeft size={17} />
             </button>
-            <button type="button" onClick={goToday}>Today</button>
+            <button type="button" onClick={goToday}>Hari ini</button>
             <button type="button" aria-label="Berikutnya" onClick={() => moveCalendar(1)}>
               <ChevronRight size={17} />
             </button>
           </div>
         </div>
+
+        <div className="schedule-command-row" aria-label="Kontrol kalender">
+          <StudioSelect
+            label="Tampilan"
+            options={viewModes}
+            selectedKey={viewMode}
+            onChange={setViewMode}
+          />
+
+          <button className="schedule-add-button" type="button" onClick={() => openBookingModal()}>
+            <Plus size={16} />
+            Tambah
+          </button>
+        </div>
+
+        <div
+          className={'schedule-status-row' + (requestBookings.length ? ' has-request' : '')}
+          aria-label={'Filter status pembayaran, ' + visibleBookingCount + ' booking tampil'}
+        >
+          {statusFilters.map((item) => {
+            const isActive = activeStatuses.includes(item.key);
+
+            return (
+              <button
+                aria-pressed={isActive}
+                className={'schedule-status-filter is-' + item.key + (isActive ? ' is-active' : '')}
+                key={item.key}
+                type="button"
+                onClick={() => toggleStatusFilter(item.key)}
+              >
+                <span>{item.label}</span>
+                <strong>{paymentStatusCounts[item.key] || 0}</strong>
+              </button>
+            );
+          })}
+
+          {requestBookings.length ? (
+            <button className="schedule-client-request-alert" type="button" onClick={() => setIsRequestListOpen(true)}>
+              <MessageCircle size={14} />
+              <span>{requestBookings.length} request</span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <ScheduleUpcomingTable
-        bookings={bookings}
-        onBookingClick={openBookingDetail}
-      />
+      <div className="schedule-workspace">
+        <ScheduleUpcomingTable
+          bookings={bookings}
+          onBookingClick={openBookingDetail}
+        />
 
-      <ScheduleMobileAgenda
-        activeStatuses={activeStatuses}
-        bookings={bookings}
-        onBookingClick={openBookingDetail}
-        onSlotClick={openBookingModal}
-        selectedDate={selectedDate}
-        viewMode={viewMode}
-      />
+        <div className="schedule-calendar-surface">
+          <ScheduleMobileAgenda
+            key={viewMode + '-' + toIsoDate(selectedDate)}
+            activeStatuses={activeStatuses}
+            bookings={bookings}
+            onBookingClick={openBookingDetail}
+            onSlotClick={openBookingModal}
+            selectedDate={selectedDate}
+            viewMode={viewMode}
+          />
 
-      <CalendarGrid
-        activeStatuses={activeStatuses}
-        bookings={bookings}
-        onBookingClick={openBookingDetail}
-        selectedDate={selectedDate}
-        todayFocusDateIso={todayIsoDate}
-        todayFocusRequest={todayFocusRequest}
-        viewMode={viewMode}
-        onSlotClick={openBookingModal}
-      />
-
+          <CalendarGrid
+            activeStatuses={activeStatuses}
+            bookings={bookings}
+            onBookingClick={openBookingDetail}
+            selectedDate={selectedDate}
+            todayFocusDateIso={todayIsoDate}
+            todayFocusRequest={todayFocusRequest}
+            viewMode={viewMode}
+            onSlotClick={openBookingModal}
+          />
+        </div>
+      </div>
       <BookingFormModal
         editingBooking={editingBooking}
         initialSlot={bookingInitialSlot}
@@ -1494,7 +1487,7 @@ export default function SchedulePage() {
             type="button"
             onClick={() => setScheduleToast(null)}
           >
-            Ã—
+            ×
           </button>
         </aside>
       ) : null}

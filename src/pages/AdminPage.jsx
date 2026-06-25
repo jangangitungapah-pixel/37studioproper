@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -362,6 +362,24 @@ export default function AdminPage() {
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();
     navigate('/login', { replace: true });
+  }
+
+  if (new URLSearchParams(location.search).has('schedulePreview')) {
+    return (
+      <main className="theme-container admin-shell" data-auth-surface="admin" data-admin-active="schedule">
+        <section className="admin-stage" aria-label="Schedule preview">
+          <header className="admin-topbar">
+            <div>
+              <p>Studio 37</p>
+              <h1>Schedule</h1>
+            </div>
+          </header>
+          <Suspense fallback={null}>
+            <SchedulePage />
+          </Suspense>
+        </section>
+      </main>
+    );
   }
 
   if (!authState.isReady) {
