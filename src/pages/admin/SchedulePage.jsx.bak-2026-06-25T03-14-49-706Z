@@ -801,6 +801,165 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
   );
 }
 
+function ScheduleMobileAgenda({
+  activeStatuses,
+  bookings,
+  onBookingClick,
+  onSlotClick,
+  selectedDate,
+  viewMode,
+}) {
+  const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
+  const [focusedDayIso, setFocusedDayIso] = useState(() => toIsoDate(selectedDate));
+  const focusedDayRef = useRef(null);
+  const todayIso = toIsoDate(startOfDay(new Date()));
+
+  const focusedDay = visibleDays.find((day) => toIsoDate(day) === focusedDayIso) || visibleDays[0] || selectedDate;
+  const safeFocusedDayIso = toIsoDate(focusedDay);
+  const focusedDayLabel = focusedDay.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    weekday: 'short',
+  });
+  const dayBookings = useMemo(
+    () => bookings
+      .filter((booking) => {
+        const status = getBookingStatus(booking);
+
+        return (
+          booking.date === safeFocusedDayIso &&
+          activeStatuses.includes(status) &&
+          isBookingScheduleActive(booking)
+        );
+      })
+      .toSorted((first, second) => getBookingStartHour(first) - getBookingStartHour(second)),
+    [activeStatuses, bookings, safeFocusedDayIso]
+  );
+  const availableHours = useMemo(() => {
+    return businessHours.filter((hour) => {
+      const hourStart = Number(hour.start);
+      const hourEnd = Number(hour.end);
+
+      return !dayBookings.some((booking) =>
+        getBookingStartHour(booking) < hourEnd &&
+        getBookingEndHour(booking) > hourStart
+      );
+    });
+  }, [dayBookings]);
+  const bookingCountsByDay = useMemo(() => {
+    return bookings.reduce((counts, booking) => {
+      const status = getBookingStatus(booking);
+
+      if (!activeStatuses.includes(status) || !isBookingScheduleActive(booking)) {
+        return counts;
+      }
+
+      counts.set(booking.date, (counts.get(booking.date) || 0) + 1);
+      return counts;
+    }, new Map());
+  }, [activeStatuses, bookings]);
+
+
+
+  useEffect(() => {
+    focusedDayRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    });
+  }, [safeFocusedDayIso]);
+
+  return (
+    <section className="schedule-mobile-agenda" aria-label="Agenda mobile">
+      <header className="schedule-mobile-agenda-head">
+        <span>
+          <strong>{focusedDayLabel}</strong>
+          <small>{dayBookings.length} booking • {availableHours.length} slot tersedia</small>
+        </span>
+      </header>
+
+      <div className="schedule-mobile-day-strip" aria-label="Pilih tanggal">
+        {visibleDays.map((day) => {
+          const dayIso = toIsoDate(day);
+          const dayBookingCount = bookingCountsByDay.get(dayIso) || 0;
+
+          return (
+            <button
+              className={
+                'schedule-mobile-day-chip' +
+                (dayIso === safeFocusedDayIso ? ' is-active' : '') +
+                (dayIso === todayIso ? ' is-today' : '')
+              }
+              key={dayIso}
+              ref={dayIso === safeFocusedDayIso ? focusedDayRef : null}
+              type="button"
+              onClick={() => setFocusedDayIso(dayIso)}
+            >
+              <span>{dayNames[day.getDay()]}</span>
+              <strong>{day.getDate()}</strong>
+              {dayBookingCount ? <i>{dayBookingCount}</i> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="schedule-mobile-booking-list" aria-label="Booking pada tanggal terpilih">
+        {dayBookings.length ? (
+          dayBookings.map((booking) => {
+            const status = getBookingStatus(booking);
+
+            return (
+              <button
+                className={'schedule-mobile-booking is-' + status}
+                key={booking.id || booking.date + '-' + booking.startHour + '-' + booking.customer}
+                type="button"
+                onClick={() => onBookingClick(booking)}
+              >
+                <span className="schedule-mobile-booking-time">{getBookingWindowLabel(booking)}</span>
+                <span className="schedule-mobile-booking-main">
+                  <strong>{booking.customer || 'Customer'}</strong>
+                  <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi studio'}</small>
+                </span>
+                <span className="schedule-mobile-booking-side">
+                  <em>{getStatusLabel(status)}</em>
+                  <b>{formatShortCurrency(booking.total || booking.subtotal || 0)}</b>
+                </span>
+                <ChevronRight size={14} aria-hidden="true" />
+              </button>
+            );
+          })
+        ) : (
+          <p className="schedule-mobile-booking-empty">Belum ada booking di tanggal ini.</p>
+        )}
+      </div>
+
+      <section className="schedule-mobile-availability" aria-labelledby="schedule-mobile-availability-title">
+        <header>
+          <span id="schedule-mobile-availability-title">Slot tersedia</span>
+          <strong>{availableHours.length}</strong>
+        </header>
+
+        {availableHours.length ? (
+          <div className="schedule-mobile-slot-grid">
+            {availableHours.map((hour) => (
+              <button
+                key={hour.key}
+                type="button"
+                onClick={() => onSlotClick({ date: safeFocusedDayIso, startHour: String(hour.start) })}
+              >
+                <span>{hour.shortLabel || hour.label}</span>
+                <Plus size={12} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p>Semua slot operasional sudah terisi.</p>
+        )}
+      </section>
+    </section>
+  );
+}
+
 function CalendarGrid({
   activeStatuses,
   bookings,
@@ -1263,6 +1422,16 @@ export default function SchedulePage() {
         />
 
         <div className="schedule-calendar-surface">
+          <ScheduleMobileAgenda
+            key={viewMode + '-' + toIsoDate(selectedDate)}
+            activeStatuses={activeStatuses}
+            bookings={bookings}
+            onBookingClick={openBookingDetail}
+            onSlotClick={openBookingModal}
+            selectedDate={selectedDate}
+            viewMode={viewMode}
+          />
+
           <CalendarGrid
             activeStatuses={activeStatuses}
             bookings={bookings}
