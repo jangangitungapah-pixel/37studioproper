@@ -1,8 +1,8 @@
 /* Schedule: Studio OS mobile grid schedule. Owner file, no override layer. */
 .schedule-page {
-  --schedule-time-col: 64px;
-  --schedule-month-day-col: 84px;
-  --schedule-week-day-col: 98px;
+  --schedule-time-col: 62px;
+  --schedule-month-day-col: 96px;
+  --schedule-week-day-col: 112px;
   width: min(100%, 1560px);
   min-width: 0;
   display: grid;
@@ -422,7 +422,7 @@
   min-width: max-content;
   display: grid;
   grid-auto-flow: row;
-  grid-auto-rows: minmax(42px, auto);
+  grid-auto-rows: minmax(44px, auto);
   align-items: stretch;
   contain: layout paint style;
   isolation: isolate;
@@ -510,7 +510,7 @@
   position: sticky;
   left: 0;
   z-index: 12;
-  min-height: 42px;
+  min-height: 44px;
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
@@ -536,7 +536,7 @@
 
 .schedule-slot-cell,
 .schedule-slot-button {
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .schedule-slot-cell {

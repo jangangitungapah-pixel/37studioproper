@@ -12,3 +12,7 @@ dist
 workers/**/.dev.vars
 workers/**/.env
 workers/**/*.local
+
+# Local schedule QA captures
+.schedule-qa.cjs
+.schedule-*.png

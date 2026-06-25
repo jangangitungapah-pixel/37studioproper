@@ -1,5 +1,5 @@
 import StatusPill from '../../components/ui/StatusPill.jsx';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -903,7 +903,7 @@ function CalendarGrid({
           })}
 
           {businessHours.map((hour, hourIndex) => (
-            <div className="schedule-row-fragment" key={hour.key}>
+            <Fragment key={hour.key}>
               <div
                 className="schedule-time-cell"
                 style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
@@ -932,7 +932,7 @@ function CalendarGrid({
                   </div>
                 );
               })}
-            </div>
+            </Fragment>
           ))}
 
           {bookingBlocks.map((block) => (
