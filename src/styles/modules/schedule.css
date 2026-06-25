@@ -413,10 +413,12 @@
 
 .schedule-grid-scroll {
   width: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
   scroll-padding-left: calc(var(--schedule-time-col) + 10px);
-  touch-action: pan-x pan-y;
+  touch-action: pan-y pinch-zoom;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   scrollbar-width: none;
