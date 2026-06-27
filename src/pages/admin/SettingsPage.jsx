@@ -2353,67 +2353,69 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           ) : null}
 
           {/* ── DRAWER MODAL ATUR PERMISSION ── */}
-          {selectedPermissionUser ? (
-            <div
-              className="settings-permission-backdrop"
-              role="presentation"
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) closePermissionSettings();
-              }}
-            >
-              <form className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="permission-panel-title" onSubmit={savePermissionSettings}>
-                <header className="settings-permission-head">
-                  <div>
-                    <small>{getPortalUserRoleLabel(selectedPermissionUser)} Permission</small>
-                    <h3 id="permission-panel-title">{selectedPermissionUser.displayName || selectedPermissionUser.email || 'Admin User'}</h3>
-                    <span>{selectedPermissionUser.email || selectedPermissionUser.phoneNumber || selectedPermissionUser.id}</span>
-                  </div>
-
-                  <button type="button" aria-label="Tutup permission settings" onClick={closePermissionSettings}>
-                    <X size={16} />
-                  </button>
-                </header>
-
-                <div className="settings-permission-flat-list" aria-label="Daftar permission halaman admin">
-                  {getAssignablePermissionPages(selectedPermissionUser).map((page) => {
-                    const enabled = Boolean(permissionDraft[page.key]);
-
-                    return (
-                      <div className="settings-permission-flat-row" key={page.key}>
-                        <div className="settings-permission-info">
-                          <strong className="settings-permission-title">{page.label}</strong>
-                          <small className="settings-permission-desc">{page.description}</small>
-                        </div>
-                        <label className="settings-user-toggle-switch" title="Toggle Halaman">
-                          <input
-                            type="checkbox"
-                            checked={enabled}
-                            onChange={() => togglePermissionPage(page.key)}
-                          />
-                          <span className="settings-user-toggle-slider"></span>
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <footer className="settings-permission-actions">
-                  <button className="settings-mini-button is-ghost" type="button" onClick={grantAllPermissions}>
-                    Full Access
-                  </button>
-                  <button className="settings-mini-button" type="button" onClick={closePermissionSettings}>
-                    Batal
-                  </button>
-                  <button className="settings-mini-button is-primary" type="submit">
-                    Simpan Permission
-                  </button>
-                </footer>
-              </form>
-            </div>
-          ) : null}
         </section>
       )}
       </section>
+
+      {selectedPermissionUser ? (
+        <div
+          className="settings-permission-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePermissionSettings();
+          }}
+        >
+          <form className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="permission-panel-title" onSubmit={savePermissionSettings}>
+            <header className="settings-permission-head">
+              <div>
+                <small>{getPortalUserRoleLabel(selectedPermissionUser)} Permission</small>
+                <h3 id="permission-panel-title">{selectedPermissionUser.displayName || selectedPermissionUser.email || 'Admin User'}</h3>
+                <span>{selectedPermissionUser.email || selectedPermissionUser.phoneNumber || selectedPermissionUser.id}</span>
+              </div>
+
+              <button type="button" aria-label="Tutup permission settings" onClick={closePermissionSettings}>
+                <X size={16} />
+              </button>
+            </header>
+
+            <div className="settings-permission-flat-list" aria-label="Daftar permission halaman admin">
+              {getAssignablePermissionPages(selectedPermissionUser).map((page) => {
+                const enabled = Boolean(permissionDraft[page.key]);
+
+                return (
+                  <div className="settings-permission-flat-row" key={page.key}>
+                    <div className="settings-permission-info">
+                      <strong className="settings-permission-title">{page.label}</strong>
+                      <small className="settings-permission-desc">{page.description}</small>
+                    </div>
+                    <label className="settings-user-toggle-switch" title="Toggle Halaman">
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={() => togglePermissionPage(page.key)}
+                      />
+                      <span className="settings-user-toggle-slider"></span>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+
+            <footer className="settings-permission-actions">
+              <button className="settings-mini-button is-ghost" type="button" onClick={grantAllPermissions}>
+                Full Access
+              </button>
+              <button className="settings-mini-button" type="button" onClick={closePermissionSettings}>
+                Batal
+              </button>
+              <button className="settings-mini-button is-primary" type="submit">
+                Simpan Permission
+              </button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
+
       <ConfirmDialog config={confirmConfig} onClose={() => setConfirmConfig(null)} />
     </>
   );
