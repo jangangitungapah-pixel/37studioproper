@@ -19,6 +19,7 @@ import { sendNewUserNotificationEmail } from './emailService.js';
 import {
   defaultAdminPermissions,
   normalizeAdminPermissionsForRole,
+  isOwnerEmail,
 } from '../utils/adminPermissions.js';
 import { ACCOUNT_SETTINGS_STORAGE_KEY } from '../utils/accountSettings.js';
 import {
@@ -50,7 +51,7 @@ function serializeFirebaseUser(user) {
 function checkIsOwnerEmail(user) {
   if (!user) return false;
   const email = user.email || user.providerData?.find(p => p.email)?.email || '';
-  return user.emailVerified === true && String(email).trim().toLowerCase() === 'marsicprod@gmail.com';
+  return user.emailVerified === true && isOwnerEmail(email);
 }
 
 const GOOGLE_REDIRECT_PENDING_KEY = '37musicstudio.auth.googleRedirectPending.v1';

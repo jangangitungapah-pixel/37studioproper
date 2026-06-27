@@ -31,7 +31,7 @@ const transactionKindOptions = [
 ];
 
 const transactionTypeFilterOptions = [
-  { key: 'all', label: 'Semua', description: 'Pemasukan dan pengeluaran' },
+  { key: 'all', label: 'Semua Tipe', description: 'Pemasukan dan pengeluaran' },
   { key: 'income', label: 'Pemasukan', description: 'Cash masuk manual dan booking' },
   { key: 'expense', label: 'Pengeluaran', description: 'Biaya dan transaksi keluar' },
 ];
@@ -268,7 +268,7 @@ function buildExpenseTransactions(entries) {
         amount: toNumber(entry.amount),
         date: entry.date,
         method: entry.paymentMethod,
-        note: (entry.source === 'operatorFee' ? 'Operator Fee • ' : '') + getOptionLabel(categoryOptions, entry.category, entry.category) + (entry.note ? ' • ' + entry.note : ''),
+        note: (entry.source === 'operatorFee' ? 'Fee • ' : '') + getOptionLabel(categoryOptions, entry.category, entry.category) + (entry.note ? ' • ' + entry.note : ''),
       };
     });
 }
@@ -788,38 +788,48 @@ function getBookkeepingStats(transactions, bookings, period) {
   };
 }
 
+/* ==========================================================================
+   COMPONENT: SUMMARY (Compact strip layout)
+   ========================================================================== */
 function BookkeepingSummary({ bookings, period, transactions }) {
   const stats = getBookkeepingStats(transactions, bookings, period);
 
   return (
-    <section className="bookkeeping-summary-grid" aria-label="Ringkasan pembukuan">
-      <article className="bookkeeping-summary-card is-income">
-        <span><ArrowUpRight size={15} /></span>
-        <small>Cash Masuk</small>
-        <strong>{formatCurrency(stats.cashIn)}</strong>
-      </article>
+    <section className="bookkeeping-hero-strip" aria-label="Ringkasan pembukuan">
+      <div className="hero-strip-item is-income">
+        <ArrowUpRight size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          Masuk: <strong>{formatCurrency(stats.cashIn)}</strong>
+        </span>
+      </div>
 
-      <article className="bookkeeping-summary-card is-expense">
-        <span><ArrowDownRight size={15} /></span>
-        <small>Pengeluaran</small>
-        <strong>{formatCurrency(stats.cashOut)}</strong>
-      </article>
+      <div className="hero-strip-item is-expense">
+        <ArrowDownRight size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          Keluar: <strong>{formatCurrency(stats.cashOut)}</strong>
+        </span>
+      </div>
 
-      <article className="bookkeeping-summary-card">
-        <span><WalletCards size={15} /></span>
-        <small>Saldo Bersih</small>
-        <strong>{formatCurrency(stats.net)}</strong>
-      </article>
+      <div className="hero-strip-item">
+        <WalletCards size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          Saldo: <strong>{formatCurrency(stats.net)}</strong>
+        </span>
+      </div>
 
-      <article className="bookkeeping-summary-card is-receivable">
-        <span><ReceiptText size={15} /></span>
-        <small>Piutang</small>
-        <strong>{formatCurrency(stats.receivable)}</strong>
-      </article>
+      <div className="hero-strip-item is-receivable">
+        <ReceiptText size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          Piutang: <strong>{formatCurrency(stats.receivable)}</strong>
+        </span>
+      </div>
     </section>
   );
 }
 
+/* ==========================================================================
+   COMPONENT: TOOLBAR (Compact inline controls)
+   ========================================================================== */
 function BookkeepingToolbar({
   exportDisabled,
   onAddTransaction,
@@ -832,96 +842,113 @@ function BookkeepingToolbar({
   typeFilter,
 }) {
   return (
-    <section className="bookkeeping-toolbar" aria-label="Filter pembukuan">
-      <div className="bookkeeping-search-shell">
-        <Search size={15} aria-hidden="true" />
-        <input
-          aria-label="Cari transaksi pembukuan"
-          placeholder="Cari judul, metode, catatan..."
-          type="search"
-          value={searchText}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
+    <section className="bookkeeping-toolbar-compact" aria-label="Filter pembukuan">
+      <div className="toolbar-row-main">
+        <div className="bookkeeping-search-shell-compact">
+          <Search size={14} aria-hidden="true" />
+          <input
+            aria-label="Cari transaksi pembukuan"
+            placeholder="Cari transaksi..."
+            type="search"
+            value={searchText}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
+
+        <button
+          className="bookkeeping-export-btn-compact"
+          disabled={exportDisabled}
+          type="button"
+          onClick={onExportTransactions}
+          title="Export XLSX"
+        >
+          <Download size={14} />
+        </button>
+
+        <button className="bookkeeping-add-btn-compact" title="Tambah transaksi" type="button" onClick={onAddTransaction}>
+          <Plus size={14} />
+        </button>
       </div>
 
-      <div className="bookkeeping-period-filter">
-        <StudioSelect
-          label="Periode"
-          options={periodOptions}
-          selectedKey={period}
-          onChange={onPeriodChange}
-        />
+      <div className="toolbar-row-filters">
+        <div className="bookkeeping-select-compact">
+          <StudioSelect
+            label="Periode"
+            options={periodOptions}
+            selectedKey={period}
+            onChange={onPeriodChange}
+          />
+        </div>
+
+        <div className="bookkeeping-select-compact">
+          <StudioSelect
+            label="Tipe"
+            options={transactionTypeFilterOptions}
+            selectedKey={typeFilter}
+            onChange={onTypeFilterChange}
+          />
+        </div>
       </div>
-
-      <div className="bookkeeping-type-filter">
-        <StudioSelect
-          label="Tipe"
-          options={transactionTypeFilterOptions}
-          selectedKey={typeFilter}
-          onChange={onTypeFilterChange}
-        />
-      </div>
-
-      <button
-        className="bookkeeping-export-button"
-        disabled={exportDisabled}
-        type="button"
-        onClick={onExportTransactions}
-      >
-        <Download size={14} />
-        Export XLSX
-      </button>
-
-      <button className="bookkeeping-add-button" title="Tambah transaksi pembukuan" type="button" onClick={onAddTransaction}>
-        <Plus size={14} />
-        Tambah
-      </button>
     </section>
   );
 }
 
+/* ==========================================================================
+   COMPONENT: TRANSACTION LIST (Flat 2-Line Row Layout)
+   ========================================================================== */
 function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactions }) {
   if (!transactions.length) {
     return (
       <section className="bookkeeping-empty-state">
         <Landmark size={22} />
         <strong>Belum ada transaksi</strong>
-        <span>Cash masuk dari billing, pemasukan manual, dan pengeluaran manual akan muncul di sini.</span>
+        <span>Pemasukan dari billing dan transaksi manual akan muncul di sini.</span>
       </section>
     );
   }
 
   return (
-    <section className="bookkeeping-list" aria-label="Daftar transaksi pembukuan">
+    <section className="bookkeeping-list-compact" aria-label="Daftar transaksi pembukuan">
       {transactions.map((transaction) => {
         const isIncome = transaction.type === 'income';
         const isManualEntry = transaction.source === 'manual';
 
         return (
-          <article className={isIncome ? 'bookkeeping-row is-income' : 'bookkeeping-row is-expense'} key={transaction.id}>
-            <span className="bookkeeping-row-icon">
-              {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            </span>
+          <article className={`bookkeeping-row-compact ${isIncome ? 'is-income' : 'is-expense'}`} key={transaction.id}>
+            {/* Left & Middle Info */}
+            <div className="bookkeeping-row-main-compact">
+              <span className="bookkeeping-type-indicator" aria-hidden="true">
+                {isIncome ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+              </span>
 
-            <div className="bookkeeping-row-copy">
-              <strong>{transaction.title}</strong>
-              <small>
-                {formatShortDate(transaction.date)} • {getOptionLabel(paymentMethodOptions, transaction.method, transaction.method)}
-              </small>
-              {transaction.note ? <em>{transaction.note}</em> : null}
+              <div className="bookkeeping-row-content-compact">
+                <div className="bookkeeping-row-line1">
+                  <strong className="bookkeeping-title-text">{transaction.title}</strong>
+                  {transaction.note ? <span className="bookkeeping-note-text">• {transaction.note}</span> : null}
+                </div>
+                
+                <div className="bookkeeping-row-line2">
+                  <span className="bookkeeping-meta-text">
+                    {formatShortDate(transaction.date)} • {getOptionLabel(paymentMethodOptions, transaction.method, transaction.method)}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="bookkeeping-row-tail">
-              <b>{isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}</b>
+            {/* Right Side: Financial value & manual actions */}
+            <div className="bookkeeping-row-tail-compact">
+              <strong className="bookkeeping-amount-text">
+                {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
+              </strong>
 
               {isManualEntry ? (
-                <div className="bookkeeping-row-actions" aria-label="Aksi transaksi manual">
-                  <button type="button" aria-label={'Edit ' + getEntryActionLabel(transaction.type)} onClick={() => onEditExpense(transaction)}>
-                    <Pencil size={12} />
+                <div className="bookkeeping-row-actions-compact" aria-label="Aksi transaksi manual">
+                  <button type="button" aria-label={'Edit ' + getEntryActionLabel(transaction.type)} onClick={() => onEditExpense(transaction)} className="row-action-btn">
+                    <Pencil size={11} />
                   </button>
 
-                  <button className="is-danger" type="button" aria-label={'Hapus ' + getEntryActionLabel(transaction.type)} onClick={() => onDeleteExpense(transaction)}>
-                    <Trash2 size={12} />
+                  <button className="row-action-btn is-danger" type="button" aria-label={'Hapus ' + getEntryActionLabel(transaction.type)} onClick={() => onDeleteExpense(transaction)}>
+                    <Trash2 size={11} />
                   </button>
                 </div>
               ) : null}
@@ -933,7 +960,9 @@ function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactio
   );
 }
 
-
+/* ==========================================================================
+   COMPONENT: TRANSACTION FORM MODAL (Tighter layout spacing)
+   ========================================================================== */
 function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
   const initialType = entry?.type === 'income' || mode === 'income' ? 'income' : 'expense';
   const initialForm = initialType === 'income' ? emptyIncomeForm : emptyExpenseForm;
@@ -1101,6 +1130,9 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
   );
 }
 
+/* ==========================================================================
+   MAIN COMPONENT: BOOKKEEPING PAGE
+   ========================================================================== */
 export default function BookkeepingPage() {
   const [bookings, setBookings] = useState([]);
   const [entries, setEntries] = useState([]);

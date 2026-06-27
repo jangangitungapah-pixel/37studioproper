@@ -364,6 +364,24 @@ export default function AdminPage() {
     navigate('/login', { replace: true });
   }
 
+  if (new URLSearchParams(location.search).has('billingPreview')) {
+    return (
+      <main className="theme-container admin-shell" data-auth-surface="admin" data-admin-active="billing">
+        <section className="admin-stage" aria-label="Billing preview">
+          <header className="admin-topbar">
+            <div>
+              <p>Studio 37</p>
+              <h1>Billing</h1>
+            </div>
+          </header>
+          <Suspense fallback={null}>
+            <BillingPage />
+          </Suspense>
+        </section>
+      </main>
+    );
+  }
+
   if (new URLSearchParams(location.search).has('schedulePreview')) {
     return (
       <main className="theme-container admin-shell" data-auth-surface="admin" data-admin-active="schedule">

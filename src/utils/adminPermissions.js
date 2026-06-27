@@ -98,7 +98,8 @@ export function getAssignablePermissionPages(user) {
 }
 
 export function isOwnerEmail(email) {
-  return String(email || '').trim().toLowerCase() === OWNER_EMAIL;
+  const ownerEmail = OWNER_EMAIL || 'marsicprod@gmail.com';
+  return String(email || '').trim().toLowerCase() === ownerEmail.trim().toLowerCase();
 }
 
 export function isOwnerAdminUser(user) {

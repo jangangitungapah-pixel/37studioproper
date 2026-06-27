@@ -280,9 +280,9 @@ function EmptyState({ children }) {
   return <p className="settings-empty-text">{children}</p>;
 }
 
-export default function SettingsPage({ authState }) {
+export default function SettingsPage({ authState, currentUser: currentUserProp }) {
   const [confirmConfig, setConfirmConfig] = useState(null);
-  const currentUser = useMemo(() => authState?.user || {}, [authState?.user]);
+  const currentUser = useMemo(() => currentUserProp || authState?.user || {}, [currentUserProp, authState?.user]);
 
   const subpages = useMemo(() => {
     const pages = [

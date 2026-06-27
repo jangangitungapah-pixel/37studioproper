@@ -81,10 +81,27 @@ export async function ensureAccountIdentity(user, intent = 'client') {
 
   return runTransaction(firestoreDb, async (transaction) => {
     const snapshot = await transaction.get(userRef);
+    const owner = isBootstrapOwner(user);
+
     if (snapshot.exists()) {
+      const data = snapshot.data();
+      if (owner && data.role !== ACCOUNT_ROLES.OWNER) {
+        const updates = {
+          role: ACCOUNT_ROLES.OWNER,
+          status: ACCOUNT_STATUSES.APPROVED,
+          permissions: createAdminPermissions(true),
+          updatedAt: new Date().toISOString(),
+        };
+        transaction.update(userRef, updates);
+        return {
+          created: false,
+          identity: { id: snapshot.id, ...data, ...updates },
+        };
+      }
+
       return {
         created: false,
-        identity: { id: snapshot.id, ...snapshot.data() },
+        identity: { id: snapshot.id, ...data },
       };
     }
 

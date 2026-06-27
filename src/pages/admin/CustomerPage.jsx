@@ -17,6 +17,8 @@ import {
   UserRound,
   UsersRound,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
@@ -141,6 +143,7 @@ function getBookingBand(booking) {
   return cleanText(booking.bandName || booking.title || booking.sessionLabel || 'Tanpa nama band');
 }
 
+// Check recording type
 function isRecordingBooking(booking) {
   const haystack = [
     booking.sessionType,
@@ -153,6 +156,7 @@ function isRecordingBooking(booking) {
   return haystack.includes('recording') || haystack.includes('rekam');
 }
 
+// Check rehearsal type
 function isRehearsalBooking(booking) {
   const haystack = [
     booking.sessionType,
@@ -322,7 +326,6 @@ function groupCustomerActivities(bookings = []) {
   }, []);
 }
 
-
 function isCustomerIdle(customer) {
   if (!customer?.latestActivityValue || !customer?.totalBookings) return false;
 
@@ -335,7 +338,6 @@ function getCustomerListTone(customer) {
   if (customer.followUpStatus === 'vip' || customer.paidBookings > 0) return 'is-paid';
   if (customer.hasDuplicatePhone) return 'is-duplicate';
   if (isCustomerIdle(customer)) return 'is-idle';
-  if (customer.followUpStatus === 'follow-up') return 'is-neutral';
 
   return 'is-neutral';
 }
@@ -430,7 +432,6 @@ function readManualCustomers() {
     return [];
   }
 }
-
 
 function buildCustomerDirectory(bookings, manualCustomers) {
   const map = new Map();
@@ -601,43 +602,43 @@ function getCustomerStatusClass(customer) {
   return 'is-neutral';
 }
 
+/* ==========================================================================
+   COMPONENT: CUSTOMER HERO (Compact Strip)
+   ========================================================================== */
 function CustomerHero({ customers }) {
   const topCustomer = getTopCustomer(customers);
   const followUpCustomers = customers.filter((customer) => customer.hasOpenPayment);
   const openAmount = followUpCustomers.reduce((sum, customer) => sum + customer.openInvoiceAmount, 0);
 
   return (
-    <section className="customer-hero-grid" aria-label="Ringkasan customer">
-      <article className="customer-hero-card">
-        <span className="customer-hero-icon"><UsersRound size={18} /></span>
-        <span className="customer-hero-copy">
-          <small>Jumlah Customer</small>
-          <strong>{customers.length}</strong>
-          <em>Database aktif studio</em>
+    <section className="customer-hero-strip" aria-label="Ringkasan customer">
+      <div className="hero-strip-item">
+        <UsersRound size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          <strong>{customers.length}</strong> Customer
         </span>
-      </article>
+      </div>
 
-      <article className="customer-hero-card">
-        <span className="customer-hero-icon"><Trophy size={18} /></span>
-        <span className="customer-hero-copy">
-          <small>Top Customer</small>
-          <strong>{topCustomer ? topCustomer.name : '-'}</strong>
-          <em>{topCustomer ? topCustomer.paidBookings + ' booking lunas' : 'Belum ada data lunas'}</em>
+      <div className="hero-strip-item">
+        <Trophy size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          Top: <strong>{topCustomer ? topCustomer.name : '-'}</strong>
         </span>
-      </article>
+      </div>
 
-      <article className="customer-hero-card">
-        <span className="customer-hero-icon"><CreditCard size={18} /></span>
-        <span className="customer-hero-copy">
-          <small>Perlu Follow-up</small>
-          <strong>{followUpCustomers.length}</strong>
-          <em>{openAmount ? formatMoney(openAmount) + ' outstanding' : 'Tidak ada pending / DP'}</em>
+      <div className="hero-strip-item">
+        <CreditCard size={14} className="hero-strip-icon" />
+        <span className="hero-strip-text">
+          Follow-up: <strong>{followUpCustomers.length}</strong> ({openAmount ? formatMoney(openAmount) : 'Lunas'})
         </span>
-      </article>
+      </div>
     </section>
   );
 }
 
+/* ==========================================================================
+   COMPONENT: CUSTOMER FORM MODAL
+   ========================================================================== */
 function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
   const [form, setForm] = useState(emptyCustomerForm);
   const [error, setError] = useState('');
@@ -762,9 +763,9 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
   }
 
   return (
-    <div className="customer-modal-backdrop customer-booking-size-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
+    <div className="customer-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
       <section className="customer-modal-panel customer-booking-size-panel" role="dialog" aria-modal="true" aria-labelledby="customer-form-title">
-        <header className="customer-modal-head customer-booking-size-head">
+        <header className="customer-modal-head">
           <div>
             <p>Customer Form</p>
             <h2 id="customer-form-title">{editingCustomer ? 'Edit Customer' : 'Tambah Customer'}</h2>
@@ -775,8 +776,8 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
           </button>
         </header>
 
-        <form className="customer-form customer-booking-size-form" onSubmit={handleSubmit} noValidate>
-          <div className="customer-form-grid customer-booking-size-grid">
+        <form className="customer-form" onSubmit={handleSubmit} noValidate>
+          <div className="customer-form-grid">
             <StudioTextField
               autoComplete="name"
               icon={UserRound}
@@ -837,7 +838,7 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
               </span>
               <textarea
                 id="customer-notes"
-                placeholder="Contoh: sering booking malam, perlu follow-up DP, prefer studio A..."
+                placeholder="Contoh: sering booking malam, prefer studio A..."
                 value={form.notes}
                 onChange={updateField('notes')}
               />
@@ -846,9 +847,9 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
 
           {error ? <p className="booking-form-error" role="alert">{error}</p> : null}
 
-          <footer className="booking-form-actions customer-booking-size-actions">
+          <footer className="booking-form-actions">
             <button className="booking-button is-secondary" type="button" onClick={onClose}>Batal</button>
-            <button className="booking-button is-primary" type="submit">{editingCustomer ? 'Update Customer' : 'Simpan Customer'}</button>
+            <button className="booking-button is-primary" type="submit">{editingCustomer ? 'Update' : 'Simpan'}</button>
           </footer>
         </form>
       </section>
@@ -856,12 +857,14 @@ function CustomerFormModal({ customers, editingCustomer, isOpen, onClose }) {
   );
 }
 
-
+/* ==========================================================================
+   COMPONENT: CUSTOMER TOOLBAR (Compact Interface)
+   ========================================================================== */
 function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearchChange, searchText }) {
   return (
-    <section className="customer-toolbar" aria-label="Customer toolbar">
-      <div className="customer-search-shell">
-        <Search size={16} aria-hidden="true" />
+    <section className="customer-toolbar-compact" aria-label="Customer toolbar">
+      <div className="customer-search-shell-compact">
+        <Search size={14} aria-hidden="true" />
         <input
           aria-label="Cari customer"
           placeholder="Cari nama, nomor, band..."
@@ -871,7 +874,7 @@ function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearch
         />
       </div>
 
-      <div className="customer-filter-studio-select">
+      <div className="customer-filter-select-compact">
         <StudioSelect
           label="Filter"
           options={filterOptions}
@@ -880,14 +883,16 @@ function CustomerToolbar({ activeFilter, onAddCustomer, onFilterChange, onSearch
         />
       </div>
 
-      <button className="customer-add-button" type="button" onClick={onAddCustomer}>
+      <button className="customer-add-btn-compact" type="button" onClick={onAddCustomer} title="Tambah Customer">
         <Plus size={16} />
-        Customer
       </button>
     </section>
   );
 }
 
+/* ==========================================================================
+   COMPONENT: CUSTOMER TABLE (High Density Compact Row)
+   ========================================================================== */
 function CustomerTable({ customers, followUpTemplate, onEditCustomer, onOpenCustomer }) {
   if (!customers.length) {
     return (
@@ -900,7 +905,7 @@ function CustomerTable({ customers, followUpTemplate, onEditCustomer, onOpenCust
   }
 
   return (
-    <section className="customer-table-shell customer-unified-list-shell" aria-label="Customer list">
+    <section className="customer-table-shell" aria-label="Customer list">
       <div className="customer-unified-list-head">
         <span>
           <small>Customer List</small>
@@ -909,66 +914,80 @@ function CustomerTable({ customers, followUpTemplate, onEditCustomer, onOpenCust
         <em>Action pakai template Follow-up Center</em>
       </div>
 
-      <div className="customer-table-body customer-unified-list">
+      <div className="customer-table-body">
         {customers.map((customer) => {
           const topBand = customer.bands[0];
           const links = getCustomerActionLinks(customer);
           const whatsappHref = getCustomerFollowUpWhatsappHref(customer, followUpTemplate);
+          
           const subtitleItems = [
             formatPhoneLabel(customer.phone || customer.phoneKey),
-            topBand ? topBand.name + ' • ' + topBand.count + 'x' : customer.aliasLabel,
-            formatDate(customer.latestActivityAt),
+            topBand ? topBand.name : customer.aliasLabel,
+            customer.latestActivityAt ? formatDate(customer.latestActivityAt) : '',
           ].filter(Boolean);
+
           const metaValue = customer.openInvoiceAmount
             ? formatMoney(customer.openInvoiceAmount)
-            : customer.email || customer.instagram || '-';
+            : '';
 
           return (
-            <article className="customer-followup-row customer-list-row" key={customer.id}>
-              <button className="customer-followup-main customer-list-main" type="button" onClick={() => onOpenCustomer(customer)}>
-                <span>
-                  <strong>{customer.name}</strong>
-                  <small>{subtitleItems.join(' • ')}</small>
-                  {customer.hasDuplicatePhone ? <mark>Nomor WA ganda</mark> : null}
-                </span>
+            <article className="customer-list-row-compact" key={customer.id}>
+              {/* Left clickable area */}
+              <div 
+                className="customer-list-main-compact" 
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenCustomer(customer)}
+                onKeyDown={(e) => { if (e.key === 'Enter') onOpenCustomer(customer); }}
+              >
+                <div className="customer-list-row1">
+                  <span className="customer-name-wrap">
+                    <strong className="customer-name-text">{customer.name}</strong>
+                    {customer.hasDuplicatePhone && (
+                      <span className="customer-badge-duplicate">Ganda</span>
+                    )}
+                    <span className={'customer-status-badge ' + getCustomerListTone(customer)}>
+                      {getCustomerStatusLabel(customer)}
+                    </span>
+                  </span>
+                  {metaValue && <span className="customer-meta-outstanding">{metaValue}</span>}
+                </div>
 
-                <em className={'customer-followup-badge ' + getCustomerListTone(customer)}>
-                  {getCustomerStatusLabel(customer)}
-                </em>
-              </button>
+                <div className="customer-list-row2">
+                  <span className="customer-subtitle-text">
+                    {subtitleItems.join(' • ')}
+                  </span>
+                  <span className="customer-meta-bookings">
+                    {customer.totalBookings} booking • {customer.paidBookings} lunas
+                  </span>
+                </div>
+              </div>
 
-              <span className="customer-followup-actions customer-list-actions" aria-label={'Aksi customer ' + customer.name}>
+              {/* Right quick actions */}
+              <div className="customer-list-actions-compact" aria-label={'Aksi customer ' + customer.name}>
                 {whatsappHref ? (
                   <a
-                    aria-label={'Kirim WhatsApp ke ' + customer.name}
+                    aria-label={'WhatsApp ' + customer.name}
+                    className="action-icon-btn is-whatsapp"
                     href={whatsappHref}
                     target="_blank"
                     rel="noreferrer"
-                    title="WhatsApp follow-up"
+                    title="WhatsApp"
                   >
-                    <WhatsAppIcon size={15} />
+                    <WhatsAppIcon size={14} />
                   </a>
                 ) : null}
 
                 {links.callHref ? (
-                  <a aria-label={'Telepon ' + customer.name} href={links.callHref} title="Telepon">
-                    <PhoneCall size={15} />
+                  <a aria-label={'Telepon ' + customer.name} className="action-icon-btn" href={links.callHref} title="Telepon">
+                    <PhoneCall size={14} />
                   </a>
                 ) : null}
 
-                <button aria-label={'Buka detail ' + customer.name} title="Buka detail" type="button" onClick={() => onOpenCustomer(customer)}>
-                  <UserRound size={15} />
+                <button aria-label={'Edit customer ' + customer.name} className="action-icon-btn" title="Edit" type="button" onClick={() => onEditCustomer(customer)}>
+                  <Pencil size={14} />
                 </button>
-
-                <button aria-label={'Edit customer ' + customer.name} title="Edit customer" type="button" onClick={() => onEditCustomer(customer)}>
-                  <Pencil size={15} />
-                </button>
-              </span>
-
-              <span className="customer-list-meta">
-                <small>{customer.totalBookings} booking • {customer.paidBookings} lunas</small>
-                <strong>{metaValue}</strong>
-              </span>
+              </div>
             </article>
           );
         })}
@@ -977,7 +996,9 @@ function CustomerTable({ customers, followUpTemplate, onEditCustomer, onOpenCust
   );
 }
 
-
+/* ==========================================================================
+   COMPONENT: CUSTOMER FOLLOW-UP CENTER (Collapsible & Functional)
+   ========================================================================== */
 function CustomerFollowUpCenter({
   activeFilter,
   activeTemplate,
@@ -985,70 +1006,89 @@ function CustomerFollowUpCenter({
   onFilterChange,
   onTemplateChange,
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const candidates = getCustomerFollowUpCandidates(customers, activeFilter);
   const totalOutstanding = getFollowUpOutstandingTotal(candidates);
   const unpaidCount = candidates.filter((customer) => customer.hasOpenPayment).length;
 
   return (
-    <section className="customer-followup-center is-compact-hub" aria-label="Follow-up center">
-      <header className="customer-followup-head">
-        <span className="customer-followup-orb" aria-hidden="true">
-          <PhoneCall size={16} />
-        </span>
+    <section className="customer-followup-center" aria-label="Follow-up center">
+      <header 
+        className="customer-followup-head" 
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter') setIsExpanded(!isExpanded); }}
+        style={{ cursor: 'pointer' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+          <span className="customer-followup-orb" aria-hidden="true">
+            <PhoneCall size={14} />
+          </span>
 
-        <span className="customer-followup-title">
-          <small>Follow-up Center</small>
-          <strong>Template & prioritas</strong>
-        </span>
+          <span className="customer-followup-title">
+            <small>Follow-up Center</small>
+            <strong>Template & prioritas</strong>
+          </span>
+        </div>
 
-        <span className="customer-followup-total">
-          {candidates.length} target
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="customer-followup-total">
+            {candidates.length} target
+          </span>
+          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
       </header>
 
-      <div className="customer-followup-controls">
-        <div className="customer-followup-select">
-          <StudioSelect
-            label="Target"
-            options={followUpFilterOptions}
-            selectedKey={activeFilter}
-            onChange={onFilterChange}
-          />
+      {isExpanded && (
+        <div className="customer-followup-body">
+          <div className="customer-followup-controls">
+            <div className="customer-followup-select">
+              <StudioSelect
+                label="Target"
+                options={followUpFilterOptions}
+                selectedKey={activeFilter}
+                onChange={onFilterChange}
+              />
+            </div>
+
+            <div className="customer-followup-select">
+              <StudioSelect
+                label="Template"
+                options={followUpTemplateOptions}
+                selectedKey={activeTemplate}
+                onChange={onTemplateChange}
+              />
+            </div>
+          </div>
+
+          <div className="customer-followup-summary-grid">
+            <article>
+              <small>Outstanding</small>
+              <strong>{formatMoney(totalOutstanding)}</strong>
+            </article>
+            <article>
+              <small>Pending / DP</small>
+              <strong>{unpaidCount}</strong>
+            </article>
+            <article>
+              <small>Template WA</small>
+              <strong>{followUpTemplateOptions.find((item) => item.key === activeTemplate)?.label || 'Tagihan'}</strong>
+            </article>
+          </div>
+
+          <p className="customer-followup-hint">
+            Aksi WhatsApp pada Customer List akan langsung mengirim pesan dengan template di atas.
+          </p>
         </div>
-
-        <div className="customer-followup-select">
-          <StudioSelect
-            label="Template"
-            options={followUpTemplateOptions}
-            selectedKey={activeTemplate}
-            onChange={onTemplateChange}
-          />
-        </div>
-      </div>
-
-      <div className="customer-followup-summary-grid">
-        <article>
-          <small>Outstanding</small>
-          <strong>{formatMoney(totalOutstanding)}</strong>
-        </article>
-        <article>
-          <small>Pending / DP</small>
-          <strong>{unpaidCount}</strong>
-        </article>
-        <article>
-          <small>Template WA</small>
-          <strong>{followUpTemplateOptions.find((item) => item.key === activeTemplate)?.label || 'Tagihan'}</strong>
-        </article>
-      </div>
-
-      <p className="customer-followup-hint">
-        Action WhatsApp di Customer List memakai template yang dipilih di sini.
-      </p>
+      )}
     </section>
   );
 }
 
-
+/* ==========================================================================
+   COMPONENT: CUSTOMER ACTIVITY TIMELINE (Clean flat listing)
+   ========================================================================== */
 function CustomerActivityTimeline({
   activeFilter,
   activityGroups,
@@ -1058,52 +1098,48 @@ function CustomerActivityTimeline({
   totalActivities,
 }) {
   return (
-    <article className="customer-detail-card customer-activity-card">
-      <header>
-        <CalendarDays size={16} />
-        <span>Activity Timeline</span>
-      </header>
-
-      <div className="customer-activity-toolbar">
-        <div className="customer-activity-filter">
-          <StudioSelect
-            label="Activity"
-            options={activityFilterOptions}
-            selectedKey={activeFilter}
-            onChange={onFilterChange}
-          />
-        </div>
-
-        <span className="customer-activity-count">
-          {totalActivities} aktivitas
+    <div className="info-section-compact customer-activity-card">
+      <div className="timeline-header-compact">
+        <h3>Activity Timeline</h3>
+        <span className="customer-followup-total">
+          {totalActivities} act
         </span>
       </div>
 
-      {activityGroups.length ? (
-        <div className="customer-timeline-list">
-          {activityGroups.map((group) => (
-            <section className="customer-timeline-group" key={group.label}>
-              <strong className="customer-timeline-month">{group.label}</strong>
+      <div className="customer-activity-toolbar-compact">
+        <StudioSelect
+          label="Aktivitas"
+          options={activityFilterOptions}
+          selectedKey={activeFilter}
+          onChange={onFilterChange}
+        />
+      </div>
 
-              <div className="customer-timeline-items">
+      {activityGroups.length ? (
+        <div className="customer-timeline-list-compact">
+          {activityGroups.map((group) => (
+            <section className="customer-timeline-group-compact" key={group.label}>
+              <strong className="customer-timeline-month-compact">{group.label}</strong>
+
+              <div className="customer-timeline-items-compact">
                 {group.items.map(({ booking, id }) => {
                   const status = getBookingStatus(booking);
                   const isExpanded = expandedActivityId === id;
 
                   return (
-                    <article className={isExpanded ? 'customer-timeline-row is-expanded' : 'customer-timeline-row'} key={id}>
+                    <article className={isExpanded ? 'customer-timeline-row-compact is-expanded' : 'customer-timeline-row-compact'} key={id}>
                       <button
                         aria-expanded={isExpanded}
-                        className="customer-timeline-button"
+                        className="customer-timeline-btn-trigger"
                         type="button"
                         onClick={() => onToggleActivity(id)}
                       >
-                        <span className="customer-timeline-date">
+                        <span className="timeline-col-date">
                           <strong>{formatDate(booking.date || booking.createdAt)}</strong>
                           <small>{getBookingTimeLabel(booking)}</small>
                         </span>
 
-                        <span className="customer-timeline-main">
+                        <span className="timeline-col-main">
                           <b>{booking.bandName || booking.title || 'Tanpa nama band'}</b>
                           <small>{getBookingActivityKindLabel(booking)} • {booking.sessionLabel || booking.packageLabel || 'Session'}</small>
                         </span>
@@ -1113,8 +1149,8 @@ function CustomerActivityTimeline({
                         </em>
                       </button>
 
-                      {isExpanded ? (
-                        <div className="customer-timeline-expanded">
+                      {isExpanded && (
+                        <div className="customer-timeline-expanded-compact">
                           <span>
                             <small>Harga / Tagihan</small>
                             <strong>{getBookingPriceLabel(booking)}</strong>
@@ -1132,7 +1168,7 @@ function CustomerActivityTimeline({
                             <strong>{getBookingName(booking)}</strong>
                           </span>
                         </div>
-                      ) : null}
+                      )}
                     </article>
                   );
                 })}
@@ -1141,12 +1177,15 @@ function CustomerActivityTimeline({
           ))}
         </div>
       ) : (
-        <p>Belum ada activity yang cocok dengan filter ini.</p>
+        <p className="no-data-text">Belum ada activity.</p>
       )}
-    </article>
+    </div>
   );
 }
 
+/* ==========================================================================
+   COMPONENT: CUSTOMER DETAIL (Flat Flat Details)
+   ========================================================================== */
 function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDuplicate, onOpenCustomer }) {
   const [activeActivityFilter, setActiveActivityFilter] = useState('all');
   const [expandedActivityId, setExpandedActivityId] = useState('');
@@ -1157,7 +1196,7 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
         <AlertCircle size={24} />
         <strong>Customer tidak ditemukan</strong>
         <span>Data mungkin belum tersinkron atau sudah berubah.</span>
-        <button className="customer-add-button" type="button" onClick={onBack}>Kembali</button>
+        <button className="booking-button is-primary" type="button" onClick={onBack}>Kembali</button>
       </section>
     );
   }
@@ -1175,63 +1214,57 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
 
   return (
     <section className="customer-detail-page" aria-labelledby="customer-detail-title">
-      <button className="customer-back-button" type="button" onClick={onBack}>
-        <ArrowLeft size={16} />
-        Kembali
-      </button>
+      {/* Header compact */}
+      <div className="customer-detail-header-compact">
+        <button className="customer-detail-back-btn" type="button" onClick={onBack} aria-label="Kembali ke list">
+          <ArrowLeft size={16} />
+        </button>
 
-      <section className="customer-detail-hero">
-        <div className="customer-detail-avatar" aria-hidden="true">
-          <UserRound size={28} />
-        </div>
-
-        <div className="customer-detail-title">
-          <p>Detail Customer</p>
+        <div className="customer-detail-title-compact">
           <h2 id="customer-detail-title">{customer.name}</h2>
           <span>{formatPhoneLabel(customer.phone || customer.phoneKey)}</span>
         </div>
 
-        <span className={'customer-status-pill ' + getCustomerStatusClass(customer)}>
+        <span className={'customer-status-badge ' + getCustomerStatusClass(customer)}>
           {getCustomerStatusLabel(customer)}
         </span>
-      </section>
+      </div>
 
-      <section className="customer-action-bar" aria-label="Aksi customer">
+      {/* Action buttons */}
+      <div className="customer-detail-actions-compact">
         {links.whatsappHref ? (
           <a
             aria-label={'Chat WhatsApp ' + customer.name}
-            className="customer-action-button is-primary"
+            className="detail-action-btn is-whatsapp"
             href={links.whatsappHref}
             target="_blank"
             rel="noreferrer"
-            title="WhatsApp"
           >
-            <WhatsAppIcon size={16} />
+            <WhatsAppIcon size={14} /> WhatsApp
           </a>
         ) : null}
 
         {links.callHref ? (
           <a
             aria-label={'Telepon ' + customer.name}
-            className="customer-action-button"
+            className="detail-action-btn"
             href={links.callHref}
-            title="Telepon"
           >
-            <PhoneCall size={16} />
+            <PhoneCall size={14} /> Telepon
           </a>
         ) : null}
 
         <button
-            aria-label={'Edit customer ' + customer.name}
-            className="customer-action-button"
-            title="Edit customer"
-            type="button"
-            onClick={() => onEditCustomer(customer)}
-          >
-            <Pencil size={16} />
-          </button>
-      </section>
+          aria-label={'Edit customer ' + customer.name}
+          className="detail-action-btn"
+          type="button"
+          onClick={() => onEditCustomer(customer)}
+        >
+          <Pencil size={14} /> Edit
+        </button>
+      </div>
 
+      {/* Notes section if any */}
       {customer.notes ? (
         <section className="customer-note-card">
           <strong>Catatan</strong>
@@ -1239,22 +1272,27 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
         </section>
       ) : null}
 
+      {/* Alert Outstanding */}
       {customer.hasOpenPayment ? (
         <section className="customer-payment-alert" role="status">
-          <AlertCircle size={18} />
+          <AlertCircle size={14} />
           <span>
-            Masih ada {openBookings.length} booking pending/DP • {formatMoney(customer.openInvoiceAmount)} outstanding.
+            {openBookings.length} booking pending/DP • {formatMoney(customer.openInvoiceAmount)} outstanding.
           </span>
         </section>
       ) : null}
 
+      {/* Alert Duplicate Matches */}
       {duplicateCustomers.length ? (
-        <section className="customer-detail-card customer-duplicate-card">
-          <header><AlertCircle size={16} /><span>Kemungkinan Duplicate</span></header>
+        <section className="customer-duplicate-card">
+          <header>
+            <AlertCircle size={14} />
+            <span>Kemungkinan Duplicate</span>
+          </header>
 
           <div className="customer-duplicate-list">
             {duplicateCustomers.map((duplicate) => (
-              <span className="customer-duplicate-item" key={duplicate.id}>
+              <div className="customer-duplicate-item" key={duplicate.id}>
                 <button type="button" onClick={() => onOpenCustomer(duplicate)}>
                   <strong>{duplicate.name}</strong>
                   <small>{duplicate.totalBookings} booking • {formatPhoneLabel(duplicate.phone || duplicate.phoneKey)}</small>
@@ -1263,32 +1301,94 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
                 <button type="button" onClick={() => onMergeDuplicate(duplicate, customer)}>
                   Merge
                 </button>
-              </span>
+              </div>
             ))}
           </div>
         </section>
       ) : null}
 
-      <section className="customer-detail-stat-grid">
-        <article><small>Total Booking</small><strong>{customer.totalBookings}</strong></article>
-        <article><small>Booking Lunas</small><strong>{customer.paidBookings}</strong></article>
-        <article><small>Recording</small><strong>{customer.recordingBookings}</strong></article>
-        <article><small>Latihan</small><strong>{customer.rehearsalBookings}</strong></article>
-      </section>
+      {/* Stats bar */}
+      <div className="customer-detail-stats-bar">
+        <div className="stat-item-compact">
+          <small>Booking</small>
+          <strong>{customer.totalBookings}</strong>
+        </div>
+        <div className="stat-item-compact">
+          <small>Lunas</small>
+          <strong>{customer.paidBookings}</strong>
+        </div>
+        <div className="stat-item-compact">
+          <small>Record</small>
+          <strong>{customer.recordingBookings}</strong>
+        </div>
+        <div className="stat-item-compact">
+          <small>Latihan</small>
+          <strong>{customer.rehearsalBookings}</strong>
+        </div>
+      </div>
 
-      <section className="customer-detail-grid">
-        <article className="customer-detail-card">
-          <header><Music2 size={16} /><span>Breakdown Band / Project</span></header>
-          <div className="customer-band-list">
+      {/* High density flat data grid */}
+      <div className="customer-detail-info-grid">
+        {/* Bands */}
+        <div className="info-section-compact">
+          <h3>Breakdown Band / Project</h3>
+          <div className="customer-band-list-compact">
             {customer.bands.length ? customer.bands.map((band) => (
-              <span className="customer-band-chip" key={band.name}>
+              <span className="customer-band-chip-compact" key={band.name}>
                 <strong>{band.name}</strong>
                 <em>{band.count}x</em>
               </span>
-            )) : <p>Belum ada data band.</p>}
+            )) : <p className="no-data-text">Belum ada data band.</p>}
           </div>
-        </article>
+        </div>
 
+        {/* Contacts */}
+        <div className="info-section-compact">
+          <h3>Detail Kontak</h3>
+          <div className="customer-contact-sheet">
+            <div className="contact-row">
+              <span className="contact-label">WhatsApp</span>
+              <strong className="contact-value">{formatPhoneLabel(customer.phone || customer.phoneKey)}</strong>
+            </div>
+            <div className="contact-row">
+              <span className="contact-label">Email</span>
+              <strong className="contact-value">{customer.email || '-'}</strong>
+            </div>
+            <div className="contact-row">
+              <span className="contact-label">Instagram</span>
+              <strong className="contact-value">{customer.instagram ? '@' + customer.instagram : '-'}</strong>
+            </div>
+            <div className="contact-row">
+              <span className="contact-label">Status CRM</span>
+              <strong className="contact-value">{getFollowUpLabel(customer.followUpStatus)}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment stats */}
+        <div className="info-section-compact">
+          <h3>Status Keuangan</h3>
+          <div className="customer-contact-sheet">
+            <div className="contact-row">
+              <span className="contact-label">Pending / DP</span>
+              <strong className="contact-value">{customer.pendingBookings} pending • {customer.dpBookings} DP</strong>
+            </div>
+            <div className="contact-row">
+              <span className="contact-label">Outstanding</span>
+              <strong className="contact-value">{formatMoney(customer.openInvoiceAmount)}</strong>
+            </div>
+            <div className="contact-row">
+              <span className="contact-label">Total Omset</span>
+              <strong className="contact-value">{formatMoney(customer.totalPaidValue)}</strong>
+            </div>
+            <div className="contact-row">
+              <span className="contact-label">Sering Main</span>
+              <strong className="contact-value">{topBand ? topBand.name : '-'}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline */}
         <CustomerActivityTimeline
           activeFilter={activeActivityFilter}
           activityGroups={activityGroups}
@@ -1302,32 +1402,14 @@ function CustomerDetail({ customer, customers, onBack, onEditCustomer, onMergeDu
             setExpandedActivityId((current) => (current === activityId ? '' : activityId));
           }}
         />
-
-        <article className="customer-detail-card">
-          <header><Phone size={16} /><span>Kontak</span></header>
-          <div className="customer-contact-list">
-            <span><small>Nomor WA</small><strong>{formatPhoneLabel(customer.phone || customer.phoneKey)}</strong></span>
-            <span><small>Email</small><strong>{customer.email || '-'}</strong></span>
-            <span><small>Instagram</small><strong>{customer.instagram ? '@' + customer.instagram : '-'}</strong></span>
-            <span><small>Status</small><strong>{getFollowUpLabel(customer.followUpStatus)}</strong></span>
-          </div>
-        </article>
-
-        <article className="customer-detail-card">
-          <header><CreditCard size={16} /><span>Status Pembayaran</span></header>
-          <div className="customer-contact-list">
-            <span><small>Pending</small><strong>{customer.pendingBookings}</strong></span>
-            <span><small>DP</small><strong>{customer.dpBookings}</strong></span>
-            <span><small>Outstanding</small><strong>{formatMoney(customer.openInvoiceAmount)}</strong></span>
-            <span><small>Band paling sering</small><strong>{topBand ? topBand.name + ' (' + topBand.count + 'x)' : '-'}</strong></span>
-          </div>
-        </article>
-      </section>
+      </div>
     </section>
   );
 }
 
-
+/* ==========================================================================
+   MAIN COMPONENT: CUSTOMER PAGE
+   ========================================================================== */
 export default function CustomerPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1457,7 +1539,7 @@ export default function CustomerPage() {
         sourceCustomer.name +
         ' ke ' +
         targetCustomer.name +
-        '?\\n\\nBooking milik duplicate akan diarahkan ke customer ini.'
+        '?\n\nBooking milik duplicate akan diarahkan ke customer ini.'
     );
 
     if (!confirmed) return;

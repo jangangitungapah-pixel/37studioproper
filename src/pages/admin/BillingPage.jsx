@@ -602,10 +602,8 @@ function BillingReminderQueue({ bookings, invoiceSettings, onOpenInvoice, onReco
               <article className="billing-reminder-row" key={booking.id}>
                 <button type="button" onClick={() => onOpenInvoice(booking)}>
                   <strong>{booking.customer || '-'}</strong>
-                  <small>{getInvoiceDisplayNumber(booking)} • {formatDate(booking.date)}</small>
+                  <small>{getInvoiceDisplayNumber(booking)} • {formatDate(booking.date)} • {formatMoney(getOutstandingAmount(booking))}</small>
                 </button>
-
-                <em>{formatMoney(getOutstandingAmount(booking))}</em>
 
                 <span>
                   {reminderHref ? (
@@ -652,7 +650,7 @@ function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment
               <span>
                 <small>{getBookingDisplayCode(booking)}</small>
                 <strong>{booking.customer || '-'}</strong>
-                <em>{booking.bandName || booking.title || booking.sessionLabel || 'Session'} • {formatDate(booking.date)}</em>
+                <em>{getBookingDisplayCode(booking)} • {formatDate(booking.date)}</em>
               </span>
 
               <b className={'billing-status-pill ' + getStatusClass(booking)}>
@@ -1158,8 +1156,106 @@ function VoidInvoiceModal({ booking, onClose, onSubmit }) {
   );
 }
 
+const BILLING_QA_PREVIEW_BOOKINGS = [
+  {
+    id: 'qa-1',
+    customer: 'Budi Santoso',
+    phone: '081234567890',
+    bandName: 'The Rollings',
+    sessionLabel: 'Recording',
+    date: '2026-06-25',
+    startHour: 10,
+    durationHours: 2,
+    total: 600000,
+    paymentStatus: 'dp',
+    dpAmount: 200000,
+    invoiceAmount: 400000,
+    paidAmount: 200000,
+    invoiceNumber: 'INV-20260625-01',
+    bookingCode: 'BKG-01',
+    paymentHistory: [
+      { id: 'h-1', amount: 200000, date: '2026-06-24', method: 'transfer', note: 'DP Transfer BCA' }
+    ]
+  },
+  {
+    id: 'qa-2',
+    customer: 'Andi Pratama',
+    phone: '085678901234',
+    bandName: 'Andi & Friends',
+    sessionLabel: 'Latihan Band',
+    date: '2026-06-25',
+    startHour: 13,
+    durationHours: 1,
+    total: 150000,
+    paymentStatus: 'pending',
+    dpAmount: 0,
+    invoiceAmount: 150000,
+    paidAmount: 0,
+    invoiceNumber: 'INV-20260625-02',
+    bookingCode: 'BKG-02',
+    paymentHistory: []
+  },
+  {
+    id: 'qa-3',
+    customer: 'Dewi Lestari',
+    phone: '089012345678',
+    bandName: 'Dewi Acoustic',
+    sessionLabel: 'Mixing',
+    date: '2026-06-25',
+    startHour: 16,
+    durationHours: 2,
+    total: 450000,
+    paymentStatus: 'lunas',
+    dpAmount: 0,
+    invoiceAmount: 0,
+    paidAmount: 450000,
+    invoiceNumber: 'INV-20260625-03',
+    bookingCode: 'BKG-03',
+    paymentHistory: [
+      { id: 'h-2', amount: 450000, date: '2026-06-25', method: 'qris', note: 'Lunas QRIS ShopeePay' }
+    ]
+  },
+  {
+    id: 'qa-4',
+    customer: 'Raka Project',
+    phone: '081122334455',
+    bandName: 'Raka Rock',
+    sessionLabel: 'Rehearsal',
+    date: '2026-06-26',
+    startHour: 11,
+    durationHours: 2,
+    total: 220000,
+    paymentStatus: 'void',
+    dpAmount: 0,
+    invoiceAmount: 0,
+    paidAmount: 0,
+    invoiceNumber: 'INV-20260625-04',
+    bookingCode: 'BKG-04',
+    voidReason: 'Customer reschedule jadwal latihan',
+    voidedAt: '2026-06-25T12:00:00Z',
+    paymentHistory: []
+  }
+];
+
+const BILLING_QA_PREVIEW_PROOFS = [
+  {
+    id: 'proof-1',
+    bookingId: 'qa-1',
+    customer: 'Budi Santoso',
+    invoiceNumber: 'INV-20260625-01',
+    amount: 400000,
+    category: 'pelunasan',
+    method: 'transfer',
+    status: 'pending',
+    proofUrl: 'https://placehold.co/400x600?text=Bukti+Transfer+Budi',
+    createdAt: '2026-06-25T14:30:00Z'
+  }
+];
+
+const isBillingQaPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('billingPreview');
+
 export default function BillingPage() {
-  const [bookings, setBookings] = useState([]);
+  const [bookings, setBookings] = useState(() => isBillingQaPreview ? BILLING_QA_PREVIEW_BOOKINGS : []);
   const [activeFilter, setActiveFilter] = useState('open');
   const [activeCashRange, setActiveCashRange] = useState('today');
   const [billingPage, setBillingPage] = useState(1);
@@ -1167,7 +1263,7 @@ export default function BillingPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
-  const [pendingPaymentProofs, setPendingPaymentProofs] = useState([]);
+  const [pendingPaymentProofs, setPendingPaymentProofs] = useState(() => isBillingQaPreview ? BILLING_QA_PREVIEW_PROOFS : []);
   const [selectedPaymentProof, setSelectedPaymentProof] = useState(null);
   const [paymentProofAdminNote, setPaymentProofAdminNote] = useState('');
   const [isReviewingPaymentProof, setIsReviewingPaymentProof] = useState(false);
@@ -1180,6 +1276,8 @@ export default function BillingPage() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
+    if (isBillingQaPreview) return undefined;
+
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
       (data) => setBookings(data),
       (error) => {
@@ -1195,6 +1293,8 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
+    if (isBillingQaPreview) return undefined;
+
     const unsubscribe = paymentProofRepository.subscribePendingPaymentProofs(
       (data) => setPendingPaymentProofs(data),
       (error) => {

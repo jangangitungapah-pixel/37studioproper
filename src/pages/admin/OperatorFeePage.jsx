@@ -107,6 +107,7 @@ function getBookingDurationLabel(booking) {
   return duration > 0 ? duration + ' jam' : 'Tanpa blok';
 }
 
+// Check if booking status represents an active schedule
 function isBookingActive(booking) {
   const status = cleanText(booking?.paymentStatus || booking?.status, 'pending').toLowerCase();
   const requestStatus = cleanText(booking?.bookingRequestStatus).toLowerCase();
@@ -117,6 +118,7 @@ function isBookingActive(booking) {
   return true;
 }
 
+// Check if date falls in selected filter period
 function isDateInPeriod(dateValue, period) {
   if (period === 'all') return true;
   if (!dateValue) return false;
@@ -260,7 +262,7 @@ function getSearchBlob(row) {
 }
 
 function getRowPrimaryAction(row) {
-  if (!row.lines.length && row.blockedLines.length) return 'Butuh Absen';
+  if (!row.lines.length && row.blockedLines.length) return 'Absen';
   if (!row.lines.length) return 'No Rule';
   if (row.status === 'posted') return 'Posted';
   if (row.status === 'reviewed') return 'Post';
@@ -732,33 +734,49 @@ export default function OperatorFeePage({ currentUser }) {
             return (
               <article className="operator-fee-queue-row" key={row.bookingId}>
                 <div className="operator-fee-queue-main">
-                  <span>
-                    <small>{getBookingCode(booking)} · {formatBookingDate(booking.date)}</small>
-                    <strong>{getBookingCustomer(booking)}</strong>
-                    <em>{getBookingServiceLabel(booking)}</em>
-                  </span>
+                  <div className="operator-fee-queue-info">
+                    <div className="operator-fee-meta-top">
+                      <span>{getBookingCode(booking)}</span>
+                      <span className="dot-separator">·</span>
+                      <span>{formatBookingDate(booking.date)}</span>
+                      <span className="dot-separator">·</span>
+                      <span className="service-label">{getBookingServiceLabel(booking)}</span>
+                    </div>
+                    <strong className="operator-fee-customer">{getBookingCustomer(booking)}</strong>
+                    <div className="operator-fee-meta-bottom">
+                      <span>{getBookingDurationLabel(booking)}</span>
+                      <span className="dot-separator">·</span>
+                      <span>👤 {row.guardPerson ? row.guardPerson.name : 'Default'}</span>
+                      <span className="dot-separator">·</span>
+                      <span>🎧 {row.operatorPerson ? row.operatorPerson.name : 'Default'}</span>
+                      {row.blockedLines.length > 0 && (
+                        <>
+                          <span className="dot-separator">·</span>
+                          <span className="text-warning">⚠️ Absen</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
-                  <b>{formatOperatorFeeCurrency(row.totalFee)}</b>
+                  <div className="operator-fee-amount-col">
+                    <b className="operator-fee-total-amount">{formatOperatorFeeCurrency(row.totalFee)}</b>
+                    <span className={'operator-fee-status-dot is-' + statusTone}>
+                      <span className="status-dot"></span>
+                      {getStatusLabel(row.status)}
+                    </span>
+                  </div>
 
-                  <i className={'operator-fee-status is-' + statusTone}>
-                    {getStatusLabel(row.status)}
-                  </i>
-
-                  <button
-                    disabled={primaryDisabled}
-                    type="button"
-                    onClick={() => handlePrimaryAction(row)}
-                  >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={13} /> : null}
-                    {primaryActionLabel}
-                  </button>
-                </div>
-
-                <div className="operator-fee-queue-mini">
-                  <span>{getBookingDurationLabel(booking)}</span>
-                  <span>Jaga: {row.guardPerson?.name || 'Default'}</span>
-                  <span>Operator: {row.operatorPerson?.name || 'Default'}</span>
-                  <span>{row.blockedLines.length ? row.blockedLines.length + ' menunggu absen' : row.lines.length + ' rule'}</span>
+                  <div className="operator-fee-action-col">
+                    <button
+                      disabled={primaryDisabled}
+                      type="button"
+                      className="operator-fee-row-btn"
+                      onClick={() => handlePrimaryAction(row)}
+                    >
+                      {isBusy ? <LoaderCircle className="auth-spin" size={13} /> : null}
+                      {primaryActionLabel}
+                    </button>
+                  </div>
                 </div>
 
                 <details className="operator-fee-queue-detail">
