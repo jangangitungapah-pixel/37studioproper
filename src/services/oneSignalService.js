@@ -294,11 +294,32 @@ export async function getOneSignalState() {
   return buildOneSignalState(OneSignal);
 }
 
-export async function identifyOneSignalUser(_user, _role = 'client') {
-  return initOneSignal();
+export async function identifyOneSignalUser(user, _role = 'client') {
+  await initOneSignal();
+
+  if (!user?.uid) return getOneSignalState();
+
+  try {
+    const OneSignal = await getOneSignalInstance();
+    if (typeof OneSignal?.login === 'function') {
+      await OneSignal.login(user.uid);
+    }
+  } catch (error) {
+    console.warn('[onesignal] identifyOneSignalUser login failed:', error);
+  }
+
+  return getOneSignalState();
 }
 
 export async function logoutOneSignalUser() {
+  try {
+    if (isBrowser() && window.OneSignal && typeof window.OneSignal.logout === 'function') {
+      await window.OneSignal.logout();
+    }
+  } catch (error) {
+    console.warn('[onesignal] logoutOneSignalUser logout failed:', error);
+  }
+
   return getOneSignalState();
 }
 

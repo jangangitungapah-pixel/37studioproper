@@ -958,8 +958,29 @@
     font-size: var(--studio-text-xs);
   }
 
-  .billing-filter-select .studio-select-trigger {
-    padding: 2px 6px;
+  .billing-filter-select .studio-select-trigger,
+  .billing-cash-range .studio-select-trigger {
+    padding: 2px 8px;
+    gap: 6px;
+  }
+
+  .billing-filter-select .studio-select-label,
+  .billing-cash-range .studio-select-label {
+    font-size: 8px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+  }
+
+  .billing-filter-select .studio-select-copy strong,
+  .billing-cash-range .studio-select-copy strong {
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .billing-filter-select .studio-select-chevron,
+  .billing-cash-range .studio-select-chevron {
+    width: 14px;
+    height: 14px;
   }
 
   .billing-settings-button {
@@ -1018,14 +1039,47 @@
     display: none;
   }
 
+  .billing-cash-range .studio-select-label {
+    display: none !important;
+  }
+
   .billing-cash-range .studio-select-trigger {
-    min-height: 28px;
-    padding: 2px 6px;
+    min-height: 26px !important;
+    min-width: 90px !important;
+    padding: 2px 8px !important;
+    border-radius: var(--studio-radius-md) !important;
+    background: var(--auth-bg-control) !important;
+    border: 1px solid var(--auth-border) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+  }
+
+  .billing-cash-range .studio-select-copy {
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .billing-cash-range .studio-select-copy strong {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+    color: var(--auth-text-strong) !important;
+  }
+
+  .billing-cash-range .studio-select-chevron {
+    width: 12px !important;
+    height: 12px !important;
+    flex-shrink: 0 !important;
   }
 
   .billing-cash-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
+    border-top: 1px solid var(--auth-border);
+    margin-top: 8px;
+    padding-top: 8px;
   }
 
   .billing-cash-grid article {

@@ -6,6 +6,7 @@ import {
   Clock3,
   MessageCircle,
   Plus,
+  X
 } from 'lucide-react';
 import BookingFormModal from '../../components/schedule/BookingFormModal.jsx';
 import BookingDetailModal from '../../components/schedule/BookingDetailModal.jsx';
@@ -20,7 +21,6 @@ import { adminCustomerRepository } from '../../services/adminCustomerRepository.
 import { bookingCommunicationRepository } from '../../services/bookingCommunicationRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
 
-
 const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
 const SCHEDULE_QA_PREVIEW_BOOKINGS = [
   { id: 'qa-1', customer: 'Budi Santoso', sessionLabel: 'Recording', date: '2026-06-25', startHour: 10, durationHours: 2, paymentStatus: 'dp', total: 600000, bookingRequestStatus: 'confirmed' },
@@ -34,33 +34,12 @@ const SCHEDULE_QA_PREVIEW_BOOKINGS = [
 const isScheduleQaPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('schedulePreview');
 
 const monthNames = [
-  'Januari',
-  'Februari',
-  'Maret',
-  'April',
-  'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
-  'September',
-  'Oktober',
-  'November',
-  'Desember',
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
 const shortMonthNames = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'Mei',
-  'Jun',
-  'Jul',
-  'Agu',
-  'Sep',
-  'Okt',
-  'Nov',
-  'Des',
+  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
 ];
 
 const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -82,7 +61,6 @@ function addMonths(date, amount) {
 function getWeekStart(date) {
   const day = date.getDay();
   const diff = day === 0 ? -6 : 1 - day;
-
   return addDays(startOfDay(date), diff);
 }
 
@@ -102,7 +80,6 @@ function toIsoDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-
   return year + '-' + month + '-' + day;
 }
 
@@ -139,40 +116,32 @@ function getVisibleDays(date, viewMode) {
 function shiftDate(date, viewMode, direction) {
   if (viewMode === 'day') return addDays(date, direction);
   if (viewMode === 'week') return addDays(date, direction * 7);
-
   return addMonths(date, direction);
 }
 
 function getGridTemplate(viewMode, visibleDayCount) {
   if (viewMode === 'day') return 'var(--schedule-time-col, 112px) minmax(220px, 1fr)';
   if (viewMode === 'week') return 'var(--schedule-time-col, 112px) repeat(' + visibleDayCount + ', minmax(var(--schedule-week-day-col, 126px), 1fr))';
-
   return 'var(--schedule-time-col, 112px) repeat(' + visibleDayCount + ', minmax(var(--schedule-month-day-col, 92px), 1fr))';
 }
 
 function readStoredBookings() {
   if (typeof window === 'undefined') return [];
-
   try {
     const raw = window.localStorage.getItem(BOOKINGS_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-
 function normalizeBookingCustomerPhone(value) {
   let digits = String(value || '').replace(/\D/g, '');
-
   if (!digits) return '';
-
   if (digits.startsWith('00')) digits = digits.slice(2);
   if (digits.startsWith('0')) digits = '62' + digits.slice(1);
   if (digits.startsWith('8')) digits = '62' + digits;
-
   return digits;
 }
 
@@ -183,18 +152,15 @@ function cleanBookingCustomerName(value) {
 function hashBookingCustomerIdentity(value) {
   let hash = 0;
   const text = String(value || '');
-
   for (let index = 0; index < text.length; index += 1) {
     hash = ((hash << 5) - hash) + text.charCodeAt(index);
     hash |= 0;
   }
-
   return Math.abs(hash).toString(36);
 }
 
 function makeBookingCustomerId(phoneKey, name, salt = '') {
   const cleanName = cleanBookingCustomerName(name).replace(/[^a-z0-9]+/g, '-') || 'customer';
-
   return 'cust_' + hashBookingCustomerIdentity((phoneKey || 'no-phone') + '|' + cleanName + '|' + String(salt || ''));
 }
 
@@ -204,7 +170,6 @@ function resolveBookingCustomerIdentity(booking, currentBookings) {
   const nameKey = cleanBookingCustomerName(customerName);
   const samePhoneBookings = currentBookings.filter((item) => {
     if (item.id && booking.id && item.id === booking.id) return false;
-
     return normalizeBookingCustomerPhone(item.phone) === phoneKey;
   });
 
@@ -223,7 +188,6 @@ function resolveBookingCustomerIdentity(booking, currentBookings) {
 
   if (samePhoneBookings.length) {
     const existingBooking = samePhoneBookings[0];
-
     return {
       customerId: existingBooking.customerId || makeBookingCustomerId(phoneKey, existingBooking.customer || existingBooking.name || 'Customer'),
       existingCustomerName: existingBooking.customer || existingBooking.name || 'Customer lama',
@@ -250,7 +214,6 @@ function getBookingStatus(booking) {
 
 function isNoDurationPackageBooking(booking) {
   const hasPackage = Boolean(booking?.packageId && booking.packageId !== 'none') || booking?.pricingMode === 'package';
-
   return hasPackage && Number(booking?.durationHours || booking?.duration || 0) <= 0;
 }
 
@@ -260,28 +223,23 @@ function getStatusLabel(status) {
 
 function formatShortCurrency(value) {
   const safeValue = Math.max(0, Number(value) || 0);
-
   if (safeValue >= 1000000) {
     const millionValue = safeValue / 1000000;
     return 'Rp ' + millionValue.toFixed(millionValue % 1 === 0 ? 0 : 1).replace('.', ',') + 'jt';
   }
-
   if (safeValue >= 1000) {
     return 'Rp ' + Math.round(safeValue / 1000) + 'rb';
   }
-
   return 'Rp ' + safeValue;
 }
 
 function getBookingDurationHours(booking) {
   const duration = Number(booking.durationHours);
-
   return Number.isFinite(duration) && duration > 0 ? duration : 1;
 }
 
 function getBookingStartHour(booking) {
   const startHour = Number(booking.startHour);
-
   return Number.isFinite(startHour) ? startHour : 0;
 }
 
@@ -293,39 +251,29 @@ function formatHourLabel(hourValue) {
   const safeHour = Number(hourValue) || 0;
   const wholeHour = Math.floor(safeHour);
   const minutes = Math.round((safeHour - wholeHour) * 60);
-
   return String(wholeHour).padStart(2, '0') + '.' + String(minutes).padStart(2, '0');
 }
 
 function getBookingWindowLabel(booking) {
   if (isNoDurationPackageBooking(booking)) return 'Tanpa durasi studio';
-
   return formatHourLabel(getBookingStartHour(booking)) + '-' + formatHourLabel(getBookingEndHour(booking));
 }
 
 function getBookingStartDateTime(booking) {
   const dateText = String(booking?.date || '').trim();
-
   if (!dateText) return null;
-
   const dateValue = new Date(dateText + 'T00:00:00');
-
   if (Number.isNaN(dateValue.getTime())) return null;
-
   const startHour = getBookingStartHour(booking);
   const wholeHour = Math.floor(startHour);
   const minutes = Math.round((startHour - wholeHour) * 60);
-
   dateValue.setHours(wholeHour, minutes, 0, 0);
-
   return dateValue;
 }
 
 function formatBookingDateLabel(booking) {
   const startDate = getBookingStartDateTime(booking);
-
   if (!startDate) return booking?.date || '-';
-
   return startDate.toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'short',
@@ -337,7 +285,6 @@ function getUpcomingScheduleTimeLabel(booking) {
   if (isNoDurationPackageBooking(booking)) {
     return formatHourLabel(getBookingStartHour(booking)) + ' WIB';
   }
-
   return getBookingWindowLabel(booking) + ' WIB';
 }
 
@@ -359,7 +306,6 @@ function getUpcomingScheduleBookings(bookings) {
     .toSorted((first, second) => {
       const firstDate = getBookingStartDateTime(first);
       const secondDate = getBookingStartDateTime(second);
-
       return (firstDate?.getTime() || 0) - (secondDate?.getTime() || 0);
     });
 }
@@ -374,7 +320,6 @@ function getStudioCloseHour() {
 
 function shouldHideBookingFromCalendarGrid(booking) {
   const requestStatus = String(booking?.bookingRequestStatus || '').trim().toLowerCase();
-
   return (
     isNoDurationPackageBooking(booking) ||
     (
@@ -386,20 +331,17 @@ function shouldHideBookingFromCalendarGrid(booking) {
 
 function isBookingScheduleActive(booking) {
   const status = String(getBookingStatus(booking)).toLowerCase();
-
   if (shouldHideBookingFromCalendarGrid(booking)) return false;
-
   return !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
 }
 
+// Overlaps verification
 function doBookingIntervalsOverlap(firstBooking, secondBooking) {
   if (firstBooking.date !== secondBooking.date) return false;
-
   const firstStart = getBookingStartHour(firstBooking);
   const firstEnd = getBookingEndHour(firstBooking);
   const secondStart = getBookingStartHour(secondBooking);
   const secondEnd = getBookingEndHour(secondBooking);
-
   return Math.max(firstStart, secondStart) < Math.min(firstEnd, secondEnd);
 }
 
@@ -441,13 +383,11 @@ function getBookingConflictIssue(nextBooking, currentBookings) {
     .filter((existingBooking) => {
       if (!isBookingScheduleActive(existingBooking)) return false;
       if (existingBooking.id && nextBooking.id && existingBooking.id === nextBooking.id) return false;
-
       return doBookingIntervalsOverlap(existingBooking, nextBooking);
     })
     .sort((first, second) => {
       const startDiff = getBookingStartHour(first) - getBookingStartHour(second);
       if (startDiff !== 0) return startDiff;
-
       return getBookingEndHour(second) - getBookingEndHour(first);
     });
 
@@ -493,7 +433,6 @@ function getBookingSavedToast(booking) {
 function getSlotSpanRows(booking, startIndex) {
   const duration = Math.max(1, Math.ceil(Number(booking.durationHours) || 1));
   const availableRows = businessHours.length - startIndex;
-
   return Math.max(1, Math.min(duration, availableRows));
 }
 
@@ -502,7 +441,6 @@ function getVisibleBookingBlocks(bookings, visibleDays, activeStatuses) {
   const rawBlocks = bookings
     .map((booking) => {
       const status = getBookingStatus(booking);
-
       if (shouldHideBookingFromCalendarGrid(booking)) {
         return null;
       }
@@ -548,14 +486,12 @@ function getVisibleBookingBlocks(bookings, visibleDays, activeStatuses) {
 
     dayBlocks.forEach((block) => {
       let laneIndex = laneEnds.findIndex((endIndex) => endIndex <= block.startIndex);
-
       if (laneIndex === -1) {
         laneIndex = laneEnds.length;
         laneEnds.push(block.endIndex);
       } else {
         laneEnds[laneIndex] = block.endIndex;
       }
-
       block.laneIndex = laneIndex;
     });
 
@@ -565,12 +501,10 @@ function getVisibleBookingBlocks(bookings, visibleDays, activeStatuses) {
           candidate.startIndex < block.endIndex &&
           candidate.endIndex > block.startIndex
       );
-
       const maxLaneIndex = overlappingBlocks.reduce(
         (maxLane, candidate) => Math.max(maxLane, candidate.laneIndex || 0),
         block.laneIndex || 0
       );
-
       block.laneCount = maxLaneIndex + 1;
     });
   });
@@ -601,27 +535,47 @@ function CalendarBookingBlock({ block, onBookingClick }) {
   const startLabel = booking.startTimeLabel || String(booking.startHour).padStart(2, '0') + '.00';
   const durationLabel = (Number(booking.durationHours) || block.spanRows) + 'j';
   const priceLabel = formatShortCurrency(booking.total || booking.subtotal || 0);
+  
   const hasUnreadClientMessage = booking.lastMessageSenderRole === 'client' && booking.lastMessageReadByAdmin === false;
   const isNewClientRequest = booking.bookingRequestStatus === 'submitted';
+  const isCancellation = booking.bookingRequestStatus === 'cancellation_requested';
+
+  const requestClass = isCancellation 
+    ? ' is-req-cancelled' 
+    : isNewClientRequest 
+      ? ' is-req-submitted' 
+      : '';
 
   return (
     <button
       aria-label={'Booking ' + booking.customer + ' ' + startLabel + ' ' + durationLabel}
-      className={'schedule-booking-block is-' + block.status + (hasUnreadClientMessage ? ' has-client-message' : '')}
+      className={'schedule-booking-block is-' + block.status + requestClass + (hasUnreadClientMessage ? ' has-client-message' : '')}
       style={getBookingBlockStyle(block)}
       type="button"
       onClick={() => onBookingClick(booking)}
     >
+      <span className="schedule-booking-glow" aria-hidden="true" />
+      
       <span className="schedule-booking-topline">
         <strong>{booking.customer}</strong>
+        
+        {/* Micro status dot only visible on mobile screens */}
+        <span className="schedule-booking-status-dot" />
+
+        {/* Regular status pill only visible on desktop screens */}
         <StatusPill status={block.status}>{isNewClientRequest ? 'Request' : statusLabel}</StatusPill>
       </span>
+
       <span className="schedule-booking-title">{title}</span>
+
       <span className="schedule-booking-meta">
         <span>{startLabel} • {durationLabel}</span>
         <b>{priceLabel}</b>
       </span>
-      {hasUnreadClientMessage ? <i className="schedule-booking-message-dot" aria-label="Pesan client belum dibaca" /> : null}
+
+      {hasUnreadClientMessage ? (
+        <i className="schedule-booking-message-dot" aria-label="Pesan client belum dibaca" />
+      ) : null}
     </button>
   );
 }
@@ -868,7 +822,11 @@ function CalendarGrid({
 
   return (
     <section className="schedule-grid-shell" aria-label="Calendar grid">
-      <div className="schedule-grid-scroll" ref={gridScrollRef}>
+      <div 
+        className="schedule-grid-scroll overflow-x-auto scrollbar-none" 
+        ref={gridScrollRef}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         <div
           className={'schedule-grid schedule-grid--' + viewMode}
           style={{ gridTemplateColumns }}
@@ -913,7 +871,7 @@ function CalendarGrid({
                 className="schedule-time-cell"
                 style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
               >
-                <Clock3 size={14} aria-hidden="true" />
+                <Clock3 size={12} aria-hidden="true" />
                 <span>{hour.shortLabel || hour.label || hour.rangeLabel || hour.description}</span>
               </div>
 
@@ -1009,21 +967,17 @@ export default function SchedulePage() {
 
     bookings.forEach((booking) => {
       const status = getBookingStatus(booking);
-
       if (counts[status] !== undefined) {
         counts[status] += 1;
       }
-
       if (activeStatuses.includes(status)) {
         visibleCount += 1;
       }
     });
 
-    return {
-      counts,
-      visibleCount,
-    };
+    return { counts, visibleCount };
   }, [activeStatuses, bookings]);
+
   const visibleBookingCount = scheduleStats.visibleCount;
   const paymentStatusCounts = scheduleStats.counts;
   const requestBookings = useMemo(
@@ -1038,12 +992,10 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (!scheduleToast) return undefined;
-
     const toastTimerId = window.setTimeout(
       () => setScheduleToast(null),
       scheduleToast.kind === 'warning' ? 6500 : 3600
     );
-
     return () => {
       window.clearTimeout(toastTimerId);
     };
@@ -1055,7 +1007,6 @@ export default function SchedulePage() {
 
   function goToday() {
     const todayDate = startOfDay(new Date());
-
     setSelectedDate(todayDate);
     setTodayFocusRequest((current) => current + 1);
   }
@@ -1098,14 +1049,12 @@ export default function SchedulePage() {
 
   async function handleQuickRequestAction(booking, status) {
     if (!booking?.id || requestActionKey) return;
-
     const actionKey = booking.id + ':' + status;
     setRequestActionKey(actionKey);
-
     try {
       await updateClientRequestStatus(booking, status);
     } catch {
-      // Toast sudah ditangani oleh updateClientRequestStatus.
+      // Handled
     } finally {
       setRequestActionKey('');
     }
@@ -1120,13 +1069,12 @@ export default function SchedulePage() {
 
   async function saveBooking(booking) {
     const conflictIssue = getBookingConflictIssue(booking, bookings);
-
     if (conflictIssue) {
       setScheduleToast(conflictIssue);
       return false;
     }
 
-    const customerIdentity = resolveBookingCustomerIdentity(booking, bookings);
+    const customerIdentity = resolveBookingCustomerIdentity(booking, current => bookings);
     let nextBooking = {
       ...booking,
       customerId: customerIdentity.customerId,
@@ -1149,7 +1097,6 @@ export default function SchedulePage() {
 
     try {
       const linkedCustomer = await adminCustomerRepository.findCustomerByPhone(nextBooking.phone);
-
       if (linkedCustomer) {
         nextBooking = {
           ...nextBooking,
@@ -1202,62 +1149,227 @@ export default function SchedulePage() {
 
   return (
     <section className="schedule-page" aria-labelledby="schedule-calendar-title">
-      <div className="schedule-toolbar">
-        <div className="schedule-heading-row">
-          <h2 id="schedule-calendar-title">{rangeLabel}</h2>
+      {/* CSS overrides for high-density mobile layout optimization */}
+      <style>{`
+        /* Default styles for desktop helper classes */
+        .schedule-booking-status-dot {
+          display: none;
+        }
 
-          <div className="schedule-nav">
-            <button type="button" aria-label="Sebelumnya" onClick={() => moveCalendar(-1)}>
-              <ChevronLeft size={17} />
+        @media (max-width: 767px) {
+          .schedule-grid {
+            grid-template-rows: 32px repeat(13, minmax(34px, 1fr)) !important;
+          }
+          .schedule-day-head {
+            padding: 2px !important;
+            min-height: 32px !important;
+          }
+          .schedule-day-head span {
+            font-size: 8px !important;
+          }
+          .schedule-day-head strong {
+            font-size: 11px !important;
+          }
+          .schedule-time-cell {
+            font-size: 8px !important;
+            padding: 2px !important;
+          }
+          .schedule-time-cell svg {
+            width: 10px !important;
+            height: 10px !important;
+          }
+          .schedule-slot-cell {
+            border-bottom: 1px solid var(--auth-border) !important;
+            border-right: 1px solid var(--auth-border) !important;
+          }
+          
+          /* Booking block mobile adjustments */
+          .schedule-booking-block {
+            border-radius: 4px !important;
+            box-shadow: none !important;
+            padding: 2px 4px !important;
+            margin: 1px !important;
+            border-left-width: 2px !important;
+            gap: 0px !important;
+          }
+          .schedule-booking-topline {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 2px !important;
+          }
+          .schedule-booking-topline strong {
+            font-size: 9px !important;
+            line-height: 1.1 !important;
+            letter-spacing: -0.02em !important;
+          }
+          .schedule-booking-topline .status-pill {
+            display: none !important;
+          }
+          .schedule-booking-status-dot {
+            display: inline-block !important;
+            width: 5px !important;
+            height: 5px !important;
+            border-radius: 50% !important;
+            flex-shrink: 0 !important;
+          }
+          .schedule-booking-block.is-lunas .schedule-booking-status-dot {
+            background-color: #4ade80 !important;
+          }
+          .schedule-booking-block.is-dp .schedule-booking-status-dot {
+            background-color: #fb923c !important;
+          }
+          .schedule-booking-block.is-pending .schedule-booking-status-dot {
+            background-color: #fbbf24 !important;
+          }
+          .schedule-booking-block.is-req-cancelled .schedule-booking-status-dot {
+            background-color: #ef4444 !important;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+          .schedule-booking-block.is-req-submitted .schedule-booking-status-dot {
+            background-color: #fbbf24 !important;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+          .schedule-booking-title {
+            font-size: 8px !important;
+            line-height: 1.1 !important;
+            color: var(--auth-text-main) !important;
+            margin-top: 1px !important;
+          }
+          .schedule-booking-meta {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            font-size: 8px !important;
+            line-height: 1.1 !important;
+            margin-top: 1px !important;
+          }
+          .schedule-booking-meta b {
+            font-size: 8px !important;
+            color: var(--auth-text-main) !important;
+          }
+          .schedule-booking-message-dot {
+            top: 2px !important;
+            right: 2px !important;
+            width: 5px !important;
+            height: 5px !important;
+          }
+        }
+      `}</style>
+
+      {/* Symmetrical & Balanced Controls Toolbar (No horizontal scroll, fully responsive) */}
+      <div className="schedule-toolbar bg-[#0b0c0e]/80 backdrop-blur-md border border-white/5 p-3 md:p-4 rounded-xl flex flex-col gap-3">
+        {/* Client Request Banner at the Top */}
+        {requestBookings.length ? (
+          <button 
+            className="w-full py-1.5 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-extrabold flex items-center justify-between transition-all animate-pulse" 
+            type="button" 
+            onClick={() => setIsRequestListOpen(true)}
+          >
+            <span className="flex items-center gap-1.5">
+              <MessageCircle size={12} />
+              Ada {requestBookings.length} request pemesanan baru
+            </span>
+            <span className="text-[9px] uppercase tracking-wider text-red-400/80">Lihat &rarr;</span>
+          </button>
+        ) : null}
+
+        {/* Row 1: Title & Navigation Controls */}
+        <div className="flex items-center justify-between gap-3 w-full">
+          <h2 id="schedule-calendar-title" className="text-sm md:text-base font-extrabold text-white truncate max-w-[140px] xs:max-w-none">
+            {rangeLabel}
+          </h2>
+
+          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 shrink-0">
+            <button 
+              type="button" 
+              aria-label="Sebelumnya" 
+              onClick={() => moveCalendar(-1)}
+              className="w-7 h-7 flex items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+            >
+              <ChevronLeft size={14} />
             </button>
-            <button type="button" onClick={goToday}>Hari ini</button>
-            <button type="button" aria-label="Berikutnya" onClick={() => moveCalendar(1)}>
-              <ChevronRight size={17} />
+            <button 
+              type="button" 
+              onClick={goToday}
+              className="px-2.5 h-7 flex items-center justify-center rounded text-[9px] font-extrabold uppercase tracking-wide text-white/70 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+            >
+              Hari ini
+            </button>
+            <button 
+              type="button" 
+              aria-label="Berikutnya" 
+              onClick={() => moveCalendar(1)}
+              className="w-7 h-7 flex items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+            >
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
 
-        <div className="schedule-command-row" aria-label="Kontrol kalender">
-          <StudioSelect
-            label="Tampilan"
-            options={viewModes}
-            selectedKey={viewMode}
-            onChange={setViewMode}
-          />
+        {/* Row 2: View Switchers & Creation Button */}
+        <div className="flex items-center justify-between gap-3 w-full">
+          {/* Segmented View Switcher */}
+          <div className="flex bg-white/5 p-0.5 rounded-lg border border-white/10 flex-1 max-w-[200px]">
+            {viewModes.map((mode) => (
+              <button
+                key={mode.key}
+                onClick={() => setViewMode(mode.key)}
+                className={`flex-1 py-1 text-center rounded text-[9px] font-bold uppercase transition-all ${
+                  viewMode === mode.key 
+                    ? 'bg-[#ff8a2a] text-black font-extrabold shadow-sm' 
+                    : 'text-white/60 hover:text-white'
+                }`}
+                type="button"
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
 
-          <button className="schedule-add-button" type="button" onClick={() => openBookingModal()}>
-            <Plus size={16} />
-            Tambah
+          <button 
+            className="px-3.5 h-8 flex items-center justify-center gap-1.5 bg-[#ff8a2a] text-black rounded-lg text-[10px] font-extrabold active:scale-95 transition-all shrink-0" 
+            type="button" 
+            onClick={() => openBookingModal()}
+          >
+            <Plus size={13} />
+            <span>Tambah</span>
           </button>
         </div>
 
-        <div
-          className={'schedule-status-row' + (requestBookings.length ? ' has-request' : '')}
-          aria-label={'Filter status pembayaran, ' + visibleBookingCount + ' booking tampil'}
-        >
+        {/* Row 3: Status Filters (Balanced full-width grid) */}
+        <div className="grid grid-cols-3 gap-2 w-full">
           {statusFilters.map((item) => {
             const isActive = activeStatuses.includes(item.key);
 
             return (
               <button
                 aria-pressed={isActive}
-                className={'schedule-status-filter is-' + item.key + (isActive ? ' is-active' : '')}
+                className={`h-7.5 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1.5 border transition-all ${
+                  isActive 
+                    ? item.key === 'lunas' 
+                      ? 'bg-green-500/10 border-green-500/30 text-green-400 font-extrabold'
+                      : item.key === 'dp'
+                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 font-extrabold'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-400 font-extrabold'
+                    : 'bg-[#15171c] border-white/5 text-slate-500 hover:text-slate-400'
+                }`}
                 key={item.key}
                 type="button"
                 onClick={() => toggleStatusFilter(item.key)}
               >
+                <span className={`w-1 h-1 rounded-full ${
+                  item.key === 'lunas' 
+                    ? 'bg-green-400' 
+                    : item.key === 'dp' 
+                      ? 'bg-orange-400' 
+                      : 'bg-amber-400'
+                }`} />
                 <span>{item.label}</span>
-                <strong>{paymentStatusCounts[item.key] || 0}</strong>
+                <strong className="opacity-70">({paymentStatusCounts[item.key] || 0})</strong>
               </button>
             );
           })}
-
-          {requestBookings.length ? (
-            <button className="schedule-client-request-alert" type="button" onClick={() => setIsRequestListOpen(true)}>
-              <MessageCircle size={14} />
-              <span>{requestBookings.length} request</span>
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -1280,6 +1392,7 @@ export default function SchedulePage() {
           />
         </div>
       </div>
+
       <BookingFormModal
         editingBooking={editingBooking}
         initialSlot={bookingInitialSlot}
@@ -1330,5 +1443,3 @@ export default function SchedulePage() {
     </section>
   );
 }
-
-

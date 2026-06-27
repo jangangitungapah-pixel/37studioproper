@@ -28,6 +28,12 @@ import {
   getBookingRequestStatusMeta,
 } from '../services/bookingCommunicationRepository.js';
 import {
+  identifyOneSignalUser,
+  isOneSignalBrowserSupported,
+  logoutOneSignalUser,
+} from '../services/oneSignalService.js';
+import { syncNotificationSubscription } from '../services/notificationSubscriptionRepository.js';
+import {
   usePricingSettings,
   formatRupiah,
   resolveBookingPricing,
@@ -397,6 +403,29 @@ export default function ClientPortalPage() {
       (err) => console.error('Gagal mengambil booking client:', err)
     );
     return unsubscribe;
+  }, [currentUser]);
+
+  // OneSignal: identify client user for per-user push targeting
+  useEffect(() => {
+    if (!isOneSignalBrowserSupported()) return;
+
+    if (!currentUser) {
+      logoutOneSignalUser().catch(() => {});
+      return;
+    }
+
+    identifyOneSignalUser(currentUser, 'client')
+      .then((state) => {
+        return syncNotificationSubscription({
+          reason: 'client-login',
+          role: 'client',
+          state,
+          user: currentUser,
+        });
+      })
+      .catch((error) => {
+        console.warn('[onesignal] Client identify/sync failed:', error);
+      });
   }, [currentUser]);
 
   // Load public-safe occupied slots mirrored from admin schedule

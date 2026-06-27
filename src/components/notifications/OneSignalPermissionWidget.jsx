@@ -129,11 +129,26 @@ export default function OneSignalPermissionWidget() {
   useEffect(() => {
     if (!isVisibleRoute || !isConfigured || !currentUser?.uid) return undefined;
 
-    const intervalId = window.setInterval(() => {
-      syncSubscriptionSnapshot('poll').catch((error) => {
-        console.warn('[onesignal] Subscription registry poll failed:', error);
+    // Fast early polling (5s) for the first 60s, then slower interval (30s)
+    const EARLY_INTERVAL_MS = 5000;
+    const STEADY_INTERVAL_MS = 30000;
+    const EARLY_PHASE_DURATION_MS = 60000;
+
+    const earlyIntervalId = window.setInterval(() => {
+      syncSubscriptionSnapshot('poll-early').catch((error) => {
+        console.warn('[onesignal] Subscription registry early poll failed:', error);
       });
-    }, 15000);
+    }, EARLY_INTERVAL_MS);
+
+    let steadyIntervalId = 0;
+    const earlyPhaseEndId = window.setTimeout(() => {
+      window.clearInterval(earlyIntervalId);
+      steadyIntervalId = window.setInterval(() => {
+        syncSubscriptionSnapshot('poll-steady').catch((error) => {
+          console.warn('[onesignal] Subscription registry steady poll failed:', error);
+        });
+      }, STEADY_INTERVAL_MS);
+    }, EARLY_PHASE_DURATION_MS);
 
     function handleVisibilityChange() {
       if (document.visibilityState !== 'visible') return;
@@ -145,6 +160,42 @@ export default function OneSignalPermissionWidget() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // OneSignal v16 event-driven sync: subscribe to permission and push subscription changes
+    function onPermissionChange() {
+      syncSubscriptionSnapshot('permission-change').catch((error) => {
+        console.warn('[onesignal] Subscription registry permission-change sync failed:', error);
+      });
+    }
+
+    function onPushSubscriptionChange() {
+      syncSubscriptionSnapshot('subscription-change').catch((error) => {
+        console.warn('[onesignal] Subscription registry push-change sync failed:', error);
+      });
+    }
+
+    let removeOneSignalListeners = () => {};
+    try {
+      const os = window.OneSignal;
+      if (os?.Notifications?.addEventListener) {
+        os.Notifications.addEventListener('permissionChange', onPermissionChange);
+        const prevRemove = removeOneSignalListeners;
+        removeOneSignalListeners = () => {
+          prevRemove();
+          os.Notifications.removeEventListener('permissionChange', onPermissionChange);
+        };
+      }
+      if (os?.User?.PushSubscription?.addEventListener) {
+        os.User.PushSubscription.addEventListener('change', onPushSubscriptionChange);
+        const prevRemove = removeOneSignalListeners;
+        removeOneSignalListeners = () => {
+          prevRemove();
+          os.User.PushSubscription.removeEventListener('change', onPushSubscriptionChange);
+        };
+      }
+    } catch (listenerError) {
+      console.warn('[onesignal] Could not attach subscription change listeners:', listenerError);
+    }
+
     const readySyncId = window.setTimeout(() => {
       syncSubscriptionSnapshot('ready').catch((error) => {
         console.warn('[onesignal] Subscription registry ready sync failed:', error);
@@ -152,9 +203,12 @@ export default function OneSignalPermissionWidget() {
     }, 0);
 
     return () => {
-      window.clearInterval(intervalId);
+      window.clearInterval(earlyIntervalId);
+      window.clearInterval(steadyIntervalId);
+      window.clearTimeout(earlyPhaseEndId);
       window.clearTimeout(readySyncId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      removeOneSignalListeners();
     };
   }, [currentUser?.uid, isConfigured, isVisibleRoute, syncSubscriptionSnapshot]);
 

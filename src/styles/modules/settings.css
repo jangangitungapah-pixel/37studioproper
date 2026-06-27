@@ -593,16 +593,43 @@
 }
 
 .settings-danger-collection em {
-  color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
+  font-size: 9px;
   font-style: normal;
-  font-weight: 760;
+  font-weight: 700;
   white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: var(--studio-radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--auth-bg-control);
+  border: 1px solid var(--auth-border);
+  color: var(--auth-text-muted);
 }
 
-.settings-danger-collection.is-error em,
+.settings-danger-collection.is-deleting em {
+  background: rgba(251, 146, 60, 0.1);
+  border-color: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.settings-danger-collection.is-done em {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.settings-danger-collection.is-error em {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
 .settings-danger-collection p {
   color: var(--auth-danger);
+  font-size: 10px;
+  grid-column: 1 / -1;
+  margin: 4px 0 0 0;
 }
 
 .settings-danger-confirm {
@@ -779,8 +806,61 @@
     grid-template-columns: 1fr;
   }
 
+  .settings-danger-hero {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .settings-danger-icon {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .settings-danger-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .settings-danger-hero h3 {
+    font-size: 14px !important;
+  }
+
+  .settings-danger-hero span:not(.settings-danger-icon) {
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+  }
+
+  .settings-danger-alert {
+    grid-template-columns: 20px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+  }
+
+  .settings-danger-alert svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .settings-danger-alert p {
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+  }
+
   .settings-danger-collection {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    padding: 6px 10px !important;
+    align-items: center !important;
+  }
+
+  .settings-danger-check {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .settings-danger-check input {
+    margin-top: 2px !important;
+    flex-shrink: 0 !important;
   }
 }
 

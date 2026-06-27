@@ -229,6 +229,26 @@ export async function dispatchNotificationEventNow(record, user) {
   return payload;
 }
 
+
+async function dispatchWithRetry(record, user, maxRetries = 2) {
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
+
+    try {
+      return await dispatchNotificationEventNow(record, user);
+    } catch (err) {
+      lastError = err;
+      console.warn(`[notification-dispatch] Attempt ${attempt + 1} failed:`, err?.message || err);
+    }
+  }
+
+  throw lastError;
+}
+
 export async function createNotificationEvent(input = {}) {
   if (!firestoreDb || !input?.user?.uid) return null;
 
@@ -237,12 +257,13 @@ export async function createNotificationEvent(input = {}) {
 
   await setDoc(eventRef, record);
 
-  dispatchNotificationEventNow(record, input.user).catch((error) => {
-    console.warn('[notification-dispatch] Realtime worker dispatch failed, cron fallback will retry:', error);
+  dispatchWithRetry(record, input.user).catch((error) => {
+    console.warn('[notification-dispatch] All retry attempts failed, cron fallback will retry:', error);
   });
 
   return record;
 }
+
 
 export function createAdminNotificationEvent(input = {}) {
   return createNotificationEvent({
