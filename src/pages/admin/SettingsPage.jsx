@@ -17,10 +17,8 @@ import {
   writeAccountPreferences,
 } from '../../utils/accountSettings.js';
 import {
-  adminPermissionPages,
   countEnabledAdminPermissions,
   defaultAdminPermissions,
-  defaultGuardPortalPermissions,
   getAssignablePermissionPages,
   isOwnerAdminUser,
   normalizeAdminPermissionsForRole,
@@ -315,13 +313,8 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       });
       pages.push({
         key: 'user-settings',
-        label: 'User Settings',
-        description: 'Daftar user admin portal, role, dan akses halaman yang diizinkan owner.',
-      });
-      pages.push({
-        key: 'approvals',
-        label: 'Persetujuan Admin',
-        description: 'Menyetujui atau menghapus akun admin pendaftaran baru.',
+        label: 'User & Access Settings',
+        description: 'Daftar user admin portal, role, persetujuan akun baru, dan hak akses halaman.',
       });
       pages.push({
         key: 'danger',
@@ -424,18 +417,18 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   }, [settings]);
 
   const approvalUsers = useMemo(
-    () => registeredUsers.filter((user) => user.id !== currentUser?.uid && user.role === 'admin'),
+    () => registeredUsers.filter((user) => user.id !== currentUser?.uid && user.status === 'pending'),
     [registeredUsers, currentUser?.uid]
   );
 
   const portalUsers = useMemo(
-    () => registeredUsers.filter((user) => ['owner', 'admin', 'studio_guard'].includes(user.role)),
+    () => registeredUsers.filter((user) => user.status === 'approved' || user.role === 'owner'),
     [registeredUsers]
   );
 
   // Sync users list for owner-only user management pages
   useEffect(() => {
-    if (!['approvals', 'user-settings'].includes(activeSubpage) || !isOwnerAdminUser(currentUser)) return;
+    if (activeSubpage !== 'user-settings' || !isOwnerAdminUser(currentUser)) return;
 
     const usersLoadingFrameId = window.requestAnimationFrame(() => {
       setUsersLoading(true);
@@ -1239,8 +1232,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           ? 'settings-page is-account-settings'
           : activeSubpage === 'user-settings'
             ? 'settings-page is-user-settings'
-            : activeSubpage === 'approvals'
-            ? 'settings-page is-approvals-settings'
             : activeSubpage === 'danger'
               ? 'settings-page is-danger-settings'
               : activeSubpage === 'fee-settings'
@@ -2186,16 +2177,62 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
       {activeSubpage === 'user-settings' && isOwnerAdminUser(currentUser) && (
         <section className="settings-section settings-user-access-section">
-          <div className="settings-section-head">
+          
+          {/* ── SEKSI 1: REQUEST REGISTER BARU ── */}
+          {approvalUsers.length ? (
+            <div className="settings-pending-approvals-block">
+              <h3 className="settings-section-title">Pending Approvals</h3>
+              <div className="settings-list settings-pending-list">
+                {approvalUsers.map((user) => (
+                  <article className="settings-list-item" key={user.id}>
+                    <div>
+                      <strong>{user.displayName || 'User Admin Baru'}</strong>
+                      <span>{user.email || user.phoneNumber || getMaskedUid(user.id)}</span>
+                      <small className="settings-approval-date">
+                        Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
+                      </small>
+                    </div>
+
+                    <div className="settings-row-actions settings-approval-actions">
+                      <button
+                        type="button"
+                        aria-label="Setujui user"
+                        title="Setujui user"
+                        onClick={() => handleApproveUser(user.id)}
+                        className="settings-mini-button is-primary settings-approval-icon-button is-approve"
+                      >
+                        <ShieldCheck size={13} />
+                        Setujui
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label="Tolak request admin"
+                        title="Tolak request admin"
+                        onClick={() => handleRejectUser(user.id)}
+                        className="settings-mini-button settings-approval-delete-button"
+                      >
+                        <Trash2 size={13} />
+                        Tolak
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── SEKSI 2: DAFTAR AKUN PORTAL TIM AKTIF ── */}
+          <div className="settings-section-head settings-section-divider">
             <div>
-              <h3>User Settings</h3>
-              <p>Daftar akun yang bisa masuk admin portal. Owner dapat mengatur akses halaman admin dan guard dari sini.</p>
+              <h3>Akun Portal Tim Aktif</h3>
+              <p>Daftar akun Owner, Admin, dan Penjaga. Atur role, kepemilikan, dan izin akses halaman.</p>
             </div>
           </div>
 
           <div className="settings-list settings-user-access-list">
             {usersLoading ? (
-              <p className="settings-empty-text">Memuat daftar user admin portal...</p>
+              <p className="settings-empty-text">Memuat daftar user...</p>
             ) : portalUsers.length ? (
               portalUsers.map((user) => {
                 const assignablePages = getAssignablePermissionPages(user);
@@ -2222,16 +2259,41 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
                     <div className="settings-row-actions settings-approval-actions">
                       {canEditPermissions ? (
-                        <button
-                          type="button"
-                          aria-label="Atur akses halaman user"
-                          title="Atur akses halaman user"
-                          onClick={() => openPermissionSettings(user)}
-                          className="settings-mini-button settings-permission-open-button"
-                        >
-                          <SlidersHorizontal size={14} />
-                          Akses
-                        </button>
+                        <>
+                          {user.role === 'admin' && (
+                            <button
+                              type="button"
+                              aria-label="Transfer owner ke user ini"
+                              title="Transfer owner ke user ini"
+                              onClick={() => transferOwnershipToUser(user)}
+                              className="settings-mini-button settings-owner-transfer-button"
+                            >
+                              <Crown size={12} />
+                              Owner
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            aria-label="Atur akses halaman user"
+                            title="Atur akses halaman user"
+                            onClick={() => openPermissionSettings(user)}
+                            className="settings-mini-button settings-permission-open-button"
+                          >
+                            <SlidersHorizontal size={12} />
+                            Akses
+                          </button>
+
+                          <button
+                            type="button"
+                            aria-label="Nonaktifkan admin"
+                            title="Nonaktifkan admin"
+                            onClick={() => handleRejectUser(user.id)}
+                            className="settings-mini-button settings-approval-delete-button"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </>
                       ) : (
                         <span className="settings-owner-status-pill" title="Owner full access" aria-label="Owner full access">
                           <Crown size={13} />
@@ -2309,154 +2371,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               </form>
             </div>
           ) : null}
-        </section>
-      )}
-
-      {activeSubpage === 'approvals' && (
-        <section className="settings-section">
-          <div className="settings-section-head">
-            <div>
-              <h3>Daftar Registrasi Admin</h3>
-              <p>Hanya akun dengan role admin yang tampil di sini. Setujui untuk memberi akses atau tolak tanpa menghapus identitas Firebase.</p>
-            </div>
-          </div>
-
-          <div className="settings-list">
-            {usersLoading ? (
-              <p className="settings-empty-text">Memuat daftar user...</p>
-            ) : approvalUsers.length ? (
-              approvalUsers.map((user) => (
-                <article className="settings-list-item" key={user.id}>
-                  <div>
-                    <strong>{user.displayName || 'User'}</strong>
-                    <span className="settings-approval-date">
-                      Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="settings-row-actions settings-approval-actions">
-                    {user.role === 'owner' ? (
-                      <span className="settings-owner-status-pill" title="Owner aktif" aria-label="Owner aktif">
-                        <Crown size={13} />
-                      </span>
-                    ) : user.status !== 'approved' ? (
-                      <button
-                        type="button"
-                        aria-label="Setujui user"
-                        title="Setujui user"
-                        onClick={() => handleApproveUser(user.id)}
-                        className="settings-mini-button is-primary settings-approval-icon-button is-approve"
-                      >
-                        <ShieldCheck size={13} />
-                      </button>
-                    ) : (
-                      <span className="settings-approval-status-pill" title="User aktif">
-                        Aktif
-                      </span>
-                    )}
-
-                    {user.role !== 'owner' ? (
-                      <button
-                        type="button"
-                        aria-label="Transfer owner ke user ini"
-                        title="Transfer owner ke user ini"
-                        onClick={() => transferOwnershipToUser(user)}
-                        className="settings-mini-button settings-owner-transfer-button settings-approval-icon-button"
-                      >
-                        <Crown size={13} />
-                      </button>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      aria-label="Atur permission halaman user"
-                      title={'Permission: ' + countEnabledAdminPermissions(user.permissions, user.role) + '/' + adminPermissionPages.length}
-                      onClick={() => openPermissionSettings(user)}
-                      className="settings-mini-button settings-permission-open-button settings-approval-icon-button"
-                    >
-                      <SlidersHorizontal size={13} />
-                    </button>
-
-                    <button
-                      type="button"
-                      aria-label="Tolak atau nonaktifkan admin"
-                      title="Tolak atau nonaktifkan admin"
-                      onClick={() => handleRejectUser(user.id)}
-                      className="settings-mini-button settings-approval-delete-button settings-approval-icon-button"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <p className="settings-empty-text">Tidak ada registrasi admin lain saat ini.</p>
-            )}
-          </div>
-
-          {approvalSettingsMessage ? (
-            <p className="settings-invoice-message" role="status">{approvalSettingsMessage}</p>
-          ) : null}
-
-          {selectedPermissionUser ? (
-            <div
-              className="settings-permission-backdrop"
-              role="presentation"
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) closePermissionSettings();
-              }}
-            >
-              <form className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="permission-panel-title" onSubmit={savePermissionSettings}>
-                <header className="settings-permission-head">
-                  <div>
-                    <small>Permission Settings</small>
-                    <h3 id="permission-panel-title">{selectedPermissionUser.displayName || selectedPermissionUser.email || 'Admin User'}</h3>
-                    <span>{selectedPermissionUser.email || selectedPermissionUser.phoneNumber || selectedPermissionUser.id}</span>
-                  </div>
-
-                  <button type="button" aria-label="Tutup permission settings" onClick={closePermissionSettings}>
-                    <X size={16} />
-                  </button>
-                </header>
-
-                <div className="settings-permission-grid" aria-label="Daftar permission halaman admin">
-                  {adminPermissionPages.map((page) => {
-                    const enabled = Boolean(permissionDraft[page.key]);
-
-                    return (
-                      <button
-                        className={enabled ? 'settings-permission-row is-enabled' : 'settings-permission-row'}
-                        key={page.key}
-                        type="button"
-                        onClick={() => togglePermissionPage(page.key)}
-                      >
-                        <span className="settings-permission-toggle" aria-hidden="true">
-                          {enabled ? '✓' : ''}
-                        </span>
-
-                        <span>
-                          <strong>{page.label}</strong>
-                          <small>{page.description}</small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <footer className="settings-permission-actions">
-                  <button className="settings-mini-button is-ghost" type="button" onClick={grantAllPermissions}>
-                    Full Access
-                  </button>
-                  <button className="settings-mini-button" type="button" onClick={closePermissionSettings}>
-                    Batal
-                  </button>
-                  <button className="settings-mini-button is-primary" type="submit">
-                    Simpan Permission
-                  </button>
-                </footer>
-              </form>
-            </div>
-          ) : null}
-
         </section>
       )}
       </section>

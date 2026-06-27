@@ -304,10 +304,10 @@ export function normalizeOperatorFeeSettings(settings) {
   const source = settings && typeof settings === 'object' ? settings : DEFAULT_OPERATOR_FEE_SETTINGS;
 
   return {
-    people: Array.isArray(source.people) && source.people.length
+    people: Array.isArray(source.people)
       ? source.people.map(normalizeOperatorFeePerson)
       : DEFAULT_OPERATOR_FEE_SETTINGS.people.map(normalizeOperatorFeePerson),
-    rules: Array.isArray(source.rules) && source.rules.length
+    rules: Array.isArray(source.rules)
       ? source.rules.map(normalizeOperatorFeeRule)
       : DEFAULT_OPERATOR_FEE_SETTINGS.rules.map(normalizeOperatorFeeRule),
     options: normalizeOperatorFeeOptions(source.options),

@@ -7,6 +7,7 @@
   gap: 12px;
   margin: 0 auto;
   color: var(--auth-text-main);
+  font-family: var(--ui-font-sans);
 }
 
 .operator-fee-page,
@@ -240,7 +241,6 @@
   border-bottom: none;
 }
 
-/* Single-row Flex layout for row header */
 .operator-fee-queue-main {
   display: flex;
   align-items: center;
@@ -251,7 +251,7 @@
 
 .operator-fee-queue-info {
   flex: 1;
-  min-width: 0; /* Necessary for text truncation inside */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -280,7 +280,7 @@
 .operator-fee-customer {
   color: var(--auth-text-strong);
   font-size: 13px;
-  font-weight: 500; /* reduced weight */
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -309,11 +309,10 @@
 .operator-fee-total-amount {
   color: var(--auth-text-strong);
   font-size: 13px;
-  font-weight: 800; /* bold weight ONLY for fee amount */
+  font-weight: 800;
   white-space: nowrap;
 }
 
-/* Compact status dot style */
 .operator-fee-status-dot {
   display: inline-flex;
   align-items: center;
@@ -403,7 +402,6 @@
   padding: 4px 0 8px;
 }
 
-/* Compact details selects */
 .operator-fee-queue-detail-grid select {
   font-size: var(--studio-text-xs);
   min-height: 30px;
@@ -441,7 +439,6 @@
   padding: 0 8px;
 }
 
-/* Existing rules/simple settings styles (kept but made compact where appropriate) */
 .operator-fee-empty,
 .operator-fee-empty-note {
   display: grid;
@@ -462,124 +459,284 @@
   color: var(--auth-text-strong);
 }
 
-.operator-fee-simple-card {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
+/* ==========================================================================
+   17. OPERATOR FEE PANEL — Flat High-Density Layout
+   ========================================================================== */
+
+/* Compact strip hero */
+.operator-fee-simple-hero-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-card);
+  padding: 10px 12px;
 }
 
-.operator-fee-simple-card .settings-section-head {
+.fee-hero-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  color: var(--auth-accent);
+  background: var(--auth-accent-soft);
+  flex-shrink: 0;
+}
+
+.fee-hero-info {
   display: grid;
   gap: 2px;
+}
+
+.fee-hero-info p {
   margin: 0;
+  color: var(--auth-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.operator-fee-simple-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 8px;
+.fee-hero-info h3 {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-md);
+  font-weight: 760;
+  letter-spacing: -0.02em;
 }
 
-.operator-fee-simple-item {
+/* Strip summary stats */
+.operator-fee-simple-summary-strip {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(100px, 0.45fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fee-summary-box {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-soft);
+  background: var(--auth-bg-card);
+  text-align: center;
 }
 
-.operator-fee-money-input {
-  display: grid;
-  gap: 4px;
-}
-
-.operator-fee-simple-switch {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  color: var(--auth-text-main);
+.fee-summary-box small {
+  color: var(--auth-text-muted);
+  font-size: 8px;
   font-weight: 700;
-  white-space: nowrap;
-  font-size: var(--studio-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.operator-fee-simple-switch input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--auth-accent);
+.fee-summary-box strong {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
+  font-weight: 800;
 }
 
-.operator-fee-add-rule-form,
-.operator-fee-simple-crew-form {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  padding: 0;
-  gap: 6px;
+.fee-summary-box strong.fee-accent-text {
+  color: var(--auth-accent);
 }
 
-.operator-fee-add-rule-form > *,
-.operator-fee-simple-crew-form > * {
-  min-width: 0;
+.fee-summary-box span {
+  color: var(--auth-text-muted);
+  font-size: 9px;
 }
 
-.operator-fee-add-rule-form label,
-.operator-fee-simple-crew-form label {
-  display: grid;
-  gap: 4px;
-}
-
-.operator-fee-custom-rule-list,
-.operator-fee-simple-crew-list {
-  display: grid;
-  gap: 6px;
-}
-
-.operator-fee-custom-rule-list > *,
-.operator-fee-simple-crew {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
+/* Flat rules lists */
+.fee-rules-flat-list {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
+  border-radius: var(--studio-radius-lg);
+  overflow: hidden;
+  background: var(--auth-bg-card);
+}
+
+/* Absolute single row per rule */
+.fee-rule-inline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--auth-border);
+  background: var(--auth-bg-card);
+}
+
+.fee-rule-inline-row:last-child {
+  border-bottom: 0;
+}
+
+.fee-rule-inline-row:hover {
   background: var(--auth-bg-soft);
 }
 
-.operator-fee-custom-rule-list strong,
-.operator-fee-simple-crew strong {
-  overflow-wrap: anywhere;
-  font-size: var(--studio-text-xs);
+.fee-rule-inline-row.is-muted {
+  opacity: 0.65;
 }
 
-.operator-fee-simple-crew span,
-.operator-fee-custom-rule-list span {
+.fee-rule-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.fee-rule-title {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fee-rule-subtitle {
   color: var(--auth-text-muted);
   font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.operator-fee-simple-crew.is-muted {
-  opacity: 0.72;
+/* Right-side input and toggle switch wrapper */
+.fee-rule-inputs-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
+/* Money prefix inside rule row */
+.fee-money-prefix-wrapper {
+  position: relative;
+  width: 90px;
+}
+
+.fee-currency-prefix {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--auth-text-muted);
+  pointer-events: none;
+}
+
+.fee-flat-number-input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  padding: 0 6px 0 22px;
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  font-weight: 700;
+  outline: none;
+  text-align: right;
+}
+
+.fee-flat-number-input:focus {
+  border-color: var(--auth-border-strong);
+}
+
+/* Inline toggle checkbox switch */
+.fee-inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 10px;
+  font-weight: 760;
+  color: var(--auth-text-muted);
+}
+
+.fee-inline-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--auth-accent);
+  cursor: pointer;
+}
+
+.fee-flat-rules-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  overflow: hidden;
+  background: var(--auth-bg-card);
+}
+
+.fee-flat-rules-list .fee-rule-inline-row {
+  border-bottom: 1px solid var(--auth-border);
+  background: var(--auth-bg-soft);
+}
+
+.fee-flat-rules-list .fee-rule-inline-row:last-child {
+  border-bottom: 0;
+}
+
+.fee-rule-amount-badge {
+  color: var(--auth-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 800;
+}
+
+.fee-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Advanced technical details toggle */
+.fee-technical-details-toggle {
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-card);
+  padding: 6px 10px;
+}
+
+.fee-technical-details-toggle summary {
+  cursor: pointer;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  font-weight: 700;
+  list-style: none;
+  outline: none;
+}
+
+.fee-technical-details-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.fee-technical-details-toggle[open] summary {
+  border-bottom: 1px solid var(--auth-border);
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   18. RESPONSIVE FOR FEE PANEL
+   ========================================================================== */
 @media (max-width: 720px) {
   .operator-fee-queue-toolbar,
-  .operator-fee-queue-detail-grid,
-  .operator-fee-add-rule-form,
-  .operator-fee-simple-crew-form {
+  .operator-fee-queue-detail-grid {
     grid-template-columns: 1fr;
   }
   .operator-fee-queue-actions {
     grid-template-columns: 1fr;
-  }
-  .operator-fee-simple-item {
-    grid-template-columns: 1fr;
-  }
-  .operator-fee-simple-switch {
-    justify-content: flex-start;
   }
 }
 
@@ -587,30 +744,25 @@
   .operator-fee-page,
   .operator-fee-queue,
   .operator-fee-simple {
-    gap: 8px;
+    gap: 10px;
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
   .operator-fee-locked,
   .operator-fee-queue-hero,
   .operator-fee-simple-hero {
     grid-template-columns: 1fr;
-    padding: 12px;
+    padding: 10px;
   }
-  .operator-fee-queue-summary,
-  .operator-fee-simple-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr)); /* Keep 3-column in mobile but very compact */
-    gap: 4px;
+  .fee-summary-box {
+    padding: 4px 6px;
   }
-  .operator-fee-queue-summary article,
-  .operator-fee-simple-summary article {
-    padding: 6px;
+  .fee-summary-box strong {
+    font-size: var(--studio-text-xs);
   }
-  .operator-fee-queue-summary strong,
-  .operator-fee-simple-summary strong {
-    font-size: 12px;
+  .fee-summary-box span {
+    font-size: 8px;
   }
-  .operator-fee-queue-summary span,
-  .operator-fee-simple-summary span {
-    font-size: 9px;
+  .fee-money-prefix-wrapper {
+    width: 80px;
   }
 }
