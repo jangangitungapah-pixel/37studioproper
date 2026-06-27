@@ -312,8 +312,8 @@ export default function LoginPage() {
     <main className="theme-container auth-page" data-auth-surface="login">
       <section className="auth-card" aria-labelledby="login-title">
         <div className="auth-copy">
-          <div className="flex items-center gap-2 justify-center w-fit mx-auto mb-1 px-3 py-1 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-xs font-semibold uppercase tracking-[0.15em] text-[var(--auth-accent)]">
-            <Sparkles size={13} className="text-[var(--auth-accent)]" />
+          <div className="flex items-center gap-1.5 justify-center w-fit mx-auto mb-1.5 px-2.5 py-0.5 rounded-full border border-[var(--auth-border)] bg-[var(--auth-bg-soft)] text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--auth-accent)]">
+            <Sparkles size={11} className="text-[var(--auth-accent)]" />
             <span>Studio OS Console</span>
           </div>
           <h1 id="login-title" className="text-center">37 Music</h1>
@@ -331,7 +331,7 @@ export default function LoginPage() {
               setSuccess('');
             }}
           >
-            <Mail size={14} />
+            <Mail size={12} />
             <span>Email</span>
           </button>
           <button
@@ -343,7 +343,7 @@ export default function LoginPage() {
               setSuccess('');
             }}
           >
-            <Phone size={14} />
+            <Phone size={12} />
             <span>WhatsApp / SMS</span>
           </button>
         </div>
@@ -351,14 +351,14 @@ export default function LoginPage() {
         {/* Status Alerts */}
         {error ? (
           <div className="auth-alert" role="alert">
-            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         ) : null}
 
         {success ? (
-          <div className="auth-alert" style={{ color: '#2ecc71', borderColor: 'rgba(46, 204, 113, 0.3)', backgroundColor: 'rgba(46, 204, 113, 0.09)' }} role="status">
-            <ShieldCheck size={16} className="shrink-0 mt-0.5" />
+          <div className="auth-alert is-success" role="status">
+            <ShieldCheck size={14} className="shrink-0 mt-0.5" />
             <span>{success}</span>
           </div>
         ) : null}
@@ -372,7 +372,7 @@ export default function LoginPage() {
             <label className="auth-field">
               <span>Email Admin</span>
               <div className="auth-input-wrap">
-                <Mail size={18} aria-hidden="true" />
+                <Mail size={14} aria-hidden="true" />
                 <input
                   type="email"
                   className="auth-native-input"
@@ -388,7 +388,7 @@ export default function LoginPage() {
             <label className="auth-field">
               <span>Password</span>
               <div className="auth-input-wrap">
-                <LockKeyhole size={18} aria-hidden="true" />
+                <LockKeyhole size={14} aria-hidden="true" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="auth-native-input"
@@ -404,7 +404,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </label>
@@ -413,7 +413,7 @@ export default function LoginPage() {
               <label className="auth-field">
                 <span>Konfirmasi Password</span>
                 <div className="auth-input-wrap">
-                  <LockKeyhole size={18} aria-hidden="true" />
+                  <LockKeyhole size={14} aria-hidden="true" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     className="auth-native-input"
@@ -429,7 +429,7 @@ export default function LoginPage() {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     aria-label={showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
               </label>
@@ -437,9 +437,9 @@ export default function LoginPage() {
 
             <button className="auth-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
-                <LoaderCircle className="auth-spin" size={18} />
+                <LoaderCircle className="auth-spin" size={14} />
               ) : (
-                <ShieldCheck size={18} />
+                <ShieldCheck size={14} />
               )}
               <span>
                 {isSubmitting
@@ -476,7 +476,7 @@ export default function LoginPage() {
                 <label className="auth-field">
                   <span>Nomor HP (WhatsApp / SMS)</span>
                   <div className="auth-input-wrap">
-                    <Phone size={18} aria-hidden="true" />
+                    <Phone size={14} aria-hidden="true" />
                     <input
                       type="tel"
                       className="auth-native-input"
@@ -491,9 +491,9 @@ export default function LoginPage() {
 
                 <button className="auth-submit" type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
-                    <LoaderCircle className="auth-spin" size={18} />
+                    <LoaderCircle className="auth-spin" size={14} />
                   ) : (
-                    <ShieldCheck size={18} />
+                    <ShieldCheck size={14} />
                   )}
                   <span>{isSubmitting ? 'Mengirim...' : 'Kirim Kode OTP'}</span>
                 </button>
@@ -503,7 +503,7 @@ export default function LoginPage() {
                 <label className="auth-field">
                   <span>Kode Verifikasi (OTP)</span>
                   <div className="auth-input-wrap">
-                    <KeyRound size={18} aria-hidden="true" />
+                    <KeyRound size={14} aria-hidden="true" />
                     <input
                       type="text"
                       className="auth-native-input"
@@ -520,10 +520,10 @@ export default function LoginPage() {
                 <div className="auth-resend-container">
                   <span>Tidak menerima kode?</span>
                   <button
-                    type="button"
-                    className="auth-resend-btn"
-                    onClick={handleSendOTP}
-                    disabled={resendTimer > 0 || isSubmitting}
+                     type="button"
+                     className="auth-resend-btn"
+                     onClick={handleSendOTP}
+                     disabled={resendTimer > 0 || isSubmitting}
                   >
                     {resendTimer > 0 ? `Kirim ulang (${resendTimer}s)` : 'Kirim Ulang'}
                   </button>
@@ -531,9 +531,9 @@ export default function LoginPage() {
 
                 <button className="auth-submit" type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
-                    <LoaderCircle className="auth-spin" size={18} />
+                    <LoaderCircle className="auth-spin" size={14} />
                   ) : (
-                    <ShieldCheck size={18} />
+                    <ShieldCheck size={14} />
                   )}
                   <span>{isSubmitting ? 'Memverifikasi...' : 'Verifikasi OTP'}</span>
                 </button>
@@ -565,7 +565,7 @@ export default function LoginPage() {
           onClick={handleGoogleSignIn}
           disabled={isSubmitting}
         >
-          <svg className="auth-google-icon" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+          <svg className="auth-google-icon" viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
@@ -597,3 +597,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

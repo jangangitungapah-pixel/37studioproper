@@ -1,154 +1,71 @@
 /* Guard Attendance: Studio OS guard portal and owner approval. Owner file, no override layer. */
 .guard-shift-page {
   min-height: 100dvh;
-  display: grid;
-  background:
-    radial-gradient(circle at 16% 0%, var(--studio-accent-soft), transparent 30rem),
-    linear-gradient(180deg, var(--studio-bg-app), var(--studio-bg-page) 56%, var(--studio-bg-shell));
+  display: flex;
+  flex-direction: column;
+  background: var(--studio-bg-page);
   color: var(--auth-text-main);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .guard-shift-shell {
-  width: min(100%, 720px);
-  display: grid;
+  width: min(100%, 460px);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   margin: 0 auto;
-  padding: clamp(12px, 4vw, 24px) 12px calc(80px + env(safe-area-inset-bottom));
-}
-
-.guard-shift-hero,
-.guard-shift-hero-actions,
-.guard-shift-title,
-.guard-shift-date-chip,
-.guard-shift-ghost-button,
-.guard-shift-main-button,
-.guard-shift-feedback p {
-  display: flex;
+  padding: clamp(16px, 5vw, 32px) 16px calc(40px + env(safe-area-inset-bottom));
 }
 
 .guard-shift-hero {
+  display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-.guard-shift-brand,
-.guard-shift-title div,
-.guard-shift-login,
-.guard-shift-form,
-.guard-shift-workspace,
-.guard-attendance-owner,
-.guard-attendance-owner-locked,
-.guard-attendance-owner-list {
-  display: grid;
-  gap: 8px;
+.guard-shift-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.guard-shift-brand span,
-.guard-shift-login span,
-.guard-shift-form span,
-.guard-attendance-owner-hero p,
-.guard-attendance-owner-summary small,
-.guard-attendance-owner-empty p {
-  margin: 0;
-  color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
-  line-height: 1.45;
-}
-
-.guard-shift-brand span,
-.guard-shift-login span,
-.guard-shift-form span,
-.guard-attendance-owner-hero p,
-.guard-attendance-owner-summary small {
+.guard-shift-brand span {
   color: var(--auth-accent);
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.guard-shift-brand h1,
-.guard-shift-title strong,
-.guard-attendance-owner-locked h2,
-.guard-attendance-owner-hero h2,
-.guard-attendance-owner-summary strong,
-.guard-attendance-owner-empty h3 {
+.guard-shift-brand h1 {
   margin: 0;
   color: var(--auth-text-strong);
-  font-weight: 780;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.guard-shift-brand h1 {
-  font-size: clamp(1.4rem, 6vw, 1.85rem);
-}
-
-.guard-shift-card,
-.guard-shift-status,
-.guard-attendance-owner-locked,
-.guard-attendance-owner-hero,
-.guard-attendance-owner-summary article,
-.guard-attendance-owner-toolbar,
-.guard-attendance-owner-message,
-.guard-attendance-owner-empty {
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
-  background: var(--auth-bg-card);
-  box-shadow: var(--auth-shadow-soft);
-}
-
-.guard-shift-card {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-}
-
-.guard-shift-card.is-loading,
-.guard-shift-card.is-locked {
-  min-height: 140px;
-  place-items: center;
-  align-content: center;
-  text-align: center;
-}
-
-.guard-shift-card.is-locked svg {
-  color: var(--auth-danger);
-}
-
-.guard-shift-title {
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.guard-shift-title > span,
-.guard-attendance-owner-locked > svg,
-.guard-attendance-owner-locked > span,
-.guard-attendance-owner-hero > svg,
-.guard-attendance-owner-hero > span {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--auth-border-strong);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-accent-soft);
-  color: var(--auth-accent);
+.guard-shift-brand small {
+  color: var(--auth-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .guard-shift-hero-actions {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  margin-top: 8px;
 }
 
 .guard-shift-date-chip,
 .guard-shift-ghost-button,
-.guard-shift-main-button,
-.guard-attendance-owner-filter button,
-.guard-attendance-row-btn {
+.guard-shift-main-button {
   min-height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -158,80 +75,226 @@
   color: var(--auth-text-main);
   padding: 0 10px;
   font: inherit;
-  font-size: var(--studio-text-xs);
+  font-size: 11px;
   font-weight: 700;
 }
 
-.guard-shift-ghost-button,
-.guard-shift-main-button,
-.guard-attendance-owner-filter button,
-.guard-attendance-row-btn {
+.guard-shift-ghost-button {
   cursor: pointer;
+  transition: all 120ms ease;
 }
 
-.guard-shift-ghost-button:hover:not(:disabled),
-.guard-attendance-owner-filter button:hover:not(:disabled),
-.guard-attendance-row-btn:hover:not(:disabled) {
+.guard-shift-ghost-button:hover:not(:disabled) {
   border-color: var(--auth-border-strong);
   background: var(--auth-bg-card);
 }
 
 .guard-shift-ghost-button:disabled,
-.guard-shift-main-button:disabled,
-.guard-attendance-owner-filter button:disabled,
-.guard-attendance-row-btn:disabled {
+.guard-shift-main-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.guard-shift-login label,
-.guard-shift-form label {
-  display: grid;
+/* Card layout - Flat & clean on mobile, subtle container on desktop */
+.guard-shift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.guard-shift-card.is-loading,
+.guard-shift-card.is-locked {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--auth-bg-card);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  padding: 20px;
+}
+
+.guard-shift-card.is-locked svg {
+  color: var(--auth-danger);
+}
+
+.guard-shift-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.guard-shift-title strong {
+  color: var(--auth-text-strong);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.guard-shift-title small {
+  display: block;
+  color: var(--auth-text-muted);
+  font-size: 11px;
+}
+
+/* Ultra-Tactile High Density Form */
+.guard-shift-login {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.guard-shift-login label {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
-.guard-shift-login input,
-.guard-shift-form select,
-.guard-shift-form textarea,
-.guard-attendance-owner-toolbar input {
+.guard-shift-login label > span {
+  color: var(--auth-text-strong);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.guard-shift-login input {
   width: 100%;
-  min-height: 36px;
+  min-height: 46px;
+  height: 46px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   outline: 0;
   background: var(--auth-bg-control);
-  color: var(--auth-text-main);
-  padding: 8px 10px;
+  color: var(--auth-text-strong);
+  padding: 0 12px;
   font: inherit;
-  font-size: var(--studio-text-sm);
+  font-size: 13px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.guard-shift-form textarea {
-  min-height: 64px;
-  resize: vertical;
+.guard-shift-login input::placeholder {
+  color: var(--auth-text-muted);
 }
 
-.guard-shift-login input:focus,
-.guard-shift-form select:focus,
-.guard-shift-form textarea:focus,
-.guard-attendance-owner-toolbar input:focus {
+.guard-shift-login input:focus {
   border-color: var(--auth-accent);
   box-shadow: 0 0 0 3px var(--auth-accent-soft);
 }
 
+/* Password field wrapper with inline eye toggle */
+.guard-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.guard-password-wrap input {
+  padding-right: 44px;
+}
+
+.guard-password-toggle {
+  position: absolute;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--auth-text-muted);
+  cursor: pointer;
+  border-radius: var(--studio-radius-sm);
+}
+
 .guard-shift-main-button {
   width: 100%;
-  min-height: 36px;
-  border-color: var(--auth-accent);
+  min-height: 46px;
+  height: 46px;
+  border: 1px solid var(--auth-accent);
   border-radius: var(--studio-radius-md);
   background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
   color: var(--studio-text-inverse);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   box-shadow: none;
+  transition: opacity 120ms ease;
 }
 
-.guard-shift-main-button.is-danger {
-  border-color: var(--auth-danger);
-  background: var(--auth-danger);
+.guard-shift-main-button:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.guard-shift-login-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0;
+  position: relative;
+  min-height: 18px;
+}
+
+.guard-shift-login-divider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--studio-border);
+  z-index: 1;
+}
+
+.guard-shift-login-divider span {
+  background: var(--studio-bg-page);
+  padding: 0 10px;
+  color: var(--studio-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  z-index: 2;
+  text-transform: uppercase;
+}
+
+.guard-shift-google-button {
+  width: 100%;
+  min-height: 46px;
+  height: 46px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  color: var(--studio-text-strong);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.guard-shift-google-button:hover:not(:disabled) {
+  background: var(--studio-surface-hover);
+  border-color: var(--studio-border-strong);
+}
+
+.guard-shift-google-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Guard portal: Compact inline status */
@@ -240,6 +303,10 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-card);
+  box-shadow: var(--auth-shadow-soft);
 }
 
 .guard-shift-status .status-icon {
@@ -318,6 +385,7 @@
   font-size: 11px;
   color: var(--auth-text-muted);
 }
+
 
 /* Unified Status Badges */
 .status-badge {
@@ -717,4 +785,738 @@
   .guard-attendance-row-btn {
     flex: 1;
   }
+}
+
+/* ── OVERHAUL GUARD PORTAL NEW GLASS STYLING ── */
+
+.guard-profile-dashboard-card {
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--studio-shadow-card);
+}
+
+.guard-profile-info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guard-avatar-large {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--ui-radius-full);
+  background: linear-gradient(135deg, var(--studio-accent), #c259ff);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: var(--studio-text-lg);
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.25);
+  border: 2px solid var(--studio-border-strong);
+}
+
+.guard-name-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guard-name-details h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--studio-text-strong);
+}
+
+.guard-email-chip {
+  font-size: 10px;
+  color: var(--studio-text-muted);
+}
+
+.guard-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.guard-role-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-main);
+  padding: 2px 6px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--studio-border);
+}
+
+.guard-status-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--studio-success-soft);
+  color: var(--studio-success);
+  padding: 2px 6px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--studio-success) 30%, transparent);
+}
+
+/* Stats grid styling */
+.guard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  border-top: 1px dashed var(--studio-border);
+  padding-top: 16px;
+}
+
+.guard-stat-item {
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guard-stat-item.is-highlight {
+  border-color: color-mix(in srgb, var(--studio-accent) 40%, var(--studio-border));
+  background: var(--studio-accent-soft);
+}
+
+.guard-stat-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--studio-surface-1);
+  color: var(--studio-accent);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--studio-border);
+}
+
+.guard-stat-item.is-highlight .guard-stat-icon {
+  background: var(--studio-accent);
+  color: #fff;
+  border-color: var(--studio-accent);
+}
+
+.guard-stat-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.guard-stat-content small {
+  font-size: 9px;
+  color: var(--studio-text-muted);
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.guard-stat-content strong {
+  font-size: 12px;
+  color: var(--studio-text-strong);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Action panel updates */
+.is-action-overhaul {
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  padding: 16px;
+  box-shadow: var(--studio-shadow-card);
+}
+
+.guard-clockin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guard-panel-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.guard-panel-title h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--studio-text-strong);
+}
+
+.guard-panel-title p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--studio-text-muted);
+}
+
+.guard-shift-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.guard-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guard-input-label span {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--studio-accent);
+  letter-spacing: 0.05em;
+}
+
+.guard-select {
+  width: 100%;
+  height: 38px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 0 10px;
+  color: var(--studio-text-strong);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guard-select:focus {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 2px var(--studio-accent-soft);
+}
+
+.guard-textarea {
+  width: 100%;
+  min-height: 70px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 10px;
+  color: var(--studio-text-strong);
+  font-size: 13px;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s ease;
+}
+
+.guard-textarea:focus {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 2px var(--studio-accent-soft);
+}
+
+.guard-shift-btn-glow {
+  width: 100%;
+  height: 42px;
+  background: linear-gradient(135deg, var(--studio-success), #10b981);
+  color: #fff;
+  border: none;
+  border-radius: var(--studio-radius-md);
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.guard-shift-btn-glow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+.guard-shift-btn-glow:active {
+  transform: translateY(0);
+}
+
+/* Active shift view overhaul */
+.guard-active-shift-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guard-active-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guard-active-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--studio-text-strong);
+  letter-spacing: 0.05em;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--studio-danger);
+  animation: breathing-glow 1.5s infinite;
+}
+
+@keyframes breathing-glow {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.guard-live-timer-container {
+  background: radial-gradient(circle at center, var(--studio-surface-2), var(--studio-surface-1));
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  padding: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guard-timer-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--studio-text-muted);
+  letter-spacing: 0.1em;
+}
+
+.guard-timer-clock {
+  font-size: 32px;
+  font-family: monospace;
+  font-weight: 800;
+  color: var(--studio-text-strong);
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, var(--studio-text-strong), var(--studio-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.guard-shift-details-card {
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.detail-row span {
+  color: var(--studio-text-muted);
+}
+
+.detail-row strong {
+  color: var(--studio-text-strong);
+  font-weight: 700;
+}
+
+.detail-row.is-note {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border-top: 1px dashed var(--studio-border);
+  padding-top: 8px;
+}
+
+.detail-row.is-note p {
+  margin: 0;
+  font-style: italic;
+  color: var(--studio-text-main);
+}
+
+.guard-shift-btn-danger {
+  width: 100%;
+  height: 42px;
+  background: linear-gradient(135deg, var(--studio-danger), #ef4444);
+  color: #fff;
+  border: none;
+  border-radius: var(--studio-radius-md);
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.guard-shift-btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+/* History overhaul */
+.is-history-overhaul {
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  padding: 16px;
+  box-shadow: var(--studio-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.guard-history-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guard-history-card-item {
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 10px 12px;
+  transition: border-color 0.2s ease;
+}
+
+.guard-history-card-item:hover {
+  border-color: var(--studio-border-strong);
+}
+
+.history-main-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-date-row strong {
+  font-size: 13px;
+  color: var(--studio-text-strong);
+  font-weight: 800;
+}
+
+.history-time-range {
+  font-size: 11px;
+  color: var(--studio-text-main);
+}
+
+.history-duration {
+  font-size: 10px;
+  color: var(--studio-text-muted);
+  border-top: 1px solid var(--studio-border);
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+/* Responsive grid for tablet/desktop */
+@media (min-width: 580px) {
+  .guard-stats-grid {
+    gap: 12px;
+  }
+}
+
+/* Google login buttons & divider */
+.guard-shift-login-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px 0;
+  position: relative;
+}
+
+.guard-shift-login-divider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--studio-border);
+  z-index: 1;
+}
+
+.guard-shift-login-divider span {
+  background: var(--studio-surface-1);
+  padding: 0 10px;
+  color: var(--studio-text-muted);
+  font-size: 11px;
+  z-index: 2;
+  text-transform: lowercase;
+}
+
+.guard-shift-google-button {
+  width: 100%;
+  height: 38px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  color: var(--studio-text-strong);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guard-shift-google-button:hover {
+  background: var(--studio-surface-hover);
+  border-color: var(--studio-border-strong);
+}
+
+.guard-shift-google-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.google-icon-svg {
+  flex-shrink: 0;
+}
+
+/* ── GUARD ATTENDANCE APPROVAL MODAL STYLING ── */
+
+.guard-attendance-approval-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100; /* Higher than normal modals to catch attention */
+  background: rgba(15, 12, 9, 0.75);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: fade-in 0.25s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.guard-attendance-approval-modal {
+  position: relative;
+  width: min(100%, 380px);
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  padding: 24px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--studio-shadow-float);
+  animation: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.guard-attendance-approval-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--studio-border);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.guard-attendance-approval-close:hover {
+  border-color: var(--studio-border-strong);
+  color: var(--studio-text-strong);
+  background: var(--studio-surface-hover);
+}
+
+.guard-attendance-approval-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--studio-accent-soft);
+  border: 1px solid var(--studio-accent);
+  color: var(--studio-accent);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 4px;
+}
+
+.guard-attendance-approval-copy {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.guard-attendance-approval-copy p {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--studio-accent);
+  letter-spacing: 0.1em;
+}
+
+.guard-attendance-approval-copy h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--studio-text-strong);
+}
+
+.guard-attendance-approval-copy span {
+  font-size: 12px;
+  color: var(--studio-text-muted);
+  line-height: 1.4;
+}
+
+.guard-attendance-approval-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 10px;
+}
+
+.guard-attendance-approval-facts span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.guard-attendance-approval-facts span:first-child {
+  border-right: 1px dashed var(--studio-border);
+}
+
+.guard-attendance-approval-facts small {
+  font-size: 9px;
+  color: var(--studio-text-muted);
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.guard-attendance-approval-facts strong {
+  font-size: 12px;
+  color: var(--studio-text-strong);
+  font-weight: 800;
+}
+
+.guard-attendance-approval-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--studio-danger);
+  background: var(--studio-danger-soft);
+  padding: 6px 10px;
+  border-radius: var(--studio-radius-sm);
+  text-align: center;
+  font-weight: bold;
+}
+
+.guard-attendance-approval-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.guard-attendance-approval-actions button {
+  height: 38px;
+  border-radius: var(--studio-radius-md);
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid var(--studio-border);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guard-attendance-approval-actions button:hover {
+  background: var(--studio-surface-hover);
+  border-color: var(--studio-border-strong);
+}
+
+.guard-attendance-approval-actions button.is-primary {
+  background: linear-gradient(135deg, var(--studio-success), #10b981);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.guard-attendance-approval-actions button.is-primary:hover {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+  transform: translateY(-1px);
+}
+
+.guard-attendance-approval-link {
+  background: none;
+  border: none;
+  color: var(--studio-accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  padding: 6px 0 0;
+  transition: opacity 0.2s ease;
+  border-top: 1px dashed var(--studio-border);
+  margin-top: 4px;
+}
+
+.guard-attendance-approval-link:hover {
+  opacity: 0.8;
 }

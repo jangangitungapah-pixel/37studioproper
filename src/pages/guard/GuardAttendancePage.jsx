@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import {
   AlertCircle,
@@ -11,6 +11,13 @@ import {
   ShieldCheck,
   UserRound,
   XCircle,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Briefcase,
+  X,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import {
   GUARD_ATTENDANCE_APPROVAL_STATUSES,
@@ -20,6 +27,7 @@ import {
   createGuardAttendanceCheckIn,
   subscribeGuardAttendanceSessions,
 } from '../../services/guardAttendanceRepository.js';
+import { subscribeOperatorFeeEntries } from '../../services/operatorFeeRepository.js';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../../lib/firebase.js';
 import {
   OPERATOR_FEE_PERSON_ROLES,
@@ -134,6 +142,11 @@ export default function GuardAttendancePage() {
   const [note, setNote] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [feeEntries, setFeeEntries] = useState([]);
+  const [selectedSessionForBreakdown, setSelectedSessionForBreakdown] = useState(null);
+  const [showCheckOutConfirm, setShowCheckOutConfirm] = useState(false);
 
   const [isReady, setIsReady] = useState(!isAuthAvailable);
   const [isBusy, setIsBusy] = useState(false);
@@ -161,7 +174,8 @@ export default function GuardAttendancePage() {
         const account = await readGuardAccount(user);
         setGuardAccount(account);
 
-        if (account?.role !== STUDIO_GUARD_ROLE || account?.status !== 'approved') {
+        const isAllowedGuard = account && (account.role === STUDIO_GUARD_ROLE || (account.role === 'admin' && account.isGuard === true));
+        if (!isAllowedGuard || account?.status !== 'approved') {
           setError('Akun ini belum aktif sebagai Penjaga Studio.');
         }
       } catch (readError) {
@@ -177,7 +191,8 @@ export default function GuardAttendancePage() {
   }, [isAuthAvailable]);
 
   useEffect(() => {
-    if (!authUser?.uid || guardAccount?.role !== STUDIO_GUARD_ROLE || guardAccount?.status !== 'approved') {
+    const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
+    if (!authUser?.uid || !isAllowedGuard || guardAccount?.status !== 'approved') {
       return () => {};
     }
 
@@ -193,12 +208,98 @@ export default function GuardAttendancePage() {
         setError('Gagal membaca riwayat absen.');
       }
     );
-  }, [authUser?.uid, guardAccount?.role, guardAccount?.status]);
+  }, [authUser?.uid, guardAccount]);
+
+  useEffect(() => {
+    const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
+    if (!authUser?.uid || !isAllowedGuard || guardAccount?.status !== 'approved') {
+      return () => {};
+    }
+
+    return subscribeOperatorFeeEntries(
+      (list) => {
+        setFeeEntries(list);
+      },
+      (err) => {
+        console.error('[guard-attendance] Gagal membaca data fee:', err);
+      }
+    );
+  }, [authUser?.uid, guardAccount]);
 
   const currentSession = useMemo(
     () => sessions.find(isActiveLikeSession) || null,
     [sessions]
   );
+
+  useEffect(() => {
+    if (!currentSession?.clockInAt) {
+      setElapsedTime('00:00:00');
+      return () => {};
+    }
+
+    const calculateElapsed = () => {
+      const start = new Date(currentSession.clockInAt).getTime();
+      const now = Date.now();
+      const diff = Math.max(0, now - start);
+
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+
+      const pad = (num) => String(num).padStart(2, '0');
+      setElapsedTime(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
+    };
+
+    calculateElapsed();
+    const interval = setInterval(calculateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentSession?.clockInAt]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const thisMonthSessions = sessions.filter((s) => {
+      const sDate = new Date(s.date);
+      return sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear;
+    });
+
+    const approved = thisMonthSessions.filter((s) => s.approvalStatus === 'approved');
+
+    const totalHours = approved.reduce((acc, s) => acc + (s.durationHours || 0), 0);
+
+    // Uang makan hanya dihitung SATU kali per penjaga per hari (deduplikasi by guardPersonId+date).
+    // Safety net untuk kasus penjaga yang memiliki dua sesi approved di tanggal yang sama.
+    const mealByDay = new Map();
+    for (const s of approved) {
+      if (!s.mealEligible) continue;
+      const key = s.guardPersonId + '::' + s.date;
+      if (!mealByDay.has(key)) mealByDay.set(key, s.mealAmount || 0);
+    }
+    const totalMeals = Array.from(mealByDay.values()).reduce((acc, v) => acc + v, 0);
+
+    // Commissions are matched by DATE + personId only — clock-out time is irrelevant.
+    // This means bookings that happen AFTER the guard clocks out still count, as long
+    // as they fall on the same calendar date. We use ALL sessions in the month (not just
+    // approved) so commissions are never missed due to a pending attendance status.
+    const allDates = new Set(thisMonthSessions.map((s) => s.date + '::' + s.guardPersonId));
+    const totalCommissions = feeEntries.reduce((acc, entry) => {
+      const key = entry.bookingDate + '::' + entry.personId;
+      return allDates.has(key) ? acc + (entry.amount || 0) : acc;
+    }, 0);
+
+    const totalEarnings = totalMeals + totalCommissions;
+
+    return {
+      count: approved.length,
+      totalHours: totalHours.toFixed(1),
+      totalMeals,
+      totalCommissions,
+      totalEarnings,
+    };
+  }, [sessions, feeEntries]);
   const recentSessions = useMemo(() => sessions.slice(0, 8), [sessions]);
   const mealAmount = settings.options?.mealPerPersonPerDay || 40000;
   const todayLabel = formatDate(new Date().toISOString());
@@ -226,8 +327,9 @@ export default function GuardAttendancePage() {
     };
   }, [authUser, effectiveGuardPersonId, settings.people]);
 
+  const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
   const canUseGuardPage = authUser &&
-    guardAccount?.role === STUDIO_GUARD_ROLE &&
+    isAllowedGuard &&
     guardAccount?.status === 'approved';
 
   async function handleSignIn(event) {
@@ -252,6 +354,32 @@ export default function GuardAttendancePage() {
     } catch (signInError) {
       console.error('[guard-attendance] Login gagal:', signInError);
       setError('Login gagal. Cek email dan password.');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (!isAuthAvailable) {
+      setError('Firebase belum dikonfigurasi.');
+      return;
+    }
+
+    setIsBusy(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(firebaseAuth, provider);
+    } catch (googleError) {
+      console.error('[guard-attendance] Login Google gagal:', googleError);
+      if (googleError?.code === 'auth/popup-blocked') {
+        setError('Popup Google diblokir browser. Izinkan pop-up atau coba lagi.');
+      } else {
+        setError('Login Google gagal.');
+      }
     } finally {
       setIsBusy(false);
     }
@@ -287,6 +415,16 @@ export default function GuardAttendancePage() {
       return;
     }
 
+    const todayStr = new Date().toLocaleDateString('en-CA'); // Get local date in YYYY-MM-DD format safely
+    const hasAlreadyCheckedInToday = sessions.some(
+      (s) => s.date === todayStr && s.guardPersonId === selectedGuardPerson.id
+    );
+
+    if (hasAlreadyCheckedInToday) {
+      setError('Anda sudah melakukan absensi hari ini. Tidak boleh absen dua kali di tanggal yang sama.');
+      return;
+    }
+
     setIsBusy(true);
     setError('');
     setNotice('');
@@ -315,6 +453,7 @@ export default function GuardAttendancePage() {
       return;
     }
 
+    setShowCheckOutConfirm(false);
     setIsBusy(true);
     setError('');
     setNotice('');
@@ -346,6 +485,13 @@ export default function GuardAttendancePage() {
               {todayLabel}
             </span>
 
+            {authUser && guardAccount?.role === 'admin' ? (
+              <a href="/admin" className="guard-shift-ghost-button">
+                <ShieldCheck size={12} />
+                Portal Admin
+              </a>
+            ) : null}
+
             {authUser ? (
               <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>
                 <LogOut size={12} />
@@ -365,39 +511,82 @@ export default function GuardAttendancePage() {
         {isReady && !authUser ? (
           <section className="guard-shift-card">
             <div className="guard-shift-title">
-              <span aria-hidden="true">
-                <LogIn size={16} />
-              </span>
-              <div>
-                <strong>Login Penjaga</strong>
-                <small>Masuk dengan akun yang sudah dibuat owner.</small>
-              </div>
+              <strong>Login Penjaga</strong>
+              <small>Masuk menggunakan akun yang sudah terdaftar.</small>
             </div>
 
             <form className="guard-shift-login" onSubmit={handleSignIn}>
+              {error && (
+                <div className="auth-alert">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+              {notice && (
+                <div className="auth-alert is-success">
+                  <CheckCircle2 size={14} className="shrink-0" />
+                  <span>{notice}</span>
+                </div>
+              )}
+
               <label>
                 <span>Email</span>
                 <input
                   autoComplete="email"
                   type="email"
+                  placeholder="name@studio.com"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
+                  disabled={isBusy}
+                  required
                 />
               </label>
 
               <label>
                 <span>Password</span>
-                <input
-                  autoComplete="current-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
+                <div className="guard-password-wrap">
+                  <input
+                    autoComplete="current-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Ketik password Anda"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    disabled={isBusy}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="guard-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </label>
 
               <button className="guard-shift-main-button" type="submit" disabled={isBusy}>
                 {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <LogIn size={14} />}
-                Masuk
+                Masuk Portal Jaga
+              </button>
+
+              <div className="guard-shift-login-divider">
+                <span>atau</span>
+              </div>
+
+              <button 
+                className="guard-shift-google-button" 
+                type="button" 
+                disabled={isBusy} 
+                onClick={handleGoogleSignIn}
+              >
+                <svg className="google-icon-svg" viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                </svg>
+                Masuk dengan Google
               </button>
             </form>
           </section>
@@ -412,131 +601,198 @@ export default function GuardAttendancePage() {
         ) : null}
 
         {canUseGuardPage ? (
-          <section className="guard-shift-workspace" aria-label="Panel absen penjaga">
-            <section className="guard-shift-status">
-              <span className={currentSession ? 'status-icon is-on' : 'status-icon'} aria-hidden="true">
-                <Clock3 size={16} />
-              </span>
-              <div className="guard-shift-status-copy">
-                <div className="status-title-row">
-                  <strong>{getStatusLabel(currentSession)}</strong>
-                  <span className={'status-badge is-' + getApprovalTone(currentSession?.approvalStatus)}>
-                    {currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Siap absen'}
-                  </span>
+          <section className="guard-shift-workspace" aria-label="Panel absen penjaga" style={{ display: 'grid', gap: '12px' }}>
+            
+            {/* ── PROFILE & MONTHLY STATS HEADER ── */}
+            <div className="guard-profile-dashboard-card">
+              <div className="guard-profile-info-header">
+                <div className="guard-avatar-large">
+                  {selectedGuardPerson.name ? selectedGuardPerson.name.slice(0, 2).toUpperCase() : 'GD'}
                 </div>
-                <div className="status-meta-row">
-                  <span>Profil: <b>{selectedGuardPerson.name}</b></span>
-                  <span className="dot-separator">·</span>
-                  <span>Uang makan: <b>{formatCurrency(mealAmount)}</b></span>
-                </div>
-              </div>
-            </section>
-
-            <section className="guard-shift-card is-action">
-              <div className="guard-shift-title">
-                <span aria-hidden="true">
-                  <Clock3 size={16} />
-                </span>
-                <div>
-                  <strong>{currentSession ? 'Shift Aktif' : 'Mulai Jaga'}</strong>
-                  <small>Approval berlaku per tanggal, bukan batas jam booking.</small>
+                <div className="guard-name-details">
+                  <h2>{selectedGuardPerson.name}</h2>
+                  <span className="guard-email-chip">{guardAccount?.email}</span>
+                  <div className="guard-badge-row">
+                    <span className="guard-role-badge">Penjaga Studio</span>
+                    <span className="guard-status-badge">Aktif</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Monthly Stats Grid */}
+              <div className="guard-stats-grid">
+                <div className="guard-stat-item">
+                  <span className="guard-stat-icon"><Calendar size={14} /></span>
+                  <div className="guard-stat-content">
+                    <small>Kehadiran (Bulan Ini)</small>
+                    <strong>{stats.count} Hari</strong>
+                  </div>
+                </div>
+                <div className="guard-stat-item">
+                  <span className="guard-stat-icon"><Clock3 size={14} /></span>
+                  <div className="guard-stat-content">
+                    <small>Total Jam Jaga</small>
+                    <strong>{stats.totalHours} Jam</strong>
+                  </div>
+                </div>
+                <div className="guard-stat-item is-highlight">
+                  <span className="guard-stat-icon"><DollarSign size={14} /></span>
+                  <div className="guard-stat-content">
+                    <small>Estimasi Pendapatan</small>
+                    <strong>{formatCurrency(stats.totalEarnings)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── ACTIVE SHIFT CONTROL CARD ── */}
+            <div className="guard-shift-card is-action-overhaul">
               {!currentSession ? (
-                <div className="guard-shift-form">
-                  <label>
-                    <span>Profil penjaga</span>
-                    <select
-                      value={effectiveGuardPersonId}
-                      onChange={(event) => setSelectedGuardPersonId(event.target.value)}
-                    >
-                      {visibleGuardOptions.map((option) => (
-                        <option key={option.key} value={option.key}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="guard-clockin-panel">
+                  <div className="guard-panel-title">
+                    <Briefcase size={18} className="icon-pulse" style={{ color: 'var(--auth-accent)' }} />
+                    <div>
+                      <h3>Mulai Shift Baru</h3>
+                      <p>Pastikan profil yang dipilih sesuai dengan nama Anda.</p>
+                    </div>
+                  </div>
 
-                  <label>
-                    <span>Catatan</span>
-                    <textarea
-                      placeholder="Opsional, contoh: shift sore."
-                      value={note}
-                      onChange={(event) => setNote(event.target.value)}
-                    />
-                  </label>
+                  <div className="guard-shift-form-grid">
+                    <label className="guard-input-label">
+                      <span>PILIH PROFIL SHIFT</span>
+                      <select
+                        value={effectiveGuardPersonId}
+                        onChange={(event) => setSelectedGuardPersonId(event.target.value)}
+                        className="guard-select"
+                      >
+                        {visibleGuardOptions.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="guard-input-label">
+                      <span>CATATAN SHIFT (OPSIONAL)</span>
+                      <textarea
+                        placeholder="Masukkan catatan jika ada (misal: shift sore, tukar jadwal, dll.)"
+                        value={note}
+                        onChange={(event) => setNote(event.target.value)}
+                        className="guard-textarea"
+                      />
+                    </label>
+                  </div>
 
                   <button
-                    className="guard-shift-main-button"
+                    className="guard-shift-btn-glow"
                     type="button"
                     disabled={isBusy || !effectiveGuardPersonId}
                     onClick={handleCheckIn}
                   >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
-                    Mulai Jaga
+                    {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <CheckCircle2 size={16} />}
+                    Mulai Jaga Sekarang
                   </button>
                 </div>
               ) : (
-                <div className="guard-shift-current-compact">
-                  <div className="guard-shift-current-info">
-                    <strong>{currentSession.guardName}</strong>
-                    <span>🕒 Mulai: {formatDateTime(currentSession.clockInAt)}</span>
+                <div className="guard-active-shift-panel">
+                  <div className="guard-active-header">
+                    <div className="guard-active-badge">
+                      <span className="pulse-dot"></span>
+                      SHIFT AKTIF
+                    </div>
                     <span className={'status-badge is-' + getApprovalTone(currentSession.approvalStatus)}>
                       {getApprovalLabel(currentSession.approvalStatus)}
                     </span>
                   </div>
 
+                  {/* Digital Clock Display */}
+                  <div className="guard-live-timer-container">
+                    <div className="guard-timer-label">DURASI JAGA BERJALAN</div>
+                    <div className="guard-timer-clock">{elapsedTime}</div>
+                  </div>
+
+                  {/* Shift Details List */}
+                  <div className="guard-shift-details-card">
+                    <div className="detail-row">
+                      <span>Waktu Mulai:</span>
+                      <strong>{formatDateTime(currentSession.clockInAt)}</strong>
+                    </div>
+                    <div className="detail-row">
+                      <span>Uang Makan Shift:</span>
+                      <strong>{formatCurrency(mealAmount)}</strong>
+                    </div>
+                    {currentSession.note && (
+                      <div className="detail-row is-note">
+                        <span>Catatan:</span>
+                        <p>"{currentSession.note}"</p>
+                      </div>
+                    )}
+                  </div>
+
                   <button
-                    className="guard-shift-main-button is-danger"
+                    className="guard-shift-btn-danger"
                     type="button"
                     disabled={isBusy}
-                    onClick={handleCheckOut}
+                    onClick={() => setShowCheckOutConfirm(true)}
                   >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <XCircle size={14} />}
-                    Selesai Jaga
+                    {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <XCircle size={16} />}
+                    Selesai Jaga & Ajukan Approval
                   </button>
                 </div>
               )}
-            </section>
+            </div>
 
-            <section className="guard-shift-card is-history">
-              <div className="guard-shift-title">
-                <span aria-hidden="true">
-                  <UserRound size={16} />
-                </span>
+            {/* ── RECENT SHIFTS HISTORY ── */}
+            <div className="guard-shift-card is-history-overhaul">
+              <div className="guard-panel-title">
+                <TrendingUp size={16} style={{ color: 'var(--auth-accent)' }} />
                 <div>
-                  <strong>Riwayat</strong>
-                  <small>Absen terbaru dari akun ini.</small>
+                  <h3>Riwayat Absensi</h3>
+                  <p>Catatan kehadiran dan status persetujuan dari Owner.</p>
                 </div>
               </div>
 
-              <div className="guard-shift-history-list">
+              <div className="guard-history-cards-list">
                 {recentSessions.length ? (
                   recentSessions.map((session) => (
-                    <div className="guard-shift-history-row" key={session.id}>
-                      <div className="guard-shift-history-info">
-                        <strong>{formatDate(session.date)}</strong>
-                        <span>
-                          {formatDateTime(session.clockInAt)}
-                          {session.clockOutAt ? ' - ' + formatDateTime(session.clockOutAt) : ' - Jaga Aktif'}
-                        </span>
+                    <button
+                      className="guard-history-card-item"
+                      key={session.id}
+                      type="button"
+                      onClick={() => setSelectedSessionForBreakdown(session)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      <div className="history-main-info">
+                        <div className="history-date-row">
+                          <strong>{formatDate(session.date)}</strong>
+                          <span className={'status-badge is-' + getApprovalTone(session.approvalStatus)}>
+                            {getApprovalLabel(session.approvalStatus)}
+                          </span>
+                        </div>
+                        <div className="history-time-range">
+                          <span>🕒 {formatDateTime(session.clockInAt)}</span>
+                          <span>{session.clockOutAt ? ` s/d ${formatDateTime(session.clockOutAt)}` : ' (Sedang Jaga)'}</span>
+                        </div>
+                        {session.durationHours !== undefined && (
+                          <div className="history-duration">
+                            Durasi: <b>{session.durationHours.toFixed(1)} jam</b>
+                            {session.mealEligible && session.mealAmount > 0 && ` | Uang Makan: ${formatCurrency(session.mealAmount)}`}
+                          </div>
+                        )}
                       </div>
-                      <span className={'status-badge is-' + getApprovalTone(session.approvalStatus)}>
-                        {getApprovalLabel(session.approvalStatus)}
-                      </span>
-                    </div>
+                    </button>
                   ))
                 ) : (
-                  <p className="guard-shift-history-empty">Belum ada riwayat absen.</p>
+                  <p className="guard-shift-history-empty">Belum ada riwayat absensi.</p>
                 )}
               </div>
-            </section>
+            </div>
           </section>
         ) : null}
 
-        {(notice || error) ? (
+        {/* Floating feedback for operational tasks inside the portal */}
+        {canUseGuardPage && (notice || error) ? (
           <aside className="guard-shift-feedback">
             {notice ? (
               <p className="is-success">
@@ -553,6 +809,156 @@ export default function GuardAttendancePage() {
           </aside>
         ) : null}
       </section>
+
+      {/* ── CHECKOUT CONFIRMATION MODAL ── */}
+      {showCheckOutConfirm ? (
+        <div
+          className="settings-permission-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowCheckOutConfirm(false);
+          }}
+        >
+          <div className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title" style={{ maxWidth: '360px' }}>
+            <header className="settings-permission-head">
+              <div>
+                <small>Konfirmasi Selesai Jaga</small>
+                <h3 id="checkout-confirm-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <XCircle size={18} style={{ color: 'var(--auth-danger, #ef4444)' }} />
+                  Sudah selesai jaga?
+                </h3>
+              </div>
+              <button type="button" aria-label="Batal" onClick={() => setShowCheckOutConfirm(false)}>
+                <X size={16} />
+              </button>
+            </header>
+
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: 'var(--studio-text-main)' }}>
+                Pastikan Anda sudah <strong>benar-benar selesai jaga</strong> sebelum mengklik konfirmasi.
+              </p>
+              <div style={{
+                background: 'rgba(251, 191, 36, 0.08)',
+                border: '1px solid rgba(251, 191, 36, 0.3)',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                fontSize: '12px',
+                color: 'var(--studio-text-main)',
+                lineHeight: '1.6',
+              }}>
+                ⚠️ <strong>Perhatian:</strong> Komisi booking yang terjadi <em>setelah</em> Anda selesai jaga tetap akan terhitung selama booking masih terdaftar di tanggal jaga Anda hari ini.
+              </div>
+            </div>
+
+            <footer className="settings-permission-actions" style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
+              <button
+                className="settings-mini-button"
+                type="button"
+                onClick={() => setShowCheckOutConfirm(false)}
+                style={{ flex: 1 }}
+              >
+                Batal, Lanjut Jaga
+              </button>
+              <button
+                className="settings-mini-button is-danger"
+                type="button"
+                disabled={isBusy}
+                onClick={handleCheckOut}
+                style={{ flex: 1 }}
+              >
+                {isBusy ? <LoaderCircle className="auth-spin" size={13} /> : null}
+                Ya, Selesai Jaga
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
+
+
+      {selectedSessionForBreakdown ? (() => {
+        const session = selectedSessionForBreakdown;
+        const mealWage = session.mealEligible ? (session.mealAmount || 0) : 0;
+
+        const commissions = feeEntries.filter(
+          (entry) => entry.bookingDate === session.date && entry.personId === session.guardPersonId
+        );
+        const totalCommissions = commissions.reduce((sum, entry) => sum + (entry.amount || 0), 0);
+        const totalEarnings = mealWage + totalCommissions;
+
+        return (
+          <div
+            className="settings-permission-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setSelectedSessionForBreakdown(null);
+            }}
+          >
+            <div className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="breakdown-title" style={{ maxWidth: '380px' }}>
+              <header className="settings-permission-head">
+                <div>
+                  <small>Breakdown Pendapatan</small>
+                  <h3 id="breakdown-title">Absen: {formatDate(session.date)}</h3>
+                  <span className={'status-badge is-' + getApprovalTone(session.approvalStatus)} style={{ display: 'inline-block', marginTop: '4px' }}>
+                    {getApprovalLabel(session.approvalStatus)}
+                  </span>
+                </div>
+                <button type="button" aria-label="Tutup breakdown" onClick={() => setSelectedSessionForBreakdown(null)}>
+                  <X size={16} />
+                </button>
+              </header>
+
+              <div className="settings-permission-flat-list" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: 'var(--studio-text-muted)' }}>Uang Makan</span>
+                  <strong style={{ color: 'var(--studio-text-strong)' }}>{session.mealEligible ? formatCurrency(mealWage) : <em style={{ fontWeight: 'normal', fontSize: '11px' }}>Tidak eligible</em>}</strong>
+                </div>
+
+                <div style={{ borderTop: '1px dashed var(--studio-border)', paddingTop: '10px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--auth-accent)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Komisi Booking Hari Ini
+                  </span>
+                  
+                  {commissions.length ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                      {commissions.map((entry) => (
+                        <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                          <span style={{ color: 'var(--studio-text-main)' }}>• {entry.title || entry.ruleName} ({entry.bookingCode})</span>
+                          <strong style={{ color: 'var(--studio-text-strong)' }}>{formatCurrency(entry.amount)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)', fontStyle: 'italic' }}>
+                      Tidak ada komisi booking di hari ini.
+                    </p>
+                  )}
+                  {/* Komisi dihitung berdasarkan TANGGAL absensi, bukan jam clock-out.
+                      Booking yang terjadi setelah clock out tetap dihitung selama
+                      booking date sama dengan tanggal absensi ini. */}
+                  <p style={{ margin: '8px 0 0', fontSize: '10px', color: 'var(--studio-text-muted)', lineHeight: '1.5' }}>
+                    ℹ️ Komisi dihitung berdasarkan tanggal, bukan jam clock-out.
+                  </p>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--studio-border)', paddingTop: '12px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: '14px', color: 'var(--studio-text-strong)' }}>Total Pendapatan</strong>
+                  <strong style={{ fontSize: '16px', color: 'var(--auth-success)', fontWeight: '800' }}>
+                    {formatCurrency(totalEarnings)}
+                  </strong>
+                </div>
+              </div>
+
+              <footer className="settings-permission-actions" style={{ padding: '12px 16px' }}>
+                <button className="settings-mini-button is-primary" type="button" onClick={() => setSelectedSessionForBreakdown(null)} style={{ width: '100%' }}>
+                  Tutup
+                </button>
+              </footer>
+            </div>
+          </div>
+        );
+      })() : null}
     </main>
   );
 }
+

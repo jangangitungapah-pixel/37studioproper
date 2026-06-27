@@ -157,7 +157,7 @@ export default function GuardAttendancePage({ currentUser }) {
     setMessage('');
 
     try {
-      await approveGuardAttendanceSession(session, currentUser);
+      await approveGuardAttendanceSession(session, currentUser, sessions);
       setMessage('Absen ' + session.guardName + ' disetujui. Fee penjaga tanggal itu eligible.');
     } catch (error) {
       console.error('[guard-attendance-owner] Approve gagal:', error);
@@ -286,6 +286,9 @@ export default function GuardAttendancePage({ currentUser }) {
             const isBusy = busyId === session.id;
             const isPending = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING;
             const isApproved = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
+            const isRejected = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED;
+            const canApprove = isPending || isRejected;
+            const canReject = isPending || isRejected;
 
             return (
               <article className="guard-attendance-owner-row" key={session.id}>
@@ -330,7 +333,7 @@ export default function GuardAttendancePage({ currentUser }) {
 
                 <div className="guard-attendance-owner-actions">
                   <button
-                    disabled={isBusy || !isPending}
+                    disabled={isBusy || !canReject}
                     type="button"
                     className="guard-attendance-row-btn btn-reject"
                     onClick={() => rejectSession(session)}
@@ -340,15 +343,15 @@ export default function GuardAttendancePage({ currentUser }) {
                   </button>
                   <button
                     className="guard-attendance-row-btn is-primary btn-approve"
-                    disabled={isBusy || !isPending}
+                    disabled={isBusy || !canApprove}
                     type="button"
                     onClick={() => approveSession(session)}
                   >
                     {isBusy ? <LoaderCircle className="auth-spin" size={12} /> : <CheckCircle2 size={12} />}
-                    Approve
+                    {isRejected ? 'Re-approve' : 'Approve'}
                   </button>
                   <button
-                    disabled={isBusy || !isApproved}
+                    disabled={isBusy || (!isApproved && !isRejected)}
                     type="button"
                     className="guard-attendance-row-btn btn-void"
                     onClick={() => voidSession(session)}

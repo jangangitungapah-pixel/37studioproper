@@ -19,6 +19,7 @@ import { syncClientCustomerProfile } from '../services/clientProfileRepository.j
 import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import '../styles/admin-auth.css';
 import '../styles/firebase-auth.css';
 import '../styles/client-auth.css';
 

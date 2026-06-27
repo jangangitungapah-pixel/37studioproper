@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
-import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import { OWNER_EMAIL } from '../../constants/appConstants.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
@@ -44,6 +44,10 @@ import {
   usePricingSettings,
   savePricingSettings,
 } from '../../settings/pricingSettings.js';
+import {
+  useOperatorFeeSettings,
+  OPERATOR_FEE_PERSON_ROLES,
+} from '../../settings/operatorFeeSettings.js';
 
 
 const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';
@@ -339,6 +343,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const [accountProfileForm, setAccountProfileForm] = useState(() => ({
     displayName: currentUser?.displayName || '',
   }));
+  const operatorFeeSettings = useOperatorFeeSettings();
+  const [selectingGuardUser, setSelectingGuardUser] = useState(null);
+  const [selectedCrewId, setSelectedCrewId] = useState(null);
   const [accountProfileMessage, setAccountProfileMessage] = useState('');
   const [dangerConfirmText, setDangerConfirmText] = useState('');
   const [dangerFinalCheck, setDangerFinalCheck] = useState(false);
@@ -425,6 +432,26 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     () => registeredUsers.filter((user) => user.status === 'approved' || user.role === 'owner'),
     [registeredUsers]
   );
+
+  const inactiveUsers = useMemo(
+    () => registeredUsers.filter((user) => user.status === 'rejected' && user.role !== 'owner'),
+    [registeredUsers]
+  );
+
+  const guardPeople = useMemo(() => {
+    if (!operatorFeeSettings?.people) return [];
+    return operatorFeeSettings.people.filter(
+      (person) =>
+        person.active &&
+        [OPERATOR_FEE_PERSON_ROLES.GUARD, OPERATOR_FEE_PERSON_ROLES.BOTH].includes(person.role)
+    );
+  }, [operatorFeeSettings]);
+
+  const getLinkedGuardName = (guardId) => {
+    if (!guardId) return 'Umum';
+    const match = guardPeople.find((p) => p.id === guardId);
+    return match ? match.name : 'Terhapus/Nonaktif';
+  };
 
   // Sync users list for owner-only user management pages
   useEffect(() => {
@@ -519,6 +546,41 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     } catch (err) {
       console.error('Failed to toggle user status:', err);
       setApprovalSettingsMessage('Gagal mengubah status akses.');
+    }
+  }
+
+  async function handleDeleteUser(userId, userEmail) {
+    setConfirmConfig({
+      title: 'Hapus User Permanen',
+      message: `Apakah Anda yakin ingin menghapus user ${userEmail || ''} secara permanen dari 37 Studio? Data user ini akan dihapus selamanya.`,
+      confirmLabel: 'Hapus Permanen',
+      onConfirm: async () => {
+        try {
+          const docRef = doc(firestoreDb, 'users', userId);
+          await deleteDoc(docRef);
+          setApprovalSettingsMessage('User berhasil dihapus secara permanen.');
+        } catch (err) {
+          console.error('Failed to delete user:', err);
+          setApprovalSettingsMessage('Gagal menghapus user.');
+        }
+      }
+    });
+  }
+
+  async function handleToggleUserIsGuard(userId, currentIsGuard, guardId = null) {
+    const nextIsGuard = !currentIsGuard;
+    try {
+      const docRef = doc(firestoreDb, 'users', userId);
+      await updateDoc(docRef, {
+        isGuard: nextIsGuard,
+        guardId: nextIsGuard ? guardId : null,
+        updatedAt: new Date().toISOString()
+      });
+      setApprovalSettingsMessage(nextIsGuard ? 'Status penjaga admin berhasil diaktifkan.' : 'Status penjaga admin berhasil dinonaktifkan.');
+      setSelectingGuardUser(null);
+    } catch (err) {
+      console.error('Failed to toggle isGuard status:', err);
+      setApprovalSettingsMessage('Gagal memperbarui status penjaga.');
     }
   }
 
@@ -2279,7 +2341,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                       <div className="settings-user-info-stacked">
                         <strong className="settings-user-name-inline">{user.displayName || user.email || 'User'}</strong>
                         <span className="settings-user-email-inline">
-                          {user.role === 'owner' ? 'Owner Akses Utama' : `${enabledCount}/${assignablePages.length} halaman`}
+                          {user.role === 'owner' 
+                            ? 'Owner Akses Utama' 
+                            : `${enabledCount}/${assignablePages.length} halaman${user.role === 'admin' && user.isGuard ? ` (+ Guard: ${getLinkedGuardName(user.guardId)})` : ''}`}
                         </span>
                       </div>
                     </div>
@@ -2309,6 +2373,31 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                             <SlidersHorizontal size={12} />
                           </button>
 
+                          {/* Set as Guard checkbox (only for Admins) */}
+                          {user.role === 'admin' && (
+                            <button
+                              type="button"
+                              aria-label="Set as Guard"
+                              title={user.isGuard ? "Bisa absen jaga (Aktif)" : "Jadikan Penjaga"}
+                              onClick={() => {
+                                if (user.isGuard) {
+                                  handleToggleUserIsGuard(user.id, true);
+                                } else {
+                                  setSelectingGuardUser(user);
+                                  setSelectedCrewId(user.guardId || null);
+                                }
+                              }}
+                              className="settings-icon-action-btn"
+                              style={{ 
+                                color: user.isGuard ? 'var(--auth-success)' : 'var(--auth-text-muted)',
+                                borderColor: user.isGuard ? 'var(--auth-success)' : '',
+                                background: user.isGuard ? 'var(--auth-success-soft)' : ''
+                              }}
+                            >
+                              <UserRound size={12} />
+                            </button>
+                          )}
+
                           {/* Transfer Owner (Admin only) */}
                           {user.role === 'admin' && (
                             <button
@@ -2332,6 +2421,18 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                             />
                             <span className="settings-user-toggle-slider"></span>
                           </label>
+
+                          {/* Delete user button */}
+                          <button
+                            type="button"
+                            aria-label="Hapus user"
+                            title="Hapus user"
+                            onClick={() => handleDeleteUser(user.id, user.email || user.displayName)}
+                            className="settings-icon-action-btn is-delete"
+                            style={{ marginLeft: '4px' }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </>
                       ) : (
                         <span className="settings-owner-status-pill" title="Owner full access" aria-label="Owner full access" style={{ padding: '4px 8px', fontSize: '10px', background: 'var(--auth-accent-soft)', color: 'var(--auth-accent)', borderRadius: 'var(--studio-radius-sm)', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -2347,6 +2448,54 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               <p className="settings-empty-text">Belum ada user admin portal selain client.</p>
             )}
           </div>
+
+          {/* ── SEKSI 3: DAFTAR AKUN PORTAL TIM NONAKTIF ── */}
+          {inactiveUsers.length ? (
+            <div className="settings-pending-approvals-block settings-section-divider">
+              <h3 className="settings-section-title">Akun Portal Tim Nonaktif</h3>
+              <div className="settings-pending-list">
+                {inactiveUsers.map((user) => (
+                  <article className="is-pending-item" key={user.id}>
+                    <div className="settings-user-profile-col">
+                      <div className="settings-user-avatar-micro" aria-hidden="true" style={{ opacity: 0.6 }}>
+                        {(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="settings-user-info-stacked" style={{ opacity: 0.6 }}>
+                        <strong className="settings-user-name-inline">{user.displayName || 'User Admin'}</strong>
+                        <span className="settings-user-email-inline">
+                          {user.email || user.phoneNumber || user.id} ({user.role?.toUpperCase()})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="settings-user-controls-col">
+                      <button
+                        type="button"
+                        aria-label="Aktifkan user"
+                        title="Aktifkan user"
+                        onClick={() => handleToggleUserStatus(user.id, 'rejected')}
+                        className="settings-mini-button is-primary settings-approval-icon-button is-approve"
+                        style={{ height: '26px', minHeight: '26px', padding: '0 8px', fontSize: '10px' }}
+                      >
+                        <ShieldCheck size={11} />
+                        Aktifkan
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label="Hapus user"
+                        title="Hapus user"
+                        onClick={() => handleDeleteUser(user.id, user.email || user.displayName)}
+                        className="settings-icon-action-btn is-delete"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {approvalSettingsMessage ? (
             <p className="settings-invoice-message" role="status">{approvalSettingsMessage}</p>
@@ -2413,6 +2562,81 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               </button>
             </footer>
           </form>
+        </div>
+      ) : null}
+
+      {selectingGuardUser ? (
+        <div
+          className="settings-permission-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectingGuardUser(null);
+          }}
+        >
+          <div className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="guard-select-title">
+            <header className="settings-permission-head">
+              <div>
+                <small>Hubungkan Penjaga Studio</small>
+                <h3 id="guard-select-title">Pilih Identitas Crew Penjaga</h3>
+                <span>Pilih crew penjaga yang sesuai untuk menghubungkan absensi admin ini.</span>
+              </div>
+              <button type="button" aria-label="Tutup pilihan" onClick={() => setSelectingGuardUser(null)}>
+                <X size={16} />
+              </button>
+            </header>
+
+            <div className="settings-permission-flat-list">
+              {guardPeople.length ? (
+                guardPeople.map((person) => {
+                  const isSelected = selectedCrewId === person.id;
+
+                  return (
+                    <button
+                      className="settings-permission-flat-row"
+                      key={person.id}
+                      type="button"
+                      onClick={() => setSelectedCrewId(person.id)}
+                      style={{ 
+                        textAlign: 'left', 
+                        width: '100%', 
+                        border: isSelected ? '1px solid var(--auth-success)' : '1px solid var(--auth-border)', 
+                        background: isSelected ? 'var(--auth-success-soft)' : 'var(--auth-bg-card)',
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      <div className="settings-permission-info">
+                        <strong className="settings-permission-title" style={{ color: isSelected ? 'var(--auth-success)' : 'var(--auth-text-strong)' }}>{person.name}</strong>
+                        <small className="settings-permission-desc">
+                          Metode Bayar: {person.defaultPaymentMethod?.toUpperCase() || 'CASH'}
+                        </small>
+                      </div>
+                      <span style={{ fontSize: '12px', color: isSelected ? 'var(--auth-success)' : 'var(--auth-accent)', fontWeight: isSelected ? 'bold' : 'normal' }}>
+                        {isSelected ? 'Terpilih ✓' : 'Pilih →'}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="settings-empty-text" style={{ margin: '10px 0' }}>
+                  Belum ada crew ber-role Penjaga Studio (Guard) di Fee Settings. Tambahkan crew di tab Fee Settings terlebih dahulu.
+                </p>
+              )}
+            </div>
+
+            <footer className="settings-permission-actions">
+              <button className="settings-mini-button" type="button" onClick={() => setSelectingGuardUser(null)}>
+                Batal
+              </button>
+              <button 
+                className="settings-mini-button is-primary" 
+                type="button" 
+                disabled={!selectedCrewId}
+                onClick={() => handleToggleUserIsGuard(selectingGuardUser.id, false, selectedCrewId)}
+              >
+                Simpan Penjaga
+              </button>
+            </footer>
+          </div>
         </div>
       ) : null}
 

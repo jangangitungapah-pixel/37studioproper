@@ -360,23 +360,85 @@
 
 @media (max-width: 520px) {
   .client-auth-page {
-    padding: 14px;
+    padding: 8px 12px;
+    justify-content: center;
   }
 
   .client-auth-shell {
-    gap: 16px;
+    gap: 10px;
+  }
+
+  .client-auth-header {
+    gap: 4px;
+  }
+
+  .client-auth-brand-pill {
+    min-height: 26px;
+    padding: 0 10px;
+    font-size: 9px;
+  }
+
+  .client-auth-title {
+    font-size: 1.75rem;
+  }
+
+  .client-auth-subtitle {
+    display: none; /* Hide subtitle on mobile to maximize above-the-fold space */
   }
 
   .client-auth-card {
     border-radius: var(--studio-radius-lg);
+    padding: 14px;
+    gap: 10px;
   }
 
   .client-auth-tabs {
-    gap: 5px;
+    gap: 4px;
+    padding: 4px;
   }
 
   .client-auth-tab {
-    min-height: 40px;
-    padding-inline: 8px;
+    min-height: 38px;
+    padding-inline: 6px;
+    font-size: 11px;
+  }
+
+  .client-auth-alert {
+    padding: 6px 10px;
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  .client-auth-form {
+    gap: 10px;
+  }
+
+  .client-auth-field {
+    gap: 4px;
+  }
+
+  .client-auth-field > span {
+    font-size: 10px;
+  }
+
+  .client-auth-input-wrap {
+    min-height: 42px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .client-auth-input {
+    font-size: 13px;
+  }
+
+  .client-auth-submit,
+  .client-auth-google-button {
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .client-auth-divider {
+    min-height: 18px;
+    font-size: 10px;
   }
 }

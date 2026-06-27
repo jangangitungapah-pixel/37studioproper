@@ -60,9 +60,10 @@ service cloud.firestore {
     }
 
     function isStudioGuardAccount() {
-      return userDocExists() &&
-        getUserData().role == 'studio_guard' &&
-        getUserData().status == 'approved';
+      return userDocExists() && (
+        (getUserData().role == 'studio_guard' && getUserData().status == 'approved') ||
+        (getUserData().role == 'admin' && getUserData().status == 'approved' && 'isGuard' in getUserData() && getUserData().isGuard == true)
+      );
     }
 
     function hasPermission(page) {
@@ -179,7 +180,7 @@ service cloud.firestore {
           'uid', 'email', 'phoneNumber', 'displayName', 'provider', 'permissions',
           'preferences', 'role', 'status', 'createdAt', 'updatedAt',
           'ownershipTransferredInAt', 'ownershipTransferredOutAt',
-          'adminRequestCancelledAt'
+          'adminRequestCancelledAt', 'isGuard', 'guardId'
         ]) &&
         data.uid == userId &&
         validString(data.email, 0, 254) &&
@@ -200,7 +201,9 @@ service cloud.firestore {
         validIsoTimestampString(data.updatedAt) &&
         validOptionalString(data, 'ownershipTransferredInAt', 40) &&
         validOptionalString(data, 'ownershipTransferredOutAt', 40) &&
-        validOptionalString(data, 'adminRequestCancelledAt', 40);
+        validOptionalString(data, 'adminRequestCancelledAt', 40) &&
+        (!data.keys().hasAny(['isGuard']) || data.isGuard == null || data.isGuard is bool) &&
+        (!data.keys().hasAny(['guardId']) || data.guardId == null || (data.guardId is string && data.guardId.size() <= 160));
     }
 
     function authIdentityMatches(data) {

@@ -1,4 +1,4 @@
-import { BellRing, LogOut } from 'lucide-react';
+import { BellRing, LogOut, Clock } from 'lucide-react';
 import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 
 export default function AdminTopbar({
@@ -8,7 +8,13 @@ export default function AdminTopbar({
   goTo,
   notificationSummary,
   onLogout,
+  user,
 }) {
+  const isGuardEligible = user && (
+    user.role === 'studio_guard' || 
+    (user.role === 'admin' && user.isGuard === true)
+  );
+
   return (
     <header className="admin-topbar">
       <div>
@@ -17,6 +23,17 @@ export default function AdminTopbar({
       </div>
 
       <div className="admin-topbar-actions">
+        {isGuardEligible ? (
+          <a
+            href="/guard/attendance"
+            className="admin-notification-shortcut"
+            style={{ color: 'var(--auth-accent)', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+          >
+            <Clock size={16} />
+            <span>Portal Guard</span>
+          </a>
+        ) : null}
+
         {canOpenNotifications ? (
           <button
             className="admin-notification-shortcut"

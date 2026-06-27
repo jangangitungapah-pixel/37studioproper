@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -249,18 +249,18 @@ export default function ClientLandingPage() {
       })()
       : (() => {
       const sess = sessionOptions.find(s => s.key === sessionType);
-      const sub = recordingTypeId !== 'none' ? ` (${recordingTypeOptions.find(r => r.key === recordingTypeId)?.label.split(' â€¢ ')[0] || ''})` : '';
+      const sub = recordingTypeId !== 'none' ? ` (${recordingTypeOptions.find(r => r.key === recordingTypeId)?.label.split(' • ')[0] || ''})` : '';
         return `Sesi: ${sess?.label || sessionType}${sub}`;
       })();
 
     const text = `Halo *${studioName}*, saya ingin booking slot studio:
 
-ðŸ‘¤ *Nama Pelanggan* : ${name || '(Belum diisi)'}
-ðŸ“ž *Nomor HP* : ${phone || '(Belum diisi)'}
-ðŸŽ¤ *Layanan* : ${selectedService}
-ðŸ“… *Tanggal* : ${formattedDate || date}
-â° *Waktu* : ${actualDuration ? timeString + ' (' + actualDuration + ' Jam)' : timeString}
-ðŸ’° *Estimasi Total* : ${formatRupiah(pricingBreakdown.total)}
+👤 *Nama Pelanggan* : ${name || '(Belum diisi)'}
+📞 *Nomor HP* : ${phone || '(Belum diisi)'}
+🎤 *Layanan* : ${selectedService}
+📅 *Tanggal* : ${formattedDate || date}
+⏰ *Waktu* : ${actualDuration ? timeString + ' (' + actualDuration + ' Jam)' : timeString}
+💰 *Estimasi Total* : ${formatRupiah(pricingBreakdown.total)}
 
 Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
 
@@ -278,7 +278,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     const selectedPackage = packageOptions.find((item) => item.key === packageId);
     const selectedSession = sessionOptions.find((item) => item.key === sessionType);
     const selectedRecording = recordingTypeOptions.find((item) => item.key === recordingTypeId);
-    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' â€¢ ')[0] || selectedSession?.label || 'Sesi Studio';
+    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
 
     setIsSubmittingRequest(true);
     setBookingFeedback('');
@@ -321,22 +321,22 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     {
       id: 'rehearsal',
       title: 'Studio Rehearsal',
-      icon: <Music className="text-[var(--ui-accent)] w-6 h-6" />,
-      desc: 'Latihan band dengan instrumen siap pakai.',
+      icon: <Music className="text-[var(--ui-accent)] w-5 h-5" />,
+      desc: 'Latihan band dengan instrumen premium siap pakai.',
       tags: ['Latihan', 'Band', 'Rehearsal']
     },
     {
       id: 'recording',
       title: 'Professional Recording',
-      icon: <Mic className="text-[var(--ui-accent)] w-6 h-6" />,
-      desc: 'Tracking rekaman untuk vokal dan instrumen.',
+      icon: <Mic className="text-[var(--ui-accent)] w-5 h-5" />,
+      desc: 'Tracking rekaman jernih untuk vokal dan instrumen.',
       tags: ['Vokal', 'Instrumen', 'Tracking']
     },
     {
       id: 'mixing',
       title: 'Mixing & Mastering',
-      icon: <Sliders className="text-[var(--ui-accent)] w-6 h-6" />,
-      desc: 'Mixing dan mastering agar lagu siap rilis.',
+      icon: <Sliders className="text-[var(--ui-accent)] w-5 h-5" />,
+      desc: 'Finalisasi audio profesional agar lagu siap rilis.',
       tags: ['Mixing', 'Mastering', 'Release']
     }
   ];
@@ -346,7 +346,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
       <div className="client-landing-loading theme-container">
         <div className="client-landing-bg-glow" aria-hidden="true" />
         <div className="client-landing-loading-card">
-          <LoaderCircle className="client-landing-spin" size={36} />
+          <LoaderCircle className="client-landing-spin" size={32} />
           <p>Memuat portal...</p>
         </div>
       </div>
@@ -362,7 +362,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
       <header className="client-landing-header">
         <div className="client-landing-brand">
           <div className="client-landing-brand-mark">
-            <Volume2 size={20} />
+            <Volume2 size={16} />
           </div>
           <span className="client-landing-brand-text">37 MUSIC</span>
         </div>
@@ -374,7 +374,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
           <a href="#location" className="client-landing-nav-link">Lokasi</a>
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {currentUser ? (
             <>
               <button 
@@ -382,15 +382,14 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 className="client-landing-top-action is-primary"
               >
                 <span>Portal Saya</span>
-                <ArrowRight size={13} />
+                <ArrowRight size={12} />
               </button>
               <button 
                 onClick={handleLogout}
                 className="client-landing-top-action is-secondary"
                 title="Keluar Portal"
               >
-                <LogOut size={13} />
-                <span className="hidden sm:inline">Keluar</span>
+                <LogOut size={12} />
               </button>
             </>
           ) : (
@@ -399,49 +398,42 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
               className="client-landing-top-action is-primary"
             >
               <span>Masuk Portal</span>
-              <ArrowRight size={13} />
+              <ArrowRight size={12} />
             </button>
           )}
         </div>
       </header>
-
+ 
       {/* Hero Section */}
       <main className="client-landing-main">
         <section className="client-landing-hero">
-          {/* Slogan and details */}
           <div className="client-landing-hero-copy">
             <div className="client-landing-kicker">
-              <Sparkles size={12} className="animate-pulse" />
-              <span>Studio latihan & rekaman</span>
+              <Sparkles size={11} className="animate-pulse" />
+              <span>Studio Musik Premium</span>
             </div>
             
             <h1 className="client-landing-hero-title">
-              Booking <br />
-              <span className="client-landing-hero-accent">Studio</span>
+              Sewa Studio Musik. <br />
+              <span className="client-landing-hero-accent">Booking Instan.</span>
             </h1>
             
             <p className="client-landing-hero-text">
-              Pilih layanan, cek estimasi biaya, lalu kirim request booking. Admin akan konfirmasi slot dan pembayaran.
+              Pilih layanan latihan atau rekaman, hitung estimasi biaya secara otomatis, dan amankan slot jadwal Anda langsung via WhatsApp.
             </p>
 
             <div className="client-landing-hero-actions">
-              <a 
-                href="#booking" 
-                className="client-landing-button is-primary"
-              >
+              <a href="#booking" className="client-landing-button is-primary">
                 <span>PESAN JADWAL</span>
-                <ArrowRight size={16} />
+                <ArrowRight size={14} />
               </a>
-              <a 
-                href="#pricelist" 
-                className="client-landing-button is-secondary"
-              >
-                <span>CEK HARGA</span>
+              <a href="#pricelist" className="client-landing-button">
+                <span>LIHAT HARGA</span>
               </a>
             </div>
           </div>
 
-          {/* Banner Graphic Showcase */}
+          {/* Banner Graphic Showcase for Tablet/Desktop */}
           <div className="client-landing-hero-visual">
             <img 
               src="/images/studio_hero_banner.png" 
@@ -449,49 +441,60 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
               className="client-landing-hero-image"
               loading="eager"
             />
-            {/* Glass decoration overlays */}
             <div className="client-landing-hero-overlay" aria-hidden="true" />
             
             <div className="client-landing-hours-card">
               <div>
-                <p className="text-xs text-[var(--ui-text-muted)] uppercase tracking-wider font-semibold">Jam Operasional</p>
-                <h3 className="text-sm text-white font-bold">10.00 - 23.00 WIB</h3>
+                <p>Jam Operasional</p>
+                <h3>10.00 - 23.00 WIB</h3>
               </div>
-              <div className="flex items-center gap-1 text-[var(--ui-accent)] font-semibold text-xs bg-[var(--ui-accent-soft)] px-2.5 py-1.5 rounded-lg border border-[var(--ui-accent-strong)]/20">
-                <Flame size={12} />
-                <span>Booking Dulu</span>
+              <div>
+                <Flame size={11} />
+                <span>Booking Slot</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Brand specs section */}
-        <section id="services" className="pt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">FASILITAS STUDIO</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Pilih Kebutuhanmu</h3>
-            <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Latihan, rekaman, mixing, dan mastering dalam satu studio.
-            </p>
+        {/* Facilities Section */}
+        <section id="services" className="space-y-4">
+          <div>
+            <h2>FASILITAS STUDIO</h2>
+            <h3>Pilih Kebutuhan Sesi Anda</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="client-landing-services-scroll">
             {serviceCards.map((service) => (
               <div 
                 key={service.id}
-                className="p-6 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] hover:border-[var(--ui-border-strong)] transition-all duration-300 flex flex-col justify-between group"
+                style={{
+                  background: 'var(--studio-surface-1)',
+                  border: '1px solid var(--studio-border)',
+                  borderRadius: 'var(--studio-radius-lg)',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
               >
-                <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-xl bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex items-center justify-center group-hover:bg-[var(--ui-accent-soft)] group-hover:border-[var(--ui-accent-strong)]/30 transition-colors">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: 'var(--studio-radius-md)',
+                    background: 'var(--studio-surface-2)',
+                    border: '1px solid var(--studio-border)',
+                    display: 'grid',
+                    placeItems: 'center'
+                  }}>
                     {service.icon}
                   </div>
-                  <h4 className="text-lg text-white font-bold">{service.title}</h4>
-                  <p className="text-sm text-[var(--ui-text-muted)] leading-relaxed">{service.desc}</p>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: 'var(--studio-text-strong)' }}>{service.title}</h4>
                 </div>
-                
-                <div className="mt-6 pt-4 border-t border-[var(--ui-border)] flex flex-wrap gap-2">
+                <p style={{ margin: 0, fontSize: '11px', color: 'var(--studio-text-muted)', lineHeight: '1.4' }}>{service.desc}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid var(--studio-border)' }}>
                   {service.tags.map((tag, i) => (
-                    <span key={i} className="text-[10px] text-white/90 bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] px-2 py-1 rounded">
+                    <span key={i} style={{ fontSize: '9px', color: 'var(--studio-text-main)', background: 'var(--studio-surface-2)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--studio-border)' }}>
                       {tag}
                     </span>
                   ))}
@@ -502,134 +505,206 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         </section>
 
         {/* Pricing Lists */}
-        <section id="pricelist" className="pt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">DAFTAR HARGA</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Harga Ringkas</h3>
-            <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Pilih sewa per jam, paket studio, atau recording.
-            </p>
+        <section id="pricelist" className="space-y-6">
+          <div>
+            <h2>DAFTAR HARGA</h2>
+            <h3>Estimasi Biaya Transparan</h3>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-            {/* Standard Sessions */}
-            <div className="p-8 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] flex flex-col justify-between relative overflow-hidden">
-              <div className="space-y-6">
+          <div className="client-landing-pricing-scroll">
+            {/* Sewa Per Jam */}
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '1px solid var(--studio-border)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <h4 className="text-xl text-white font-bold">Sewa Per Jam</h4>
-                  <p className="text-xs text-[var(--ui-text-muted)] mt-1">Fleksibel untuk latihan santai atau mixing mandiri.</p>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--studio-text-strong)' }}>Sewa Per Jam</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)' }}>Sewa flat regular untuk latihan band harian.</p>
                 </div>
-                
-                <div className="space-y-4 border-t border-[var(--ui-border)] pt-4">
-                  {displayedSessionOptions.map((item) => (
-                    <div key={item.key} className="flex justify-between items-center text-sm">
-                      <div>
-                        <p className="text-white font-semibold">{item.label}</p>
-                        <p className="text-[11px] text-[var(--ui-text-muted)]">{item.description}</p>
-                      </div>
-                      <span className="text-[var(--ui-accent)] font-bold">
-                        {formatRupiah(item.price)}
-                        <span className="text-[10px] text-[var(--ui-text-muted)] font-normal">
-                          {item.isRecordingType ? ` / ${item.durationHours}jam` : '/jam'}
-                        </span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="mt-8">
-                <a href="#booking" className="w-full py-3 rounded-xl bg-[var(--ui-surface-soft)] hover:bg-[var(--ui-control)] border border-[var(--ui-border)] text-white text-xs font-bold tracking-wide flex items-center justify-center gap-1 transition-colors">
-                  <span>HITUNG BIAYA SESI</span>
-                  <ChevronRight size={14} />
-                </a>
-              </div>
-            </div>
-
-            {/* Packages Card (Featured) */}
-            <div className="p-8 rounded-2xl bg-[var(--ui-surface-card)] border-2 border-[var(--ui-accent)] flex flex-col justify-between relative overflow-hidden shadow-xl shadow-orange-500/5">
-              <div className="absolute top-0 right-0 bg-[var(--ui-accent)] text-black text-[10px] uppercase font-black px-4 py-1.5 rounded-bl-xl tracking-wider">
-                Rekomendasi
-              </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-xl text-white font-bold">Paket Studio Hemat</h4>
-                  <p className="text-xs text-[var(--ui-text-muted)] mt-1">Pilihan hemat untuk sesi latihan panjang atau rekaman demo.</p>
-                </div>
-                
-                <div className="space-y-4 border-t border-white/10 pt-4">
-                  {packageOptions.length > 0 ? (
-                    packageOptions.map((pkg) => (
-                      <div key={pkg.key} className="flex justify-between items-start text-sm">
-                        <div className="max-w-[70%]">
-                          <p className="text-white font-bold">{pkg.label}</p>
-                          <p className="text-[11px] text-[var(--ui-text-muted)] leading-relaxed mt-0.5">{pkg.detail || pkg.description}</p>
-                        </div>
-                        <span className="text-[var(--ui-accent)] font-bold shrink-0">{formatRupiah(pkg.price)}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-6 text-xs text-[var(--ui-text-muted)]">
-                      Belum ada paket khusus saat ini. Hubungi kami untuk penawaran kustom.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <a href="#booking" className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--ui-accent-strong)] to-[var(--ui-accent)] text-white text-xs font-bold tracking-wide flex items-center justify-center gap-1 transition-transform hover:scale-[1.01]">
-                  <span>PILIH PAKET SEKARANG</span>
-                  <ChevronRight size={14} />
-                </a>
-              </div>
-            </div>
-
-            {/* Recording Types */}
-            <div className="p-8 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] flex flex-col justify-between relative overflow-hidden">
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-xl text-white font-bold">Paket Rekaman (Recording)</h4>
-                  <p className="text-xs text-[var(--ui-text-muted)] mt-1">Paket khusus berdasarkan waktu tracking vokal atau instrumen.</p>
-                </div>
-                
-                <div className="space-y-4 border-t border-[var(--ui-border)] pt-4">
-                  {recordingTypeOptions.length > 0 ? (
-                    recordingTypeOptions.map((item) => (
-                      <div key={item.key} className="flex justify-between items-center text-sm">
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--studio-border)', paddingTop: '10px' }}>
+                  {displayedSessionOptions
+                    .filter((item) => item.key === 'rehearsal' || item.key === 'mixing')
+                    .map((item) => (
+                      <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
                         <div>
-                          <p className="text-white font-semibold">{item.label}</p>
+                          <p style={{ margin: 0, fontWeight: '700', color: 'var(--studio-text-strong)' }}>{item.label}</p>
+                          <p style={{ margin: 0, fontSize: '10px', color: 'var(--studio-text-muted)' }}>{item.description}</p>
                         </div>
-                        <span className="text-[var(--ui-accent)] font-bold shrink-0">{formatRupiah(item.price)}</span>
+                        <span style={{ color: 'var(--studio-accent)', fontWeight: '800' }}>
+                          {formatRupiah(item.price)}
+                          <span style={{ fontSize: '9px', fontWeight: 'normal', color: 'var(--studio-text-muted)' }}>
+                            {item.isRecordingType ? `/${item.durationHours}j` : '/jam'}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+              <a href="#booking" style={{
+                marginTop: '16px',
+                minHeight: '36px',
+                background: 'var(--studio-surface-2)',
+                border: '1px solid var(--studio-border)',
+                borderRadius: 'var(--studio-radius-md)',
+                color: 'var(--studio-text-strong)',
+                fontSize: '11px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}>
+                <span>Hitung Biaya Sesi</span>
+                <ChevronRight size={12} />
+              </a>
+            </div>
+
+            {/* Paket Hemat */}
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '2px solid var(--studio-accent)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                background: 'var(--studio-accent)',
+                color: '#000',
+                fontSize: '9px',
+                fontWeight: '900',
+                padding: '2px 8px',
+                borderBottomLeftRadius: 'var(--studio-radius-md)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Hemat
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--studio-text-strong)' }}>Paket Hemat</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)' }}>Pilihan ideal untuk durasi latihan panjang.</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--studio-border)', paddingTop: '10px' }}>
+                  {packageOptions.length > 0 ? (
+                    packageOptions.slice(0, 2).map((pkg) => (
+                      <div key={pkg.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '12px' }}>
+                        <div style={{ maxWidth: '70%' }}>
+                          <p style={{ margin: 0, fontWeight: '700', color: 'var(--studio-text-strong)' }}>{pkg.label}</p>
+                          <p style={{ margin: '1px 0 0', fontSize: '10px', color: 'var(--studio-text-muted)' }}>{pkg.detail || pkg.description}</p>
+                        </div>
+                        <span style={{ color: 'var(--studio-accent)', fontWeight: '800', flexShrink: 0 }}>{formatRupiah(pkg.price)}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-6 text-xs text-[var(--ui-text-muted)]">
-                      Layanan recording menggunakan tarif flat reguler Rp 150.000/jam.
+                    <div style={{ textAlign: 'center', padding: '12px 0', fontSize: '11px', color: 'var(--studio-text-muted)' }}>
+                      Belum ada paket khusus saat ini.
                     </div>
                   )}
                 </div>
               </div>
+              <a href="#booking" style={{
+                marginTop: '16px',
+                minHeight: '36px',
+                background: 'linear-gradient(135deg, var(--studio-accent), var(--studio-accent-strong))',
+                borderRadius: 'var(--studio-radius-md)',
+                color: 'var(--studio-text-inverse)',
+                fontSize: '11px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}>
+                <span>Pilih Paket Hemat</span>
+                <ChevronRight size={12} />
+              </a>
+            </div>
 
-              <div className="mt-8">
-                <a href="#booking" className="w-full py-3 rounded-xl bg-[var(--ui-surface-soft)] hover:bg-[var(--ui-control)] border border-[var(--ui-border)] text-white text-xs font-bold tracking-wide flex items-center justify-center gap-1 transition-colors">
-                  <span>PESAN LAYANAN RECORDING</span>
-                  <ChevronRight size={14} />
-                </a>
+            {/* Recording */}
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '1px solid var(--studio-border)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--studio-text-strong)' }}>Layanan Rekaman</h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)' }}>Paket khusus berdasar jam tracking instrument.</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--studio-border)', paddingTop: '10px' }}>
+                  {recordingTypeOptions.length > 0 ? (
+                    recordingTypeOptions.slice(0, 2).map((item) => (
+                      <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                        <p style={{ margin: 0, fontWeight: '700', color: 'var(--studio-text-strong)' }}>{item.label}</p>
+                        <span style={{ color: 'var(--studio-accent)', fontWeight: '800', flexShrink: 0 }}>{formatRupiah(item.price)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '12px 0', fontSize: '11px', color: 'var(--studio-text-muted)' }}>
+                      Tarif reguler Flat Rp 150.000/jam.
+                    </div>
+                  )}
+                </div>
               </div>
+              <a href="#booking" style={{
+                marginTop: '16px',
+                minHeight: '36px',
+                background: 'var(--studio-surface-2)',
+                border: '1px solid var(--studio-border)',
+                borderRadius: 'var(--studio-radius-md)',
+                color: 'var(--studio-text-strong)',
+                fontSize: '11px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}>
+                <span>Pesan Recording</span>
+                <ChevronRight size={12} />
+              </a>
             </div>
           </div>
 
           {/* Active Promo Notice */}
           {discountOptions.length > 0 && (
-            <div className="p-4 rounded-xl bg-[var(--ui-accent-soft)] border border-[var(--ui-accent-strong)]/20 flex items-start gap-3 max-w-2xl mx-auto">
-              <Info className="text-[var(--ui-accent)] shrink-0 w-5 h-5 mt-0.5" />
+            <div style={{
+              padding: '12px',
+              borderRadius: 'var(--studio-radius-md)',
+              background: 'var(--ui-accent-bg)',
+              border: '1px solid var(--studio-border)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              maxWidth: '600px',
+              margin: '12px auto 0'
+            }}>
+              <Info className="shrink-0 w-4 h-4 mt-0.5" style={{ color: 'var(--studio-accent)' }} />
               <div>
-                <h5 className="text-sm text-white font-bold">Promo Diskon Aktif!</h5>
-                <div className="text-xs text-[var(--ui-text-muted)] space-y-1 mt-1">
+                <h5 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: 'var(--studio-text-strong)' }}>Promo Diskon Aktif!</h5>
+                <div style={{ fontSize: '11px', color: 'var(--studio-text-muted)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   {discountOptions.map((disc) => (
-                    <p key={disc.key}>
-                      â€¢ Potongan harga senilai <strong className="text-white">{formatRupiah(disc.nominal)}</strong> untuk sesi <strong className="text-white">{disc.description.split(' â€¢ ')[1]}</strong> minimal sewa <strong className="text-white">{disc.description.split(' â€¢ ')[0]}</strong>.
+                    <p key={disc.key} style={{ margin: 0 }}>
+                      • Potongan harga <strong style={{ color: 'var(--studio-text-strong)' }}>{formatRupiah(disc.nominal)}</strong> untuk sesi <strong style={{ color: 'var(--studio-text-strong)' }}>{disc.description.split(' • ')[1] || ''}</strong> minimal sewa <strong style={{ color: 'var(--studio-text-strong)' }}>{disc.description.split(' • ')[0] || ''}</strong>.
                     </p>
                   ))}
                 </div>
@@ -639,45 +714,66 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         </section>
 
         {/* Interactive Booking Section */}
-        <section id="booking" className="pt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">PESAN JADWAL</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Request Booking</h3>
-            <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Isi data sesi, cek estimasi biaya, lalu kirim request ke admin.
-            </p>
+        <section id="booking" className="space-y-6">
+          <div>
+            <h2>PESAN JADWAL</h2>
+            <h3>Request Booking Online</h3>
           </div>
 
-          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }} className="md:grid-cols-12">
             {/* Input Form Column */}
-            <div className="md:col-span-7 p-6 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] space-y-5">
-              <h4 className="text-base text-white font-bold flex items-center gap-2 border-b border-[var(--ui-border)] pb-3">
-                <Calendar size={18} className="text-[var(--ui-accent)]" />
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '1px solid var(--studio-border)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }} className="md:col-span-7">
+              <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: 'var(--studio-text-strong)', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid var(--studio-border)', paddingBottom: '8px' }}>
+                <Calendar size={16} style={{ color: 'var(--studio-accent)' }} />
                 <span>Rincian Sesi</span>
               </h4>
 
-              <div className="space-y-4 text-sm">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {/* Name & Phone */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <label className="space-y-1.5 block">
-                    <span className="text-xs text-[var(--ui-text-muted)] font-medium">Nama Anda / Band</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }} className="sm:grid-cols-2">
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--studio-text-muted)' }}>NAMA ANDA / BAND</span>
                     <input 
                       type="text" 
                       placeholder="Masukkan nama..."
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] focus:border-[var(--ui-accent)] outline-none text-white transition-colors"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 'var(--studio-radius-sm)',
+                        background: 'var(--studio-surface-2)',
+                        border: '1px solid var(--studio-border)',
+                        color: '#fff',
+                        outline: 'none'
+                      }}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </label>
-                  <label className="space-y-1.5 block">
-                    <span className="text-xs text-[var(--ui-text-muted)] font-medium flex items-center justify-between">
-                      <span>Nomor WhatsApp</span>
-                      {currentUser?.phoneNumber && <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider">Terverifikasi</span>}
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--studio-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>NOMOR WHATSAPP</span>
+                      {currentUser?.phoneNumber && <span style={{ color: 'var(--studio-success)', fontSize: '8px', fontWeight: '900' }}>VERIFIED</span>}
                     </span>
                     <input 
                       type="tel" 
                       placeholder="Contoh: 081234..."
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] focus:border-[var(--ui-accent)] outline-none text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 'var(--studio-radius-sm)',
+                        background: 'var(--studio-surface-2)',
+                        border: '1px solid var(--studio-border)',
+                        color: '#fff',
+                        outline: 'none'
+                      }}
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       disabled={Boolean(currentUser?.phoneNumber)}
@@ -686,10 +782,27 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 </div>
 
                 {/* Booking Mode Switch: Package vs Sessions */}
-                <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-[var(--ui-surface-soft)] border border-[var(--ui-border)]">
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '4px',
+                  padding: '4px',
+                  borderRadius: 'var(--studio-radius-md)',
+                  background: 'var(--studio-surface-2)',
+                  border: '1px solid var(--studio-border)'
+                }}>
                   <button
                     type="button"
-                    className={`py-2 px-3 text-xs font-semibold rounded-lg transition-all ${packageId === 'none' ? 'bg-[#ff8a2a] text-black shadow-md' : 'text-[var(--ui-text-muted)] hover:text-white'}`}
+                    style={{
+                      padding: '6px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      borderRadius: 'var(--studio-radius-sm)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: packageId === 'none' ? 'var(--studio-accent)' : 'transparent',
+                      color: packageId === 'none' ? '#000' : 'var(--studio-text-muted)'
+                    }}
                     onClick={() => {
                       setPackageId('none');
                       setSessionType('rehearsal');
@@ -699,7 +812,16 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   </button>
                   <button
                     type="button"
-                    className={`py-2 px-3 text-xs font-semibold rounded-lg transition-all ${packageId !== 'none' ? 'bg-[#ff8a2a] text-black shadow-md' : 'text-[var(--ui-text-muted)] hover:text-white'}`}
+                    style={{
+                      padding: '6px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      borderRadius: 'var(--studio-radius-sm)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: packageId !== 'none' ? 'var(--studio-accent)' : 'transparent',
+                      color: packageId !== 'none' ? '#000' : 'var(--studio-text-muted)'
+                    }}
                     onClick={() => {
                       if (packageOptions.length > 0) {
                         handlePackageChange(packageOptions[0].key);
@@ -721,7 +843,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                     onChange={handlePackageChange}
                   />
                 ) : (
-                  <div className="space-y-4">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <StudioSelect
                       label="Pilih Layanan Studio"
                       options={sessionOptions}
@@ -741,12 +863,20 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                 )}
 
                 {/* Date and Time Selector */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <label className="space-y-1.5 block">
-                    <span className="text-xs text-[var(--ui-text-muted)] font-medium">Tanggal Booking</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }} className="sm:grid-cols-2">
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--studio-text-muted)' }}>TANGGAL BOOKING</span>
                     <input 
                       type="date"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] focus:border-[var(--ui-accent)] outline-none text-white transition-colors"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 'var(--studio-radius-sm)',
+                        background: 'var(--studio-surface-2)',
+                        border: '1px solid var(--studio-border)',
+                        color: '#fff',
+                        outline: 'none'
+                      }}
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                     />
@@ -760,9 +890,9 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   />
                 </div>
 
-                {/* Duration Picker (Only active for non-package selections) */}
+                {/* Duration Picker (Only active for reguler sessions) */}
                 {packageId === 'none' && recordingTypeId === 'none' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }} className="sm:grid-cols-2">
                     <StudioSelect
                       label="Durasi Sewa"
                       options={durationOptions}
@@ -771,14 +901,22 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                     />
                     
                     {duration === 'custom' && (
-                      <label className="space-y-1.5 block">
-                        <span className="text-xs text-[var(--ui-text-muted)] font-medium">Durasi Kustom (Jam)</span>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--studio-text-muted)' }}>DURASI KUSTOM (JAM)</span>
                         <input 
                           type="number"
                           placeholder="Jumlah jam..."
                           min={1}
                           max={24}
-                          className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] focus:border-[var(--ui-accent)] outline-none text-white transition-colors"
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: 'var(--studio-radius-sm)',
+                            background: 'var(--studio-surface-2)',
+                            border: '1px solid var(--studio-border)',
+                            color: '#fff',
+                            outline: 'none'
+                          }}
                           value={customDuration}
                           onChange={(e) => setCustomDuration(e.target.value)}
                         />
@@ -790,72 +928,104 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
             </div>
 
             {/* Calculations Summary and Actions */}
-            <div className="md:col-span-5 p-6 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] space-y-6 flex flex-col justify-between h-full relative">
-              <div className="space-y-4">
-                <h4 className="text-base text-white font-bold flex items-center gap-2 border-b border-[var(--ui-border)] pb-3">
-                  <Check size={18} className="text-[var(--ui-accent)]" />
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '1px solid var(--studio-border)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }} className="md:col-span-5">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: 'var(--studio-text-strong)', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid var(--studio-border)', paddingBottom: '8px' }}>
+                  <Check size={16} style={{ color: 'var(--studio-accent)' }} />
                   <span>Rincian Biaya</span>
                 </h4>
                 
-                <div className="space-y-3 text-xs text-[var(--ui-text-muted)]">
-                  <div className="flex justify-between">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: 'var(--studio-text-muted)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Layanan Sesi:</span>
-                    <span className="text-white font-semibold">
+                    <span style={{ color: '#fff', fontWeight: '600' }}>
                       {packageId !== 'none' 
                         ? (packageOptions.find(p => p.key === packageId)?.label || 'Paket')
                         : (sessionOptions.find(s => s.key === sessionType)?.label || sessionType)}
                     </span>
                   </div>
                   
-                  <div className="flex justify-between">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Durasi:</span>
-                    <span className="text-white font-semibold">{actualDuration} Jam</span>
+                    <span style={{ color: '#fff', fontWeight: '600' }}>{actualDuration} Jam</span>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Subtotal:</span>
-                    <span className="text-white font-semibold">{formatRupiah(pricingBreakdown.subtotal)}</span>
+                    <span style={{ color: '#fff', fontWeight: '600' }}>{formatRupiah(pricingBreakdown.subtotal)}</span>
                   </div>
 
                   {pricingBreakdown.discountAmount > 0 && (
-                    <div className="flex justify-between text-green-400">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--studio-success)' }}>
                       <span>Promo Potongan:</span>
                       <span>-{formatRupiah(pricingBreakdown.discountAmount)}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between border-t border-[var(--ui-border)] pt-3 text-sm font-bold text-white">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--studio-border)', paddingTop: '8px', fontSize: '13px', fontWeight: '800', color: '#fff' }}>
                     <span>Total Estimasi:</span>
-                    <span className="text-[var(--ui-accent)]">{formatRupiah(pricingBreakdown.total)}</span>
+                    <span style={{ color: 'var(--studio-accent)' }}>{formatRupiah(pricingBreakdown.total)}</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] space-y-2 text-xs text-[var(--ui-text-muted)] leading-relaxed">
-                  <div className="flex items-center gap-1.5 text-white font-bold text-[11px] mb-1">
-                    <Info size={12} className="text-[var(--ui-accent)]" />
+                <div style={{
+                  padding: '10px',
+                  borderRadius: 'var(--studio-radius-md)',
+                  background: 'var(--studio-surface-2)',
+                  border: '1px solid var(--studio-border)',
+                  fontSize: '11px',
+                  color: 'var(--studio-text-muted)',
+                  lineHeight: '1.4',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fff', fontWeight: '700', fontSize: '11px', marginBottom: '2px' }}>
+                    <Info size={11} style={{ color: 'var(--studio-accent)' }} />
                     <span>Langkah Mudah Booking:</span>
                   </div>
-                  <p>1. Lengkapi formulir di sebelah kiri.</p>
-                  <p>2. Periksa detail rincian biaya di atas.</p>
-                  <p>3. Klik tombol WhatsApp untuk mengirim detail booking.</p>
-                  <p>4. Admin studio akan mengonfirmasi slot & pembayaran.</p>
+                  <p style={{ margin: 0 }}>1. Lengkapi formulir rincian sesi.</p>
+                  <p style={{ margin: 0 }}>2. Cek total estimasi biaya di atas.</p>
+                  <p style={{ margin: 0 }}>3. Klik tombol WhatsApp untuk booking.</p>
                 </div>
               </div>
 
-              <div className="pt-6">
+              <div style={{ paddingTop: '16px' }}>
                 <a 
                   href={whatsappUrl}
                   target="_blank" 
                   rel="noopener noreferrer"
                   onClick={handleBookingAction}
                   aria-disabled={isSubmittingRequest}
-                  className="w-full py-4 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white font-bold text-xs tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-green-500/10 transition-transform active:scale-[0.98]"
+                  style={{
+                    width: '100%',
+                    minHeight: '44px',
+                    borderRadius: 'var(--studio-radius-md)',
+                    background: '#2ecc71',
+                    color: '#fff',
+                    fontWeight: '800',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer'
+                  }}
                 >
-                  <Phone size={14} />
+                  <Phone size={13} />
                   <span>{isSubmittingRequest ? 'MENYIMPAN REQUEST...' : currentUser ? 'KIRIM REQUEST + WHATSAPP' : 'KIRIM JADWAL VIA WHATSAPP'}</span>
                 </a>
                 {bookingFeedback ? (
-                  <p className="mt-3 text-center text-xs text-[var(--ui-text-muted)]" role="status">{bookingFeedback}</p>
+                  <p style={{ margin: '8px 0 0', textAlign: 'center', fontSize: '11px', color: 'var(--studio-text-muted)' }} role="status">{bookingFeedback}</p>
                 ) : null}
               </div>
             </div>
@@ -863,58 +1033,114 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         </section>
 
         {/* Booking History Section */}
-        <section id="history" className="pt-24 space-y-8">
-          <div className="text-center space-y-3">
-            <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">RIWAYAT BOOKING</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Jadwal Sesi Anda</h3>
-            <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Semua riwayat pemesanan studio yang terhubung dengan akun Anda.
-            </p>
+        <section id="history" className="space-y-6">
+          <div>
+            <h2>RIWAYAT BOOKING</h2>
+            <h3>Jadwal Sesi Anda</h3>
           </div>
 
-          <div className="max-w-4xl mx-auto space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentUser && (
-              <div className="p-4 rounded-xl bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-                <span className="text-[var(--ui-text-muted)] text-xs text-center sm:text-left">
-                  Anda sedang masuk. Untuk melihat riwayat lengkap, sisa tagihan, dan jadwal kalender aktif:
+              <div style={{
+                padding: '12px',
+                borderRadius: 'var(--studio-radius-md)',
+                background: 'var(--studio-surface-1)',
+                border: '1px solid var(--studio-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                fontSize: '12px'
+              }} className="sm:flex-row">
+                <span style={{ color: 'var(--studio-text-muted)', textAlign: 'center' }} className="sm:text-left">
+                  Anda sedang masuk. Untuk melihat riwayat lengkap, sisa tagihan, dan kalender:
                 </span>
                 <button
                   onClick={() => navigate('/client/portal')}
-                  className="px-4 py-2 rounded-lg bg-[var(--ui-accent)] text-black font-bold text-xs flex items-center gap-1.5 hover:opacity-90 transition-all shrink-0 shadow-md shadow-orange-500/10"
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--studio-radius-sm)',
+                    background: 'var(--studio-accent)',
+                    color: '#000',
+                    fontWeight: '800',
+                    fontSize: '11px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    flexShrink: 0
+                  }}
                 >
                   <span>Buka Portal Saya</span>
-                  <ArrowRight size={13} />
+                  <ArrowRight size={12} />
                 </button>
               </div>
             )}
+            
             {!currentUser ? (
-              <div className="p-8 text-center rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] text-sm space-y-3 relative overflow-hidden">
-                {/* Ambient glow decoration */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[120px] rounded-full bg-[var(--ui-accent)]/5 filter blur-[40px] pointer-events-none" />
-                <CalendarDays size={28} className="mx-auto text-white/25 mb-1" />
-                <strong className="text-white">Ingin melihat riwayat booking Anda?</strong>
-                <p className="text-xs max-w-xs mx-auto text-[var(--ui-text-muted)]">Masuk ke Portal Client untuk melihat jadwal sesi latihan atau rekaman aktif Anda secara langsung.</p>
+              <div style={{
+                padding: '24px 16px',
+                textAlign: 'center',
+                borderRadius: 'var(--studio-radius-lg)',
+                background: 'var(--studio-surface-1)',
+                border: '1px solid var(--studio-border)',
+                color: 'var(--studio-text-muted)',
+                fontSize: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <CalendarDays size={24} style={{ color: 'var(--studio-text-muted)', opacity: 0.4 }} />
+                <strong style={{ color: '#fff', fontSize: '13px' }}>Ingin melihat riwayat booking Anda?</strong>
+                <p style={{ margin: 0, maxWidth: '280px', lineHeight: '1.4' }}>Masuk ke Portal Client untuk melihat jadwal sesi latihan atau rekaman aktif Anda.</p>
                 <button
                   onClick={() => navigate('/client/login')}
-                  className="px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-all mt-2"
+                  style={{
+                    marginTop: '4px',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--studio-radius-full)',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontWeight: '700',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
                 >
                   <span>Masuk Portal</span>
-                  <ChevronRight size={13} />
+                  <ChevronRight size={12} />
                 </button>
               </div>
             ) : userBookings.length === 0 ? (
-              <div className="p-8 text-center rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] text-sm space-y-2">
-                <CalendarDays size={28} className="mx-auto text-white/25 mb-2" />
-                <strong>Belum ada riwayat booking</strong>
-                <p className="text-xs max-w-xs mx-auto">Silakan lakukan simulasi di kalkulator atas lalu kirim jadwal ke admin studio via WhatsApp.</p>
+              <div style={{
+                padding: '24px',
+                textAlign: 'center',
+                borderRadius: 'var(--studio-radius-lg)',
+                background: 'var(--studio-surface-1)',
+                border: '1px solid var(--studio-border)',
+                color: 'var(--studio-text-muted)',
+                fontSize: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <CalendarDays size={24} style={{ color: 'var(--studio-text-muted)', opacity: 0.4 }} />
+                <strong style={{ color: '#fff', fontSize: '13px' }}>Belum ada riwayat booking</strong>
+                <p style={{ margin: 0, maxWidth: '280px', lineHeight: '1.4' }}>Silakan lakukan simulasi di kalkulator atas lalu kirim jadwal ke admin studio via WhatsApp.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {userBookings.map((booking) => {
                   const status = booking.paymentStatus || booking.status || 'pending';
                   const isVoid = status === 'void' || status === 'cancelled';
                   
-                  // Helper function to format status badge class
                   const getStatusBadgeClass = (statusStr) => {
                     const cleanStatus = statusStr.toLowerCase();
                     if (cleanStatus === 'lunas') return 'bg-green-500/10 text-green-400 border border-green-500/20';
@@ -931,45 +1157,57 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   return (
                     <article 
                       key={booking.id} 
-                      className={`relative overflow-hidden p-5 rounded-2xl backdrop-blur-md bg-white/[0.02] border border-white/5 hover:border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-all duration-300 ${isVoid ? 'opacity-50' : ''}`}
+                      style={{
+                        padding: '12px',
+                        borderRadius: 'var(--studio-radius-lg)',
+                        background: 'var(--studio-surface-1)',
+                        border: '1px solid var(--studio-border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        opacity: isVoid ? 0.5 : 1
+                      }}
+                      className="sm:flex-row sm:items-center sm:justify-between"
                     >
-                      {/* Spatial ambient glow for each booking row */}
-                      {!isVoid && (
-                        <div className={`absolute top-0 right-0 w-[80px] h-[80px] rounded-full filter blur-[40px] opacity-[0.04] pointer-events-none ${status === 'lunas' ? 'bg-green-500' : status === 'dp' ? 'bg-orange-500' : 'bg-amber-500'}`} />
-                      )}
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-[var(--ui-text-muted)] font-semibold tracking-wider bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--studio-text-muted)', background: 'var(--studio-surface-2)', border: '1px solid var(--studio-border)', padding: '2px 6px', borderRadius: '4px' }}>
                             {booking.bookingCode || booking.bookingId || 'BKG'}
                           </span>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${getStatusBadgeClass(status)}`}>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeClass(status)}`}>
                             {status === 'void' ? 'Void' : status === 'cancelled' ? 'Canceled' : status}
                           </span>
                         </div>
 
-                        <h4 className="text-base font-bold text-white leading-tight">
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#fff' }}>
                           {booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Selesai'}
                         </h4>
 
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--ui-text-muted)]">
-                          <span className="flex items-center gap-1">
-                            <CalendarDays size={13} className="text-[#ff8a2a]" />
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: 'var(--studio-text-muted)' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <CalendarDays size={12} style={{ color: 'var(--studio-accent)' }} />
                             <span>{new Date(booking.date + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Clock size={13} className="text-[#ff8a2a]" />
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={12} style={{ color: 'var(--studio-accent)' }} />
                             <span>{timeString} ({durationNum} Jam)</span>
                           </span>
                         </div>
                       </div>
 
-                      <div className="sm:text-right flex sm:flex-col justify-between items-center sm:items-end gap-2 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0 shrink-0">
-                        <span className="text-xs text-[var(--ui-text-muted)]">Total Biaya</span>
-                        <strong className="text-base text-white">{formatRupiah(booking.total || booking.subtotal || 0)}</strong>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderTop: '1px solid var(--studio-border)',
+                        paddingTop: '8px',
+                        fontSize: '11px'
+                      }} className="sm:border-t-0 sm:pt-0 sm:flex-col sm:items-end sm:gap-1">
+                        <span style={{ color: 'var(--studio-text-muted)' }}>Total Biaya</span>
+                        <strong style={{ fontSize: '13px', color: '#fff', fontWeight: '800' }}>{formatRupiah(booking.total || booking.subtotal || 0)}</strong>
                         {status === 'dp' && booking.dpAmount > 0 && (
-                          <span className="text-[10px] text-orange-400 font-medium">
-                            DP: {formatRupiah(booking.dpAmount)} (Sisa: {formatRupiah((booking.total || 0) - booking.dpAmount)})
+                          <span style={{ fontSize: '9px', color: 'var(--studio-accent)', fontWeight: '700' }}>
+                            Sisa: {formatRupiah((booking.total || 0) - booking.dpAmount)}
                           </span>
                         )}
                       </div>
@@ -982,63 +1220,112 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         </section>
 
         {/* Location & Contacts */}
-        <section id="location" className="pt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <h2 className="text-xs text-[var(--ui-accent)] uppercase tracking-[0.2em] font-bold">KONTAK & LOKASI</h2>
-            <h3 className="text-2xl md:text-4xl text-white font-bold">Kunjungi Studio Kami</h3>
-            <p className="text-sm text-[var(--ui-text-muted)] max-w-md mx-auto">
-              Silakan datang langsung atau hubungi kontak kami jika memerlukan bantuan kustom.
-            </p>
+        <section id="location" className="space-y-6">
+          <div>
+            <h2>KONTAK & LOKASI</h2>
+            <h3>Kunjungi Studio Kami</h3>
           </div>
 
-          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-            {/* Info Cards */}
-            <div className="p-6 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] flex flex-col justify-between space-y-6">
-              <div className="space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex items-center justify-center shrink-0">
-                    <MapPin className="text-[var(--ui-accent)] w-5 h-5" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }} className="md:grid-cols-2">
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '1px solid var(--studio-border)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '16px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--studio-radius-sm)',
+                    background: 'var(--studio-surface-2)',
+                    border: '1px solid var(--studio-border)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    <MapPin size={16} style={{ color: 'var(--studio-accent)' }} />
                   </div>
                   <div>
-                    <h4 className="text-sm text-white font-bold">Alamat Studio</h4>
-                    <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed mt-1">
+                    <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#fff' }}>Alamat Studio</h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)', lineHeight: '1.4' }}>
                       {invoiceSettings.address || 'Alamat studio belum diatur.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex items-center justify-center shrink-0">
-                    <Phone className="text-[var(--ui-accent)] w-5 h-5" />
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--studio-radius-sm)',
+                    background: 'var(--studio-surface-2)',
+                    border: '1px solid var(--studio-border)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Phone size={16} style={{ color: 'var(--studio-accent)' }} />
                   </div>
                   <div>
-                    <h4 className="text-sm text-white font-bold">Telepon / WhatsApp</h4>
-                    <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed mt-1">
+                    <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#fff' }}>Telepon / WhatsApp</h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)', lineHeight: '1.4' }}>
                       {invoiceSettings.phone || 'Kontak studio belum diatur.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex items-center justify-center shrink-0">
-                    <Shield className="text-[var(--ui-accent)] w-5 h-5" />
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--studio-radius-sm)',
+                    background: 'var(--studio-surface-2)',
+                    border: '1px solid var(--studio-border)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Shield size={16} style={{ color: 'var(--studio-accent)' }} />
                   </div>
                   <div>
-                    <h4 className="text-sm text-white font-bold">Sistem Verifikasi Aman</h4>
-                    <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed mt-1">
-                      Setiap pemesanan akan dicatat di basis data kami dan dikonfirmasi langsung oleh tim admin.
+                    <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#fff' }}>Sistem Verifikasi Aman</h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)', lineHeight: '1.4' }}>
+                      Pemesanan dicatat di basis data kami dan dikonfirmasi langsung oleh tim admin.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex items-center justify-between text-xs text-[var(--ui-text-muted)]">
+              <div style={{
+                padding: '10px',
+                borderRadius: 'var(--studio-radius-md)',
+                background: 'var(--studio-surface-2)',
+                border: '1px solid var(--studio-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '11px',
+                color: 'var(--studio-text-muted)'
+              }}>
                 <span>Punya pertanyaan khusus?</span>
                 <a 
                   href={`https://wa.me/${whatsappPhone}?text=Halo%2037%20Music%20Studio%2C%20saya%20ingin%20bertanya%20mengenai...`} 
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[var(--ui-accent)] font-semibold flex items-center gap-1 hover:underline"
+                  style={{
+                    color: 'var(--studio-accent)',
+                    fontWeight: '700',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px'
+                  }}
                 >
                   <span>Tanya Admin</span>
                   <ChevronRight size={12} />
@@ -1047,17 +1334,35 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
             </div>
 
             {/* Visual branding container */}
-            <div className="p-6 rounded-2xl bg-[var(--ui-surface-card)] border border-[var(--ui-border)] flex flex-col justify-center items-center text-center space-y-4 relative overflow-hidden">
-              {/* Subtle background overlay */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-[var(--ui-accent-soft)] via-transparent to-transparent opacity-30 pointer-events-none" />
-              
-              <div className="w-16 h-16 rounded-full bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] flex items-center justify-center shadow-lg shadow-orange-500/5">
-                <Volume2 className="text-[var(--ui-accent)] w-8 h-8" />
+            <div style={{
+              background: 'var(--studio-surface-1)',
+              border: '1px solid var(--studio-border)',
+              borderRadius: 'var(--studio-radius-lg)',
+              padding: '24px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '12px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: 'var(--studio-surface-2)',
+                border: '1px solid var(--studio-border)',
+                display: 'grid',
+                placeItems: 'center'
+              }}>
+                <Volume2 size={24} style={{ color: 'var(--studio-accent)' }} />
               </div>
               
-              <h4 className="text-lg text-white font-bold">{invoiceSettings.studioName || '37 Music Studio'}</h4>
-              <p className="text-xs text-[var(--ui-text-muted)] max-w-xs leading-relaxed">
-                Kami berkomitmen memberikan pengalaman bermusik terbaik untuk Anda. Silakan hubungi kami untuk informasi kerja sama, event, atau paket rekaman album.
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#fff' }}>{invoiceSettings.studioName || '37 Music Studio'}</h4>
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--studio-text-muted)', maxWidth: '260px', lineHeight: '1.5' }}>
+                Kami berkomitmen memberikan pengalaman bermusik terbaik untuk Anda. Silakan hubungi kami untuk kerja sama event, rental instrument, atau album recording.
               </p>
             </div>
           </div>
@@ -1065,14 +1370,26 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
       </main>
 
       {/* Elegant minimalist footer */}
-      <footer className="w-full border-t border-[var(--ui-border)] bg-[#030304]">
-        <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between text-xs text-[var(--ui-text-muted)] gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-[var(--ui-accent)] flex items-center justify-center text-black font-extrabold text-[10px]">37</div>
-            <span className="font-semibold text-white">37 Music Studio</span>
+      <footer style={{ borderTop: '1px solid var(--studio-border)', background: '#050506', padding: '16px 0' }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '1020px',
+          margin: '0 auto',
+          paddingInline: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          fontSize: '11px',
+          color: 'var(--studio-text-muted)'
+        }} className="sm:flex-row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '18px', height: '18px', borderRadius: '4px', background: 'var(--studio-accent)', color: '#000', display: 'grid', placeItems: 'center', fontWeight: '900', fontSize: '9px' }}>37</div>
+            <span style={{ fontWeight: '700', color: '#fff' }}>37 Music Studio</span>
           </div>
-          <p>Â© {new Date().getFullYear()} {invoiceSettings.studioName || '37 Music Studio'}. All rights reserved.</p>
-          <p className="text-[10px]">Built for Musicians.</p>
+          <p style={{ margin: 0 }}>© {new Date().getFullYear()} {invoiceSettings.studioName || '37 Music Studio'}. All rights reserved.</p>
+          <p style={{ margin: 0, fontSize: '9px' }}>Built for Musicians.</p>
         </div>
       </footer>
     </div>

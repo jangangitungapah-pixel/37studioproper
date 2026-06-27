@@ -533,10 +533,12 @@ export default function AdminPage() {
 
   return (
     <main className={shellClassName} data-auth-surface="admin" data-admin-active={activeItem.key}>
-      <GuardAttendanceApprovalModal
-        currentUser={authState.user}
-        onOpenPanel={() => goTo('/admin/guard-attendance')}
-      />
+      {isOwnerAdminUser(authState.user) && (
+        <GuardAttendanceApprovalModal
+          currentUser={authState.user}
+          onOpenPanel={() => goTo('/admin/guard-attendance')}
+        />
+      )}
       <AdminSidebar
         isSidebarCollapsed={isSidebarCollapsed}
         toggleSidebar={toggleSidebar}
@@ -557,6 +559,7 @@ export default function AdminPage() {
           goTo={goTo}
           notificationSummary={notificationSummary}
           onLogout={handleLogout}
+          user={authState.user}
         />
 
         <Suspense

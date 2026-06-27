@@ -1,30 +1,31 @@
 /* Firebase Auth Controls: shared auth tabs, Google button, reCAPTCHA and role decision dialog. */
 .auth-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-  padding: 6px;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 4px;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
 }
 
 .auth-tab-btn {
   flex: 1;
-  min-height: 42px;
+  min-height: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid transparent;
-  border-radius: var(--studio-radius-md);
+  border-radius: var(--studio-radius-sm);
   background: transparent;
   color: var(--auth-text-muted);
   font: inherit;
-  font-size: var(--studio-text-xs);
-  font-weight: 760;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
-  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
 }
 
 .auth-tab-btn:hover {
@@ -43,10 +44,10 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 5px;
-  margin-top: 12px;
+  gap: 4px;
+  margin-top: 10px;
   color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
+  font-size: 11px;
 }
 
 .auth-mode-link,
@@ -56,8 +57,8 @@
   color: var(--auth-accent);
   padding: 0;
   font: inherit;
-  font-size: var(--studio-text-xs);
-  font-weight: 780;
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -74,27 +75,27 @@
 
 .auth-google-btn {
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 10px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   background: var(--auth-bg-control);
   color: var(--auth-text-strong);
   font: inherit;
-  font-size: var(--studio-text-sm);
-  font-weight: 760;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
 }
 
 .auth-google-btn:hover:not(:disabled) {
   border-color: var(--auth-border-strong);
   background: var(--auth-bg-card);
-  transform: translateY(-1px);
 }
 
 .auth-google-btn:disabled {
@@ -103,71 +104,23 @@
 }
 
 .auth-google-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .auth-divider {
   position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 28px;
-  margin: 16px 0;
-  color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
-  font-weight: 760;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.auth-divider::before {
-  content: '';
-  position: absolute;
-  inset: 50% 0 auto;
-  border-top: 1px solid var(--auth-border);
-}
-
-.auth-divider::after {
-  content: attr(data-label);
-}
-
-.auth-divider {
-  overflow: hidden;
-}
-
-.auth-divider:not(:empty) {
-  background: transparent;
-}
-
-.auth-divider:not(:empty)::after {
-  content: none;
-}
-
-.auth-divider {
-  text-align: center;
-}
-
-.auth-divider::before {
-  z-index: 0;
-}
-
-.auth-divider {
-  isolation: isolate;
-}
-
-.auth-divider {
-  color: var(--auth-text-muted);
-}
-
-.auth-divider {
-  line-height: 1;
-}
-
-.auth-divider {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-height: 20px;
+  margin: 12px 0;
+  color: var(--auth-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .auth-divider::before,
@@ -181,13 +134,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
+  font-size: 11px;
 }
 
 #recaptcha-container {
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   justify-content: center;
 }
@@ -199,28 +152,28 @@
   display: grid;
   place-items: center;
   background: rgba(15, 12, 9, 0.66);
-  padding: 18px;
+  padding: 16px;
   backdrop-filter: blur(12px);
 }
 
 .account-role-dialog {
-  width: min(100%, 440px);
-  display: grid;
-  gap: 14px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-xl);
-  background:
-    radial-gradient(circle at 0% 0%, var(--studio-accent-soft), transparent 34%),
-    var(--auth-bg-elevated);
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-elevated);
   color: var(--auth-text-main);
-  box-shadow: var(--studio-shadow-float);
-  padding: 24px;
+  box-shadow: var(--studio-shadow);
+  padding: 20px;
   font-family: var(--ui-font-sans);
 }
 
 .account-role-icon {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border: 1px solid var(--auth-border-strong);
@@ -232,26 +185,26 @@
 .account-role-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   color: var(--auth-accent);
-  font-size: var(--studio-text-xs);
-  font-weight: 820;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .account-role-dialog h2 {
   margin: 0;
   color: var(--auth-text-strong);
-  font-size: clamp(1.2rem, 4vw, 1.55rem);
+  font-size: 1.25rem;
   line-height: 1.2;
 }
 
 .account-role-dialog p {
   margin: 0;
   color: var(--auth-text-muted);
-  font-size: var(--studio-text-sm);
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .account-role-detail {
@@ -259,30 +212,31 @@
   border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
   color: var(--auth-text-muted);
-  padding: 11px 12px;
-  font-size: var(--studio-text-xs);
-  line-height: 1.5;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .account-role-actions {
   display: grid;
-  gap: 9px;
+  gap: 8px;
 }
 
 .account-role-action {
-  min-height: 46px;
+  min-height: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   background: var(--auth-bg-control);
   color: var(--auth-text-main);
-  padding: 10px 16px;
+  padding: 0 12px;
   font: inherit;
-  font-size: var(--studio-text-xs);
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -308,12 +262,8 @@
 
 @media (max-width: 520px) {
   .account-role-overlay {
-    align-items: end;
-    padding: 10px;
-  }
-
-  .account-role-dialog {
-    border-radius: var(--studio-radius-lg);
-    padding: 20px;
+    align-items: flex-end;
+    padding: 12px;
   }
 }
+

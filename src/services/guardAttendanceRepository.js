@@ -283,7 +283,7 @@ export async function closeGuardAttendanceSession(session, user) {
   });
 }
 
-export async function approveGuardAttendanceSession(session, ownerUser) {
+export async function approveGuardAttendanceSession(session, ownerUser, existingSessions = []) {
   if (!isFirebaseConfigured || !firestoreDb) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
@@ -292,12 +292,25 @@ export async function approveGuardAttendanceSession(session, ownerUser) {
   const timestamp = nowIso();
   const nextStatus = record.clockOutAt ? GUARD_ATTENDANCE_STATUSES.CLOSED : GUARD_ATTENDANCE_STATUSES.ACTIVE;
 
+  // Uang makan hanya diberikan SATU kali per penjaga per hari.
+  // Jika sudah ada sesi approved lain untuk guard+tanggal yang sama, set mealEligible=false.
+  const alreadyHasMealForDay = existingSessions.some((s) => {
+    if (s.id === record.id) return false; // skip sesi yang sedang di-approve
+    if (s.approvalStatus !== GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) return false;
+    if (s.date !== record.date) return false;
+
+    const samePersonId = s.guardPersonId && s.guardPersonId === record.guardPersonId;
+    const sameUid = s.guardUid && s.guardUid === record.guardUid;
+
+    return (samePersonId || sameUid) && s.mealEligible;
+  });
+
   const patch = {
     approvalStatus: GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED,
     approvedAt: timestamp,
     approvedByName: cleanText(ownerUser?.displayName || ownerUser?.email, 'Owner'),
     approvedByUid: cleanText(ownerUser?.uid),
-    mealEligible: true,
+    mealEligible: !alreadyHasMealForDay,
     ownerActionRequired: false,
     rejectedAt: '',
     rejectedByName: '',
