@@ -936,11 +936,33 @@ export default function SchedulePage() {
     }
   }, []);
 
+  const dateRange = useMemo(() => {
+    let start, end;
+    if (viewMode === 'day') {
+      start = selectedDate;
+      end = selectedDate;
+    } else if (viewMode === 'week') {
+      start = getWeekStart(selectedDate);
+      end = addDays(start, 6);
+    } else {
+      start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      end = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), getDaysInMonth(selectedDate));
+    }
+    return {
+      startDate: toIsoDate(start),
+      endDate: toIsoDate(end)
+    };
+  }, [selectedDate, viewMode]);
+
   // Subscribe to real-time Firestore bookings
   useEffect(() => {
     if (isScheduleQaPreview) return undefined;
 
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
+      {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+      },
       (data) => {
         setBookings(data);
         adminBookingRepository.syncClientCalendarSlotsFromBookings(data)
@@ -955,7 +977,7 @@ export default function SchedulePage() {
       }
     );
     return unsubscribe;
-  }, []);
+  }, [dateRange]);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const scheduleStats = useMemo(() => {

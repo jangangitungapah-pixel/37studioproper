@@ -2,6 +2,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -53,14 +54,33 @@ export function normalizeBookkeepingEntry(entry, fallbackId = '') {
   };
 }
 
-export function subscribeBookkeepingEntries(callback, onError) {
+export function subscribeBookkeepingEntries(options, callback, onError) {
+  let opts = {};
+  let cb = callback;
+  let errCb = onError;
+
+  if (typeof options === 'function') {
+    errCb = callback;
+    cb = options;
+  } else if (options && typeof options === 'object') {
+    opts = options;
+  }
+
   if (!isFirebaseConfigured || !firestoreDb) {
-    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    if (errCb) errCb(new Error('Firebase belum dikonfigurasi.'));
     return () => {};
   }
 
   const entriesRef = collection(firestoreDb, BOOKKEEPING_COLLECTION);
-  const q = query(entriesRef, orderBy('date', 'desc'));
+  const constraints = [];
+
+  constraints.push(orderBy('date', 'desc'));
+
+  if (opts.limitCount) {
+    constraints.push(limit(opts.limitCount));
+  }
+
+  const q = query(entriesRef, ...constraints);
 
   return onSnapshot(
     q,
@@ -77,11 +97,11 @@ export function subscribeBookkeepingEntries(callback, onError) {
         ));
       });
 
-      callback(entries);
+      cb(entries);
     },
     (error) => {
       console.error('Error fetching bookkeeping entries from Firestore:', error);
-      if (onError) onError(error);
+      if (errCb) errCb(error);
     }
   );
 }

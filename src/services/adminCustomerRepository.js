@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -12,14 +13,33 @@ import {
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 
-export function subscribeManualCustomers(callback, onError) {
+export function subscribeManualCustomers(options, callback, onError) {
+  let opts = {};
+  let cb = callback;
+  let errCb = onError;
+
+  if (typeof options === 'function') {
+    errCb = callback;
+    cb = options;
+  } else if (options && typeof options === 'object') {
+    opts = options;
+  }
+
   if (!isFirebaseConfigured || !firestoreDb) {
-    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    if (errCb) errCb(new Error('Firebase belum dikonfigurasi.'));
     return () => {};
   }
 
   const customersRef = collection(firestoreDb, 'customers');
-  const q = query(customersRef, orderBy('createdAt', 'desc'));
+  const constraints = [];
+
+  constraints.push(orderBy('createdAt', 'desc'));
+
+  if (opts.limitCount) {
+    constraints.push(limit(opts.limitCount));
+  }
+
+  const q = query(customersRef, ...constraints);
 
   return onSnapshot(
     q,
@@ -31,11 +51,11 @@ export function subscribeManualCustomers(callback, onError) {
           ...doc.data()
         });
       });
-      callback(customers);
+      cb(customers);
     },
     (error) => {
       console.error('Error fetching customers from Firestore:', error);
-      if (onError) onError(error);
+      if (errCb) errCb(error);
     }
   );
 }

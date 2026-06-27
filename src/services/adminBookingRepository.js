@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDocs,
+  limit,
   onSnapshot,
   or,
   orderBy,
@@ -351,14 +352,40 @@ function normalizeBookingBillingIdentity(booking, fallbackId = '') {
   };
 }
 
-export function subscribeManualBookings(callback, onError) {
+export function subscribeManualBookings(options, callback, onError) {
+  let opts = {};
+  let cb = callback;
+  let errCb = onError;
+
+  if (typeof options === 'function') {
+    errCb = callback;
+    cb = options;
+  } else if (options && typeof options === 'object') {
+    opts = options;
+  }
+
   if (!isFirebaseConfigured || !firestoreDb) {
-    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    if (errCb) errCb(new Error('Firebase belum dikonfigurasi.'));
     return () => {};
   }
 
   const bookingsRef = collection(firestoreDb, 'bookings');
-  const q = query(bookingsRef, orderBy('date', 'desc'));
+  const constraints = [];
+
+  if (opts.startDate) {
+    constraints.push(where('date', '>=', opts.startDate));
+  }
+  if (opts.endDate) {
+    constraints.push(where('date', '<=', opts.endDate));
+  }
+
+  constraints.push(orderBy('date', 'desc'));
+
+  if (opts.limitCount) {
+    constraints.push(limit(opts.limitCount));
+  }
+
+  const q = query(bookingsRef, ...constraints);
 
   return onSnapshot(
     q,
@@ -372,11 +399,11 @@ export function subscribeManualBookings(callback, onError) {
 
         bookings.push(normalizeBookingBillingIdentity(booking, bookingDoc.id));
       });
-      callback(bookings);
+      cb(bookings);
     },
     (error) => {
       console.error('Error fetching bookings from Firestore:', error);
-      if (onError) onError(error);
+      if (errCb) errCb(error);
     }
   );
 }

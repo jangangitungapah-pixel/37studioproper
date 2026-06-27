@@ -1147,6 +1147,7 @@ export default function BookkeepingPage() {
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
+      { limitCount: 150 },
       (data) => setBookings(data),
       (error) => {
         console.error('Gagal memuat booking untuk pembukuan:', error);
@@ -1162,6 +1163,7 @@ export default function BookkeepingPage() {
 
   useEffect(() => {
     const unsubscribe = bookkeepingRepository.subscribeBookkeepingEntries(
+      { limitCount: 150 },
       (data) => setEntries(data),
       (error) => {
         console.error('Gagal memuat pembukuan:', error);

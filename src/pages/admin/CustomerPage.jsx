@@ -1434,6 +1434,7 @@ export default function CustomerPage() {
 
   useEffect(() => {
     const unsubscribe = adminCustomerRepository.subscribeManualCustomers(
+      { limitCount: 150 },
       (data) => setManualCustomers(data),
       (error) => {
         console.error('Gagal memuat customer dari Firestore:', error);
@@ -1448,6 +1449,7 @@ export default function CustomerPage() {
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
+      { limitCount: 150 },
       (data) => setBookings(data),
       (error) => {
         console.error('Gagal memuat booking untuk customer page:', error);

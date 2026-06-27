@@ -26,6 +26,7 @@ import {
   closeGuardAttendanceSession,
   createGuardAttendanceCheckIn,
   subscribeGuardAttendanceSessions,
+  syncOfflineQueue,
 } from '../../services/guardAttendanceRepository.js';
 import { subscribeOperatorFeeEntries } from '../../services/operatorFeeRepository.js';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../../lib/firebase.js';
@@ -135,6 +136,8 @@ export default function GuardAttendancePage() {
   const settings = useOperatorFeeSettings();
   const isAuthAvailable = isFirebaseConfigured && Boolean(firebaseAuth);
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
   const [authUser, setAuthUser] = useState(null);
   const [guardAccount, setGuardAccount] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -154,6 +157,28 @@ export default function GuardAttendancePage() {
   const [error, setError] = useState(isAuthAvailable ? '' : 'Firebase belum dikonfigurasi.');
 
   const guardOptions = useMemo(() => getGuardPeople(settings), [settings]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (authUser) {
+        syncOfflineQueue(authUser).catch((err) => console.error('[guard-attendance] Sync failed:', err));
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (navigator.onLine && authUser) {
+      syncOfflineQueue(authUser).catch((err) => console.error('[guard-attendance] Sync failed:', err));
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [authUser]);
 
   useEffect(() => {
     if (!isAuthAvailable) return () => {};
@@ -480,6 +505,10 @@ export default function GuardAttendancePage() {
           </div>
 
           <div className="guard-shift-hero-actions">
+            <span className={`guard-shift-status-chip is-${isOnline ? 'online' : 'offline'}`}>
+              <span className="status-dot"></span>
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
             <span className="guard-shift-date-chip">
               <Clock3 size={12} />
               {todayLabel}

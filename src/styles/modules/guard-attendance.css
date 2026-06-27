@@ -1520,3 +1520,45 @@
 .guard-attendance-approval-link:hover {
   opacity: 0.8;
 }
+
+/* Offline Indicator Styles */
+.guard-shift-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--studio-radius-full);
+  font-size: var(--studio-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--auth-border);
+  background: var(--auth-bg-card);
+}
+.guard-shift-status-chip.is-online {
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+  border-color: color-mix(in srgb, var(--auth-success) 30%, var(--auth-border));
+}
+.guard-shift-status-chip.is-online .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--auth-success);
+}
+.guard-shift-status-chip.is-offline {
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+  border-color: color-mix(in srgb, var(--auth-danger) 30%, var(--auth-border));
+  animation: pulse-offline-chip 1.5s infinite;
+}
+.guard-shift-status-chip.is-offline .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--auth-danger);
+}
+@keyframes pulse-offline-chip {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}

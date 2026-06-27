@@ -896,24 +896,24 @@ match /users/{userId} {
 
     match /settings/studio {
       allow read: if true;
-      allow create, update: if isApproved() && hasPermission('settings') && validStudioSettings(request.resource.data);
+      allow create, update: if isApprovedAdmin() && hasPermission('settings') && validStudioSettings(request.resource.data);
       allow delete: if isOwner();
     }
 
     match /settings/pricing {
       allow read: if true;
-      allow create, update: if isApproved() && hasPermission('settings') && validPricingSettings(request.resource.data);
+      allow create, update: if isApprovedAdmin() && hasPermission('settings') && validPricingSettings(request.resource.data);
       allow delete: if isOwner();
     }
 
     match /settings/invoice {
       allow read: if true;
-      allow create, update: if isApproved() && hasPermission('settings') && validInvoiceSettings(request.resource.data);
+      allow create, update: if isApprovedAdmin() && hasPermission('settings') && validInvoiceSettings(request.resource.data);
       allow delete: if isOwner();
     }
 
     match /settings/{settingId} {
-      allow read, write: if settingId != 'operatorFees' && isApproved() && hasPermission('settings');
+      allow read, write: if settingId != 'operatorFees' && isApprovedAdmin() && hasPermission('settings');
     }
 
     // >>> STUDIO37 OPERATOR FEE RULES START
@@ -946,10 +946,10 @@ match /users/{userId} {
 
     match /bookkeepingEntries/{entryId} {
       allow read: if isApproved() && canAccessBookkeepingData();
-      allow create, update: if isApproved() &&
+      allow create, update: if isApprovedAdmin() &&
         (canAccessBookkeepingData() || hasPermission('operator-fee')) &&
         validBookkeepingEntry(request.resource.data, entryId);
-      allow delete: if isApproved() && canAccessBookkeepingData();
+      allow delete: if isApprovedAdmin() && canAccessBookkeepingData();
     }
 
     function validInventoryItem(data, itemId) {

@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   setDoc,
@@ -172,6 +173,97 @@ export function createGuardMealBookkeepingPayload(session) {
   };
 }
 
+
+const OFFLINE_QUEUE_KEY = 'guard_attendance_offline_queue';
+
+export function getOfflineQueue() {
+  try {
+    const data = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error('Error reading offline queue:', e);
+    return [];
+  }
+}
+
+export function saveOfflineQueue(queue) {
+  try {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  } catch (e) {
+    console.error('Error saving offline queue:', e);
+  }
+}
+
+export function addToOfflineQueue(action, recordId, payload) {
+  const queue = getOfflineQueue();
+  const existingIndex = queue.findIndex(item => item.recordId === recordId && item.action === action);
+  const newItem = {
+    id: 'q_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 6),
+    action,
+    recordId,
+    payload,
+    timestamp: new Date().toISOString()
+  };
+  if (existingIndex > -1) {
+    queue[existingIndex] = newItem;
+  } else {
+    queue.push(newItem);
+  }
+  saveOfflineQueue(queue);
+}
+
+export async function syncOfflineQueue(user) {
+  if (!navigator.onLine || !isFirebaseConfigured || !firestoreDb) return;
+  const queue = getOfflineQueue();
+  if (queue.length === 0) return;
+
+  const remaining = [];
+  for (const item of queue) {
+    try {
+      const docRef = doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, item.recordId);
+      const serverSnap = await getDoc(docRef);
+      if (serverSnap.exists()) {
+        const serverData = serverSnap.data();
+        const serverUpdatedAt = serverData.updatedAt || '';
+        const localUpdatedAt = item.payload.updatedAt || '';
+        if (serverUpdatedAt && localUpdatedAt && String(serverUpdatedAt).localeCompare(String(localUpdatedAt)) > 0) {
+          console.warn('[guard-attendance] LWW: Dropping offline action ' + item.action + ' for ' + item.recordId + '. Server version is newer.');
+          continue;
+        }
+      }
+
+      if (item.action === 'check-in') {
+        await setDoc(docRef, item.payload);
+        await createAdminNotificationEvent({
+          message: item.payload.guardName + ' mengajukan absen jaga pada ' + item.payload.date + '. Perlu approval owner.',
+          metadata: {
+            attendanceId: item.recordId,
+            date: item.payload.date,
+            guardName: item.payload.guardName,
+            guardPersonId: item.payload.guardPersonId,
+            guardUid: item.payload.guardUid,
+          },
+          priority: 'high',
+          source: 'guard-attendance',
+          title: 'Absen Penjaga Perlu Approval',
+          type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
+          url: '/admin/guard-attendance',
+          user,
+          actorRole: 'guard',
+        }).catch((error) => {
+          console.warn('[guard-attendance] Notification event gagal dibuat saat sync:', error);
+        });
+      } else if (item.action === 'check-out') {
+        await updateDoc(docRef, item.payload);
+      }
+    } catch (error) {
+      console.error('[guard-attendance] Failed to sync item ' + item.id + ':', error);
+      remaining.push(item);
+    }
+  }
+  saveOfflineQueue(remaining);
+}
+
 export async function createGuardAttendanceCheckIn({
   guardPerson = {},
   mealAmount = 40000,
@@ -227,27 +319,35 @@ export async function createGuardAttendanceCheckIn({
     voidReason: '',
   }, id);
 
-  await setDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, id), record);
+  if (!navigator.onLine) {
+    addToOfflineQueue('check-in', id, record);
+    setDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, id), record).catch(() => {});
+    return record;
+  }
 
-  await createAdminNotificationEvent({
-    message: record.guardName + ' mengajukan absen jaga pada ' + record.date + '. Perlu approval owner.',
-    metadata: {
-      attendanceId: id,
-      date: record.date,
-      guardName: record.guardName,
-      guardPersonId: record.guardPersonId,
-      guardUid: record.guardUid,
-    },
-    priority: 'high',
-    source: 'guard-attendance',
-    title: 'Absen Penjaga Perlu Approval',
-    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
-    url: '/admin/guard-attendance',
-    user,
-    actorRole: 'guard',
-  }).catch((error) => {
-    console.warn('[guard-attendance] Notification event gagal dibuat:', error);
-  });
+  try {
+    await setDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, id), record);
+    await createAdminNotificationEvent({
+      message: record.guardName + ' mengajukan absen jaga pada ' + record.date + '. Perlu approval owner.',
+      metadata: {
+        attendanceId: id,
+        date: record.date,
+        guardName: record.guardName,
+        guardPersonId: record.guardPersonId,
+        guardUid: record.guardUid,
+      },
+      priority: 'high',
+      source: 'guard-attendance',
+      title: 'Absen Penjaga Perlu Approval',
+      type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
+      url: '/admin/guard-attendance',
+      user,
+      actorRole: 'guard',
+    });
+  } catch (error) {
+    console.warn('[guard-attendance] Check-in online gagal, queuing offline:', error);
+    addToOfflineQueue('check-in', id, record);
+  }
 
   return record;
 }
@@ -275,7 +375,21 @@ export async function closeGuardAttendanceSession(session, user) {
     throw new Error('Hanya penjaga terkait yang bisa menutup absen ini.');
   }
 
-  await updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch);
+  if (!navigator.onLine) {
+    addToOfflineQueue('check-out', record.id, patch);
+    updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch).catch(() => {});
+    return normalizeGuardAttendanceSession({
+      ...record,
+      ...patch,
+    });
+  }
+
+  try {
+    await updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch);
+  } catch (error) {
+    console.warn('[guard-attendance] Check-out online gagal, queuing offline:', error);
+    addToOfflineQueue('check-out', record.id, patch);
+  }
 
   return normalizeGuardAttendanceSession({
     ...record,
@@ -444,4 +558,6 @@ export const guardAttendanceRepository = {
   rejectGuardAttendanceSession,
   subscribeGuardAttendanceSessions,
   voidGuardAttendanceSession,
+  getOfflineQueue,
+  syncOfflineQueue,
 };
