@@ -12,9 +12,9 @@
 .guard-shift-shell {
   width: min(100%, 720px);
   display: grid;
-  gap: 18px;
+  gap: 12px;
   margin: 0 auto;
-  padding: clamp(18px, 5vw, 28px) 18px calc(92px + env(safe-area-inset-bottom));
+  padding: clamp(12px, 4vw, 24px) 12px calc(80px + env(safe-area-inset-bottom));
 }
 
 .guard-shift-hero,
@@ -23,46 +23,32 @@
 .guard-shift-date-chip,
 .guard-shift-ghost-button,
 .guard-shift-main-button,
-.guard-shift-status-facts,
-.guard-shift-current article,
-.guard-shift-history article,
 .guard-shift-feedback p {
   display: flex;
 }
 
 .guard-shift-hero {
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 .guard-shift-brand,
 .guard-shift-title div,
-.guard-shift-status-copy,
 .guard-shift-login,
 .guard-shift-form,
 .guard-shift-workspace,
-.guard-shift-current,
-.guard-shift-history,
 .guard-attendance-owner,
 .guard-attendance-owner-locked,
 .guard-attendance-owner-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .guard-shift-brand span,
-.guard-shift-status-copy small,
-.guard-shift-status-facts small,
-.guard-shift-current small,
-.guard-shift-history article span,
 .guard-shift-login span,
 .guard-shift-form span,
 .guard-attendance-owner-hero p,
 .guard-attendance-owner-summary small,
-.guard-attendance-owner-main small,
-.guard-attendance-owner-main em,
-.guard-attendance-owner-meta span,
-.guard-attendance-owner-note,
 .guard-attendance-owner-empty p {
   margin: 0;
   color: var(--auth-text-muted);
@@ -71,7 +57,6 @@
 }
 
 .guard-shift-brand span,
-.guard-shift-status-copy small,
 .guard-shift-login span,
 .guard-shift-form span,
 .guard-attendance-owner-hero p,
@@ -82,17 +67,11 @@
   text-transform: uppercase;
 }
 
-.guard-shift-brand strong,
+.guard-shift-brand h1,
 .guard-shift-title strong,
-.guard-shift-status-copy strong,
-.guard-shift-status-facts strong,
-.guard-shift-current strong,
-.guard-shift-history article strong,
 .guard-attendance-owner-locked h2,
 .guard-attendance-owner-hero h2,
 .guard-attendance-owner-summary strong,
-.guard-attendance-owner-main strong,
-.guard-attendance-owner-main b,
 .guard-attendance-owner-empty h3 {
   margin: 0;
   color: var(--auth-text-strong);
@@ -101,20 +80,17 @@
   line-height: 1.15;
 }
 
-.guard-shift-brand strong {
-  font-size: clamp(1.5rem, 8vw, 2rem);
+.guard-shift-brand h1 {
+  font-size: clamp(1.4rem, 6vw, 1.85rem);
 }
 
 .guard-shift-card,
 .guard-shift-status,
-.guard-shift-current,
-.guard-shift-history article,
 .guard-attendance-owner-locked,
 .guard-attendance-owner-hero,
 .guard-attendance-owner-summary article,
 .guard-attendance-owner-toolbar,
 .guard-attendance-owner-message,
-.guard-attendance-owner-row,
 .guard-attendance-owner-empty {
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-lg);
@@ -124,13 +100,13 @@
 
 .guard-shift-card {
   display: grid;
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .guard-shift-card.is-loading,
 .guard-shift-card.is-locked {
-  min-height: 180px;
+  min-height: 140px;
   place-items: center;
   align-content: center;
   text-align: center;
@@ -142,17 +118,16 @@
 
 .guard-shift-title {
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
 }
 
 .guard-shift-title > span,
-.guard-shift-status > span,
 .guard-attendance-owner-locked > svg,
 .guard-attendance-owner-locked > span,
 .guard-attendance-owner-hero > svg,
 .guard-attendance-owner-hero > span {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
@@ -165,38 +140,38 @@
 .guard-shift-hero-actions {
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .guard-shift-date-chip,
 .guard-shift-ghost-button,
 .guard-shift-main-button,
 .guard-attendance-owner-filter button,
-.guard-attendance-owner-row footer button {
-  min-height: 40px;
+.guard-attendance-row-btn {
+  min-height: 32px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-full);
   background: var(--auth-bg-control);
   color: var(--auth-text-main);
-  padding: 0 12px;
+  padding: 0 10px;
   font: inherit;
   font-size: var(--studio-text-xs);
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .guard-shift-ghost-button,
 .guard-shift-main-button,
 .guard-attendance-owner-filter button,
-.guard-attendance-owner-row footer button {
+.guard-attendance-row-btn {
   cursor: pointer;
 }
 
 .guard-shift-ghost-button:hover:not(:disabled),
 .guard-attendance-owner-filter button:hover:not(:disabled),
-.guard-attendance-owner-row footer button:hover:not(:disabled) {
+.guard-attendance-row-btn:hover:not(:disabled) {
   border-color: var(--auth-border-strong);
   background: var(--auth-bg-card);
 }
@@ -204,7 +179,7 @@
 .guard-shift-ghost-button:disabled,
 .guard-shift-main-button:disabled,
 .guard-attendance-owner-filter button:disabled,
-.guard-attendance-owner-row footer button:disabled {
+.guard-attendance-row-btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -212,7 +187,7 @@
 .guard-shift-login label,
 .guard-shift-form label {
   display: grid;
-  gap: 7px;
+  gap: 4px;
 }
 
 .guard-shift-login input,
@@ -220,19 +195,19 @@
 .guard-shift-form textarea,
 .guard-attendance-owner-toolbar input {
   width: 100%;
-  min-height: 46px;
+  min-height: 36px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   outline: 0;
   background: var(--auth-bg-control);
   color: var(--auth-text-main);
-  padding: 11px 12px;
+  padding: 8px 10px;
   font: inherit;
   font-size: var(--studio-text-sm);
 }
 
 .guard-shift-form textarea {
-  min-height: 88px;
+  min-height: 64px;
   resize: vertical;
 }
 
@@ -241,158 +216,213 @@
 .guard-shift-form textarea:focus,
 .guard-attendance-owner-toolbar input:focus {
   border-color: var(--auth-accent);
-  box-shadow: 0 0 0 4px var(--auth-accent-soft);
+  box-shadow: 0 0 0 3px var(--auth-accent-soft);
 }
 
 .guard-shift-main-button {
   width: 100%;
-  min-height: 46px;
+  min-height: 36px;
   border-color: var(--auth-accent);
   border-radius: var(--studio-radius-md);
   background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
   color: var(--studio-text-inverse);
-  box-shadow: 0 14px 28px var(--studio-accent-glow);
-}
-
-.guard-shift-main-button:hover:not(:disabled) {
-  transform: translateY(-1px);
+  box-shadow: none;
 }
 
 .guard-shift-main-button.is-danger {
   border-color: var(--auth-danger);
   background: var(--auth-danger);
-  box-shadow: none;
 }
 
+/* Guard portal: Compact inline status */
 .guard-shift-status {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 10px 12px;
 }
 
-.guard-shift-status > span {
-  width: 48px;
-  height: 48px;
+.guard-shift-status .status-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
 }
 
-.guard-shift-status > span.is-on {
+.guard-shift-status .status-icon.is-on {
   background: var(--auth-success-soft);
   color: var(--auth-success);
+  border-color: var(--auth-success);
 }
 
-.guard-shift-status-copy em,
-.guard-shift-history article em,
-.guard-attendance-owner-main i {
-  width: fit-content;
-  min-height: 28px;
+.guard-shift-status-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guard-shift-status-copy .status-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.guard-shift-status-copy .status-title-row strong {
+  font-size: 13px;
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-status-copy .status-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--auth-text-muted);
+}
+
+.guard-shift-status-copy .status-meta-row b {
+  color: var(--auth-text-main);
+  font-weight: 700;
+}
+
+/* Active session compact box */
+.guard-shift-current-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--auth-bg-soft);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  padding: 10px;
+}
+
+.guard-shift-current-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.guard-shift-current-info strong {
+  font-size: 14px;
+  color: var(--auth-text-strong);
+}
+
+.guard-shift-current-info span {
+  font-size: 11px;
+  color: var(--auth-text-muted);
+}
+
+/* Unified Status Badges */
+.status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 20px;
+  padding: 0 8px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-full);
   background: var(--auth-bg-soft);
   color: var(--auth-text-muted);
-  padding: 0 9px;
-  font-size: var(--studio-text-xs);
-  font-style: normal;
+  font-size: 9px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.guard-shift-status-copy em.is-pending,
-.guard-shift-history article em.is-pending,
-.guard-attendance-owner-main i.is-pending {
+.status-badge.is-pending {
   border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--auth-border));
   background: var(--auth-warning-soft);
   color: var(--auth-warning);
 }
 
-.guard-shift-status-copy em.is-approved,
-.guard-shift-status-copy em.is-disetujui,
-.guard-shift-history article em.is-approved,
-.guard-shift-history article em.is-disetujui,
-.guard-attendance-owner-main i.is-approved,
-.guard-attendance-owner-main i.is-disetujui {
+.status-badge.is-approved,
+.status-badge.is-disetujui {
   border-color: color-mix(in srgb, var(--auth-success) 34%, var(--auth-border));
   background: var(--auth-success-soft);
   color: var(--auth-success);
 }
 
-.guard-shift-status-copy em.is-rejected,
-.guard-shift-history article em.is-rejected,
-.guard-attendance-owner-main i.is-rejected,
-.guard-attendance-owner-main i.is-void {
+.status-badge.is-rejected,
+.status-badge.is-void {
   border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--auth-border));
   background: var(--auth-danger-soft);
   color: var(--auth-danger);
 }
 
-.guard-shift-status-facts {
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  gap: 12px;
-  border-top: 1px dashed var(--auth-border);
-  padding-top: 12px;
-}
-
-.guard-shift-status-facts article {
+/* Guard portal: Flat History List */
+.guard-shift-history-list {
   display: grid;
-  gap: 2px;
+  gap: 0;
+  border-top: 1px solid var(--auth-border);
+  margin-top: 4px;
 }
 
-.guard-shift-current {
-  background: var(--auth-bg-soft);
-  padding: 12px;
-}
-
-.guard-shift-current article,
-.guard-shift-history article {
-  justify-content: space-between;
+.guard-shift-history-row {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--auth-border);
 }
 
-.guard-shift-history article {
-  padding: 12px;
+.guard-shift-history-row:last-child {
+  border-bottom: none;
 }
 
-.guard-shift-history article div {
+.guard-shift-history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
-  display: grid;
-  gap: 3px;
 }
 
-.guard-shift-history > p {
-  margin: 0;
-  border: 1px dashed var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-soft);
+.guard-shift-history-info strong {
+  font-size: 12px;
+  color: var(--auth-text-strong);
+  font-weight: 500;
+}
+
+.guard-shift-history-info span {
+  font-size: 10px;
   color: var(--auth-text-muted);
-  padding: 14px;
+}
+
+.guard-shift-history-empty {
+  padding: 12px 0;
   text-align: center;
+  font-size: var(--studio-text-xs);
+  color: var(--auth-text-muted);
 }
 
 .guard-shift-feedback {
   position: fixed;
   left: 50%;
-  bottom: calc(18px + env(safe-area-inset-bottom));
+  bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: var(--z-toast);
-  width: min(calc(100% - 28px), 520px);
+  width: min(calc(100% - 24px), 520px);
   display: grid;
-  gap: 8px;
+  gap: 6px;
   transform: translateX(-50%);
 }
 
 .guard-shift-feedback p {
   margin: 0;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   background: var(--auth-bg-elevated);
   color: var(--auth-text-main);
-  padding: 10px 12px;
+  padding: 8px 10px;
   box-shadow: var(--studio-shadow-float);
   font-size: var(--studio-text-xs);
   font-weight: 760;
@@ -410,64 +440,94 @@
   color: var(--auth-danger);
 }
 
+/* Owner/Admin approval page */
 .guard-attendance-owner,
 .guard-attendance-owner-locked {
   width: min(100%, 1280px);
   margin: 0 auto;
   color: var(--auth-text-main);
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  display: grid;
+  gap: 12px;
 }
 
 .guard-attendance-owner-locked,
 .guard-attendance-owner-hero {
-  grid-template-columns: 52px minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: start;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .guard-attendance-owner-locked > svg,
 .guard-attendance-owner-locked > span,
 .guard-attendance-owner-hero > svg,
 .guard-attendance-owner-hero > span {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
 }
 
 .guard-attendance-owner-locked h2,
 .guard-attendance-owner-hero h2 {
-  font-size: clamp(1.35rem, 5vw, 2rem);
+  margin: 0 0 2px;
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
 }
 
+.guard-attendance-owner-locked p,
+.guard-attendance-owner-hero small {
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  line-height: 1.4;
+}
+
+/* Admin summary cards: Flat and compact */
 .guard-attendance-owner-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
 }
 
 .guard-attendance-owner-summary article {
   display: grid;
-  gap: 5px;
-  min-height: 82px;
-  padding: 12px;
+  gap: 2px;
+  min-height: auto;
+  padding: 8px 10px;
+  box-shadow: none;
 }
 
 .guard-attendance-owner-summary strong {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 800;
 }
 
+/* Admin Toolbar */
 .guard-attendance-owner-toolbar {
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) minmax(150px, 0.75fr) minmax(0, 1fr);
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: minmax(160px, 1.25fr) minmax(120px, 0.75fr) minmax(0, 1.25fr);
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--studio-radius-lg);
 }
 
 .guard-attendance-owner-filter {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+.guard-attendance-owner-filter button {
+  min-height: 32px;
+  height: 32px;
+  font-size: 10px;
 }
 
 .guard-attendance-owner-filter button.is-active {
@@ -477,90 +537,156 @@
 }
 
 .guard-attendance-owner-message {
-  padding: 12px;
+  padding: 8px 12px;
   color: var(--auth-text-main);
+  font-size: var(--studio-text-xs);
+}
+
+/* Owner Approval: Flat List Overhaul */
+.guard-attendance-owner-list {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  background: var(--auth-bg-card);
+  overflow: hidden;
 }
 
 .guard-attendance-owner-row {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--auth-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
+.guard-attendance-owner-row:last-child {
+  border-bottom: none;
+}
+
+/* Main row columns */
 .guard-attendance-owner-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
 }
 
-.guard-attendance-owner-main > span {
+.guard-attendance-owner-info {
+  flex: 1;
   min-width: 0;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guard-attendance-meta-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--auth-text-muted);
+  line-height: 1;
+}
+
+.guard-attendance-name {
+  color: var(--auth-text-strong);
+  font-size: 13px;
+  font-weight: 500; /* reduced weight */
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guard-attendance-meta-bottom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 3px;
+  font-size: 10px;
+  color: var(--auth-text-muted);
+  line-height: 1;
 }
 
-.guard-attendance-owner-main em {
-  display: block;
-  overflow-wrap: anywhere;
-  font-style: normal;
+.guard-attendance-amount-col {
+  flex-shrink: 0;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 
-.guard-attendance-owner-main b {
+.guard-attendance-amount {
+  color: var(--auth-text-strong);
+  font-size: 13px;
+  font-weight: 800; /* bold strictly on amount value */
   white-space: nowrap;
 }
 
-.guard-attendance-owner-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.guard-attendance-status-col {
+  flex-shrink: 0;
 }
 
-.guard-attendance-owner-meta span {
-  min-height: 30px;
+.guard-attendance-owner-note-text {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--auth-text-main);
+  padding: 4px 6px;
+  border-radius: var(--studio-radius-sm);
+  background: var(--auth-bg-soft);
+  width: fit-content;
+}
+
+.guard-attendance-owner-note-text.text-danger {
+  color: var(--auth-danger);
+  background: var(--auth-danger-soft);
+}
+
+/* Action button strip */
+.guard-attendance-owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.guard-attendance-row-btn {
+  min-height: 26px !important;
+  height: 26px !important;
+  font-size: 10px !important;
+  padding: 0 8px !important;
+  border-radius: var(--studio-radius-sm) !important;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-full);
-  background: var(--auth-bg-soft);
-  padding: 0 10px;
+  gap: 4px;
 }
 
-.guard-attendance-owner-note {
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-soft);
-  padding: 10px;
-}
-
-.guard-attendance-owner-note.is-danger {
-  border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--auth-border));
-  background: var(--auth-danger-soft);
-  color: var(--auth-danger);
-}
-
-.guard-attendance-owner-row footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.guard-attendance-owner-row footer .is-primary {
+.guard-attendance-owner-actions .is-primary {
   border-color: var(--auth-accent);
   background: var(--auth-accent);
   color: var(--studio-text-inverse);
 }
 
 .guard-attendance-owner-empty {
-  min-height: 180px;
+  min-height: 120px;
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 8px;
+  gap: 6px;
   border-style: dashed;
-  padding: 24px;
+  padding: 16px;
   text-align: center;
+}
+
+.guard-attendance-owner-empty h3 {
+  margin: 0;
+  font-size: var(--studio-text-sm);
 }
 
 @media (min-width: 540px) {
@@ -573,20 +699,7 @@
 
 @media (min-width: 768px) {
   .guard-shift-shell {
-    padding-bottom: 36px;
-  }
-
-  .guard-shift-status {
-    grid-template-columns: 48px minmax(0, 1fr) auto;
-  }
-
-  .guard-shift-status-facts {
-    grid-column: auto;
-    border-top: 0;
-    border-left: 1px dashed var(--auth-border);
-    padding-top: 0;
-    padding-left: 14px;
-    flex-direction: column;
+    padding-bottom: 24px;
   }
 
   .guard-attendance-owner,
@@ -597,12 +710,11 @@
 
 @media (max-width: 767px) {
   .guard-attendance-owner-summary,
-  .guard-attendance-owner-toolbar,
-  .guard-attendance-owner-main {
+  .guard-attendance-owner-toolbar {
     grid-template-columns: 1fr;
   }
-
-  .guard-attendance-owner-row footer button {
-    flex: 1 1 120px;
+  
+  .guard-attendance-row-btn {
+    flex: 1;
   }
 }

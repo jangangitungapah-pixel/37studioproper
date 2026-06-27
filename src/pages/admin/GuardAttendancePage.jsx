@@ -67,6 +67,13 @@ function getApprovalLabel(status) {
   return 'Pending';
 }
 
+function getApprovalTone(status) {
+  if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) return 'approved';
+  if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED) return 'rejected';
+
+  return 'pending';
+}
+
 function getStatusLabel(status) {
   if (status === GUARD_ATTENDANCE_STATUSES.ACTIVE) return 'Aktif';
   if (status === GUARD_ATTENDANCE_STATUSES.CLOSED) return 'Closed';
@@ -274,84 +281,86 @@ export default function GuardAttendancePage({ currentUser }) {
       ) : null}
 
       <section className="guard-attendance-owner-list" aria-label="Daftar absen penjaga">
-        {filteredSessions.length ? filteredSessions.map((session) => {
-          const isBusy = busyId === session.id;
-          const isPending = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING;
-          const isApproved = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
+        {filteredSessions.length ? (
+          filteredSessions.map((session) => {
+            const isBusy = busyId === session.id;
+            const isPending = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING;
+            const isApproved = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
 
-          return (
-            <article className="guard-attendance-owner-row" key={session.id}>
-              <div className="guard-attendance-owner-main">
-                <span>
-                  <small>{formatDate(session.date)} · {getStatusLabel(session.status)}</small>
-                  <strong>{session.guardName}</strong>
-                  <em>{session.guardEmail || session.guardPersonId}</em>
-                </span>
+            return (
+              <article className="guard-attendance-owner-row" key={session.id}>
+                <div className="guard-attendance-owner-main">
+                  <div className="guard-attendance-owner-info">
+                    <div className="guard-attendance-meta-top">
+                      <span>{formatDate(session.date)}</span>
+                      <span className="dot-separator">·</span>
+                      <span>{getStatusLabel(session.status)}</span>
+                    </div>
+                    <strong className="guard-attendance-name">{session.guardName}</strong>
+                    <div className="guard-attendance-meta-bottom">
+                      <span>🕒 {formatDateTime(session.clockInAt).split(',')[1] || formatDateTime(session.clockInAt)}</span>
+                      <span> - </span>
+                      <span>{session.clockOutAt ? (formatDateTime(session.clockOutAt).split(',')[1] || formatDateTime(session.clockOutAt)) : 'Jaga Aktif'}</span>
+                      <span className="dot-separator">·</span>
+                      <span>{formatDuration(session.durationHours)}</span>
+                    </div>
+                  </div>
 
-                <b>{formatOperatorFeeCurrency(session.mealAmount)}</b>
+                  <div className="guard-attendance-amount-col">
+                    <b className="guard-attendance-amount">{formatOperatorFeeCurrency(session.mealAmount)}</b>
+                    <span className={'status-badge is-' + (session.mealEligible ? 'approved' : 'pending')}>
+                      {session.mealEligible ? '🍱 Makan' : 'No Makan'}
+                    </span>
+                  </div>
 
-                <i className={'is-' + session.approvalStatus}>
-                  {getApprovalLabel(session.approvalStatus)}
-                </i>
-              </div>
+                  <div className="guard-attendance-status-col">
+                    <span className={'status-badge is-' + getApprovalTone(session.approvalStatus)}>
+                      {getApprovalLabel(session.approvalStatus)}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="guard-attendance-owner-meta">
-                <span>
-                  <Clock3 size={13} />
-                  Masuk: {formatDateTime(session.clockInAt)}
-                </span>
-                <span>
-                  <Clock3 size={13} />
-                  Keluar: {session.clockOutAt ? formatDateTime(session.clockOutAt) : 'Belum selesai'}
-                </span>
-                <span>
-                  <Utensils size={13} />
-                  Uang makan: {session.mealEligible ? 'Eligible' : 'Belum eligible'}
-                </span>
-                <span>
-                  <Clock3 size={13} />
-                  Durasi: {formatDuration(session.durationHours)}
-                </span>
-              </div>
+                {session.note ? (
+                  <p className="guard-attendance-owner-note-text">📝 {session.note}</p>
+                ) : null}
 
-              {session.note ? (
-                <p className="guard-attendance-owner-note">{session.note}</p>
-              ) : null}
+                {session.rejectionReason ? (
+                  <p className="guard-attendance-owner-note-text text-danger">❌ Reject: {session.rejectionReason}</p>
+                ) : null}
 
-              {session.rejectionReason ? (
-                <p className="guard-attendance-owner-note is-danger">Reject: {session.rejectionReason}</p>
-              ) : null}
-
-              <footer>
-                <button
-                  disabled={isBusy || !isPending}
-                  type="button"
-                  onClick={() => rejectSession(session)}
-                >
-                  <XCircle size={14} />
-                  Reject
-                </button>
-                <button
-                  className="is-primary"
-                  disabled={isBusy || !isPending}
-                  type="button"
-                  onClick={() => approveSession(session)}
-                >
-                  {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
-                  Approve
-                </button>
-                <button
-                  disabled={isBusy || !isApproved}
-                  type="button"
-                  onClick={() => voidSession(session)}
-                >
-                  <Ban size={14} />
-                  Void
-                </button>
-              </footer>
-            </article>
-          );
-        }) : (
+                <div className="guard-attendance-owner-actions">
+                  <button
+                    disabled={isBusy || !isPending}
+                    type="button"
+                    className="guard-attendance-row-btn btn-reject"
+                    onClick={() => rejectSession(session)}
+                  >
+                    <XCircle size={12} />
+                    Reject
+                  </button>
+                  <button
+                    className="guard-attendance-row-btn is-primary btn-approve"
+                    disabled={isBusy || !isPending}
+                    type="button"
+                    onClick={() => approveSession(session)}
+                  >
+                    {isBusy ? <LoaderCircle className="auth-spin" size={12} /> : <CheckCircle2 size={12} />}
+                    Approve
+                  </button>
+                  <button
+                    disabled={isBusy || !isApproved}
+                    type="button"
+                    className="guard-attendance-row-btn btn-void"
+                    onClick={() => voidSession(session)}
+                  >
+                    <Ban size={12} />
+                    Void
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
           <section className="guard-attendance-owner-empty">
             <UserCheck size={30} />
             <h3>Tidak ada absen di filter ini</h3>

@@ -336,20 +336,19 @@ export default function GuardAttendancePage() {
         <header className="guard-shift-hero">
           <div className="guard-shift-brand">
             <span>37 Studio Guard</span>
-            <strong>Absen Penjaga</strong>
+            <h1>Absen Penjaga</h1>
             <small>Absensi harian untuk validasi fee dan uang makan.</small>
           </div>
 
           <div className="guard-shift-hero-actions">
             <span className="guard-shift-date-chip">
-              <Clock3 size={14} />
+              <Clock3 size={12} />
               {todayLabel}
             </span>
 
-
             {authUser ? (
               <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>
-                <LogOut size={15} />
+                <LogOut size={12} />
                 Keluar
               </button>
             ) : null}
@@ -367,7 +366,7 @@ export default function GuardAttendancePage() {
           <section className="guard-shift-card">
             <div className="guard-shift-title">
               <span aria-hidden="true">
-                <LogIn size={18} />
+                <LogIn size={16} />
               </span>
               <div>
                 <strong>Login Penjaga</strong>
@@ -397,7 +396,7 @@ export default function GuardAttendancePage() {
               </label>
 
               <button className="guard-shift-main-button" type="submit" disabled={isBusy}>
-                {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <LogIn size={16} />}
+                {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <LogIn size={14} />}
                 Masuk
               </button>
             </form>
@@ -406,7 +405,7 @@ export default function GuardAttendancePage() {
 
         {isReady && authUser && !canUseGuardPage ? (
           <section className="guard-shift-card is-locked">
-            <ShieldCheck size={26} />
+            <ShieldCheck size={24} />
             <strong>Akses belum aktif</strong>
             <p>Akun ini belum punya role Penjaga Studio approved.</p>
           </section>
@@ -415,35 +414,31 @@ export default function GuardAttendancePage() {
         {canUseGuardPage ? (
           <section className="guard-shift-workspace" aria-label="Panel absen penjaga">
             <section className="guard-shift-status">
-              <span className={currentSession ? 'is-on' : ''} aria-hidden="true">
-                <Clock3 size={18} />
+              <span className={currentSession ? 'status-icon is-on' : 'status-icon'} aria-hidden="true">
+                <Clock3 size={16} />
               </span>
               <div className="guard-shift-status-copy">
-                <small>Status hari ini</small>
-                <strong>{getStatusLabel(currentSession)}</strong>
-                <em className={'is-' + getApprovalTone(currentSession?.approvalStatus)}>
-                  {currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Siap absen'}
-                </em>
-              </div>
-              <div className="guard-shift-status-facts" aria-label="Ringkasan shift">
-                <article>
-                  <small>Profil</small>
-                  <strong>{selectedGuardPerson.name}</strong>
-                </article>
-                <article>
-                  <small>Uang makan</small>
-                  <strong>{formatCurrency(mealAmount)}</strong>
-                </article>
+                <div className="status-title-row">
+                  <strong>{getStatusLabel(currentSession)}</strong>
+                  <span className={'status-badge is-' + getApprovalTone(currentSession?.approvalStatus)}>
+                    {currentSession ? getApprovalLabel(currentSession.approvalStatus) : 'Siap absen'}
+                  </span>
+                </div>
+                <div className="status-meta-row">
+                  <span>Profil: <b>{selectedGuardPerson.name}</b></span>
+                  <span className="dot-separator">·</span>
+                  <span>Uang makan: <b>{formatCurrency(mealAmount)}</b></span>
+                </div>
               </div>
             </section>
 
             <section className="guard-shift-card is-action">
               <div className="guard-shift-title">
                 <span aria-hidden="true">
-                  <Clock3 size={18} />
+                  <Clock3 size={16} />
                 </span>
                 <div>
-                  <strong>{currentSession ? 'Shift aktif' : 'Mulai jaga'}</strong>
+                  <strong>{currentSession ? 'Shift Aktif' : 'Mulai Jaga'}</strong>
                   <small>Approval berlaku per tanggal, bukan batas jam booking.</small>
                 </div>
               </div>
@@ -479,27 +474,27 @@ export default function GuardAttendancePage() {
                     disabled={isBusy || !effectiveGuardPersonId}
                     onClick={handleCheckIn}
                   >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <CheckCircle2 size={16} />}
+                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
                     Mulai Jaga
                   </button>
                 </div>
               ) : (
-                <div className="guard-shift-current">
-                  <article>
-                    <small>Penjaga</small>
+                <div className="guard-shift-current-compact">
+                  <div className="guard-shift-current-info">
                     <strong>{currentSession.guardName}</strong>
-                  </article>
-                  <article>
-                    <small>Mulai</small>
-                    <strong>{formatDateTime(currentSession.clockInAt)}</strong>
-                  </article>
-                  <article>
-                    <small>Approval</small>
-                    <strong>{getApprovalLabel(currentSession.approvalStatus)}</strong>
-                  </article>
+                    <span>🕒 Mulai: {formatDateTime(currentSession.clockInAt)}</span>
+                    <span className={'status-badge is-' + getApprovalTone(currentSession.approvalStatus)}>
+                      {getApprovalLabel(currentSession.approvalStatus)}
+                    </span>
+                  </div>
 
-                  <button className="guard-shift-main-button is-danger" type="button" disabled={isBusy} onClick={handleCheckOut}>
-                    {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <XCircle size={16} />}
+                  <button
+                    className="guard-shift-main-button is-danger"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={handleCheckOut}
+                  >
+                    {isBusy ? <LoaderCircle className="auth-spin" size={14} /> : <XCircle size={14} />}
                     Selesai Jaga
                   </button>
                 </div>
@@ -509,7 +504,7 @@ export default function GuardAttendancePage() {
             <section className="guard-shift-card is-history">
               <div className="guard-shift-title">
                 <span aria-hidden="true">
-                  <UserRound size={18} />
+                  <UserRound size={16} />
                 </span>
                 <div>
                   <strong>Riwayat</strong>
@@ -517,22 +512,24 @@ export default function GuardAttendancePage() {
                 </div>
               </div>
 
-              <div className="guard-shift-history">
-                {recentSessions.length ? recentSessions.map((session) => (
-                  <article key={session.id}>
-                    <div>
-                      <strong>{formatDate(session.date)}</strong>
-                      <span>
-                        {formatDateTime(session.clockInAt)}
-                        {session.clockOutAt ? ' - ' + formatDateTime(session.clockOutAt) : ' - Belum selesai'}
+              <div className="guard-shift-history-list">
+                {recentSessions.length ? (
+                  recentSessions.map((session) => (
+                    <div className="guard-shift-history-row" key={session.id}>
+                      <div className="guard-shift-history-info">
+                        <strong>{formatDate(session.date)}</strong>
+                        <span>
+                          {formatDateTime(session.clockInAt)}
+                          {session.clockOutAt ? ' - ' + formatDateTime(session.clockOutAt) : ' - Jaga Aktif'}
+                        </span>
+                      </div>
+                      <span className={'status-badge is-' + getApprovalTone(session.approvalStatus)}>
+                        {getApprovalLabel(session.approvalStatus)}
                       </span>
                     </div>
-                    <em className={'is-' + getApprovalTone(session.approvalStatus)}>
-                      {getApprovalLabel(session.approvalStatus)}
-                    </em>
-                  </article>
-                )) : (
-                  <p>Belum ada riwayat absen.</p>
+                  ))
+                ) : (
+                  <p className="guard-shift-history-empty">Belum ada riwayat absen.</p>
                 )}
               </div>
             </section>
@@ -543,13 +540,13 @@ export default function GuardAttendancePage() {
           <aside className="guard-shift-feedback">
             {notice ? (
               <p className="is-success">
-                <CheckCircle2 size={15} />
+                <CheckCircle2 size={13} />
                 {notice}
               </p>
             ) : null}
             {error ? (
               <p className="is-error">
-                <AlertCircle size={15} />
+                <AlertCircle size={13} />
                 {error}
               </p>
             ) : null}
