@@ -674,6 +674,23 @@ export default function GalleryPage() {
   return (
     <section className="gallery-page" aria-labelledby="gallery-page-title">
       
+      {/* Floating Action Button (FAB) for mobile upload */}
+      {!isSelectMode && (
+        <button
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-orange-500 text-black flex items-center justify-center shadow-lg active:scale-95 transition-all md:hidden"
+          type="button"
+          onClick={() => {
+            setError('');
+            setSuccess('');
+            setIsModalOpen(true);
+          }}
+          aria-label="Upload Foto"
+          title="Upload Foto"
+        >
+          <Plus size={20} />
+        </button>
+      )}
+
       {/* 1. COHESIVE CRM TITLE BLOCK */}
       <div className="customer-page-title">
         <p>Studio Gallery</p>
@@ -731,24 +748,26 @@ export default function GalleryPage() {
 
       {/* 4. BATCH SELECT FLOATING BANNER */}
       {isSelectMode ? (
-        <GalleryBatchBanner
-          activeTab={activeTab}
-          FavoriteIcon={Heart}
-          onBatchFavorite={handleBatchFavorite}
-          onBatchPermanentDelete={handleBatchPermanentDelete}
-          onBatchRestore={handleBatchRestore}
-          onBatchSoftDelete={handleBatchSoftDelete}
-          onCancelSelectMode={() => {
-            setIsSelectMode(false);
-            setSelectedIds(new Set());
-          }}
-          onSelectAll={handleSelectAll}
-          RefreshIcon={RefreshCw}
-          selectedCount={selectedIds.size}
-          totalCount={displayedImages.length}
-          TrashIcon={Trash2}
-          TrashPermanentIcon={Trash}
-        />
+        <div className="gallery-batch-banner-fixed">
+          <GalleryBatchBanner
+            activeTab={activeTab}
+            FavoriteIcon={Heart}
+            onBatchFavorite={handleBatchFavorite}
+            onBatchPermanentDelete={handleBatchPermanentDelete}
+            onBatchRestore={handleBatchRestore}
+            onBatchSoftDelete={handleBatchSoftDelete}
+            onCancelSelectMode={() => {
+              setIsSelectMode(false);
+              setSelectedIds(new Set());
+            }}
+            onSelectAll={handleSelectAll}
+            RefreshIcon={RefreshCw}
+            selectedCount={selectedIds.size}
+            totalCount={displayedImages.length}
+            TrashIcon={Trash2}
+            TrashPermanentIcon={Trash}
+          />
+        </div>
       ) : null}
 
       {/* 5. MAIN VIEWS CONTENT */}

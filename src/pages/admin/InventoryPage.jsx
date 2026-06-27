@@ -235,26 +235,34 @@ function InventorySummary({ items }) {
     <section className="inventory-summary-grid" aria-label="Ringkasan inventory">
       <article className="inventory-summary-card">
         <span><Boxes size={16} /></span>
-        <small>Total Item</small>
-        <strong>{stats.total}</strong>
+        <div>
+          <small>Total Item</small>
+          <strong>{stats.total}</strong>
+        </div>
       </article>
 
       <article className="inventory-summary-card is-warning">
         <span><PackageOpen size={16} /></span>
-        <small>Stok Menipis</small>
-        <strong>{stats.lowStock}</strong>
+        <div>
+          <small>Stok Menipis</small>
+          <strong>{stats.lowStock}</strong>
+        </div>
       </article>
 
       <article className="inventory-summary-card is-maintenance">
         <span><Wrench size={16} /></span>
-        <small>Maintenance</small>
-        <strong>{stats.maintenance}</strong>
+        <div>
+          <small>Maintenance</small>
+          <strong>{stats.maintenance}</strong>
+        </div>
       </article>
 
       <article className="inventory-summary-card">
         <span><Archive size={16} /></span>
-        <small>Aktif</small>
-        <strong>{stats.active}</strong>
+        <div>
+          <small>Aktif</small>
+          <strong>{stats.active}</strong>
+        </div>
       </article>
     </section>
   );
@@ -300,7 +308,7 @@ function InventoryAttentionPanel({ items, onAdjustStock, onEdit }) {
 
           return (
             <article className={'inventory-attention-row is-' + item.effectiveStatus} key={item.id}>
-              <div>
+              <div className="inventory-attention-info">
                 <strong>{item.name}</strong>
                 <span>
                   {getStatusLabel(item.effectiveStatus)} • {item.quantity} {item.unit}
@@ -310,6 +318,7 @@ function InventoryAttentionPanel({ items, onAdjustStock, onEdit }) {
 
               <button
                 type="button"
+                className="inventory-attention-btn"
                 onClick={() => {
                   if (isLowStock) {
                     onAdjustStock(item, 'in');
@@ -321,13 +330,13 @@ function InventoryAttentionPanel({ items, onAdjustStock, onEdit }) {
               >
                 {isLowStock ? (
                   <>
-                    <Plus size={13} />
-                    Restock
+                    <Plus size={12} />
+                    <span>Restock</span>
                   </>
                 ) : (
                   <>
-                    <Pencil size={13} />
-                    Edit
+                    <Pencil size={12} />
+                    <span>Edit</span>
                   </>
                 )}
               </button>
@@ -353,9 +362,9 @@ function InventoryMovementPanel({ movements }) {
       </header>
 
       <div className="inventory-movement-list">
-        {movements.slice(0, 6).map((movement) => (
+        {movements.slice(0, 4).map((movement) => (
           <article className={'inventory-movement-row is-' + movement.type} key={movement.id}>
-            <div>
+            <div className="inventory-movement-info">
               <strong>{movement.itemName}</strong>
               <span>{getMovementTypeLabel(movement.type)} • {formatMovementDate(movement.createdAt)}</span>
               {movement.note ? <em>{movement.note}</em> : null}
@@ -396,34 +405,38 @@ function InventoryToolbar({
         />
       </div>
 
-      <StudioSelect
-        label="Kategori"
-        options={categoryOptions}
-        selectedKey={categoryFilter}
-        onChange={onCategoryChange}
-      />
+      <div className="inventory-toolbar-filters">
+        <StudioSelect
+          label="Kategori"
+          options={categoryOptions}
+          selectedKey={categoryFilter}
+          onChange={onCategoryChange}
+        />
 
-      <StudioSelect
-        label="Status"
-        options={filterStatusOptions}
-        selectedKey={statusFilter}
-        onChange={onStatusChange}
-      />
+        <StudioSelect
+          label="Status"
+          options={filterStatusOptions}
+          selectedKey={statusFilter}
+          onChange={onStatusChange}
+        />
+      </div>
 
-      <button
-        className="inventory-export-button"
-        disabled={exportDisabled}
-        type="button"
-        onClick={onExportItems}
-      >
-        <Download size={16} />
-        Export
-      </button>
+      <div className="inventory-toolbar-actions">
+        <button
+          className="inventory-export-button"
+          disabled={exportDisabled}
+          type="button"
+          onClick={onExportItems}
+        >
+          <Download size={14} />
+          <span>Export</span>
+        </button>
 
-      <button className="inventory-add-button" type="button" onClick={onAddItem}>
-        <Plus size={16} />
-        Tambah
-      </button>
+        <button className="inventory-add-button" type="button" onClick={onAddItem}>
+          <Plus size={14} />
+          <span>Tambah</span>
+        </button>
+      </div>
     </section>
   );
 }
@@ -443,49 +456,78 @@ function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
     <section className="inventory-list" aria-label="Daftar inventory">
       {items.map((item) => {
         const status = getEffectiveStatus(item);
+        const isLowStock = status === 'low_stock';
+        const isAlertStatus = ['broken', 'lost', 'maintenance'].includes(status);
 
         return (
-          <article className={'inventory-item-card is-' + status} key={item.id}>
-            <div className="inventory-item-main">
-              <div>
-                <small>{getOptionLabel(formCategoryOptions, item.category, 'Kategori')}</small>
-                <strong>{item.name}</strong>
-                <span>{item.location || 'Lokasi belum diisi'}</span>
+          <article className={'inventory-item-row is-' + status} key={item.id}>
+            <div className="inventory-item-info">
+              <div className="inventory-item-name-line">
+                <strong className="inventory-item-name" title={item.name}>{item.name}</strong>
+                <span className="inventory-item-badge">{getOptionLabel(formCategoryOptions, item.category, 'Kategori')}</span>
+              </div>
+              <div className="inventory-item-details">
+                <span>📍 {item.location || 'No Lokasi'}</span>
+                <span className="dot-separator">·</span>
+                <span>{getOptionLabel(conditionOptions, item.condition, 'Baik')}</span>
+                {item.note && (
+                  <>
+                    <span className="dot-separator">·</span>
+                    <span className="inventory-note-preview" title={item.note}>📝 {item.note}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="inventory-item-stock-col">
+              <strong className={'inventory-qty ' + (isLowStock || isAlertStatus ? 'text-danger' : '')}>
+                {item.quantity} <small>{item.unit}</small>
+              </strong>
+              {Number(item.minStock) > 0 && (
+                <span className="inventory-min-stock">Min: {item.minStock}</span>
+              )}
+            </div>
+
+            <div className="inventory-item-actions-col">
+              <div className="inventory-adjust-group">
+                <button
+                  aria-label="Kurang stok"
+                  className="inventory-adjust-btn is-out"
+                  type="button"
+                  onClick={() => onAdjustStock(item, 'out')}
+                >
+                  <Minus size={12} />
+                </button>
+                <button
+                  aria-label="Tambah stok"
+                  className="inventory-adjust-btn is-in"
+                  type="button"
+                  onClick={() => onAdjustStock(item, 'in')}
+                >
+                  <Plus size={12} />
+                </button>
               </div>
 
-              <b>{getStatusLabel(status)}</b>
-            </div>
-
-            <div className="inventory-item-meta">
-              <span><small>Qty</small><strong>{item.quantity} {item.unit}</strong></span>
-              <span><small>Minimal</small><strong>{item.minStock} {item.unit}</strong></span>
-              <span><small>Kondisi</small><strong>{getOptionLabel(conditionOptions, item.condition, 'Baik')}</strong></span>
-            </div>
-
-            {item.note ? <p className="inventory-item-note">{item.note}</p> : null}
-
-            <div className="inventory-item-actions">
-              <button className="inventory-stock-button is-in" type="button" onClick={() => onAdjustStock(item, 'in')}>
-                <Plus size={14} />
-                <span>Masuk</span>
-              </button>
-
-              <button className="inventory-stock-button is-out" type="button" onClick={() => onAdjustStock(item, 'out')}>
-                <Minus size={14} />
-                <span>Keluar</span>
-              </button>
-
-              <button type="button" onClick={() => onEdit(item)}>
-                <Pencil size={14} />
-                Edit
-              </button>
-
-              {item.status !== 'inactive' ? (
-                <button type="button" onClick={() => onArchive(item)}>
-                  <Archive size={14} />
-                  Off
+              <div className="inventory-crud-group">
+                <button
+                  aria-label="Edit item"
+                  className="inventory-crud-btn"
+                  type="button"
+                  onClick={() => onEdit(item)}
+                >
+                  <Pencil size={11} />
                 </button>
-              ) : null}
+                {item.status !== 'inactive' && (
+                  <button
+                    aria-label="Nonaktifkan item"
+                    className="inventory-crud-btn"
+                    type="button"
+                    onClick={() => onArchive(item)}
+                  >
+                    <Archive size={11} />
+                  </button>
+                )}
+              </div>
             </div>
           </article>
         );

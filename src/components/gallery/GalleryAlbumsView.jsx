@@ -33,7 +33,7 @@ export default function GalleryAlbumsView({
 }) {
   if (selectedAlbum === null) {
     return (
-      <div className="gallery-album-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+      <div className="gallery-album-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         <AlbumFolderCard
           title="Semua Foto"
           count={filteredActiveImages.length}
@@ -88,18 +88,18 @@ export default function GalleryAlbumsView({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-[var(--auth-border)] pb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border-b border-[var(--auth-border)] pb-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => onSelectAlbum(null)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all"
+            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all"
           >
-            <BackIcon size={16} />
+            <BackIcon size={14} />
           </button>
           <div>
-            <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Album</span>
-            <h3 className="text-base font-bold text-white">
+            <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-semibold">Album</span>
+            <h3 className="text-sm font-bold text-white leading-tight">
               {resolveAlbumTitle(selectedAlbum, categories)}
             </h3>
           </div>
@@ -111,7 +111,7 @@ export default function GalleryAlbumsView({
         <EmptyGalleryState activeTab="albums_detail" />
       ) : (
         <div
-          className="gallery-photo-grid grid gap-4 sm:gap-5"
+          className="gallery-photo-grid grid gap-[2px] sm:gap-[3px]"
           style={{
             gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
           }}

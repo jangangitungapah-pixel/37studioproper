@@ -1282,89 +1282,66 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
       {activeSubpage === 'account' && (
         <section className="settings-account-grid" aria-label="Account settings">
-          <section className="settings-section settings-account-hero">
-            <div className="settings-account-avatar" aria-hidden="true">
-              <UserRound size={22} />
+
+          {/* ── HERO STRIP ─────────────────────────────────── */}
+          <section className="settings-section settings-account-hero-strip">
+            <div className="settings-account-avatar-sm" aria-hidden="true">
+              <UserRound size={18} />
             </div>
 
             <div className="settings-account-hero-copy">
               <p>Admin Account</p>
               <h3>{currentUser?.displayName || currentUser?.email || currentUser?.phoneNumber || 'Admin 37 Music'}</h3>
-              <span>{accountContactValue}</span>
             </div>
 
             <div className="settings-account-badges" aria-label="Status akun">
               <span className="settings-account-badge is-approved">
-                <ShieldCheck size={13} />
+                <ShieldCheck size={12} />
                 {accountStatusLabel}
               </span>
               <span className="settings-account-badge">
-                <KeyRound size={13} />
+                <KeyRound size={12} />
                 {accountRoleLabel}
               </span>
             </div>
           </section>
 
+          {/* ── IDENTITAS LOGIN (flat list) ─────────────────── */}
           <section className="settings-section">
-            <div className="settings-section-head">
-              <div>
-                <h3>Identitas Login</h3>
-                <p>Informasi dasar akun admin yang sedang aktif di perangkat ini.</p>
+            <h3 className="settings-section-title">Identitas Login</h3>
+
+            <div className="settings-info-flat-list">
+              <div className="settings-info-flat-row">
+                <span className="settings-info-flat-icon"><Mail size={13} /></span>
+                <span className="settings-info-flat-label">Email</span>
+                <strong className="settings-info-flat-value" title={currentUser?.email || 'Belum tersedia'}>{currentUser?.email || '—'}</strong>
               </div>
-            </div>
 
-            <div className="settings-account-info-grid">
-              <article className="settings-account-info-item">
-                <span className="settings-account-info-icon">
-                  <Mail size={14} />
-                </span>
-                <span className="settings-account-info-copy">
-                  <small>Email</small>
-                  <strong title={currentUser?.email || 'Belum tersedia'}>{currentUser?.email || 'Belum tersedia'}</strong>
-                </span>
-              </article>
+              <div className="settings-info-flat-row">
+                <span className="settings-info-flat-icon"><Phone size={13} /></span>
+                <span className="settings-info-flat-label">Nomor HP</span>
+                <strong className="settings-info-flat-value" title={currentUser?.phoneNumber || 'Belum tersedia'}>{currentUser?.phoneNumber || '—'}</strong>
+              </div>
 
-              <article className="settings-account-info-item">
-                <span className="settings-account-info-icon">
-                  <Phone size={14} />
-                </span>
-                <span className="settings-account-info-copy">
-                  <small>Nomor HP</small>
-                  <strong title={currentUser?.phoneNumber || 'Belum tersedia'}>{currentUser?.phoneNumber || 'Belum tersedia'}</strong>
-                </span>
-              </article>
+              <div className="settings-info-flat-row">
+                <span className="settings-info-flat-icon"><MonitorSmartphone size={13} /></span>
+                <span className="settings-info-flat-label">Provider</span>
+                <strong className="settings-info-flat-value">{accountProviderLabel}</strong>
+              </div>
 
-              <article className="settings-account-info-item">
-                <span className="settings-account-info-icon">
-                  <MonitorSmartphone size={14} />
-                </span>
-                <span className="settings-account-info-copy">
-                  <small>Provider Login</small>
-                  <strong title={accountProviderLabel}>{accountProviderLabel}</strong>
-                </span>
-              </article>
-
-              <article className="settings-account-info-item">
-                <span className="settings-account-info-icon">
-                  <KeyRound size={14} />
-                </span>
-                <span className="settings-account-info-copy">
-                  <small>User ID</small>
-                  <strong title={currentUser?.uid || accountUidLabel}>{accountUidLabel}</strong>
-                </span>
-              </article>
+              <div className="settings-info-flat-row">
+                <span className="settings-info-flat-icon"><KeyRound size={13} /></span>
+                <span className="settings-info-flat-label">User ID</span>
+                <strong className="settings-info-flat-value" title={currentUser?.uid || accountUidLabel}>{accountUidLabel}</strong>
+              </div>
             </div>
           </section>
 
-          <section className="settings-section settings-account-profile-section">
-            <div className="settings-section-head">
-              <div>
-                <h3>Profil Akun</h3>
-                <p>Ubah nama tampilan admin dan kirim email reset password untuk akun email.</p>
-              </div>
-            </div>
+          {/* ── PROFIL AKUN ─────────────────────────────────── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Profil Akun</h3>
 
-            <form className="settings-account-form settings-account-profile-form" onSubmit={saveAccountProfilePage}>
+            <form className="settings-account-form-compact" onSubmit={saveAccountProfilePage}>
               <StudioTextField
                 id="account-profile-display-name"
                 label="Nama Tampilan"
@@ -1373,16 +1350,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 onChange={updateAccountProfileField('displayName')}
               />
 
-              <div className="settings-account-profile-help">
-                <small>Reset Password</small>
-                <p>Email reset hanya bisa dikirim jika akun ini punya email login.</p>
-              </div>
-
               {accountProfileMessage ? (
                 <p className="settings-invoice-message" role="status">{accountProfileMessage}</p>
               ) : null}
 
-              <div className="settings-form-actions settings-account-actions">
+              <div className="settings-account-actions-row">
                 <button
                   className="settings-mini-button is-ghost"
                   disabled={!currentUser?.email}
@@ -1393,42 +1365,40 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 </button>
 
                 <button className="settings-mini-button is-primary" type="submit">
-                  <Save size={15} />
+                  <Save size={14} />
                   Simpan Profil
                 </button>
               </div>
             </form>
           </section>
 
+          {/* ── PREFERENSI ACCOUNT ──────────────────────────── */}
           <section className="settings-section">
-            <div className="settings-section-head">
-              <div>
-                <h3>Preferensi Account</h3>
-                <p>Preferensi ini disimpan lokal di perangkat dan tidak mengubah data booking, billing, atau pembukuan.</p>
+            <h3 className="settings-section-title">Preferensi Account</h3>
+
+            <form className="settings-account-form-compact" onSubmit={saveAccountSettingsPage}>
+              <div className="settings-prefs-selects">
+                <StudioSelect
+                  label="Halaman Awal"
+                  options={accountLandingOptions}
+                  selectedKey={accountPreferences.defaultLandingKey}
+                  onChange={updateAccountPreferenceValue('defaultLandingKey')}
+                />
+
+                <StudioSelect
+                  label="Kontak Utama"
+                  options={accountContactOptions}
+                  selectedKey={accountPreferences.preferredContact}
+                  onChange={updateAccountPreferenceValue('preferredContact')}
+                />
+
+                <StudioSelect
+                  label="Level Notifikasi"
+                  options={accountNotificationOptions}
+                  selectedKey={accountPreferences.notificationLevel}
+                  onChange={updateAccountPreferenceValue('notificationLevel')}
+                />
               </div>
-            </div>
-
-            <form className="settings-account-form" onSubmit={saveAccountSettingsPage}>
-              <StudioSelect
-                label="Halaman Awal Admin"
-                options={accountLandingOptions}
-                selectedKey={accountPreferences.defaultLandingKey}
-                onChange={updateAccountPreferenceValue('defaultLandingKey')}
-              />
-
-              <StudioSelect
-                label="Kontak Utama"
-                options={accountContactOptions}
-                selectedKey={accountPreferences.preferredContact}
-                onChange={updateAccountPreferenceValue('preferredContact')}
-              />
-
-              <StudioSelect
-                label="Level Notifikasi"
-                options={accountNotificationOptions}
-                selectedKey={accountPreferences.notificationLevel}
-                onChange={updateAccountPreferenceValue('notificationLevel')}
-              />
 
               <label className="settings-account-note-field" htmlFor="account-setting-note">
                 <span>Catatan Account</span>
@@ -1441,10 +1411,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 />
               </label>
 
-              <div className="settings-account-preview">
-                <small>Preview Preferensi</small>
+              <div className="settings-prefs-preview-strip">
                 <span>Landing: <strong>{accountLandingLabel}</strong></span>
+                <span>·</span>
                 <span>Kontak: <strong>{accountPreferredContactLabel}</strong></span>
+                <span>·</span>
                 <span>Notifikasi: <strong>{accountNotificationLabel}</strong></span>
               </div>
 
@@ -1452,60 +1423,50 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 <p className="settings-invoice-message" role="status">{accountSettingsMessage}</p>
               ) : null}
 
-              <div className="settings-form-actions settings-account-actions">
+              <div className="settings-account-actions-row">
                 <button className="settings-mini-button is-ghost" type="button" onClick={resetAccountSettingsPage}>
-                  <RefreshCcw size={15} />
+                  <RefreshCcw size={14} />
                   Reset Lokal
                 </button>
                 <button className="settings-mini-button is-primary" type="submit">
-                  <Save size={15} />
+                  <Save size={14} />
                   Simpan Account
                 </button>
               </div>
             </form>
           </section>
 
-          <section className="settings-section settings-account-security">
-            <div className="settings-section-head">
-              <div>
-                <h3>Access & Security</h3>
-                <p>Ringkasan status akses akun. Aksi sensitif tetap mengikuti Firebase Auth dan approval owner.</p>
-              </div>
-            </div>
-
-            <div className="settings-account-security-list">
-              <article>
-                <ShieldCheck size={15} />
-                <span>
-                  <strong>Status akses</strong>
-                  <small>{accountStatusLabel}</small>
-                </span>
-              </article>
-
-              <article>
-                <Mail size={15} />
-                <span>
-                  <strong>Verifikasi email</strong>
-                  <small>{currentUser?.emailVerified ? 'Email sudah verified' : 'Belum verified atau tidak tersedia'}</small>
-                </span>
-              </article>
-
-              <article>
-                <MonitorSmartphone size={15} />
-                <span>
-                  <strong>Login aktif</strong>
-                  <small>{accountProviderLabel}</small>
-                </span>
-              </article>
-            </div>
-
-            <div className="settings-account-danger-zone">
+          {/* ── ACCESS & SECURITY ───────────────────────────── */}
+          <section className="settings-section">
+            <div className="settings-section-head-row">
+              <h3 className="settings-section-title">Access &amp; Security</h3>
               <button className="settings-mini-button" type="button" onClick={copyAccountUid}>
-                <Clipboard size={15} />
+                <Clipboard size={13} />
                 Copy UID
               </button>
             </div>
+
+            <div className="settings-security-flat-list">
+              <div className="settings-security-flat-row">
+                <ShieldCheck size={14} />
+                <span className="settings-security-label">Status akses</span>
+                <span className="settings-security-value">{accountStatusLabel}</span>
+              </div>
+
+              <div className="settings-security-flat-row">
+                <Mail size={14} />
+                <span className="settings-security-label">Verifikasi email</span>
+                <span className="settings-security-value">{currentUser?.emailVerified ? 'Verified' : 'Belum verified'}</span>
+              </div>
+
+              <div className="settings-security-flat-row">
+                <MonitorSmartphone size={14} />
+                <span className="settings-security-label">Login aktif</span>
+                <span className="settings-security-value">{accountProviderLabel}</span>
+              </div>
+            </div>
           </section>
+
         </section>
       )}
 
@@ -1642,494 +1603,567 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       )}
 
       {activeSubpage === 'studio' && (
-        <section className="settings-section settings-studio-section">
-          <div className="settings-section-head">
-            <div>
-              <h3>Studio Identity</h3>
-              <p>Data ini menjadi sumber utama untuk client portal, invoice, reminder WhatsApp, dan informasi pembayaran.</p>
+        <section className="settings-section" aria-label="Studio settings">
+
+          {/* ── STUDIO IDENTITY ─────────────────────────────── */}
+          <h3 className="settings-section-title">Studio Identity</h3>
+
+          <form className="settings-studio-form" onSubmit={saveStudioSettingsPage}>
+            <div className="settings-studio-grid">
+              <StudioTextField
+                id="studio-setting-name"
+                label="Nama Studio"
+                placeholder="37 Music Studio"
+                value={studioSettings.studioName}
+                onChange={updateStudioSetting('studioName')}
+              />
+
+              <StudioTextField
+                id="studio-setting-phone"
+                inputMode="tel"
+                label="WhatsApp / Telepon"
+                placeholder="08xxxxxxxxxx"
+                value={studioSettings.studioPhone}
+                onChange={updateStudioSetting('studioPhone')}
+              />
             </div>
-          </div>
-
-          <form className="settings-form settings-studio-form" onSubmit={saveStudioSettingsPage}>
-            <StudioTextField
-              id="studio-setting-name"
-              label="Nama Studio"
-              placeholder="37 Music Studio"
-              value={studioSettings.studioName}
-              onChange={updateStudioSetting('studioName')}
-            />
-
-            <StudioTextField
-              id="studio-setting-phone"
-              inputMode="tel"
-              label="Nomor Telepon / WhatsApp Studio"
-              placeholder="08xxxxxxxxxx"
-              value={studioSettings.studioPhone}
-              onChange={updateStudioSetting('studioPhone')}
-            />
 
             <label className="settings-textarea-field" htmlFor="studio-setting-address">
               <span>Alamat Studio</span>
               <textarea
                 id="studio-setting-address"
-                placeholder="Contoh: Jl. Studio No. 37, Tangerang"
+                placeholder="Jl. Studio No. 37, Tangerang"
                 value={studioSettings.studioAddress}
                 onChange={updateStudioSetting('studioAddress')}
               />
             </label>
 
-            <div className="settings-invoice-preview" aria-label="Preview studio identity">
-              <small>Preview Identitas Studio</small>
+            {/* Preview strip */}
+            <div className="settings-studio-preview-strip" aria-label="Preview studio identity">
               <strong>{studioSettings.studioName || defaultStudioSettings.studioName}</strong>
-              {studioSettings.studioAddress ? <span>{studioSettings.studioAddress}</span> : null}
-              {studioSettings.studioPhone ? <span>{studioSettings.studioPhone}</span> : null}
-              <em>Dipakai lintas portal</em>
+              {studioSettings.studioPhone ? <span>· {studioSettings.studioPhone}</span> : null}
+              {studioSettings.studioAddress ? <span>· {studioSettings.studioAddress}</span> : null}
             </div>
 
-            <div className="settings-section-head settings-studio-subhead">
-              <div>
-                <h3>Transfer & QRIS</h3>
-                <p>Informasi ini tampil di tab Tagihan client dan dipakai untuk instruksi pembayaran.</p>
-              </div>
+            {/* ── TRANSFER & QRIS ──────────────────────────── */}
+            <h3 className="settings-section-title settings-section-divider">Transfer &amp; QRIS</h3>
+
+            <div className="settings-studio-grid settings-studio-grid-3">
+              <StudioTextField
+                id="studio-setting-bank-name"
+                label="Nama Bank"
+                placeholder="Bank BCA"
+                value={studioSettings.bankName}
+                onChange={updateStudioSetting('bankName')}
+              />
+
+              <StudioTextField
+                id="studio-setting-bank-account"
+                inputMode="numeric"
+                label="Nomor Rekening"
+                placeholder="3728902822"
+                value={studioSettings.bankAccountNumber}
+                onChange={updateStudioSetting('bankAccountNumber')}
+              />
+
+              <StudioTextField
+                id="studio-setting-bank-holder"
+                label="Nama Pemilik"
+                placeholder="37 MUSIC STUDIO"
+                value={studioSettings.bankAccountHolder}
+                onChange={updateStudioSetting('bankAccountHolder')}
+              />
+
+              <StudioTextField
+                id="studio-setting-qris-label"
+                label="Label QRIS"
+                placeholder="Scan di kasir studio"
+                value={studioSettings.qrisLabel}
+                onChange={updateStudioSetting('qrisLabel')}
+              />
+
+              <StudioTextField
+                id="studio-setting-qris-note"
+                label="Catatan QRIS"
+                placeholder="Mendukung GoPay, OVO, ShopeePay"
+                value={studioSettings.qrisNote}
+                onChange={updateStudioSetting('qrisNote')}
+              />
             </div>
 
-            <StudioTextField
-              id="studio-setting-bank-name"
-              label="Nama Bank"
-              placeholder="Bank BCA"
-              value={studioSettings.bankName}
-              onChange={updateStudioSetting('bankName')}
-            />
-
-            <StudioTextField
-              id="studio-setting-bank-account"
-              inputMode="numeric"
-              label="Nomor Rekening Transfer"
-              placeholder="3728902822"
-              value={studioSettings.bankAccountNumber}
-              onChange={updateStudioSetting('bankAccountNumber')}
-            />
-
-            <StudioTextField
-              id="studio-setting-bank-holder"
-              label="Nama Pemilik Rekening"
-              placeholder="37 MUSIC STUDIO"
-              value={studioSettings.bankAccountHolder}
-              onChange={updateStudioSetting('bankAccountHolder')}
-            />
-
-            <StudioTextField
-              id="studio-setting-qris-label"
-              label="Label QRIS"
-              placeholder="Scan di kasir studio"
-              value={studioSettings.qrisLabel}
-              onChange={updateStudioSetting('qrisLabel')}
-            />
-
-            <StudioTextField
-              id="studio-setting-qris-note"
-              label="Catatan QRIS"
-              placeholder="Mendukung GoPay, OVO, ShopeePay"
-              value={studioSettings.qrisNote}
-              onChange={updateStudioSetting('qrisNote')}
-            />
-
-            <div className="settings-invoice-preview" aria-label="Preview rekening studio">
-              <small>Preview Pembayaran</small>
+            {/* Payment preview strip */}
+            <div className="settings-studio-preview-strip" aria-label="Preview rekening studio">
               <strong>{studioSettings.bankName || defaultStudioSettings.bankName}</strong>
-              <span>{studioSettings.bankAccountNumber || defaultStudioSettings.bankAccountNumber}</span>
-              <span>A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
-              <em>{studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</em>
+              <span>· {studioSettings.bankAccountNumber || defaultStudioSettings.bankAccountNumber}</span>
+              <span>· A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
+              <span>· {studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</span>
             </div>
 
-            <label className="settings-textarea-field" htmlFor="studio-setting-payment-term-0">
-              <span>Ketentuan Pembayaran</span>
-              <div className="settings-list">
-                {(studioSettings.paymentTerms || defaultStudioSettings.paymentTerms).map((term, index) => (
-                  <article className="settings-list-item" key={'studio-payment-term-' + index}>
-                    <textarea
-                      id={'studio-setting-payment-term-' + index}
-                      placeholder="Tulis ketentuan pembayaran..."
-                      value={term}
-                      onChange={updateStudioTerm(index)}
-                    />
-                    <div className="settings-row-actions">
-                      <button type="button" onClick={() => removeStudioPaymentTerm(index)}>
-                        <Trash2 size={15} />
-                        Hapus
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </label>
-
-            <div className="settings-form-actions">
+            {/* ── KETENTUAN PEMBAYARAN ─────────────────────── */}
+            <div className="settings-section-head-row settings-section-divider">
+              <h3 className="settings-section-title">Ketentuan Pembayaran</h3>
               <button className="settings-mini-button is-ghost" type="button" onClick={addStudioPaymentTerm}>
-                Tambah Ketentuan
+                + Tambah
               </button>
+            </div>
+
+            <div className="settings-payment-terms-list">
+              {(studioSettings.paymentTerms || defaultStudioSettings.paymentTerms).map((term, index) => (
+                <div className="settings-payment-term-row" key={'studio-payment-term-' + index}>
+                  <textarea
+                    id={'studio-setting-payment-term-' + index}
+                    className="settings-payment-term-input"
+                    placeholder="Tulis ketentuan pembayaran..."
+                    rows={2}
+                    value={term}
+                    onChange={updateStudioTerm(index)}
+                  />
+                  <button
+                    aria-label={'Hapus ketentuan ' + (index + 1)}
+                    className="settings-term-delete-btn"
+                    type="button"
+                    onClick={() => removeStudioPaymentTerm(index)}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* ── ACTIONS ──────────────────────────────────── */}
+            {studioSettingsMessage ? (
+              <p className="settings-invoice-message" role="status">{studioSettingsMessage}</p>
+            ) : null}
+
+            <div className="settings-studio-actions">
               <button className="settings-mini-button is-ghost" type="button" onClick={resetStudioSettingsPage}>
                 Reset Default
               </button>
               <button className="settings-mini-button is-primary" type="submit">
-                <Save size={15} />
+                <Save size={14} />
                 Simpan Studio Settings
               </button>
             </div>
-
-            {studioSettingsMessage ? (
-              <p className="settings-invoice-message" role="status">{studioSettingsMessage}</p>
-            ) : null}
           </form>
+
         </section>
       )}
 
       {activeSubpage === 'pricing' && (
-        <>
+        <section className="settings-pricing-container" aria-label="Pricing and session settings">
+
+          {/* ── SESSION LIST ────────────────────────────────── */}
           <section className="settings-section">
-        <div className="settings-section-head">
-          <div>
-            <h3>Session List</h3>
-            <p>Harga session reguler per jam. Khusus Recording, harga dan durasi diambil dari Recording Type.</p>
-          </div>
-        </div>
+            <h3 className="settings-section-title">Session List</h3>
 
-        <div className="settings-list">
-          {settings.sessions.length ? (
-            settings.sessions.map((item) => (
-              <article className="settings-list-item" key={item.id}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>{item.description}</span>
-                </div>
-                <em>{isRecordingSessionId(item.id) ? 'Harga dari Recording Type' : formatRupiah(item.price) + ' / jam'}</em>
-                <div className="settings-row-actions">
-                  <button type="button" onClick={() => editSession(item)}>
-                    <Edit3 size={15} />
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => deleteSession(item.id)}>
-                    <Trash2 size={15} />
-                    Hapus
-                  </button>
-                </div>
-              </article>
-            ))
-          ) : (
-            <EmptyState>Belum ada session. Tambahkan minimal satu session agar booking form punya pilihan.</EmptyState>
-          )}
-        </div>
+            <div className="settings-flat-pricing-list">
+              {settings.sessions.length ? (
+                settings.sessions.map((item) => (
+                  <div className="settings-flat-pricing-row" key={item.id}>
+                    <div className="settings-flat-row-header">
+                      <strong className="settings-flat-row-title">{item.name}</strong>
+                      <div className="settings-flat-row-actions">
+                        <button type="button" className="settings-icon-action-btn" aria-label="Edit session" onClick={() => editSession(item)}>
+                          <Edit3 size={13} />
+                        </button>
+                        <button type="button" className="settings-icon-action-btn is-delete" aria-label="Delete session" onClick={() => deleteSession(item.id)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="settings-flat-row-body">
+                      <span className="settings-flat-row-desc">{item.description || 'Session studio'}</span>
+                      <strong className="settings-flat-row-price">
+                        {isRecordingSessionId(item.id) ? 'Recording Type' : formatRupiah(item.price) + ' / jam'}
+                      </strong>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState>Belum ada session.</EmptyState>
+              )}
+            </div>
 
-        <form className="settings-form" onSubmit={saveSession}>
-          <StudioTextField
-            id="setting-session-name"
-            label="Nama Session"
-            placeholder="Contoh: Podcast"
-            value={sessionForm.name}
-            onChange={updateForm(setSessionForm, 'name')}
-          />
-          <StudioTextField
-            id="setting-session-description"
-            label="Subsession / Deskripsi kecil"
-            placeholder="Contoh: Recording podcast ringan"
-            value={sessionForm.description}
-            onChange={updateForm(setSessionForm, 'description')}
-          />
-          {isRecordingSessionId(sessionForm.id) ? (
-            <p className="settings-empty-text">
-              Recording tidak punya harga per jam. Atur harga dan durasi dari bagian Recording Type.
-            </p>
-          ) : (
-            <StudioTextField
-              id="setting-session-price"
-              inputMode="numeric"
-              label="Harga Session / Jam"
-              min="0"
-              placeholder="Contoh 100000"
-              type="number"
-              value={sessionForm.price}
-              onChange={updateForm(setSessionForm, 'price')}
-            />
-          )}
-          <FormActions editing={Boolean(sessionForm.id)} onCancel={() => setSessionForm(emptySessionForm)} />
-        </form>
-      </section>
+            <form className="settings-account-form-compact" onSubmit={saveSession}>
+              <div className="settings-studio-grid">
+                <StudioTextField
+                  id="setting-session-name"
+                  label="Nama Session"
+                  placeholder="Contoh: Rehearsal"
+                  value={sessionForm.name}
+                  onChange={updateForm(setSessionForm, 'name')}
+                />
+                <StudioTextField
+                  id="setting-session-description"
+                  label="Deskripsi Kecil"
+                  placeholder="Contoh: Latihan band reguler"
+                  value={sessionForm.description}
+                  onChange={updateForm(setSessionForm, 'description')}
+                />
+              </div>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <div>
-            <h3>Discount</h3>
-            <p>Discount berdasarkan durasi dan tipe session tertentu.</p>
-          </div>
-        </div>
+              {isRecordingSessionId(sessionForm.id) ? (
+                <p className="settings-empty-text">
+                  Harga &amp; durasi mengikuti Recording Type.
+                </p>
+              ) : (
+                <StudioTextField
+                  id="setting-session-price"
+                  className="is-currency"
+                  inputMode="numeric"
+                  label="Harga Sesi / Jam"
+                  min="0"
+                  placeholder="100000"
+                  type="number"
+                  value={sessionForm.price}
+                  onChange={updateForm(setSessionForm, 'price')}
+                />
+              )}
+              <FormActions editing={Boolean(sessionForm.id)} onCancel={() => setSessionForm(emptySessionForm)} />
+            </form>
+          </section>
 
-        <div className="settings-list">
-          {settings.discounts.length ? (
-            settings.discounts.map((item) => (
-              <article className="settings-list-item" key={item.id}>
-                <div>
-                  <strong>{formatRupiah(item.nominal)}</strong>
-                  <span>{item.durationHours} jam • {getSessionLabel(item.sessionId)}</span>
-                </div>
-                <em>Discount</em>
-                <div className="settings-row-actions">
-                  <button type="button" onClick={() => editDiscount(item)}>
-                    <Edit3 size={15} />
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => deleteDiscount(item.id)}>
-                    <Trash2 size={15} />
-                    Hapus
-                  </button>
-                </div>
-              </article>
-            ))
-          ) : (
-            <EmptyState>Belum ada discount.</EmptyState>
-          )}
-        </div>
+          {/* ── DISCOUNT LIST ───────────────────────────────── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Discount</h3>
 
-        <form className="settings-form" onSubmit={saveDiscount}>
-          <StudioTextField
-            id="setting-discount-nominal"
-            inputMode="numeric"
-            label="Nominal Discount"
-            min="0"
-            placeholder="Contoh 25000"
-            type="number"
-            value={discountForm.nominal}
-            onChange={updateForm(setDiscountForm, 'nominal')}
-          />
-          <StudioTextField
-            id="setting-discount-duration"
-            inputMode="decimal"
-            label="Durasi yang dikenakan discount"
-            min="0"
-            placeholder="Contoh 3"
-            step="0.5"
-            type="number"
-            value={discountForm.durationHours}
-            onChange={updateForm(setDiscountForm, 'durationHours')}
-          />
-          <StudioSelect
-            label="Tipe Session Discount"
-            options={sessionOptions}
-            selectedKey={discountForm.sessionId}
-            onChange={(nextValue) => setDiscountForm((current) => ({ ...current, sessionId: nextValue }))}
-          />
-          <FormActions editing={Boolean(discountForm.id)} onCancel={() => setDiscountForm(emptyDiscountForm)} />
-        </form>
-      </section>
+            <div className="settings-flat-pricing-list">
+              {settings.discounts.length ? (
+                settings.discounts.map((item) => (
+                  <div className="settings-flat-pricing-row" key={item.id}>
+                    <div className="settings-flat-row-header">
+                      <strong className="settings-flat-row-title">{formatRupiah(item.nominal)} Off</strong>
+                      <div className="settings-flat-row-actions">
+                        <button type="button" className="settings-icon-action-btn" aria-label="Edit discount" onClick={() => editDiscount(item)}>
+                          <Edit3 size={13} />
+                        </button>
+                        <button type="button" className="settings-icon-action-btn is-delete" aria-label="Delete discount" onClick={() => deleteDiscount(item.id)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="settings-flat-row-body">
+                      <span className="settings-flat-row-desc">{getSessionLabel(item.sessionId)}</span>
+                      <strong className="settings-flat-row-price">{item.durationHours} jam</strong>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState>Belum ada discount.</EmptyState>
+              )}
+            </div>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <div>
-            <h3>Recording Type</h3>
-            <p>Sumber harga dan durasi untuk session Recording. Tidak ada harga Recording per jam.</p>
-          </div>
-        </div>
+            <form className="settings-account-form-compact" onSubmit={saveDiscount}>
+              <div className="settings-studio-grid">
+                <StudioTextField
+                  id="setting-discount-nominal"
+                  className="is-currency"
+                  inputMode="numeric"
+                  label="Nominal Discount"
+                  min="0"
+                  placeholder="25000"
+                  type="number"
+                  value={discountForm.nominal}
+                  onChange={updateForm(setDiscountForm, 'nominal')}
+                />
+                <StudioTextField
+                  id="setting-discount-duration"
+                  inputMode="decimal"
+                  label="Durasi (Jam)"
+                  min="0"
+                  placeholder="3"
+                  step="0.5"
+                  type="number"
+                  value={discountForm.durationHours}
+                  onChange={updateForm(setDiscountForm, 'durationHours')}
+                />
+              </div>
+              <StudioSelect
+                label="Tipe Session Discount"
+                options={sessionOptions}
+                selectedKey={discountForm.sessionId}
+                onChange={(nextValue) => setDiscountForm((current) => ({ ...current, sessionId: nextValue }))}
+              />
+              <FormActions editing={Boolean(discountForm.id)} onCancel={() => setDiscountForm(emptyDiscountForm)} />
+            </form>
+          </section>
 
-        <div className="settings-list">
-          {settings.recordingTypes.length ? (
-            settings.recordingTypes.map((item) => (
-              <article className="settings-list-item" key={item.id}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>{item.durationHours} jam</span>
-                </div>
-                <em>{formatRupiah(item.price)}</em>
-                <div className="settings-row-actions">
-                  <button type="button" onClick={() => editRecording(item)}>
-                    <Edit3 size={15} />
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => deleteRecording(item.id)}>
-                    <Trash2 size={15} />
-                    Hapus
-                  </button>
-                </div>
-              </article>
-            ))
-          ) : (
-            <EmptyState>Belum ada tipe recording.</EmptyState>
-          )}
-        </div>
+          {/* ── RECORDING TYPE LIST ─────────────────────────── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Recording Type</h3>
 
-        <form className="settings-form" onSubmit={saveRecording}>
-          <StudioTextField
-            id="setting-recording-name"
-            label="Nama Tipe Recording"
-            placeholder="Contoh: Live Recording"
-            value={recordingForm.name}
-            onChange={updateForm(setRecordingForm, 'name')}
-          />
-          <StudioTextField
-            id="setting-recording-duration"
-            inputMode="decimal"
-            label="Durasi Recording"
-            min="0"
-            placeholder="Contoh 3"
-            step="0.5"
-            type="number"
-            value={recordingForm.durationHours}
-            onChange={updateForm(setRecordingForm, 'durationHours')}
-          />
-          <StudioTextField
-            id="setting-recording-price"
-            inputMode="numeric"
-            label="Harga Recording"
-            min="0"
-            placeholder="Contoh 450000"
-            type="number"
-            value={recordingForm.price}
-            onChange={updateForm(setRecordingForm, 'price')}
-          />
-          <FormActions editing={Boolean(recordingForm.id)} onCancel={() => setRecordingForm(emptyRecordingForm)} />
-        </form>
-      </section>
+            <div className="settings-flat-pricing-list">
+              {settings.recordingTypes.length ? (
+                settings.recordingTypes.map((item) => (
+                  <div className="settings-flat-pricing-row" key={item.id}>
+                    <div className="settings-flat-row-header">
+                      <strong className="settings-flat-row-title">{item.name}</strong>
+                      <div className="settings-flat-row-actions">
+                        <button type="button" className="settings-icon-action-btn" aria-label="Edit recording type" onClick={() => editRecording(item)}>
+                          <Edit3 size={13} />
+                        </button>
+                        <button type="button" className="settings-icon-action-btn is-delete" aria-label="Delete recording type" onClick={() => deleteRecording(item.id)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="settings-flat-row-body">
+                      <span className="settings-flat-row-desc">{item.durationHours} jam</span>
+                      <strong className="settings-flat-row-price">{formatRupiah(item.price)}</strong>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState>Belum ada tipe recording.</EmptyState>
+              )}
+            </div>
 
-      <section className="settings-section">
-        <div className="settings-section-head">
-          <div>
-            <h3>Paket</h3>
-            <p>Paket booking khusus. Durasi boleh dikosongkan untuk paket non-studio utama seperti mixing, mastering, editing, atau remote work.</p>
-          </div>
-        </div>
+            <form className="settings-account-form-compact" onSubmit={saveRecording}>
+              <StudioTextField
+                id="setting-recording-name"
+                label="Nama Tipe Recording"
+                placeholder="Contoh: Live Multitrack"
+                value={recordingForm.name}
+                onChange={updateForm(setRecordingForm, 'name')}
+              />
+              <div className="settings-studio-grid">
+                <StudioTextField
+                  id="setting-recording-duration"
+                  inputMode="decimal"
+                  label="Durasi (Jam)"
+                  min="0"
+                  placeholder="3"
+                  step="0.5"
+                  type="number"
+                  value={recordingForm.durationHours}
+                  onChange={updateForm(setRecordingForm, 'durationHours')}
+                />
+                <StudioTextField
+                  id="setting-recording-price"
+                  className="is-currency"
+                  inputMode="numeric"
+                  label="Harga Sesi"
+                  min="0"
+                  placeholder="450000"
+                  type="number"
+                  value={recordingForm.price}
+                  onChange={updateForm(setRecordingForm, 'price')}
+                />
+              </div>
+              <FormActions editing={Boolean(recordingForm.id)} onCancel={() => setRecordingForm(emptyRecordingForm)} />
+            </form>
+          </section>
 
-        <div className="settings-list">
-          {settings.packages.length ? (
-            settings.packages.map((item) => (
-              <article className="settings-list-item" key={item.id}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>{item.detail} • {item.durationHours ? item.durationHours + ' jam' : 'Tanpa durasi studio'}</span>
-                </div>
-                <em>{formatRupiah(item.price)}</em>
-                <div className="settings-row-actions">
-                  <button type="button" onClick={() => editPackage(item)}>
-                    <Edit3 size={15} />
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => deletePackage(item.id)}>
-                    <Trash2 size={15} />
-                    Hapus
-                  </button>
-                </div>
-              </article>
-            ))
-          ) : (
-            <EmptyState>Belum ada paket.</EmptyState>
-          )}
-        </div>
+          {/* ── PACKAGE LIST ────────────────────────────────── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Paket</h3>
 
-        <form className="settings-form" onSubmit={savePackage}>
-          <StudioTextField
-            id="setting-package-name"
-            label="Nama Paket"
-            placeholder="Contoh: Band Starter"
-            value={packageForm.name}
-            onChange={updateForm(setPackageForm, 'name')}
-          />
-          <StudioTextField
-            id="setting-package-detail"
-            label="Detail Paket"
-            placeholder="Contoh: 3 jam rehearsal + basic recording"
-            value={packageForm.detail}
-            onChange={updateForm(setPackageForm, 'detail')}
-          />
-          <StudioTextField
-            id="setting-package-duration"
-            inputMode="decimal"
-            label="Durasi Paket (Opsional)"
-            min="0"
-            placeholder="Kosongkan jika tidak memakai studio utama"
-            step="0.5"
-            type="number"
-            value={packageForm.durationHours}
-            onChange={updateForm(setPackageForm, 'durationHours')}
-          />
-          <StudioTextField
-            id="setting-package-price"
-            inputMode="numeric"
-            label="Harga Paket"
-            min="0"
-            placeholder="Contoh 350000"
-            type="number"
-            value={packageForm.price}
-            onChange={updateForm(setPackageForm, 'price')}
-          />
-          <FormActions editing={Boolean(packageForm.id)} onCancel={() => setPackageForm(emptyPackageForm)} />
-        </form>
-      </section>
-      </>
+            <div className="settings-flat-pricing-list">
+              {settings.packages.length ? (
+                settings.packages.map((item) => (
+                  <div className="settings-flat-pricing-row" key={item.id}>
+                    <div className="settings-flat-row-header">
+                      <strong className="settings-flat-row-title">{item.name}</strong>
+                      <div className="settings-flat-row-actions">
+                        <button type="button" className="settings-icon-action-btn" aria-label="Edit package" onClick={() => editPackage(item)}>
+                          <Edit3 size={13} />
+                        </button>
+                        <button type="button" className="settings-icon-action-btn is-delete" aria-label="Delete package" onClick={() => deletePackage(item.id)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="settings-flat-row-body">
+                      <span className="settings-flat-row-desc">
+                        {item.detail} {item.durationHours ? `(${item.durationHours} jam)` : '(Tanpa studio)'}
+                      </span>
+                      <strong className="settings-flat-row-price">{formatRupiah(item.price)}</strong>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState>Belum ada paket.</EmptyState>
+              )}
+            </div>
+
+            <form className="settings-account-form-compact" onSubmit={savePackage}>
+              <div className="settings-studio-grid">
+                <StudioTextField
+                  id="setting-package-name"
+                  label="Nama Paket"
+                  placeholder="Contoh: Rehearsal Bundle"
+                  value={packageForm.name}
+                  onChange={updateForm(setPackageForm, 'name')}
+                />
+                <StudioTextField
+                  id="setting-package-detail"
+                  label="Detail Fitur Paket"
+                  placeholder="Contoh: Free recording, mineral water"
+                  value={packageForm.detail}
+                  onChange={updateForm(setPackageForm, 'detail')}
+                />
+              </div>
+              <div className="settings-studio-grid">
+                <StudioTextField
+                  id="setting-package-duration"
+                  inputMode="decimal"
+                  label="Durasi Studio (Jam, Opsional)"
+                  min="0"
+                  placeholder="3"
+                  step="0.5"
+                  type="number"
+                  value={packageForm.durationHours}
+                  onChange={updateForm(setPackageForm, 'durationHours')}
+                />
+                <StudioTextField
+                  id="setting-package-price"
+                  className="is-currency"
+                  inputMode="numeric"
+                  label="Harga Paket"
+                  min="0"
+                  placeholder="350000"
+                  type="number"
+                  value={packageForm.price}
+                  onChange={updateForm(setPackageForm, 'price')}
+                />
+              </div>
+              <FormActions editing={Boolean(packageForm.id)} onCancel={() => setPackageForm(emptyPackageForm)} />
+            </form>
+          </section>
+
+        </section>
       )}
 
       {activeSubpage === 'invoice' && (
-        <section className="settings-section settings-invoice-section">
-          <div className="settings-section-head">
-            <div>
-              <h3>Invoice Thermal</h3>
-              <p>Atur identitas studio dan tampilan invoice digital yang dipakai di halaman Billing/POS.</p>
+        <section className="settings-section" aria-label="Invoice settings">
+          <h3 className="settings-section-title">Invoice Thermal</h3>
+
+          <form className="settings-invoice-form" onSubmit={saveInvoiceSettingsPage}>
+            <div className="settings-studio-grid">
+              <StudioTextField
+                id="invoice-setting-studio-name"
+                label="Nama Studio"
+                placeholder="37 Music Studio"
+                value={invoiceSettings.studioName}
+                onChange={updateInvoiceSetting('studioName')}
+              />
+
+              <StudioTextField
+                id="invoice-setting-subtitle"
+                label="Subtitle Invoice"
+                placeholder="Invoice Digital"
+                value={invoiceSettings.subtitle}
+                onChange={updateInvoiceSetting('subtitle')}
+              />
             </div>
-          </div>
 
-          <form className="settings-form settings-invoice-form" onSubmit={saveInvoiceSettingsPage}>
-            <StudioTextField
-              id="invoice-setting-studio-name"
-              label="Nama Studio"
-              placeholder="37 Music Studio"
-              value={invoiceSettings.studioName}
-              onChange={updateInvoiceSetting('studioName')}
-            />
+            <div className="settings-studio-grid">
+              <StudioTextField
+                id="invoice-setting-phone"
+                inputMode="tel"
+                label="Nomor WA Studio"
+                placeholder="08xxxxxxxxxx"
+                value={invoiceSettings.phone}
+                onChange={updateInvoiceSetting('phone')}
+              />
 
-            <StudioTextField
-              id="invoice-setting-subtitle"
-              label="Subtitle Invoice"
-              placeholder="Invoice Digital"
-              value={invoiceSettings.subtitle}
-              onChange={updateInvoiceSetting('subtitle')}
-            />
+              <StudioTextField
+                id="invoice-setting-address"
+                label="Alamat Singkat"
+                placeholder="Contoh: Tangerang"
+                value={invoiceSettings.address}
+                onChange={updateInvoiceSetting('address')}
+              />
+            </div>
 
-            <StudioTextField
-              id="invoice-setting-phone"
-              inputMode="tel"
-              label="Nomor WA Studio"
-              placeholder="08xxxxxxxxxx"
-              value={invoiceSettings.phone}
-              onChange={updateInvoiceSetting('phone')}
-            />
+            {/* ── FORMAT NOTA & PAJAK ──────────────────────── */}
+            <h3 className="settings-section-title settings-section-divider">Format Nota &amp; Pajak</h3>
 
-            <StudioTextField
-              id="invoice-setting-address"
-              label="Alamat Singkat"
-              placeholder="Contoh: Tangerang"
-              value={invoiceSettings.address}
-              onChange={updateInvoiceSetting('address')}
-            />
+            <div className="settings-studio-grid">
+              <StudioTextField
+                id="invoice-setting-prefix"
+                label="Invoice Prefix"
+                placeholder="INV-"
+                value={invoiceSettings.invoicePrefix || ''}
+                onChange={updateInvoiceSetting('invoicePrefix')}
+              />
+              <StudioTextField
+                id="invoice-setting-starting-number"
+                label="Starting Number"
+                placeholder="001"
+                value={invoiceSettings.startingNumber || ''}
+                onChange={updateInvoiceSetting('startingNumber')}
+              />
+            </div>
+
+            <div className="settings-tax-fees-row">
+              <label className="settings-inline-toggle" htmlFor="invoice-setting-tax-enabled">
+                <input
+                  id="invoice-setting-tax-enabled"
+                  type="checkbox"
+                  checked={Boolean(invoiceSettings.taxEnabled)}
+                  onChange={(e) => updateInvoiceValue('taxEnabled')(e.target.checked)}
+                />
+                <span className="settings-toggle-label">Aktifkan Pajak (Tax)</span>
+              </label>
+
+              <div className="settings-tax-percentage-field">
+                <StudioTextField
+                  id="invoice-setting-tax-percentage"
+                  className="is-percentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  disabled={!invoiceSettings.taxEnabled}
+                  label="Pajak (%)"
+                  placeholder="11"
+                  value={invoiceSettings.taxPercentage !== undefined ? invoiceSettings.taxPercentage : ''}
+                  onChange={updateInvoiceSetting('taxPercentage')}
+                />
+              </div>
+            </div>
 
             <StudioSelect
-              label="Ukuran Thermal"
+              label="Ukuran Kertas Thermal"
               options={paperSizeOptions}
               selectedKey={invoiceSettings.paperSize}
               onChange={updateInvoiceValue('paperSize')}
             />
 
+            {/* ── FOOTER & SYARAT ──────────────────────────── */}
+            <h3 className="settings-section-title settings-section-divider">Footer &amp; Syarat</h3>
+
             <label className="settings-textarea-field" htmlFor="invoice-setting-footer">
-              <span>Footer Invoice</span>
+              <span>Catatan Footer</span>
               <textarea
                 id="invoice-setting-footer"
                 placeholder="Terima kasih sudah booking."
-                value={invoiceSettings.footer}
+                rows={3}
+                value={invoiceSettings.footer || ''}
                 onChange={updateInvoiceSetting('footer')}
               />
             </label>
 
+            <label className="settings-textarea-field" htmlFor="invoice-setting-terms">
+              <span>Syarat &amp; Ketentuan</span>
+              <textarea
+                id="invoice-setting-terms"
+                placeholder="Tulis syarat & ketentuan booking..."
+                rows={3}
+                value={invoiceSettings.termsAndConditions || ''}
+                onChange={updateInvoiceSetting('termsAndConditions')}
+              />
+            </label>
+
+            {/* Preview area */}
             <div className="settings-invoice-preview" aria-label="Preview invoice settings">
-              <small>Preview Header</small>
+              <small>Preview Struk</small>
               <strong>{invoiceSettings.studioName || defaultInvoiceSettings.studioName}</strong>
               <span>{invoiceSettings.subtitle || defaultInvoiceSettings.subtitle}</span>
+              {invoiceSettings.phone ? <span>WA: {invoiceSettings.phone}</span> : null}
               {invoiceSettings.address ? <span>{invoiceSettings.address}</span> : null}
-              {invoiceSettings.phone ? <span>{invoiceSettings.phone}</span> : null}
+              <span>Format: <strong>{invoiceSettings.invoicePrefix || 'INV-'}{invoiceSettings.startingNumber || '001'}</strong></span>
+              {invoiceSettings.taxEnabled ? <span>Pajak: <strong>{invoiceSettings.taxPercentage || 0}%</strong></span> : null}
               <em>{invoiceSettings.paperSize || defaultInvoiceSettings.paperSize}</em>
             </div>
 
@@ -2137,13 +2171,13 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               <p className="settings-invoice-message" role="status">{invoiceSettingsMessage}</p>
             ) : null}
 
-            <div className="settings-form-actions">
+            <div className="settings-invoice-actions-sticky">
               <button className="settings-mini-button is-ghost" type="button" onClick={resetInvoiceSettingsPage}>
                 Reset Default
               </button>
               <button className="settings-mini-button is-primary" type="submit">
-                <Save size={15} />
-                Simpan Settings
+                <Save size={14} />
+                Simpan Invoice Settings
               </button>
             </div>
           </form>

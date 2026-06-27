@@ -71,7 +71,7 @@ export default function GalleryToolbar({
             aria-controls={isActionMenuOpen ? 'gallery-mobile-action-menu' : undefined}
             title={isActionMenuOpen ? 'Tutup aksi galeri' : 'Buka aksi galeri'}
           >
-            {isActionMenuOpen ? <CloseIcon size={15} /> : <Menu size={15} />}
+            {isActionMenuOpen ? <CloseIcon size={14} /> : <Menu size={14} />}
             <span className="gallery-action-label">Actions</span>
           </button>
 
@@ -83,7 +83,7 @@ export default function GalleryToolbar({
                 className={isSelectMode ? 'is-active' : ''}
                 role="menuitem"
               >
-                <CheckIcon size={14} />
+                <CheckIcon size={12} />
                 <span>{isSelectMode ? 'Done' : 'Select'}</span>
               </button>
 
@@ -92,7 +92,7 @@ export default function GalleryToolbar({
                 onClick={handleOpenUpload}
                 role="menuitem"
               >
-                <PlusIcon size={14} />
+                <PlusIcon size={12} />
                 <span>Upload</span>
               </button>
             </div>
@@ -113,7 +113,7 @@ export default function GalleryToolbar({
               className={`gallery-filter-pill gallery-clean-tab ${isActive ? 'is-active' : ''}`}
               aria-pressed={isActive}
             >
-              <Icon size={13} />
+              <Icon size={12} />
               <span>{tab.label}</span>
               {tab.key === 'trash' && trashCount > 0 ? (
                 <span className="gallery-trash-count">
@@ -127,7 +127,7 @@ export default function GalleryToolbar({
 
       <div className="gallery-desktop-actions">
         <div className="gallery-density-control">
-          <GridIcon size={13} />
+          <GridIcon size={12} />
           <input
             type="range"
             min={2}
@@ -144,7 +144,7 @@ export default function GalleryToolbar({
           onClick={handleToggleSelectMode}
           className={isSelectMode ? 'is-active' : ''}
         >
-          <CheckIcon size={14} />
+          <CheckIcon size={12} />
           <span>{isSelectMode ? 'Done' : 'Select'}</span>
         </button>
 
@@ -152,7 +152,7 @@ export default function GalleryToolbar({
           type="button"
           onClick={handleOpenUpload}
         >
-          <PlusIcon size={14} />
+          <PlusIcon size={12} />
           <span>Upload</span>
         </button>
       </div>

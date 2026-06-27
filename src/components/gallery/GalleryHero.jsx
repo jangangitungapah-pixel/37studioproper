@@ -7,39 +7,39 @@ export default function GalleryHero({
   TrashIcon,
 }) {
   return (
-    <section className="customer-hero-grid" aria-label="Ringkasan galeri">
-      <article className="customer-hero-card">
-        <span className="customer-hero-icon">
-          <ImageIcon size={18} />
+    <section className="gallery-hero-grid" aria-label="Ringkasan galeri">
+      <div className="gallery-stat-card">
+        <span className="gallery-stat-icon">
+          <ImageIcon size={16} />
         </span>
-        <span className="customer-hero-copy">
+        <div className="gallery-stat-copy">
           <small>Total Foto</small>
           <strong>{activeCount}</strong>
           <em>Aktif di portofolio</em>
-        </span>
-      </article>
+        </div>
+      </div>
 
-      <article className="customer-hero-card">
-        <span className="customer-hero-icon">
-          <HeartIcon size={18} className="text-red-400" />
+      <div className="gallery-stat-card">
+        <span className="gallery-stat-icon">
+          <HeartIcon size={16} className="text-red-400" />
         </span>
-        <span className="customer-hero-copy">
+        <div className="gallery-stat-copy">
           <small>Favorit Saya</small>
           <strong>{favoriteCount}</strong>
           <em>Foto bertanda bintang</em>
-        </span>
-      </article>
+        </div>
+      </div>
 
-      <article className="customer-hero-card">
-        <span className="customer-hero-icon">
-          <TrashIcon size={18} className="text-red-400" />
+      <div className="gallery-stat-card">
+        <span className="gallery-stat-icon">
+          <TrashIcon size={16} className="text-red-400" />
         </span>
-        <span className="customer-hero-copy">
+        <div className="gallery-stat-copy">
           <small>Tempat Sampah</small>
           <strong>{trashCount}</strong>
           <em>Baru saja dihapus</em>
-        </span>
-      </article>
+        </div>
+      </div>
     </section>
   );
 }

@@ -11,6 +11,11 @@ export const defaultInvoiceSettings = {
   address: '',
   footer: 'Terima kasih sudah booking.',
   paperSize: '80mm',
+  invoicePrefix: 'INV-',
+  startingNumber: '001',
+  taxEnabled: false,
+  taxPercentage: 0,
+  termsAndConditions: '',
   updatedAt: '',
 };
 
@@ -33,6 +38,11 @@ export function normalizeInvoiceSettings(settings) {
     paperSize: paperSizeOptions.some((item) => item.key === source.paperSize)
       ? source.paperSize
       : defaultInvoiceSettings.paperSize,
+    invoicePrefix: String(source.invoicePrefix || 'INV-').trim(),
+    startingNumber: String(source.startingNumber || '001').trim(),
+    taxEnabled: source.taxEnabled !== undefined ? Boolean(source.taxEnabled) : defaultInvoiceSettings.taxEnabled,
+    taxPercentage: source.taxPercentage !== undefined ? Number(source.taxPercentage) : defaultInvoiceSettings.taxPercentage,
+    termsAndConditions: String(source.termsAndConditions || '').trim(),
     updatedAt: source.updatedAt || '',
   };
 }

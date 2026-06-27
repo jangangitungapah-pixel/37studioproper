@@ -2,91 +2,77 @@
 .settings-page {
   width: min(100%, 1280px);
   display: grid;
-  gap: 16px;
+  gap: 14px;
   margin: 0 auto;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
   color: var(--auth-text-main);
+  font-family: var(--ui-font-sans);
 }
 
-.settings-subnav-mobile {
-  display: block;
-}
-
-.settings-tabs-desktop {
-  display: none;
-}
+/* ==========================================================================
+   1. NAVIGATION — Mobile Dropdown / Desktop Tabs
+   ========================================================================== */
+.settings-subnav-mobile { display: block; }
+.settings-tabs-desktop { display: none; }
 
 .settings-title-block {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .settings-title-block p,
 .settings-section-head p,
 .settings-textarea-field span,
 .settings-account-hero-copy p,
-.settings-account-info-grid small,
-.settings-account-preview small,
-.settings-account-security-list small,
-.settings-danger-hero p,
-.settings-danger-confirm label > span {
+.settings-danger-hero p {
   margin: 0;
-  color: var(--auth-text-muted);
+  color: var(--auth-accent);
   font-size: var(--studio-text-xs);
   font-weight: 760;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.settings-title-block p,
-.settings-account-hero-copy p,
-.settings-danger-hero p {
-  color: var(--auth-accent);
-}
-
 .settings-title-block h2 {
   margin: 0;
   color: var(--auth-text-strong);
-  font-size: clamp(1.6rem, 6vw, 2.35rem);
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
   font-weight: 760;
   letter-spacing: -0.06em;
   line-height: 1;
 }
 
 .settings-title-block span,
-.settings-section-head p,
 .settings-account-hero-copy span,
-.settings-account-preview span,
-.settings-account-security-list small,
 .settings-danger-hero span,
-.settings-danger-alert p,
-.settings-danger-collection small {
+.settings-danger-alert p {
   color: var(--auth-text-muted);
   font-size: var(--studio-text-sm);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
-.settings-section,
-.settings-list-item,
-.settings-account-info-grid article,
-.settings-account-security-list article,
-.settings-account-preview,
-.settings-danger-alert,
-.settings-danger-collection,
-.settings-danger-confirm,
-.settings-danger-summary {
+/* ==========================================================================
+   2. SECTION SHELL (flat card with thin border, no heavy shadows)
+   ========================================================================== */
+.settings-section {
+  display: grid;
+  gap: 12px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-lg);
   background: var(--auth-bg-card);
-  box-shadow: var(--auth-shadow-soft);
+  padding: 12px;
 }
 
-.settings-section {
-  display: grid;
-  gap: 14px;
-  padding: 14px;
+/* Shared section title (h3 inside sections) */
+.settings-section-title {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
+  font-weight: 760;
+  letter-spacing: -0.02em;
 }
 
+/* Old section-head pattern (used by non-account panels) */
 .settings-section-head {
   display: flex;
   align-items: flex-start;
@@ -94,27 +80,45 @@
   gap: 12px;
 }
 
-.settings-section-head h3,
-.settings-account-hero-copy h3,
-.settings-danger-hero h3 {
+.settings-section-head h3 {
   margin: 0;
   color: var(--auth-text-strong);
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   font-weight: 760;
   letter-spacing: -0.03em;
 }
 
+.settings-section-head p {
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Side-by-side head row (title + action button on same line) */
+.settings-section-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   3. LIST ITEMS (pricing / session / package rows)
+   ========================================================================== */
 .settings-list {
   display: grid;
-  gap: 9px;
+  gap: 8px;
 }
 
 .settings-list-item {
   min-width: 0;
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
-  padding: 11px;
+  padding: 10px;
 }
 
 .settings-list-item > div:first-child {
@@ -123,12 +127,7 @@
   gap: 3px;
 }
 
-.settings-list-item strong,
-.settings-account-info-grid strong,
-.settings-account-preview strong,
-.settings-account-security-list strong,
-.settings-danger-alert strong,
-.settings-danger-collection strong {
+.settings-list-item strong {
   overflow: hidden;
   color: var(--auth-text-strong);
   font-size: var(--studio-text-sm);
@@ -152,6 +151,9 @@
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   4. ACTION BUTTONS
+   ========================================================================== */
 .settings-row-actions,
 .settings-form-actions,
 .settings-danger-actions {
@@ -162,20 +164,21 @@
 
 .settings-row-actions button,
 .settings-mini-button {
-  min-height: 40px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   background: var(--auth-bg-control);
   color: var(--auth-text-main);
-  padding: 0 12px;
+  padding: 0 11px;
   font: inherit;
   font-size: var(--studio-text-xs);
   font-weight: 760;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .settings-mini-button.is-primary {
@@ -193,12 +196,29 @@
   opacity: 0.55;
 }
 
+/* Inline action row for account forms (ghost + primary side by side) */
+.settings-account-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   5. FORMS
+   ========================================================================== */
 .settings-form,
 .settings-account-form {
   display: grid;
-  gap: 11px;
+  gap: 10px;
   border-top: 1px solid var(--auth-border);
-  padding-top: 12px;
+  padding-top: 10px;
+}
+
+/* Compact form variant used inside account sections */
+.settings-account-form-compact {
+  display: grid;
+  gap: 10px;
 }
 
 .settings-empty-text {
@@ -207,35 +227,45 @@
   border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
   color: var(--auth-text-muted);
-  padding: 12px;
+  padding: 11px;
   font-size: var(--studio-text-sm);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .settings-textarea-field,
 .settings-account-note-field {
   display: grid;
-  gap: 7px;
+  gap: 5px;
+}
+
+.settings-textarea-field span,
+.settings-account-note-field span {
+  color: var(--auth-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .settings-textarea-field textarea,
 .settings-account-note-field textarea,
 .settings-danger-confirm input {
   width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-md);
   outline: 0;
   background: var(--auth-bg-control);
   color: var(--auth-text-main);
-  padding: 11px 12px;
+  padding: 10px 11px;
   font: inherit;
   font-size: var(--studio-text-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .settings-textarea-field textarea,
 .settings-account-note-field textarea {
-  min-height: 92px;
+  min-height: 76px;
   line-height: 1.5;
   resize: vertical;
 }
@@ -244,16 +274,205 @@
 .settings-account-note-field textarea:focus,
 .settings-danger-confirm input:focus {
   border-color: var(--auth-border-strong);
-  box-shadow: 0 0 0 4px var(--auth-accent-soft);
+  box-shadow: 0 0 0 3px var(--auth-accent-soft);
 }
 
+/* ==========================================================================
+   6. ACCOUNT PAGE — Hero Strip
+   ========================================================================== */
+.settings-account-grid {
+  display: grid;
+  gap: 10px;
+}
+
+/* Compact 1-row hero strip */
+.settings-account-hero-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-account-avatar-sm {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.settings-account-hero-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.settings-account-hero-copy h3 {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-md);
+  font-weight: 760;
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-account-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-account-badge {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-full);
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  padding: 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 760;
+}
+
+.settings-account-badge.is-approved {
+  border-color: color-mix(in srgb, var(--auth-success) 30%, var(--auth-border));
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
+/* ==========================================================================
+   7. ACCOUNT PAGE — Identitas Login (Flat List)
+   ========================================================================== */
+.settings-info-flat-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  overflow: hidden;
+}
+
+.settings-info-flat-row {
+  display: grid;
+  grid-template-columns: 28px auto 1fr;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--auth-border);
+  background: var(--auth-bg-soft);
+  padding: 9px 10px;
+}
+
+.settings-info-flat-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-info-flat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--auth-text-muted);
+}
+
+.settings-info-flat-label {
+  color: var(--auth-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.settings-info-flat-value {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 700;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   8. ACCOUNT PAGE — Preferences Selects
+   ========================================================================== */
+.settings-prefs-selects {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-prefs-preview-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-soft);
+  padding: 7px 10px;
+  font-size: var(--studio-text-xs);
+  color: var(--auth-text-muted);
+}
+
+.settings-prefs-preview-strip strong {
+  color: var(--auth-text-strong);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   9. ACCOUNT PAGE — Security Flat List
+   ========================================================================== */
+.settings-security-flat-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  overflow: hidden;
+}
+
+.settings-security-flat-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--auth-border);
+  background: var(--auth-bg-soft);
+  padding: 9px 10px;
+  color: var(--auth-text-muted);
+}
+
+.settings-security-flat-row:last-child { border-bottom: 0; }
+
+.settings-security-label {
+  color: var(--auth-text-main);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+}
+
+.settings-security-value {
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  text-align: right;
+}
+
+/* ==========================================================================
+   10. INVOICE / STUDIO / PRICING PANELS — Preview & Messages
+   ========================================================================== */
 .settings-invoice-preview {
   display: grid;
   gap: 5px;
   border: 1px dashed var(--auth-border-strong);
   border-radius: var(--studio-radius-lg);
   background: var(--auth-accent-soft);
-  padding: 13px;
+  padding: 12px;
   text-align: center;
 }
 
@@ -278,150 +497,69 @@
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border: 1px solid color-mix(in srgb, var(--auth-success) 34%, var(--auth-border));
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--auth-success) 30%, var(--auth-border));
   border-radius: var(--studio-radius-md);
   background: var(--auth-success-soft);
   color: var(--auth-success);
-  padding: 10px 12px;
+  padding: 9px 11px;
   font-size: var(--studio-text-xs);
   font-weight: 760;
 }
 
-.settings-account-grid,
+/* ==========================================================================
+   11. DANGER ZONE
+   ========================================================================== */
 .settings-danger-collections,
-.settings-account-security-list,
 .settings-account-danger-zone {
   display: grid;
-  gap: 10px;
-}
-
-.settings-account-hero {
-  grid-template-columns: 48px minmax(0, 1fr);
-  align-items: center;
-}
-
-.settings-account-avatar,
-.settings-danger-icon,
-.settings-account-info-icon {
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--auth-border-strong);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-accent-soft);
-  color: var(--auth-accent);
-}
-
-.settings-account-avatar {
-  width: 48px;
-  height: 48px;
-}
-
-.settings-account-hero-copy,
-.settings-account-info-copy {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.settings-account-badges {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.settings-account-badge {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-full);
-  background: var(--auth-bg-soft);
-  color: var(--auth-text-muted);
-  padding: 0 10px;
-  font-size: var(--studio-text-xs);
-  font-weight: 760;
-}
-
-.settings-account-badge.is-approved {
-  border-color: color-mix(in srgb, var(--auth-success) 34%, var(--auth-border));
-  background: var(--auth-success-soft);
-  color: var(--auth-success);
-}
-
-.settings-account-info-grid {
-  display: grid;
-  gap: 9px;
-}
-
-.settings-account-info-grid article,
-.settings-account-security-list article {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  background: var(--auth-bg-soft);
-  padding: 10px;
-}
-
-.settings-account-profile-help {
-  display: grid;
-  gap: 4px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-soft);
-  padding: 10px;
-}
-
-.settings-account-profile-help small {
-  color: var(--auth-accent);
-  font-size: var(--studio-text-xs);
-  font-weight: 780;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.settings-account-profile-help p {
-  margin: 0;
-  color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
-  line-height: 1.45;
-}
-
-.settings-account-preview {
-  display: grid;
-  gap: 5px;
-  background: var(--auth-bg-soft);
-  padding: 10px;
+  gap: 8px;
 }
 
 .settings-danger-hero {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
 }
 
 .settings-danger-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--studio-radius-md);
   color: var(--auth-danger);
   background: var(--auth-danger-soft);
+}
+
+.settings-danger-hero h3 {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: 1rem;
+  font-weight: 760;
+  letter-spacing: -0.03em;
 }
 
 .settings-danger-alert {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 30px minmax(0, 1fr);
   gap: 10px;
+  align-items: flex-start;
+  border: 1px solid color-mix(in srgb, var(--auth-danger) 28%, var(--auth-border));
+  border-radius: var(--studio-radius-md);
   background: var(--auth-danger-soft);
+  padding: 11px;
   color: var(--auth-danger);
-  padding: 12px;
 }
 
-.settings-danger-alert svg {
+.settings-danger-alert svg { color: var(--auth-danger); }
+
+.settings-danger-alert strong {
   color: var(--auth-danger);
+  font-size: var(--studio-text-sm);
+  font-weight: 760;
 }
 
 .settings-danger-collection {
@@ -429,6 +567,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
   padding: 10px;
 }
@@ -437,6 +577,19 @@
   min-width: 0;
   display: grid;
   gap: 2px;
+}
+
+.settings-danger-collection strong {
+  overflow: hidden;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  text-overflow: ellipsis;
+}
+
+.settings-danger-collection small {
+  color: var(--auth-text-muted);
+  font-size: 0.6875rem;
 }
 
 .settings-danger-collection em {
@@ -455,13 +608,23 @@
 .settings-danger-confirm {
   display: grid;
   gap: 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
   padding: 12px;
 }
 
 .settings-danger-confirm label {
   display: grid;
-  gap: 7px;
+  gap: 5px;
+}
+
+.settings-danger-confirm label > span {
+  color: var(--auth-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .settings-danger-confirm label strong {
@@ -490,7 +653,9 @@
 .settings-danger-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
   background: var(--auth-bg-soft);
   padding: 10px;
 }
@@ -504,15 +669,16 @@
   color: var(--auth-text-strong);
 }
 
+/* ==========================================================================
+   12. RESPONSIVE — Desktop (768px+)
+   ========================================================================== */
 @media (min-width: 768px) {
   .settings-page {
-    gap: 18px;
+    gap: 16px;
     padding-bottom: 0;
   }
 
-  .settings-subnav-mobile {
-    display: none;
-  }
+  .settings-subnav-mobile { display: none; }
 
   .settings-tabs-desktop {
     display: flex;
@@ -521,16 +687,17 @@
   }
 
   .settings-tab {
-    min-width: 210px;
+    min-width: 200px;
     display: grid;
-    gap: 4px;
+    gap: 3px;
     border: 1px solid var(--auth-border);
     border-radius: var(--studio-radius-lg);
     background: var(--auth-bg-control);
     color: var(--auth-text-main);
-    padding: 12px;
+    padding: 11px;
     text-align: left;
     cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease;
   }
 
   .settings-tab.is-active {
@@ -570,30 +737,37 @@
     align-items: end;
   }
 
-  .settings-account-hero {
-    grid-template-columns: 56px minmax(0, 1fr) auto;
-  }
-
-  .settings-account-avatar {
-    width: 56px;
-    height: 56px;
+  .settings-account-hero-strip {
+    flex-wrap: nowrap;
+    gap: 14px;
   }
 
   .settings-account-badges {
-    grid-column: auto;
-    justify-content: flex-end;
+    margin-left: auto;
   }
 
-  .settings-account-info-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .settings-info-flat-row {
+    grid-template-columns: 28px 140px 1fr;
+  }
+
+  .settings-prefs-selects {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .settings-account-form {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: end;
   }
+
+  .settings-danger-collection {
+    border-radius: var(--studio-radius-lg);
+  }
 }
 
+/* ==========================================================================
+   13. RESPONSIVE — Mobile only corrections
+   ========================================================================== */
 @media (max-width: 767px) {
   .settings-section-head {
     display: grid;
@@ -609,3 +783,370 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   14. STUDIO SETTINGS — Compact Mobile-First Panel
+   ========================================================================== */
+
+/* Thin top-border divider before sub-sections */
+.settings-section-divider {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--auth-border);
+}
+
+.settings-studio-form {
+  display: grid;
+  gap: 10px;
+}
+
+/* Default 1-col on mobile, 2-col on desktop */
+.settings-studio-grid {
+  display: grid;
+  gap: 8px;
+}
+
+/* 3-col grid for bank/QRIS fields on desktop, 1-col on mobile */
+.settings-studio-grid-3 {
+  display: grid;
+  gap: 8px;
+}
+
+/* Preview inline strip (replaces big preview card boxes) */
+.settings-studio-preview-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-soft);
+  padding: 7px 10px;
+  font-size: var(--studio-text-xs);
+  color: var(--auth-text-muted);
+  line-height: 1.4;
+}
+
+.settings-studio-preview-strip strong {
+  color: var(--auth-text-strong);
+  font-weight: 760;
+}
+
+/* Payment terms: compact row with textarea + inline delete */
+.settings-payment-terms-list {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-payment-term-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.settings-payment-term-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  outline: 0;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  line-height: 1.45;
+  resize: vertical;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.settings-payment-term-input:focus {
+  border-color: var(--auth-border-strong);
+  box-shadow: 0 0 0 3px var(--auth-accent-soft);
+}
+
+.settings-term-delete-btn {
+  min-width: 34px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-soft);
+  color: var(--auth-danger);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 140ms ease;
+}
+
+.settings-term-delete-btn:hover {
+  background: var(--auth-danger-soft);
+  border-color: color-mix(in srgb, var(--auth-danger) 28%, var(--auth-border));
+}
+
+/* Studio actions: ghost left, primary right */
+.settings-studio-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* is-danger button variant for danger zone */
+.settings-mini-button.is-danger {
+  border-color: color-mix(in srgb, var(--auth-danger) 40%, var(--auth-border));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
+
+.settings-mini-button.is-danger:not(:disabled):hover {
+  background: var(--auth-danger);
+  color: #fff;
+}
+
+@media (min-width: 768px) {
+  .settings-studio-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .settings-studio-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .settings-studio-actions {
+    gap: 10px;
+  }
+}
+
+/* ==========================================================================
+   15. PRICING & SESSION SETTINGS — High-Density Flat UI
+   ========================================================================== */
+
+.settings-pricing-container {
+  display: grid;
+  gap: 12px;
+}
+
+/* High-density flat list wrapper */
+.settings-flat-pricing-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  overflow: hidden;
+  background: var(--auth-bg-card);
+}
+
+/* Each flat row */
+.settings-flat-pricing-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--auth-border);
+}
+
+.settings-flat-pricing-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-flat-pricing-row:hover {
+  background: var(--auth-bg-soft);
+}
+
+/* Header line (Title + actions aligned right) */
+.settings-flat-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-flat-row-title {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Custom action buttons inside rows */
+.settings-flat-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.settings-icon-action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: all 140ms ease;
+}
+
+.settings-icon-action-btn:hover {
+  border-color: var(--auth-border-strong);
+  color: var(--auth-text-strong);
+  background: var(--auth-bg-soft);
+}
+
+.settings-icon-action-btn.is-delete {
+  color: var(--auth-danger);
+}
+
+.settings-icon-action-btn.is-delete:hover {
+  background: var(--auth-danger-soft);
+  border-color: color-mix(in srgb, var(--auth-danger) 28%, var(--auth-border));
+}
+
+/* Body line (Description/Details + Price inline) */
+.settings-flat-row-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-flat-row-desc {
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.settings-flat-row-price {
+  color: var(--auth-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+/* Inline currency indicator for input fields */
+.studio-field.is-currency .studio-input-wrap {
+  position: relative;
+  padding-left: 28px;
+}
+
+.studio-field.is-currency .studio-input-wrap::before {
+  content: "Rp";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--studio-text-xs);
+  font-weight: 780;
+  color: var(--auth-text-muted);
+  pointer-events: none;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 768px) {
+  .settings-pricing-container {
+    gap: 16px;
+  }
+}
+
+/* ==========================================================================
+   16. INVOICE SETTINGS — High-Density Form Elements
+   ========================================================================== */
+
+/* Tax row layout - grid with checkbox toggle and percentage input */
+.settings-tax-fees-row {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 12px;
+  align-items: end;
+  background: var(--auth-bg-soft);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  padding: 8px 10px;
+}
+
+/* Inline checkbox styling */
+.settings-inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-height: 44px;
+  user-select: none;
+}
+
+.settings-inline-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--auth-accent);
+  cursor: pointer;
+}
+
+.settings-toggle-label {
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  color: var(--auth-text-strong);
+}
+
+.settings-tax-percentage-field {
+  min-width: 0;
+}
+
+/* Percentage suffix inside input field */
+.studio-field.is-percentage .studio-input-wrap {
+  position: relative;
+  padding-right: 28px;
+}
+
+.studio-field.is-percentage .studio-input-wrap::after {
+  content: "%";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--studio-text-xs);
+  font-weight: 780;
+  color: var(--auth-text-muted);
+  pointer-events: none;
+}
+
+/* Sticky action footer at the bottom of the section for mobile */
+.settings-invoice-actions-sticky {
+  position: sticky;
+  bottom: 0;
+  background: var(--auth-bg-card);
+  border-top: 1px solid var(--auth-border);
+  padding: 10px 12px;
+  margin: 12px -12px -12px -12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  border-bottom-left-radius: var(--studio-radius-lg);
+  border-bottom-right-radius: var(--studio-radius-lg);
+}
+
+@media (min-width: 768px) {
+  .settings-tax-fees-row {
+    grid-template-columns: 1fr 140px;
+    padding: 10px 14px;
+  }
+}
+
+
