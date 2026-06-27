@@ -990,7 +990,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
+  border-radius: 50%;
   background: var(--auth-bg-control);
   color: var(--auth-text-muted);
   cursor: pointer;
@@ -1148,5 +1148,321 @@
     padding: 10px 14px;
   }
 }
+
+/* ==========================================================================
+   17. USER & ACCESS SETTINGS — High-Density Mobile-First UI
+   ========================================================================== */
+
+/* Flat list wrapper for team members */
+.settings-user-access-list,
+.settings-pending-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  overflow: hidden;
+  background: var(--auth-bg-card);
+}
+
+/* Unified list item */
+.settings-user-access-item,
+.is-pending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--auth-border);
+  background: var(--auth-bg-card);
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border-left: 0;
+  border-right: 0;
+}
+
+.settings-user-access-item:last-child,
+.is-pending-item:last-child {
+  border-bottom: 0;
+}
+
+.settings-user-access-item:hover,
+.is-pending-item:hover {
+  background: var(--auth-bg-soft);
+}
+
+/* Profile metadata: Avatar + Name/Email stacked */
+.settings-user-profile-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-user-avatar-micro {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: var(--studio-text-xs);
+  flex-shrink: 0;
+  border: 1px solid var(--auth-border-strong);
+}
+
+.settings-user-info-stacked {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-user-name-inline {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 780;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-user-email-inline {
+  color: var(--auth-text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Control columns */
+.settings-user-controls-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* High-density role select dropdown */
+.settings-role-select {
+  height: 26px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 4px;
+  outline: none;
+  cursor: pointer;
+  max-width: 76px;
+}
+
+.settings-role-select:focus {
+  border-color: var(--auth-border-strong);
+}
+
+/* Custom Sliding Toggle Switch */
+.settings-user-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.settings-user-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-user-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--auth-border-strong);
+  transition: .15s;
+  border-radius: 9px;
+}
+
+.settings-user-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .15s;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.settings-user-toggle-switch input:checked + .settings-user-toggle-slider {
+  background-color: var(--auth-accent);
+}
+
+.settings-user-toggle-switch input:checked + .settings-user-toggle-slider:before {
+  transform: translateX(14px);
+}
+
+/* Unified permissions modal backdrop covering the entire viewport */
+.settings-permission-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 12, 9, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* Modal panel container */
+.settings-permission-panel {
+  width: min(100%, 460px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-xl);
+  background: var(--auth-bg-elevated);
+  box-shadow: var(--studio-shadow-float);
+  animation: studio-dialog-in 180ms ease-out both;
+  overflow: hidden;
+}
+
+/* Header inside the modal */
+.settings-permission-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--auth-border);
+  background: var(--auth-bg-card);
+}
+
+.settings-permission-head div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-permission-head small {
+  color: var(--auth-accent);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-permission-head h3 {
+  margin: 0;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
+  font-weight: 780;
+  letter-spacing: -0.02em;
+}
+
+.settings-permission-head span {
+  color: var(--auth-text-muted);
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.settings-permission-head button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: all 140ms ease;
+  flex-shrink: 0;
+}
+
+.settings-permission-head button:hover {
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-strong);
+}
+
+/* Scrollable flat list area inside modal */
+.settings-permission-flat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-permission-flat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-card);
+}
+
+.settings-permission-flat-row:hover {
+  background: var(--auth-bg-soft);
+}
+
+/* Actions footer */
+.settings-permission-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--auth-border);
+  background: var(--auth-bg-soft);
+}
+
+.settings-permission-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-permission-title {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+}
+
+.settings-permission-desc {
+  color: var(--auth-text-muted);
+  font-size: 10px;
+}
+
+@media (max-width: 480px) {
+  .settings-user-access-item {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .settings-role-select {
+    max-width: 68px;
+    font-size: 9px;
+  }
+}
+
 
 

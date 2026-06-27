@@ -493,6 +493,35 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     });
   }
 
+  async function handleUpdateUserRole(userId, newRole) {
+    try {
+      const docRef = doc(firestoreDb, 'users', userId);
+      await updateDoc(docRef, {
+        role: newRole,
+        updatedAt: new Date().toISOString()
+      });
+      setApprovalSettingsMessage('Peran akun berhasil diperbarui.');
+    } catch (err) {
+      console.error('Failed to update user role:', err);
+      setApprovalSettingsMessage('Gagal memperbarui peran akun.');
+    }
+  }
+
+  async function handleToggleUserStatus(userId, currentStatus) {
+    const nextStatus = currentStatus === 'approved' ? 'rejected' : 'approved';
+    try {
+      const docRef = doc(firestoreDb, 'users', userId);
+      await updateDoc(docRef, {
+        status: nextStatus,
+        updatedAt: new Date().toISOString()
+      });
+      setApprovalSettingsMessage(`Status akses berhasil diubah menjadi ${nextStatus === 'approved' ? 'Aktif' : 'Nonaktif'}.`);
+    } catch (err) {
+      console.error('Failed to toggle user status:', err);
+      setApprovalSettingsMessage('Gagal mengubah status akses.');
+    }
+  }
+
   function openPermissionSettings(user) {
     setSelectedPermissionUser(user);
     setPermissionDraft(normalizeAdminPermissionsForRole(user.permissions, user.role));
@@ -2182,26 +2211,29 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           {approvalUsers.length ? (
             <div className="settings-pending-approvals-block">
               <h3 className="settings-section-title">Pending Approvals</h3>
-              <div className="settings-list settings-pending-list">
+              <div className="settings-pending-list">
                 {approvalUsers.map((user) => (
-                  <article className="settings-list-item" key={user.id}>
-                    <div>
-                      <strong>{user.displayName || 'User Admin Baru'}</strong>
-                      <span>{user.email || user.phoneNumber || getMaskedUid(user.id)}</span>
-                      <small className="settings-approval-date">
-                        Terdaftar: {new Date(user.createdAt).toLocaleString('id-ID')}
-                      </small>
+                  <article className="is-pending-item" key={user.id}>
+                    <div className="settings-user-profile-col">
+                      <div className="settings-user-avatar-micro" aria-hidden="true">
+                        {(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="settings-user-info-stacked">
+                        <strong className="settings-user-name-inline">{user.displayName || 'User Admin Baru'}</strong>
+                        <span className="settings-user-email-inline">{user.email || user.phoneNumber || getMaskedUid(user.id)}</span>
+                      </div>
                     </div>
 
-                    <div className="settings-row-actions settings-approval-actions">
+                    <div className="settings-user-controls-col">
                       <button
                         type="button"
                         aria-label="Setujui user"
                         title="Setujui user"
                         onClick={() => handleApproveUser(user.id)}
                         className="settings-mini-button is-primary settings-approval-icon-button is-approve"
+                        style={{ height: '26px', minHeight: '26px', padding: '0 8px', fontSize: '10px' }}
                       >
-                        <ShieldCheck size={13} />
+                        <ShieldCheck size={11} />
                         Setujui
                       </button>
 
@@ -2210,10 +2242,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                         aria-label="Tolak request admin"
                         title="Tolak request admin"
                         onClick={() => handleRejectUser(user.id)}
-                        className="settings-mini-button settings-approval-delete-button"
+                        className="settings-icon-action-btn is-delete"
                       >
-                        <Trash2 size={13} />
-                        Tolak
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   </article>
@@ -2230,7 +2261,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
             </div>
           </div>
 
-          <div className="settings-list settings-user-access-list">
+          <div className="settings-user-access-list">
             {usersLoading ? (
               <p className="settings-empty-text">Memuat daftar user...</p>
             ) : portalUsers.length ? (
@@ -2240,63 +2271,72 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 const canEditPermissions = user.role !== 'owner';
 
                 return (
-                  <article className="settings-list-item settings-user-access-item" key={user.id}>
-                    <div>
-                      <strong>{user.displayName || user.email || user.phoneNumber || 'User'}</strong>
-                      <span>{user.email || user.phoneNumber || getMaskedUid(user.id)}</span>
-                      <small className="settings-user-permission-summary">{getPermissionSummary(user)}</small>
+                  <article className="settings-user-access-item" key={user.id}>
+                    <div className="settings-user-profile-col">
+                      <div className="settings-user-avatar-micro" aria-hidden="true">
+                        {(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="settings-user-info-stacked">
+                        <strong className="settings-user-name-inline">{user.displayName || user.email || 'User'}</strong>
+                        <span className="settings-user-email-inline">
+                          {user.role === 'owner' ? 'Owner Akses Utama' : `${enabledCount}/${assignablePages.length} halaman`}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="settings-user-access-meta" aria-label="Role dan permission user">
-                      <span>{getPortalUserRoleLabel(user)}</span>
-                      <em>{getPortalUserStatusLabel(user)}</em>
-                      <small>
-                        {user.role === 'owner'
-                          ? 'Full access'
-                          : enabledCount + '/' + assignablePages.length + ' halaman'}
-                      </small>
-                    </div>
-
-                    <div className="settings-row-actions settings-approval-actions">
+                    <div className="settings-user-controls-col">
                       {canEditPermissions ? (
                         <>
+                          {/* Role select dropdown */}
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                            className="settings-role-select"
+                            aria-label="Update user role"
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="studio_guard">Guard</option>
+                          </select>
+
+                          {/* Access page permissions button */}
+                          <button
+                            type="button"
+                            aria-label="Atur akses halaman user"
+                            title="Atur akses halaman"
+                            onClick={() => openPermissionSettings(user)}
+                            className="settings-icon-action-btn"
+                          >
+                            <SlidersHorizontal size={12} />
+                          </button>
+
+                          {/* Transfer Owner (Admin only) */}
                           {user.role === 'admin' && (
                             <button
                               type="button"
                               aria-label="Transfer owner ke user ini"
-                              title="Transfer owner ke user ini"
+                              title="Transfer owner"
                               onClick={() => transferOwnershipToUser(user)}
-                              className="settings-mini-button settings-owner-transfer-button"
+                              className="settings-icon-action-btn"
+                              style={{ color: 'var(--auth-accent)' }}
                             >
                               <Crown size={12} />
-                              Owner
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            aria-label="Atur akses halaman user"
-                            title="Atur akses halaman user"
-                            onClick={() => openPermissionSettings(user)}
-                            className="settings-mini-button settings-permission-open-button"
-                          >
-                            <SlidersHorizontal size={12} />
-                            Akses
-                          </button>
-
-                          <button
-                            type="button"
-                            aria-label="Nonaktifkan admin"
-                            title="Nonaktifkan admin"
-                            onClick={() => handleRejectUser(user.id)}
-                            className="settings-mini-button settings-approval-delete-button"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          {/* Active status sliding toggle */}
+                          <label className="settings-user-toggle-switch" title="Toggle Status Aktif">
+                            <input
+                              type="checkbox"
+                              checked={user.status === 'approved'}
+                              onChange={() => handleToggleUserStatus(user.id, user.status)}
+                            />
+                            <span className="settings-user-toggle-slider"></span>
+                          </label>
                         </>
                       ) : (
-                        <span className="settings-owner-status-pill" title="Owner full access" aria-label="Owner full access">
-                          <Crown size={13} />
+                        <span className="settings-owner-status-pill" title="Owner full access" aria-label="Owner full access" style={{ padding: '4px 8px', fontSize: '10px', background: 'var(--auth-accent-soft)', color: 'var(--auth-accent)', borderRadius: 'var(--studio-radius-sm)', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Crown size={11} />
+                          Owner
                         </span>
                       )}
                     </div>
@@ -2312,6 +2352,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
             <p className="settings-invoice-message" role="status">{approvalSettingsMessage}</p>
           ) : null}
 
+          {/* ── DRAWER MODAL ATUR PERMISSION ── */}
           {selectedPermissionUser ? (
             <div
               className="settings-permission-backdrop"
@@ -2333,26 +2374,25 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                   </button>
                 </header>
 
-                <div className="settings-permission-grid" aria-label="Daftar permission halaman admin">
+                <div className="settings-permission-flat-list" aria-label="Daftar permission halaman admin">
                   {getAssignablePermissionPages(selectedPermissionUser).map((page) => {
                     const enabled = Boolean(permissionDraft[page.key]);
 
                     return (
-                      <button
-                        className={enabled ? 'settings-permission-row is-enabled' : 'settings-permission-row'}
-                        key={page.key}
-                        type="button"
-                        onClick={() => togglePermissionPage(page.key)}
-                      >
-                        <span className="settings-permission-toggle" aria-hidden="true">
-                          {enabled ? '✓' : ''}
-                        </span>
-
-                        <span>
-                          <strong>{page.label}</strong>
-                          <small>{page.description}</small>
-                        </span>
-                      </button>
+                      <div className="settings-permission-flat-row" key={page.key}>
+                        <div className="settings-permission-info">
+                          <strong className="settings-permission-title">{page.label}</strong>
+                          <small className="settings-permission-desc">{page.description}</small>
+                        </div>
+                        <label className="settings-user-toggle-switch" title="Toggle Halaman">
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={() => togglePermissionPage(page.key)}
+                          />
+                          <span className="settings-user-toggle-slider"></span>
+                        </label>
+                      </div>
                     );
                   })}
                 </div>
