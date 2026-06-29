@@ -548,8 +548,13 @@ export default function DashboardPage() {
   const [chartRange, setChartRange] = useState('month');
   const [syncError, setSyncError] = useState('');
 
+  const currentYearStart = useMemo(() => {
+    return new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+  }, []);
+
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
+      { startDate: currentYearStart },
       (data) => {
         setBookings(data);
         adminBookingRepository.syncClientCalendarSlotsFromBookings(data)
@@ -562,10 +567,11 @@ export default function DashboardPage() {
     );
 
     return unsubscribe;
-  }, []);
+  }, [currentYearStart]);
 
   useEffect(() => {
     const unsubscribe = adminCustomerRepository.subscribeManualCustomers(
+      { limitCount: 250 },
       (data) => setManualCustomers(data),
       (error) => {
         console.error('Gagal memuat customer dashboard:', error);
@@ -577,6 +583,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const unsubscribe = bookkeepingRepository.subscribeBookkeepingEntries(
+      { startDate: currentYearStart },
       (data) => setEntries(data),
       (error) => {
         console.error('Gagal memuat pembukuan dashboard:', error);
@@ -585,10 +592,11 @@ export default function DashboardPage() {
     );
 
     return unsubscribe;
-  }, []);
+  }, [currentYearStart]);
 
   useEffect(() => {
     const unsubscribe = inventoryRepository.subscribeInventoryItems(
+      { limitCount: 150 },
       (data) => setInventoryItems(data),
       (error) => {
         console.error('Gagal memuat inventory dashboard:', error);

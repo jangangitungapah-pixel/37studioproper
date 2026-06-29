@@ -82,14 +82,33 @@ export function normalizeInventoryMovement(movement, fallbackId = '') {
   };
 }
 
-export function subscribeInventoryItems(callback, onError) {
+export function subscribeInventoryItems(options, callback, onError) {
+  let opts = {};
+  let cb = callback;
+  let errCb = onError;
+
+  if (typeof options === 'function') {
+    errCb = callback;
+    cb = options;
+  } else if (options && typeof options === 'object') {
+    opts = options;
+  }
+
   if (!isFirebaseConfigured || !firestoreDb) {
-    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    if (errCb) errCb(new Error('Firebase belum dikonfigurasi.'));
     return () => {};
   }
 
   const inventoryRef = collection(firestoreDb, INVENTORY_COLLECTION);
-  const q = query(inventoryRef, orderBy('updatedAt', 'desc'));
+  const constraints = [];
+
+  constraints.push(orderBy('updatedAt', 'desc'));
+
+  if (opts.limitCount) {
+    constraints.push(limit(opts.limitCount));
+  }
+
+  const q = query(inventoryRef, ...constraints);
 
   return onSnapshot(
     q,
@@ -105,11 +124,11 @@ export function subscribeInventoryItems(callback, onError) {
         ));
       });
 
-      callback(items);
+      cb(items);
     },
     (error) => {
       console.error('Error fetching inventory items from Firestore:', error);
-      if (onError) onError(error);
+      if (errCb) errCb(error);
     }
   );
 }

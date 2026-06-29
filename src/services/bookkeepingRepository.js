@@ -4,6 +4,7 @@ import {
   doc,
   limit,
   onSnapshot,
+  where,
   orderBy,
   query,
   setDoc,
@@ -73,6 +74,13 @@ export function subscribeBookkeepingEntries(options, callback, onError) {
 
   const entriesRef = collection(firestoreDb, BOOKKEEPING_COLLECTION);
   const constraints = [];
+
+  if (opts.startDate) {
+    constraints.push(where('date', '>=', opts.startDate));
+  }
+  if (opts.endDate) {
+    constraints.push(where('date', '<=', opts.endDate));
+  }
 
   constraints.push(orderBy('date', 'desc'));
 
