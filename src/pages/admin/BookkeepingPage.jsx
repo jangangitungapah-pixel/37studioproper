@@ -172,6 +172,8 @@ function getPaymentMethod(payment, booking) {
 
 function getBookingTotal(booking) {
   return toNumber(
+    booking?.total ??
+    booking?.subtotal ??
     booking?.totalPrice ??
     booking?.totalAmount ??
     booking?.grandTotal ??

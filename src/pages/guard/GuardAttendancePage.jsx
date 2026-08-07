@@ -786,11 +786,10 @@ export default function GuardAttendancePage() {
                 {recentSessions.length ? (
                   recentSessions.map((session) => (
                     <button
-                      className="guard-history-card-item"
+                      className={`guard-history-card-item is-status-${getApprovalTone(session.approvalStatus)}`}
                       key={session.id}
                       type="button"
                       onClick={() => setSelectedSessionForBreakdown(session)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       <div className="history-main-info">
                         <div className="history-date-row">
@@ -805,8 +804,8 @@ export default function GuardAttendancePage() {
                         </div>
                         {session.durationHours !== undefined && (
                           <div className="history-duration">
-                            Durasi: <b>{session.durationHours.toFixed(1)} jam</b>
-                            {session.mealEligible && session.mealAmount > 0 && ` | Uang Makan: ${formatCurrency(session.mealAmount)}`}
+                            <span>Durasi: <b>{session.durationHours.toFixed(1)} jam</b>{session.mealEligible && session.mealAmount > 0 ? ` · Makan: ${formatCurrency(session.mealAmount)}` : ''}</span>
+                            <span className="history-breakdown-hint">Detail Komisi &rarr;</span>
                           </div>
                         )}
                       </div>
@@ -842,13 +841,13 @@ export default function GuardAttendancePage() {
       {/* ── CHECKOUT CONFIRMATION MODAL ── */}
       {showCheckOutConfirm ? (
         <div
-          className="settings-permission-backdrop"
+          className="guard-modal-backdrop settings-permission-backdrop"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setShowCheckOutConfirm(false);
           }}
         >
-          <div className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title" style={{ maxWidth: '360px' }}>
+          <div className="guard-modal-panel settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-confirm-title">
             <header className="settings-permission-head">
               <div>
                 <small>Konfirmasi Selesai Jaga</small>
@@ -916,13 +915,13 @@ export default function GuardAttendancePage() {
 
         return (
           <div
-            className="settings-permission-backdrop"
+            className="guard-modal-backdrop settings-permission-backdrop"
             role="presentation"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setSelectedSessionForBreakdown(null);
             }}
           >
-            <div className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="breakdown-title" style={{ maxWidth: '380px' }}>
+            <div className="guard-modal-panel settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="breakdown-title">
               <header className="settings-permission-head">
                 <div>
                   <small>Breakdown Pendapatan</small>

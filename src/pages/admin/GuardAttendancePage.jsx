@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Ban,
+  Calendar,
   CheckCircle2,
   Clock3,
   LoaderCircle,
+  Search,
   ShieldAlert,
-  Utensils,
   UserCheck,
+  Utensils,
   XCircle,
 } from 'lucide-react';
 import {
@@ -99,65 +101,79 @@ export default function GuardAttendancePage({ currentUser }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [busyId, setBusyId] = useState('');
   const [message, setMessage] = useState('');
-  const canManageGuardAttendance = hasAdminPagePermission(currentUser, 'guard-attendance');
+
+  const canManageGuardAttendance = useMemo(
+    () => hasAdminPagePermission(currentUser, 'guard-attendance'),
+    [currentUser]
+  );
 
   useEffect(() => {
-    if (!canManageGuardAttendance) return () => {};
+    if (!canManageGuardAttendance) return;
 
-    return subscribeGuardAttendanceSessions(
-      {},
-      (nextSessions) => {
-        setSessions(nextSessions);
-      },
-      (error) => {
-        console.error('[guard-attendance-owner] Gagal membaca absen penjaga:', error);
-        setMessage('Gagal membaca data absen penjaga.');
-      }
-    );
+    const unsubscribe = subscribeGuardAttendanceSessions((items) => {
+      setSessions(items);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [canManageGuardAttendance]);
 
+  const summary = useMemo(() => {
+    const today = getTodayIsoDate();
+    let pendingCount = 0;
+    let approvedTodayCount = 0;
+    let mealTotal = 0;
+
+    sessions.forEach((session) => {
+      if (session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING) {
+        pendingCount += 1;
+      }
+
+      if (session.date === today && session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) {
+        approvedTodayCount += 1;
+      }
+
+      if (session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED && session.mealEligible) {
+        mealTotal += session.mealAmount || 0;
+      }
+    });
+
+    return {
+      pending: pendingCount,
+      approvedToday: approvedTodayCount,
+      mealTotal,
+    };
+  }, [sessions]);
+
   const filteredSessions = useMemo(() => {
-    const cleanQuery = searchQuery.trim().toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
 
     return sessions.filter((session) => {
-      const approvalMatches = approvalFilter === 'all' || session.approvalStatus === approvalFilter;
-      const dateMatches = !dateFilter || session.date === dateFilter;
-      const searchMatches = !cleanQuery || [
-        session.guardName,
-        session.guardEmail,
-        session.guardPersonId,
-        session.date,
-      ].join(' ').toLowerCase().includes(cleanQuery);
+      if (approvalFilter !== 'all' && session.approvalStatus !== approvalFilter) {
+        return false;
+      }
 
-      return approvalMatches && dateMatches && searchMatches;
+      if (dateFilter && session.date !== dateFilter) {
+        return false;
+      }
+
+      if (!query) return true;
+
+      const nameMatch = (session.guardName || '').toLowerCase().includes(query);
+      const emailMatch = (session.guardEmail || '').toLowerCase().includes(query);
+      const dateMatch = (session.date || '').includes(query);
+
+      return nameMatch || emailMatch || dateMatch;
     });
   }, [approvalFilter, dateFilter, searchQuery, sessions]);
-
-  const summary = useMemo(() => {
-    return sessions.reduce((result, session) => {
-      const isApproved = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
-      const isToday = session.date === getTodayIsoDate();
-
-      return {
-        approvedToday: result.approvedToday + (isApproved && isToday ? 1 : 0),
-        mealTotal: result.mealTotal + (isApproved && session.mealEligible ? Number(session.mealAmount || 0) : 0),
-        pending: result.pending + (session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING ? 1 : 0),
-        total: result.total + 1,
-      };
-    }, {
-      approvedToday: 0,
-      mealTotal: 0,
-      pending: 0,
-      total: 0,
-    });
-  }, [sessions]);
 
   async function approveSession(session) {
     setBusyId(session.id);
     setMessage('');
 
     try {
-      await approveGuardAttendanceSession(session, currentUser, sessions);
+      await approveGuardAttendanceSession(session.id, currentUser);
       setMessage('Absen ' + session.guardName + ' disetujui. Fee penjaga tanggal itu eligible.');
     } catch (error) {
       console.error('[guard-attendance-owner] Approve gagal:', error);
@@ -175,7 +191,7 @@ export default function GuardAttendancePage({ currentUser }) {
     setMessage('');
 
     try {
-      await rejectGuardAttendanceSession(session, currentUser, reason);
+      await rejectGuardAttendanceSession(session.id, currentUser, reason);
       setMessage('Absen ' + session.guardName + ' ditolak.');
     } catch (error) {
       console.error('[guard-attendance-owner] Reject gagal:', error);
@@ -193,7 +209,7 @@ export default function GuardAttendancePage({ currentUser }) {
     setMessage('');
 
     try {
-      await voidGuardAttendanceSession(session, currentUser, reason);
+      await voidGuardAttendanceSession(session.id, currentUser, reason);
       setMessage('Absen ' + session.guardName + ' di-void.');
     } catch (error) {
       console.error('[guard-attendance-owner] Void gagal:', error);
@@ -205,8 +221,8 @@ export default function GuardAttendancePage({ currentUser }) {
 
   if (!canManageGuardAttendance) {
     return (
-      <section className="guard-attendance-owner guard-attendance-owner-locked">
-        <ShieldAlert size={34} />
+      <section className="guard-attendance-owner-locked">
+        <ShieldAlert size={28} />
         <h2>Akses Absen Penjaga Belum Aktif</h2>
         <p>Owner perlu memberi permission Absen Penjaga untuk akun ini.</p>
       </section>
@@ -231,36 +247,46 @@ export default function GuardAttendancePage({ currentUser }) {
       <section className="guard-attendance-owner-summary" aria-label="Ringkasan absen penjaga">
         <article>
           <small>Pending</small>
-          <strong>{summary.pending}</strong>
+          <strong style={{ color: summary.pending > 0 ? 'var(--studio-warning, #f59e0b)' : 'var(--studio-text-strong)' }}>
+            {summary.pending}
+          </strong>
           <span>butuh approval</span>
         </article>
         <article>
           <small>Approved Hari Ini</small>
-          <strong>{summary.approvedToday}</strong>
+          <strong style={{ color: 'var(--studio-success, #10b981)' }}>{summary.approvedToday}</strong>
           <span>penjaga eligible</span>
         </article>
         <article>
           <small>Uang Makan</small>
-          <strong>{formatOperatorFeeCurrency(summary.mealTotal)}</strong>
+          <strong style={{ color: 'var(--studio-accent, #8b5cf6)' }}>{formatOperatorFeeCurrency(summary.mealTotal)}</strong>
           <span>dari absen approved</span>
         </article>
       </section>
 
       <section className="guard-attendance-owner-toolbar">
-        <input
-          aria-label="Cari absen penjaga"
-          placeholder="Cari nama, email, tanggal..."
-          type="search"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-        />
+        <div className="guard-owner-input-group">
+          <Search size={14} className="guard-input-icon" />
+          <input
+            aria-label="Cari absen penjaga"
+            placeholder="Cari nama, email, tanggal..."
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="guard-owner-search-input"
+          />
+        </div>
 
-        <input
-          aria-label="Filter tanggal absen"
-          type="date"
-          value={dateFilter}
-          onChange={(event) => setDateFilter(event.target.value)}
-        />
+        <div className="guard-owner-input-group">
+          <Calendar size={14} className="guard-input-icon" />
+          <input
+            aria-label="Filter tanggal absen"
+            type="date"
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value)}
+            className="guard-owner-date-input"
+          />
+        </div>
 
         <div className="guard-attendance-owner-filter" role="group" aria-label="Filter approval">
           {approvalFilterOptions.map((option) => (
@@ -287,8 +313,6 @@ export default function GuardAttendancePage({ currentUser }) {
             const isPending = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING;
             const isApproved = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
             const isRejected = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED;
-            const canApprove = isPending || isRejected;
-            const canReject = isPending || isRejected;
 
             return (
               <article className="guard-attendance-owner-row" key={session.id}>
@@ -332,33 +356,74 @@ export default function GuardAttendancePage({ currentUser }) {
                 ) : null}
 
                 <div className="guard-attendance-owner-actions">
-                  <button
-                    disabled={isBusy || !canReject}
-                    type="button"
-                    className="guard-attendance-row-btn btn-reject"
-                    onClick={() => rejectSession(session)}
-                  >
-                    <XCircle size={12} />
-                    Reject
-                  </button>
-                  <button
-                    className="guard-attendance-row-btn is-primary btn-approve"
-                    disabled={isBusy || !canApprove}
-                    type="button"
-                    onClick={() => approveSession(session)}
-                  >
-                    {isBusy ? <LoaderCircle className="auth-spin" size={12} /> : <CheckCircle2 size={12} />}
-                    {isRejected ? 'Re-approve' : 'Approve'}
-                  </button>
-                  <button
-                    disabled={isBusy || (!isApproved && !isRejected)}
-                    type="button"
-                    className="guard-attendance-row-btn btn-void"
-                    onClick={() => voidSession(session)}
-                  >
-                    <Ban size={12} />
-                    Void
-                  </button>
+                  {isPending && (
+                    <>
+                      <button
+                        disabled={isBusy}
+                        type="button"
+                        className="guard-attendance-row-btn btn-reject"
+                        onClick={() => rejectSession(session)}
+                      >
+                        <XCircle size={12} />
+                        Reject
+                      </button>
+                      <button
+                        className="guard-attendance-row-btn is-primary btn-approve"
+                        disabled={isBusy}
+                        type="button"
+                        onClick={() => approveSession(session)}
+                      >
+                        {isBusy ? <LoaderCircle className="auth-spin" size={12} /> : <CheckCircle2 size={12} />}
+                        Approve
+                      </button>
+                    </>
+                  )}
+
+                  {isApproved && (
+                    <>
+                      <button
+                        disabled={isBusy}
+                        type="button"
+                        className="guard-attendance-row-btn btn-reject"
+                        onClick={() => rejectSession(session)}
+                      >
+                        <XCircle size={12} />
+                        Reject
+                      </button>
+                      <button
+                        disabled={isBusy}
+                        type="button"
+                        className="guard-attendance-row-btn btn-void"
+                        onClick={() => voidSession(session)}
+                      >
+                        <Ban size={12} />
+                        Void Absen
+                      </button>
+                    </>
+                  )}
+
+                  {isRejected && (
+                    <>
+                      <button
+                        className="guard-attendance-row-btn is-primary btn-approve"
+                        disabled={isBusy}
+                        type="button"
+                        onClick={() => approveSession(session)}
+                      >
+                        {isBusy ? <LoaderCircle className="auth-spin" size={12} /> : <CheckCircle2 size={12} />}
+                        Re-approve
+                      </button>
+                      <button
+                        disabled={isBusy}
+                        type="button"
+                        className="guard-attendance-row-btn btn-void"
+                        onClick={() => voidSession(session)}
+                      >
+                        <Ban size={12} />
+                        Void
+                      </button>
+                    </>
+                  )}
                 </div>
               </article>
             );
