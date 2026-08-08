@@ -281,7 +281,8 @@ assert.equal(
 );
 
 /**
- * All Bookings remains intentionally absent until its real page exists.
+ * Phase 3D introduces All Bookings as a real destination.
+ * Request Inbox routing remains protected by the assertion above.
  */
 assert.equal(
   ADMIN_NAV_ITEMS.some(
@@ -289,7 +290,7 @@ assert.equal(
       item.path ===
       '/admin/bookings',
   ),
-  false,
+  true,
 );
 
 process.stdout.write(
