@@ -17,7 +17,9 @@ export default function ClientDashboardTab({
   recentBookings,
   whatsappPhone,
   studioMapsUrl,
-  setActiveTab,
+  onOpenBook,
+  onOpenBookings,
+  onOpenPayments,
   handleBookingBlockClick,
   downloadCalendarEvent
 }) {
@@ -65,13 +67,13 @@ export default function ClientDashboardTab({
         )}
       </section>
 
-      <button className="client-primary-booking" type="button" onClick={() => setActiveTab('calendar')}>
+      <button className="client-primary-booking" type="button" onClick={onOpenBook}>
         <CalendarDays size={16} />
         <span>Booking Jadwal Baru</span>
       </button>
 
       {stats.unpaidAmount > 0 && (
-        <button className="client-billing-prompt" type="button" onClick={() => setActiveTab('billing')}>
+        <button className="client-billing-prompt" type="button" onClick={onOpenPayments}>
           <span className="client-billing-prompt-left">
             <span className="client-billing-prompt-icon"><CreditCard size={16} /></span>
             <span className="client-billing-prompt-info">
@@ -103,7 +105,7 @@ export default function ClientDashboardTab({
         <section className="client-recent-section">
           <div className="client-section-heading" style={{ marginBottom: '6px' }}>
             <h2>Booking terbaru</h2>
-            <button type="button" onClick={() => setActiveTab('history')}>Lihat semua</button>
+            <button type="button" onClick={onOpenBookings}>Lihat semua</button>
           </div>
           <div className="client-recent-list">
             {recentBookings.map((booking) => (

@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
-  Calendar,
-  History,
-  CreditCard,
+  CalendarDays,
+  ClipboardList,
+  UserRound,
   LogOut,
   Receipt,
   CalendarPlus,
@@ -73,6 +73,8 @@ import ClientCalendarTab from '../components/client/ClientCalendarTab.jsx';
 import ClientHistoryTab from '../components/client/ClientHistoryTab.jsx';
 import ClientBookingWizard from '../components/client/ClientBookingWizard.jsx';
 import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
+import ClientBookingsHub from '../components/client/ClientBookingsHub.jsx';
+import ClientAccountTab from '../components/client/ClientAccountTab.jsx';
 
 import '../styles/admin-auth.css';
 import '../styles/client-portal.css';
@@ -321,7 +323,8 @@ export default function ClientPortalPage() {
   const [authLoading, setAuthLoading] = useState(() => Boolean(firebaseAuth));
 
   // Tab State
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'calendar' | 'history' | 'billing'
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'book' | 'bookings' | 'account'
+  const [bookingsSection, setBookingsSection] = useState('bookings'); // 'bookings' | 'payments'
 
   // Booking Data State
   const [bookings, setBookings] = useState([]);
@@ -495,14 +498,14 @@ export default function ClientPortalPage() {
 
       if (!hasValidBusinessHour) {
         setActionFeedback('Jam booking yang dipilih sudah tidak valid. Silakan pilih ulang dari kalender.');
-        setActiveTab('calendar');
+        setActiveTab('book');
         navigate('/client/portal', { replace: true });
         return;
       }
 
       if (!isResumeDateValid || isResumeOccupied) {
         setActionFeedback('Slot yang dipilih sudah terisi. Silakan pilih jadwal lain.');
-        setActiveTab('calendar');
+        setActiveTab('book');
 
         if (isResumeDateValid) {
           setCalendarSelectedDate(startOfDay(resumeDate));
@@ -513,7 +516,7 @@ export default function ClientPortalPage() {
       }
 
       setCalendarSelectedDate(startOfDay(resumeDate));
-      setActiveTab('calendar');
+      setActiveTab('book');
       setSimulatorDate(resume.date);
       setSimulatorStartHour(String(resume.startHour));
       setSimSessionType('rehearsal');
@@ -1212,7 +1215,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   function handleCreatedBookingView(booking) {
     setIsSimulatorOpen(false);
-    setActiveTab('history');
+    setBookingsSection('bookings');
+    setActiveTab('bookings');
     setSelectedBookingDetail(booking);
   }
 
@@ -1269,22 +1273,30 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         </div>
       </header>
 
-      {/* Main Content Area based on Tab Selection */}
+      {/* Client Navigation V2 content */}
       <main className="client-portal-main">
-        {activeTab === 'dashboard' && (
+        {activeTab === 'home' && (
           <ClientDashboardTab
             upcomingBooking={upcomingBooking}
             stats={stats}
             recentBookings={recentBookings}
             whatsappPhone={whatsappPhone}
             studioMapsUrl={studioMapsUrl}
-            setActiveTab={setActiveTab}
+            onOpenBook={() => setActiveTab('book')}
+            onOpenBookings={() => {
+              setBookingsSection('bookings');
+              setActiveTab('bookings');
+            }}
+            onOpenPayments={() => {
+              setBookingsSection('payments');
+              setActiveTab('bookings');
+            }}
             handleBookingBlockClick={handleBookingBlockClick}
             downloadCalendarEvent={downloadCalendarEvent}
           />
         )}
 
-        {activeTab === 'calendar' && (
+        {activeTab === 'book' && (
           <ClientCalendarTab
             calendarSelectedDate={calendarSelectedDate}
             calendarViewMode={calendarViewMode}
@@ -1308,79 +1320,105 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           />
         )}
 
-        {activeTab === 'history' && (
-          <ClientHistoryTab
-            filteredHistoryBookings={filteredHistoryBookings}
-            userBookings={userBookings}
-            historyQuery={historyQuery}
-            setHistoryQuery={setHistoryQuery}
-            historyFilter={historyFilter}
-            setHistoryFilter={setHistoryFilter}
-            historyFilterOptions={historyFilterOptions}
-            handleBookingBlockClick={handleBookingBlockClick}
-            getBookingStatus={getBookingStatus}
-            copyText={copyText}
+        {activeTab === 'bookings' && (
+          <ClientBookingsHub
+            section={bookingsSection}
+            setSection={setBookingsSection}
+            unreadCount={unreadAdminMessages}
+            pendingPaymentCount={pendingPaymentProofs.length}
+            bookingsContent={(
+              <ClientHistoryTab
+                filteredHistoryBookings={filteredHistoryBookings}
+                userBookings={userBookings}
+                historyQuery={historyQuery}
+                setHistoryQuery={setHistoryQuery}
+                historyFilter={historyFilter}
+                setHistoryFilter={setHistoryFilter}
+                historyFilterOptions={historyFilterOptions}
+                handleBookingBlockClick={handleBookingBlockClick}
+                getBookingStatus={getBookingStatus}
+                copyText={copyText}
+              />
+            )}
+            paymentsContent={(
+              <ClientBillingTab
+                stats={stats}
+                unpaidBookings={unpaidBookings}
+                getBookingStatus={getBookingStatus}
+                getLatestPaymentProof={getLatestPaymentProof}
+                getProofTone={getProofTone}
+                openPaymentProofModal={openPaymentProofModal}
+                getBookingWhatsAppUrl={getBookingWhatsAppUrl}
+                studioSettings={studioSettings}
+                transferAccountNumber={transferAccountNumber}
+                studioPaymentTerms={studioPaymentTerms}
+                copyText={copyText}
+              />
+            )}
           />
         )}
 
-        {activeTab === 'billing' && (
-          <ClientBillingTab
+        {activeTab === 'account' && (
+          <ClientAccountTab
+            currentUser={currentUser}
             stats={stats}
-            unpaidBookings={unpaidBookings}
-            getBookingStatus={getBookingStatus}
-            getLatestPaymentProof={getLatestPaymentProof}
-            getProofTone={getProofTone}
-            openPaymentProofModal={openPaymentProofModal}
-            getBookingWhatsAppUrl={getBookingWhatsAppUrl}
-            studioSettings={studioSettings}
-            transferAccountNumber={transferAccountNumber}
-            studioPaymentTerms={studioPaymentTerms}
-            copyText={copyText}
+            whatsappPhone={whatsappPhone}
+            studioMapsUrl={studioMapsUrl}
+            onLogout={handleLogout}
+            onOpenPayments={() => {
+              setBookingsSection('payments');
+              setActiveTab('bookings');
+            }}
           />
         )}
       </main>
 
-      {/* Elegant glassmorphic bottom navigation bar */}
+      {/* Client Navigation V2 bottom bar */}
       <nav className="client-bottom-nav" aria-label="Navigasi client">
         <div>
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`client-bottom-item ${activeTab === 'dashboard' ? 'is-active' : ''}`}
-            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+            onClick={() => setActiveTab('home')}
+            className={'client-bottom-item ' + (activeTab === 'home' ? 'is-active' : '')}
+            aria-current={activeTab === 'home' ? 'page' : undefined}
           >
             <Home size={18} />
-            <span>Beranda</span>
+            <span>Home</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('calendar')}
-            className={`client-bottom-item ${activeTab === 'calendar' ? 'is-active' : ''}`}
-            aria-current={activeTab === 'calendar' ? 'page' : undefined}
+            onClick={() => setActiveTab('book')}
+            className={'client-bottom-item ' + (activeTab === 'book' ? 'is-active' : '')}
+            aria-current={activeTab === 'book' ? 'page' : undefined}
           >
-            <Calendar size={18} />
-            <span>Jadwal</span>
+            <CalendarDays size={18} />
+            <span>Book</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('history')}
-            className={`client-bottom-item ${activeTab === 'history' ? 'is-active' : ''}`}
-            aria-current={activeTab === 'history' ? 'page' : undefined}
+            onClick={() => {
+              setBookingsSection('bookings');
+              setActiveTab('bookings');
+            }}
+            className={'client-bottom-item ' + (activeTab === 'bookings' ? 'is-active' : '')}
+            aria-current={activeTab === 'bookings' ? 'page' : undefined}
             style={{ position: 'relative' }}
           >
-            <History size={18} />
-            <span>Riwayat</span>
-            {unreadAdminMessages ? <b className="client-nav-badge">{unreadAdminMessages}</b> : null}
+            <ClipboardList size={18} />
+            <span>Bookings</span>
+            {unreadAdminMessages + pendingPaymentProofs.length ? (
+              <b className="client-nav-badge">
+                {unreadAdminMessages + pendingPaymentProofs.length}
+              </b>
+            ) : null}
           </button>
 
           <button
-            onClick={() => setActiveTab('billing')}
-            className={`client-bottom-item ${activeTab === 'billing' ? 'is-active' : ''}`}
-            aria-current={activeTab === 'billing' ? 'page' : undefined}
-            style={{ position: 'relative' }}
+            onClick={() => setActiveTab('account')}
+            className={'client-bottom-item ' + (activeTab === 'account' ? 'is-active' : '')}
+            aria-current={activeTab === 'account' ? 'page' : undefined}
           >
-            <CreditCard size={18} />
-            <span>Tagihan</span>
-            {pendingPaymentProofs.length ? <b className="client-nav-badge">{pendingPaymentProofs.length}</b> : null}
+            <UserRound size={18} />
+            <span>Account</span>
           </button>
         </div>
       </nav>
