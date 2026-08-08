@@ -11,6 +11,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
 const ClientLandingPage = lazy(() => import('./pages/ClientLandingPage.jsx'));
 const ClientLoginPage = lazy(() => import('./pages/ClientLoginPage.jsx'));
+const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage.jsx'));
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage.jsx'));
 const PwaLaunchPage = lazy(() => import('./pages/PwaLaunchPage.jsx'));
 const GuardAttendancePage = lazy(() => import('./pages/guard/GuardAttendancePage.jsx'));
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/" element={<ClientLandingPage />} />
             <Route path="/launch" element={<PwaLaunchPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/book" element={<PublicBookingPage />} />
             <Route path="/client/login" element={<ClientLoginPage />} />
             <Route path="/client/portal" element={<><OneSignalPermissionWidget /><ClientPortalPage /></>} />
             <Route path="/client" element={<ClientLandingPage />} />

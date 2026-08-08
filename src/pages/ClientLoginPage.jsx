@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   Eye,
@@ -19,12 +19,15 @@ import { syncClientCustomerProfile } from '../services/clientProfileRepository.j
 import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import { getSafeClientNextPath } from '../utils/clientBookingHandoff.js';
 import '../styles/admin-auth.css';
 import '../styles/firebase-auth.css';
 import '../styles/client-auth.css';
 
 export default function ClientLoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const clientNextPath = getSafeClientNextPath(location.search);
 
   // Tab & Auth Mode
   const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
@@ -76,7 +79,7 @@ export default function ClientLoginPage() {
             console.error('Role client valid, tetapi profil customer belum tersinkron:', profileError);
           }
           if (currentSequence === checkSequence) {
-            navigate('/client/portal', { replace: true });
+            navigate(clientNextPath, { replace: true });
           }
           return;
         }
@@ -105,7 +108,7 @@ export default function ClientLoginPage() {
       }
     });
     return unsubscribe;
-  }, [navigate]);
+  }, [clientNextPath, navigate]);
 
   // Handle Google Redirect Result
   useEffect(() => {
@@ -304,7 +307,7 @@ export default function ClientLoginPage() {
       await accountRoleRepository.cancelAdminRequestAndBecomeClient(firebaseAuth.currentUser);
       await syncClientCustomerProfile(firebaseAuth.currentUser);
       setRoleDecision(null);
-      navigate('/client/portal', { replace: true });
+      navigate(clientNextPath, { replace: true });
     } catch (conversionError) {
       console.error('Gagal mengubah request admin menjadi akun client:', conversionError);
       setError('Request admin tidak dapat dibatalkan. Status akun mungkin sudah berubah; silakan muat ulang.');

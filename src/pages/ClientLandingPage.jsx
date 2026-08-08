@@ -370,7 +370,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
         <nav className="client-landing-nav">
           <a href="#services" className="client-landing-nav-link">Fasilitas</a>
           <a href="#pricelist" className="client-landing-nav-link">Harga</a>
-          <a href="#booking" className="client-landing-nav-link">Booking Slot</a>
+          <a href="/book" className="client-landing-nav-link">Booking Slot</a>
           <a href="#location" className="client-landing-nav-link">Lokasi</a>
         </nav>
 
@@ -423,7 +423,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
             </p>
 
             <div className="client-landing-hero-actions">
-              <a href="#booking" className="client-landing-button is-primary">
+              <a href="/book" className="client-landing-button is-primary">
                 <span>PESAN JADWAL</span>
                 <ArrowRight size={14} />
               </a>

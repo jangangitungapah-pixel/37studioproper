@@ -789,7 +789,9 @@ match /users/{userId} {
     }
 
     match /clientCalendarSlots/{slotId} {
-      allow read: if (isApproved() && canAccessBookingData()) || isClientAccount();
+      // Public availability mirror only contains generic occupied-slot metadata.
+      // Customer identity, contact, payment proof, and private booking data stay in protected collections.
+      allow read: if true;
       allow create, update: if isApproved() && canAccessBookingData() && validCalendarSlot(request.resource.data);
       allow delete: if isApproved() && canAccessBookingData();
     }

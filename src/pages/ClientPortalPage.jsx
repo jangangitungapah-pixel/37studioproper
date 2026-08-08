@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
   Calendar,
@@ -31,6 +31,10 @@ import {
 import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
 import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import {
+  isBookingStartOccupied,
+  parseClientBookingResume,
+} from '../utils/clientBookingHandoff.js';
 import {
   bookingCommunicationRepository,
   getBookingRequestStatusMeta,
@@ -307,6 +311,7 @@ function ClientCalendarBookingBlock({ block, onBookingClick, isOwn }) {
 
 export default function ClientPortalPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const pricingSettings = usePricingSettings();
   const invoiceSettings = useInvoiceSettings();
   const studioSettings = useStudioSettings();
@@ -323,6 +328,8 @@ export default function ClientPortalPage() {
   // Booking Data State
   const [bookings, setBookings] = useState([]);
   const [calendarSlots, setCalendarSlots] = useState([]);
+  const [calendarSlotsReady, setCalendarSlotsReady] = useState(false);
+  const publicBookingResumeKeyRef = useRef('');
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
   const [historyQuery, setHistoryQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
@@ -438,12 +445,87 @@ export default function ClientPortalPage() {
   // Load public-safe occupied slots mirrored from admin schedule
   useEffect(() => {
     if (!currentUser) return;
+
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
-      (data) => setCalendarSlots(data),
-      (err) => console.error('Gagal mengambil slot calendar client:', err)
+      (data) => {
+        setCalendarSlots(data);
+        setCalendarSlotsReady(true);
+      },
+      (err) => {
+        console.error('Gagal mengambil slot calendar client:', err);
+        setCalendarSlotsReady(true);
+      }
     );
+
     return unsubscribe;
   }, [currentUser]);
+
+  // Resume a slot selected from the public /book entry after authentication.
+  useEffect(() => {
+    if (!currentUser || !calendarSlotsReady) return;
+
+    const resume = parseClientBookingResume(location.search);
+    if (!resume) return;
+
+    const resumeKey = resume.date + ':' + String(resume.startHour);
+
+    if (publicBookingResumeKeyRef.current === resumeKey) return;
+    publicBookingResumeKeyRef.current = resumeKey;
+
+    const hasValidBusinessHour = businessHours.some(
+      (hour) => Number(hour.start) === Number(resume.startHour)
+    );
+
+    if (!hasValidBusinessHour) {
+      setActionFeedback('Jam booking yang dipilih sudah tidak valid. Silakan pilih ulang dari kalender.');
+      setActiveTab('calendar');
+      navigate('/client/portal', { replace: true });
+      return;
+    }
+
+    const resumeDate = new Date(resume.date + 'T00:00:00');
+
+    if (
+      Number.isNaN(resumeDate.getTime()) ||
+      isBookingStartOccupied(calendarSlots, resume.date, resume.startHour)
+    ) {
+      setActionFeedback('Slot yang dipilih sudah terisi. Silakan pilih jadwal lain.');
+      setActiveTab('calendar');
+
+      if (!Number.isNaN(resumeDate.getTime())) {
+        setCalendarSelectedDate(startOfDay(resumeDate));
+      }
+
+      navigate('/client/portal', { replace: true });
+      return;
+    }
+
+    setCalendarSelectedDate(startOfDay(resumeDate));
+    setActiveTab('calendar');
+    setSimulatorDate(resume.date);
+    setSimulatorStartHour(String(resume.startHour));
+    setSimSessionType('rehearsal');
+    setSimPackageId('none');
+    setSimRecordingTypeId('none');
+    setSimDuration('2');
+    setSimCustomDuration('');
+    setSimCustomerName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
+    setSimCustomerPhone(currentUser.phoneNumber || '');
+    setSimProofEnabled(false);
+    setSimProofCategory('dp');
+    setSimProofMethod('transfer');
+    setSimProofAmount('');
+    setSimProofFile(null);
+    setSimProofNote('');
+    setIsSimulatorOpen(true);
+    navigate('/client/portal', { replace: true });
+  }, [
+    calendarSlots,
+    calendarSlotsReady,
+    currentUser,
+    location.search,
+    navigate,
+  ]);
 
   // Load payment proofs submitted by current client
   useEffect(() => {
