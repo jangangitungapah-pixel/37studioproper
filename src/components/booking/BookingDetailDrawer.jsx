@@ -666,6 +666,10 @@ export default function BookingDetailDrawer({
       'clientPortal' &&
     isLinkedClientBooking;
 
+  const canManageRequest =
+    typeof onRequestStatusChange ===
+    'function';
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -1512,7 +1516,8 @@ export default function BookingDetailDrawer({
         </div>
 
         <footer className="booking-detail-drawer-actions">
-          {isClientRequest &&
+          {canManageRequest &&
+          isClientRequest &&
           requestStatus ===
             'submitted' ? (
             <>
@@ -1558,7 +1563,8 @@ export default function BookingDetailDrawer({
             </>
           ) : null}
 
-          {isClientRequest &&
+          {canManageRequest &&
+          isClientRequest &&
           requestStatus ===
             'cancellation_requested' ? (
             <>

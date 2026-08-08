@@ -287,18 +287,26 @@ assert.equal(
 
 assert.equal(
   scheduleSource.includes(
-    'requestStatus: status',
+    'onRequestStatusChange=',
   ),
-  true,
-  'Calendar selected booking must keep canonical request status in sync after actions.',
+  false,
+  'Calendar drawer must not own request status mutations after Phase 3C.',
 );
 
 assert.equal(
-  scheduleSource.includes(
-    'bookingRequestStatus: status',
+  requestSource.includes(
+    'onRequestStatusChange=',
   ),
   true,
-  'Calendar must retain legacy request status compatibility.',
+  'Request Inbox must remain the request mutation owner.',
+);
+
+assert.equal(
+  drawerSource.includes(
+    'canManageRequest &&',
+  ),
+  true,
+  'Drawer request actions must be capability-gated by the parent.',
 );
 
 /**

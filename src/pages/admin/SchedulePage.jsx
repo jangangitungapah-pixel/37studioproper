@@ -1,16 +1,16 @@
 import StatusPill from '../../components/ui/StatusPill.jsx';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  MessageCircle,
+  Inbox,
   Plus,
-  X
 } from 'lucide-react';
 import BookingFormModal from '../../components/schedule/BookingFormModal.jsx';
 import BookingDetailDrawer from '../../components/booking/BookingDetailDrawer.jsx';
-import StudioSelect from '../../components/ui/StudioSelect.jsx';
+import { ADMIN_NAV_ITEMS } from '../../config/adminNavigation.js';
 import {
   businessHours,
   statusFilters,
@@ -18,8 +18,6 @@ import {
 } from './scheduleConfig.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
-import { bookingCommunicationRepository } from '../../services/bookingCommunicationRepository.js';
-import { firebaseAuth } from '../../lib/firebase.js';
 import {
   getBookingRequestStatus,
   getBookingSessionStatus,
@@ -38,6 +36,13 @@ const SCHEDULE_QA_PREVIEW_BOOKINGS = [
 ];
 
 const isScheduleQaPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('schedulePreview');
+
+const REQUEST_INBOX_PATH =
+  ADMIN_NAV_ITEMS.find(
+    (item) =>
+      item.key === 'requests',
+  )?.path ||
+  '/admin/bookings/requests';
 
 const monthNames = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -294,11 +299,29 @@ function getUpcomingScheduleTimeLabel(booking) {
   return getBookingWindowLabel(booking) + ' WIB';
 }
 
+function isUnscheduledClientRequest(booking) {
+  const requestStatus =
+    getBookingRequestStatus(
+      booking,
+    );
+
+  return (
+    booking?.source === 'clientPortal' &&
+    [
+      'submitted',
+      'rejected',
+      'cancelled',
+    ].includes(
+      requestStatus,
+    )
+  );
+}
 function isUpcomingScheduleBooking(booking) {
   const startDate = getBookingStartDateTime(booking);
 
   if (!startDate) return false;
   if (isBookingCancelled(booking)) return false;
+  if (isUnscheduledClientRequest(booking)) return false;
 
   return getBookingSessionStatus(booking) === 'upcoming';
 }
@@ -322,14 +345,9 @@ function getStudioCloseHour() {
 }
 
 function shouldHideBookingFromCalendarGrid(booking) {
-  const requestStatus = getBookingRequestStatus(booking);
-
   return (
     isNoDurationPackageBooking(booking) ||
-    (
-      booking?.source === 'clientPortal' &&
-      ['submitted', 'rejected', 'cancelled'].includes(requestStatus)
-    )
+    isUnscheduledClientRequest(booking)
   );
 }
 
@@ -541,14 +559,9 @@ function CalendarBookingBlock({ block, onBookingClick }) {
   
   const hasUnreadClientMessage = booking.lastMessageSenderRole === 'client' && booking.lastMessageReadByAdmin === false;
   const requestStatus = getBookingRequestStatus(booking);
-  const isNewClientRequest = requestStatus === 'submitted';
-  const isCancellation = requestStatus === 'cancellation_requested';
+  const isCancellationRequested = requestStatus === 'cancellation_requested';
 
-  const requestClass = isCancellation 
-    ? ' is-req-cancelled' 
-    : isNewClientRequest 
-      ? ' is-req-submitted' 
-      : '';
+  const requestClass = isCancellationRequested ? ' is-cancellation-requested' : '';
 
   return (
     <button
@@ -567,7 +580,7 @@ function CalendarBookingBlock({ block, onBookingClick }) {
         <span className="schedule-booking-status-dot" />
 
         {/* Regular status pill only visible on desktop screens */}
-        <StatusPill status={block.status}>{isNewClientRequest ? 'Request' : statusLabel}</StatusPill>
+        <StatusPill status={block.status}>{statusLabel}</StatusPill>
       </span>
 
       <span className="schedule-booking-title">{title}</span>
@@ -581,118 +594,6 @@ function CalendarBookingBlock({ block, onBookingClick }) {
         <i className="schedule-booking-message-dot" aria-label="Pesan client belum dibaca" />
       ) : null}
     </button>
-  );
-}
-
-function RequestQueueModal({
-  isOpen,
-  onClose,
-  onOpenRequest,
-  onQuickAction,
-  pendingActionKey,
-  requests,
-}) {
-  if (!isOpen) return null;
-
-  const sortedRequests = requests
-    .slice()
-    .sort((first, second) =>
-      String(second.clientRequestUpdatedAt || second.createdAt || '').localeCompare(String(first.clientRequestUpdatedAt || first.createdAt || ''))
-    );
-
-  return (
-    <div className="schedule-request-modal-backdrop" role="presentation">
-      <section
-        aria-label="Daftar request client"
-        aria-modal="true"
-        className="schedule-request-modal"
-        role="dialog"
-      >
-        <header className="schedule-request-modal-header">
-          <span>
-            <MessageCircle size={15} />
-            Request Client
-          </span>
-          <button aria-label="Tutup daftar request" type="button" onClick={onClose}>
-            ×
-          </button>
-        </header>
-
-        <div className="schedule-request-modal-summary">
-          <strong>{sortedRequests.length}</strong>
-          <span>request menunggu tindakan admin</span>
-        </div>
-
-        <div className="schedule-request-list">
-          {sortedRequests.length ? (
-            sortedRequests.map((booking) => {
-              const requestStatus = getBookingRequestStatus(booking);
-              const isCancellation = requestStatus === 'cancellation_requested';
-              const windowLabel = getBookingWindowLabel(booking);
-              const confirmStatus = isCancellation ? 'cancelled' : 'confirmed';
-              const rejectStatus = isCancellation ? 'confirmed' : 'rejected';
-              const confirmLabel = isCancellation ? 'Terima batal' : 'Confirm';
-              const rejectLabel = isCancellation ? 'Tolak batal' : 'Reject';
-              const confirmKey = booking.id + ':' + confirmStatus;
-              const rejectKey = booking.id + ':' + rejectStatus;
-              const isConfirming = pendingActionKey === confirmKey;
-              const isRejecting = pendingActionKey === rejectKey;
-              const isBusy = Boolean(pendingActionKey);
-
-              return (
-                <article
-                  className={'schedule-request-card ' + (isCancellation ? 'is-cancellation' : 'is-submitted')}
-                  key={booking.id}
-                >
-                  <button
-                    className="schedule-request-card-open"
-                    type="button"
-                    onClick={() => onOpenRequest(booking)}
-                  >
-                    <span className="schedule-request-card-main">
-                      <strong>{booking.customer || 'Client'}</strong>
-                      <small>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</small>
-                      <em>{booking.date} • {windowLabel}</em>
-                    </span>
-                    <span className="schedule-request-card-meta">
-                      <b>{isCancellation ? 'Minta batal' : 'Request baru'}</b>
-                      <small>{booking.bookingCode || booking.bookingId || 'BKG'}</small>
-                    </span>
-                  </button>
-
-                  <div className="schedule-request-card-actions" aria-label="Quick action request">
-                    <button
-                      className="is-confirm"
-                      disabled={isBusy}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onQuickAction(booking, confirmStatus);
-                      }}
-                    >
-                      {isConfirming ? '...' : confirmLabel}
-                    </button>
-                    <button
-                      className="is-reject"
-                      disabled={isBusy}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onQuickAction(booking, rejectStatus);
-                      }}
-                    >
-                      {isRejecting ? '...' : rejectLabel}
-                    </button>
-                  </div>
-                </article>
-              );
-            })
-          ) : (
-            <p className="schedule-request-empty">Tidak ada request client.</p>
-          )}
-        </div>
-      </section>
-    </div>
   );
 }
 
@@ -714,8 +615,8 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
           {previewBookings.map((booking) => {
             const noDurationPackage = isNoDurationPackageBooking(booking);
             const requestStatus = getBookingRequestStatus(booking);
-            const requestMeta = requestStatus === 'submitted'
-              ? 'Request'
+            const requestMeta = requestStatus === 'cancellation_requested'
+              ? 'Cancel request'
               : requestStatus === 'confirmed'
                 ? 'Confirmed'
                 : '';
@@ -917,6 +818,7 @@ function CalendarGrid({
 }
 
 export default function SchedulePage() {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('month');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeStatuses, setActiveStatuses] = useState(() => statusFilters.map((item) => item.key));
@@ -927,8 +829,6 @@ export default function SchedulePage() {
   const [editingBooking, setEditingBooking] = useState(null);
   const [scheduleToast, setScheduleToast] = useState(null);
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
-  const [isRequestListOpen, setIsRequestListOpen] = useState(false);
-  const [requestActionKey, setRequestActionKey] = useState('');
 
   // One-time local storage migration to Firestore
   useEffect(() => {
@@ -970,8 +870,6 @@ export default function SchedulePage() {
       },
       (data) => {
         setBookings(data);
-        adminBookingRepository.syncClientCalendarSlotsFromBookings(data)
-          .catch((err) => console.error('Gagal sinkron slot client calendar:', err));
       },
       (_err) => {
         setScheduleToast({
@@ -985,36 +883,22 @@ export default function SchedulePage() {
   }, [dateRange]);
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
-  const scheduleStats = useMemo(() => {
+  const paymentStatusCounts = useMemo(() => {
     const counts = statusFilters.reduce((nextCounts, item) => {
       nextCounts[item.key] = 0;
       return nextCounts;
     }, {});
-    let visibleCount = 0;
 
     bookings.forEach((booking) => {
       const status = getBookingStatus(booking);
+
       if (counts[status] !== undefined) {
         counts[status] += 1;
       }
-      if (activeStatuses.includes(status)) {
-        visibleCount += 1;
-      }
     });
 
-    return { counts, visibleCount };
-  }, [activeStatuses, bookings]);
-
-  const visibleBookingCount = scheduleStats.visibleCount;
-  const paymentStatusCounts = scheduleStats.counts;
-  const requestBookings = useMemo(
-    () => bookings
-      .filter((booking) => ['submitted', 'cancellation_requested'].includes(getBookingRequestStatus(booking)))
-      .sort((first, second) =>
-        String(second.clientRequestUpdatedAt || second.createdAt || '').localeCompare(String(first.clientRequestUpdatedAt || first.createdAt || ''))
-      ),
-    [bookings]
-  );
+    return counts;
+  }, [bookings]);
   const todayIsoDate = toIsoDate(startOfDay(new Date()));
 
   useEffect(() => {
@@ -1065,28 +949,11 @@ export default function SchedulePage() {
     setSelectedBookingDetail(null);
   }
 
-  function closeRequestList() {
-    setIsRequestListOpen(false);
+  function openRequestInbox() {
+    navigate(
+      REQUEST_INBOX_PATH,
+    );
   }
-
-  function openRequestFromList(booking) {
-    setIsRequestListOpen(false);
-    openBookingDetail(booking);
-  }
-
-  async function handleQuickRequestAction(booking, status) {
-    if (!booking?.id || requestActionKey) return;
-    const actionKey = booking.id + ':' + status;
-    setRequestActionKey(actionKey);
-    try {
-      await updateClientRequestStatus(booking, status);
-    } catch {
-      // Handled
-    } finally {
-      setRequestActionKey('');
-    }
-  }
-
   function editBookingFromDetail(booking) {
     setSelectedBookingDetail(null);
     setEditingBooking(booking);
@@ -1149,32 +1016,6 @@ export default function SchedulePage() {
         message: 'Koneksi ke Firestore bermasalah.'
       });
       return false;
-    }
-  }
-
-  async function updateClientRequestStatus(booking, status) {
-    try {
-      await bookingCommunicationRepository.updateBookingRequestStatus({
-        booking,
-        status,
-        user: firebaseAuth?.currentUser,
-      });
-      setSelectedBookingDetail((current) => current?.id === booking.id
-        ? {
-          ...current,
-          requestStatus: status,
-          bookingRequestStatus: status,
-        }
-        : current);
-      setScheduleToast({
-        kind: 'success',
-        title: 'Status Client Diperbarui',
-        message: status === 'confirmed' ? 'Booking sudah dikonfirmasi ke client.' : 'Keputusan admin sudah dikirim ke portal client.',
-      });
-    } catch (error) {
-      console.error('Gagal memperbarui status request client:', error);
-      setScheduleToast({ kind: 'warning', title: 'Gagal Memperbarui', message: 'Status request client belum tersimpan.' });
-      throw error;
     }
   }
 
@@ -1253,12 +1094,8 @@ export default function SchedulePage() {
           .schedule-booking-block.is-pending .schedule-booking-status-dot {
             background-color: #fbbf24 !important;
           }
-          .schedule-booking-block.is-req-cancelled .schedule-booking-status-dot {
+          .schedule-booking-block.is-cancellation-requested .schedule-booking-status-dot {
             background-color: #ef4444 !important;
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-          }
-          .schedule-booking-block.is-req-submitted .schedule-booking-status-dot {
-            background-color: #fbbf24 !important;
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           }
           .schedule-booking-title {
@@ -1290,21 +1127,6 @@ export default function SchedulePage() {
 
       {/* Symmetrical & Balanced Controls Toolbar (No horizontal scroll, fully responsive) */}
       <div className="schedule-toolbar bg-[#0b0c0e]/80 backdrop-blur-md border border-white/5 p-3 md:p-4 rounded-xl flex flex-col gap-3">
-        {/* Client Request Banner at the Top */}
-        {requestBookings.length ? (
-          <button 
-            className="w-full py-1.5 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-extrabold flex items-center justify-between transition-all animate-pulse" 
-            type="button" 
-            onClick={() => setIsRequestListOpen(true)}
-          >
-            <span className="flex items-center gap-1.5">
-              <MessageCircle size={12} />
-              Ada {requestBookings.length} request pemesanan baru
-            </span>
-            <span className="text-[9px] uppercase tracking-wider text-red-400/80">Lihat &rarr;</span>
-          </button>
-        ) : null}
-
         {/* Row 1: Title & Navigation Controls */}
         <div className="flex items-center justify-between gap-3 w-full">
           <h2 id="schedule-calendar-title" className="text-sm md:text-base font-extrabold text-white truncate max-w-[140px] xs:max-w-none">
@@ -1365,6 +1187,16 @@ export default function SchedulePage() {
           >
             <Plus size={13} />
             <span>Tambah</span>
+          </button>
+
+          <button
+            aria-label="Buka Request Inbox"
+            className="px-2.5 h-8 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 text-[10px] font-bold active:scale-95 transition-all shrink-0"
+            type="button"
+            onClick={openRequestInbox}
+          >
+            <Inbox size={13} />
+            <span className="hidden sm:inline">Requests</span>
           </button>
         </div>
 
@@ -1437,17 +1269,6 @@ export default function SchedulePage() {
         isOpen={Boolean(selectedBookingDetail)}
         onClose={closeBookingDetail}
         onEdit={editBookingFromDetail}
-        onRequestStatusChange={updateClientRequestStatus}
-        user={firebaseAuth?.currentUser}
-      />
-
-      <RequestQueueModal
-        isOpen={isRequestListOpen}
-        pendingActionKey={requestActionKey}
-        requests={requestBookings}
-        onClose={closeRequestList}
-        onOpenRequest={openRequestFromList}
-        onQuickAction={handleQuickRequestAction}
       />
 
       {scheduleToast ? (
