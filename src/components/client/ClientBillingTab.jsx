@@ -1,5 +1,8 @@
 import { Receipt, UploadCloud, Copy, Info } from 'lucide-react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
+import {
+  getBookingOutstandingAmount,
+} from '../../utils/bookingPaymentUtils.js';
 import { getPaymentProofStatusLabel } from '../../services/paymentProofRepository.js';
 import { formatBankAccountNumber } from '../../settings/studioSettings.js';
 import { defaultStudioSettings } from '../../settings/studioSettings.js';
@@ -7,7 +10,6 @@ import { defaultStudioSettings } from '../../settings/studioSettings.js';
 export default function ClientBillingTab({
   stats,
   unpaidBookings,
-  getBookingStatus,
   getLatestPaymentProof,
   getProofTone,
   openPaymentProofModal,
@@ -40,10 +42,8 @@ export default function ClientBillingTab({
           <h4 style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', tracking: '0.05em', color: 'var(--auth-text-muted)', margin: '0 0 2px' }}>Daftar Tagihan Pending / DP</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {unpaidBookings.map((b) => {
-              const status = getBookingStatus(b);
-              const amountToPay = status === 'dp'
-                ? Math.max(0, (b.total || 0) - (b.dpAmount || 0))
-                : (b.total || 0);
+              const amountToPay =
+                getBookingOutstandingAmount(b);
               const latestProof = getLatestPaymentProof(b);
               const hasPendingProof = latestProof?.status === 'pending';
 

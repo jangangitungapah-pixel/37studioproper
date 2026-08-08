@@ -34,6 +34,9 @@ import {
   parseClientBookingResume,
 } from '../utils/clientBookingHandoff.js';
 import {
+  getBookingOutstandingAmount,
+} from '../utils/bookingPaymentUtils.js';
+import {
   bookingCommunicationRepository,
   getBookingRequestStatusMeta,
 } from '../services/bookingCommunicationRepository.js';
@@ -664,7 +667,7 @@ export default function ClientPortalPage() {
     const unpaidAmount = userBookings.reduce((sum, booking) => {
       if (isBookingCancelled(booking)) return sum;
 
-      return sum + getOutstandingAmountForBooking(booking);
+      return sum + getBookingOutstandingAmount(booking);
     }, 0);
 
     return {
@@ -826,19 +829,8 @@ export default function ClientPortalPage() {
     return 'is-pending';
   }
 
-  function getOutstandingAmountForBooking(booking) {
-    const status = getBookingPaymentStatus(booking);
-    const total = Number(booking?.total || booking?.subtotal || 0) || 0;
-    const paidAmount = Number(booking?.paidAmount || booking?.dpAmount || 0) || 0;
-
-    if (['paid', 'refunded', 'void'].includes(status)) return 0;
-    if (status === 'partial') return Math.max(0, total - paidAmount);
-
-    return total;
-  }
-
   function getDefaultProofAmount(booking, category = 'dp') {
-    const outstanding = getOutstandingAmountForBooking(booking);
+    const outstanding = getBookingOutstandingAmount(booking);
     if (category === 'pelunasan') return outstanding;
     return Math.min(outstanding || 50000, Math.max(50000, Number(booking?.dpAmount || 50000) || 50000));
   }
@@ -1411,7 +1403,6 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <ClientBillingTab
                 stats={stats}
                 unpaidBookings={unpaidBookings}
-                getBookingStatus={getBookingStatus}
                 getLatestPaymentProof={getLatestPaymentProof}
                 getProofTone={getProofTone}
                 openPaymentProofModal={openPaymentProofModal}

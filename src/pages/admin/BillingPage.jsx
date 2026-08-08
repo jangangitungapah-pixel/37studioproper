@@ -19,7 +19,20 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
-import { getLegacyBookingPaymentStatus } from '../../domain/booking/bookingSelectors.js';
+import { BOOKING_PAYMENT_STATUS } from '../../domain/booking/bookingStatus.js';
+import {
+  getBookingPaymentStatus,
+  getLegacyBookingPaymentStatus,
+  isBookingPaymentOpen,
+} from '../../domain/booking/bookingSelectors.js';
+import {
+  buildBookingPaymentPatch,
+  buildBookingVoidPatch,
+  getBookingBillingTotal,
+  getBookingOutstandingAmount,
+  getBookingPaidAmount,
+  getBookingPaymentHistory,
+} from '../../utils/bookingPaymentUtils.js';
 import {
   getPaymentProofStatusLabel,
   paymentProofRepository,
@@ -178,115 +191,150 @@ function getPaymentMethodLabel(method) {
   return paymentMethodOptions.find((item) => item.key === method)?.label || 'Lainnya';
 }
 
-function getPaymentHistory(booking) {
-  const rawHistory = Array.isArray(booking?.paymentHistory) ? booking.paymentHistory : [];
-
-  if (rawHistory.length) return rawHistory;
-
-  const status = getLegacyBookingPaymentStatus(booking);
-
-  if (status === 'void' || booking?.voidedAt) return [];
-
-  const total = getBillingTotal(booking);
-  const dpAmount = getDpAmount(booking);
-  const legacyPaidAmount = status === 'lunas' ? total : status === 'dp' ? dpAmount : 0;
-
-  if (!legacyPaidAmount) return [];
-
-  const paymentDate = booking?.lastPaymentAt || booking?.createdAt || booking?.date || getTodayIsoDate();
-
-  return [
-    {
-      amount: legacyPaidAmount,
-      createdAt: paymentDate,
-      date: paymentDate,
-      id: 'legacy_' + (booking?.id || getBookingDisplayCode(booking)),
-      method: booking?.lastPaymentMethod || booking?.paymentMethod || 'other',
-      note: status === 'lunas' ? 'Pembayaran awal dari booking form' : 'DP awal dari booking form',
-      source: 'legacy-booking-payment',
-    },
-  ];
+function getPaymentHistory(
+  booking,
+) {
+  return getBookingPaymentHistory(
+    booking,
+  );
 }
 
-function getPaymentHistoryTotal(booking) {
-  return getPaymentHistory(booking).reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+function getBookingDisplayCode(
+  booking,
+) {
+  return (
+    booking?.bookingCode ||
+    booking?.bookingId ||
+    createBookingCode(
+      booking,
+      booking?.id,
+    )
+  );
 }
 
-function getBookingDisplayCode(booking) {
-  return booking?.bookingCode || booking?.bookingId || createBookingCode(booking, booking?.id);
+function getInvoiceDisplayNumber(
+  booking,
+) {
+  return (
+    booking?.invoiceNumber ||
+    createInvoiceNumber(
+      booking,
+      booking?.id,
+    )
+  );
 }
 
-function getInvoiceDisplayNumber(booking) {
-  return booking?.invoiceNumber || createInvoiceNumber(booking, booking?.id);
+function getBillingTotal(
+  booking,
+) {
+  return getBookingBillingTotal(
+    booking,
+  );
 }
 
-function getBillingTotal(booking) {
-  return Number(booking?.total || booking?.subtotal || booking?.invoiceAmount || 0) || 0;
+function normalizeStatus(
+  booking,
+) {
+  return getLegacyBookingPaymentStatus(
+    booking,
+  );
 }
 
-function getDpAmount(booking) {
-  return Number(booking?.dpAmount || 0) || 0;
+function getPaidAmount(
+  booking,
+) {
+  return getBookingPaidAmount(
+    booking,
+  );
 }
 
-function normalizeStatus(booking) {
-  const rawStatus = getLegacyBookingPaymentStatus(booking);
+function getOutstandingAmount(
+  booking,
+) {
+  return getBookingOutstandingAmount(
+    booking,
+  );
+}
 
-  if (rawStatus === 'void' || booking?.voidedAt) return 'void';
-
-  const total = getBillingTotal(booking);
-  const historyTotal = getPaymentHistoryTotal(booking);
-
-  if (historyTotal > 0 && total > 0) {
-    return historyTotal >= total ? 'lunas' : 'dp';
+function getStatusLabel(
+  status,
+) {
+  if (
+    status ===
+    'lunas'
+  ) {
+    return 'Lunas';
   }
 
-  return rawStatus || 'pending';
-}
+  if (
+    status ===
+    'dp'
+  ) {
+    return 'DP';
+  }
 
-function getPaidAmount(booking) {
-  const total = getBillingTotal(booking);
-  const historyTotal = getPaymentHistoryTotal(booking);
-  const rawStatus = getLegacyBookingPaymentStatus(booking);
+  if (
+    status ===
+    'void'
+  ) {
+    return 'Void';
+  }
 
-  if (historyTotal > 0) return Math.min(total || historyTotal, historyTotal);
-  if (rawStatus === 'lunas') return total;
-  if (rawStatus === 'dp') return getDpAmount(booking);
-
-  return 0;
-}
-
-function getOutstandingAmount(booking) {
-  const status = normalizeStatus(booking);
-  const total = getBillingTotal(booking);
-  const paid = getPaidAmount(booking);
-
-  if (status === 'lunas' || status === 'void') return 0;
-
-  return Math.max(0, Number(booking?.invoiceAmount || total - paid) || 0);
-}
-
-function getStatusLabel(status) {
-  if (status === 'lunas') return 'Lunas';
-  if (status === 'dp') return 'DP';
-  if (status === 'void') return 'Void';
+  if (
+    status ===
+    'refunded'
+  ) {
+    return 'Refund';
+  }
 
   return 'Pending';
 }
 
-function getStatusClass(booking) {
-  const status = normalizeStatus(booking);
+function getStatusClass(
+  booking,
+) {
+  const status =
+    normalizeStatus(
+      booking,
+    );
 
-  if (status === 'lunas') return 'is-lunas';
-  if (status === 'dp') return 'is-dp';
-  if (status === 'void') return 'is-void';
+  if (
+    status ===
+    'lunas'
+  ) {
+    return 'is-lunas';
+  }
+
+  if (
+    status ===
+    'dp'
+  ) {
+    return 'is-dp';
+  }
+
+  if (
+    status ===
+    'void'
+  ) {
+    return 'is-void';
+  }
+
+  if (
+    status ===
+    'refunded'
+  ) {
+    return 'is-refunded';
+  }
 
   return 'is-pending';
 }
 
-function isOpenBilling(booking) {
-  const status = normalizeStatus(booking);
-
-  return status === 'pending' || status === 'dp';
+function isOpenBilling(
+  booking,
+) {
+  return isBookingPaymentOpen(
+    booking,
+  );
 }
 
 function getCustomerPhoneKey(value) {
@@ -1454,76 +1502,149 @@ export default function BillingPage() {
     setBillingPage(1);
   }
 
-  async function recordPayment(booking, payment) {
-    if (normalizeStatus(booking) === 'void') {
+  async function recordPayment(
+    booking,
+    payment,
+  ) {
+    if (
+      getBookingPaymentStatus(
+        booking,
+      ) ===
+      BOOKING_PAYMENT_STATUS.VOID
+    ) {
       setToast({
-        title: 'Invoice sudah void',
-        message: 'Pembayaran tidak bisa dicatat untuk invoice void.',
+        title:
+          'Invoice sudah void',
+        message:
+          'Pembayaran tidak bisa dicatat untuk invoice void.',
       });
+
       return;
     }
 
     try {
-      const paymentHistory = [...getPaymentHistory(booking), payment];
-      const totalPaid = paymentHistory.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      const total = getBillingTotal(booking);
-      const invoiceAmount = Math.max(0, total - totalPaid);
-      const nextStatus = invoiceAmount <= 0 ? 'lunas' : totalPaid > 0 ? 'dp' : 'pending';
-      const nextBooking = {
-        ...booking,
-        dpAmount: nextStatus === 'dp' ? totalPaid : 0,
-        invoiceAmount,
-        lastPaymentAt: payment.createdAt,
-        lastPaymentMethod: payment.method,
-        paidAmount: Math.min(total || totalPaid, totalPaid),
-        paymentHistory,
-        paymentStatus: nextStatus,
-        status: nextStatus,
-        updatedAt: new Date().toISOString(),
-      };
+      const nextBooking =
+        buildBookingPaymentPatch(
+          booking,
+          payment,
+        );
 
-      await adminBookingRepository.updateManualBooking(nextBooking);
-      setSelectedBooking((current) => (current?.id === booking.id ? nextBooking : current));
-      setSelectedPaymentBooking(null);
+      await adminBookingRepository
+        .updateManualBooking(
+          nextBooking,
+        );
+
+      setSelectedBooking(
+        (
+          current,
+        ) =>
+          current?.id ===
+          booking.id
+            ? nextBooking
+            : current,
+      );
+
+      setSelectedPaymentBooking(
+        null,
+      );
+
+      const nextStatus =
+        getBookingPaymentStatus(
+          nextBooking,
+        );
+
       setToast({
-        title: nextStatus === 'lunas' ? 'Pembayaran lunas' : 'Pembayaran tercatat',
-        message: (booking.customer || 'Booking') + ' membayar ' + formatMoney(payment.amount) + ' via ' + getPaymentMethodLabel(payment.method) + '.',
+        title:
+          nextStatus ===
+          BOOKING_PAYMENT_STATUS.PAID
+            ? 'Pembayaran lunas'
+            : 'Pembayaran tercatat',
+
+        message:
+          (
+            booking.customer ||
+            'Booking'
+          ) +
+          ' membayar ' +
+          formatMoney(
+            payment.amount,
+          ) +
+          ' via ' +
+          getPaymentMethodLabel(
+            payment.method,
+          ) +
+          '.',
       });
     } catch (error) {
-      console.error('Gagal mencatat pembayaran:', error);
+      console.error(
+        'Gagal mencatat pembayaran:',
+        error,
+      );
+
       setToast({
-        title: 'Pembayaran gagal',
-        message: 'Pembayaran belum berhasil disimpan.',
+        title:
+          'Pembayaran gagal',
+
+        message:
+          error?.message ||
+          'Pembayaran belum berhasil disimpan.',
       });
     }
   }
 
-  async function voidInvoice(booking, reason) {
+  async function voidInvoice(
+    booking,
+    reason,
+  ) {
     try {
-      const nextBooking = {
-        ...booking,
-        invoiceAmount: 0,
-        paymentStatus: 'void',
-        previousInvoiceAmount: getOutstandingAmount(booking),
-        previousPaymentStatus: normalizeStatus(booking),
-        status: 'void',
-        updatedAt: new Date().toISOString(),
-        voidReason: reason,
-        voidedAt: new Date().toISOString(),
-      };
+      const nextBooking =
+        buildBookingVoidPatch(
+          booking,
+          reason,
+        );
 
-      await adminBookingRepository.updateManualBooking(nextBooking);
-      setSelectedBooking((current) => (current?.id === booking.id ? nextBooking : current));
-      setSelectedVoidBooking(null);
+      await adminBookingRepository
+        .updateManualBooking(
+          nextBooking,
+        );
+
+      setSelectedBooking(
+        (
+          current,
+        ) =>
+          current?.id ===
+          booking.id
+            ? nextBooking
+            : current,
+      );
+
+      setSelectedVoidBooking(
+        null,
+      );
+
       setToast({
-        title: 'Invoice void',
-        message: getInvoiceDisplayNumber(booking) + ' sudah dibatalkan.',
+        title:
+          'Invoice void',
+
+        message:
+          getInvoiceDisplayNumber(
+            booking,
+          ) +
+          ' sudah dibatalkan.',
       });
     } catch (error) {
-      console.error('Gagal void invoice:', error);
+      console.error(
+        'Gagal void invoice:',
+        error,
+      );
+
       setToast({
-        title: 'Void gagal',
-        message: 'Invoice belum berhasil dibatalkan.',
+        title:
+          'Void gagal',
+
+        message:
+          error?.message ||
+          'Invoice belum berhasil dibatalkan.',
       });
     }
   }
