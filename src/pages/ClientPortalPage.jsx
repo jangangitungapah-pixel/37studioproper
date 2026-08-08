@@ -78,6 +78,7 @@ import ClientAccountTab from '../components/client/ClientAccountTab.jsx';
 
 import '../styles/admin-auth.css';
 import '../styles/client-portal.css';
+import '../styles/modules/client-portal-overhaul.css';
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -1254,21 +1255,86 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       {/* Background Radial Glow */}
       <div className="client-portal-bg-glow" aria-hidden="true" />
       
-      {/* Header Profile Area */}
-      <header className="client-portal-header relative w-full max-w-4xl mx-auto z-10">
-        <div className="client-header-copy">
-          <p>Client Portal</p>
-          <h1>Halo, {currentUser?.displayName?.split(' ')[0] || 'Client'}</h1>
+      {/* Client Portal application header */}
+      <header className="client-portal-header">
+        <div className="client-header-identity">
+          <div className="client-header-mark">
+            37
+          </div>
+
+          <div className="client-header-copy">
+            <p>
+              37 Music Studio
+            </p>
+
+            <h1>
+              Halo, {currentUser?.displayName?.split(' ')[0] || 'Client'}
+            </h1>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <nav
+          className="client-desktop-nav"
+          aria-label="Navigasi client desktop"
+        >
+          <button
+            className={activeTab === 'home' ? 'is-active' : ''}
+            type="button"
+            onClick={() => setActiveTab('home')}
+          >
+            <Home size={16} />
+            <span>Home</span>
+          </button>
+
+          <button
+            className={activeTab === 'book' ? 'is-active' : ''}
+            type="button"
+            onClick={() => setActiveTab('book')}
+          >
+            <CalendarDays size={16} />
+            <span>Book</span>
+          </button>
+
+          <button
+            className={activeTab === 'bookings' ? 'is-active' : ''}
+            type="button"
+            onClick={() => {
+              setBookingsSection('bookings');
+              setActiveTab('bookings');
+            }}
+          >
+            <ClipboardList size={16} />
+            <span>Bookings</span>
+
+            {unreadAdminMessages + pendingPaymentProofs.length ? (
+              <b>
+                {unreadAdminMessages + pendingPaymentProofs.length}
+              </b>
+            ) : null}
+          </button>
+
+          <button
+            className={activeTab === 'account' ? 'is-active' : ''}
+            type="button"
+            onClick={() => setActiveTab('account')}
+          >
+            <UserRound size={16} />
+            <span>Account</span>
+          </button>
+        </nav>
+
+        <div className="client-header-actions">
+          <span className="client-header-role">
+            Client Portal
+          </span>
+
           <button
             onClick={handleLogout}
             className="client-logout-button"
             title="Keluar dari portal"
             aria-label="Keluar dari portal"
           >
-            <LogOut size={14} />
+            <LogOut size={15} />
           </button>
         </div>
       </header>
@@ -1322,6 +1388,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
         {activeTab === 'bookings' && (
           <ClientBookingsHub
+            bookingCount={userBookings.length}
             section={bookingsSection}
             setSection={setBookingsSection}
             unreadCount={unreadAdminMessages}

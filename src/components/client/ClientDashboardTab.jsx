@@ -1,14 +1,73 @@
-import { CalendarDays, ChevronRight, Clock, CreditCard, MapPin, MessageCircle, Volume2, CalendarPlus } from 'lucide-react';
-import { formatRupiah } from '../../settings/pricingSettings.js';
-import { statusFilters } from '../../pages/admin/scheduleConfig.js';
-import { getLegacyBookingPaymentStatus } from '../../domain/booking/bookingSelectors.js';
+import {
+  CalendarDays,
+  CalendarPlus,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  ListChecks,
+  MapPin,
+  MessageCircle,
+  Volume2,
+} from 'lucide-react';
+import {
+  formatRupiah,
+} from '../../settings/pricingSettings.js';
+import {
+  statusFilters,
+} from '../../pages/admin/scheduleConfig.js';
+import {
+  getLegacyBookingPaymentStatus,
+} from '../../domain/booking/bookingSelectors.js';
 
-function getBookingStatus(booking) {
-  return getLegacyBookingPaymentStatus(booking);
+function getBookingStatus(
+  booking,
+) {
+  return getLegacyBookingPaymentStatus(
+    booking,
+  );
 }
 
-function getStatusLabel(status) {
-  return statusFilters.find((item) => item.key === status)?.label || status;
+function getStatusLabel(
+  status,
+) {
+  return (
+    statusFilters.find(
+      (item) =>
+        item.key ===
+        status,
+    )?.label ||
+    status
+  );
+}
+
+function formatBookingDate(
+  value,
+) {
+  const date =
+    new Date(
+      String(value) +
+        'T00:00:00',
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value || '-';
+  }
+
+  return new Intl.DateTimeFormat(
+    'id-ID',
+    {
+      day:
+        'numeric',
+      month:
+        'short',
+      weekday:
+        'short',
+    },
+  ).format(date);
 }
 
 export default function ClientDashboardTab({
@@ -21,143 +80,552 @@ export default function ClientDashboardTab({
   onOpenBookings,
   onOpenPayments,
   handleBookingBlockClick,
-  downloadCalendarEvent
+  downloadCalendarEvent,
 }) {
   return (
-    <div className="client-dashboard">
-      <section className="client-next-section" aria-labelledby="next-session-title">
-        <h1 id="next-session-title" style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--auth-text-muted)', margin: '0 0 6px' }}>Sesi berikutnya</h1>
-        {upcomingBooking ? (
-          <article className="client-next-booking">
-            <div className="client-next-booking-header">
-              <span className="client-next-icon"><Volume2 size={16} /></span>
-              <span className="client-next-content">
-                <strong>{upcomingBooking.sessionLabel || upcomingBooking.packageLabel || upcomingBooking.title || 'Sesi Studio'}</strong>
-                <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)' }}>
-                  <CalendarDays size={11} style={{ marginRight: '3px' }} />
-                  {new Date(`${upcomingBooking.date}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  <span style={{ margin: '0 4px' }}>•</span>
-                  <Clock size={11} style={{ marginRight: '3px' }} />
-                  {String(upcomingBooking.startHour).padStart(2, '0')}.00 WIB ({upcomingBooking.durationHours}j)
-                </span>
-              </span>
-              <span className={`client-payment-state is-${getBookingStatus(upcomingBooking)}`} style={{ fontSize: '11px', fontWeight: '800', flexShrink: 0 }}>
-                {getStatusLabel(getBookingStatus(upcomingBooking))}
-              </span>
-            </div>
-            <div className="client-next-actions">
-              <button type="button" onClick={() => downloadCalendarEvent(upcomingBooking)}>
-                <CalendarPlus size={12} />
-                <span>Kalender</span>
-              </button>
-              <button type="button" onClick={() => handleBookingBlockClick(upcomingBooking)}>
-                <span>Detail</span>
-                <ChevronRight size={12} />
-              </button>
-            </div>
-          </article>
-        ) : (
-          <div className="client-empty-next">
-            <CalendarDays size={18} style={{ color: 'var(--auth-text-muted)' }} />
-            <div>
-              <strong>Belum ada sesi mendatang</strong>
-              <p style={{ margin: '2px 0 0', fontSize: '10px', color: 'var(--auth-text-muted)' }}>Pilih jadwal yang cocok untuk sesi berikutnya.</p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <button className="client-primary-booking" type="button" onClick={onOpenBook}>
-        <CalendarDays size={16} />
-        <span>Booking Jadwal Baru</span>
-      </button>
-
-      {stats.unpaidAmount > 0 && (
-        <button className="client-billing-prompt" type="button" onClick={onOpenPayments}>
-          <span className="client-billing-prompt-left">
-            <span className="client-billing-prompt-icon"><CreditCard size={16} /></span>
-            <span className="client-billing-prompt-info">
-              <small>Sisa tagihan</small>
-              <strong>{formatRupiah(stats.unpaidAmount)}</strong>
-            </span>
+    <div className="client-home-dashboard">
+      <header className="client-home-heading">
+        <div>
+          <span>
+            Studio Overview
           </span>
-          <span className="client-billing-action">
-            <span>Bayar</span>
-            <ChevronRight size={14} />
+
+          <h2>
+            Semua yang Anda butuhkan,
+            dalam satu dashboard.
+          </h2>
+
+          <p>
+            Booking studio, pantau jadwal, cek pembayaran, dan hubungi admin tanpa berpindah aplikasi.
+          </p>
+        </div>
+
+        <button
+          className="client-home-book-button"
+          type="button"
+          onClick={
+            onOpenBook
+          }
+        >
+          <CalendarDays
+            size={17}
+          />
+
+          <span>
+            Book Studio
           </span>
+
+          <ChevronRight
+            size={15}
+          />
         </button>
-      )}
+      </header>
 
-      <div className="client-summary-strip">
-        <div>
-          <CalendarDays size={16} />
-          <strong>{stats.totalBookings}</strong>
-          <span>booking</span>
-        </div>
-        <div>
-          <Clock size={16} />
-          <strong>{stats.totalDuration}</strong>
-          <span>jam studio</span>
-        </div>
+      <div className="client-home-grid">
+        <section className="client-home-session-panel">
+          <div className="client-home-panel-label">
+            <span>
+              Next Session
+            </span>
+
+            {upcomingBooking ? (
+              <span
+                className={
+                  'client-payment-state is-' +
+                  getBookingStatus(
+                    upcomingBooking,
+                  )
+                }
+              >
+                {
+                  getStatusLabel(
+                    getBookingStatus(
+                      upcomingBooking,
+                    ),
+                  )
+                }
+              </span>
+            ) : null}
+          </div>
+
+          {upcomingBooking ? (
+            <>
+              <div className="client-home-session-main">
+                <div className="client-home-session-icon">
+                  <Volume2
+                    size={28}
+                  />
+                </div>
+
+                <div>
+                  <span>
+                    Upcoming booking
+                  </span>
+
+                  <h3>
+                    {
+                      upcomingBooking.sessionLabel ||
+                      upcomingBooking.packageLabel ||
+                      upcomingBooking.title ||
+                      'Sesi Studio'
+                    }
+                  </h3>
+
+                  <div className="client-home-session-meta">
+                    <span>
+                      <CalendarDays
+                        size={14}
+                      />
+
+                      {
+                        formatBookingDate(
+                          upcomingBooking.date,
+                        )
+                      }
+                    </span>
+
+                    <span>
+                      <Clock
+                        size={14}
+                      />
+
+                      {
+                        String(
+                          upcomingBooking.startHour,
+                        ).padStart(
+                          2,
+                          '0',
+                        )
+                      }
+                      .00 WIB
+                    </span>
+
+                    <span>
+                      {
+                        Number(
+                          upcomingBooking.durationHours ||
+                          upcomingBooking.duration ||
+                          0,
+                        )
+                      }
+                      {' jam'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="client-home-session-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadCalendarEvent(
+                      upcomingBooking,
+                    )
+                  }
+                >
+                  <CalendarPlus
+                    size={15}
+                  />
+
+                  Kalender
+                </button>
+
+                <button
+                  className="is-primary"
+                  type="button"
+                  onClick={() =>
+                    handleBookingBlockClick(
+                      upcomingBooking,
+                    )
+                  }
+                >
+                  Lihat Detail
+
+                  <ChevronRight
+                    size={15}
+                  />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="client-home-empty-session">
+              <div className="client-home-empty-icon">
+                <CalendarDays
+                  size={30}
+                />
+              </div>
+
+              <div>
+                <span>
+                  Kalender Anda masih kosong
+                </span>
+
+                <h3>
+                  Belum ada sesi mendatang.
+                </h3>
+
+                <p>
+                  Pilih slot yang tersedia dan kirim request booking pertama Anda.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  onOpenBook
+                }
+              >
+                Pilih Jadwal
+
+                <ChevronRight
+                  size={15}
+                />
+              </button>
+            </div>
+          )}
+        </section>
+
+        <aside className="client-home-stats-panel">
+          <div className="client-home-stat-card">
+            <span>
+              Total Booking
+            </span>
+
+            <strong>
+              {
+                stats.totalBookings
+              }
+            </strong>
+
+            <small>
+              seluruh request
+            </small>
+          </div>
+
+          <div className="client-home-stat-card">
+            <span>
+              Studio Time
+            </span>
+
+            <strong>
+              {
+                stats.totalDuration
+              }
+              <b>
+                {' '}jam
+              </b>
+            </strong>
+
+            <small>
+              total durasi
+            </small>
+          </div>
+
+          <div className="client-home-stat-card is-payment">
+            <span>
+              Outstanding
+            </span>
+
+            <strong>
+              {
+                formatRupiah(
+                  stats.unpaidAmount,
+                )
+              }
+            </strong>
+
+            <small>
+              sisa pembayaran
+            </small>
+          </div>
+
+          {stats.unpaidAmount > 0 ? (
+            <button
+              className="client-home-payment-cta"
+              type="button"
+              onClick={
+                onOpenPayments
+              }
+            >
+              <CreditCard
+                size={15}
+              />
+
+              <span>
+                Lihat Tagihan
+              </span>
+
+              <ChevronRight
+                size={15}
+              />
+            </button>
+          ) : (
+            <div className="client-home-payment-clear">
+              <CreditCard
+                size={15}
+              />
+
+              Tidak ada tagihan aktif
+            </div>
+          )}
+        </aside>
       </div>
 
-      {recentBookings.length > 0 && (
-        <section className="client-recent-section">
-          <div className="client-section-heading" style={{ marginBottom: '6px' }}>
-            <h2>Booking terbaru</h2>
-            <button type="button" onClick={onOpenBookings}>Lihat semua</button>
-          </div>
-          <div className="client-recent-list">
-            {recentBookings.map((booking) => (
-              <button 
-                className={`client-recent-row ${booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? 'has-unread-message' : ''}`}
-                type="button" 
-                key={booking.id} 
-                onClick={() => handleBookingBlockClick(booking)}
-              >
-                <span className="client-recent-info-left">
-                  <span className="client-recent-icon"><Volume2 size={13} /></span>
-                  <span className="client-recent-text">
-                    <strong>{booking.sessionLabel || booking.packageLabel || booking.title || 'Sesi Studio'}</strong>
-                    <small>
-                      {new Date(`${booking.date}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • {String(booking.startHour).padStart(2, '0')}.00 WIB
-                    </small>
-                  </span>
-                </span>
-                <span className="client-recent-right">
-                  {booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false ? (
-                    <i className="client-unread-dot" aria-label="Pesan baru dari admin" />
-                  ) : null}
-                  <ChevronRight size={14} style={{ color: 'var(--auth-text-muted)' }} />
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+      <div className="client-home-lower-grid">
+        <section className="client-home-recent-panel">
+          <header>
+            <div>
+              <span>
+                Activity
+              </span>
 
-      <section className="client-help-tools" aria-label="Bantuan client" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-        <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer" className="client-recent-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', textDecoration: 'none' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            <MessageCircle size={14} style={{ color: 'var(--auth-accent)' }} />
-            <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <strong style={{ color: '#fff', fontSize: '11px', fontWeight: '700' }}>Hubungi Admin</strong>
-              <small style={{ color: 'var(--auth-text-muted)', fontSize: '9px' }}>Tanya jadwal/booking</small>
+              <h3>
+                Booking terbaru
+              </h3>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                onOpenBookings
+              }
+            >
+              Lihat semua
+
+              <ChevronRight
+                size={14}
+              />
+            </button>
+          </header>
+
+          {recentBookings.length ? (
+            <div className="client-home-recent-list">
+              {recentBookings.map(
+                (
+                  booking,
+                ) => (
+                  <button
+                    className="client-home-recent-item"
+                    key={
+                      booking.id
+                    }
+                    type="button"
+                    onClick={() =>
+                      handleBookingBlockClick(
+                        booking,
+                      )
+                    }
+                  >
+                    <span className="client-home-recent-icon">
+                      <Volume2
+                        size={16}
+                      />
+                    </span>
+
+                    <span className="client-home-recent-copy">
+                      <strong>
+                        {
+                          booking.sessionLabel ||
+                          booking.packageLabel ||
+                          booking.title ||
+                          'Sesi Studio'
+                        }
+                      </strong>
+
+                      <small>
+                        {
+                          formatBookingDate(
+                            booking.date,
+                          )
+                        }
+                        {' · '}
+                        {
+                          String(
+                            booking.startHour,
+                          ).padStart(
+                            2,
+                            '0',
+                          )
+                        }
+                        .00 WIB
+                      </small>
+                    </span>
+
+                    <span
+                      className={
+                        'client-home-recent-status is-' +
+                        getBookingStatus(
+                          booking,
+                        )
+                      }
+                    >
+                      {
+                        getStatusLabel(
+                          getBookingStatus(
+                            booking,
+                          ),
+                        )
+                      }
+                    </span>
+
+                    <ChevronRight
+                      size={15}
+                    />
+                  </button>
+                ),
+              )}
+            </div>
+          ) : (
+            <div className="client-home-get-started">
+              <span>
+                First booking
+              </span>
+
+              <h4>
+                Mulai dalam 3 langkah.
+              </h4>
+
+              <div>
+                <p>
+                  <b>
+                    1
+                  </b>
+                  Pilih tanggal dan jam kosong.
+                </p>
+
+                <p>
+                  <b>
+                    2
+                  </b>
+                  Review layanan dan estimasi harga.
+                </p>
+
+                <p>
+                  <b>
+                    3
+                  </b>
+                  Admin mengonfirmasi request Anda.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <aside className="client-home-quick-panel">
+          <header>
+            <span>
+              Quick Access
             </span>
-          </span>
-          <ChevronRight size={13} style={{ color: 'var(--auth-text-muted)' }} />
-        </a>
-        <a href={studioMapsUrl} target="_blank" rel="noopener noreferrer" className="client-recent-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', textDecoration: 'none' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            <MapPin size={14} style={{ color: 'var(--auth-accent)' }} />
-            <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <strong style={{ color: '#fff', fontSize: '11px', fontWeight: '700' }}>Lokasi Studio</strong>
-              <small style={{ color: 'var(--auth-text-muted)', fontSize: '9px' }}>Buka petunjuk arah</small>
+
+            <h3>
+              Yang sering dipakai
+            </h3>
+          </header>
+
+          <button
+            type="button"
+            onClick={
+              onOpenBook
+            }
+          >
+            <CalendarDays
+              size={17}
+            />
+
+            <span>
+              <strong>
+                Book Studio
+              </strong>
+
+              <small>
+                Cari slot kosong
+              </small>
             </span>
-          </span>
-          <ChevronRight size={13} style={{ color: 'var(--auth-text-muted)' }} />
-        </a>
-      </section>
+
+            <ChevronRight
+              size={15}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={
+              onOpenBookings
+            }
+          >
+            <ListChecks
+              size={17}
+            />
+
+            <span>
+              <strong>
+                My Bookings
+              </strong>
+
+              <small>
+                Request dan riwayat
+              </small>
+            </span>
+
+            <ChevronRight
+              size={15}
+            />
+          </button>
+
+          <a
+            href={
+              'https://wa.me/' +
+              whatsappPhone
+            }
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <MessageCircle
+              size={17}
+            />
+
+            <span>
+              <strong>
+                Hubungi Admin
+              </strong>
+
+              <small>
+                Bantuan cepat
+              </small>
+            </span>
+
+            <ChevronRight
+              size={15}
+            />
+          </a>
+
+          <a
+            href={
+              studioMapsUrl
+            }
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <MapPin
+              size={17}
+            />
+
+            <span>
+              <strong>
+                Lokasi Studio
+              </strong>
+
+              <small>
+                Buka Maps
+              </small>
+            </span>
+
+            <ChevronRight
+              size={15}
+            />
+          </a>
+        </aside>
+      </div>
     </div>
   );
 }
