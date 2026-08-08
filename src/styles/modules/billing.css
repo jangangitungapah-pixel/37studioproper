@@ -1322,3 +1322,522 @@
   .billing-thermal-receipt[data-paper="80mm"] { width: 80mm; max-width: 80mm; }
   @page { size: 80mm auto; margin: 0; }
 }
+
+/* Phase 5B — Payment Proof Command Center */
+
+.billing-proof-command-center {
+  display: grid;
+  gap: 12px;
+  border:
+    1px solid
+    var(--auth-border);
+  border-radius:
+    var(--studio-radius-xl);
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      var(--studio-accent-soft),
+      transparent 34%
+    ),
+    var(--auth-bg-soft);
+  padding: 16px;
+}
+
+.billing-proof-command-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.billing-proof-command-header > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.billing-proof-command-header > div:first-child > span {
+  color:
+    var(--auth-accent);
+  font-size:
+    var(--studio-text-xs);
+  font-weight:
+    800;
+  letter-spacing:
+    0.1em;
+  text-transform:
+    uppercase;
+}
+
+.billing-proof-command-header h3 {
+  margin: 0;
+  color:
+    var(--auth-text-strong);
+  font-size:
+    1.3rem;
+  font-weight:
+    780;
+  letter-spacing:
+    -0.035em;
+}
+
+.billing-proof-command-header p {
+  max-width: 720px;
+  margin: 0;
+  color:
+    var(--auth-text-muted);
+  font-size:
+    var(--studio-text-xs);
+  line-height:
+    1.5;
+}
+
+.billing-proof-command-pending {
+  min-width: 150px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--auth-warning) 32%,
+      var(--auth-border)
+    );
+  border-radius:
+    var(--studio-radius-lg);
+  background:
+    var(--auth-warning-soft);
+  color:
+    var(--auth-warning);
+  padding:
+    8px 12px;
+}
+
+.billing-proof-command-pending > span {
+  display: grid;
+  gap: 1px;
+}
+
+.billing-proof-command-pending small {
+  color:
+    var(--auth-text-muted);
+  font-size:
+    9px;
+}
+
+.billing-proof-command-pending strong {
+  color:
+    var(--auth-text-strong);
+  font-size:
+    15px;
+}
+
+.billing-proof-command-stats {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+  gap: 8px;
+}
+
+.billing-proof-command-stats article {
+  min-width: 0;
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border:
+    1px solid
+    var(--auth-border);
+  border-radius:
+    var(--studio-radius-lg);
+  background:
+    var(--auth-bg-control);
+  color:
+    var(--auth-text-muted);
+  padding:
+    10px 12px;
+}
+
+.billing-proof-command-stats article.is-pending {
+  color:
+    var(--auth-warning);
+}
+
+.billing-proof-command-stats article.is-approved {
+  color:
+    var(--auth-success);
+}
+
+.billing-proof-command-stats article.is-rejected {
+  color:
+    var(--auth-danger);
+}
+
+.billing-proof-command-stats article > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.billing-proof-command-stats small {
+  color:
+    var(--auth-text-muted);
+  font-size:
+    9px;
+}
+
+.billing-proof-command-stats strong {
+  overflow: hidden;
+  color:
+    var(--auth-text-strong);
+  font-size:
+    13px;
+  font-weight:
+    780;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.billing-proof-command-toolbar {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(190px, 250px);
+  gap: 8px;
+}
+
+.billing-proof-command-search {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns:
+    auto
+    minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border:
+    1px solid
+    var(--auth-border);
+  border-radius:
+    var(--studio-radius-md);
+  background:
+    var(--auth-bg-control);
+  color:
+    var(--auth-text-muted);
+  padding:
+    0 12px;
+}
+
+.billing-proof-command-search input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color:
+    var(--auth-text-strong);
+  font: inherit;
+  font-size:
+    var(--studio-text-sm);
+}
+
+.billing-proof-command-search input::placeholder {
+  color:
+    var(--auth-text-muted);
+}
+
+.billing-proof-command-filter .studio-select-trigger {
+  min-height:
+    44px;
+}
+
+.billing-proof-command-list {
+  display: grid;
+  gap: 7px;
+}
+
+.billing-proof-command-row {
+  width: 100%;
+  min-width: 0;
+  min-height: 70px;
+  display: grid;
+  grid-template-columns:
+    auto
+    minmax(0, 1.35fr)
+    minmax(180px, 0.75fr)
+    minmax(150px, auto);
+  align-items: center;
+  gap: 12px;
+  border:
+    1px solid
+    var(--auth-border);
+  border-radius:
+    var(--studio-radius-lg);
+  background:
+    var(--auth-bg-control);
+  color:
+    inherit;
+  padding:
+    9px 11px;
+  text-align:
+    left;
+  cursor:
+    pointer;
+  transition:
+    border-color 120ms,
+    background 120ms;
+}
+
+.billing-proof-command-row:hover {
+  border-color:
+    var(--auth-border-strong);
+  background:
+    var(--auth-bg-card);
+}
+
+.billing-proof-command-thumb {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border:
+    1px solid
+    var(--auth-border);
+  border-radius:
+    var(--studio-radius-md);
+  background:
+    var(--auth-bg-soft);
+  color:
+    var(--auth-text-muted);
+}
+
+.billing-proof-command-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit:
+    cover;
+}
+
+.billing-proof-command-main,
+.billing-proof-command-audit,
+.billing-proof-command-amount {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.billing-proof-command-main strong,
+.billing-proof-command-audit strong,
+.billing-proof-command-amount strong {
+  overflow: hidden;
+  color:
+    var(--auth-text-strong);
+  font-size:
+    var(--studio-text-sm);
+  font-weight:
+    760;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.billing-proof-command-main small,
+.billing-proof-command-main em,
+.billing-proof-command-audit small,
+.billing-proof-command-audit em {
+  overflow: hidden;
+  color:
+    var(--auth-text-muted);
+  font-size:
+    var(--studio-text-xs);
+  font-style:
+    normal;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.billing-proof-command-audit strong {
+  font-size:
+    var(--studio-text-xs);
+}
+
+.billing-proof-command-amount {
+  justify-items:
+    end;
+}
+
+.billing-proof-command-empty {
+  min-height: 132px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  border:
+    1px dashed
+    var(--auth-border-strong);
+  border-radius:
+    var(--studio-radius-lg);
+  color:
+    var(--auth-text-muted);
+  text-align:
+    center;
+}
+
+.billing-proof-command-empty strong {
+  color:
+    var(--auth-text-strong);
+  font-size:
+    var(--studio-text-sm);
+}
+
+.billing-proof-command-empty span {
+  font-size:
+    var(--studio-text-xs);
+}
+
+.billing-proof-review-audit {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 8px;
+}
+
+.billing-proof-review-audit > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border:
+    1px solid
+    var(--auth-border);
+  border-radius:
+    var(--studio-radius-md);
+  background:
+    var(--auth-bg-soft);
+  padding:
+    10px;
+}
+
+.billing-proof-review-audit small {
+  color:
+    var(--auth-text-muted);
+  font-size:
+    9px;
+  font-weight:
+    750;
+  text-transform:
+    uppercase;
+}
+
+.billing-proof-review-audit strong {
+  overflow: hidden;
+  color:
+    var(--auth-text-strong);
+  font-size:
+    var(--studio-text-xs);
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.billing-proof-admin-note textarea:disabled {
+  cursor:
+    default;
+  opacity:
+    0.78;
+}
+
+@media (max-width: 900px) {
+  .billing-proof-command-row {
+    grid-template-columns:
+      auto
+      minmax(0, 1fr)
+      auto;
+  }
+
+  .billing-proof-command-audit {
+    grid-column:
+      2 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .billing-proof-command-center {
+    gap: 8px;
+    border-radius:
+      var(--studio-radius-lg);
+    padding: 10px;
+  }
+
+  .billing-proof-command-header {
+    align-items:
+      stretch;
+    flex-direction:
+      column;
+  }
+
+  .billing-proof-command-pending {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .billing-proof-command-stats {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+    gap: 6px;
+  }
+
+  .billing-proof-command-stats article {
+    min-height: 54px;
+    padding: 8px;
+  }
+
+  .billing-proof-command-toolbar {
+    grid-template-columns:
+      1fr;
+  }
+
+  .billing-proof-command-row {
+    grid-template-columns:
+      auto
+      minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .billing-proof-command-thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  .billing-proof-command-audit,
+  .billing-proof-command-amount {
+    grid-column:
+      2;
+  }
+
+  .billing-proof-command-amount {
+    justify-items:
+      start;
+  }
+
+  .billing-proof-review-audit {
+    grid-template-columns:
+      1fr;
+  }
+}
+

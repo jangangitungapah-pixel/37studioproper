@@ -68,7 +68,7 @@ function getInvoiceDisplayNumber(booking) {
 function getAdminPaymentNotificationUrl(proof) {
   const id = encodeURIComponent(String(proof?.id || ''));
 
-  return id ? `/admin/billing?paymentProofId=${id}` : '/admin/billing';
+  return id ? `/admin/finance/invoices?paymentProofId=${id}` : '/admin/finance/invoices';
 }
 
 function getClientPaymentNotificationUrl(bookingId) {
@@ -312,6 +312,105 @@ export function subscribePaymentProofsForBooking(bookingId, callback, onError) {
   );
 }
 
+export function subscribePaymentProofs(
+  callback,
+  onError,
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    if (
+      onError
+    ) {
+      onError(
+        new Error(
+          'Firebase belum dikonfigurasi.',
+        ),
+      );
+    }
+
+    return () => {};
+  }
+
+  const proofsRef =
+    collection(
+      firestoreDb,
+      PAYMENT_PROOFS_COLLECTION,
+    );
+
+  return onSnapshot(
+    proofsRef,
+    (
+      snapshot,
+    ) => {
+      const proofs = [];
+
+      snapshot.forEach(
+        (
+          proofDoc,
+        ) => {
+          proofs.push(
+            normalizePaymentProof({
+              id:
+                proofDoc.id,
+
+              ...proofDoc.data(),
+            }),
+          );
+        },
+      );
+
+      proofs.sort(
+        (
+          first,
+          second,
+        ) => {
+          const firstValue =
+            String(
+              first.createdAt ||
+              first.updatedAt ||
+              '',
+            );
+
+          const secondValue =
+            String(
+              second.createdAt ||
+              second.updatedAt ||
+              '',
+            );
+
+          return secondValue
+            .localeCompare(
+              firstValue,
+            );
+        },
+      );
+
+      callback(
+        proofs,
+      );
+    },
+
+    (
+      error,
+    ) => {
+      console.error(
+        'Gagal membaca payment proof:',
+        error,
+      );
+
+      if (
+        onError
+      ) {
+        onError(
+          error,
+        );
+      }
+    },
+  );
+}
+
 export function subscribePendingPaymentProofs(callback, onError) {
   if (!isFirebaseConfigured || !firestoreDb) {
     if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
@@ -451,6 +550,7 @@ export const paymentProofRepository = {
   rejectPaymentProof,
   submitPaymentProof,
   subscribeClientPaymentProofs,
+  subscribePaymentProofs,
   subscribePaymentProofsForBooking,
   subscribePendingPaymentProofs,
 };

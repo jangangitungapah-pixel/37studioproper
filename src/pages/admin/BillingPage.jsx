@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Ban,
@@ -8,7 +9,6 @@ import {
   PhoneCall,
   ExternalLink,
   Image,
-  UploadCloud,
   Printer,
   Search,
   Share2,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import PaymentProofCommandCenter from '../../components/billing/PaymentProofCommandCenter.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
@@ -497,51 +498,6 @@ function getCashStats(bookings, range = 'today') {
   );
 }
 
-function PaymentProofReviewQueue({ bookingsById, onOpenProof, proofs }) {
-  const visibleProofs = proofs.slice(0, 6);
-
-  return (
-    <section className="billing-proof-review-card" aria-label="Review bukti pembayaran">
-      <header>
-        <span><UploadCloud size={16} /></span>
-        <div>
-          <small>Bukti Pembayaran</small>
-          <strong>{proofs.length ? proofs.length + ' menunggu review' : 'Tidak ada pending'}</strong>
-        </div>
-      </header>
-
-      {visibleProofs.length ? (
-        <div className="billing-proof-review-list">
-          {visibleProofs.map((proof) => {
-            const booking = findBookingForProof(bookingsById, proof);
-
-            return (
-              <article className="billing-proof-review-row" key={proof.id}>
-                <button type="button" onClick={() => onOpenProof(proof)}>
-                  <span className="billing-proof-thumb">
-                    {proof.proofUrl ? <img alt="" src={proof.proofUrl} loading="lazy" /> : <Image size={16} />}
-                  </span>
-                  <span className="billing-proof-main">
-                    <strong>{proof.customer || booking?.customer || 'Client'}</strong>
-                    <small>{booking ? getInvoiceDisplayNumber(booking) : proof.invoiceNumber || proof.bookingCode || proof.bookingId}</small>
-                    <em>{getProofCategoryLabel(proof.category)} • {getProofMethodLabel(proof.method)} • {formatMoney(proof.amount)}</em>
-                  </span>
-                </button>
-
-                <span className={'billing-proof-status ' + getProofTone(proof.status)}>
-                  {getPaymentProofStatusLabel(proof.status)}
-                </span>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="billing-proof-empty">Belum ada bukti pembayaran yang perlu direview.</p>
-      )}
-    </section>
-  );
-}
-
 function BillingHero({ bookings }) {
   const stats = getBillingStats(bookings);
 
@@ -987,6 +943,33 @@ function PaymentProofReviewModal({
             </div>
           ) : null}
 
+          {proof.status !== 'pending' ? (
+            <div className="billing-proof-review-audit">
+              <span>
+                <small>Status Review</small>
+                <strong>
+                  {getPaymentProofStatusLabel(proof.status)}
+                </strong>
+              </span>
+
+              <span>
+                <small>Reviewed By</small>
+                <strong>
+                  {proof.reviewedByName || 'Admin'}
+                </strong>
+              </span>
+
+              <span>
+                <small>Reviewed At</small>
+                <strong>
+                  {proof.reviewedAt
+                    ? formatDate(proof.reviewedAt)
+                    : '-'}
+                </strong>
+              </span>
+            </div>
+          ) : null}
+
           {!booking ? (
             <div className="billing-proof-warning">
               <AlertCircle size={15} />
@@ -998,7 +981,15 @@ function PaymentProofReviewModal({
             <span>Catatan Admin</span>
             <textarea
               placeholder="Opsional. Contoh: Bukti valid, transfer masuk BCA."
-              value={adminNote}
+              value={
+                proof.status === 'pending'
+                  ? adminNote
+                  : proof.adminNote
+              }
+              disabled={
+                isReviewing ||
+                proof.status !== 'pending'
+              }
               onChange={(event) => onAdminNoteChange(event.target.value)}
             />
           </label>
@@ -1312,8 +1303,13 @@ export default function BillingPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
-  const [pendingPaymentProofs, setPendingPaymentProofs] = useState(() => isBillingQaPreview ? BILLING_QA_PREVIEW_PROOFS : []);
-  const [selectedPaymentProof, setSelectedPaymentProof] = useState(null);
+  const [paymentProofs, setPaymentProofs] = useState(() =>
+    isBillingQaPreview
+      ? BILLING_QA_PREVIEW_PROOFS
+      : []
+  );
+  const [selectedPaymentProofId, setSelectedPaymentProofId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [paymentProofAdminNote, setPaymentProofAdminNote] = useState('');
   const [isReviewingPaymentProof, setIsReviewingPaymentProof] = useState(false);
   const rawInvoiceSettings = useInvoiceSettings();
@@ -1342,18 +1338,35 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
-    if (isBillingQaPreview) return undefined;
+    if (
+      isBillingQaPreview
+    ) {
+      return undefined;
+    }
 
-    const unsubscribe = paymentProofRepository.subscribePendingPaymentProofs(
-      (data) => setPendingPaymentProofs(data),
-      (error) => {
-        console.error('Gagal memuat bukti pembayaran pending:', error);
-        setToast({
-          title: 'Bukti pembayaran belum tersinkron',
-          message: 'Daftar bukti pembayaran pending belum bisa dimuat.',
-        });
-      }
-    );
+    const unsubscribe =
+      paymentProofRepository
+        .subscribePaymentProofs(
+          (data) =>
+            setPaymentProofs(
+              data,
+            ),
+
+          (error) => {
+            console.error(
+              'Gagal memuat bukti pembayaran:',
+              error,
+            );
+
+            setToast({
+              title:
+                'Bukti pembayaran belum tersinkron',
+
+              message:
+                'Riwayat bukti pembayaran belum bisa dimuat.',
+            });
+          },
+        );
 
     return unsubscribe;
   }, []);
@@ -1373,10 +1386,72 @@ export default function BillingPage() {
     }, new Map());
   }, [bookings]);
 
+  const selectedPaymentProof = useMemo(
+    () =>
+      paymentProofs.find(
+        (proof) =>
+          proof.id ===
+          selectedPaymentProofId
+      ) || null,
+    [
+      paymentProofs,
+      selectedPaymentProofId,
+    ]
+  );
+
   const selectedPaymentProofBooking = useMemo(
     () => findBookingForProof(bookingsById, selectedPaymentProof),
     [bookingsById, selectedPaymentProof]
   );
+
+  const requestedPaymentProofId =
+    searchParams.get('paymentProofId') || '';
+
+  useEffect(() => {
+    if (
+      !requestedPaymentProofId ||
+      requestedPaymentProofId ===
+        selectedPaymentProofId
+    ) {
+      return undefined;
+    }
+
+    const proofExists =
+      paymentProofs.some(
+        (proof) =>
+          proof.id ===
+          requestedPaymentProofId
+      );
+
+    if (
+      !proofExists
+    ) {
+      return undefined;
+    }
+
+    const timerId =
+      window.setTimeout(
+        () => {
+          setSelectedPaymentProofId(
+            requestedPaymentProofId
+          );
+
+          setPaymentProofAdminNote(
+            ''
+          );
+        },
+        0,
+      );
+
+    return () =>
+      window.clearTimeout(
+        timerId
+      );
+  }, [
+    paymentProofs,
+    requestedPaymentProofId,
+    selectedPaymentProofId,
+  ]);
 
   const filteredBookings = useMemo(() => {
     const queryText = searchText.trim().toLowerCase();
@@ -1417,16 +1492,80 @@ export default function BillingPage() {
     [billingPage, filteredBookings]
   );
 
-  function openPaymentProofReview(proof) {
-    setSelectedPaymentProof(proof);
-    setPaymentProofAdminNote('');
+  function syncPaymentProofSearchParam(
+    proofId,
+  ) {
+    const nextParams =
+      new URLSearchParams(
+        searchParams,
+      );
+
+    if (
+      proofId
+    ) {
+      nextParams.set(
+        'paymentProofId',
+        proofId,
+      );
+    } else {
+      nextParams.delete(
+        'paymentProofId',
+      );
+    }
+
+    setSearchParams(
+      nextParams,
+      {
+        replace:
+          true,
+      },
+    );
+  }
+
+  function openPaymentProofReview(
+    proof,
+  ) {
+    if (
+      !proof?.id
+    ) {
+      return;
+    }
+
+    setSelectedPaymentProofId(
+      proof.id,
+    );
+
+    setPaymentProofAdminNote(
+      '',
+    );
+
+    syncPaymentProofSearchParam(
+      proof.id,
+    );
+  }
+
+  function clearPaymentProofSelection() {
+    setSelectedPaymentProofId(
+      '',
+    );
+
+    setPaymentProofAdminNote(
+      '',
+    );
+
+    syncPaymentProofSearchParam(
+      '',
+    );
   }
 
   function closePaymentProofReview() {
-    if (isReviewingPaymentProof) return;
+    if (
+      isReviewingPaymentProof
+    ) {
+      return;
+    }
 
-    setSelectedPaymentProof(null);
-    setPaymentProofAdminNote('');
+    clearPaymentProofSelection();
   }
 
   async function approveSelectedPaymentProof() {
@@ -1446,8 +1585,8 @@ export default function BillingPage() {
         booking.id === result.booking.id ? result.booking : booking
       ));
       setSelectedBooking((current) => (current?.id === result.booking.id ? result.booking : current));
-      setSelectedPaymentProof(null);
-      setPaymentProofAdminNote('');
+      clearPaymentProofSelection();
+
       setToast({
         title: 'Bukti pembayaran disetujui',
         message: (selectedPaymentProof.customer || selectedPaymentProofBooking.customer || 'Client') + ' membayar ' + formatMoney(selectedPaymentProof.amount) + '.',
@@ -1475,8 +1614,8 @@ export default function BillingPage() {
         paymentProofAdminNote
       );
 
-      setSelectedPaymentProof(null);
-      setPaymentProofAdminNote('');
+      clearPaymentProofSelection();
+
       setToast({
         title: 'Bukti pembayaran ditolak',
         message: (selectedPaymentProof.customer || 'Client') + ' dapat mengirim ulang bukti pembayaran.',
@@ -1699,9 +1838,9 @@ export default function BillingPage() {
         onRangeChange={setActiveCashRange}
       />
 
-      <PaymentProofReviewQueue
+      <PaymentProofCommandCenter
         bookingsById={bookingsById}
-        proofs={pendingPaymentProofs}
+        proofs={paymentProofs}
         onOpenProof={openPaymentProofReview}
       />
 
