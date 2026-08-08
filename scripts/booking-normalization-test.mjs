@@ -447,6 +447,42 @@ assert.deepEqual(
   );
 }
 
+/**
+ * Regex escaping regression.
+ *
+ * Hyphenated request aliases must normalize to underscore vocabulary.
+ */
+assert.equal(
+  normalizeRequestStatus({
+    bookingRequestStatus: 'awaiting-confirmation',
+  }),
+  'submitted',
+);
+
+/**
+ * startTimeLabel parsing must work when startHour is not available.
+ */
+assert.equal(
+  normalizeSessionStatus(
+    {
+      date: '2026-08-08',
+      startTimeLabel: '10:30',
+      durationHours: 1,
+    },
+    {
+      now: new Date(
+        2026,
+        7,
+        8,
+        10,
+        45,
+        0,
+      ),
+    },
+  ),
+  'in_progress',
+);
+
 process.stdout.write(
   '✅ Booking normalization compatibility contract passed.\n',
 );

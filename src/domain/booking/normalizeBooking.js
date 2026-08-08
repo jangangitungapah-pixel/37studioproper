@@ -23,7 +23,7 @@ function cleanStatus(value) {
   return String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/[-\\s]+/g, '_');
+    .replace(/[-\s]+/g, '_');
 }
 
 function toFiniteNumber(value, fallback = 0) {
@@ -149,7 +149,7 @@ function getCurrentDateParts(now) {
 function getScheduleDateKey(booking) {
   const value = String(booking?.date || '').trim();
 
-  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value;
   }
 
@@ -173,7 +173,7 @@ function getScheduleStartMinute(booking) {
   ).trim();
 
   const match = rawTime.match(
-    /^(\\d{1,2})[:.](\\d{2})/,
+    /^(\d{1,2})[:.](\d{2})/,
   );
 
   if (!match) {
