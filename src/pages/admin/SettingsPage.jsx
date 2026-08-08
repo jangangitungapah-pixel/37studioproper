@@ -19,6 +19,7 @@ import {
 import {
   countEnabledAdminPermissions,
   defaultAdminPermissions,
+  defaultGuardPortalPermissions,
   getAssignablePermissionPages,
   isOwnerAdminUser,
   normalizeAdminPermissionsForRole,

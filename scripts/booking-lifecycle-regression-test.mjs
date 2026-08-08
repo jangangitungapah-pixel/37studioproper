@@ -491,4 +491,4 @@ function makePayment(overrides = {}) {
   );
 }
 
-console.log('✅ Booking lifecycle regression test passed.');
+process.stdout.write('✅ Booking lifecycle regression test passed.\n');

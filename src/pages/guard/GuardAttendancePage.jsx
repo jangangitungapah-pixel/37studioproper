@@ -258,8 +258,7 @@ export default function GuardAttendancePage() {
 
   useEffect(() => {
     if (!currentSession?.clockInAt) {
-      setElapsedTime('00:00:00');
-      return () => {};
+      return undefined;
     }
 
     const calculateElapsed = () => {
@@ -275,10 +274,13 @@ export default function GuardAttendancePage() {
       setElapsedTime(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
     };
 
-    calculateElapsed();
-    const interval = setInterval(calculateElapsed, 1000);
+    const initialTickId = window.setTimeout(calculateElapsed, 0);
+    const intervalId = window.setInterval(calculateElapsed, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialTickId);
+      window.clearInterval(intervalId);
+    };
   }, [currentSession?.clockInAt]);
 
   const stats = useMemo(() => {
