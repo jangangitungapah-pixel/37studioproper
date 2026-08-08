@@ -16,7 +16,7 @@ import {
   Search,
   XCircle,
 } from 'lucide-react';
-import BookingDetailModal from '../../components/schedule/BookingDetailModal.jsx';
+import BookingDetailDrawer from '../../components/booking/BookingDetailDrawer.jsx';
 import {
   getBookingRequestStatus,
   getLegacyBookingPaymentStatus,
@@ -306,6 +306,11 @@ export default function BookingRequestsPage({
   ] = useState(null);
 
   const [
+    selectedBookingTab,
+    setSelectedBookingTab,
+  ] = useState('overview');
+
+  const [
     actionNotice,
     setActionNotice,
   ] = useState(null);
@@ -560,7 +565,12 @@ export default function BookingRequestsPage({
 
   function openRequest(
     booking,
+    initialTab = 'overview',
   ) {
+    setSelectedBookingTab(
+      initialTab,
+    );
+
     setSelectedBooking(
       booking,
     );
@@ -568,6 +578,9 @@ export default function BookingRequestsPage({
 
   function closeRequest() {
     setSelectedBooking(null);
+    setSelectedBookingTab(
+      'overview',
+    );
   }
 
   return (
@@ -1058,6 +1071,7 @@ export default function BookingRequestsPage({
                       onClick={() =>
                         openRequest(
                           booking,
+                          'messages',
                         )
                       }
                     >
@@ -1141,8 +1155,11 @@ export default function BookingRequestsPage({
         </div>
       )}
 
-      <BookingDetailModal
+      <BookingDetailDrawer
         booking={selectedBooking}
+        initialTab={
+          selectedBookingTab
+        }
         isOpen={
           Boolean(
             selectedBooking,
@@ -1152,6 +1169,7 @@ export default function BookingRequestsPage({
         onRequestStatusChange={
           updateRequestStatus
         }
+        user={currentUser}
       />
     </section>
   );

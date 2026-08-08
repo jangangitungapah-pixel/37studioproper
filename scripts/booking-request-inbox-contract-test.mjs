@@ -226,49 +226,42 @@ assert.equal(
 
 assert.equal(
   requestPageSource.includes(
-    'BookingDetailModal',
+    'BookingDetailDrawer',
   ),
   true,
-  'Request Inbox must expose booking detail and conversation.',
+  'Request Inbox must expose the unified booking detail drawer.',
 );
 
 /**
- * BookingDetailModal should now use canonical selectors.
+ * BookingDetailDrawer is the shared booking detail surface.
  */
 const detailSource =
   readFileSync(
     resolve(
-      'src/components/schedule/BookingDetailModal.jsx',
+      'src/components/booking/BookingDetailDrawer.jsx',
     ),
     'utf8',
   );
 
 assert.equal(
   detailSource.includes(
-    'getLegacyBookingPaymentStatus',
+    'getBookingPaymentStatus',
   ),
   true,
 );
 
 assert.equal(
   detailSource.includes(
-    'getBookingRequestStatus(booking)',
+    'getBookingRequestStatus(',
   ),
   true,
 );
 
 assert.equal(
   detailSource.includes(
-    "booking.bookingRequestStatus === 'submitted'",
+    'BookingConversationPanel',
   ),
-  false,
-);
-
-assert.equal(
-  detailSource.includes(
-    "booking.bookingRequestStatus === 'cancellation_requested'",
-  ),
-  false,
+  true,
 );
 
 assert.equal(
@@ -276,7 +269,15 @@ assert.equal(
     '{onEdit ? (',
   ),
   true,
-  'BookingDetailModal edit action must be optional for Request Inbox.',
+  'BookingDetailDrawer edit action must remain optional for Request Inbox.',
+);
+
+assert.equal(
+  requestPageSource.includes(
+    "'messages',",
+  ),
+  true,
+  'Detail & Chat must be able to open the drawer directly on Messages.',
 );
 
 /**

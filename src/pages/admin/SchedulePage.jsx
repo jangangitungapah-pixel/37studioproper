@@ -9,7 +9,7 @@ import {
   X
 } from 'lucide-react';
 import BookingFormModal from '../../components/schedule/BookingFormModal.jsx';
-import BookingDetailModal from '../../components/schedule/BookingDetailModal.jsx';
+import BookingDetailDrawer from '../../components/booking/BookingDetailDrawer.jsx';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import {
   businessHours,
@@ -1160,7 +1160,11 @@ export default function SchedulePage() {
         user: firebaseAuth?.currentUser,
       });
       setSelectedBookingDetail((current) => current?.id === booking.id
-        ? { ...current, bookingRequestStatus: status }
+        ? {
+          ...current,
+          requestStatus: status,
+          bookingRequestStatus: status,
+        }
         : current);
       setScheduleToast({
         kind: 'success',
@@ -1428,12 +1432,13 @@ export default function SchedulePage() {
         onSave={saveBooking}
       />
 
-      <BookingDetailModal
+      <BookingDetailDrawer
         booking={selectedBookingDetail}
         isOpen={Boolean(selectedBookingDetail)}
         onClose={closeBookingDetail}
         onEdit={editBookingFromDetail}
         onRequestStatusChange={updateClientRequestStatus}
+        user={firebaseAuth?.currentUser}
       />
 
       <RequestQueueModal
