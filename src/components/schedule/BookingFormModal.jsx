@@ -195,6 +195,7 @@ export default function BookingFormModal({
 }) {
   const [form, setForm] = useState(() => createInitialForm(initialSlot, editingBooking));
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const pricingSettings = usePricingSettings();
   const sessionTypeOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
@@ -223,6 +224,7 @@ export default function BookingFormModal({
     const frameId = window.requestAnimationFrame(() => {
       setForm(createInitialForm(initialSlot, editingBooking));
       setError('');
+      setIsSaving(false);
     });
 
     return () => {
@@ -331,6 +333,8 @@ export default function BookingFormModal({
   async function handleSubmit(event) {
     event.preventDefault();
 
+    if (isSaving) return;
+
     const cleanName = form.name.trim();
     const cleanPhone = form.phone.trim();
     const cleanBandName = form.bandName.trim();
@@ -384,7 +388,12 @@ export default function BookingFormModal({
           : form.paymentStatus;
     const lastPayment = paymentHistory[paymentHistory.length - 1];
 
-    const didSave = await onSave({
+    let didSave = false;
+
+    setIsSaving(true);
+
+    try {
+      didSave = await onSave({
       id: bookingId,
       customer: cleanName,
       bandName: cleanBandName,
@@ -416,7 +425,21 @@ export default function BookingFormModal({
       invoiceAmount,
       createdAt: editingBooking?.createdAt || now,
       updatedAt: editingBooking ? now : '',
-    });
+      });
+    } catch (saveError) {
+      console.error(
+        'Booking form save failed:',
+        saveError
+      );
+
+      setError(
+        'Booking belum berhasil disimpan. Coba kembali.'
+      );
+
+      return;
+    } finally {
+      setIsSaving(false);
+    }
 
     if (didSave === false) {
       return;
@@ -649,8 +672,16 @@ export default function BookingFormModal({
               <button className="booking-button is-secondary" type="button" onClick={onClose}>
                 Batal
               </button>
-              <button className="booking-button is-primary" type="submit">
-                {editingBooking ? 'Simpan Perubahan' : 'Simpan'}
+              <button
+                className="booking-button is-primary"
+                disabled={isSaving}
+                type="submit"
+              >
+                {isSaving
+                  ? 'Menyimpan...'
+                  : editingBooking
+                    ? 'Simpan Perubahan'
+                    : 'Simpan'}
               </button>
             </div>
           </footer>

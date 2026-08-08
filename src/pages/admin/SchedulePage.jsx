@@ -1101,7 +1101,7 @@ export default function SchedulePage() {
       return false;
     }
 
-    const customerIdentity = resolveBookingCustomerIdentity(booking, current => bookings);
+    const customerIdentity = resolveBookingCustomerIdentity(booking, bookings);
     let nextBooking = {
       ...booking,
       customerId: customerIdentity.customerId,
