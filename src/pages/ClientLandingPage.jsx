@@ -49,8 +49,6 @@ export default function ClientLandingPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(() => Boolean(firebaseAuth));
   const [userBookings, setUserBookings] = useState([]);
-  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
-  const [bookingFeedback, setBookingFeedback] = useState('');
 
   // Form states for simulator (will be filled as soon as auth state resolves)
   const [name, setName] = useState('');
@@ -267,53 +265,9 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     return `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`;
   }, [name, phone, sessionType, packageId, recordingTypeId, date, startHour, actualDuration, pricingBreakdown, invoiceSettings, whatsappPhone, pricingSettings.packages, sessionOptions, recordingTypeOptions]);
 
-  async function handleBookingAction(event) {
-    if (!currentUser) return;
-
+  function handleBookingAction(event) {
     event.preventDefault();
-    if (isSubmittingRequest) return;
-
-    const contactWindow = window.open('about:blank', '_blank');
-    if (contactWindow) contactWindow.opener = null;
-    const selectedPackage = packageOptions.find((item) => item.key === packageId);
-    const selectedSession = sessionOptions.find((item) => item.key === sessionType);
-    const selectedRecording = recordingTypeOptions.find((item) => item.key === recordingTypeId);
-    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
-
-    setIsSubmittingRequest(true);
-    setBookingFeedback('');
-
-    try {
-      await adminBookingRepository.createClientBookingRequest(currentUser, {
-        customer: name || currentUser.displayName || 'Client',
-        phone: phone || currentUser.phoneNumber || '',
-        packageId,
-        packageLabel: selectedPackage?.label || '',
-        pricingMode: pricingBreakdown.mode,
-        sessionType: selectedPackage ? 'package' : sessionType,
-        sessionLabel,
-        recordingTypeId: recordingTypeId === 'none' ? '' : recordingTypeId,
-        recordingTypeLabel: selectedRecording?.label || '',
-        title: sessionLabel,
-        date,
-        startHour: Number(startHour),
-        startTimeLabel: `${String(startHour).padStart(2, '0')}.00`,
-        durationHours: actualDuration,
-        subtotal: pricingBreakdown.subtotal,
-        discountAmount: pricingBreakdown.discountAmount,
-        appliedDiscounts: pricingBreakdown.appliedDiscounts,
-        total: pricingBreakdown.total,
-      });
-
-      setBookingFeedback('Permintaan tersimpan dan sudah masuk ke dashboard admin.');
-      if (contactWindow) contactWindow.location.replace(whatsappUrl);
-    } catch (error) {
-      if (contactWindow) contactWindow.close();
-      console.error('Gagal menyimpan booking request:', error);
-      setBookingFeedback('Gagal menyimpan permintaan. Silakan coba lagi.');
-    } finally {
-      setIsSubmittingRequest(false);
-    }
+    navigate('/book');
   }
 
   // Dynamic lists mapping icons to service cards
@@ -994,7 +948,7 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   </div>
                   <p style={{ margin: 0 }}>1. Lengkapi formulir rincian sesi.</p>
                   <p style={{ margin: 0 }}>2. Cek total estimasi biaya di atas.</p>
-                  <p style={{ margin: 0 }}>3. Klik tombol WhatsApp untuk booking.</p>
+                  <p style={{ margin: 0 }}>3. Pilih slot realtime yang masih tersedia.</p>
                 </div>
               </div>
 
@@ -1004,7 +958,6 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   target="_blank" 
                   rel="noopener noreferrer"
                   onClick={handleBookingAction}
-                  aria-disabled={isSubmittingRequest}
                   style={{
                     width: '100%',
                     minHeight: '44px',
@@ -1022,11 +975,8 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
                   }}
                 >
                   <Phone size={13} />
-                  <span>{isSubmittingRequest ? 'MENYIMPAN REQUEST...' : currentUser ? 'KIRIM REQUEST + WHATSAPP' : 'KIRIM JADWAL VIA WHATSAPP'}</span>
+                  <span>PILIH SLOT TERSEDIA</span>
                 </a>
-                {bookingFeedback ? (
-                  <p style={{ margin: '8px 0 0', textAlign: 'center', fontSize: '11px', color: 'var(--studio-text-muted)' }} role="status">{bookingFeedback}</p>
-                ) : null}
               </div>
             </div>
           </div>

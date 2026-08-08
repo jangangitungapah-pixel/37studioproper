@@ -6,8 +6,6 @@ import {
   History,
   CreditCard,
   LogOut,
-  CalendarDays,
-  Phone,
   Receipt,
   CalendarPlus,
   Copy,
@@ -68,12 +66,12 @@ import {
   paymentProofMethodOptions,
   paymentProofRepository,
 } from '../services/paymentProofRepository.js';
-import { businessHours, durationOptions, statusFilters } from './admin/scheduleConfig.js';
-import StudioSelect from '../components/ui/StudioSelect.jsx';
+import { businessHours, statusFilters } from './admin/scheduleConfig.js';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
 import ClientDashboardTab from '../components/client/ClientDashboardTab.jsx';
 import ClientCalendarTab from '../components/client/ClientCalendarTab.jsx';
 import ClientHistoryTab from '../components/client/ClientHistoryTab.jsx';
+import ClientBookingWizard from '../components/client/ClientBookingWizard.jsx';
 import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
 
 import '../styles/admin-auth.css';
@@ -946,12 +944,18 @@ export default function ClientPortalPage() {
   }, [invoiceSettings.phone, studioSettings.studioPhone]);
 
   async function submitBookingRequest() {
-    if (!currentUser || !simulatorDate || isSubmittingRequest) return;
+    if (!currentUser || !simulatorDate || isSubmittingRequest) return null;
 
     if (!simCustomerName.trim()) {
       setActionFeedback('Nama pelanggan wajib diisi.');
       window.setTimeout(() => setActionFeedback(''), 3600);
-      return;
+      return null;
+    }
+
+    if (!simCustomerPhone.trim()) {
+      setActionFeedback('Nomor HP / WhatsApp wajib diisi.');
+      window.setTimeout(() => setActionFeedback(''), 3600);
+      return null;
     }
 
     const duplicateRequest = userBookings.find((booking) => {
@@ -963,23 +967,25 @@ export default function ClientPortalPage() {
     });
 
     if (duplicateRequest) {
-      setIsSimulatorOpen(false);
-      setActiveTab('history');
       setActionFeedback('Request untuk slot ini sudah pernah dikirim. Silakan cek Riwayat.');
       window.setTimeout(() => setActionFeedback(''), 3600);
-      return;
+      return null;
     }
 
     const selectedPackage = packageOptions.find((item) => item.key === simPackageId);
     const selectedSession = sessionOptions.find((item) => item.key === simSessionType);
     const selectedRecording = recordingTypeOptions.find((item) => item.key === simRecordingTypeId);
     const isRecordingRequest = simPackageId === 'none' && isRecordingSessionId(simSessionType);
-    const sessionLabel = selectedPackage?.label || selectedRecording?.label?.split(' • ')[0] || selectedSession?.label || 'Sesi Studio';
+    const sessionLabel =
+      selectedPackage?.label ||
+      selectedRecording?.label?.split(' • ')[0] ||
+      selectedSession?.label ||
+      'Sesi Studio';
 
     if (isRecordingRequest && !selectedRecording) {
       setActionFeedback('Pilih jenis recording terlebih dahulu. Harga Recording diambil dari Recording Type.');
       window.setTimeout(() => setActionFeedback(''), 4200);
-      return;
+      return null;
     }
 
     setIsSubmittingRequest(true);
@@ -1004,7 +1010,7 @@ export default function ClientPortalPage() {
           title: sessionLabel,
           date: simulatorDate,
           startHour: Number(simulatorStartHour),
-          startTimeLabel: `${String(simulatorStartHour).padStart(2, '0')}.00`,
+          startTimeLabel: String(simulatorStartHour).padStart(2, '0') + '.00',
           durationHours: actualDuration,
           subtotal: pricingBreakdown.subtotal,
           discountAmount: pricingBreakdown.discountAmount,
@@ -1018,7 +1024,13 @@ export default function ClientPortalPage() {
           }
 
           await submitProofForBooking({
-            amount: Number(simProofAmount || getDefaultProofAmount(createdBooking, simProofCategory)),
+            amount: Number(
+              simProofAmount ||
+                getDefaultProofAmount(
+                  createdBooking,
+                  simProofCategory,
+                ),
+            ),
             booking: createdBooking,
             category: simProofCategory,
             clientNote: simProofNote,
@@ -1028,24 +1040,27 @@ export default function ClientPortalPage() {
         }
       } catch (innerError) {
         if (createdBooking) {
-          setIsSimulatorOpen(false);
-          setActiveTab('history');
-          setActionFeedback(innerError?.message || 'Request tersimpan, tetapi bukti pembayaran gagal dikirim.');
-          window.setTimeout(() => setActionFeedback(''), 5200);
-          return;
+          const warning =
+            innerError?.message ||
+            'Request tersimpan, tetapi bukti pembayaran gagal dikirim.';
+
+          resetSimulatorProofForm();
+
+          return {
+            booking: createdBooking,
+            warning,
+          };
         }
 
         throw innerError;
       }
 
       resetSimulatorProofForm();
-      setIsSimulatorOpen(false);
-      setActiveTab('history');
-      setActionFeedback(simProofEnabled
-        ? 'Request booking dan bukti pembayaran berhasil dikirim. Menunggu review admin.'
-        : 'Request booking berhasil dikirim ke admin. Statusnya bisa dipantau di Riwayat.'
-      );
-      window.setTimeout(() => setActionFeedback(''), 4200);
+
+      return {
+        booking: createdBooking,
+        warning: '',
+      };
     } catch (error) {
       const errorCode = error?.code || error?.name || 'unknown';
       const errorMessage = error?.message || String(error || 'Unknown error');
@@ -1053,11 +1068,13 @@ export default function ClientPortalPage() {
       console.error('Gagal mengirim booking request:', {
         code: errorCode,
         message: errorMessage,
-        user: currentUser ? {
-          uid: currentUser.uid,
-          email: currentUser.email,
-          phoneNumber: currentUser.phoneNumber,
-        } : null,
+        user: currentUser
+          ? {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              phoneNumber: currentUser.phoneNumber,
+            }
+          : null,
         payload: {
           date: simulatorDate,
           durationHours: actualDuration,
@@ -1068,12 +1085,15 @@ export default function ClientPortalPage() {
         },
       });
 
-      const friendlyMessage = errorCode === 'permission-denied'
-        ? 'Request ditolak oleh rules database. Deploy Firestore rules terbaru lalu coba lagi.'
-        : 'Permintaan booking gagal disimpan. Silakan coba lagi.';
+      const friendlyMessage =
+        errorCode === 'permission-denied'
+          ? 'Request ditolak oleh rules database. Deploy Firestore rules terbaru lalu coba lagi.'
+          : 'Permintaan booking gagal disimpan. Silakan coba lagi.';
 
       setActionFeedback(friendlyMessage);
       window.setTimeout(() => setActionFeedback(''), 5200);
+
+      return null;
     } finally {
       setIsSubmittingRequest(false);
     }
@@ -1189,6 +1209,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   const handleBookingBlockClick = (booking) => {
     setSelectedBookingDetail(booking);
   };
+
+  function handleCreatedBookingView(booking) {
+    setIsSimulatorOpen(false);
+    setActiveTab('history');
+    setSelectedBookingDetail(booking);
+  }
 
   async function requestCancellation(booking) {
     if (!currentUser || getBookingRequestStatus(booking) === 'cancellation_requested') return;
@@ -1359,441 +1385,49 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         </div>
       </nav>
 
-      {/* Booking Simulator Modal (Interactive request booking from Empty Slot) */}
-      {isSimulatorOpen && (
-        <div className="client-booking-modal-backdrop">
-          <div className="client-booking-modal" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {/* Header with Close button */}
-            <header style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'between',
-              padding: '14px 16px',
-              borderBottom: '1px solid var(--auth-border)',
-              background: 'var(--studio-surface-2)'
-            }}>
-              <span className="client-booking-modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '13px', fontWeight: '800' }}>
-                <CalendarDays size={16} className="text-[#ff8a2a]" />
-                <span>Simulasi Booking Baru</span>
-              </span>
-              <button 
-                type="button" 
-                onClick={() => setIsSimulatorOpen(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--auth-text-muted)',
-                  cursor: 'pointer',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-                className="hover:text-white"
-                aria-label="Tutup"
-              >
-                <X size={18} />
-              </button>
-            </header>
-
-            <div className="client-booking-modal-body" style={{ padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Selected Slot Information */}
-              <div className="client-booking-slot-summary" style={{
-                background: 'rgba(255, 138, 42, 0.04)',
-                border: '1px solid rgba(255, 138, 42, 0.15)',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '11px',
-                color: 'var(--auth-text-muted)'
-              }}>
-                <div>Tanggal: <strong className="text-white">{new Date(`${simulatorDate}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</strong></div>
-                <div>Jam: <strong className="text-white">{String(simulatorStartHour).padStart(2, '0')}.00 WIB</strong></div>
-              </div>
-
-              {/* Selector Mode (Tab switcher style) */}
-              <div className="client-booking-mode" style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                padding: '3px',
-                background: 'var(--studio-surface-2)',
-                border: '1px solid var(--auth-border)',
-                borderRadius: '8px',
-                gap: '4px'
-              }}>
-                <button
-                  type="button"
-                  style={{
-                    padding: '8px',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: simPackageId === 'none' ? 'var(--auth-accent)' : 'transparent',
-                    color: simPackageId === 'none' ? '#000' : 'var(--auth-text-muted)'
-                  }}
-                  onClick={() => {
-                    setSimPackageId('none');
-                    setSimSessionType('rehearsal');
-                    setSimRecordingTypeId('none');
-                  }}
-                >
-                  Sewa Reguler
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    padding: '8px',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: simPackageId !== 'none' ? 'var(--auth-accent)' : 'transparent',
-                    color: simPackageId !== 'none' ? '#000' : 'var(--auth-text-muted)'
-                  }}
-                  onClick={() => {
-                    if (packageOptions.length > 0) {
-                      handlePackageChange(packageOptions[0].key);
-                    } else {
-                      alert('Belum ada paket kustom yang terdaftar.');
-                    }
-                  }}
-                >
-                  Pilihan Paket
-                </button>
-              </div>
-
-              <div className="client-booking-fields" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {/* Customer Details Verification */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>Nama Pelanggan</span>
-                    <input
-                      type="text"
-                      placeholder="Nama Anda..."
-                      required
-                      style={{
-                        height: '40px',
-                        border: '1px solid var(--auth-border)',
-                        borderRadius: 'var(--studio-radius-md)',
-                        background: 'var(--auth-bg-control)',
-                        color: 'var(--auth-text-main)',
-                        padding: '0 10px',
-                        fontSize: '12px',
-                        outline: 'none'
-                      }}
-                      className="focus:border-[#ff8a2a]"
-                      value={simCustomerName}
-                      onChange={(e) => setSimCustomerName(e.target.value)}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>No. HP / WhatsApp</span>
-                    <input
-                      type="tel"
-                      placeholder="Contoh: 0812..."
-                      required
-                      style={{
-                        height: '40px',
-                        border: '1px solid var(--auth-border)',
-                        borderRadius: 'var(--studio-radius-md)',
-                        background: 'var(--auth-bg-control)',
-                        color: 'var(--auth-text-main)',
-                        padding: '0 10px',
-                        fontSize: '12px',
-                        outline: 'none'
-                      }}
-                      className="focus:border-[#ff8a2a]"
-                      value={simCustomerPhone}
-                      onChange={(e) => setSimCustomerPhone(e.target.value)}
-                    />
-                  </label>
-                </div>
-
-                {/* Dropdowns */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {simPackageId !== 'none' ? (
-                    <StudioSelect
-                      label="Pilihan Paket Hemat"
-                      options={packageOptions}
-                      selectedKey={simPackageId}
-                      onChange={handlePackageChange}
-                    />
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <StudioSelect
-                        label="Pilih Layanan Studio"
-                        options={sessionOptions}
-                        selectedKey={simSessionType}
-                        onChange={handleSessionTypeChange}
-                      />
-
-                      {isRecordingSessionId(simSessionType) && recordingTypeOptions.length > 0 && (
-                        <StudioSelect
-                          label="Pilihan Jenis Recording"
-                          options={recordingTypeOptions}
-                          selectedKey={simRecordingTypeId}
-                          onChange={setSimRecordingTypeId}
-                        />
-                      )}
-
-                      {isRecordingSessionId(simSessionType) && !recordingTypeOptions.length ? (
-                        <p className="text-[11px] leading-relaxed text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
-                          Belum ada Recording Type. Hubungi admin untuk menentukan paket recording.
-                        </p>
-                      ) : null}
-                    </div>
-                  )}
-
-                  {/* Duration Picker (Only active for non-package selections) */}
-                  {simPackageId === 'none' && !isRecordingSessionId(simSessionType) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <StudioSelect
-                        label="Durasi Sewa"
-                        options={durationOptions}
-                        selectedKey={simDuration}
-                        onChange={setSimDuration}
-                      />
-
-                      {simDuration === 'custom' && (
-                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>Durasi Kustom (Jam)</span>
-                          <input
-                            type="number"
-                            placeholder="Jam..."
-                            min={1}
-                            max={24}
-                            style={{
-                              height: '40px',
-                              border: '1px solid var(--auth-border)',
-                              borderRadius: 'var(--studio-radius-md)',
-                              background: 'var(--auth-bg-control)',
-                              color: 'var(--auth-text-main)',
-                              padding: '0 10px',
-                              fontSize: '12px',
-                              outline: 'none'
-                            }}
-                            className="focus:border-[#ff8a2a]"
-                            value={simCustomDuration}
-                            onChange={(e) => setSimCustomDuration(e.target.value)}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Cost Summary Breakdown */}
-              <div className="client-booking-estimate" style={{
-                background: 'var(--studio-surface-2)',
-                border: '1px solid var(--auth-border)',
-                borderRadius: '8px',
-                padding: '12px'
-              }}>
-                <h4 style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: '800', color: '#fff', textTransform: 'uppercase' }}>Rincian Estimasi Biaya</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: 'var(--auth-text-muted)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Durasi sewa:</span>
-                    <strong style={{ color: '#fff' }}>{actualDuration ? actualDuration + ' Jam' : 'Tanpa durasi studio'}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Tarif dasar (Subtotal):</span>
-                    <strong style={{ color: '#fff' }}>{formatRupiah(pricingBreakdown.subtotal)}</strong>
-                  </div>
-                  {pricingBreakdown.discountAmount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--auth-success)' }}>
-                      <span>Potongan promo:</span>
-                      <strong>-{formatRupiah(pricingBreakdown.discountAmount)}</strong>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--auth-border)', paddingTop: '6px', fontSize: '12px', fontWeight: '800', color: '#fff' }}>
-                    <span>Total Estimasi:</span>
-                    <span style={{ color: 'var(--auth-accent)' }}>{formatRupiah(pricingBreakdown.total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Proof Panel */}
-              <div className="client-proof-inline-panel" style={{
-                background: 'rgba(255, 138, 42, 0.02)',
-                border: '1px dashed rgba(255, 138, 42, 0.25)',
-                borderRadius: '8px',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
-              }}>
-                <label className="client-proof-toggle" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' }}>
-                  <input
-                    checked={simProofEnabled}
-                    type="checkbox"
-                    style={{ marginTop: '2px', accentColor: 'var(--auth-accent)' }}
-                    onChange={(event) => {
-                      const checked = event.target.checked;
-                      setSimProofEnabled(checked);
-                      if (checked && !simProofAmount) {
-                        setSimProofAmount(String(simProofCategory === 'pelunasan'
-                          ? pricingBreakdown.total
-                          : Math.min(pricingBreakdown.total || 50000, 50000)
-                        ));
-                      }
-                    }}
-                  />
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: '1px', fontSize: '11px' }}>
-                    <strong style={{ color: '#fff', fontSize: '11px' }}>Bayar DP / pelunasan sekarang</strong>
-                    <small style={{ color: 'var(--auth-text-muted)', fontSize: '9px' }}>Kirim bukti transfer sekarang untuk diproses admin.</small>
-                  </span>
-                </label>
-
-                {simProofEnabled ? (
-                  <div className="client-proof-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderTop: '1px solid var(--auth-border)', paddingTop: '10px' }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>Kategori</span>
-                      <select
-                        value={simProofCategory}
-                        style={{ height: '36px', border: '1px solid var(--auth-border)', borderRadius: '4px', background: 'var(--auth-bg-control)', color: '#fff', fontSize: '11px', outline: 'none' }}
-                        onChange={(event) => {
-                          const nextCategory = event.target.value;
-                          setSimProofCategory(nextCategory);
-                          setSimProofAmount(String(nextCategory === 'pelunasan'
-                            ? pricingBreakdown.total
-                            : Math.min(pricingBreakdown.total || 50000, 50000)
-                          ));
-                        }}
-                      >
-                        {paymentProofCategoryOptions.map((option) => (
-                          <option key={option.key} value={option.key}>{option.label}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>Metode</span>
-                      <select 
-                        value={simProofMethod} 
-                        style={{ height: '36px', border: '1px solid var(--auth-border)', borderRadius: '4px', background: 'var(--auth-bg-control)', color: '#fff', fontSize: '11px', outline: 'none' }}
-                        onChange={(event) => setSimProofMethod(event.target.value)}
-                      >
-                        {paymentProofMethodOptions.map((option) => (
-                          <option key={option.key} value={option.key}>{option.label}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>Nominal</span>
-                      <input
-                        inputMode="numeric"
-                        min="1"
-                        type="number"
-                        style={{ height: '36px', border: '1px solid var(--auth-border)', borderRadius: '4px', background: 'var(--auth-bg-control)', color: '#fff', padding: '0 8px', fontSize: '11px', outline: 'none' }}
-                        value={simProofAmount}
-                        onChange={(event) => setSimProofAmount(event.target.value)}
-                      />
-                    </label>
-
-                    {/* Premium Styled File Uploader */}
-                    <div className="client-proof-file-field" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>File Bukti</span>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        minHeight: '36px',
-                        border: '1px dashed rgba(255, 138, 42, 0.3)',
-                        borderRadius: '4px',
-                        background: 'var(--auth-bg-control)',
-                        color: 'var(--auth-text-main)',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        padding: '0 10px',
-                        transition: 'border-color 120ms'
-                      }} className="hover:border-[#ff8a2a]">
-                        <UploadCloud size={13} className="text-[#ff8a2a]" />
-                        <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {simProofFile ? simProofFile.name : 'Pilih Foto Bukti'}
-                        </span>
-                        <input
-                          accept="image/*"
-                          type="file"
-                          style={{ display: 'none' }}
-                          onChange={(event) => setSimProofFile(event.target.files?.[0] || null)}
-                        />
-                      </label>
-                    </div>
-
-                    <label className="client-proof-note-field" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>Catatan</span>
-                      <textarea
-                        value={simProofNote}
-                        style={{ border: '1px solid var(--auth-border)', borderRadius: '4px', background: 'var(--auth-bg-control)', color: '#fff', padding: '6px 8px', fontSize: '11px', outline: 'none', minHeight: '44px', resize: 'vertical' }}
-                        placeholder="Opsional (contoh: BCA a/n Budi)"
-                        onChange={(event) => setSimProofNote(event.target.value)}
-                      />
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Footer Actions */}
-            <footer style={{
-              display: 'flex',
-              gap: '10px',
-              padding: '12px 16px',
-              borderTop: '1px solid var(--auth-border)',
-              background: 'var(--studio-surface-2)'
-            }}>
-              <button
-                type="button"
-                onClick={() => setIsSimulatorOpen(false)}
-                style={{
-                  flex: 1,
-                  minHeight: '38px',
-                  borderRadius: '6px',
-                  background: 'transparent',
-                  border: '1px solid var(--auth-border)',
-                  color: '#fff',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  cursor: 'pointer'
-                }}
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={submitBookingRequest}
-                disabled={isSubmittingRequest}
-                style={{
-                  flex: 2,
-                  minHeight: '38px',
-                  borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-                className="disabled:opacity-50 active:scale-[0.98] transition-transform"
-              >
-                <Phone size={12} />
-                <span>{isSubmittingRequest ? 'Mengirim...' : 'Kirim Booking Request'}</span>
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
+      {/* Unified authenticated booking wizard */ }
+      {isSimulatorOpen ? (
+        <ClientBookingWizard
+          actualDuration={actualDuration}
+          customerName={simCustomerName}
+          customerPhone={simCustomerPhone}
+          customDuration={simCustomDuration}
+          date={simulatorDate}
+          duration={simDuration}
+          getSupportUrl={getBookingSupportUrl}
+          isSubmitting={isSubmittingRequest}
+          onClose={() => setIsSimulatorOpen(false)}
+          onPackageChange={handlePackageChange}
+          onSessionTypeChange={handleSessionTypeChange}
+          onSubmit={submitBookingRequest}
+          onViewBooking={handleCreatedBookingView}
+          packageId={simPackageId}
+          packageOptions={packageOptions}
+          pricingBreakdown={pricingBreakdown}
+          proofAmount={simProofAmount}
+          proofCategory={simProofCategory}
+          proofEnabled={simProofEnabled}
+          proofFile={simProofFile}
+          proofMethod={simProofMethod}
+          proofNote={simProofNote}
+          recordingTypeId={simRecordingTypeId}
+          recordingTypeOptions={recordingTypeOptions}
+          sessionOptions={sessionOptions}
+          sessionType={simSessionType}
+          setCustomerName={setSimCustomerName}
+          setCustomerPhone={setSimCustomerPhone}
+          setCustomDuration={setSimCustomDuration}
+          setDuration={setSimDuration}
+          setProofAmount={setSimProofAmount}
+          setProofCategory={setSimProofCategory}
+          setProofEnabled={setSimProofEnabled}
+          setProofFile={setSimProofFile}
+          setProofMethod={setSimProofMethod}
+          setProofNote={setSimProofNote}
+          setRecordingTypeId={setSimRecordingTypeId}
+          startHour={simulatorStartHour}
+        />
+      ) : null}
 
       {/* Booking Detail Modal (To view invoices, receipts, and DP breakdown) */}
       {selectedBookingDetail && (
