@@ -388,7 +388,7 @@ export default function BookingFormModal({
           : form.paymentStatus;
     const lastPayment = paymentHistory[paymentHistory.length - 1];
 
-    let didSave = false;
+    let didSave;
 
     setIsSaving(true);
 
