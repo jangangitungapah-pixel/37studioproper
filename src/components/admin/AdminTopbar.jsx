@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BellRing, LogOut, Clock, Wifi, WifiOff } from 'lucide-react';
+import { BellRing, ChevronRight, LogOut, Clock, Wifi, WifiOff } from 'lucide-react';
 import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 
 export default function AdminTopbar({
@@ -32,11 +32,39 @@ export default function AdminTopbar({
     (user.role === 'admin' && user.isGuard === true)
   );
 
+  const contextLabel =
+    activeItem.groupLabel ||
+    (
+      activeItem.key === 'settings' ||
+      activeItem.key === 'notifications'
+        ? 'System'
+        : 'Admin'
+    );
+
   return (
     <header className="admin-topbar">
-      <div>
-        <p>37 Music Studio</p>
-        <h1 id="admin-title">{activeItem.title}</h1>
+      <div className="admin-topbar-heading">
+        <div
+          className="admin-topbar-context"
+          aria-label="Lokasi halaman admin"
+        >
+          <span className="admin-topbar-context-studio">
+            37 Music Studio
+          </span>
+
+          <ChevronRight
+            aria-hidden="true"
+            size={12}
+          />
+
+          <strong>
+            {contextLabel}
+          </strong>
+        </div>
+
+        <h1 id="admin-title">
+          {activeItem.title}
+        </h1>
       </div>
 
       <div className="admin-topbar-actions">

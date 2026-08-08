@@ -138,11 +138,6 @@ function getInitialSidebarState() {
   }
 }
 
-function getNotificationBadgeCount(summary) {
-  if (!summary) return 0;
-  return (summary.failed || 0) + (summary.pending || 0) + (summary.processing || 0);
-}
-
 function getNotificationBadgeLabel(summary) {
   if (!summary) return '';
   if (summary.failed > 0) return 'error';
@@ -412,10 +407,8 @@ export default function AdminPage() {
   );
 
   const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
-  const notificationBadgeCount = getNotificationBadgeCount(notificationSummary);
   const notificationBadgeLabel = getNotificationBadgeLabel(notificationSummary);
   const canOpenNotifications = hasAdminPagePermission(authState.user, 'settings');
-  const shouldShowMoreNotificationBadge = notificationBadgeCount > 0 && mobileMoreNavItems.some((item) => item.key === 'notifications');
 
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated) return;
@@ -660,8 +653,6 @@ export default function AdminPage() {
         permittedNavItems={sidebarNavItems}
         activeItem={activeItem}
         goTo={goTo}
-        notificationSummary={notificationSummary}
-        notificationBadgeLabel={notificationBadgeLabel}
         user={authState.user}
         onLogout={handleLogout}
       />
@@ -692,12 +683,9 @@ export default function AdminPage() {
         mobilePrimaryNavItems={mobilePrimaryNavItems}
         activeItem={activeItem}
         goTo={goTo}
-        notificationSummary={notificationSummary}
         isMoreMenuOpen={isMoreMenuOpen}
         setIsMoreMenuOpen={setIsMoreMenuOpen}
         mobileMoreNavItems={mobileMoreNavItems}
-        shouldShowMoreNotificationBadge={shouldShowMoreNotificationBadge}
-        notificationBadgeLabel={notificationBadgeLabel}
         isMoreNavActive={isMoreNavActive}
       />
     </main>

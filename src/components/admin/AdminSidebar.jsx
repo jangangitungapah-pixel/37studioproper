@@ -1,5 +1,4 @@
 import { Music2, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
-import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 
 function groupSidebarItems(items = []) {
   return items.reduce(
@@ -40,8 +39,6 @@ export default function AdminSidebar({
   permittedNavItems,
   activeItem,
   goTo,
-  notificationSummary,
-  notificationBadgeLabel,
   user,
   onLogout,
 }) {
@@ -104,12 +101,7 @@ export default function AdminSidebar({
                       : 'admin-nav-item'
                   }
                   key={item.key}
-                  title={
-                    item.key ===
-                    'notifications'
-                      ? notificationBadgeLabel
-                      : item.label
-                  }
+                  title={item.label}
                   type="button"
                   onClick={() =>
                     goTo(item.path)
@@ -121,14 +113,6 @@ export default function AdminSidebar({
                     {item.label}
                   </span>
 
-                  {item.key ===
-                  'notifications' ? (
-                    <AdminNotificationBadge
-                      summary={
-                        notificationSummary
-                      }
-                    />
-                  ) : null}
                 </button>
               );
             })}
