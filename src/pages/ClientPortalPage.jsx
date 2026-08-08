@@ -470,55 +470,74 @@ export default function ClientPortalPage() {
     const resumeKey = resume.date + ':' + String(resume.startHour);
 
     if (publicBookingResumeKeyRef.current === resumeKey) return;
-    publicBookingResumeKeyRef.current = resumeKey;
 
     const hasValidBusinessHour = businessHours.some(
       (hour) => Number(hour.start) === Number(resume.startHour)
     );
 
-    if (!hasValidBusinessHour) {
-      setActionFeedback('Jam booking yang dipilih sudah tidak valid. Silakan pilih ulang dari kalender.');
-      setActiveTab('calendar');
-      navigate('/client/portal', { replace: true });
-      return;
-    }
-
     const resumeDate = new Date(resume.date + 'T00:00:00');
+    const isResumeDateValid = !Number.isNaN(resumeDate.getTime());
+    const isResumeOccupied =
+      isResumeDateValid &&
+      isBookingStartOccupied(
+        calendarSlots,
+        resume.date,
+        resume.startHour
+      );
 
-    if (
-      Number.isNaN(resumeDate.getTime()) ||
-      isBookingStartOccupied(calendarSlots, resume.date, resume.startHour)
-    ) {
-      setActionFeedback('Slot yang dipilih sudah terisi. Silakan pilih jadwal lain.');
-      setActiveTab('calendar');
+    /**
+     * Defer the UI state transition out of the synchronous effect body.
+     * This keeps the effect responsible for reacting to the external
+     * URL/auth/Firestore handoff without causing cascading renders.
+     */
+    const resumeTimer = window.setTimeout(() => {
+      if (publicBookingResumeKeyRef.current === resumeKey) return;
 
-      if (!Number.isNaN(resumeDate.getTime())) {
-        setCalendarSelectedDate(startOfDay(resumeDate));
+      publicBookingResumeKeyRef.current = resumeKey;
+
+      if (!hasValidBusinessHour) {
+        setActionFeedback('Jam booking yang dipilih sudah tidak valid. Silakan pilih ulang dari kalender.');
+        setActiveTab('calendar');
+        navigate('/client/portal', { replace: true });
+        return;
       }
 
-      navigate('/client/portal', { replace: true });
-      return;
-    }
+      if (!isResumeDateValid || isResumeOccupied) {
+        setActionFeedback('Slot yang dipilih sudah terisi. Silakan pilih jadwal lain.');
+        setActiveTab('calendar');
 
-    setCalendarSelectedDate(startOfDay(resumeDate));
-    setActiveTab('calendar');
-    setSimulatorDate(resume.date);
-    setSimulatorStartHour(String(resume.startHour));
-    setSimSessionType('rehearsal');
-    setSimPackageId('none');
-    setSimRecordingTypeId('none');
-    setSimDuration('2');
-    setSimCustomDuration('');
-    setSimCustomerName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
-    setSimCustomerPhone(currentUser.phoneNumber || '');
-    setSimProofEnabled(false);
-    setSimProofCategory('dp');
-    setSimProofMethod('transfer');
-    setSimProofAmount('');
-    setSimProofFile(null);
-    setSimProofNote('');
-    setIsSimulatorOpen(true);
-    navigate('/client/portal', { replace: true });
+        if (isResumeDateValid) {
+          setCalendarSelectedDate(startOfDay(resumeDate));
+        }
+
+        navigate('/client/portal', { replace: true });
+        return;
+      }
+
+      setCalendarSelectedDate(startOfDay(resumeDate));
+      setActiveTab('calendar');
+      setSimulatorDate(resume.date);
+      setSimulatorStartHour(String(resume.startHour));
+      setSimSessionType('rehearsal');
+      setSimPackageId('none');
+      setSimRecordingTypeId('none');
+      setSimDuration('2');
+      setSimCustomDuration('');
+      setSimCustomerName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
+      setSimCustomerPhone(currentUser.phoneNumber || '');
+      setSimProofEnabled(false);
+      setSimProofCategory('dp');
+      setSimProofMethod('transfer');
+      setSimProofAmount('');
+      setSimProofFile(null);
+      setSimProofNote('');
+      setIsSimulatorOpen(true);
+      navigate('/client/portal', { replace: true });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(resumeTimer);
+    };
   }, [
     calendarSlots,
     calendarSlotsReady,

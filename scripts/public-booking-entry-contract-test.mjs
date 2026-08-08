@@ -222,6 +222,22 @@ assert.equal(
 
 assert.equal(
   portalSource.includes(
+    'const resumeTimer = window.setTimeout(',
+  ),
+  true,
+  'Auth-resume state changes must be deferred outside the synchronous effect body.',
+);
+
+assert.equal(
+  portalSource.includes(
+    'window.clearTimeout(resumeTimer)',
+  ),
+  true,
+  'Deferred auth-resume work must be cancellable during effect cleanup.',
+);
+
+assert.equal(
+  portalSource.includes(
     'isBookingStartOccupied(calendarSlots, resume.date, resume.startHour)',
   ),
   true,
