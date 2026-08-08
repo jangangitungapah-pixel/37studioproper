@@ -237,10 +237,11 @@ assert.equal(
 );
 
 assert.equal(
-  portalSource.includes(
-    'isBookingStartOccupied(calendarSlots, resume.date, resume.startHour)',
+  /isBookingStartOccupied\(\s*calendarSlots,\s*resume\.date,\s*resume\.startHour\s*\)/.test(
+    portalSource,
   ),
   true,
+  'Auth-resume must re-check selected slot occupancy after login.',
 );
 
 assert.equal(
