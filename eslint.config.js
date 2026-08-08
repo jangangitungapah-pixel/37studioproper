@@ -32,10 +32,9 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.cjs'],
+    files: ['scripts/**/*.{cjs,mjs}'],
     languageOptions: {
       ecmaVersion: 'latest',
-      sourceType: 'script',
       globals: globals.node,
     },
   },
