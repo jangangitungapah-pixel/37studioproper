@@ -24,6 +24,7 @@ assert.deepEqual(
   ADMIN_MOBILE_PRIMARY_KEYS,
   [
     'dashboard',
+    'requests',
     'schedule',
     'billing',
   ],

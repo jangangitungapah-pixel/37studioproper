@@ -9,6 +9,10 @@ import {
 } from 'lucide-react';
 import { firebaseAuth } from '../../lib/firebase.js';
 import { getBookingRequestStatusMeta } from '../../services/bookingCommunicationRepository.js';
+import {
+  getBookingRequestStatus,
+  getLegacyBookingPaymentStatus,
+} from '../../domain/booking/bookingSelectors.js';
 import BookingConversationPanel from '../booking/BookingConversationPanel.jsx';
 
 const statusLabelMap = {
@@ -75,7 +79,7 @@ function getBookingWindowLabel(booking) {
 }
 
 function getBookingStatus(booking) {
-  return booking?.paymentStatus || booking?.status || 'pending';
+  return getLegacyBookingPaymentStatus(booking);
 }
 
 function getPaymentHistoryTotal(booking) {
@@ -129,6 +133,7 @@ export default function BookingDetailModal({
   const paidAmount = getPaidAmount(booking, status);
   const invoiceAmount = getInvoiceAmount(booking, paidAmount);
   const requestStatus = getBookingRequestStatusMeta(booking);
+  const requestStatusValue = getBookingRequestStatus(booking);
   const noDurationPackage = isNoDurationPackageBooking(booking);
   const isClientRequest = booking?.source === 'clientPortal' && Boolean(booking?.clientUid);
   const isLinkedClientBooking = Boolean(booking?.clientUid);
@@ -301,7 +306,7 @@ export default function BookingDetailModal({
         </div>
 
         <footer className="booking-detail-compact-actions">
-          {isClientRequest && booking.bookingRequestStatus === 'submitted' ? (
+          {isClientRequest && requestStatusValue === 'submitted' ? (
             <>
               <button className="booking-detail-compact-button is-confirm" disabled={isUpdatingRequest} type="button" onClick={() => updateRequestStatus('confirmed')}>
                 <CheckCircle2 size={15} /> Konfirmasi
@@ -311,7 +316,7 @@ export default function BookingDetailModal({
               </button>
             </>
           ) : null}
-          {isClientRequest && booking.bookingRequestStatus === 'cancellation_requested' ? (
+          {isClientRequest && requestStatusValue === 'cancellation_requested' ? (
             <>
               <button className="booking-detail-compact-button is-confirm" disabled={isUpdatingRequest} type="button" onClick={() => updateRequestStatus('cancelled')}>
                 <CheckCircle2 size={15} /> Setujui Batal
@@ -321,9 +326,11 @@ export default function BookingDetailModal({
               </button>
             </>
           ) : null}
-          <button className="booking-detail-compact-button is-edit" type="button" onClick={() => onEdit(booking)}>
-            Edit Booking
-          </button>
+          {onEdit ? (
+            <button className="booking-detail-compact-button is-edit" type="button" onClick={() => onEdit(booking)}>
+              Edit Booking
+            </button>
+          ) : null}
           <button className="booking-detail-compact-button" type="button" onClick={onClose}>
             Tutup
           </button>

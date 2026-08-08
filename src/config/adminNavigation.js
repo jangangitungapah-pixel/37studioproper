@@ -9,8 +9,9 @@
  * - keep existing permission keys unchanged;
  * - keep Notifications in the topbar instead of the sidebar.
  *
- * Requests and All Bookings intentionally do not exist here yet.
- * Their real pages are introduced during Phase 3 Booking Command Center.
+ * Request Inbox is introduced during Phase 3A Booking Command Center.
+ * All Bookings is intentionally deferred until its real page exists later
+ * in Phase 3; no placeholder route is exposed.
  */
 
 export const ADMIN_NAV_GROUPS = Object.freeze({
@@ -22,6 +23,7 @@ export const ADMIN_NAV_GROUPS = Object.freeze({
 
 export const ADMIN_MOBILE_PRIMARY_KEYS = Object.freeze([
   'dashboard',
+  'requests',
   'schedule',
   'billing',
 ]);
@@ -57,6 +59,21 @@ export const ADMIN_NAV_ITEMS = Object.freeze([
     groupLabel: '',
     sidebar: false,
     mobile: false,
+    legacyPaths: [],
+  }),
+
+  Object.freeze({
+    key: 'requests',
+    label: 'Requests',
+    mobileLabel: 'Requests',
+    path: '/admin/bookings/requests',
+    iconKey: 'requests',
+    title: 'Request Inbox',
+    permissionKey: 'schedule',
+    group: ADMIN_NAV_GROUPS.BOOKING,
+    groupLabel: 'Booking',
+    sidebar: true,
+    mobile: true,
     legacyPaths: [],
   }),
 

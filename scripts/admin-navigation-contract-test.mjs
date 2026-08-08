@@ -40,6 +40,11 @@ assert.equal(
 );
 
 assert.equal(
+  itemByKey.get('requests')?.path,
+  '/admin/bookings/requests',
+);
+
+assert.equal(
   itemByKey.get('schedule')?.path,
   '/admin/bookings/calendar',
 );
@@ -77,6 +82,11 @@ assert.equal(
 /**
  * Permission keys must remain backward compatible.
  */
+assert.equal(
+  itemByKey.get('requests')?.permissionKey,
+  'schedule',
+);
+
 assert.equal(
   itemByKey.get('schedule')?.permissionKey,
   'schedule',
@@ -120,16 +130,14 @@ assert.equal(
 );
 
 /**
- * Mobile Phase 2A:
- * Home / Calendar / Finance.
- *
- * Requests is introduced when the actual request inbox page exists
- * during Phase 3, not as a fake route in Phase 2.
+ * Phase 3A mobile command navigation:
+ * Home / Requests / Calendar / Finance.
  */
 assert.deepEqual(
   ADMIN_MOBILE_PRIMARY_KEYS,
   [
     'dashboard',
+    'requests',
     'schedule',
     'billing',
   ],
@@ -237,13 +245,21 @@ assert.equal(
 
 assert.equal(
   findAdminNavigationItem(
+    '/admin/bookings/requests',
+  )?.key,
+  'requests',
+);
+
+assert.equal(
+  findAdminNavigationItem(
     '/admin/finance/invoices',
   )?.key,
   'billing',
 );
 
 /**
- * Do not expose fake Booking Command Center routes before Phase 3.
+ * Request Inbox now exists as a real Phase 3A destination.
+ * All Bookings still must not be exposed before its real page exists.
  */
 assert.equal(
   ADMIN_NAV_ITEMS.some(
@@ -251,7 +267,26 @@ assert.equal(
       item.path ===
       '/admin/bookings/requests',
   ),
-  false,
+  true,
+);
+
+assert.equal(
+  itemByKey.get('requests')?.groupLabel,
+  'Booking',
+);
+
+assert.equal(
+  isAdminSidebarItem(
+    itemByKey.get('requests'),
+  ),
+  true,
+);
+
+assert.equal(
+  isAdminMobileItem(
+    itemByKey.get('requests'),
+  ),
+  true,
 );
 
 assert.equal(
