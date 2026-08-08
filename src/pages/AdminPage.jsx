@@ -29,6 +29,14 @@ import {
 import { syncNotificationSubscription } from '../services/notificationSubscriptionRepository.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
+import {
+  ADMIN_MOBILE_PRIMARY_KEYS,
+  ADMIN_NAV_ITEMS,
+  findAdminNavigationItem,
+  isAdminMobileItem,
+  isAdminSidebarItem,
+  resolveAdminNavigationPath,
+} from '../config/adminNavigation.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import GuardAttendanceApprovalModal from '../components/guard/GuardAttendanceApprovalModal.jsx';
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
@@ -53,88 +61,24 @@ const NotificationsPage = lazy(() => import('./admin/NotificationsPage.jsx'));
 const OperatorFeePage = lazy(() => import('./admin/OperatorFeePage.jsx'));
 const GuardAttendancePage = lazy(() => import('./admin/GuardAttendancePage.jsx'));
 
-const mobilePrimaryNavKeys = ['dashboard', 'schedule', 'billing'];
+const adminNavIcons = Object.freeze({
+  dashboard: Home,
+  notifications: BellRing,
+  schedule: CalendarDays,
+  customers: UsersRound,
+  billing: CreditCard,
+  bookkeeping: BookOpen,
+  'operator-fee': HandCoins,
+  'guard-attendance': UserCheck,
+  inventory: PackageOpen,
+  gallery: Image,
+  settings: Settings,
+});
 
-const navItems = [
-  {
-    key: 'dashboard',
-    label: 'Dashboard',
-    path: '/admin/dashboard',
-    icon: Home,
-    title: 'Dashboard',
-  },
-  {
-    key: 'notifications',
-    label: 'Notifikasi',
-    path: '/admin/notifications',
-    icon: BellRing,
-    title: 'Notification Console',
-    permissionKey: 'settings',
-  },
-  {
-    key: 'schedule',
-    label: 'Schedule',
-    path: '/admin/schedule',
-    icon: CalendarDays,
-    title: 'Schedule',
-  },
-  {
-    key: 'customers',
-    label: 'Customer',
-    path: '/admin/customers',
-    icon: UsersRound,
-    title: 'Customer',
-  },
-  {
-    key: 'billing',
-    label: 'Billing',
-    path: '/admin/billing',
-    icon: CreditCard,
-    title: 'Billing / POS',
-  },
-  {
-    key: 'bookkeeping',
-    label: 'Pembukuan',
-    path: '/admin/bookkeeping',
-    icon: BookOpen,
-    title: 'Pembukuan',
-  },
-  {
-    key: 'operator-fee',
-    label: 'Operator Fee',
-    path: '/admin/operator-fee',
-    icon: HandCoins,
-    title: 'Operator Fee',
-  },
-  {
-    key: 'guard-attendance',
-    label: 'Absen Penjaga',
-    path: '/admin/guard-attendance',
-    icon: UserCheck,
-    title: 'Absen Penjaga',
-  },
-  {
-    key: 'inventory',
-    label: 'Inventory',
-    path: '/admin/inventory',
-    icon: PackageOpen,
-    title: 'Inventory',
-  },
-  {
-    key: 'gallery',
-    label: 'Gallery',
-    path: '/admin/gallery',
-    icon: Image,
-    title: 'Studio Gallery',
-  },
-  {
-    key: 'settings',
-    label: 'Settings',
-    path: '/admin/settings',
-    icon: Settings,
-    title: 'Settings',
-  },
-];
+const navItems = ADMIN_NAV_ITEMS.map((item) => ({
+  ...item,
+  icon: adminNavIcons[item.iconKey],
+}));
 
 function getNavPermissionKey(item) {
   return item?.permissionKey || item?.key;
@@ -147,18 +91,41 @@ function canAccessNavItem(user, item) {
 }
 
 function getFirstPermittedNavItem(user) {
-  return navItems.find((item) => canAccessNavItem(user, item)) || null;
+  return (
+    navItems.find(
+      (item) =>
+        isAdminSidebarItem(item) &&
+        canAccessNavItem(user, item),
+    ) ||
+    null
+  );
 }
 
 function getPermittedDefaultLandingPath(user) {
-  const preferredPath = getAccountDefaultLandingPath(user?.uid);
-  const preferredItem = navItems.find((item) => item.path === preferredPath);
+  const preferredPath = resolveAdminNavigationPath(
+    getAccountDefaultLandingPath(user?.uid),
+  );
 
-  if (preferredItem && canAccessNavItem(user, preferredItem)) {
+  const preferredItem = navItems.find(
+    (item) =>
+      item.path === preferredPath &&
+      isAdminSidebarItem(item),
+  );
+
+  if (
+    preferredItem &&
+    canAccessNavItem(
+      user,
+      preferredItem,
+    )
+  ) {
     return preferredItem.path;
   }
 
-  return getFirstPermittedNavItem(user)?.path || '/admin';
+  return (
+    getFirstPermittedNavItem(user)?.path ||
+    '/admin'
+  );
 }
 
 function getInitialSidebarState() {
@@ -349,29 +316,99 @@ export default function AdminPage() {
   }, [authState.isReady, authState.isAuthenticated, authState.user]);
 
 
-  const routeItem = useMemo(
-    () => navItems.find((item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/')),
-    [location.pathname]
-  );
+  const routeItem = useMemo(() => {
+    const matchedItem = findAdminNavigationItem(
+      location.pathname,
+    );
+
+    if (!matchedItem) return null;
+
+    return (
+      navItems.find(
+        (item) =>
+          item.key === matchedItem.key,
+      ) ||
+      null
+    );
+  }, [location.pathname]);
 
   const permittedNavItems = useMemo(
-    () => navItems.filter((item) => canAccessNavItem(authState.user, item)),
-    [authState.user]
+    () =>
+      navItems.filter(
+        (item) =>
+          canAccessNavItem(
+            authState.user,
+            item,
+          ),
+      ),
+    [authState.user],
   );
 
-  const isRoutePermitted = !routeItem || canAccessNavItem(authState.user, routeItem);
+  const sidebarNavItems = useMemo(
+    () =>
+      permittedNavItems.filter(
+        isAdminSidebarItem,
+      ),
+    [permittedNavItems],
+  );
+
+  const mobileNavItems = useMemo(
+    () =>
+      permittedNavItems.filter(
+        isAdminMobileItem,
+      ),
+    [permittedNavItems],
+  );
+
+  const isRoutePermitted =
+    !routeItem ||
+    canAccessNavItem(
+      authState.user,
+      routeItem,
+    );
+
   const activeItem = isRoutePermitted
-    ? (routeItem || getFirstPermittedNavItem(authState.user) || navItems[0])
-    : (getFirstPermittedNavItem(authState.user) || navItems[0]);
+    ? (
+      routeItem ||
+      getFirstPermittedNavItem(
+        authState.user,
+      ) ||
+      navItems[0]
+    )
+    : (
+      getFirstPermittedNavItem(
+        authState.user,
+      ) ||
+      navItems[0]
+    );
 
   const mobilePrimaryNavItems = useMemo(
-    () => permittedNavItems.filter((item) => mobilePrimaryNavKeys.includes(item.key)),
-    [permittedNavItems]
+    () =>
+      mobileNavItems
+        .filter(
+          (item) =>
+            ADMIN_MOBILE_PRIMARY_KEYS.includes(
+              item.key,
+            ),
+        )
+        .map((item) => ({
+          ...item,
+          label:
+            item.mobileLabel ||
+            item.label,
+        })),
+    [mobileNavItems],
   );
 
   const mobileMoreNavItems = useMemo(
-    () => permittedNavItems.filter((item) => !mobilePrimaryNavKeys.includes(item.key)),
-    [permittedNavItems]
+    () =>
+      mobileNavItems.filter(
+        (item) =>
+          !ADMIN_MOBILE_PRIMARY_KEYS.includes(
+            item.key,
+          ),
+      ),
+    [mobileNavItems],
   );
 
   const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
@@ -388,10 +425,54 @@ export default function AdminPage() {
 
     if (!permittedNavItems.length) return;
 
-    if (location.pathname === '/admin' || location.pathname === '/admin/' || !routeItem || !isRoutePermitted) {
-      navigate(getPermittedDefaultLandingPath(authState.user), { replace: true });
+    const canonicalPath =
+      resolveAdminNavigationPath(
+        location.pathname,
+      );
+
+    if (
+      canonicalPath !==
+      location.pathname
+    ) {
+      navigate(
+        canonicalPath +
+          location.search +
+          location.hash,
+        {
+          replace: true,
+        },
+      );
+
+      return;
     }
-  }, [location.pathname, navigate, routeItem, isRoutePermitted, permittedNavItems.length, authState.isReady, authState.isAuthenticated, authState.user]);
+
+    if (
+      location.pathname === '/admin' ||
+      location.pathname === '/admin/' ||
+      !routeItem ||
+      !isRoutePermitted
+    ) {
+      navigate(
+        getPermittedDefaultLandingPath(
+          authState.user,
+        ),
+        {
+          replace: true,
+        },
+      );
+    }
+  }, [
+    location.pathname,
+    location.search,
+    location.hash,
+    navigate,
+    routeItem,
+    isRoutePermitted,
+    permittedNavItems.length,
+    authState.isReady,
+    authState.isAuthenticated,
+    authState.user,
+  ]);
 
   async function handleLogout() {
     await adminAuthRepository.signOutAdmin();
@@ -570,13 +651,13 @@ export default function AdminPage() {
       {isOwnerAdminUser(authState.user) && (
         <GuardAttendanceApprovalModal
           currentUser={authState.user}
-          onOpenPanel={() => goTo('/admin/guard-attendance')}
+          onOpenPanel={() => goTo('/admin/operations/guard-attendance')}
         />
       )}
       <AdminSidebar
         isSidebarCollapsed={isSidebarCollapsed}
         toggleSidebar={toggleSidebar}
-        permittedNavItems={permittedNavItems}
+        permittedNavItems={sidebarNavItems}
         activeItem={activeItem}
         goTo={goTo}
         notificationSummary={notificationSummary}

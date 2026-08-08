@@ -366,6 +366,29 @@
     scrollbar-width: thin;
   }
 
+
+  .admin-nav-section {
+    display: grid;
+    gap: 3px;
+  }
+
+  .admin-nav-section + .admin-nav-section {
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid var(--auth-border);
+  }
+
+  .admin-nav-section-label {
+    display: block;
+    padding: 0 10px 4px;
+    color: var(--auth-text-muted);
+    font-size: 0.625rem;
+    font-weight: 760;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
   .admin-nav-item {
     position: relative;
     width: 100%;
@@ -464,6 +487,7 @@
 
   .admin-shell.is-sidebar-collapsed .admin-sidebar-copy,
   .admin-shell.is-sidebar-collapsed .admin-nav-label,
+  .admin-shell.is-sidebar-collapsed .admin-nav-section-label,
   .admin-shell.is-sidebar-collapsed .admin-mini-session,
   .admin-shell.is-sidebar-collapsed .admin-logout-label,
   .admin-shell.is-sidebar-collapsed .admin-nav-item .admin-notification-badge { display: none; }

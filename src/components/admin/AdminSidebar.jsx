@@ -1,6 +1,39 @@
 import { Music2, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 
+function groupSidebarItems(items = []) {
+  return items.reduce(
+    (sections, item) => {
+      const sectionKey =
+        item.group ||
+        'single:' + item.key;
+
+      let section =
+        sections.find(
+          (candidate) =>
+            candidate.key ===
+            sectionKey,
+        );
+
+      if (!section) {
+        section = {
+          key: sectionKey,
+          label:
+            item.groupLabel || '',
+          items: [],
+        };
+
+        sections.push(section);
+      }
+
+      section.items.push(item);
+
+      return sections;
+    },
+    [],
+  );
+}
+
 export default function AdminSidebar({
   isSidebarCollapsed,
   toggleSidebar,
@@ -12,6 +45,11 @@ export default function AdminSidebar({
   user,
   onLogout,
 }) {
+  const navigationSections =
+    groupSidebarItems(
+      permittedNavItems,
+    );
+
   return (
     <aside className="admin-sidebar" aria-label="Navigasi admin desktop">
       <div className="admin-sidebar-brand">
@@ -36,27 +74,66 @@ export default function AdminSidebar({
       </div>
 
       <nav className="admin-sidebar-nav" aria-label="Menu admin">
-        {permittedNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeItem.key === item.key;
+        {navigationSections.map((section) => (
+          <div
+            className="admin-nav-section"
+            key={section.key}
+          >
+            {section.label ? (
+              <span className="admin-nav-section-label">
+                {section.label}
+              </span>
+            ) : null}
 
-          return (
-            <button
-              aria-current={isActive ? 'page' : undefined}
-              className={isActive ? 'admin-nav-item is-active' : 'admin-nav-item'}
-              key={item.key}
-              title={item.key === 'notifications' ? notificationBadgeLabel : item.label}
-              type="button"
-              onClick={() => goTo(item.path)}
-            >
-              <Icon size={19} />
-              <span className="admin-nav-label">{item.label}</span>
-              {item.key === 'notifications' ? (
-                <AdminNotificationBadge summary={notificationSummary} />
-              ) : null}
-            </button>
-          );
-        })}
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                activeItem.key ===
+                item.key;
+
+              return (
+                <button
+                  aria-current={
+                    isActive
+                      ? 'page'
+                      : undefined
+                  }
+                  className={
+                    isActive
+                      ? 'admin-nav-item is-active'
+                      : 'admin-nav-item'
+                  }
+                  key={item.key}
+                  title={
+                    item.key ===
+                    'notifications'
+                      ? notificationBadgeLabel
+                      : item.label
+                  }
+                  type="button"
+                  onClick={() =>
+                    goTo(item.path)
+                  }
+                >
+                  <Icon size={19} />
+
+                  <span className="admin-nav-label">
+                    {item.label}
+                  </span>
+
+                  {item.key ===
+                  'notifications' ? (
+                    <AdminNotificationBadge
+                      summary={
+                        notificationSummary
+                      }
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="admin-sidebar-footer">
