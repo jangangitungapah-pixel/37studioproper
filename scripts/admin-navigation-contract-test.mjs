@@ -50,6 +50,11 @@ assert.equal(
 );
 
 assert.equal(
+  itemByKey.get('bookings')?.path,
+  '/admin/bookings',
+);
+
+assert.equal(
   itemByKey.get('billing')?.path,
   '/admin/finance/invoices',
 );
@@ -89,6 +94,11 @@ assert.equal(
 
 assert.equal(
   itemByKey.get('schedule')?.permissionKey,
+  'schedule',
+);
+
+assert.equal(
+  itemByKey.get('bookings')?.permissionKey,
   'schedule',
 );
 
@@ -202,7 +212,7 @@ assert.equal(
   resolveAdminNavigationPath(
     '/admin/bookings',
   ),
-  '/admin/bookings/calendar',
+  '/admin/bookings',
 );
 
 assert.equal(
@@ -252,14 +262,20 @@ assert.equal(
 
 assert.equal(
   findAdminNavigationItem(
+    '/admin/bookings',
+  )?.key,
+  'bookings',
+);
+
+assert.equal(
+  findAdminNavigationItem(
     '/admin/finance/invoices',
   )?.key,
   'billing',
 );
 
 /**
- * Request Inbox now exists as a real Phase 3A destination.
- * All Bookings still must not be exposed before its real page exists.
+ * Request Inbox and All Bookings now exist as real Booking destinations.
  */
 assert.equal(
   ADMIN_NAV_ITEMS.some(
@@ -295,7 +311,26 @@ assert.equal(
       item.path ===
       '/admin/bookings',
   ),
-  false,
+  true,
+);
+
+assert.equal(
+  itemByKey.get('bookings')?.groupLabel,
+  'Booking',
+);
+
+assert.equal(
+  isAdminSidebarItem(
+    itemByKey.get('bookings'),
+  ),
+  true,
+);
+
+assert.equal(
+  isAdminMobileItem(
+    itemByKey.get('bookings'),
+  ),
+  true,
 );
 
 /**

@@ -10,8 +10,7 @@
  * - keep Notifications in the topbar instead of the sidebar.
  *
  * Request Inbox is introduced during Phase 3A Booking Command Center.
- * All Bookings is intentionally deferred until its real page exists later
- * in Phase 3; no placeholder route is exposed.
+ * All Bookings is introduced during Phase 3D as the global booking index.
  */
 
 export const ADMIN_NAV_GROUPS = Object.freeze({
@@ -94,6 +93,20 @@ export const ADMIN_NAV_ITEMS = Object.freeze([
     ],
   }),
 
+  Object.freeze({
+    key: 'bookings',
+    label: 'All Bookings',
+    mobileLabel: 'Bookings',
+    path: '/admin/bookings',
+    iconKey: 'bookings',
+    title: 'All Bookings',
+    permissionKey: 'schedule',
+    group: ADMIN_NAV_GROUPS.BOOKING,
+    groupLabel: 'Booking',
+    sidebar: true,
+    mobile: true,
+    legacyPaths: [],
+  }),
   Object.freeze({
     key: 'customers',
     label: 'Customers',
@@ -221,7 +234,6 @@ export const ADMIN_NAV_ITEMS = Object.freeze([
 ]);
 
 export const ADMIN_SECTION_REDIRECTS = Object.freeze({
-  '/admin/bookings': '/admin/bookings/calendar',
   '/admin/finance': '/admin/finance/invoices',
   '/admin/operations': '/admin/operations/inventory',
   '/admin/content': '/admin/content/gallery',

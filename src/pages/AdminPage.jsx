@@ -11,6 +11,7 @@ import {
   BookOpen,
   Home,
   Inbox,
+  ListChecks,
   Image,
   HandCoins,
   UserCheck,
@@ -51,6 +52,7 @@ import AccessState from '../components/ui/AccessState.jsx';
 import AutoApprovePage from './admin/AutoApprovePage.jsx';
 
 const BookingRequestsPage = lazy(() => import('./admin/BookingRequestsPage.jsx'));
+const AllBookingsPage = lazy(() => import('./admin/AllBookingsPage.jsx'));
 const SchedulePage = lazy(() => import('./admin/SchedulePage.jsx'));
 const CustomerPage = lazy(() => import('./admin/CustomerPage.jsx'));
 const BillingPage = lazy(() => import('./admin/BillingPage.jsx'));
@@ -68,6 +70,7 @@ const adminNavIcons = Object.freeze({
   notifications: BellRing,
   requests: Inbox,
   schedule: CalendarDays,
+  bookings: ListChecks,
   customers: UsersRound,
   billing: CreditCard,
   bookkeeping: BookOpen,
@@ -186,6 +189,7 @@ function createNotificationSummary(events = []) {
 function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'dashboard') return <DashboardPage />;
   if (activeKey === 'requests') return <BookingRequestsPage currentUser={currentUser} />;
+  if (activeKey === 'bookings') return <AllBookingsPage />;
   if (activeKey === 'notifications') return <NotificationsPage currentUser={currentUser} />;
   if (activeKey === 'settings') return <SettingsPage currentUser={currentUser} />;
   if (activeKey === 'customers') return <CustomerPage />;
