@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Clock3, CalendarDays, CheckCircle, Info } from 'lucide-react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
+import { getLegacyBookingPaymentStatus } from '../../domain/booking/bookingSelectors.js';
 
 export default function ClientCalendarTab({
   calendarSelectedDate,
@@ -202,7 +203,7 @@ export default function ClientCalendarTab({
             <div className="space-y-1.5">
               {ownBookingsToday.map((block) => {
                 const booking = block.booking;
-                const status = booking.paymentStatus || booking.status || 'pending';
+                const status = getLegacyBookingPaymentStatus(booking);
                 const startHourNum = Number(booking.startHour);
                 const durationNum = Number(booking.durationHours || booking.duration || 1);
                 

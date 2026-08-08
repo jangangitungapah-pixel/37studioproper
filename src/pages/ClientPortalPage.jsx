@@ -20,6 +20,14 @@ import {
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
+import {
+  getBookingPaymentStatus,
+  getBookingRequestStatus,
+  getBookingSessionStatus,
+  getLegacyBookingPaymentStatus,
+  isBookingCancelled,
+  isBookingPaymentOpen,
+} from '../domain/booking/bookingSelectors.js';
 import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
 import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
@@ -155,7 +163,7 @@ function isNoDurationPackageBooking(booking) {
   return hasPackage && Number(booking?.durationHours || booking?.duration || 0) <= 0;
 }
 function getBookingStatus(booking) {
-  return booking.paymentStatus || booking.status || 'pending';
+  return getLegacyBookingPaymentStatus(booking);
 }
 function getStatusLabel(status) {
   return statusFilters.find((item) => item.key === status)?.label || status;
@@ -184,9 +192,8 @@ function getVisibleBookingBlocks(bookings, visibleDays) {
       const startHour = Number(booking.startHour);
       const startIndex = businessHours.findIndex((hour) => Number(hour.start) === startHour);
 
-      // exclude cancelled / inactive bookings
-      const bookingStatusLower = (booking.paymentStatus || booking.status || 'pending').toLowerCase();
-      const isCancelled = ['cancelled', 'canceled', 'void', 'deleted'].includes(bookingStatusLower);
+      // exclude cancelled / inactive bookings through canonical selectors
+      const isCancelled = isBookingCancelled(booking);
 
       if (dayIndex === -1 || startIndex === -1 || isCancelled || isNoDurationPackageBooking(booking) || !activeStatuses.includes(status)) {
         return null;
@@ -531,27 +538,30 @@ export default function ClientPortalPage() {
   const stats = useMemo(() => {
     const totalBookings = userBookings.length;
 
-    // completed = lunas or dp status, non-cancelled
-    const completedBookings = userBookings.filter((b) => {
-      const status = (b.paymentStatus || b.status || 'pending').toLowerCase();
-      return (status === 'lunas' || status === 'dp');
+    const completedBookings = userBookings.filter((booking) => {
+      const paymentStatus = getBookingPaymentStatus(booking);
+
+      return (
+        !isBookingCancelled(booking) &&
+        ['partial', 'paid'].includes(paymentStatus)
+      );
     }).length;
 
-    // sum active completed hours
-    const totalDuration = userBookings.reduce((sum, b) => {
-      const status = (b.paymentStatus || b.status || 'pending').toLowerCase();
-      if (['cancelled', 'canceled', 'void', 'deleted'].includes(status)) return sum;
-      return sum + (Number(b.durationHours) || Number(b.duration) || 0);
+    const totalDuration = userBookings.reduce((sum, booking) => {
+      if (isBookingCancelled(booking)) return sum;
+
+      return (
+        sum +
+        (Number(booking.durationHours) ||
+          Number(booking.duration) ||
+          0)
+      );
     }, 0);
 
-    // unpaid outstanding amount
-    const unpaidAmount = userBookings.reduce((sum, b) => {
-      const status = (b.paymentStatus || b.status || 'pending').toLowerCase();
-      if (['cancelled', 'canceled', 'void', 'deleted', 'lunas'].includes(status)) return sum;
-      if (status === 'dp') {
-        return sum + Math.max(0, (Number(b.total) || 0) - (Number(b.dpAmount) || 0));
-      }
-      return sum + (Number(b.total) || 0);
+    const unpaidAmount = userBookings.reduce((sum, booking) => {
+      if (isBookingCancelled(booking)) return sum;
+
+      return sum + getOutstandingAmountForBooking(booking);
     }, 0);
 
     return {
@@ -564,11 +574,11 @@ export default function ClientPortalPage() {
 
   // Unpaid bookings list
   const unpaidBookings = useMemo(() => {
-    return userBookings.filter((b) => {
-      const status = (b.paymentStatus || b.status || 'pending').toLowerCase();
-      if (['cancelled', 'canceled', 'void', 'deleted', 'lunas'].includes(status)) return false;
-      return true;
-    });
+    return userBookings.filter(
+      (booking) =>
+        !isBookingCancelled(booking) &&
+        isBookingPaymentOpen(booking)
+    );
   }, [userBookings]);
 
   const upcomingBooking = useMemo(() => {
@@ -576,8 +586,8 @@ export default function ClientPortalPage() {
 
     return userBookings
       .filter((booking) => {
-        const status = getBookingStatus(booking).toLowerCase();
-        if (['cancelled', 'canceled', 'void', 'deleted'].includes(status)) return false;
+        if (isBookingCancelled(booking)) return false;
+        if (getBookingSessionStatus(booking, { now }) !== 'upcoming') return false;
         const bookingDate = new Date(`${booking.date}T${String(booking.startHour || 0).padStart(2, '0')}:00:00`);
         return bookingDate >= now;
       })
@@ -614,7 +624,8 @@ export default function ClientPortalPage() {
     const now = new Date();
 
     return userBookings.filter((booking) => {
-      const status = getBookingStatus(booking).toLowerCase();
+      const sessionStatus = getBookingSessionStatus(booking, { now });
+      const cancelled = isBookingCancelled(booking);
       const bookingDate = new Date(`${booking.date}T${String(booking.startHour || 0).padStart(2, '0')}:00:00`);
       const matchesQuery = !normalizedQuery || [
         booking.bookingCode,
@@ -627,11 +638,11 @@ export default function ClientPortalPage() {
 
       if (!matchesQuery) return false;
       if (historyFilter === 'upcoming') {
-        return bookingDate >= now && !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
+        return bookingDate >= now && sessionStatus === 'upcoming' && !cancelled;
       }
-      if (historyFilter === 'unpaid') return status === 'pending' || status === 'dp';
+      if (historyFilter === 'unpaid') return isBookingPaymentOpen(booking) && !cancelled;
       if (historyFilter === 'completed') {
-        return bookingDate < now && !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
+        return bookingDate < now && ['completed', 'no_show'].includes(sessionStatus) && !cancelled;
       }
       return true;
     });
@@ -713,12 +724,12 @@ export default function ClientPortalPage() {
   }
 
   function getOutstandingAmountForBooking(booking) {
-    const status = getBookingStatus(booking).toLowerCase();
+    const status = getBookingPaymentStatus(booking);
     const total = Number(booking?.total || booking?.subtotal || 0) || 0;
     const paidAmount = Number(booking?.paidAmount || booking?.dpAmount || 0) || 0;
 
-    if (status === 'lunas') return 0;
-    if (status === 'dp') return Math.max(0, total - paidAmount);
+    if (['paid', 'refunded', 'void'].includes(status)) return 0;
+    if (status === 'partial') return Math.max(0, total - paidAmount);
 
     return total;
   }
@@ -747,8 +758,8 @@ export default function ClientPortalPage() {
   }
 
   function openPaymentProofModal(booking, initialCategory) {
-    const status = getBookingStatus(booking).toLowerCase();
-    const nextCategory = initialCategory || (status === 'dp' ? 'pelunasan' : 'dp');
+    const status = getBookingPaymentStatus(booking);
+    const nextCategory = initialCategory || (status === 'partial' ? 'pelunasan' : 'dp');
 
     setSelectedProofBooking(booking);
     setProofCategory(nextCategory);
@@ -843,7 +854,7 @@ export default function ClientPortalPage() {
     }
 
     const duplicateRequest = userBookings.find((booking) => {
-      const requestStatus = String(booking.bookingRequestStatus || '').toLowerCase();
+      const requestStatus = getBookingRequestStatus(booking);
       const sameDate = booking.date === simulatorDate;
       const sameStart = Number(booking.startHour) === Number(simulatorStartHour);
 
@@ -970,8 +981,8 @@ export default function ClientPortalPage() {
   // Billing WhatsApp redirect
   const getBookingWhatsAppUrl = (booking) => {
     const studioName = studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName;
-    const amountToPay = booking.paymentStatus === 'dp'
-      ? Math.max(0, (booking.total || 0) - (booking.dpAmount || 0))
+    const amountToPay = getBookingPaymentStatus(booking) === 'partial'
+      ? Math.max(0, (booking.total || 0) - (booking.paidAmount || booking.dpAmount || 0))
       : (booking.total || 0);
 
     const text = `Halo *${studioName}*, saya ingin melakukan pelunasan tagihan booking berikut:
@@ -1079,7 +1090,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   };
 
   async function requestCancellation(booking) {
-    if (!currentUser || booking.bookingRequestStatus === 'cancellation_requested') return;
+    if (!currentUser || getBookingRequestStatus(booking) === 'cancellation_requested') return;
     const shouldContinue = window.confirm('Kirim permintaan pembatalan ke admin? Slot belum dibatalkan sampai admin menyetujuinya.');
     if (!shouldContinue) return;
 
@@ -1791,7 +1802,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             <div className="client-detail-utilities">
               <button type="button" onClick={() => downloadCalendarEvent(selectedBookingDetail)}><CalendarPlus size={13} />Kalender</button>
               <a href={getBookingSupportUrl(selectedBookingDetail)} target="_blank" rel="noopener noreferrer"><MessageCircle size={13} />Bantuan booking</a>
-              {['submitted', 'confirmed'].includes(selectedBookingDetail.bookingRequestStatus) ? (
+              {['submitted', 'confirmed'].includes(getBookingRequestStatus(selectedBookingDetail)) ? (
                 <button className="is-danger" type="button" onClick={() => requestCancellation(selectedBookingDetail)}>Minta batal</button>
               ) : null}
             </div>

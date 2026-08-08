@@ -20,6 +20,12 @@ import { adminBookingRepository } from '../../services/adminBookingRepository.js
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 import { bookingCommunicationRepository } from '../../services/bookingCommunicationRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
+import {
+  getBookingRequestStatus,
+  getBookingSessionStatus,
+  getLegacyBookingPaymentStatus,
+  isBookingCancelled,
+} from '../../domain/booking/bookingSelectors.js';
 
 const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
 const SCHEDULE_QA_PREVIEW_BOOKINGS = [
@@ -209,7 +215,7 @@ function resolveBookingCustomerIdentity(booking, currentBookings) {
 }
 
 function getBookingStatus(booking) {
-  return booking.paymentStatus || booking.status || 'pending';
+  return getLegacyBookingPaymentStatus(booking);
 }
 
 function isNoDurationPackageBooking(booking) {
@@ -289,15 +295,12 @@ function getUpcomingScheduleTimeLabel(booking) {
 }
 
 function isUpcomingScheduleBooking(booking) {
-  const status = String(getBookingStatus(booking)).toLowerCase();
-  const requestStatus = String(booking?.bookingRequestStatus || '').toLowerCase();
   const startDate = getBookingStartDateTime(booking);
 
   if (!startDate) return false;
-  if (['cancelled', 'canceled', 'void', 'deleted'].includes(status)) return false;
-  if (['rejected', 'cancelled'].includes(requestStatus)) return false;
+  if (isBookingCancelled(booking)) return false;
 
-  return startDate >= new Date();
+  return getBookingSessionStatus(booking) === 'upcoming';
 }
 
 function getUpcomingScheduleBookings(bookings) {
@@ -319,7 +322,8 @@ function getStudioCloseHour() {
 }
 
 function shouldHideBookingFromCalendarGrid(booking) {
-  const requestStatus = String(booking?.bookingRequestStatus || '').trim().toLowerCase();
+  const requestStatus = getBookingRequestStatus(booking);
+
   return (
     isNoDurationPackageBooking(booking) ||
     (
@@ -330,9 +334,8 @@ function shouldHideBookingFromCalendarGrid(booking) {
 }
 
 function isBookingScheduleActive(booking) {
-  const status = String(getBookingStatus(booking)).toLowerCase();
   if (shouldHideBookingFromCalendarGrid(booking)) return false;
-  return !['cancelled', 'canceled', 'void', 'deleted'].includes(status);
+  return !isBookingCancelled(booking);
 }
 
 // Overlaps verification
@@ -537,8 +540,9 @@ function CalendarBookingBlock({ block, onBookingClick }) {
   const priceLabel = formatShortCurrency(booking.total || booking.subtotal || 0);
   
   const hasUnreadClientMessage = booking.lastMessageSenderRole === 'client' && booking.lastMessageReadByAdmin === false;
-  const isNewClientRequest = booking.bookingRequestStatus === 'submitted';
-  const isCancellation = booking.bookingRequestStatus === 'cancellation_requested';
+  const requestStatus = getBookingRequestStatus(booking);
+  const isNewClientRequest = requestStatus === 'submitted';
+  const isCancellation = requestStatus === 'cancellation_requested';
 
   const requestClass = isCancellation 
     ? ' is-req-cancelled' 
@@ -622,7 +626,7 @@ function RequestQueueModal({
         <div className="schedule-request-list">
           {sortedRequests.length ? (
             sortedRequests.map((booking) => {
-              const requestStatus = String(booking.bookingRequestStatus || 'submitted');
+              const requestStatus = getBookingRequestStatus(booking);
               const isCancellation = requestStatus === 'cancellation_requested';
               const windowLabel = getBookingWindowLabel(booking);
               const confirmStatus = isCancellation ? 'cancelled' : 'confirmed';
@@ -709,9 +713,10 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
         <div className="schedule-upcoming-list" aria-label="Daftar jadwal mendatang">
           {previewBookings.map((booking) => {
             const noDurationPackage = isNoDurationPackageBooking(booking);
-            const requestMeta = booking.bookingRequestStatus === 'submitted'
+            const requestStatus = getBookingRequestStatus(booking);
+            const requestMeta = requestStatus === 'submitted'
               ? 'Request'
-              : booking.bookingRequestStatus === 'confirmed'
+              : requestStatus === 'confirmed'
                 ? 'Confirmed'
                 : '';
             const statusText = requestMeta || getStatusLabel(getBookingStatus(booking));
@@ -1004,7 +1009,7 @@ export default function SchedulePage() {
   const paymentStatusCounts = scheduleStats.counts;
   const requestBookings = useMemo(
     () => bookings
-      .filter((booking) => ['submitted', 'cancellation_requested'].includes(booking.bookingRequestStatus))
+      .filter((booking) => ['submitted', 'cancellation_requested'].includes(getBookingRequestStatus(booking)))
       .sort((first, second) =>
         String(second.clientRequestUpdatedAt || second.createdAt || '').localeCompare(String(first.clientRequestUpdatedAt || first.createdAt || ''))
       ),

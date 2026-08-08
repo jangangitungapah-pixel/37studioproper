@@ -1,9 +1,10 @@
 import { CalendarDays, ChevronRight, Clock, CreditCard, MapPin, MessageCircle, Volume2, CalendarPlus } from 'lucide-react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
 import { statusFilters } from '../../pages/admin/scheduleConfig.js';
+import { getLegacyBookingPaymentStatus } from '../../domain/booking/bookingSelectors.js';
 
 function getBookingStatus(booking) {
-  return booking.paymentStatus || booking.status || 'pending';
+  return getLegacyBookingPaymentStatus(booking);
 }
 
 function getStatusLabel(status) {

@@ -19,6 +19,7 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
+import { getLegacyBookingPaymentStatus } from '../../domain/booking/bookingSelectors.js';
 import {
   getPaymentProofStatusLabel,
   paymentProofRepository,
@@ -182,7 +183,7 @@ function getPaymentHistory(booking) {
 
   if (rawHistory.length) return rawHistory;
 
-  const status = cleanLower(booking?.paymentStatus || booking?.status || 'pending');
+  const status = getLegacyBookingPaymentStatus(booking);
 
   if (status === 'void' || booking?.voidedAt) return [];
 
@@ -228,7 +229,7 @@ function getDpAmount(booking) {
 }
 
 function normalizeStatus(booking) {
-  const rawStatus = cleanLower(booking?.paymentStatus || booking?.status || 'pending');
+  const rawStatus = getLegacyBookingPaymentStatus(booking);
 
   if (rawStatus === 'void' || booking?.voidedAt) return 'void';
 
@@ -245,7 +246,7 @@ function normalizeStatus(booking) {
 function getPaidAmount(booking) {
   const total = getBillingTotal(booking);
   const historyTotal = getPaymentHistoryTotal(booking);
-  const rawStatus = cleanLower(booking?.paymentStatus || booking?.status || 'pending');
+  const rawStatus = getLegacyBookingPaymentStatus(booking);
 
   if (historyTotal > 0) return Math.min(total || historyTotal, historyTotal);
   if (rawStatus === 'lunas') return total;

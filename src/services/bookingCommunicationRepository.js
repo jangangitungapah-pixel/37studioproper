@@ -7,6 +7,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { getBookingRequestStatus } from '../domain/booking/bookingSelectors.js';
 import {
   createAdminNotificationEvent,
   createClientNotificationEvent,
@@ -16,6 +17,7 @@ import {
 const MESSAGE_COLLECTION = 'bookingMessages';
 
 export const bookingRequestStatusOptions = {
+  draft: { label: 'Draft', tone: 'neutral' },
   submitted: { label: 'Menunggu konfirmasi', tone: 'pending' },
   confirmed: { label: 'Dikonfirmasi admin', tone: 'confirmed' },
   rejected: { label: 'Tidak dapat dikonfirmasi', tone: 'rejected' },
@@ -24,9 +26,14 @@ export const bookingRequestStatusOptions = {
 };
 
 export function getBookingRequestStatusMeta(booking) {
-  const status = String(booking?.bookingRequestStatus || '').trim();
+  const rawStatus =
+    booking?.requestStatus ??
+    booking?.bookingRequestStatus;
 
-  if (!status) return null;
+  if (!String(rawStatus || '').trim()) return null;
+
+  const status = getBookingRequestStatus(booking);
+
   return bookingRequestStatusOptions[status] || { label: status, tone: 'pending' };
 }
 

@@ -13,6 +13,11 @@ import {
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import {
+  getBookingRequestStatus,
+  getLegacyBookingPaymentStatus,
+  isBookingCancelled,
+} from '../domain/booking/bookingSelectors.js';
+import {
   createAdminNotificationEvent,
   NOTIFICATION_EVENT_TYPES,
 } from './notificationEventRepository.js';
@@ -115,14 +120,12 @@ function getClientCalendarSlotRef(bookingId) {
 }
 
 function getSafeBookingStatus(booking) {
-  return String(booking?.paymentStatus || booking?.status || 'pending').trim().toLowerCase();
+  return getLegacyBookingPaymentStatus(booking);
 }
 
 function shouldExposeClientCalendarSlot(booking) {
-  const status = getSafeBookingStatus(booking);
-  const requestStatus = String(booking?.bookingRequestStatus || '').trim().toLowerCase();
+  const requestStatus = getBookingRequestStatus(booking);
   const durationHours = Number(booking?.durationHours || booking?.duration || 0);
-  const hiddenStatuses = ['void', 'cancelled', 'canceled', 'deleted'];
   const unconfirmedClientRequest =
     booking?.source === 'clientPortal' &&
     ['submitted', 'rejected', 'cancelled'].includes(requestStatus);
@@ -134,7 +137,7 @@ function shouldExposeClientCalendarSlot(booking) {
     booking?.startHour !== null &&
     Number.isFinite(durationHours) &&
     durationHours > 0 &&
-    !hiddenStatuses.includes(status) &&
+    !isBookingCancelled(booking) &&
     !unconfirmedClientRequest
   );
 }
