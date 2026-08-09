@@ -3191,27 +3191,57 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
    ========================================================================== */
 
 .billing-operations-grid {
-  grid-template-columns: minmax(0, 1.25fr) minmax(410px, 0.75fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   align-items: stretch;
+  gap: 8px;
+}
+
+.billing-cash-summary,
+.billing-reminder-card {
+  min-height: 0;
+  padding: 9px 10px;
 }
 
 .billing-cash-summary {
-  min-height: 0;
-  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+  grid-template-columns: minmax(230px, 0.82fr) minmax(0, 1.18fr);
   grid-template-rows: auto;
   align-items: stretch;
   align-content: stretch;
 }
 
 .billing-cash-summary > header {
-  grid-template-columns: minmax(0, 1fr) minmax(122px, 148px);
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(116px, 128px);
   align-content: center;
   gap: 8px;
+  border-right: 1px solid var(--studio-edge-soft);
   padding-right: 10px;
+}
+
+.billing-cash-summary header > div:first-child,
+.billing-cash-range {
+  min-width: 0;
+}
+
+.billing-cash-summary header strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.billing-cash-summary header span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .billing-cash-range {
   width: auto;
+}
+
+.billing-cash-range .studio-select-trigger {
+  min-height: 36px;
 }
 
 .billing-cash-grid {
@@ -3220,11 +3250,12 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
 }
 
 .billing-cash-grid article {
-  min-height: 56px;
+  min-width: 0;
+  min-height: 44px;
   align-content: center;
   border-right: 1px solid var(--studio-edge-soft);
   border-bottom: 0;
-  padding: 7px 8px;
+  padding: 6px 8px;
 }
 
 .billing-cash-grid article:nth-child(2n) {
@@ -3239,43 +3270,141 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   border-right: 0;
 }
 
+.billing-cash-grid small,
+.billing-cash-grid strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
 .billing-reminder-card {
-  min-height: 0;
-  grid-template-columns: minmax(154px, 0.62fr) minmax(0, 1.38fr);
+  grid-template-columns: minmax(180px, 0.48fr) minmax(0, 1.52fr);
   grid-template-rows: auto;
-  align-items: start;
+  align-items: stretch;
+  align-content: stretch;
 }
 
 .billing-reminder-card > header {
-  align-self: start;
+  min-width: 0;
+  align-self: center;
+  gap: 8px;
   padding-right: 10px;
 }
 
+.billing-reminder-card header > span {
+  width: 30px;
+  height: 30px;
+}
+
+.billing-reminder-card header > div {
+  min-width: 0;
+}
+
+.billing-reminder-card header small,
+.billing-reminder-card header strong,
+.billing-reminder-card header em {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.billing-reminder-card header strong {
+  line-height: 1.25;
+}
+
 .billing-reminder-list {
-  gap: 0;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  column-gap: 10px;
+  row-gap: 0;
   border-left: 1px solid var(--studio-edge-soft);
   padding-left: 10px;
 }
 
 .billing-reminder-row {
+  min-width: 0;
   min-height: 36px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
-  padding: 3px 0;
+  padding: 3px 8px;
+}
+
+.billing-reminder-row > button {
+  min-width: 0;
+  overflow: visible;
+}
+
+.billing-reminder-row strong,
+.billing-reminder-row small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.billing-reminder-row strong {
+  line-height: 1.25;
+}
+
+.billing-reminder-row small {
+  line-height: 1.3;
+}
+
+.billing-reminder-row > span {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
 }
 
 .billing-reminder-row a,
 .billing-reminder-row span button {
   min-height: 28px;
+  flex: 0 0 auto;
   padding-inline: 7px;
+  white-space: nowrap;
 }
 
 @media (max-width: 1120px) {
   .billing-operations-grid {
     grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .billing-cash-summary,
+  .billing-reminder-card {
+    width: 100%;
+  }
+
+  .billing-cash-summary {
+    grid-template-columns: minmax(300px, 0.68fr) minmax(0, 1.32fr);
+  }
+
+  .billing-cash-summary > header {
+    grid-template-columns: minmax(0, 1fr) minmax(132px, 148px);
   }
 
   .billing-reminder-card {
-    grid-template-columns: minmax(190px, 0.42fr) minmax(0, 1.58fr);
+    grid-template-columns: minmax(220px, 0.48fr) minmax(0, 1.52fr);
+  }
+
+  .billing-reminder-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .billing-cash-summary {
+    grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  }
+
+  .billing-reminder-card {
+    grid-template-columns: minmax(200px, 0.52fr) minmax(0, 1.48fr);
+  }
+
+  .billing-reminder-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3295,10 +3424,12 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   }
 
   .billing-reminder-card > header {
+    align-self: start;
     padding-right: 0;
   }
 
   .billing-reminder-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     border-top: 1px solid var(--studio-edge-soft);
     border-left: 0;
     padding-top: 6px;
@@ -3330,6 +3461,18 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
 
   .billing-cash-grid article:nth-child(-n + 2) {
     border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .billing-reminder-list {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-reminder-row {
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .billing-reminder-row:last-child {
+    border-bottom: 0;
   }
 }
 

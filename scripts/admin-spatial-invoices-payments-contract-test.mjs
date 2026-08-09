@@ -139,32 +139,48 @@ const operationsDensityCss = cssSource
 
 for (const required of [
   '.billing-operations-grid',
-  'grid-template-columns: minmax(0, 1.25fr) minmax(410px, 0.75fr)',
+  'grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr)',
   '.billing-cash-summary',
   'grid-template-columns: repeat(4, minmax(0, 1fr))',
   '.billing-reminder-card',
-  '.billing-reminder-list',
-  'border-left: 1px solid var(--studio-edge-soft)',
+  'grid-template-columns: repeat(2, minmax(0, 1fr))',
+  '.billing-reminder-row > button',
+  'flex-wrap: nowrap',
+  'white-space: normal',
+  'overflow-wrap: anywhere',
   '@media (max-width: 1120px)',
+  '@media (max-width: 900px)',
   '@media (max-width: 767px)',
   '@media (max-width: 520px)',
 ]) {
   assert.equal(
     operationsDensityCss.includes(required),
     true,
-    'UI-6 density CSS marker missing: ' + required,
+    'UI-6 balanced operations CSS missing: ' + required,
+  );
+}
+
+for (const forbidden of [
+  'grid-template-columns: minmax(0, 1.25fr) minmax(410px, 0.75fr)',
+  'grid-template-columns: minmax(154px, 0.62fr) minmax(0, 1.38fr)',
+]) {
+  assert.equal(
+    operationsDensityCss.includes(forbidden),
+    false,
+    'UI-6 clipping layout must be removed: ' + forbidden,
   );
 }
 
 assert.equal(
   operationsDensityCss.includes('--auth-'),
   false,
-  'Density repair must use semantic studio tokens.',
+  'Operations repair must use semantic studio tokens.',
 );
+
 assert.equal(
   /#[0-9a-f]{3,8}\b/i.test(operationsDensityCss),
   false,
-  'Density repair must not add raw hex colors.',
+  'Operations repair must not add raw hex colors.',
 );
 // UI-6 operations density repair contract — end
 
