@@ -17,6 +17,12 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
+import {
+  buildBookingIncomeTransactions,
+  getBookingBillingTotal,
+  getBookingOutstandingAmount,
+  getBookingPaidAmount as getAccountingPaidAmount,
+} from '../../utils/bookingPaymentUtils.js';
 
 const periodOptions = [
   { key: 'today', label: 'Hari Ini', description: 'Transaksi hari ini' },
@@ -158,88 +164,36 @@ function isDateInPeriod(value, period) {
   return true;
 }
 
-function getPaymentAmount(payment) {
-  return toNumber(payment?.amount ?? payment?.value ?? payment?.nominal ?? payment?.paidAmount);
-}
-
-function getPaymentDate(payment, booking) {
-  return payment?.date || payment?.createdAt || payment?.paidAt || booking?.date || booking?.createdAt || getTodayIsoDate();
-}
-
-function getPaymentMethod(payment, booking) {
-  return cleanText(payment?.method || payment?.paymentMethod || booking?.lastPaymentMethod || booking?.paymentMethod || 'other');
-}
-
-function getBookingTotal(booking) {
-  return toNumber(
-    booking?.total ??
-    booking?.subtotal ??
-    booking?.totalPrice ??
-    booking?.totalAmount ??
-    booking?.grandTotal ??
-    booking?.invoiceTotal ??
-    booking?.amount
+function getBookingTotal(
+  booking,
+) {
+  return getBookingBillingTotal(
+    booking,
   );
 }
 
-function getBookingPaymentHistory(booking) {
-  if (Array.isArray(booking?.paymentHistory) && booking.paymentHistory.length) {
-    return booking.paymentHistory.filter((payment) => getPaymentAmount(payment) > 0);
-  }
-
-  const paidAmount = toNumber(booking?.paidAmount || booking?.dpAmount);
-
-  if (paidAmount > 0 && booking?.paymentStatus !== 'void') {
-    return [
-      {
-        id: 'legacy-payment',
-        amount: paidAmount,
-        createdAt: booking?.lastPaymentAt || booking?.updatedAt || booking?.createdAt || booking?.date,
-        method: booking?.lastPaymentMethod || booking?.paymentMethod || 'other',
-      },
-    ];
-  }
-
-  return [];
+function getBookingPaidAmount(
+  booking,
+) {
+  return getAccountingPaidAmount(
+    booking,
+  );
 }
 
-function getBookingPaidAmount(booking) {
-  return getBookingPaymentHistory(booking).reduce((total, payment) => total + getPaymentAmount(payment), 0);
+function getBookingReceivableAmount(
+  booking,
+) {
+  return getBookingOutstandingAmount(
+    booking,
+  );
 }
 
-function getBookingReceivableAmount(booking) {
-  if (booking?.paymentStatus === 'void' || booking?.status === 'void') return 0;
-  if (booking?.paymentStatus === 'lunas') return 0;
-
-  const invoiceAmount = toNumber(booking?.invoiceAmount);
-
-  if (invoiceAmount > 0) return invoiceAmount;
-
-  const total = getBookingTotal(booking);
-  const paid = getBookingPaidAmount(booking);
-
-  return Math.max(0, total - paid);
-}
-
-function buildIncomeTransactions(bookings) {
-  return bookings.flatMap((booking) => {
-    const payments = getBookingPaymentHistory(booking);
-
-    return payments.map((payment, index) => {
-      const amount = getPaymentAmount(payment);
-
-      return {
-        id: 'booking-' + (booking.id || booking.bookingId || index) + '-' + (payment.id || index),
-        source: 'booking',
-        type: 'income',
-        title: 'Booking - ' + (booking.customer || booking.customerName || booking.name || 'Customer'),
-        amount,
-        date: getPaymentDate(payment, booking),
-        method: getPaymentMethod(payment, booking),
-        note: booking.invoiceNumber || booking.bookingCode || 'Pembayaran booking',
-      };
-    });
-  });
+function buildIncomeTransactions(
+  bookings,
+) {
+  return buildBookingIncomeTransactions(
+    bookings,
+  );
 }
 
 function getEntryCategoryOptions(type) {

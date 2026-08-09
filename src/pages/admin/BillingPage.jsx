@@ -29,7 +29,9 @@ import {
 import {
   buildBookingPaymentPatch,
   buildBookingVoidPatch,
+  canVoidBookingInvoice,
   getBookingBillingTotal,
+  getBookingFinanceTotals,
   getBookingOutstandingAmount,
   getBookingPaidAmount,
   getBookingPaymentHistory,
@@ -48,6 +50,7 @@ const billingFilterOptions = [
   { key: 'dp', label: 'DP', description: 'Sudah DP, belum lunas' },
   { key: 'lunas', label: 'Lunas', description: 'Sudah selesai' },
   { key: 'void', label: 'Void', description: 'Invoice dibatalkan' },
+  { key: 'refunded', label: 'Refund', description: 'Pembayaran sudah dikembalikan' },
 ];
 
 const paymentMethodOptions = [
@@ -436,35 +439,36 @@ function findBookingForProof(bookingsById, proof) {
   return bookingsById.get(proof.bookingId) || null;
 }
 
-function getBillingStats(bookings) {
-  return bookings.reduce(
-    (stats, booking) => {
-      const status = normalizeStatus(booking);
+function getBillingStats(
+  bookings,
+) {
+  const totals =
+    getBookingFinanceTotals(
+      bookings,
+    );
 
-      stats.total += 1;
-      stats.outstanding += getOutstandingAmount(booking);
+  return {
+    open:
+      totals.openInvoices,
 
-      if (status === 'void') {
-        stats.void += 1;
-        return stats;
-      }
+    outstanding:
+      totals.outstanding,
 
-      stats.totalAmount += getBillingTotal(booking);
+    paid:
+      totals.paidInvoices,
 
-      if (status === 'lunas') stats.paid += 1;
-      if (isOpenBilling(booking)) stats.open += 1;
+    refunded:
+      totals.refundedInvoices,
 
-      return stats;
-    },
-    {
-      open: 0,
-      outstanding: 0,
-      paid: 0,
-      total: 0,
-      totalAmount: 0,
-      void: 0,
-    }
-  );
+    total:
+      totals.totalBookings,
+
+    totalAmount:
+      totals.grossBilled,
+
+    void:
+      totals.voidInvoices,
+  };
 }
 
 function getCashStats(bookings, range = 'today') {
@@ -693,13 +697,13 @@ function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment
                 Invoice
               </button>
 
-              {status !== 'lunas' && status !== 'void' ? (
+              {isOpenBilling(booking) ? (
                 <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
                   Bayar
                 </button>
               ) : null}
 
-              {status !== 'void' ? (
+              {canVoidBookingInvoice(booking) ? (
                 <button className="is-danger" type="button" onClick={() => onVoidInvoice(booking)}>
                   Void
                 </button>
@@ -851,13 +855,13 @@ function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPaym
             Print
           </button>
 
-          {status !== 'lunas' && status !== 'void' ? (
+          {isOpenBilling(booking) ? (
             <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
               Bayar
             </button>
           ) : null}
 
-          {status !== 'void' ? (
+          {canVoidBookingInvoice(booking) ? (
             <button className="is-danger" type="button" onClick={() => onVoidInvoice(booking)}>
               <Ban size={15} />
               Void

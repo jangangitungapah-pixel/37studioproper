@@ -345,6 +345,288 @@ export function getBookingPaymentSummary(
   };
 }
 
+export function getBookingCashReceivedAmount(
+  booking,
+) {
+  return getBookingPaymentHistoryTotal(
+    booking,
+  );
+}
+
+export function getBookingFinanceSnapshot(
+  booking,
+) {
+  const summary =
+    getBookingPaymentSummary(
+      booking,
+    );
+
+  const cashReceived =
+    getBookingCashReceivedAmount(
+      booking,
+    );
+
+  return {
+    cashReceived,
+
+    hasPayments:
+      cashReceived > 0,
+
+    isOpen:
+      summary.isOpen,
+
+    isPaid:
+      summary.status ===
+      BOOKING_PAYMENT_STATUS.PAID,
+
+    isRefunded:
+      summary.status ===
+      BOOKING_PAYMENT_STATUS.REFUNDED,
+
+    isVoid:
+      summary.status ===
+      BOOKING_PAYMENT_STATUS.VOID,
+
+    outstanding:
+      summary.outstanding,
+
+    paid:
+      summary.paid,
+
+    paymentHistory:
+      summary.paymentHistory,
+
+    status:
+      summary.status,
+
+    total:
+      summary.total,
+  };
+}
+
+export function canVoidBookingInvoice(
+  booking,
+) {
+  const finance =
+    getBookingFinanceSnapshot(
+      booking,
+    );
+
+  if (
+    finance.isVoid ||
+    finance.isRefunded
+  ) {
+    return false;
+  }
+
+  return (
+    finance.paid <= 0 &&
+    finance.cashReceived <= 0
+  );
+}
+
+export function buildBookingIncomeTransactions(
+  bookings,
+) {
+  const safeBookings =
+    Array.isArray(
+      bookings,
+    )
+      ? bookings
+      : [];
+
+  return safeBookings.flatMap(
+    (
+      booking,
+    ) => {
+      const bookingId =
+        booking?.id ||
+        booking?.bookingId ||
+        booking?.bookingCode ||
+        'unknown';
+
+      return getBookingPaymentHistory(
+        booking,
+      )
+        .filter(
+          (
+            payment,
+          ) =>
+            toMoney(
+              payment?.amount,
+            ) > 0,
+        )
+        .map(
+          (
+            payment,
+            index,
+          ) => {
+            const paymentId =
+              payment?.id ||
+              payment?.proofId ||
+              String(index);
+
+            return {
+              amount:
+                toMoney(
+                  payment?.amount,
+                ),
+
+              bookingId,
+
+              customer:
+                booking?.customer ||
+                booking?.customerName ||
+                booking?.name ||
+                'Customer',
+
+              date:
+                payment?.date ||
+                payment?.createdAt ||
+                payment?.paidAt ||
+                booking?.date ||
+                booking?.createdAt ||
+                '',
+
+              id:
+                'booking-' +
+                bookingId +
+                '-' +
+                paymentId,
+
+              invoiceNumber:
+                booking?.invoiceNumber ||
+                '',
+
+              method:
+                cleanPaymentText(
+                  payment?.method ||
+                  payment?.paymentMethod ||
+                  booking?.lastPaymentMethod ||
+                  booking?.paymentMethod ||
+                  'other',
+                ),
+
+              note:
+                booking?.invoiceNumber ||
+                booking?.bookingCode ||
+                'Pembayaran booking',
+
+              source:
+                'booking',
+
+              title:
+                'Booking - ' +
+                (
+                  booking?.customer ||
+                  booking?.customerName ||
+                  booking?.name ||
+                  'Customer'
+                ),
+
+              type:
+                'income',
+            };
+          },
+        );
+    },
+  );
+}
+
+export function getBookingFinanceTotals(
+  bookings,
+) {
+  const safeBookings =
+    Array.isArray(
+      bookings,
+    )
+      ? bookings
+      : [];
+
+  return safeBookings.reduce(
+    (
+      totals,
+      booking,
+    ) => {
+      const finance =
+        getBookingFinanceSnapshot(
+          booking,
+        );
+
+      totals.totalBookings +=
+        1;
+
+      totals.cashReceived +=
+        finance.cashReceived;
+
+      totals.outstanding +=
+        finance.outstanding;
+
+      if (
+        !finance.isVoid
+      ) {
+        totals.grossBilled +=
+          finance.total;
+      }
+
+      if (
+        finance.isOpen
+      ) {
+        totals.openInvoices +=
+          1;
+      }
+
+      if (
+        finance.isPaid
+      ) {
+        totals.paidInvoices +=
+          1;
+      }
+
+      if (
+        finance.isVoid
+      ) {
+        totals.voidInvoices +=
+          1;
+      }
+
+      if (
+        finance.isRefunded
+      ) {
+        totals.refundedInvoices +=
+          1;
+      }
+
+      return totals;
+    },
+    {
+      cashReceived:
+        0,
+
+      grossBilled:
+        0,
+
+      openInvoices:
+        0,
+
+      outstanding:
+        0,
+
+      paidInvoices:
+        0,
+
+      refundedInvoices:
+        0,
+
+      totalBookings:
+        0,
+
+      voidInvoices:
+        0,
+    },
+  );
+}
+
 export function assertBookingPaymentCanApply(
   booking,
   payment,
@@ -542,6 +824,26 @@ export function buildBookingVoidPatch(
   ) {
     throw new Error(
       'Invoice sudah void.',
+    );
+  }
+
+  if (
+    summary.status ===
+    BOOKING_PAYMENT_STATUS.REFUNDED
+  ) {
+    throw new Error(
+      'Invoice refund tidak bisa di-void.',
+    );
+  }
+
+  if (
+    summary.paid > 0 ||
+    getBookingPaymentHistoryTotal(
+      booking,
+    ) > 0
+  ) {
+    throw new Error(
+      'Invoice yang sudah memiliki pembayaran tidak bisa di-void. Gunakan refund.',
     );
   }
 

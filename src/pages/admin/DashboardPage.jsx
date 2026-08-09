@@ -30,6 +30,13 @@ import { adminBookingRepository } from '../../services/adminBookingRepository.js
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
+import {
+  getLegacyBookingPaymentStatus,
+} from '../../domain/booking/bookingSelectors.js';
+import {
+  buildBookingIncomeTransactions,
+  getBookingFinanceTotals,
+} from '../../utils/bookingPaymentUtils.js';
 
 const chartRangeOptions = [
   { key: 'week', label: 'Minggu', description: 'Cashflow minggu ini' },
@@ -142,86 +149,69 @@ function isSameMonth(value, target = new Date()) {
   return date.getFullYear() === target.getFullYear() && date.getMonth() === target.getMonth();
 }
 
-function getBookingStatus(booking) {
-  return cleanLower(booking?.paymentStatus || booking?.status || 'pending');
-}
-
-function getBookingTotal(booking) {
-  return toNumber(
-    booking?.total ??
-    booking?.subtotal ??
-    booking?.totalPrice ??
-    booking?.totalAmount ??
-    booking?.grandTotal
+function getBookingStatus(
+  booking,
+) {
+  return getLegacyBookingPaymentStatus(
+    booking,
   );
 }
 
-function getBookingPaymentHistory(booking) {
-  if (Array.isArray(booking?.paymentHistory) && booking.paymentHistory.length) {
-    return booking.paymentHistory.filter((payment) => toNumber(payment.amount) > 0);
-  }
+function buildBookkeepingTransactions(
+  bookings,
+  entries,
+) {
+  const bookingPayments =
+    buildBookingIncomeTransactions(
+      bookings,
+    );
 
-  const paidAmount = toNumber(booking?.paidAmount || booking?.dpAmount);
+  const manualEntries =
+    entries
+      .filter(
+        (
+          entry,
+        ) =>
+          entry.type ===
+            'income' ||
+          entry.type ===
+            'expense',
+      )
+      .map(
+        (
+          entry,
+        ) => ({
+          amount:
+            toNumber(
+              entry.amount,
+            ),
 
-  if (paidAmount > 0 && getBookingStatus(booking) !== 'void') {
-    return [
-      {
-        id: 'legacy-payment',
-        amount: paidAmount,
-        createdAt: booking?.lastPaymentAt || booking?.updatedAt || booking?.createdAt || booking?.date,
-        date: booking?.lastPaymentAt || booking?.date || booking?.createdAt,
-        method: booking?.lastPaymentMethod || booking?.paymentMethod || 'other',
-      },
-    ];
-  }
+          date:
+            entry.date ||
+            entry.createdAt,
 
-  return [];
-}
+          id:
+            'entry-' +
+            entry.id,
 
-function getBookingPaidAmount(booking) {
-  return getBookingPaymentHistory(booking).reduce((sum, payment) => sum + toNumber(payment.amount), 0);
-}
+          source:
+            'manual',
 
-function getBookingOutstanding(booking) {
-  const status = getBookingStatus(booking);
+          title:
+            entry.title,
 
-  if (status === 'void' || status === 'lunas') return 0;
+          type:
+            entry.type ===
+            'income'
+              ? 'income'
+              : 'expense',
+        }),
+      );
 
-  const invoiceAmount = toNumber(booking?.invoiceAmount);
-
-  if (invoiceAmount > 0) return invoiceAmount;
-
-  return Math.max(0, getBookingTotal(booking) - getBookingPaidAmount(booking));
-}
-
-function getPaymentDate(payment, booking) {
-  return payment?.date || payment?.createdAt || payment?.paidAt || booking?.date || booking?.createdAt || getTodayIsoDate();
-}
-
-function buildBookkeepingTransactions(bookings, entries) {
-  const bookingPayments = bookings.flatMap((booking) =>
-    getBookingPaymentHistory(booking).map((payment, index) => ({
-      id: 'booking-' + (booking.id || index) + '-' + (payment.id || index),
-      type: 'income',
-      source: 'booking',
-      title: 'Booking - ' + (booking.customer || booking.customerName || 'Customer'),
-      amount: toNumber(payment.amount),
-      date: getPaymentDate(payment, booking),
-    }))
-  );
-
-  const manualEntries = entries
-    .filter((entry) => entry.type === 'income' || entry.type === 'expense')
-    .map((entry) => ({
-      id: 'entry-' + entry.id,
-      type: entry.type === 'income' ? 'income' : 'expense',
-      source: 'manual',
-      title: entry.title,
-      amount: toNumber(entry.amount),
-      date: entry.date || entry.createdAt,
-    }));
-
-  return [...bookingPayments, ...manualEntries];
+  return [
+    ...bookingPayments,
+    ...manualEntries,
+  ];
 }
 
 function getInventoryStatus(item) {
@@ -336,8 +326,7 @@ function getDashboardStats({ bookings, entries, inventoryItems, manualCustomers 
     .filter((transaction) => transaction.type === 'expense')
     .reduce((sum, transaction) => sum + toNumber(transaction.amount), 0);
   const todayBookings = bookings.filter((booking) => isSameDay(booking.date || booking.createdAt));
-  const openBookings = bookings.filter((booking) => ['pending', 'dp'].includes(getBookingStatus(booking)));
-  const outstanding = openBookings.reduce((sum, booking) => sum + getBookingOutstanding(booking), 0);
+  const financeTotals = getBookingFinanceTotals(bookings);
   const inventoryAttention = inventoryItems.filter((item) => ['low_stock', 'maintenance', 'broken', 'lost'].includes(getInventoryStatus(item)));
 
   return {
@@ -346,8 +335,8 @@ function getDashboardStats({ bookings, entries, inventoryItems, manualCustomers 
     customers: getUniqueCustomerCount(bookings, manualCustomers),
     inventoryAttention: inventoryAttention.length,
     net: cashIn - cashOut,
-    openInvoices: openBookings.length,
-    outstanding,
+    openInvoices: financeTotals.openInvoices,
+    outstanding: financeTotals.outstanding,
     todayBookings: todayBookings.length,
     transactions,
   };
