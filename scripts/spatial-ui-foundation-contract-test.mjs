@@ -69,6 +69,7 @@ const requiredFiles = [
   'src/components/ui/IconButton.jsx',
   'src/components/ui/SpatialSurface.jsx',
   'src/utils/spatialMotion.js',
+  'src/theme/themePreferences.js',
 ];
 
 for (
@@ -87,6 +88,38 @@ for (
   );
 }
 
+const themePreferencesSource =
+  readFileSync(
+    resolve(
+      'src/theme/themePreferences.js',
+    ),
+    'utf8',
+  );
+
+for (
+  const required
+  of [
+    'THEME_STORAGE_KEY',
+    'THEME_PREFERENCES',
+    "LIGHT:\n      'light'",
+    "DARK:\n      'dark'",
+    "SYSTEM:\n      'system'",
+    'isThemePreference',
+    'getSystemTheme',
+    'getInitialThemePreference',
+    'resolveThemePreference',
+  ]
+) {
+  assert.equal(
+    themePreferencesSource.includes(
+      required,
+    ),
+    true,
+    'Theme preference foundation missing: ' +
+      required,
+  );
+}
+
 const themeSource =
   readFileSync(
     resolve(
@@ -98,17 +131,14 @@ const themeSource =
 for (
   const required
   of [
-    'THEME_PREFERENCES',
-    "LIGHT:\n      'light'",
-    "DARK:\n      'dark'",
-    "SYSTEM:\n      'system'",
-    'getInitialThemePreference',
-    'THEME_PREFERENCES.LIGHT',
-    'resolveThemePreference',
+    "from './themePreferences.js'",
     'adminThemeActive',
     'preference',
     'resolvedTheme',
     'systemTheme',
+    'syncSystemTheme',
+    'THEME_PREFERENCES.LIGHT',
+    'THEME_PREFERENCES.DARK',
   ]
 ) {
   assert.equal(
@@ -116,10 +146,37 @@ for (
       required,
     ),
     true,
-    'Theme foundation missing: ' +
+    'ThemeProvider foundation missing: ' +
       required,
   );
 }
+
+assert.equal(
+  themeSource.includes(
+    'export const THEME_'
+  ),
+  false,
+  'Theme constants must stay outside the React component module.',
+);
+
+assert.equal(
+  themeSource.includes(
+    'export function getSystemTheme'
+  ),
+  false,
+  'Pure theme helpers must stay outside the React component module.',
+);
+
+assert.equal(
+  (
+    themeSource.match(
+      /setSystemTheme\(/g,
+    ) ||
+    []
+  ).length,
+  1,
+  'System theme state must only update from the media-query change callback.',
+);
 
 const adminSource =
   readFileSync(
