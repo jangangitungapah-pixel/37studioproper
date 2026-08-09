@@ -54,8 +54,8 @@ import { mergeStudioSettingsIntoInvoiceSettings, useStudioSettings } from '../..
 const billingFilterOptions = [
   { key: 'all', label: 'Semua', description: 'Semua aktivitas booking' },
   { key: 'open', label: 'Belum Lunas', description: 'Pending dan DP' },
-  { key: 'pending', label: 'Pending', description: 'Belum ada pembayaran' },
-  { key: 'dp', label: 'DP', description: 'Sudah DP, belum lunas' },
+  { key: 'pending', label: 'Belum Bayar', description: 'Belum ada pembayaran' },
+  { key: 'dp', label: 'Sebagian / DP', description: 'Sudah membayar sebagian' },
   { key: 'lunas', label: 'Lunas', description: 'Sudah selesai' },
   { key: 'void', label: 'Void', description: 'Invoice dibatalkan' },
   { key: 'refund_activity', label: 'Ada Refund', description: 'Partial dan full refund' },
@@ -269,38 +269,13 @@ function getOutstandingAmount(
   );
 }
 
-function getStatusLabel(
-  status,
-) {
-  if (
-    status ===
-    'lunas'
-  ) {
-    return 'Lunas';
-  }
+function getStatusLabel(status) {
+  if (status === 'lunas') return 'Lunas';
+  if (status === 'dp') return 'Sebagian';
+  if (status === 'void') return 'Void';
+  if (status === 'refunded') return 'Refund Penuh';
 
-  if (
-    status ===
-    'dp'
-  ) {
-    return 'DP';
-  }
-
-  if (
-    status ===
-    'void'
-  ) {
-    return 'Void';
-  }
-
-  if (
-    status ===
-    'refunded'
-  ) {
-    return 'Refund';
-  }
-
-  return 'Pending';
+  return 'Belum Bayar';
 }
 
 function getStatusClass(
@@ -464,41 +439,21 @@ function findBookingForProof(bookingsById, proof) {
   return bookingsById.get(proof.bookingId) || null;
 }
 
-function getBillingStats(
-  bookings,
-) {
-  const totals =
-    getBookingFinanceTotals(
-      bookings,
-    );
+function getBillingStats(bookings) {
+  const totals = getBookingFinanceTotals(bookings);
 
   return {
-    open:
-      totals.openInvoices,
-
-    outstanding:
-      totals.outstanding,
-
-    paid:
-      totals.paidInvoices,
-
-    refunded:
-      totals.refundedInvoices,
-
-    partialRefunds:
-      totals.partialRefundInvoices,
-
-    refundAmount:
-      totals.cashRefunded,
-
-    total:
-      totals.totalBookings,
-
-    totalAmount:
-      totals.grossBilled,
-
-    void:
-      totals.voidInvoices,
+    cashReceived: totals.cashReceived,
+    netCashReceived: totals.netCashReceived,
+    open: totals.openInvoices,
+    outstanding: totals.outstanding,
+    paid: totals.paidInvoices,
+    refunded: totals.refundedInvoices,
+    partialRefunds: totals.partialRefundInvoices,
+    refundAmount: totals.cashRefunded,
+    total: totals.totalBookings,
+    totalAmount: totals.grossBilled,
+    void: totals.voidInvoices,
   };
 }
 
@@ -610,30 +565,76 @@ function getCashStats(
   );
 }
 
-function BillingHero({ bookings }) {
+function BillingFinanceHeader({ bookings, proofs }) {
   const stats = getBillingStats(bookings);
+  const pendingProofs = proofs.filter((proof) => proof.status === 'pending');
 
   return (
-    <section className="billing-hero-grid" aria-label="Ringkasan billing">
-      <article className="billing-hero-card">
-        <span><CreditCard size={17} /></span>
-        <small>Outstanding</small>
-        <strong>{formatMoney(stats.outstanding)}</strong>
-        <em>{stats.open} invoice belum lunas</em>
+    <header className="billing-editorial-header">
+      <div className="billing-heading">
+        <span className="billing-kicker">Finance operations</span>
+        <h2 id="billing-page-title">Invoices &amp; Payments</h2>
+        <p>
+          Pantau uang yang masih terbuka, pembayaran masuk, refund, dan bukti
+          transfer yang membutuhkan keputusan admin.
+        </p>
+      </div>
+
+      <div className={pendingProofs.length ? 'billing-attention-object is-active' : 'billing-attention-object is-clear'}>
+        <span className="billing-attention-icon" aria-hidden="true">
+          <AlertCircle size={17} />
+        </span>
+        <span>
+          <small>Proof queue</small>
+          <strong>{pendingProofs.length}</strong>
+          <em>{pendingProofs.length ? 'menunggu review' : 'semua sudah direview'}</em>
+        </span>
+        <b>{formatMoney(stats.outstanding)}</b>
+      </div>
+    </header>
+  );
+}
+
+function BillingHero({ bookings, proofs }) {
+  const stats = getBillingStats(bookings);
+  const pendingProofs = proofs.filter((proof) => proof.status === 'pending').length;
+
+  return (
+    <section className="billing-finance-pulse" aria-label="Finance pulse">
+      <article className="billing-finance-metric is-outstanding">
+        <span className="billing-finance-metric-icon"><CreditCard size={17} /></span>
+        <span>
+          <small>Outstanding</small>
+          <strong>{formatMoney(stats.outstanding)}</strong>
+          <em>{stats.open} invoice terbuka</em>
+        </span>
       </article>
 
-      <article className="billing-hero-card">
-        <span><CheckCircle2 size={17} /></span>
-        <small>Lunas</small>
-        <strong>{stats.paid}</strong>
-        <em>{formatMoney(stats.totalAmount)} total transaksi</em>
+      <article className="billing-finance-metric is-received">
+        <span className="billing-finance-metric-icon"><CheckCircle2 size={17} /></span>
+        <span>
+          <small>Cash Diterima</small>
+          <strong>{formatMoney(stats.cashReceived)}</strong>
+          <em>{stats.paid} invoice lunas</em>
+        </span>
       </article>
 
-      <article className="billing-hero-card">
-        <span><AlertCircle size={17} /></span>
-        <small>Aktivitas</small>
-        <strong>{stats.total}</strong>
-        <em>{stats.void} void • {stats.partialRefunds} partial refund • {stats.refunded} full refund</em>
+      <article className="billing-finance-metric is-refund">
+        <span className="billing-finance-metric-icon"><RotateCcw size={17} /></span>
+        <span>
+          <small>Refund</small>
+          <strong>{formatMoney(stats.refundAmount)}</strong>
+          <em>{stats.partialRefunds} sebagian · {stats.refunded} penuh</em>
+        </span>
+      </article>
+
+      <article className="billing-finance-metric is-proof">
+        <span className="billing-finance-metric-icon"><AlertCircle size={17} /></span>
+        <span>
+          <small>Proof Review</small>
+          <strong>{pendingProofs}</strong>
+          <em>{stats.void} void · {stats.total} invoice</em>
+        </span>
       </article>
     </section>
   );
@@ -643,12 +644,14 @@ function BillingCashSummary({ activeRange, bookings, onRangeChange }) {
   const stats = getCashStats(bookings, activeRange);
 
   return (
-    <section className="billing-cash-summary" aria-label="Kas masuk">
+    <section className="billing-cash-summary billing-secondary-surface" aria-label="Kas masuk">
       <header>
         <div>
-          <small>Kas Masuk {getCashRangeLabel(activeRange)}</small>
+          <small>Cashflow · {getCashRangeLabel(activeRange)}</small>
           <strong>{formatMoney(stats.total)}</strong>
-          <span>{stats.count} pembayaran • {stats.refundCount} refund • keluar {formatMoney(stats.refundTotal)}</span>
+          <span>
+            {stats.count} pembayaran · {stats.refundCount} refund · net {formatMoney(stats.net)}
+          </span>
         </div>
 
         <div className="billing-cash-range">
@@ -671,28 +674,50 @@ function BillingCashSummary({ activeRange, bookings, onRangeChange }) {
   );
 }
 
-function BillingToolbar({ activeFilter, onFilterChange, onSearchChange, searchText }) {
+function BillingToolbar({
+  activeFilter,
+  filteredCount,
+  onFilterChange,
+  onReset,
+  onSearchChange,
+  searchText,
+  totalCount,
+}) {
+  const hasActiveControls = Boolean(searchText.trim()) || activeFilter !== 'all';
+
   return (
-    <section className="billing-toolbar" aria-label="Billing toolbar">
-      <div className="billing-search-shell">
+    <section className="billing-command-shelf" aria-label="Invoice search and filter">
+      <label className="billing-search-shell">
         <Search size={17} aria-hidden="true" />
         <input
-          aria-label="Cari billing"
+          aria-label="Cari invoice dan pembayaran"
           placeholder="Cari customer, invoice, booking ID..."
           type="search"
           value={searchText}
           onChange={(event) => onSearchChange(event.target.value)}
         />
-      </div>
+      </label>
 
       <div className="billing-filter-select">
         <StudioSelect
-          label="Status"
+          label="Status Invoice"
           options={billingFilterOptions}
           selectedKey={activeFilter}
           onChange={onFilterChange}
         />
       </div>
+
+      <span className="billing-command-context">
+        <strong>{filteredCount}</strong>
+        <small>dari {totalCount} invoice</small>
+      </span>
+
+      {hasActiveControls ? (
+        <button className="billing-command-reset" type="button" onClick={onReset}>
+          <RotateCcw aria-hidden="true" size={14} />
+          Reset
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -701,12 +726,13 @@ function BillingReminderQueue({ bookings, invoiceSettings, onOpenInvoice, onReco
   const openBookings = bookings.filter(isOpenBilling).slice(0, 4);
 
   return (
-    <section className="billing-reminder-card" aria-label="Reminder tagihan">
+    <section className="billing-reminder-card billing-secondary-surface" aria-label="Reminder tagihan">
       <header>
         <span><PhoneCall size={16} /></span>
         <div>
-          <small>Reminder Tagihan</small>
-          <strong>{openBookings.length ? 'Perlu follow-up' : 'Tagihan aman'}</strong>
+          <small>Collection context</small>
+          <strong>{openBookings.length ? 'Reminder Tagihan' : 'Tagihan aman'}</strong>
+          <em>{openBookings.length ? openBookings.length + ' prioritas follow-up' : 'Tidak ada follow-up aktif'}</em>
         </div>
       </header>
 
@@ -719,7 +745,7 @@ function BillingReminderQueue({ bookings, invoiceSettings, onOpenInvoice, onReco
               <article className="billing-reminder-row" key={booking.id}>
                 <button type="button" onClick={() => onOpenInvoice(booking)}>
                   <strong>{booking.customer || '-'}</strong>
-                  <small>{getInvoiceDisplayNumber(booking)} • {formatDate(booking.date)} • {formatMoney(getOutstandingAmount(booking))}</small>
+                  <small>{getInvoiceDisplayNumber(booking)} · {formatMoney(getOutstandingAmount(booking))}</small>
                 </button>
 
                 <span>
@@ -728,112 +754,126 @@ function BillingReminderQueue({ bookings, invoiceSettings, onOpenInvoice, onReco
                       WA
                     </a>
                   ) : null}
-
-                  <button type="button" onClick={() => onRecordPayment(booking)}>
-                    Bayar
-                  </button>
+                  <button type="button" onClick={() => onRecordPayment(booking)}>Bayar</button>
                 </span>
               </article>
             );
           })}
         </div>
       ) : (
-        <p>Tidak ada invoice pending atau DP. Mesin kas lagi tenang.</p>
+        <p>Tidak ada invoice belum bayar atau sebagian yang perlu diingatkan.</p>
       )}
     </section>
   );
 }
 
-function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment, onRefundPayment, onVoidInvoice }) {
+function BillingList({
+  bookings,
+  invoiceSettings,
+  onOpenInvoice,
+  onRecordPayment,
+  onRefundPayment,
+  onVoidInvoice,
+  totalItems,
+}) {
   if (!bookings.length) {
     return (
-      <section className="billing-empty-state">
+      <section className="billing-ledger-state">
         <CreditCard size={24} />
-        <strong>Belum ada data billing</strong>
-        <span>Data billing akan muncul otomatis dari aktivitas booking di Schedule.</span>
+        <strong>Belum ada invoice yang cocok</strong>
+        <span>Ubah pencarian atau filter untuk melihat lifecycle pembayaran lain.</span>
       </section>
     );
   }
 
   return (
-    <section className="billing-list" aria-label="Daftar billing">
-      {bookings.map((booking) => {
-        const status = normalizeStatus(booking);
-        const reminderHref = getReminderHref(booking, invoiceSettings);
-        const refundedAmount = getBookingRefundedAmount(booking);
-        const refundStatus = getBookingRefundStatus(booking);
+    <section className="billing-ledger-surface" aria-label="Invoice and payment ledger">
+      <header className="billing-ledger-header">
+        <span>
+          <small>Invoice &amp; payment ledger</small>
+          <strong>{totalItems} record ditemukan</strong>
+        </span>
+        <em>Nominal mengikuti shared accounting core</em>
+      </header>
 
-        return (
-          <article className={status === 'void' ? 'billing-row is-void' : 'billing-row'} key={booking.id}>
-            <button className="billing-row-main" type="button" onClick={() => onOpenInvoice(booking)}>
-              <span>
-                <small>{getBookingDisplayCode(booking)}</small>
-                <strong>{booking.customer || '-'}</strong>
-                <em>{getBookingDisplayCode(booking)} • {formatDate(booking.date)}</em>
-              </span>
+      <div className="billing-ledger-columns" aria-hidden="true">
+        <span>Invoice / Customer</span>
+        <span>Total</span>
+        <span>Dibayar</span>
+        <span>Outstanding</span>
+        <span>Aksi</span>
+      </div>
 
-              <b className={'billing-status-pill ' + getStatusClass(booking)}>
-                {getStatusLabel(status)}
-              </b>
-            </button>
+      <div className="billing-list">
+        {bookings.map((booking) => {
+          const status = normalizeStatus(booking);
+          const reminderHref = getReminderHref(booking, invoiceSettings);
+          const refundedAmount = getBookingRefundedAmount(booking);
+          const refundStatus = getBookingRefundStatus(booking);
 
-            <div className="billing-row-money">
-              <span>
-                <small>Total</small>
-                <strong>{formatMoney(getBillingTotal(booking))}</strong>
-              </span>
-              <span>
-                <small>Dibayar</small>
-                <strong>{formatMoney(getPaidAmount(booking))}</strong>
-              </span>
-              <span>
-                <small>Sisa</small>
-                <strong>{formatMoney(getOutstandingAmount(booking))}</strong>
-              </span>
-            </div>
+          return (
+            <article className={status === 'void' ? 'billing-row is-void' : 'billing-row'} key={booking.id}>
+              <button className="billing-row-main" type="button" onClick={() => onOpenInvoice(booking)}>
+                <span>
+                  <small>{getInvoiceDisplayNumber(booking)}</small>
+                  <strong>{booking.customer || '-'}</strong>
+                  <em>{getBookingDisplayCode(booking)} · {formatDate(booking.date)}</em>
+                </span>
 
-            {status === 'void' && booking.voidReason ? (
-              <p className="billing-void-note">Void: {booking.voidReason}</p>
-            ) : null}
-
-            {refundedAmount > 0 ? (
-              <p className="billing-refund-note">
-                Refund {refundStatus === 'full' ? 'penuh' : 'sebagian'}: {formatMoney(refundedAmount)}
-              </p>
-            ) : null}
-
-            <div className="billing-row-actions">
-              {reminderHref ? (
-                <a href={reminderHref} target="_blank" rel="noreferrer">
-                  Reminder
-                </a>
-              ) : null}
-
-              <button type="button" onClick={() => onOpenInvoice(booking)}>
-                Invoice
+                <b className={'billing-status-pill ' + getStatusClass(booking)}>
+                  {getStatusLabel(status)}
+                </b>
               </button>
 
-              {isOpenBilling(booking) ? (
-                <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
-                  Bayar
-                </button>
-              ) : null}
+              <div className="billing-row-money">
+                <span><small>Total</small><strong>{formatMoney(getBillingTotal(booking))}</strong></span>
+                <span><small>Dibayar</small><strong>{formatMoney(getPaidAmount(booking))}</strong></span>
+                <span><small>Sisa</small><strong>{formatMoney(getOutstandingAmount(booking))}</strong></span>
+              </div>
 
-              {canRefundBookingPayment(booking) ? (
-                <button className="is-refund" type="button" onClick={() => onRefundPayment(booking)}>
-                  Refund
-                </button>
-              ) : null}
+              <div className="billing-row-flags">
+                {status === 'void' && booking.voidReason ? (
+                  <p className="billing-void-note">Void: {booking.voidReason}</p>
+                ) : null}
+                {refundedAmount > 0 ? (
+                  <p className="billing-refund-note">
+                    Refund {refundStatus === 'full' ? 'penuh' : 'sebagian'}: {formatMoney(refundedAmount)}
+                  </p>
+                ) : null}
+              </div>
 
-              {canVoidBookingInvoice(booking) ? (
-                <button className="is-danger" type="button" onClick={() => onVoidInvoice(booking)}>
-                  Void
-                </button>
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
+              <div className="billing-row-actions">
+                {reminderHref ? <a href={reminderHref} target="_blank" rel="noreferrer">Reminder</a> : null}
+                <button type="button" onClick={() => onOpenInvoice(booking)}>Invoice</button>
+                {isOpenBilling(booking) ? (
+                  <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>Bayar</button>
+                ) : null}
+                {canRefundBookingPayment(booking) ? (
+                  <button className="is-refund" type="button" onClick={() => onRefundPayment(booking)}>Refund</button>
+                ) : null}
+                {canVoidBookingInvoice(booking) ? (
+                  <button className="is-danger" type="button" onClick={() => onVoidInvoice(booking)}>Void</button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function BillingLedgerState({ error, isLoading }) {
+  return (
+    <section className={error ? 'billing-ledger-state is-error' : 'billing-ledger-state is-loading'} role={error ? 'alert' : 'status'}>
+      {error ? <AlertCircle size={24} /> : <CreditCard className="is-pulsing" size={24} />}
+      <strong>{error ? 'Invoice belum tersinkron' : 'Menyusun finance ledger...'}</strong>
+      <span>{error || 'Membaca booking, pembayaran, refund, dan status invoice realtime.'}</span>
+      {isLoading ? (
+        <div className="billing-ledger-skeleton" aria-hidden="true">
+          <i /><i /><i />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1823,14 +1863,24 @@ export default function BillingPage() {
     [rawInvoiceSettings, studioSettings]
   );
   const [toast, setToast] = useState(null);
+  const [isBillingLoading, setIsBillingLoading] = useState(() => !isBillingQaPreview);
+  const [billingLoadError, setBillingLoadError] = useState('');
+  const [isProofLoading, setIsProofLoading] = useState(() => !isBillingQaPreview);
+  const [proofLoadError, setProofLoadError] = useState('');
 
   useEffect(() => {
     if (isBillingQaPreview) return undefined;
 
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
-      (data) => setBookings(data),
+      (data) => {
+        setBookings(data);
+        setBillingLoadError('');
+        setIsBillingLoading(false);
+      },
       (error) => {
         console.error('Gagal memuat billing:', error);
+        setBillingLoadError(error?.message || 'Data booking belum bisa dimuat dari Firestore.');
+        setIsBillingLoading(false);
         setToast({
           title: 'Billing belum tersinkron',
           message: 'Data booking belum bisa dimuat dari Firestore.',
@@ -1851,16 +1901,19 @@ export default function BillingPage() {
     const unsubscribe =
       paymentProofRepository
         .subscribePaymentProofs(
-          (data) =>
-            setPaymentProofs(
-              data,
-            ),
+          (data) => {
+            setPaymentProofs(data);
+            setProofLoadError('');
+            setIsProofLoading(false);
+          },
 
           (error) => {
             console.error(
               'Gagal memuat bukti pembayaran:',
               error,
             );
+            setProofLoadError(error?.message || 'Riwayat bukti pembayaran belum bisa dimuat.');
+            setIsProofLoading(false);
 
             setToast({
               title:
@@ -1882,6 +1935,37 @@ export default function BillingPage() {
 
     return () => window.clearTimeout(timerId);
   }, [toast]);
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key !== 'Escape') return;
+
+      if (selectedPaymentProofId && !isReviewingPaymentProof) {
+        setSelectedPaymentProofId('');
+        setPaymentProofAdminNote('');
+        const nextParams = new URLSearchParams(window.location.search);
+        nextParams.delete('paymentProofId');
+        setSearchParams(nextParams, { replace: true });
+        return;
+      }
+
+      if (selectedVoidBooking) return setSelectedVoidBooking(null);
+      if (selectedRefundBooking) return setSelectedRefundBooking(null);
+      if (selectedPaymentBooking) return setSelectedPaymentBooking(null);
+      if (selectedBooking) setSelectedBooking(null);
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [
+    isReviewingPaymentProof,
+    selectedBooking,
+    selectedPaymentBooking,
+    selectedPaymentProofId,
+    selectedRefundBooking,
+    selectedVoidBooking,
+    setSearchParams,
+  ]);
 
   const bookingsById = useMemo(() => {
     return bookings.reduce((map, booking) => {
@@ -2146,6 +2230,12 @@ export default function BillingPage() {
 
   function handleBillingSearchChange(nextSearchText) {
     setSearchText(nextSearchText);
+    setBillingPage(1);
+  }
+
+  function resetBillingControls() {
+    setActiveFilter('all');
+    setSearchText('');
     setBillingPage(1);
   }
 
@@ -2421,56 +2511,71 @@ export default function BillingPage() {
   }
 
   return (
-    <section className="billing-page" aria-labelledby="billing-page-title">
-      <div className="billing-page-title">
-        <p>Billing / POS</p>
-        <h2 id="billing-page-title">Pembayaran</h2>
-      </div>
-
-      <BillingHero bookings={bookings} />
-
-      <BillingCashSummary
-        activeRange={activeCashRange}
-        bookings={bookings}
-        onRangeChange={setActiveCashRange}
-      />
+    <section
+      className="billing-page"
+      data-billing-ui="ui-6-spatial"
+      aria-labelledby="billing-page-title"
+    >
+      <BillingFinanceHeader bookings={bookings} proofs={paymentProofs} />
+      <BillingHero bookings={bookings} proofs={paymentProofs} />
 
       <PaymentProofCommandCenter
         bookingsById={bookingsById}
+        isLoading={isProofLoading}
+        loadError={proofLoadError}
         proofs={paymentProofs}
         onOpenProof={openPaymentProofReview}
       />
 
+      <section className="billing-operations-grid" aria-label="Cashflow and collection context">
+        <BillingCashSummary
+          activeRange={activeCashRange}
+          bookings={bookings}
+          onRangeChange={setActiveCashRange}
+        />
+        <BillingReminderQueue
+          bookings={bookings}
+          invoiceSettings={invoiceSettings}
+          onOpenInvoice={setSelectedBooking}
+          onRecordPayment={setSelectedPaymentBooking}
+        />
+      </section>
+
       <BillingToolbar
         activeFilter={activeFilter}
+        filteredCount={filteredBookings.length}
         searchText={searchText}
+        totalCount={bookings.length}
         onFilterChange={handleBillingFilterChange}
+        onReset={resetBillingControls}
         onSearchChange={handleBillingSearchChange}
       />
 
-      <BillingReminderQueue
-        bookings={bookings}
-        invoiceSettings={invoiceSettings}
-        onOpenInvoice={setSelectedBooking}
-        onRecordPayment={setSelectedPaymentBooking}
-      />
+      {isBillingLoading ? (
+        <BillingLedgerState isLoading />
+      ) : billingLoadError ? (
+        <BillingLedgerState error={billingLoadError} />
+      ) : (
+        <BillingList
+          bookings={paginatedBookings}
+          invoiceSettings={invoiceSettings}
+          totalItems={filteredBookings.length}
+          onOpenInvoice={setSelectedBooking}
+          onRecordPayment={setSelectedPaymentBooking}
+          onRefundPayment={setSelectedRefundBooking}
+          onVoidInvoice={setSelectedVoidBooking}
+        />
+      )}
 
-      <BillingList
-        bookings={paginatedBookings}
-        invoiceSettings={invoiceSettings}
-        onOpenInvoice={setSelectedBooking}
-        onRecordPayment={setSelectedPaymentBooking}
-        onRefundPayment={setSelectedRefundBooking}
-        onVoidInvoice={setSelectedVoidBooking}
-      />
-
-      <PaginationControls
-        label="billing"
-        page={billingPage}
-        pageSize={ADMIN_LIST_PAGE_SIZE}
-        totalItems={filteredBookings.length}
-        onPageChange={setBillingPage}
-      />
+      {!isBillingLoading && !billingLoadError ? (
+        <PaginationControls
+          label="billing"
+          page={billingPage}
+          pageSize={ADMIN_LIST_PAGE_SIZE}
+          totalItems={filteredBookings.length}
+          onPageChange={setBillingPage}
+        />
+      ) : null}
 
       <InvoiceModal
         booking={selectedBooking}

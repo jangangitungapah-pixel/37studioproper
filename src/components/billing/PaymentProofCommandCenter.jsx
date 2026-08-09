@@ -266,528 +266,189 @@ function getProofSearchHaystack(
 
 export default function PaymentProofCommandCenter({
   bookingsById,
+  isLoading = false,
+  loadError = '',
   onOpenProof,
-  proofs,
+  proofs = [],
 }) {
-  const [
-    activeFilter,
-    setActiveFilter,
-  ] =
-    useState(
-      'pending',
-    );
+  const [activeFilter, setActiveFilter] = useState('pending');
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
 
-  const [
-    query,
-    setQuery,
-  ] =
-    useState(
-      '',
-    );
+  const stats = useMemo(() => proofs.reduce((result, proof) => {
+    result.total += 1;
+    result.amount += Math.max(0, Number(proof.amount) || 0);
+    if (proof.status === 'pending') result.pending += 1;
+    if (proof.status === 'approved') result.approved += 1;
+    if (proof.status === 'rejected') result.rejected += 1;
+    return result;
+  }, {
+    amount: 0,
+    approved: 0,
+    pending: 0,
+    rejected: 0,
+    total: 0,
+  }), [proofs]);
 
-  const [
-    page,
-    setPage,
-  ] =
-    useState(
-      1,
-    );
+  const filteredProofs = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
 
-  const stats =
-    useMemo(
-      () => {
-        return proofs.reduce(
-          (
-            result,
-            proof,
-          ) => {
-            result.total +=
-              1;
+    return proofs
+      .filter((proof) => {
+        const booking = getBookingForProof(bookingsById, proof);
+        const matchesStatus = activeFilter === 'all' || proof.status === activeFilter;
+        if (!matchesStatus) return false;
+        if (!normalizedQuery) return true;
+        return getProofSearchHaystack(proof, booking).includes(normalizedQuery);
+      })
+      .sort((first, second) => {
+        if (activeFilter === 'all' && first.status !== second.status) {
+          if (first.status === 'pending') return -1;
+          if (second.status === 'pending') return 1;
+        }
 
-            result.amount +=
-              Math.max(
-                0,
-                Number(
-                  proof.amount,
-                ) ||
-                  0,
-              );
-
-            if (
-              proof.status ===
-              'pending'
-            ) {
-              result.pending +=
-                1;
-            }
-
-            if (
-              proof.status ===
-              'approved'
-            ) {
-              result.approved +=
-                1;
-            }
-
-            if (
-              proof.status ===
-              'rejected'
-            ) {
-              result.rejected +=
-                1;
-            }
-
-            return result;
-          },
-
-          {
-            amount:
-              0,
-
-            approved:
-              0,
-
-            pending:
-              0,
-
-            rejected:
-              0,
-
-            total:
-              0,
-          },
+        return String(second.createdAt || second.updatedAt || '').localeCompare(
+          String(first.createdAt || first.updatedAt || ''),
         );
-      },
+      });
+  }, [activeFilter, bookingsById, proofs, query]);
 
-      [
-        proofs,
-      ],
-    );
+  const totalPages = Math.max(1, Math.ceil(filteredProofs.length / PROOF_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visibleProofs = getPaginationSlice(filteredProofs, safePage, PROOF_PAGE_SIZE);
 
-  const filteredProofs =
-    useMemo(
-      () => {
-        const normalizedQuery =
-          query
-            .trim()
-            .toLowerCase();
-
-        return proofs.filter(
-          (
-            proof,
-          ) => {
-            const booking =
-              getBookingForProof(
-                bookingsById,
-                proof,
-              );
-
-            const matchesStatus =
-              activeFilter ===
-                'all' ||
-              proof.status ===
-                activeFilter;
-
-            if (
-              !matchesStatus
-            ) {
-              return false;
-            }
-
-            if (
-              !normalizedQuery
-            ) {
-              return true;
-            }
-
-            return getProofSearchHaystack(
-              proof,
-              booking,
-            ).includes(
-              normalizedQuery,
-            );
-          },
-        );
-      },
-
-      [
-        activeFilter,
-        bookingsById,
-        proofs,
-        query,
-      ],
-    );
-
-  const totalPages =
-    Math.max(
-      1,
-      Math.ceil(
-        filteredProofs.length /
-          PROOF_PAGE_SIZE,
-      ),
-    );
-
-  const safePage =
-    Math.min(
-      page,
-      totalPages,
-    );
-
-  const visibleProofs =
-    getPaginationSlice(
-      filteredProofs,
-      safePage,
-      PROOF_PAGE_SIZE,
-    );
-
-  function handleFilterChange(
-    nextFilter,
-  ) {
-    setActiveFilter(
-      nextFilter,
-    );
-
-    setPage(
-      1,
-    );
+  function handleFilterChange(nextFilter) {
+    setActiveFilter(nextFilter);
+    setPage(1);
   }
 
-  function handleSearchChange(
-    event,
-  ) {
-    setQuery(
-      event.target.value,
-    );
-
-    setPage(
-      1,
-    );
+  function handleSearchChange(event) {
+    setQuery(event.target.value);
+    setPage(1);
   }
 
   return (
     <section
       className="billing-proof-command-center"
+      data-proof-priority={stats.pending ? 'actionable' : 'clear'}
       aria-labelledby="billing-proof-command-title"
     >
       <header className="billing-proof-command-header">
         <div>
-          <span>
-            Payment Verification
-          </span>
-
-          <h3 id="billing-proof-command-title">
-            Bukti Pembayaran
-          </h3>
-
+          <span>Payment verification</span>
+          <h3 id="billing-proof-command-title">Proof Review Queue</h3>
           <p>
-            Review transfer client, lihat histori approval, dan audit setiap keputusan pembayaran.
+            Bukti pending tampil sebagai prioritas. Histori approved dan rejected tetap tersedia untuk audit.
           </p>
         </div>
 
-        <div className="billing-proof-command-pending">
-          <UploadCloud
-            size={17}
-          />
-
-          <span>
-            <small>
-              Perlu Review
-            </small>
-
-            <strong>
-              {
-                stats.pending
-              }
-            </strong>
-          </span>
+        <div className={stats.pending ? 'billing-proof-command-pending is-active' : 'billing-proof-command-pending is-clear'}>
+          <UploadCloud size={17} aria-hidden="true" />
+          <span><small>Perlu Review</small><strong>{stats.pending}</strong></span>
         </div>
       </header>
 
       <div className="billing-proof-command-stats">
-        <article className="is-pending">
-          <Clock3
-            size={16}
-          />
-
-          <span>
-            <small>
-              Pending
-            </small>
-
-            <strong>
-              {
-                stats.pending
-              }
-            </strong>
-          </span>
-        </article>
-
-        <article className="is-approved">
-          <CheckCircle2
-            size={16}
-          />
-
-          <span>
-            <small>
-              Approved
-            </small>
-
-            <strong>
-              {
-                stats.approved
-              }
-            </strong>
-          </span>
-        </article>
-
-        <article className="is-rejected">
-          <XCircle
-            size={16}
-          />
-
-          <span>
-            <small>
-              Rejected
-            </small>
-
-            <strong>
-              {
-                stats.rejected
-              }
-            </strong>
-          </span>
-        </article>
-
-        <article>
-          <UploadCloud
-            size={16}
-          />
-
-          <span>
-            <small>
-              Submitted
-            </small>
-
-            <strong>
-              {
-                formatMoney(
-                  stats.amount,
-                )
-              }
-            </strong>
-          </span>
-        </article>
+        <article className="is-pending"><Clock3 size={16} /><span><small>Pending</small><strong>{stats.pending}</strong></span></article>
+        <article className="is-approved"><CheckCircle2 size={16} /><span><small>Approved</small><strong>{stats.approved}</strong></span></article>
+        <article className="is-rejected"><XCircle size={16} /><span><small>Rejected</small><strong>{stats.rejected}</strong></span></article>
+        <article><UploadCloud size={16} /><span><small>Submitted</small><strong>{formatMoney(stats.amount)}</strong></span></article>
       </div>
 
       <div className="billing-proof-command-toolbar">
         <label className="billing-proof-command-search">
-          <Search
-            size={16}
-          />
-
+          <Search size={16} aria-hidden="true" />
           <input
             aria-label="Cari bukti pembayaran"
             placeholder="Cari customer, invoice, booking ID..."
             type="search"
-            value={
-              query
-            }
-            onChange={
-              handleSearchChange
-            }
+            value={query}
+            onChange={handleSearchChange}
           />
         </label>
 
         <div className="billing-proof-command-filter">
           <StudioSelect
             label="Status Bukti"
-            options={
-              proofStatusFilterOptions
-            }
-            selectedKey={
-              activeFilter
-            }
-            onChange={
-              handleFilterChange
-            }
+            options={proofStatusFilterOptions}
+            selectedKey={activeFilter}
+            onChange={handleFilterChange}
           />
         </div>
       </div>
 
-      {visibleProofs.length ? (
+      {isLoading ? (
+        <div className="billing-proof-command-state is-loading" role="status">
+          <Clock3 className="is-pulsing" size={22} />
+          <strong>Membaca proof history...</strong>
+          <span>Menyiapkan queue pending dan audit review.</span>
+        </div>
+      ) : loadError ? (
+        <div className="billing-proof-command-state is-error" role="alert">
+          <XCircle size={22} />
+          <strong>Proof history belum tersinkron</strong>
+          <span>{loadError}</span>
+        </div>
+      ) : visibleProofs.length ? (
         <div className="billing-proof-command-list">
-          {visibleProofs.map(
-            (
-              proof,
-            ) => {
-              const booking =
-                getBookingForProof(
-                  bookingsById,
-                  proof,
-                );
+          {visibleProofs.map((proof) => {
+            const booking = getBookingForProof(bookingsById, proof);
+            const reviewed = proof.status !== 'pending';
 
-              const reviewed =
-                proof.status !==
-                'pending';
+            return (
+              <button
+                className={'billing-proof-command-row ' + getProofTone(proof.status)}
+                data-proof-status={proof.status}
+                key={proof.id}
+                type="button"
+                onClick={() => onOpenProof(proof)}
+              >
+                <span className="billing-proof-command-thumb">
+                  {proof.proofUrl ? <img alt="" loading="lazy" src={proof.proofUrl} /> : <Image size={16} />}
+                </span>
 
-              return (
-                <button
-                  className="billing-proof-command-row"
-                  key={
-                    proof.id
-                  }
-                  type="button"
-                  onClick={() =>
-                    onOpenProof(
-                      proof,
-                    )
-                  }
-                >
-                  <span className="billing-proof-command-thumb">
-                    {proof.proofUrl ? (
-                      <img
-                        alt=""
-                        loading="lazy"
-                        src={
-                          proof.proofUrl
-                        }
-                      />
-                    ) : (
-                      <Image
-                        size={16}
-                      />
-                    )}
+                <span className="billing-proof-command-main">
+                  <strong>{proof.customer || booking?.customer || 'Client'}</strong>
+                  <small>{getInvoiceNumber(proof, booking)} · {getBookingCode(proof, booking)}</small>
+                  <em>{getCategoryLabel(proof.category)} · {getMethodLabel(proof.method)}</em>
+                </span>
+
+                <span className="billing-proof-command-audit">
+                  <small>{reviewed ? 'Reviewed' : 'Submitted'}</small>
+                  <strong>{formatDateTime(reviewed ? proof.reviewedAt : proof.createdAt)}</strong>
+                  {reviewed ? <em>{proof.reviewedByName || 'Admin'}</em> : null}
+                </span>
+
+                <span className="billing-proof-command-amount">
+                  <strong>{formatMoney(proof.amount)}</strong>
+                  <b className={'billing-proof-status ' + getProofTone(proof.status)}>
+                    {getPaymentProofStatusLabel(proof.status)}
+                  </b>
+                  <span className="billing-proof-command-cta">
+                    {reviewed ? 'Lihat audit' : 'Review sekarang'}
                   </span>
-
-                  <span className="billing-proof-command-main">
-                    <strong>
-                      {
-                        proof.customer ||
-                        booking?.customer ||
-                        'Client'
-                      }
-                    </strong>
-
-                    <small>
-                      {
-                        getInvoiceNumber(
-                          proof,
-                          booking,
-                        )
-                      }
-                      {' · '}
-                      {
-                        getBookingCode(
-                          proof,
-                          booking,
-                        )
-                      }
-                    </small>
-
-                    <em>
-                      {
-                        getCategoryLabel(
-                          proof.category,
-                        )
-                      }
-                      {' · '}
-                      {
-                        getMethodLabel(
-                          proof.method,
-                        )
-                      }
-                    </em>
-                  </span>
-
-                  <span className="billing-proof-command-audit">
-                    <small>
-                      {
-                        reviewed
-                          ? 'Reviewed'
-                          : 'Submitted'
-                      }
-                    </small>
-
-                    <strong>
-                      {
-                        formatDateTime(
-                          reviewed
-                            ? proof.reviewedAt
-                            : proof.createdAt,
-                        )
-                      }
-                    </strong>
-
-                    {reviewed ? (
-                      <em>
-                        {
-                          proof.reviewedByName ||
-                          'Admin'
-                        }
-                      </em>
-                    ) : null}
-                  </span>
-
-                  <span className="billing-proof-command-amount">
-                    <strong>
-                      {
-                        formatMoney(
-                          proof.amount,
-                        )
-                      }
-                    </strong>
-
-                    <b
-                      className={
-                        'billing-proof-status ' +
-                        getProofTone(
-                          proof.status,
-                        )
-                      }
-                    >
-                      {
-                        getPaymentProofStatusLabel(
-                          proof.status,
-                        )
-                      }
-                    </b>
-                  </span>
-                </button>
-              );
-            },
-          )}
+                </span>
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className="billing-proof-command-empty">
-          <UploadCloud
-            size={22}
-          />
-
-          <strong>
-            Tidak ada bukti pembayaran
-          </strong>
-
-          <span>
-            Ubah pencarian atau filter status untuk melihat data lain.
-          </span>
+          <UploadCloud size={22} />
+          <strong>Tidak ada bukti pembayaran</strong>
+          <span>Ubah pencarian atau filter status untuk melihat data lain.</span>
         </div>
       )}
 
-      <PaginationControls
-        label="bukti pembayaran"
-        page={
-          safePage
-        }
-        pageSize={
-          PROOF_PAGE_SIZE
-        }
-        totalItems={
-          filteredProofs.length
-        }
-        onPageChange={
-          setPage
-        }
-      />
+      {!isLoading && !loadError ? (
+        <PaginationControls
+          label="bukti pembayaran"
+          page={safePage}
+          pageSize={PROOF_PAGE_SIZE}
+          totalItems={filteredProofs.length}
+          onPageChange={setPage}
+        />
+      ) : null}
     </section>
   );
 }
