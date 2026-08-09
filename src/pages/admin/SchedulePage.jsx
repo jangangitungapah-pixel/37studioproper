@@ -596,6 +596,12 @@ function CalendarBookingBlock({
 
       <span className="schedule-booking-title">{title}</span>
 
+      {isCancellationRequested ? (
+        <span className="schedule-booking-request-flag">
+          Cancel request
+        </span>
+      ) : null}
+
       <span className="schedule-booking-meta">
         <span>{startLabel} • {durationLabel}</span>
 
@@ -712,6 +718,50 @@ function ScheduleUpcomingTable({
   );
 }
 
+function ScheduleLoading() {
+  return (
+    <section
+      aria-label="Memuat kalender booking"
+      className="schedule-loading"
+      role="status"
+    >
+      <div className="schedule-loading-head">
+        <span className="schedule-loading-copy">
+          <small>
+            Scheduling board
+          </small>
+
+          <strong>
+            Menyusun kalender studio...
+          </strong>
+        </span>
+
+        <span
+          aria-hidden="true"
+          className="schedule-loading-orb"
+        />
+      </div>
+
+      <div className="schedule-loading-grid">
+        {Array.from(
+          {
+            length: 18,
+          },
+          (
+            _,
+            index,
+          ) => (
+            <span
+              className="schedule-loading-cell"
+              key={index}
+            />
+          ),
+        )}
+      </div>
+    </section>
+  );
+}
+
 function CalendarGrid({
   activeStatuses,
   bookings,
@@ -775,7 +825,31 @@ function CalendarGrid({
   }, [todayFocusDateIso, todayFocusRequest]);
 
   return (
-    <section className="schedule-grid-shell" aria-label="Calendar grid">
+    <section
+      aria-label="Calendar grid"
+      className="schedule-grid-shell"
+      data-calendar-view={viewMode}
+    >
+      <header
+        aria-label="Konteks tanggal kalender mobile"
+        className="schedule-mobile-date-strip"
+      >
+        <span>
+          {viewMode === 'day'
+            ? 'Hari dipilih'
+            : viewMode === 'week'
+              ? 'Minggu aktif'
+              : 'Geser tanggal'}
+        </span>
+
+        <strong>
+          {formatRangeLabel(
+            selectedDate,
+            viewMode,
+          )}
+        </strong>
+      </header>
+
       <div 
         className="schedule-grid-scroll overflow-x-auto scrollbar-none" 
         ref={gridScrollRef}
@@ -887,6 +961,9 @@ export default function SchedulePage({
   const [editingBooking, setEditingBooking] = useState(null);
   const [scheduleToast, setScheduleToast] = useState(null);
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(
+    () => !isScheduleQaPreview,
+  );
 
   const canViewOperatorFee =
     hasAdminPagePermission(
@@ -934,8 +1011,11 @@ export default function SchedulePage({
       },
       (data) => {
         setBookings(data);
+        setIsScheduleLoading(false);
       },
       (_err) => {
+        setIsScheduleLoading(false);
+
         setScheduleToast({
           kind: 'warning',
           title: 'Database Terputus',
@@ -1132,243 +1212,269 @@ export default function SchedulePage({
   }
 
   return (
-    <section className="schedule-page" aria-labelledby="schedule-calendar-title">
-      {/* CSS overrides for high-density mobile layout optimization */}
-      <style>{`
-        /* Default styles for desktop helper classes */
-        .schedule-booking-status-dot {
-          display: none;
-        }
+    <section
+      aria-labelledby="schedule-calendar-title"
+      className="schedule-page"
+      data-schedule-ui="ui-3-spatial"
+    >
+      <header className="schedule-editorial-header">
+        <div className="schedule-editorial-copy">
+          <span className="schedule-kicker">
+            Studio scheduling board
+          </span>
 
-        @media (max-width: 767px) {
-          .schedule-grid {
-            grid-template-rows: 32px repeat(13, minmax(34px, 1fr)) !important;
-          }
-          .schedule-day-head {
-            padding: 2px !important;
-            min-height: 32px !important;
-          }
-          .schedule-day-head span {
-            font-size: 8px !important;
-          }
-          .schedule-day-head strong {
-            font-size: 11px !important;
-          }
-          .schedule-time-cell {
-            font-size: 8px !important;
-            padding: 2px !important;
-          }
-          .schedule-time-cell svg {
-            width: 10px !important;
-            height: 10px !important;
-          }
-          .schedule-slot-cell {
-            border-bottom: 1px solid var(--auth-border) !important;
-            border-right: 1px solid var(--auth-border) !important;
-          }
-          
-          /* Booking block mobile adjustments */
-          .schedule-booking-block {
-            border-radius: 4px !important;
-            box-shadow: none !important;
-            padding: 2px 4px !important;
-            margin: 1px !important;
-            border-left-width: 2px !important;
-            gap: 0px !important;
-          }
-          .schedule-booking-topline {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 2px !important;
-          }
-          .schedule-booking-topline strong {
-            font-size: 9px !important;
-            line-height: 1.1 !important;
-            letter-spacing: -0.02em !important;
-          }
-          .schedule-booking-topline .status-pill {
-            display: none !important;
-          }
-          .schedule-booking-status-dot {
-            display: inline-block !important;
-            width: 5px !important;
-            height: 5px !important;
-            border-radius: 50% !important;
-            flex-shrink: 0 !important;
-          }
-          .schedule-booking-block.is-lunas .schedule-booking-status-dot {
-            background-color: #4ade80 !important;
-          }
-          .schedule-booking-block.is-dp .schedule-booking-status-dot {
-            background-color: #fb923c !important;
-          }
-          .schedule-booking-block.is-pending .schedule-booking-status-dot {
-            background-color: #fbbf24 !important;
-          }
-          .schedule-booking-block.is-cancellation-requested .schedule-booking-status-dot {
-            background-color: #ef4444 !important;
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-          }
-          .schedule-booking-title {
-            font-size: 8px !important;
-            line-height: 1.1 !important;
-            color: var(--auth-text-main) !important;
-            margin-top: 1px !important;
-          }
-          .schedule-booking-meta {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            font-size: 8px !important;
-            line-height: 1.1 !important;
-            margin-top: 1px !important;
-          }
-          .schedule-booking-meta b {
-            font-size: 8px !important;
-            color: var(--auth-text-main) !important;
-          }
-          .schedule-booking-message-dot {
-            top: 2px !important;
-            right: 2px !important;
-            width: 5px !important;
-            height: 5px !important;
-          }
-        }
-      `}</style>
-
-      {/* Symmetrical & Balanced Controls Toolbar (No horizontal scroll, fully responsive) */}
-      <div className="schedule-toolbar bg-[#0b0c0e]/80 backdrop-blur-md border border-white/5 p-3 md:p-4 rounded-xl flex flex-col gap-3">
-        {/* Row 1: Title & Navigation Controls */}
-        <div className="flex items-center justify-between gap-3 w-full">
-          <h2 id="schedule-calendar-title" className="text-sm md:text-base font-extrabold text-white truncate max-w-[140px] xs:max-w-none">
+          <h2 id="schedule-calendar-title">
             {rangeLabel}
           </h2>
 
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 shrink-0">
-            <button 
-              type="button" 
-              aria-label="Sebelumnya" 
-              onClick={() => moveCalendar(-1)}
-              className="w-7 h-7 flex items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+          <p>
+            Lihat slot studio, booking aktif, status pembayaran, dan
+            konteks operasional tanpa kehilangan ritme jadwal.
+          </p>
+        </div>
+
+        <div
+          aria-label={
+            bookings.length +
+            ' booking pada rentang aktif'
+          }
+          className="schedule-range-object"
+        >
+          <Clock3
+            aria-hidden="true"
+            size={18}
+            strokeWidth={2}
+          />
+
+          <span>
+            <small>
+              Rentang aktif
+            </small>
+
+            <strong>
+              {bookings.length}
+            </strong>
+
+            <em>
+              booking terbaca
+            </em>
+          </span>
+        </div>
+      </header>
+
+      <section
+        aria-label="Kontrol scheduling board"
+        className="schedule-command-shelf"
+      >
+        <div className="schedule-command-primary">
+          <div
+            aria-label="Navigasi tanggal"
+            className="schedule-nav"
+            role="group"
+          >
+            <button
+              aria-label="Periode sebelumnya"
+              type="button"
+              onClick={() =>
+                moveCalendar(
+                  -1,
+                )
+              }
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft
+                aria-hidden="true"
+                size={15}
+              />
             </button>
-            <button 
-              type="button" 
-              onClick={goToday}
-              className="px-2.5 h-7 flex items-center justify-center rounded text-[9px] font-extrabold uppercase tracking-wide text-white/70 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+
+            <button
+              className="schedule-today-button"
+              type="button"
+              onClick={
+                goToday
+              }
             >
               Hari ini
             </button>
-            <button 
-              type="button" 
-              aria-label="Berikutnya" 
-              onClick={() => moveCalendar(1)}
-              className="w-7 h-7 flex items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+
+            <button
+              aria-label="Periode berikutnya"
+              type="button"
+              onClick={() =>
+                moveCalendar(
+                  1,
+                )
+              }
             >
-              <ChevronRight size={14} />
+              <ChevronRight
+                aria-hidden="true"
+                size={15}
+              />
             </button>
+          </div>
+
+          <div
+            aria-label="Mode kalender"
+            className="schedule-view-switcher"
+            role="group"
+          >
+            {viewModes.map(
+              (
+                mode,
+              ) => {
+                const isActive =
+                  viewMode ===
+                  mode.key;
+
+                return (
+                  <button
+                    aria-pressed={
+                      isActive
+                    }
+                    className={
+                      isActive
+                        ? 'is-active'
+                        : ''
+                    }
+                    key={
+                      mode.key
+                    }
+                    type="button"
+                    onClick={() =>
+                      setViewMode(
+                        mode.key,
+                      )
+                    }
+                  >
+                    {mode.label}
+                  </button>
+                );
+              },
+            )}
           </div>
         </div>
 
-        {/* Row 2: View Switchers & Creation Button */}
-        <div className="flex items-center justify-between gap-3 w-full">
-          {/* Segmented View Switcher */}
-          <div className="flex bg-white/5 p-0.5 rounded-lg border border-white/10 flex-1 max-w-[200px]">
-            {viewModes.map((mode) => (
-              <button
-                key={mode.key}
-                onClick={() => setViewMode(mode.key)}
-                className={`flex-1 py-1 text-center rounded text-[9px] font-bold uppercase transition-all ${
-                  viewMode === mode.key 
-                    ? 'bg-[#ff8a2a] text-black font-extrabold shadow-sm' 
-                    : 'text-white/60 hover:text-white'
-                }`}
-                type="button"
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
-
-          <button 
-            className="px-3.5 h-8 flex items-center justify-center gap-1.5 bg-[#ff8a2a] text-black rounded-lg text-[10px] font-extrabold active:scale-95 transition-all shrink-0" 
-            type="button" 
-            onClick={() => openBookingModal()}
+        <div className="schedule-command-actions">
+          <button
+            className="schedule-add-button"
+            type="button"
+            onClick={() =>
+              openBookingModal()
+            }
           >
-            <Plus size={13} />
-            <span>Tambah</span>
+            <Plus
+              aria-hidden="true"
+              size={15}
+            />
+
+            <span>
+              Tambah Booking
+            </span>
           </button>
 
           <button
             aria-label="Buka Request Inbox"
-            className="px-2.5 h-8 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 text-[10px] font-bold active:scale-95 transition-all shrink-0"
+            className="schedule-request-button"
             type="button"
-            onClick={openRequestInbox}
+            onClick={
+              openRequestInbox
+            }
           >
-            <Inbox size={13} />
-            <span className="hidden sm:inline">Requests</span>
+            <Inbox
+              aria-hidden="true"
+              size={15}
+            />
+
+            <span>
+              Requests
+            </span>
           </button>
         </div>
 
-        {/* Row 3: Status Filters (Balanced full-width grid) */}
-        <div className="grid grid-cols-3 gap-2 w-full">
-          {statusFilters.map((item) => {
-            const isActive = activeStatuses.includes(item.key);
+        <div
+          aria-label="Filter status pembayaran"
+          className="schedule-status-row"
+          role="group"
+        >
+          {statusFilters.map(
+            (
+              item,
+            ) => {
+              const isActive =
+                activeStatuses.includes(
+                  item.key,
+                );
 
-            return (
-              <button
-                aria-pressed={isActive}
-                className={`h-7.5 rounded-lg text-[9px] font-bold flex items-center justify-center gap-1.5 border transition-all ${
-                  isActive 
-                    ? item.key === 'lunas' 
-                      ? 'bg-green-500/10 border-green-500/30 text-green-400 font-extrabold'
-                      : item.key === 'dp'
-                        ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 font-extrabold'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-400 font-extrabold'
-                    : 'bg-[#15171c] border-white/5 text-slate-500 hover:text-slate-400'
-                }`}
-                key={item.key}
-                type="button"
-                onClick={() => toggleStatusFilter(item.key)}
-              >
-                <span className={`w-1 h-1 rounded-full ${
-                  item.key === 'lunas' 
-                    ? 'bg-green-400' 
-                    : item.key === 'dp' 
-                      ? 'bg-orange-400' 
-                      : 'bg-amber-400'
-                }`} />
-                <span>{item.label}</span>
-                <strong className="opacity-70">({paymentStatusCounts[item.key] || 0})</strong>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  aria-pressed={
+                    isActive
+                  }
+                  className={
+                    'schedule-status-filter is-' +
+                    item.key +
+                    (
+                      isActive
+                        ? ' is-active'
+                        : ''
+                    )
+                  }
+                  key={
+                    item.key
+                  }
+                  type="button"
+                  onClick={() =>
+                    toggleStatusFilter(
+                      item.key,
+                    )
+                  }
+                >
+                  <span
+                    aria-hidden="true"
+                    className="schedule-status-dot"
+                  />
+
+                  <span>
+                    {item.label}
+                  </span>
+
+                  <strong>
+                    {paymentStatusCounts[
+                      item.key
+                    ] || 0}
+                  </strong>
+                </button>
+              );
+            },
+          )}
         </div>
-      </div>
+      </section>
 
-      <div className="schedule-workspace">
-        <ScheduleUpcomingTable
-          bookings={bookings}
-          getOperatorFeeVisibility={resolveOperatorFeeVisibility}
-          onBookingClick={openBookingDetail}
-        />
+      {isScheduleLoading ? (
+        <ScheduleLoading />
+      ) : (
+        <div className="schedule-workspace">
+          <div className="schedule-calendar-surface">
+            <CalendarGrid
+              activeStatuses={activeStatuses}
+              bookings={bookings}
+              getOperatorFeeVisibility={resolveOperatorFeeVisibility}
+              onBookingClick={openBookingDetail}
+              selectedDate={selectedDate}
+              todayFocusDateIso={todayIsoDate}
+              todayFocusRequest={todayFocusRequest}
+              viewMode={viewMode}
+              onSlotClick={openBookingModal}
+            />
+          </div>
 
-        <div className="schedule-calendar-surface">
-          <CalendarGrid
-            activeStatuses={activeStatuses}
+          <ScheduleUpcomingTable
             bookings={bookings}
             getOperatorFeeVisibility={resolveOperatorFeeVisibility}
             onBookingClick={openBookingDetail}
-            selectedDate={selectedDate}
-            todayFocusDateIso={todayIsoDate}
-            todayFocusRequest={todayFocusRequest}
-            viewMode={viewMode}
-            onSlotClick={openBookingModal}
           />
         </div>
-      </div>
+      )}
 
       <BookingFormModal
         editingBooking={editingBooking}

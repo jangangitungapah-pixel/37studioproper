@@ -74,11 +74,9 @@ assert.equal(
   true,
 );
 
-assert.equal(
-  scheduleSource.includes(
-    'navigate(\n      REQUEST_INBOX_PATH,',
-  ),
-  true,
+assert.match(
+  scheduleSource,
+  /navigate\(\s*REQUEST_INBOX_PATH\s*,?\s*\)/,
   'Calendar must expose a Request Inbox shortcut without maintaining a local queue.',
 );
 
