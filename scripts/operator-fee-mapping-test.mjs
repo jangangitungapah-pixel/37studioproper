@@ -32,12 +32,26 @@ const normalizedGuardPermissions = normalizeAdminPermissionsForRole({
   'operator-fee': true,
 }, 'studio_guard');
 
-assert.equal(normalizedGuardPermissions.schedule, true);
-assert.equal(normalizedGuardPermissions.billing, true);
-assert.equal(normalizedGuardPermissions.customers, true);
-assert.equal(normalizedGuardPermissions.inventory, true);
-assert.equal(normalizedGuardPermissions['operator-fee'], false);
-assert.equal(normalizedGuardPermissions['guard-attendance'], false);
+assert.equal(
+  Object.values(
+    normalizedGuardPermissions,
+  ).every(
+    (value) =>
+      value === false,
+  ),
+  true,
+  'studio_guard tidak boleh memiliki admin-page permission setelah Guard Portal Isolation.',
+);
+
+assert.equal(
+  normalizedGuardPermissions['operator-fee'],
+  false,
+);
+
+assert.equal(
+  normalizedGuardPermissions['guard-attendance'],
+  false,
+);
 
 const guardPerson = DEFAULT_OPERATOR_FEE_SETTINGS.people.find((person) => person.role === OPERATOR_FEE_PERSON_ROLES.GUARD);
 const booking = {
