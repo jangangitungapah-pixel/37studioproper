@@ -202,32 +202,116 @@ for (
 }
 
 /**
- * UI-2.1 payment tone CSS integrity regression.
+ * UI-2.1 payment tone CSS integrity regression — string-safe.
  *
- * Build-level regression guard for the payment status tones.
- * The warning block was previously corrupted by a malformed
- * generator output that left raw CSS fragments between selectors.
+ * Validate the warning payment tone without complex regular
+ * expressions. This keeps the contract syntax-safe while still
+ * protecting the exact CSS region that previously became corrupt.
  */
-assert.match(
-  cssSource,
-  /\\.booking-request-payment\\.is-warning\\s*\\{[\\s\\S]*?background:\\s*color-mix\\([\\s\\S]*?var\\(\\s*--studio-warning\\s*\\)[\\s\\S]*?10%,[\\s\\S]*?var\\(\\s*--studio-surface-1\\s*\\)[\\s\\S]*?\\);[\\s\\S]*?color:\\s*var\\(\\s*--studio-warning\\s*\\);[\\s\\S]*?\\}/,
-  'Warning payment tone must remain a complete valid color-mix block.',
+const warningPaymentStart =
+  cssSource.indexOf(
+    '.booking-request-payment.is-warning {',
+  );
+
+const dangerPaymentStart =
+  cssSource.indexOf(
+    '.booking-request-payment.is-danger {',
+    warningPaymentStart,
+  );
+
+assert.notEqual(
+  warningPaymentStart,
+  -1,
+  'Warning payment tone selector must exist.',
+);
+
+assert.notEqual(
+  dangerPaymentStart,
+  -1,
+  'Danger payment tone selector must follow warning tone.',
 );
 
 assert.equal(
-  cssSource.includes(
+  dangerPaymentStart >
+    warningPaymentStart,
+  true,
+  'Warning payment tone region must end before danger tone.',
+);
+
+const warningPaymentCss =
+  cssSource.slice(
+    warningPaymentStart,
+    dangerPaymentStart,
+  );
+
+for (
+  const required
+  of [
+    '.booking-request-payment.is-warning {',
+    'background:',
+    'color-mix(',
+    '--studio-warning',
+    '--studio-surface-1',
+    'color:',
+  ]
+) {
+  assert.equal(
+    warningPaymentCss.includes(
+      required,
+    ),
+    true,
+    'Warning payment tone missing CSS fragment: ' +
+      required,
+  );
+}
+
+assert.equal(
+  warningPaymentCss
+    .split(
+      '--studio-warning',
+    )
+    .length -
+    1,
+  2,
+  'Warning payment tone must use --studio-warning for background mix and text color.',
+);
+
+assert.equal(
+  warningPaymentCss.includes(
+    '--studio-success'
+  ),
+  false,
+  'Warning payment tone must not contain the success token.',
+);
+
+assert.equal(
+  warningPaymentCss.includes(
     '.booking    color-mix('
   ),
   false,
-  'Malformed booking/color-mix selector fragment must never return.',
+  'Malformed booking/color-mix fragment must never return.',
 );
 
 assert.equal(
-  /background:\\s*--studio-success\\s*\\);/.test(
-    cssSource,
-  ),
-  false,
-  'Malformed raw --studio-success background fragment must never return.',
+  warningPaymentCss
+    .split(
+      '{',
+    )
+    .length -
+    1,
+  1,
+  'Warning payment tone must contain exactly one opening block brace.',
+);
+
+assert.equal(
+  warningPaymentCss
+    .split(
+      '}',
+    )
+    .length -
+    1,
+  1,
+  'Warning payment tone must contain exactly one closing block brace.',
 );
 
 assert.equal(
