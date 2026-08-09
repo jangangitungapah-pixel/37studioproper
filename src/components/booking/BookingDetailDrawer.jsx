@@ -555,6 +555,7 @@ export default function BookingDetailDrawer({
   onClose,
   onEdit,
   onRequestStatusChange,
+  operatorFeeVisibility = null,
   user,
 }) {
   const closeButtonRef =
@@ -908,6 +909,18 @@ export default function BookingDetailDrawer({
               sessionStatus
             }
           />
+
+          {operatorFeeVisibility ? (
+            <StatusChip
+              label={
+                operatorFeeVisibility.label
+              }
+              tone={
+                'fee-' +
+                operatorFeeVisibility.status
+              }
+            />
+          ) : null}
         </section>
 
         <nav

@@ -707,3 +707,41 @@ Financial guardrails:
 4. Auto-generated bookkeeping updates require their source document to transition to posted in the same atomic write.
 5. Manual bookkeeping entries remain editable/deletable.
 ```
+
+## OPF-6 - Schedule & Booking Fee Visibility
+
+Read-only Operator Fee visibility is exposed to authorized Schedule users:
+
+```txt
+Schedule booking
+-> Fee Belum Direview
+-> Fee Draft
+-> Fee Siap Post
+-> Fee Posted
+
+Booking Detail Drawer
+-> same Operator Fee lifecycle badge
+```
+
+Permission boundary:
+
+```txt
+schedule + operator-fee
+-> may read internal fee status
+
+schedule without operator-fee
+-> does not subscribe to operatorFeeEntries
+-> does not expose internal fee status
+```
+
+Write ownership remains unchanged:
+
+```txt
+Schedule
+-> read only
+
+Operator Fee page / repository
+-> review + posting write owner
+```
+
+This phase does not change Firestore rules.

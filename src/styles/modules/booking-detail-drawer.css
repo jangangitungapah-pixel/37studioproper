@@ -179,6 +179,39 @@
   color: var(--auth-info);
 }
 
+.booking-detail-drawer-status.is-fee-draft {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-warning) 34%,
+      var(--auth-border)
+    );
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+}
+
+.booking-detail-drawer-status.is-fee-reviewed {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-info) 34%,
+      var(--auth-border)
+    );
+  background: var(--auth-info-soft);
+  color: var(--auth-info);
+}
+
+.booking-detail-drawer-status.is-fee-posted {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-success) 34%,
+      var(--auth-border)
+    );
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
 .booking-detail-drawer-tabs {
   flex: 0 0 auto;
   display: grid;

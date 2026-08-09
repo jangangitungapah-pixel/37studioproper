@@ -650,12 +650,88 @@
 
 .schedule-booking-meta {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 4px;
   margin-top: auto;
   color: var(--auth-text-muted);
   font-size: var(--studio-text-xs);
+}
+
+.schedule-booking-meta > b {
+  grid-column: 3;
+}
+
+.schedule-booking-fee-indicator {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: 999px;
+  background: var(--auth-text-muted);
+  flex: 0 0 auto;
+}
+
+.schedule-booking-fee-indicator.is-draft {
+  border-color: var(--auth-warning);
+  background: var(--auth-warning);
+}
+
+.schedule-booking-fee-indicator.is-reviewed {
+  border-color: var(--auth-info);
+  background: var(--auth-info);
+}
+
+.schedule-booking-fee-indicator.is-posted {
+  border-color: var(--auth-success);
+  background: var(--auth-success);
+}
+
+.schedule-upcoming-fee {
+  width: fit-content;
+  justify-self: end;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-full);
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  padding: 2px 6px;
+  font-size: 0.625rem;
+  font-style: normal;
+  font-weight: 680;
+  line-height: 1.2;
+}
+
+.schedule-upcoming-fee.is-draft {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-warning) 32%,
+      var(--auth-border)
+    );
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+}
+
+.schedule-upcoming-fee.is-reviewed {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-info) 32%,
+      var(--auth-border)
+    );
+  background: var(--auth-info-soft);
+  color: var(--auth-info);
+}
+
+.schedule-upcoming-fee.is-posted {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-success) 32%,
+      var(--auth-border)
+    );
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
 }
 
 .schedule-booking-meta b {

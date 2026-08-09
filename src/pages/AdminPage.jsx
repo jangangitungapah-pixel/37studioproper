@@ -200,7 +200,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'inventory') return <InventoryPage />;
   if (activeKey === 'gallery') return <GalleryPage />;
 
-  return <SchedulePage />;
+  return <SchedulePage currentUser={currentUser} />;
 }
 
 export default function AdminPage() {

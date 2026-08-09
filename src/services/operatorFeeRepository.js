@@ -84,6 +84,222 @@ export function normalizeOperatorFeeEntry(entry, fallbackId = '') {
   };
 }
 
+export const OPERATOR_FEE_VISIBILITY_STATUSES =
+  Object.freeze({
+    DRAFT:
+      'draft',
+
+    ESTIMATE:
+      'estimate',
+
+    POSTED:
+      'posted',
+
+    REVIEWED:
+      'reviewed',
+  });
+
+function getOperatorFeeBookingIdentity(
+  booking = {},
+) {
+  return {
+    bookingCode:
+      cleanText(
+        booking?.bookingCode ||
+          booking?.invoiceNumber ||
+          booking?.id,
+      ),
+
+    bookingId:
+      cleanText(
+        booking?.id ||
+          booking?.bookingId ||
+          booking?.bookingCode,
+      ),
+  };
+}
+
+export function getOperatorFeeEntriesForBooking(
+  entries = [],
+  booking = {},
+) {
+  const {
+    bookingCode,
+    bookingId,
+  } =
+    getOperatorFeeBookingIdentity(
+      booking,
+    );
+
+  const sourceEntries =
+    Array.isArray(
+      entries,
+    )
+      ? entries
+      : [];
+
+  return sourceEntries
+    .map(
+      (
+        entry,
+      ) =>
+        normalizeOperatorFeeEntry(
+          entry,
+        ),
+    )
+    .filter(
+      (
+        entry,
+      ) =>
+        entry.status !==
+          OPERATOR_FEE_ENTRY_STATUSES.VOID &&
+        (
+          (
+            bookingId &&
+            entry.bookingId ===
+              bookingId
+          ) ||
+          (
+            bookingCode &&
+            entry.bookingCode ===
+              bookingCode
+          )
+        ),
+    );
+}
+
+export function getBookingOperatorFeeVisibility(
+  entries = [],
+  booking = {},
+) {
+  const relatedEntries =
+    getOperatorFeeEntriesForBooking(
+      entries,
+      booking,
+    );
+
+  let status =
+    OPERATOR_FEE_VISIBILITY_STATUSES.ESTIMATE;
+
+  if (
+    relatedEntries.length
+  ) {
+    const statuses =
+      relatedEntries.map(
+        (
+          entry,
+        ) =>
+          entry.status,
+      );
+
+    if (
+      statuses.every(
+        (
+          entryStatus,
+        ) =>
+          entryStatus ===
+          OPERATOR_FEE_ENTRY_STATUSES.POSTED,
+      )
+    ) {
+      status =
+        OPERATOR_FEE_VISIBILITY_STATUSES.POSTED;
+    } else if (
+      statuses.every(
+        (
+          entryStatus,
+        ) =>
+          [
+            OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+            OPERATOR_FEE_ENTRY_STATUSES.POSTED,
+          ].includes(
+            entryStatus,
+          ),
+      )
+    ) {
+      status =
+        OPERATOR_FEE_VISIBILITY_STATUSES.REVIEWED;
+    } else if (
+      statuses.some(
+        (
+          entryStatus,
+        ) =>
+          [
+            OPERATOR_FEE_ENTRY_STATUSES.DRAFT,
+            OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+            OPERATOR_FEE_ENTRY_STATUSES.POSTED,
+          ].includes(
+            entryStatus,
+          ),
+      )
+    ) {
+      status =
+        OPERATOR_FEE_VISIBILITY_STATUSES.DRAFT;
+    }
+  }
+
+  const statusMeta = {
+    draft: {
+      label:
+        'Fee Draft',
+
+      shortLabel:
+        'Fee Draft',
+    },
+
+    estimate: {
+      label:
+        'Fee Belum Direview',
+
+      shortLabel:
+        'Fee?',
+    },
+
+    posted: {
+      label:
+        'Fee Posted',
+
+      shortLabel:
+        'Fee Posted',
+    },
+
+    reviewed: {
+      label:
+        'Fee Siap Post',
+
+      shortLabel:
+        'Fee Ready',
+    },
+  }[status];
+
+  return {
+    entryCount:
+      relatedEntries.length,
+
+    label:
+      statusMeta.label,
+
+    shortLabel:
+      statusMeta.shortLabel,
+
+    status,
+
+    totalAmount:
+      relatedEntries.reduce(
+        (
+          total,
+          entry,
+        ) =>
+          total +
+          Number(
+            entry.totalAmount ||
+              entry.amount ||
+              0,
+          ),
+        0,
+      ),
+  };
+}
+
 export function subscribeOperatorFeeEntries(callback, onError) {
   if (!isFirebaseConfigured || !firestoreDb) {
     if (onError) onError(new Error('Firebase belum dikonfigurasi.'));

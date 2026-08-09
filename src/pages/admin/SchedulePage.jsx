@@ -19,6 +19,13 @@ import {
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 import {
+  getBookingOperatorFeeVisibility,
+  subscribeOperatorFeeEntries,
+} from '../../services/operatorFeeRepository.js';
+import {
+  hasAdminPagePermission,
+} from '../../utils/adminPermissions.js';
+import {
   getBookingRequestStatus,
   getBookingSessionStatus,
   getLegacyBookingPaymentStatus,
@@ -549,7 +556,11 @@ function getBookingBlockStyle(block) {
   return style;
 }
 
-function CalendarBookingBlock({ block, onBookingClick }) {
+function CalendarBookingBlock({
+  block,
+  onBookingClick,
+  operatorFeeVisibility,
+}) {
   const booking = block.booking;
   const title = booking.title || booking.sessionLabel || 'Booking';
   const statusLabel = getStatusLabel(block.status);
@@ -587,6 +598,19 @@ function CalendarBookingBlock({ block, onBookingClick }) {
 
       <span className="schedule-booking-meta">
         <span>{startLabel} • {durationLabel}</span>
+
+        {operatorFeeVisibility ? (
+          <span
+            aria-label={operatorFeeVisibility.label}
+            className={
+              'schedule-booking-fee-indicator is-' +
+              operatorFeeVisibility.status
+            }
+            role="img"
+            title={operatorFeeVisibility.label}
+          />
+        ) : null}
+
         <b>{priceLabel}</b>
       </span>
 
@@ -597,7 +621,11 @@ function CalendarBookingBlock({ block, onBookingClick }) {
   );
 }
 
-function ScheduleUpcomingTable({ bookings, onBookingClick }) {
+function ScheduleUpcomingTable({
+  bookings,
+  getOperatorFeeVisibility,
+  onBookingClick,
+}) {
   const upcomingBookings = useMemo(() => getUpcomingScheduleBookings(bookings), [bookings]);
   const previewBookings = upcomingBookings.slice(0, 6);
   const mobileRemainingCount = Math.max(0, upcomingBookings.length - 2);
@@ -623,6 +651,13 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
             const statusText = requestMeta || getStatusLabel(getBookingStatus(booking));
             const serviceLabel = booking.packageLabel || booking.sessionLabel || booking.title || 'Sesi Studio';
 
+            const operatorFeeVisibility =
+              getOperatorFeeVisibility
+                ? getOperatorFeeVisibility(
+                    booking,
+                  )
+                : null;
+
             return (
               <button
                 className={'schedule-upcoming-item ' + (noDurationPackage ? 'is-no-duration-package' : '')}
@@ -637,7 +672,19 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
 
                 <span className="schedule-upcoming-meta">
                   <span>{formatBookingDateLabel(booking)}</span>
+
                   <b>{getUpcomingScheduleTimeLabel(booking)}</b>
+
+                  {operatorFeeVisibility ? (
+                    <i
+                      className={
+                        'schedule-upcoming-fee is-' +
+                        operatorFeeVisibility.status
+                      }
+                    >
+                      {operatorFeeVisibility.shortLabel}
+                    </i>
+                  ) : null}
                 </span>
 
                 <span className="schedule-upcoming-side">
@@ -668,6 +715,7 @@ function ScheduleUpcomingTable({ bookings, onBookingClick }) {
 function CalendarGrid({
   activeStatuses,
   bookings,
+  getOperatorFeeVisibility,
   onSlotClick,
   onBookingClick,
   selectedDate,
@@ -809,6 +857,13 @@ function CalendarGrid({
               block={block}
               key={block.booking.id || block.dayKey + '-' + block.startIndex + '-' + block.booking.customer}
               onBookingClick={onBookingClick}
+              operatorFeeVisibility={
+                getOperatorFeeVisibility
+                  ? getOperatorFeeVisibility(
+                      block.booking,
+                    )
+                  : null
+              }
             />
           ))}
         </div>
@@ -817,7 +872,9 @@ function CalendarGrid({
   );
 }
 
-export default function SchedulePage() {
+export default function SchedulePage({
+  currentUser,
+}) {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('month');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -826,9 +883,16 @@ export default function SchedulePage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingInitialSlot, setBookingInitialSlot] = useState(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
+  const [operatorFeeEntries, setOperatorFeeEntries] = useState([]);
   const [editingBooking, setEditingBooking] = useState(null);
   const [scheduleToast, setScheduleToast] = useState(null);
   const [todayFocusRequest, setTodayFocusRequest] = useState(0);
+
+  const canViewOperatorFee =
+    hasAdminPagePermission(
+      currentUser,
+      'operator-fee',
+    );
 
   // One-time local storage migration to Firestore
   useEffect(() => {
@@ -881,6 +945,54 @@ export default function SchedulePage() {
     );
     return unsubscribe;
   }, [dateRange]);
+
+  useEffect(() => {
+    if (
+      isScheduleQaPreview ||
+      !canViewOperatorFee
+    ) {
+      return undefined;
+    }
+
+    return subscribeOperatorFeeEntries(
+      (
+        nextEntries,
+      ) => {
+        setOperatorFeeEntries(
+          Array.isArray(
+            nextEntries,
+          )
+            ? nextEntries
+            : [],
+        );
+      },
+      (
+        error,
+      ) => {
+        console.error(
+          '[schedule] Gagal membaca Operator Fee visibility:',
+          error,
+        );
+      },
+    );
+  }, [
+    canViewOperatorFee,
+  ]);
+
+  function resolveOperatorFeeVisibility(
+    booking,
+  ) {
+    if (
+      !canViewOperatorFee
+    ) {
+      return null;
+    }
+
+    return getBookingOperatorFeeVisibility(
+      operatorFeeEntries,
+      booking,
+    );
+  }
 
   const rangeLabel = formatRangeLabel(selectedDate, viewMode);
   const paymentStatusCounts = useMemo(() => {
@@ -1239,6 +1351,7 @@ export default function SchedulePage() {
       <div className="schedule-workspace">
         <ScheduleUpcomingTable
           bookings={bookings}
+          getOperatorFeeVisibility={resolveOperatorFeeVisibility}
           onBookingClick={openBookingDetail}
         />
 
@@ -1246,6 +1359,7 @@ export default function SchedulePage() {
           <CalendarGrid
             activeStatuses={activeStatuses}
             bookings={bookings}
+            getOperatorFeeVisibility={resolveOperatorFeeVisibility}
             onBookingClick={openBookingDetail}
             selectedDate={selectedDate}
             todayFocusDateIso={todayIsoDate}
@@ -1269,6 +1383,13 @@ export default function SchedulePage() {
         isOpen={Boolean(selectedBookingDetail)}
         onClose={closeBookingDetail}
         onEdit={editBookingFromDetail}
+        operatorFeeVisibility={
+          selectedBookingDetail
+            ? resolveOperatorFeeVisibility(
+                selectedBookingDetail,
+              )
+            : null
+        }
       />
 
       {scheduleToast ? (
