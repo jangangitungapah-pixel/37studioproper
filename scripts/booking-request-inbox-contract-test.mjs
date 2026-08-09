@@ -194,11 +194,9 @@ assert.equal(
   'Request Inbox must not be restricted by the current calendar end date.',
 );
 
-assert.equal(
-  requestPageSource.includes(
-    '.filter(\n            isBookingRequestActionable,',
-  ),
-  true,
+assert.match(
+  requestPageSource,
+  /\.filter\(\s*isBookingRequestActionable\s*,?\s*\)/,
   'Request Inbox must use the canonical actionable request selector.',
 );
 
