@@ -658,10 +658,13 @@ service cloud.firestore {
     }
 
     match /guardAttendanceSessions/{attendanceId} {
-      allow read: if canManageGuardAttendance() || (
-        isStudioGuardAccount() &&
-        resource.data.guardUid == request.auth.uid
-      );
+      allow read: if
+        canManageGuardAttendance() ||
+        canManageOperatorFees() ||
+        (
+          isStudioGuardAccount() &&
+          resource.data.guardUid == request.auth.uid
+        );
 
       allow create: if validGuardAttendanceSession(request.resource.data, attendanceId) &&
         guardCreatesOwnAttendance(

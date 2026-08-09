@@ -352,6 +352,22 @@ const rulesSource =
     'utf8',
   );
 
+assert.equal(
+  rulesSource.includes(
+    'canManageGuardAttendance() ||\n        canManageOperatorFees() ||',
+  ),
+  true,
+  'Operator Fee admins must be able to read guard attendance reconciliation data.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'canManageOperatorFees()',
+  ),
+  true,
+  'Operator Fee permission helper must remain part of attendance read boundary.',
+);
+
 for (
   const required
   of [
