@@ -2175,6 +2175,9 @@ and (
     position:
       relative;
 
+    align-self:
+      stretch;
+
     z-index:
       4;
   }

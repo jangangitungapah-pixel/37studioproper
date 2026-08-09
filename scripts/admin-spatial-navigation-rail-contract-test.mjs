@@ -145,6 +145,25 @@ const ui0bCssSource =
     ui0bCssIndex,
   );
 
+/**
+ * UI-0B.2 persistent rail regression.
+ *
+ * The navigation grid item must stretch to the height of the
+ * workspace. Otherwise the sticky rail is bounded by a
+ * viewport-height parent and scrolls away on long pages.
+ */
+assert.match(
+  ui0bCssSource,
+  /\.admin-navigation-zone\s*\{[\s\S]*?position:\s*relative;[\s\S]*?align-self:\s*stretch;[\s\S]*?z-index:\s*4;[\s\S]*?\}/,
+  'Navigation zone must stretch with long workspace content.',
+);
+
+assert.match(
+  ui0bCssSource,
+  /\.admin-navigation-zone\s+\.admin-sidebar\[\s*data-admin-spatial-rail='ui-0b'\s*\]\s*\{[\s\S]*?position:\s*sticky;/,
+  'Desktop navigation rail must remain sticky inside the stretched navigation zone.',
+);
+
 assert.match(
   ui0bCssSource,
   /\.admin-shell\.is-sidebar-collapsed\s+\.admin-sidebar-collapse\s*\{[\s\S]*?margin-inline:\s*auto;[\s\S]*?transform:\s*none;[\s\S]*?\}/,
