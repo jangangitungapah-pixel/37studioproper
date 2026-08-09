@@ -414,8 +414,33 @@ service cloud.firestore {
         data.voidedByUid == '';
     }
 
+    function validGuardSelfCheckoutPatch() {
+      return validIsoTimestampString(
+          request.resource.data.clockOutAt
+        ) &&
+        validIsoTimestampString(
+          request.resource.data.closedAt
+        ) &&
+        request.resource.data.closedAt ==
+          request.resource.data.clockOutAt &&
+        validString(
+          request.resource.data.clockOutByUid,
+          1,
+          128
+        ) &&
+        validNumber(
+          request.resource.data.durationHours,
+          0,
+          48
+        ) &&
+        validIsoTimestampString(
+          request.resource.data.updatedAt
+        );
+    }
+
     function guardClosesOwnAttendance() {
       return isStudioGuardAccount() &&
+        validGuardSelfCheckoutPatch() &&
         resource.data.guardUid == request.auth.uid &&
         request.resource.data.guardUid == resource.data.guardUid &&
         request.resource.data.guardPersonId == resource.data.guardPersonId &&
@@ -550,9 +575,12 @@ service cloud.firestore {
           attendanceId
         );
 
-      allow update: if validGuardAttendanceSession(request.resource.data, attendanceId) && (
-        adminUpdatesGuardAttendance() ||
-        guardClosesOwnAttendance()
+      allow update: if guardClosesOwnAttendance() || (
+        validGuardAttendanceSession(
+          request.resource.data,
+          attendanceId
+        ) &&
+        adminUpdatesGuardAttendance()
       );
 
       allow delete: if isOwner();

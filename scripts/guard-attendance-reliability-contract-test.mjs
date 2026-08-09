@@ -388,10 +388,42 @@ for (
 
 assert.equal(
   rulesSource.includes(
-    'canManageGuardAttendance() ||\n        guardClosesOwnAttendance()',
+    'canManageGuardAttendance() ||\\n        guardClosesOwnAttendance()',
   ),
   false,
   'Admin must no longer have unrestricted attendance update access.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'function validGuardSelfCheckoutPatch()',
+  ),
+  true,
+  'Guard checkout must validate only its mutable checkout fields.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'allow update: if guardClosesOwnAttendance() || (',
+  ),
+  true,
+  'Guard checkout must not depend on full-document schema validation.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'validGuardSelfCheckoutPatch() &&',
+  ),
+  true,
+  'Guard checkout transition must use focused checkout validation.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'request.resource.data.clockOutByUid == request.auth.uid',
+  ),
+  true,
+  'Guard checkout must remain bound to authenticated UID.',
 );
 
 const packageJson =
