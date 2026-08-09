@@ -122,6 +122,41 @@ for (
   );
 }
 
+/**
+ * UI-0B.1 collapsed rail compactness regression.
+ *
+ * Older desktop shell CSS still contains the pre-spatial
+ * collapsed positioning rules. UI-0B must explicitly reset
+ * those values in its later cascade.
+ */
+const ui0bCssIndex =
+  cssSource.lastIndexOf(
+    'UI-0B v2 — Spatial Desktop Navigation Rail',
+  );
+
+assert.notEqual(
+  ui0bCssIndex,
+  -1,
+  'UI-0B CSS marker must exist.',
+);
+
+const ui0bCssSource =
+  cssSource.slice(
+    ui0bCssIndex,
+  );
+
+assert.match(
+  ui0bCssSource,
+  /\.admin-shell\.is-sidebar-collapsed\s+\.admin-sidebar-collapse\s*\{[\s\S]*?margin-inline:\s*auto;[\s\S]*?transform:\s*none;[\s\S]*?\}/,
+  'Collapsed toggle must reset the legacy translateX positioning.',
+);
+
+assert.match(
+  ui0bCssSource,
+  /\.admin-shell\.is-sidebar-collapsed\s+\.admin-sidebar-nav\s*\{[\s\S]*?margin-top:\s*6px;[\s\S]*?\}/,
+  'Collapsed navigation must override the legacy 46px top gap.',
+);
+
 const adminPageSource =
   readFileSync(
     resolve(

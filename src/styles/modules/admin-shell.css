@@ -3538,6 +3538,15 @@ and (
     position:
       static;
 
+    top:
+      auto;
+
+    right:
+      auto;
+
+    left:
+      auto;
+
     width:
       36px;
 
@@ -3549,6 +3558,12 @@ and (
 
     min-height:
       36px;
+
+    margin-inline:
+      auto;
+
+    transform:
+      none;
   }
 
   .admin-shell.is-sidebar-collapsed
@@ -3558,6 +3573,9 @@ and (
 
     gap:
       9px;
+
+    margin-top:
+      6px;
 
     padding-inline:
       0;
