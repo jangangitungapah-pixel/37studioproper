@@ -82,6 +82,54 @@ for (const required of [
 
 assert.equal(commandSource.includes('slice(0, 6)'), false, 'Proof history must not be capped.');
 
+
+// UI-6 visual layout repair contract — start
+for (const required of [
+  'function BillingFinanceHeader({ proofs })',
+  '<BillingFinanceHeader proofs={paymentProofs} />',
+]) {
+  assert.equal(billingSource.includes(required), true, 'UI-6 compact header marker missing: ' + required);
+}
+
+for (const required of [
+  'data-proof-volume',
+  "data-proof-volume={stats.total ? 'populated' : 'empty'}",
+  "'Queue akan aktif saat client mengirim bukti transfer baru.'",
+  '!isLoading && !loadError && stats.total ? (',
+]) {
+  assert.equal(commandSource.includes(required), true, 'UI-6 compact proof marker missing: ' + required);
+}
+
+assert.equal(
+  commandSource.includes('slice(0, 6)'),
+  false,
+  'Proof history must remain uncapped after layout repair.',
+);
+
+const layoutRepairMarker = 'UI-6 Visual Layout Repair — Dense Finance Command Surface';
+assert.equal(cssSource.includes(layoutRepairMarker), true, 'UI-6 visual layout repair marker missing.');
+const layoutRepairCss = cssSource.split(layoutRepairMarker)[1];
+
+for (const required of [
+  ".billing-proof-command-center[data-proof-volume='empty']",
+  '.billing-operations-grid',
+  '.billing-cash-summary',
+  '.billing-cash-grid',
+  '.billing-reminder-row',
+  '.billing-command-shelf',
+  '.billing-ledger-columns',
+  '.billing-row-actions',
+  '@media (max-width: 1120px)',
+  '@media (max-width: 767px)',
+  '@media (max-width: 359px)',
+]) {
+  assert.equal(layoutRepairCss.includes(required), true, 'UI-6 layout CSS marker missing: ' + required);
+}
+
+assert.equal(layoutRepairCss.includes('--auth-'), false, 'Layout repair must use semantic studio tokens.');
+assert.equal(/#[0-9a-f]{3,8}\b/i.test(layoutRepairCss), false, 'Layout repair must not add raw hex colors.');
+// UI-6 visual layout repair contract — end
+
 const cssMarker = 'UI-6 — Spatial Invoices & Payments Workspace';
 assert.equal(cssSource.includes(cssMarker), true, 'UI-6 stylesheet marker missing.');
 const ui6Css = cssSource.split(cssMarker)[1];

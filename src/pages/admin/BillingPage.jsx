@@ -565,8 +565,7 @@ function getCashStats(
   );
 }
 
-function BillingFinanceHeader({ bookings, proofs }) {
-  const stats = getBillingStats(bookings);
+function BillingFinanceHeader({ proofs }) {
   const pendingProofs = proofs.filter((proof) => proof.status === 'pending');
 
   return (
@@ -589,7 +588,6 @@ function BillingFinanceHeader({ bookings, proofs }) {
           <strong>{pendingProofs.length}</strong>
           <em>{pendingProofs.length ? 'menunggu review' : 'semua sudah direview'}</em>
         </span>
-        <b>{formatMoney(stats.outstanding)}</b>
       </div>
     </header>
   );
@@ -2516,7 +2514,7 @@ export default function BillingPage() {
       data-billing-ui="ui-6-spatial"
       aria-labelledby="billing-page-title"
     >
-      <BillingFinanceHeader bookings={bookings} proofs={paymentProofs} />
+      <BillingFinanceHeader proofs={paymentProofs} />
       <BillingHero bookings={bookings} proofs={paymentProofs} />
 
       <PaymentProofCommandCenter

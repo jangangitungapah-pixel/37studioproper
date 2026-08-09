@@ -331,6 +331,7 @@ export default function PaymentProofCommandCenter({
     <section
       className="billing-proof-command-center"
       data-proof-priority={stats.pending ? 'actionable' : 'clear'}
+      data-proof-volume={stats.total ? 'populated' : 'empty'}
       aria-labelledby="billing-proof-command-title"
     >
       <header className="billing-proof-command-header">
@@ -348,34 +349,38 @@ export default function PaymentProofCommandCenter({
         </div>
       </header>
 
-      <div className="billing-proof-command-stats">
-        <article className="is-pending"><Clock3 size={16} /><span><small>Pending</small><strong>{stats.pending}</strong></span></article>
-        <article className="is-approved"><CheckCircle2 size={16} /><span><small>Approved</small><strong>{stats.approved}</strong></span></article>
-        <article className="is-rejected"><XCircle size={16} /><span><small>Rejected</small><strong>{stats.rejected}</strong></span></article>
-        <article><UploadCloud size={16} /><span><small>Submitted</small><strong>{formatMoney(stats.amount)}</strong></span></article>
-      </div>
-
-      <div className="billing-proof-command-toolbar">
-        <label className="billing-proof-command-search">
-          <Search size={16} aria-hidden="true" />
-          <input
-            aria-label="Cari bukti pembayaran"
-            placeholder="Cari customer, invoice, booking ID..."
-            type="search"
-            value={query}
-            onChange={handleSearchChange}
-          />
-        </label>
-
-        <div className="billing-proof-command-filter">
-          <StudioSelect
-            label="Status Bukti"
-            options={proofStatusFilterOptions}
-            selectedKey={activeFilter}
-            onChange={handleFilterChange}
-          />
+      {stats.total ? (
+        <div className="billing-proof-command-stats">
+          <article className="is-pending"><Clock3 size={16} /><span><small>Pending</small><strong>{stats.pending}</strong></span></article>
+          <article className="is-approved"><CheckCircle2 size={16} /><span><small>Approved</small><strong>{stats.approved}</strong></span></article>
+          <article className="is-rejected"><XCircle size={16} /><span><small>Rejected</small><strong>{stats.rejected}</strong></span></article>
+          <article><UploadCloud size={16} /><span><small>Submitted</small><strong>{formatMoney(stats.amount)}</strong></span></article>
         </div>
-      </div>
+      ) : null}
+
+      {stats.total ? (
+        <div className="billing-proof-command-toolbar">
+          <label className="billing-proof-command-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              aria-label="Cari bukti pembayaran"
+              placeholder="Cari customer, invoice, booking ID..."
+              type="search"
+              value={query}
+              onChange={handleSearchChange}
+            />
+          </label>
+
+          <div className="billing-proof-command-filter">
+            <StudioSelect
+              label="Status Bukti"
+              options={proofStatusFilterOptions}
+              selectedKey={activeFilter}
+              onChange={handleFilterChange}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="billing-proof-command-state is-loading" role="status">
@@ -435,12 +440,16 @@ export default function PaymentProofCommandCenter({
       ) : (
         <div className="billing-proof-command-empty">
           <UploadCloud size={22} />
-          <strong>Tidak ada bukti pembayaran</strong>
-          <span>Ubah pencarian atau filter status untuk melihat data lain.</span>
+          <strong>{stats.total ? 'Tidak ada bukti pembayaran' : 'Belum ada bukti pembayaran'}</strong>
+          <span>
+            {stats.total
+              ? 'Ubah pencarian atau filter status untuk melihat data lain.'
+              : 'Queue akan aktif saat client mengirim bukti transfer baru.'}
+          </span>
         </div>
       )}
 
-      {!isLoading && !loadError ? (
+      {!isLoading && !loadError && stats.total ? (
         <PaginationControls
           label="bukti pembayaran"
           page={safePage}

@@ -2828,3 +2828,364 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   .billing-proof-command-row,
   .billing-row { animation: none !important; transition: none !important; }
 }
+
+/* ==========================================================================
+   UI-6 Visual Layout Repair — Dense Finance Command Surface
+   Reduces empty-state height, removes duplicated finance data, and keeps
+   cashflow, collection, filters, and ledger inside a tighter reading rhythm.
+   ========================================================================== */
+
+.billing-page[data-billing-ui='ui-6-spatial'] {
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.billing-editorial-header {
+  align-items: center;
+  gap: 18px;
+  padding: 2px 4px 1px;
+}
+
+.billing-heading {
+  gap: 3px;
+}
+
+.billing-heading h2 {
+  font-size: clamp(1.45rem, 2.4vw, 1.8rem);
+}
+
+.billing-heading p {
+  max-width: 72ch;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.billing-attention-object {
+  min-width: 210px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 9px;
+  padding: 7px 10px;
+}
+
+.billing-attention-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.billing-finance-metric {
+  min-height: 66px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 9px;
+  padding: 8px 12px;
+}
+
+.billing-finance-metric-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.billing-finance-metric strong {
+  font-size: 0.86rem;
+}
+
+.billing-finance-metric em {
+  font-size: 0.59rem;
+}
+
+.billing-proof-command-center {
+  gap: 9px;
+  padding: 12px 14px;
+}
+
+.billing-proof-command-header {
+  gap: 14px;
+}
+
+.billing-proof-command-header h3 {
+  font-size: 1rem;
+}
+
+.billing-proof-command-header p {
+  line-height: 1.4;
+}
+
+.billing-proof-command-pending {
+  min-width: 126px;
+  min-height: 40px;
+  padding: 6px 10px;
+}
+
+.billing-proof-command-stats article {
+  min-height: 48px;
+  padding: 7px 10px;
+}
+
+.billing-proof-command-toolbar,
+.billing-command-shelf {
+  padding: 6px;
+}
+
+.billing-proof-command-search,
+.billing-search-shell {
+  min-height: 38px;
+}
+
+.billing-proof-command-filter .studio-select-trigger,
+.billing-filter-select .studio-select-trigger,
+.billing-cash-range .studio-select-trigger {
+  min-height: 38px;
+}
+
+.billing-proof-command-row {
+  min-height: 60px;
+  padding: 7px 9px;
+}
+
+.billing-proof-command-center[data-proof-volume='empty'] {
+  gap: 8px;
+}
+
+.billing-proof-command-center[data-proof-volume='empty']
+.billing-proof-command-empty {
+  min-height: 72px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  place-items: initial;
+  align-items: center;
+  align-content: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  border-style: solid;
+  padding: 11px 13px;
+  text-align: left;
+}
+
+.billing-proof-command-center[data-proof-volume='empty']
+.billing-proof-command-empty > svg {
+  grid-row: 1 / 3;
+  color: var(--studio-accent);
+}
+
+.billing-proof-command-center[data-proof-volume='empty']
+.billing-proof-command-empty > strong,
+.billing-proof-command-center[data-proof-volume='empty']
+.billing-proof-command-empty > span {
+  grid-column: 2;
+}
+
+.billing-proof-command-state,
+.billing-ledger-state {
+  min-height: 108px;
+  padding: 18px;
+}
+
+.billing-operations-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(330px, 0.8fr);
+  align-items: stretch;
+}
+
+.billing-secondary-surface {
+  align-content: start;
+  gap: 8px;
+  padding: 11px 12px;
+}
+
+.billing-cash-summary {
+  min-height: 176px;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-rows: 1fr;
+  align-items: stretch;
+}
+
+.billing-cash-summary > header {
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: 10px;
+  border-right: 1px solid var(--studio-edge-soft);
+  padding-right: 12px;
+}
+
+.billing-cash-range {
+  width: min(100%, 184px);
+}
+
+.billing-cash-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-2);
+}
+
+.billing-cash-grid article {
+  min-height: 72px;
+  align-content: center;
+  border-right: 1px solid var(--studio-edge-soft);
+  padding: 8px 10px;
+}
+
+.billing-cash-grid article:nth-child(2n) {
+  border-right: 0;
+}
+
+.billing-cash-grid article:nth-child(-n + 2) {
+  border-bottom: 1px solid var(--studio-edge-soft);
+}
+
+.billing-reminder-card {
+  min-height: 176px;
+}
+
+.billing-reminder-card header > span {
+  width: 32px;
+  height: 32px;
+}
+
+.billing-reminder-list {
+  gap: 0;
+}
+
+.billing-reminder-row {
+  min-height: 40px;
+  padding: 5px 0;
+}
+
+.billing-reminder-row a,
+.billing-reminder-row span button,
+.billing-row-actions a,
+.billing-row-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 0.59rem;
+}
+
+.billing-command-shelf {
+  gap: 6px;
+}
+
+.billing-command-reset {
+  min-height: 38px;
+}
+
+.billing-ledger-header {
+  min-height: 44px;
+  padding: 7px 12px;
+}
+
+.billing-ledger-columns {
+  min-height: 28px;
+}
+
+.billing-row {
+  min-height: 62px;
+  gap: 10px;
+  padding: 7px 11px;
+}
+
+.billing-row-main {
+  gap: 8px;
+}
+
+.billing-row-money {
+  gap: 8px;
+}
+
+.billing-status-pill {
+  padding: 5px 8px;
+}
+
+.billing-row-actions {
+  gap: 4px;
+}
+
+@media (max-width: 1120px) {
+  .billing-operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-cash-summary {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .billing-cash-summary {
+    grid-template-columns: minmax(190px, 0.72fr) minmax(0, 1.28fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .billing-page[data-billing-ui='ui-6-spatial'] {
+    gap: 9px;
+  }
+
+  .billing-editorial-header {
+    gap: 8px;
+  }
+
+  .billing-heading h2 {
+    font-size: 1.4rem;
+  }
+
+  .billing-finance-metric {
+    min-height: 62px;
+    padding: 7px 9px;
+  }
+
+  .billing-proof-command-center[data-proof-volume='empty']
+  .billing-proof-command-header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .billing-proof-command-center[data-proof-volume='empty']
+  .billing-proof-command-empty {
+    min-height: 80px;
+  }
+
+  .billing-cash-summary {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .billing-cash-summary > header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-edge-soft);
+    padding-right: 0;
+    padding-bottom: 10px;
+  }
+
+  .billing-cash-range {
+    width: auto;
+  }
+
+  .billing-cash-grid article {
+    min-height: 58px;
+  }
+
+  .billing-reminder-row a,
+  .billing-reminder-row span button,
+  .billing-row-actions a,
+  .billing-row-actions button {
+    min-height: 34px;
+  }
+
+  .billing-row {
+    min-height: 0;
+    padding: 9px 10px;
+  }
+}
+
+@media (max-width: 359px) {
+  .billing-cash-summary > header {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-cash-range {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   End UI-6 Visual Layout Repair
+   ========================================================================== */
