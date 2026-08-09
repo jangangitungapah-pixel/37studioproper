@@ -365,17 +365,23 @@ assert.equal(
   'Manual Escape listener must stay replaced by Radix Dialog.',
 );
 
+const validRoleTitleCasePattern =
+  String.raw`/\b\w/g`;
+
+const escapedRoleTitleCaseRegression =
+  String.raw`/\\b\\w/g`;
+
 assert.equal(
   bottomNavSource.includes(
-    '/\\b\\w/g'
+    escapedRoleTitleCaseRegression,
   ),
   false,
-  'Escaped mobile account formatter regression must stay removed.',
+  'Over-escaped mobile account formatter regression must stay removed.',
 );
 
 assert.equal(
   bottomNavSource.includes(
-    '/\b\w/g'
+    validRoleTitleCasePattern,
   ),
   true,
   'Mobile account role formatter must use word-boundary title case.',
