@@ -124,4 +124,22 @@ for (const testFile of [
   assert.equal(packageJson.scripts.test.includes(testFile), true, 'UI-7 npm test registration missing: ' + testFile);
 }
 
+const commandShelfTypographyContract = [
+  '/* UI-7 command shelf typography repair */',
+  '.bookkeeping-filter-select .studio-select-label',
+  'font-size: 0.5rem;',
+  '.bookkeeping-filter-select .studio-select-copy strong',
+  'font-size: 0.63rem;',
+  'min-height: 16px;',
+  'font-size: 0.51rem;',
+];
+
+for (const required of commandShelfTypographyContract) {
+  assert.equal(
+    cssSource.includes(required),
+    true,
+    'UI-7 command shelf typography contract missing: ' + required,
+  );
+}
+
 process.stdout.write('✅ Admin Spatial Bookkeeping Ledger UI-7 contract passed.\n');

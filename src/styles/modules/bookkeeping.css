@@ -234,7 +234,8 @@
   outline: 0;
   background: transparent;
   color: var(--studio-text-primary);
-  font-size: 0.66rem;
+  font-size: 0.61rem;
+  line-height: 1.3;
 }
 
 .bookkeeping-search-shell input::placeholder {
@@ -249,6 +250,30 @@
   min-height: 42px;
   border-color: var(--studio-edge-soft);
   background: var(--studio-surface-1);
+  padding: 6px 10px;
+}
+
+/* UI-7 command shelf typography repair */
+.bookkeeping-filter-select .studio-select-copy {
+  gap: 1px;
+}
+
+.bookkeeping-filter-select .studio-select-label {
+  font-size: 0.5rem;
+  font-weight: 740;
+  letter-spacing: 0.07em;
+  line-height: 1.15;
+}
+
+.bookkeeping-filter-select .studio-select-copy strong {
+  font-size: 0.63rem;
+  font-weight: 710;
+  line-height: 1.2;
+}
+
+.bookkeeping-filter-select .studio-select-chevron {
+  width: 15px;
+  height: 15px;
 }
 
 .bookkeeping-command-actions {
@@ -269,8 +294,9 @@
   background: var(--studio-surface-1);
   color: var(--studio-text-secondary);
   padding: 0 10px;
-  font-size: 0.61rem;
-  font-weight: 720;
+  font-size: 0.56rem;
+  font-weight: 690;
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -311,8 +337,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  min-height: 24px;
+  gap: 6px;
+  min-height: 16px;
   padding: 0 2px;
 }
 
@@ -325,12 +351,14 @@
 
 .bookkeeping-filter-context strong {
   color: var(--studio-text-primary);
-  font-size: 0.68rem;
+  font-size: 0.59rem;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .bookkeeping-filter-context small {
-  font-size: 0.56rem;
+  font-size: 0.51rem;
+  line-height: 1.2;
 }
 
 .bookkeeping-filter-context button {
