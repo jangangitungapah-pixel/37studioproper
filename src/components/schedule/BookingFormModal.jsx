@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Dialog,
+} from 'radix-ui';
+import {
   CalendarDays,
   Clock3,
   CreditCard,
@@ -63,6 +66,50 @@ function getTodayIsoDate() {
   const day = String(now.getDate()).padStart(2, '0');
 
   return year + '-' + month + '-' + day;
+}
+
+function formatBookingModalDate(
+  value,
+) {
+  const raw =
+    String(
+      value ||
+        '',
+    ).trim();
+
+  if (
+    !raw
+  ) {
+    return 'Tanggal belum dipilih';
+  }
+
+  const date =
+    new Date(
+      raw +
+        'T00:00:00',
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return raw;
+  }
+
+  return date.toLocaleDateString(
+    'id-ID',
+    {
+      day:
+        'numeric',
+
+      month:
+        'short',
+
+      weekday:
+        'short',
+    },
+  );
 }
 
 function getDurationFormValue(durationHours) {
@@ -232,26 +279,6 @@ export default function BookingFormModal({
     };
   }, [editingBooking, initialSlot, isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
   const totals = useMemo(
     () =>
       resolveBookingPricing({
@@ -322,12 +349,6 @@ export default function BookingFormModal({
 
       if (error) setError('');
     };
-  }
-
-  function handleBackdropClick(event) {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
   }
 
   async function handleSubmit(event) {
@@ -448,245 +469,641 @@ export default function BookingFormModal({
     onClose();
   }
 
+  const selectedHourOption =
+    getSelectedOption(
+      businessHours,
+      form.startHour,
+    );
+
+  const selectedPaymentStatus =
+    getSelectedOption(
+      paymentStatusOptions,
+      form.paymentStatus,
+    );
+
+  const activeServiceLabel =
+    totals.packageItem?.label ||
+    totals.recordingType?.label ||
+    totals.session?.label ||
+    'Layanan belum dipilih';
+
+  const activeDateLabel =
+    formatBookingModalDate(
+      form.date,
+    );
+
+  const activeTimeLabel =
+    selectedHourOption?.shortLabel ||
+    selectedHourOption?.label ||
+    '-';
+
+  const activeDurationLabel =
+    isNoDurationPackageSelected
+      ? 'Tanpa blok kalender'
+      : (
+          Number(
+            totals.durationHours,
+          ) ||
+          0
+        ) +
+        ' jam';
+
+  const paymentStatusLabel =
+    selectedPaymentStatus?.label ||
+    form.paymentStatus;
+
   return (
-    <div
-      className="booking-modal-backdrop"
-      role="presentation"
-      onMouseDown={handleBackdropClick}
+    <Dialog.Root
+      modal={true}
+      open={isOpen}
+      onOpenChange={(
+        nextOpen,
+      ) => {
+        if (
+          !nextOpen
+        ) {
+          onClose();
+        }
+      }}
     >
-      <section
-        aria-labelledby="booking-form-title"
-        aria-modal="true"
-        className="booking-modal-panel"
-        role="dialog"
-      >
-        <header className="booking-modal-head">
-          <div>
-            <p>{editingBooking ? 'Edit Booking' : 'Booking Form'}</p>
-            <h2 id="booking-form-title">{editingBooking ? 'Edit Booking' : 'Tambah Booking'}</h2>
-          </div>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className="booking-modal-backdrop"
+        />
 
-          <button
-            aria-label="Tutup form booking"
-            className="booking-modal-close"
-            type="button"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </header>
+        <Dialog.Content
+          className="booking-modal-panel"
+          data-booking-modal-ui="ui-3a-spatial"
+        >
+          <header className="booking-modal-head">
+            <div className="booking-modal-heading">
+              <span className="booking-modal-kicker">
+                {editingBooking
+                  ? 'Edit calendar booking'
+                  : 'New calendar booking'}
+              </span>
 
-        <form className="booking-form" onSubmit={handleSubmit} noValidate>
-          <div className="booking-form-grid">
-            <StudioTextField
-              autoComplete="name"
-              icon={UserRound}
-              id="booking-name"
-              label="Nama"
-              placeholder="Nama customer"
-              required
-              value={form.name}
-              onChange={updateField('name')}
-            />
-
-            <StudioTextField
-              autoComplete="organization"
-              icon={UsersRound}
-              id="booking-band-name"
-              label="Nama Band"
-              placeholder="Nama band / project"
-              value={form.bandName}
-              onChange={updateField('bandName')}
-            />
-
-            <StudioTextField
-              autoComplete="tel"
-              icon={Phone}
-              id="booking-phone"
-              inputMode="tel"
-              label="No HP"
-              placeholder="08xxxxxxxxxx"
-              required
-              value={form.phone}
-              onChange={updateField('phone')}
-            />
-
-            <StudioSelect
-              inlineList
-              label="Paket"
-              options={packageOptions}
-              selectedKey={form.packageId}
-              onChange={updateValue('packageId')}
-            />
-
-            {isNoDurationPackageSelected ? (
-              <p className="booking-price-note">
-                Paket ini tidak memakai durasi studio utama. Jadwal tidak akan memblok kalender studio.
-              </p>
-            ) : null}
-
-            <StudioSelect
-              inlineList
-              disabled={isPackageSelected}
-              label="Tipe Session"
-              options={sessionTypeOptions}
-              selectedKey={form.sessionType}
-              onChange={updateValue('sessionType')}
-            />
-
-            {shouldShowRecordingType ? (
-              <StudioSelect
-                inlineList
-                label="Tipe Recording"
-                options={recordingTypeOptions}
-                selectedKey={activeRecordingTypeKey}
-                onChange={updateValue('recordingTypeId')}
-              />
-            ) : null}
-
-            {isRecordingSessionSelected ? (
-              <p className="booking-price-note">
-                Harga dan durasi Recording mengikuti Tipe Recording. Tidak ada tarif Recording per jam.
-              </p>
-            ) : null}
-
-            <StudioTextField
-              icon={CalendarDays}
-              id="booking-date"
-              label="Date"
-              required
-              type="date"
-              value={form.date}
-              onChange={updateField('date')}
-            />
-
-            <StudioSelect
-              inlineList
-              label="Jam"
-              options={businessHours}
-              selectedKey={form.startHour}
-              onChange={updateValue('startHour')}
-            />
-
-            <StudioSelect
-              inlineList
-              disabled={isPackageSelected || isRecordingSessionSelected}
-              label="Durasi"
-              options={durationOptions}
-              selectedKey={form.duration}
-              onChange={updateValue('duration')}
-            />
-
-            {form.duration === 'custom' && !isPackageSelected && !isRecordingSessionSelected ? (
-              <StudioTextField
-                helper="Jam"
-                icon={Clock3}
-                id="booking-custom-duration"
-                inputMode="decimal"
-                label="Durasi Custom"
-                min="0.5"
-                placeholder="Contoh 1.5"
-                step="0.5"
-                type="number"
-                value={form.customDuration}
-                onChange={updateField('customDuration')}
-              />
-            ) : null}
-
-            <StudioSelect
-              inlineList
-              label="Payment Status"
-              options={paymentStatusOptions}
-              selectedKey={form.paymentStatus}
-              onChange={updateValue('paymentStatus')}
-            />
-
-            {form.paymentStatus === 'dp' ? (
-              <StudioTextField
-                helper="Rupiah"
-                icon={CreditCard}
-                id="booking-dp-amount"
-                inputMode="numeric"
-                label="Nominal DP"
-                min="0"
-                placeholder="Contoh 50000 atau 50.000"
-                type="text"
-                value={form.dpAmount}
-                onChange={updateField('dpAmount')}
-              />
-            ) : null}
-
-            {form.paymentStatus !== 'pending' ? (
-              <StudioSelect
-                inlineList
-                label="Metode Bayar"
-                options={paymentMethodOptions}
-                selectedKey={form.paymentMethod}
-                onChange={updateValue('paymentMethod')}
-              />
-            ) : null}
-          </div>
-
-          {totals.appliedDiscounts.length ? (
-            <p className="booking-price-note">
-              Discount aktif: {formatRupiah(totals.discountAmount)} untuk {totals.durationHours} jam {totals.session?.label}.
-            </p>
-          ) : null}
-
-          {error ? (
-            <p className="booking-form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <section className="booking-detail-panel has-discount-row" aria-label="Detail pembayaran">
-            <div>
-              <span>Subtotal</span>
-              <strong>{formatRupiah(totals.subtotal)}</strong>
-            </div>
-            <div>
-              <span>Diskon</span>
-              <strong>{totals.discountAmount ? '-' : ''}{formatRupiah(totals.discountAmount)}</strong>
-            </div>
-            <div>
-              <span>Total</span>
-              <strong>{formatRupiah(totals.total)}</strong>
-            </div>
-            <div>
-              <span>DP</span>
-              <strong>{formatRupiah(totals.dpAmount)}</strong>
-            </div>
-            <div>
-              <span>Tagihan</span>
-              <strong>{formatRupiah(totals.invoiceAmount)}</strong>
-            </div>
-          </section>
-
-          <footer className="booking-form-actions">
-            <div className="booking-form-action-total" aria-label="Tagihan booking">
-              <span>Tagihan</span>
-              <strong>{formatRupiah(totals.invoiceAmount)}</strong>
-            </div>
-
-            <div className="booking-form-action-buttons">
-              <button className="booking-button is-secondary" type="button" onClick={onClose}>
-                Batal
-              </button>
-              <button
-                className="booking-button is-primary"
-                disabled={isSaving}
-                type="submit"
+              <Dialog.Title
+                asChild
               >
-                {isSaving
-                  ? 'Menyimpan...'
-                  : editingBooking
-                    ? 'Simpan Perubahan'
-                    : 'Simpan'}
-              </button>
+                <h2 id="booking-form-title">
+                  {editingBooking
+                    ? 'Edit Booking'
+                    : 'Tambah Booking'}
+                </h2>
+              </Dialog.Title>
+
+              <Dialog.Description
+                asChild
+              >
+                <p className="booking-modal-description">
+                  Susun customer, layanan, slot studio,
+                  dan pembayaran dalam satu alur booking.
+                </p>
+              </Dialog.Description>
             </div>
-          </footer>
-        </form>
-      </section>
-    </div>
+
+            <Dialog.Close
+              asChild
+            >
+              <button
+                aria-label="Tutup form booking"
+                className="booking-modal-close"
+                type="button"
+              >
+                <X
+                  aria-hidden="true"
+                  size={18}
+                  strokeWidth={2}
+                />
+              </button>
+            </Dialog.Close>
+          </header>
+
+          <form
+            aria-busy={
+              isSaving
+            }
+            className="booking-form"
+            noValidate
+            onSubmit={
+              handleSubmit
+            }
+          >
+            <div className="booking-form-layout">
+              <div className="booking-form-fields">
+                <section
+                  aria-labelledby="booking-section-customer"
+                  className="booking-form-section"
+                >
+                  <header className="booking-form-section-head">
+                    <span aria-hidden="true">
+                      01
+                    </span>
+
+                    <div>
+                      <h3 id="booking-section-customer">
+                        Customer
+                      </h3>
+
+                      <p>
+                        Siapa yang memakai slot studio ini?
+                      </p>
+                    </div>
+                  </header>
+
+                  <div className="booking-form-section-grid">
+                    <StudioTextField
+                      autoComplete="name"
+                      className="booking-field-span-2"
+                      icon={UserRound}
+                      id="booking-name"
+                      label="Nama"
+                      placeholder="Nama customer"
+                      required
+                      value={form.name}
+                      onChange={updateField('name')}
+                    />
+
+                    <StudioTextField
+                      autoComplete="organization"
+                      icon={UsersRound}
+                      id="booking-band-name"
+                      label="Nama Band"
+                      placeholder="Nama band / project"
+                      value={form.bandName}
+                      onChange={updateField('bandName')}
+                    />
+
+                    <StudioTextField
+                      autoComplete="tel"
+                      icon={Phone}
+                      id="booking-phone"
+                      inputMode="tel"
+                      label="No HP"
+                      placeholder="08xxxxxxxxxx"
+                      required
+                      value={form.phone}
+                      onChange={updateField('phone')}
+                    />
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="booking-section-service"
+                  className="booking-form-section"
+                >
+                  <header className="booking-form-section-head">
+                    <span aria-hidden="true">
+                      02
+                    </span>
+
+                    <div>
+                      <h3 id="booking-section-service">
+                        Layanan Studio
+                      </h3>
+
+                      <p>
+                        Pilih paket atau session yang akan dijalankan.
+                      </p>
+                    </div>
+                  </header>
+
+                  <div className="booking-form-section-grid">
+                    <StudioSelect
+                      className="booking-field-span-2"
+                      inlineList
+                      label="Paket"
+                      options={packageOptions}
+                      selectedKey={form.packageId}
+                      onChange={updateValue('packageId')}
+                    />
+
+                    <StudioSelect
+                      inlineList
+                      disabled={isPackageSelected}
+                      label="Tipe Session"
+                      options={sessionTypeOptions}
+                      selectedKey={form.sessionType}
+                      onChange={updateValue('sessionType')}
+                    />
+
+                    {shouldShowRecordingType ? (
+                      <StudioSelect
+                        inlineList
+                        label="Tipe Recording"
+                        options={recordingTypeOptions}
+                        selectedKey={activeRecordingTypeKey}
+                        onChange={updateValue('recordingTypeId')}
+                      />
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        className="booking-form-empty-cell"
+                      />
+                    )}
+                  </div>
+
+                  {isNoDurationPackageSelected ? (
+                    <p className="booking-price-note">
+                      Paket ini tidak memakai durasi studio utama.
+                      Jadwal tidak akan memblok kalender studio.
+                    </p>
+                  ) : null}
+
+                  {isRecordingSessionSelected ? (
+                    <p className="booking-price-note">
+                      Harga dan durasi Recording mengikuti Tipe Recording.
+                      Tidak ada tarif Recording per jam.
+                    </p>
+                  ) : null}
+                </section>
+
+                <section
+                  aria-labelledby="booking-section-slot"
+                  className="booking-form-section"
+                >
+                  <header className="booking-form-section-head">
+                    <span aria-hidden="true">
+                      03
+                    </span>
+
+                    <div>
+                      <h3 id="booking-section-slot">
+                        Slot Studio
+                      </h3>
+
+                      <p>
+                        Tentukan tanggal, jam mulai, dan durasi penggunaan.
+                      </p>
+                    </div>
+                  </header>
+
+                  <div className="booking-form-section-grid">
+                    <StudioTextField
+                      icon={CalendarDays}
+                      id="booking-date"
+                      label="Tanggal"
+                      required
+                      type="date"
+                      value={form.date}
+                      onChange={updateField('date')}
+                    />
+
+                    <StudioSelect
+                      inlineList
+                      label="Jam Mulai"
+                      options={businessHours}
+                      selectedKey={form.startHour}
+                      onChange={updateValue('startHour')}
+                    />
+
+                    <StudioSelect
+                      className={
+                        form.duration === 'custom' &&
+                        !isPackageSelected &&
+                        !isRecordingSessionSelected
+                          ? ''
+                          : 'booking-field-span-2'
+                      }
+                      inlineList
+                      disabled={
+                        isPackageSelected ||
+                        isRecordingSessionSelected
+                      }
+                      label="Durasi"
+                      options={durationOptions}
+                      selectedKey={form.duration}
+                      onChange={updateValue('duration')}
+                    />
+
+                    {form.duration === 'custom' &&
+                    !isPackageSelected &&
+                    !isRecordingSessionSelected ? (
+                      <StudioTextField
+                        helper="Jam"
+                        icon={Clock3}
+                        id="booking-custom-duration"
+                        inputMode="decimal"
+                        label="Durasi Custom"
+                        min="0.5"
+                        placeholder="Contoh 1.5"
+                        step="0.5"
+                        type="number"
+                        value={form.customDuration}
+                        onChange={updateField('customDuration')}
+                      />
+                    ) : null}
+                  </div>
+                </section>
+
+                <section
+                  aria-labelledby="booking-section-payment"
+                  className="booking-form-section"
+                >
+                  <header className="booking-form-section-head">
+                    <span aria-hidden="true">
+                      04
+                    </span>
+
+                    <div>
+                      <h3 id="booking-section-payment">
+                        Pembayaran
+                      </h3>
+
+                      <p>
+                        Catat status dan pembayaran awal booking.
+                      </p>
+                    </div>
+                  </header>
+
+                  <div className="booking-form-section-grid">
+                    <StudioSelect
+                      className={
+                        form.paymentStatus === 'pending'
+                          ? 'booking-field-span-2'
+                          : ''
+                      }
+                      inlineList
+                      label="Payment Status"
+                      options={paymentStatusOptions}
+                      selectedKey={form.paymentStatus}
+                      onChange={updateValue('paymentStatus')}
+                    />
+
+                    {form.paymentStatus !== 'pending' ? (
+                      <StudioSelect
+                        inlineList
+                        label="Metode Bayar"
+                        options={paymentMethodOptions}
+                        selectedKey={form.paymentMethod}
+                        onChange={updateValue('paymentMethod')}
+                      />
+                    ) : null}
+
+                    {form.paymentStatus === 'dp' ? (
+                      <StudioTextField
+                        className="booking-field-span-2"
+                        helper="Rupiah"
+                        icon={CreditCard}
+                        id="booking-dp-amount"
+                        inputMode="numeric"
+                        label="Nominal DP"
+                        min="0"
+                        placeholder="Contoh 50000 atau 50.000"
+                        type="text"
+                        value={form.dpAmount}
+                        onChange={updateField('dpAmount')}
+                      />
+                    ) : null}
+                  </div>
+                </section>
+              </div>
+
+              <aside
+                aria-label="Ringkasan booking"
+                className="booking-form-summary"
+              >
+                <section className="booking-summary-hero">
+                  <span>
+                    Live booking quote
+                  </span>
+
+                  <strong>
+                    {formatRupiah(
+                      totals.invoiceAmount,
+                    )}
+                  </strong>
+
+                  <small>
+                    tagihan tersisa
+                  </small>
+                </section>
+
+                <section className="booking-summary-slot">
+                  <header>
+                    <span>
+                      Slot preview
+                    </span>
+
+                    <strong>
+                      {activeServiceLabel}
+                    </strong>
+                  </header>
+
+                  <div>
+                    <span>
+                      <CalendarDays
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Tanggal
+                      </small>
+                    </span>
+
+                    <strong>
+                      {activeDateLabel}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      <Clock3
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Jam
+                      </small>
+                    </span>
+
+                    <strong>
+                      {activeTimeLabel}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      <Clock3
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Durasi
+                      </small>
+                    </span>
+
+                    <strong>
+                      {activeDurationLabel}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      <CreditCard
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Status
+                      </small>
+                    </span>
+
+                    <strong>
+                      {paymentStatusLabel}
+                    </strong>
+                  </div>
+                </section>
+
+                <section
+                  aria-label="Detail pembayaran"
+                  className="booking-summary-money"
+                >
+                  <div>
+                    <span>
+                      Subtotal
+                    </span>
+
+                    <strong>
+                      {formatRupiah(
+                        totals.subtotal,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Diskon
+                    </span>
+
+                    <strong
+                      className={
+                        totals.discountAmount
+                          ? 'is-discount'
+                          : ''
+                      }
+                    >
+                      {totals.discountAmount
+                        ? '-'
+                        : ''}
+                      {formatRupiah(
+                        totals.discountAmount,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Total
+                    </span>
+
+                    <strong>
+                      {formatRupiah(
+                        totals.total,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Dibayar / DP
+                    </span>
+
+                    <strong className="is-paid">
+                      {formatRupiah(
+                        totals.dpAmount,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div className="is-total">
+                    <span>
+                      Tagihan
+                    </span>
+
+                    <strong>
+                      {formatRupiah(
+                        totals.invoiceAmount,
+                      )}
+                    </strong>
+                  </div>
+                </section>
+
+                {totals.appliedDiscounts.length ? (
+                  <p className="booking-summary-discount">
+                    Discount aktif sebesar{' '}
+                    <strong>
+                      {formatRupiah(
+                        totals.discountAmount,
+                      )}
+                    </strong>
+                    {' '}untuk{' '}
+                    {totals.durationHours}
+                    {' '}jam{' '}
+                    {totals.session?.label}.
+                  </p>
+                ) : null}
+              </aside>
+            </div>
+
+            {error ? (
+              <p
+                className="booking-form-error booking-form-global-error"
+                role="alert"
+              >
+                {error}
+              </p>
+            ) : null}
+
+            <footer className="booking-form-actions">
+              <div
+                aria-label="Tagihan booking"
+                className="booking-form-action-total"
+              >
+                <span>
+                  Tagihan
+                </span>
+
+                <strong>
+                  {formatRupiah(
+                    totals.invoiceAmount,
+                  )}
+                </strong>
+              </div>
+
+              <div className="booking-form-action-buttons">
+                <Dialog.Close
+                  asChild
+                >
+                  <button
+                    className="booking-button is-secondary"
+                    type="button"
+                  >
+                    Batal
+                  </button>
+                </Dialog.Close>
+
+                <button
+                  className="booking-button is-primary"
+                  disabled={isSaving}
+                  type="submit"
+                >
+                  {isSaving
+                    ? 'Menyimpan...'
+                    : editingBooking
+                      ? 'Simpan Perubahan'
+                      : 'Simpan Booking'}
+                </button>
+              </div>
+            </footer>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
