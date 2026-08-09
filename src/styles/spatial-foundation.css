@@ -1,0 +1,739 @@
+/*
+ * 37 Music Studio — Spatial Design Foundation
+ *
+ * UI-F0 only:
+ * - semantic spatial tokens
+ * - overlay material
+ * - primitive interaction states
+ *
+ * Page and App Shell composition remain unchanged until UI-0.
+ */
+
+html[data-admin-theme-active='true'] {
+  --studio-env:
+    #f2eee7;
+
+  --studio-canvas:
+    #fffdf9;
+
+  --studio-surface-1:
+    #fffaf3;
+
+  --studio-surface-2:
+    #f8f2e9;
+
+  --studio-surface-3:
+    #efe5d7;
+
+  --studio-surface-floating:
+    rgba(
+      255,
+      253,
+      249,
+      0.96
+    );
+
+  --studio-text-primary:
+    #241b15;
+
+  --studio-text-secondary:
+    #5f5145;
+
+  --studio-text-tertiary:
+    #8a7b6d;
+
+  --studio-edge-soft:
+    rgba(
+      55,
+      39,
+      26,
+      0.07
+    );
+
+  --studio-edge-normal:
+    rgba(
+      55,
+      39,
+      26,
+      0.12
+    );
+
+  --studio-edge-strong:
+    rgba(
+      151,
+      87,
+      22,
+      0.24
+    );
+
+  --studio-accent:
+    #b56b1b;
+
+  --studio-accent-hover:
+    #925011;
+
+  --studio-accent-soft:
+    rgba(
+      181,
+      107,
+      27,
+      0.12
+    );
+
+  --studio-success:
+    #17785a;
+
+  --studio-warning:
+    #a86508;
+
+  --studio-danger:
+    #bc3e4b;
+
+  --studio-info:
+    #2d63d7;
+
+  --studio-radius-control:
+    11px;
+
+  --studio-radius-object:
+    15px;
+
+  --studio-radius-surface:
+    22px;
+
+  --studio-radius-large:
+    28px;
+
+  --studio-shadow-contact:
+    0
+    1px
+    2px
+    rgba(
+      61,
+      43,
+      27,
+      0.08
+    );
+
+  --studio-shadow-surface:
+    0
+    16px
+    38px
+    rgba(
+      61,
+      43,
+      27,
+      0.08
+    ),
+    0
+    2px
+    8px
+    rgba(
+      61,
+      43,
+      27,
+      0.04
+    );
+
+  --studio-shadow-floating:
+    0
+    28px
+    70px
+    rgba(
+      61,
+      43,
+      27,
+      0.14
+    ),
+    0
+    4px
+    14px
+    rgba(
+      61,
+      43,
+      27,
+      0.07
+    );
+
+  --studio-duration-fast:
+    130ms;
+
+  --studio-duration-normal:
+    190ms;
+
+  --studio-duration-slow:
+    280ms;
+
+  --studio-ease-standard:
+    cubic-bezier(
+      0.2,
+      0,
+      0,
+      1
+    );
+
+  --studio-ease-out:
+    cubic-bezier(
+      0.16,
+      1,
+      0.3,
+      1
+    );
+
+  --studio-ease-spatial:
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    );
+}
+
+html[data-admin-theme-active='true'][data-theme='dark'] {
+  --studio-env:
+    #100e0c;
+
+  --studio-canvas:
+    #181512;
+
+  --studio-surface-1:
+    #1f1a16;
+
+  --studio-surface-2:
+    #272019;
+
+  --studio-surface-3:
+    #312820;
+
+  --studio-surface-floating:
+    rgba(
+      31,
+      26,
+      22,
+      0.96
+    );
+
+  --studio-text-primary:
+    #f8efe4;
+
+  --studio-text-secondary:
+    #cabcab;
+
+  --studio-text-tertiary:
+    #968675;
+
+  --studio-edge-soft:
+    rgba(
+      255,
+      244,
+      230,
+      0.07
+    );
+
+  --studio-edge-normal:
+    rgba(
+      255,
+      244,
+      230,
+      0.12
+    );
+
+  --studio-edge-strong:
+    rgba(
+      240,
+      166,
+      74,
+      0.28
+    );
+
+  --studio-accent:
+    #e29a42;
+
+  --studio-accent-hover:
+    #f0ae5d;
+
+  --studio-accent-soft:
+    rgba(
+      226,
+      154,
+      66,
+      0.14
+    );
+
+  --studio-success:
+    #50bd8d;
+
+  --studio-warning:
+    #e1a13b;
+
+  --studio-danger:
+    #e06b75;
+
+  --studio-info:
+    #7da9f4;
+
+  --studio-shadow-contact:
+    0
+    1px
+    2px
+    rgba(
+      0,
+      0,
+      0,
+      0.24
+    );
+
+  --studio-shadow-surface:
+    0
+    18px
+    42px
+    rgba(
+      0,
+      0,
+      0,
+      0.18
+    );
+
+  --studio-shadow-floating:
+    0
+    30px
+    78px
+    rgba(
+      0,
+      0,
+      0,
+      0.32
+    ),
+    0
+    3px
+    12px
+    rgba(
+      0,
+      0,
+      0,
+      0.2
+    );
+}
+
+.spatial-surface {
+  position:
+    relative;
+
+  border:
+    1px solid
+    var(
+      --studio-edge-soft
+    );
+
+  border-radius:
+    var(
+      --studio-radius-surface
+    );
+
+  background:
+    var(
+      --studio-surface-1
+    );
+
+  color:
+    var(
+      --studio-text-primary
+    );
+}
+
+.spatial-surface[data-depth='canvas'] {
+  border-color:
+    transparent;
+
+  background:
+    var(
+      --studio-canvas
+    );
+}
+
+.spatial-surface[data-depth='raised'] {
+  box-shadow:
+    var(
+      --studio-shadow-surface
+    );
+}
+
+.spatial-surface[data-depth='floating'] {
+  border-color:
+    var(
+      --studio-edge-normal
+    );
+
+  background:
+    var(
+      --studio-surface-floating
+    );
+
+  box-shadow:
+    var(
+      --studio-shadow-floating
+    );
+}
+
+.studio-icon-button {
+  width:
+    38px;
+
+  height:
+    38px;
+
+  display:
+    inline-grid;
+
+  place-items:
+    center;
+
+  flex:
+    0 0
+    auto;
+
+  border:
+    1px solid
+    var(
+      --studio-edge-soft
+    );
+
+  border-radius:
+    var(
+      --studio-radius-control
+    );
+
+  background:
+    var(
+      --studio-surface-1
+    );
+
+  color:
+    var(
+      --studio-text-secondary
+    );
+
+  box-shadow:
+    var(
+      --studio-shadow-contact
+    );
+
+  padding:
+    0;
+
+  transition:
+    border-color
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-standard
+      ),
+    background
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-standard
+      ),
+    color
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-standard
+      ),
+    transform
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-out
+      );
+}
+
+.studio-icon-button:hover:not(:disabled) {
+  border-color:
+    var(
+      --studio-edge-normal
+    );
+
+  background:
+    var(
+      --studio-surface-2
+    );
+
+  color:
+    var(
+      --studio-text-primary
+    );
+
+  transform:
+    translateY(
+      -1px
+    );
+}
+
+.studio-icon-button:active:not(:disabled) {
+  transform:
+    translateY(
+      0
+    );
+}
+
+.studio-icon-button:disabled {
+  cursor:
+    not-allowed;
+
+  opacity:
+    0.46;
+}
+
+.studio-icon-button:focus-visible,
+.studio-menu-item:focus-visible {
+  outline:
+    2px solid
+    var(
+      --studio-accent
+    );
+
+  outline-offset:
+    2px;
+}
+
+.studio-tooltip-content,
+.studio-menu-content,
+.studio-popover-content {
+  z-index:
+    var(
+      --z-dropdown,
+      240
+    );
+
+  border:
+    1px solid
+    var(
+      --studio-edge-normal
+    );
+
+  background:
+    var(
+      --studio-surface-floating
+    );
+
+  color:
+    var(
+      --studio-text-primary
+    );
+
+  box-shadow:
+    var(
+      --studio-shadow-floating
+    );
+
+  font-family:
+    var(
+      --ui-font-sans
+    );
+}
+
+.studio-tooltip-content {
+  max-width:
+    260px;
+
+  border-radius:
+    10px;
+
+  padding:
+    7px
+    10px;
+
+  font-size:
+    0.72rem;
+
+  font-weight:
+    620;
+
+  line-height:
+    1.35;
+
+  transform-origin:
+    var(
+      --radix-tooltip-content-transform-origin
+    );
+
+  animation:
+    studio-overlay-enter
+    var(
+      --studio-duration-fast
+    )
+    var(
+      --studio-ease-out
+    );
+}
+
+.studio-tooltip-arrow {
+  fill:
+    var(
+      --studio-surface-floating
+    );
+}
+
+.studio-menu-content,
+.studio-popover-content {
+  border-radius:
+    var(
+      --studio-radius-object
+    );
+
+  transform-origin:
+    var(
+      --radix-dropdown-menu-content-transform-origin,
+      var(
+        --radix-popover-content-transform-origin
+      )
+    );
+
+  animation:
+    studio-overlay-enter
+    var(
+      --studio-duration-normal
+    )
+    var(
+      --studio-ease-spatial
+    );
+}
+
+.studio-menu-content {
+  min-width:
+    190px;
+
+  padding:
+    6px;
+}
+
+.studio-popover-content {
+  width:
+    min(
+      340px,
+      calc(
+        100vw -
+        24px
+      )
+    );
+
+  padding:
+    14px;
+}
+
+.studio-menu-item {
+  min-height:
+    38px;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    9px;
+
+  border-radius:
+    9px;
+
+  color:
+    var(
+      --studio-text-secondary
+    );
+
+  padding:
+    7px
+    9px;
+
+  font-size:
+    0.78rem;
+
+  font-weight:
+    600;
+
+  outline:
+    none;
+
+  user-select:
+    none;
+}
+
+.studio-menu-item[data-highlighted] {
+  background:
+    var(
+      --studio-surface-2
+    );
+
+  color:
+    var(
+      --studio-text-primary
+    );
+}
+
+.studio-menu-item[data-disabled] {
+  opacity:
+    0.45;
+
+  pointer-events:
+    none;
+}
+
+.studio-menu-separator {
+  height:
+    1px;
+
+  margin:
+    5px;
+
+  background:
+    var(
+      --studio-edge-soft
+    );
+}
+
+@keyframes studio-overlay-enter {
+  from {
+    opacity:
+      0;
+
+    transform:
+      translateY(
+        -4px
+      )
+      scale(
+        0.985
+      );
+  }
+
+  to {
+    opacity:
+      1;
+
+    transform:
+      translateY(
+        0
+      )
+      scale(
+        1
+      );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-icon-button,
+  .studio-tooltip-content,
+  .studio-menu-content,
+  .studio-popover-content {
+    animation:
+      none;
+
+    transition:
+      none;
+  }
+}

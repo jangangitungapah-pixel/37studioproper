@@ -44,7 +44,10 @@ import GuardAttendanceApprovalModal from '../components/guard/GuardAttendanceApp
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import AdminTopbar from '../components/admin/AdminTopbar.jsx';
 import AdminBottomNav from '../components/admin/AdminBottomNav.jsx';
+import SpatialUiProvider from '../components/ui/SpatialUiProvider.jsx';
+import { ThemeProvider } from '../theme/ThemeProvider.jsx';
 import '../styles/admin-auth.css';
+import '../styles/spatial-foundation.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
 
@@ -660,7 +663,14 @@ export default function AdminPage() {
     .join(' ');
 
   return (
-    <main className={shellClassName} data-auth-surface="admin" data-admin-active={activeItem.key}>
+    <ThemeProvider>
+      <SpatialUiProvider>
+        <main
+          className={shellClassName}
+          data-auth-surface="admin"
+          data-admin-active={activeItem.key}
+          data-admin-spatial-root="true"
+        >
       {isOwnerAdminUser(authState.user) && (
         <GuardAttendanceApprovalModal
           currentUser={authState.user}
@@ -710,16 +720,18 @@ export default function AdminPage() {
         </Suspense>
       </section>
 
-      <AdminBottomNav
-        mobilePrimaryNavItems={mobilePrimaryNavItems}
-        activeItem={activeItem}
-        goTo={goTo}
-        isMoreMenuOpen={isMoreMenuOpen}
-        setIsMoreMenuOpen={setIsMoreMenuOpen}
-        mobileMoreNavItems={mobileMoreNavItems}
-        isMoreNavActive={isMoreNavActive}
-      />
-    </main>
+          <AdminBottomNav
+            mobilePrimaryNavItems={mobilePrimaryNavItems}
+            activeItem={activeItem}
+            goTo={goTo}
+            isMoreMenuOpen={isMoreMenuOpen}
+            setIsMoreMenuOpen={setIsMoreMenuOpen}
+            mobileMoreNavItems={mobileMoreNavItems}
+            isMoreNavActive={isMoreNavActive}
+          />
+        </main>
+      </SpatialUiProvider>
+    </ThemeProvider>
   );
 }
 
