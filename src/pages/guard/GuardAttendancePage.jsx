@@ -9,11 +9,8 @@ import {
   LogIn,
   LogOut,
   ShieldCheck,
-  UserRound,
   XCircle,
   Calendar,
-  DollarSign,
-  TrendingUp,
   Briefcase,
   X,
   Eye,
@@ -28,12 +25,8 @@ import {
   subscribeGuardAttendanceSessions,
   syncOfflineQueue,
 } from '../../services/guardAttendanceRepository.js';
-import { subscribeOperatorFeeEntries } from '../../services/operatorFeeRepository.js';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../../lib/firebase.js';
-import {
-  OPERATOR_FEE_PERSON_ROLES,
-  useOperatorFeeSettings,
-} from '../../settings/operatorFeeSettings.js';
+import { useOperatorFeeSettings } from '../../settings/operatorFeeSettings.js';
 import '../../styles/admin-auth.css';
 
 function formatDateTime(value) {
@@ -101,18 +94,6 @@ function isActiveLikeSession(session) {
     [GUARD_ATTENDANCE_STATUSES.PENDING_APPROVAL, GUARD_ATTENDANCE_STATUSES.ACTIVE].includes(session.status);
 }
 
-function getGuardPeople(settings) {
-  return settings.people
-    .filter((person) =>
-      person.active &&
-      [OPERATOR_FEE_PERSON_ROLES.GUARD, OPERATOR_FEE_PERSON_ROLES.BOTH].includes(person.role)
-    )
-    .map((person) => ({
-      key: person.id,
-      label: person.name,
-    }));
-}
-
 async function readGuardAccount(user) {
   if (!firestoreDb || !user?.uid) return null;
 
@@ -141,22 +122,17 @@ export default function GuardAttendancePage() {
   const [authUser, setAuthUser] = useState(null);
   const [guardAccount, setGuardAccount] = useState(null);
   const [sessions, setSessions] = useState([]);
-  const [selectedGuardPersonId, setSelectedGuardPersonId] = useState('');
   const [note, setNote] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
-  const [feeEntries, setFeeEntries] = useState([]);
-  const [selectedSessionForBreakdown, setSelectedSessionForBreakdown] = useState(null);
   const [showCheckOutConfirm, setShowCheckOutConfirm] = useState(false);
 
   const [isReady, setIsReady] = useState(!isAuthAvailable);
   const [isBusy, setIsBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState(isAuthAvailable ? '' : 'Firebase belum dikonfigurasi.');
-
-  const guardOptions = useMemo(() => getGuardPeople(settings), [settings]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -235,23 +211,7 @@ export default function GuardAttendancePage() {
     );
   }, [authUser?.uid, guardAccount]);
 
-  useEffect(() => {
-    const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
-    if (!authUser?.uid || !isAllowedGuard || guardAccount?.status !== 'approved') {
-      return () => {};
-    }
-
-    return subscribeOperatorFeeEntries(
-      (list) => {
-        setFeeEntries(list);
-      },
-      (err) => {
-        console.error('[guard-attendance] Gagal membaca data fee:', err);
-      }
-    );
-  }, [authUser?.uid, guardAccount]);
-
-  const currentSession = useMemo(
+  const currentSession = useMemo(  const currentSession = useMemo(
     () => sessions.find(isActiveLikeSession) || null,
     [sessions]
   );
@@ -288,73 +248,89 @@ export default function GuardAttendancePage() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    const thisMonthSessions = sessions.filter((s) => {
-      const sDate = new Date(s.date);
-      return sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear;
+    const thisMonthSessions = sessions.filter((session) => {
+      const sessionDate = new Date(session.date);
+
+      return (
+        sessionDate.getMonth() === currentMonth &&
+        sessionDate.getFullYear() === currentYear
+      );
     });
 
-    const approved = thisMonthSessions.filter((s) => s.approvalStatus === 'approved');
+    const approved = thisMonthSessions.filter(
+      (session) =>
+        session.approvalStatus ===
+        GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED
+    );
 
-    const totalHours = approved.reduce((acc, s) => acc + (s.durationHours || 0), 0);
+    const pending = thisMonthSessions.filter(
+      (session) =>
+        session.approvalStatus ===
+        GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING
+    );
 
-    // Uang makan hanya dihitung SATU kali per penjaga per hari (deduplikasi by guardPersonId+date).
-    // Safety net untuk kasus penjaga yang memiliki dua sesi approved di tanggal yang sama.
-    const mealByDay = new Map();
-    for (const s of approved) {
-      if (!s.mealEligible) continue;
-      const key = s.guardPersonId + '::' + s.date;
-      if (!mealByDay.has(key)) mealByDay.set(key, s.mealAmount || 0);
-    }
-    const totalMeals = Array.from(mealByDay.values()).reduce((acc, v) => acc + v, 0);
-
-    // Commissions are matched by DATE + personId only — clock-out time is irrelevant.
-    // This means bookings that happen AFTER the guard clocks out still count, as long
-    // as they fall on the same calendar date. We use ALL sessions in the month (not just
-    // approved) so commissions are never missed due to a pending attendance status.
-    const allDates = new Set(thisMonthSessions.map((s) => s.date + '::' + s.guardPersonId));
-    const totalCommissions = feeEntries.reduce((acc, entry) => {
-      const key = entry.bookingDate + '::' + entry.personId;
-      return allDates.has(key) ? acc + (entry.amount || 0) : acc;
-    }, 0);
-
-    const totalEarnings = totalMeals + totalCommissions;
+    const totalHours = approved.reduce(
+      (total, session) =>
+        total +
+        (Number(session.durationHours) || 0),
+      0,
+    );
 
     return {
-      count: approved.length,
-      totalHours: totalHours.toFixed(1),
-      totalMeals,
-      totalCommissions,
-      totalEarnings,
+      approvedDays:
+        approved.length,
+
+      pending:
+        pending.length,
+
+      totalHours:
+        totalHours.toFixed(1),
     };
-  }, [sessions, feeEntries]);
-  const recentSessions = useMemo(() => sessions.slice(0, 8), [sessions]);
+  }, [sessions]);
+
+  const recentSessions = useMemo(  const recentSessions = useMemo(() => sessions.slice(0, 8), [sessions]);
   const mealAmount = settings.options?.mealPerPersonPerDay || 40000;
   const todayLabel = formatDate(new Date().toISOString());
 
-  const visibleGuardOptions = useMemo(() => {
-    if (guardOptions.length) return guardOptions;
-
-    return [{
-      key: authUser?.uid || 'guard',
-      label: authUser?.displayName || authUser?.email || 'Penjaga Studio',
-    }];
-  }, [authUser, guardOptions]);
-
-  const effectiveGuardPersonId = selectedGuardPersonId || visibleGuardOptions[0]?.key || authUser?.uid || '';
+  const assignedGuardPersonId =
+    guardAccount?.guardId ||
+    authUser?.uid ||
+    '';
 
   const selectedGuardPerson = useMemo(() => {
-    const person = settings.people.find((item) => item.id === effectiveGuardPersonId);
+    const assignedPerson =
+      settings.people.find(
+        (person) =>
+          person.id ===
+          assignedGuardPersonId,
+      );
 
-    if (person) return person;
+    if (assignedPerson) {
+      return assignedPerson;
+    }
 
     return {
-      id: effectiveGuardPersonId || authUser?.uid || '',
-      name: authUser?.displayName || authUser?.email || 'Penjaga Studio',
-      defaultPaymentMethod: 'cash',
-    };
-  }, [authUser, effectiveGuardPersonId, settings.people]);
+      defaultPaymentMethod:
+        'cash',
 
-  const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
+      id:
+        assignedGuardPersonId,
+
+      name:
+        authUser?.displayName ||
+        guardAccount?.displayName ||
+        authUser?.email ||
+        'Penjaga Studio',
+    };
+  }, [
+    assignedGuardPersonId,
+    authUser?.displayName,
+    authUser?.email,
+    guardAccount?.displayName,
+    settings.people,
+  ]);
+
+  const isAllowedGuard = guardAccount &&  const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
   const canUseGuardPage = authUser &&
     isAllowedGuard &&
     guardAccount?.status === 'approved';
@@ -503,7 +479,7 @@ export default function GuardAttendancePage() {
           <div className="guard-shift-brand">
             <span>37 Studio Guard</span>
             <h1>Absen Penjaga</h1>
-            <small>Absensi harian untuk validasi fee dan uang makan.</small>
+            <small>Clock-in, clock-out, dan riwayat kehadiran penjaga.</small>
           </div>
 
           <div className="guard-shift-hero-actions">
@@ -655,8 +631,8 @@ export default function GuardAttendancePage() {
                 <div className="guard-stat-item">
                   <span className="guard-stat-icon"><Calendar size={14} /></span>
                   <div className="guard-stat-content">
-                    <small>Kehadiran (Bulan Ini)</small>
-                    <strong>{stats.count} Hari</strong>
+                    <small>Approved Bulan Ini</small>
+                    <strong>{stats.approvedDays} Hari</strong>
                   </div>
                 </div>
                 <div className="guard-stat-item">
@@ -667,10 +643,10 @@ export default function GuardAttendancePage() {
                   </div>
                 </div>
                 <div className="guard-stat-item is-highlight">
-                  <span className="guard-stat-icon"><DollarSign size={14} /></span>
+                  <span className="guard-stat-icon"><Clock3 size={14} /></span>
                   <div className="guard-stat-content">
-                    <small>Estimasi Pendapatan</small>
-                    <strong>{formatCurrency(stats.totalEarnings)}</strong>
+                    <small>Menunggu Approval</small>
+                    <strong>{stats.pending}</strong>
                   </div>
                 </div>
               </div>
@@ -690,21 +666,17 @@ export default function GuardAttendancePage() {
 
                   <div className="guard-shift-form-grid">
                     <label className="guard-input-label">
-                      <span>PILIH PROFIL SHIFT</span>
-                      <select
-                        value={effectiveGuardPersonId}
-                        onChange={(event) => setSelectedGuardPersonId(event.target.value)}
+                      <span>PROFIL PENJAGA</span>
+                      <input
                         className="guard-select"
-                      >
-                        {visibleGuardOptions.map((option) => (
-                          <option key={option.key} value={option.key}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        disabled
+                        readOnly
+                        value={selectedGuardPerson.name}
+                      />
                     </label>
 
                     <label className="guard-input-label">
+                      <span>CATATAN SHIFT (OPSIONAL)</span>                    <label className="guard-input-label">
                       <span>CATATAN SHIFT (OPSIONAL)</span>
                       <textarea
                         placeholder="Masukkan catatan jika ada (misal: shift sore, tukar jadwal, dll.)"
@@ -718,7 +690,7 @@ export default function GuardAttendancePage() {
                   <button
                     className="guard-shift-btn-glow"
                     type="button"
-                    disabled={isBusy || !effectiveGuardPersonId}
+                    disabled={isBusy || !selectedGuardPerson?.id}
                     onClick={handleCheckIn}
                   >
                     {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <CheckCircle2 size={16} />}
@@ -777,7 +749,7 @@ export default function GuardAttendancePage() {
             {/* ── RECENT SHIFTS HISTORY ── */}
             <div className="guard-shift-card is-history-overhaul">
               <div className="guard-panel-title">
-                <TrendingUp size={16} style={{ color: 'var(--auth-accent)' }} />
+                <Calendar size={16} style={{ color: 'var(--auth-accent)' }} />
                 <div>
                   <h3>Riwayat Absensi</h3>
                   <p>Catatan kehadiran dan status persetujuan dari Owner.</p>
@@ -787,11 +759,9 @@ export default function GuardAttendancePage() {
               <div className="guard-history-cards-list">
                 {recentSessions.length ? (
                   recentSessions.map((session) => (
-                    <button
-                      className={`guard-history-card-item is-status-${getApprovalTone(session.approvalStatus)}`}
+                    <article
+                      className={'guard-history-card-item is-status-' + getApprovalTone(session.approvalStatus)}
                       key={session.id}
-                      type="button"
-                      onClick={() => setSelectedSessionForBreakdown(session)}
                     >
                       <div className="history-main-info">
                         <div className="history-date-row">
@@ -807,11 +777,11 @@ export default function GuardAttendancePage() {
                         {session.durationHours !== undefined && (
                           <div className="history-duration">
                             <span>Durasi: <b>{session.durationHours.toFixed(1)} jam</b>{session.mealEligible && session.mealAmount > 0 ? ` · Makan: ${formatCurrency(session.mealAmount)}` : ''}</span>
-                            <span className="history-breakdown-hint">Detail Komisi &rarr;</span>
+
                           </div>
                         )}
                       </div>
-                    </button>
+                    </article>
                   ))
                 ) : (
                   <p className="guard-shift-history-empty">Belum ada riwayat absensi.</p>
@@ -876,7 +846,7 @@ export default function GuardAttendancePage() {
                 color: 'var(--studio-text-main)',
                 lineHeight: '1.6',
               }}>
-                ⚠️ <strong>Perhatian:</strong> Komisi booking yang terjadi <em>setelah</em> Anda selesai jaga tetap akan terhitung selama booking masih terdaftar di tanggal jaga Anda hari ini.
+                ℹ️ <strong>Catatan:</strong> Setelah selesai jaga, durasi shift dikunci dan status approval tetap dapat ditinjau oleh owner.
               </div>
             </div>
 
@@ -904,90 +874,6 @@ export default function GuardAttendancePage() {
         </div>
       ) : null}
 
-
-      {selectedSessionForBreakdown ? (() => {
-        const session = selectedSessionForBreakdown;
-        const mealWage = session.mealEligible ? (session.mealAmount || 0) : 0;
-
-        const commissions = feeEntries.filter(
-          (entry) => entry.bookingDate === session.date && entry.personId === session.guardPersonId
-        );
-        const totalCommissions = commissions.reduce((sum, entry) => sum + (entry.amount || 0), 0);
-        const totalEarnings = mealWage + totalCommissions;
-
-        return (
-          <div
-            className="guard-modal-backdrop settings-permission-backdrop"
-            role="presentation"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setSelectedSessionForBreakdown(null);
-            }}
-          >
-            <div className="guard-modal-panel settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="breakdown-title">
-              <header className="settings-permission-head">
-                <div>
-                  <small>Breakdown Pendapatan</small>
-                  <h3 id="breakdown-title">Absen: {formatDate(session.date)}</h3>
-                  <span className={'status-badge is-' + getApprovalTone(session.approvalStatus)} style={{ display: 'inline-block', marginTop: '4px' }}>
-                    {getApprovalLabel(session.approvalStatus)}
-                  </span>
-                </div>
-                <button type="button" aria-label="Tutup breakdown" onClick={() => setSelectedSessionForBreakdown(null)}>
-                  <X size={16} />
-                </button>
-              </header>
-
-              <div className="settings-permission-flat-list" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--studio-text-muted)' }}>Uang Makan</span>
-                  <strong style={{ color: 'var(--studio-text-strong)' }}>{session.mealEligible ? formatCurrency(mealWage) : <em style={{ fontWeight: 'normal', fontSize: '11px' }}>Tidak eligible</em>}</strong>
-                </div>
-
-                <div style={{ borderTop: '1px dashed var(--studio-border)', paddingTop: '10px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--auth-accent)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Komisi Booking Hari Ini
-                  </span>
-                  
-                  {commissions.length ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                      {commissions.map((entry) => (
-                        <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                          <span style={{ color: 'var(--studio-text-main)' }}>• {entry.title || entry.ruleName} ({entry.bookingCode})</span>
-                          <strong style={{ color: 'var(--studio-text-strong)' }}>{formatCurrency(entry.amount)}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--studio-text-muted)', fontStyle: 'italic' }}>
-                      Tidak ada komisi booking di hari ini.
-                    </p>
-                  )}
-                  {/* Komisi dihitung berdasarkan TANGGAL absensi, bukan jam clock-out.
-                      Booking yang terjadi setelah clock out tetap dihitung selama
-                      booking date sama dengan tanggal absensi ini. */}
-                  <p style={{ margin: '8px 0 0', fontSize: '10px', color: 'var(--studio-text-muted)', lineHeight: '1.5' }}>
-                    ℹ️ Komisi dihitung berdasarkan tanggal, bukan jam clock-out.
-                  </p>
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--studio-border)', paddingTop: '12px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ fontSize: '14px', color: 'var(--studio-text-strong)' }}>Total Pendapatan</strong>
-                  <strong style={{ fontSize: '16px', color: 'var(--auth-success)', fontWeight: '800' }}>
-                    {formatCurrency(totalEarnings)}
-                  </strong>
-                </div>
-              </div>
-
-              <footer className="settings-permission-actions" style={{ padding: '12px 16px' }}>
-                <button className="settings-mini-button is-primary" type="button" onClick={() => setSelectedSessionForBreakdown(null)} style={{ width: '100%' }}>
-                  Tutup
-                </button>
-              </footer>
-            </div>
-          </div>
-        );
-      })() : null}
     </main>
   );
 }

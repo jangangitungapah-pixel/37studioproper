@@ -39,7 +39,7 @@ import {
   isAdminSidebarItem,
   resolveAdminNavigationPath,
 } from '../config/adminNavigation.js';
-import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import { ACCOUNT_ROLES, PORTAL_ACCESS } from '../utils/accountRoles.js';
 import GuardAttendanceApprovalModal from '../components/guard/GuardAttendanceApprovalModal.jsx';
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import AdminTopbar from '../components/admin/AdminTopbar.jsx';
@@ -527,6 +527,18 @@ export default function AdminPage() {
   if (!authState.isAuthenticated) {
     const redirectTo = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?redirectTo=${redirectTo}`} replace />;
+  }
+
+  if (
+    authState.user?.role ===
+    ACCOUNT_ROLES.STUDIO_GUARD
+  ) {
+    return (
+      <Navigate
+        to="/guard/attendance"
+        replace
+      />
+    );
   }
 
   if (authState.user?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {

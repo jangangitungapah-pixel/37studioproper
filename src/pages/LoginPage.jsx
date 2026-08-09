@@ -16,7 +16,7 @@ import { RecaptchaVerifier } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
-import { PORTAL_ACCESS } from '../utils/accountRoles.js';
+import { ACCOUNT_ROLES, PORTAL_ACCESS } from '../utils/accountRoles.js';
 import '../styles/admin-auth.css';
 import '../styles/firebase-auth.css';
 
@@ -58,6 +58,21 @@ export default function LoginPage() {
     const unsubscribe = adminAuthRepository.subscribeAdminAuth((authState) => {
       if (authState.isReady && authState.isAuthenticated) {
         const access = authState.user?.access;
+
+        if (
+          authState.user?.role ===
+          ACCOUNT_ROLES.STUDIO_GUARD
+        ) {
+          navigate(
+            '/guard/attendance',
+            {
+              replace:
+                true,
+            },
+          );
+
+          return;
+        }
 
         if ([PORTAL_ACCESS.ALLOWED, PORTAL_ACCESS.ADMIN_PENDING].includes(access)) {
           const target = redirectTo ? redirectTo : '/admin/schedule';

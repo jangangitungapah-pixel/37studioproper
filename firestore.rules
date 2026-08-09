@@ -68,7 +68,7 @@ service cloud.firestore {
 
     function hasPermission(page) {
       return isOwner() || (
-        isApproved() &&
+        isApprovedAdmin() &&
         getUserData().permissions is map &&
         getUserData().permissions[page] == true
       );
@@ -386,9 +386,21 @@ service cloud.firestore {
         validString(data.voidReason, 0, 1000);
     }
 
+    function getCurrentGuardPersonId() {
+      let account = getUserData();
+
+      return (
+        'guardId' in account &&
+        account.guardId is string &&
+        account.guardId.size() > 0
+      )
+        ? account.guardId
+        : request.auth.uid;
+    }
     function guardCreatesOwnAttendance(data) {
       return isStudioGuardAccount() &&
         data.guardUid == request.auth.uid &&
+        data.guardPersonId == getCurrentGuardPersonId() &&
         data.status == 'pending_approval' &&
         data.approvalStatus == 'pending' &&
         data.mealEligible == false &&

@@ -1,7 +1,7 @@
 import { OWNER_EMAIL } from '../constants/appConstants.js';
 export { OWNER_EMAIL };
 export const STUDIO_GUARD_ROLE = 'studio_guard';
-export const guardPortalPermissionKeys = ['schedule', 'customers', 'billing', 'inventory'];
+export const guardPortalPermissionKeys = [];
 
 export const adminPermissionPages = [
   {
