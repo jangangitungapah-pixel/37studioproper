@@ -295,19 +295,49 @@ assert.equal(
   true,
 );
 
-assert.equal(
-  cssSource.includes(
-    '.all-bookings-table-shell',
-  ),
-  true,
-);
+/**
+ * Phase 3D visual ownership aligned with UI-4 spatial workspace.
+ *
+ * Phase 3D owns the read-only/global booking behavior.
+ * UI-4 owns the current visual composition.
+ *
+ * Keep only stable owner-surface assertions here so presentation
+ * evolution does not invalidate the older business contract.
+ */
+for (
+  const requiredClass
+  of [
+    '.all-bookings-page',
+    '.all-bookings-data-surface',
+    '.all-bookings-mobile-rows',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      requiredClass,
+    ),
+    true,
+    'All Bookings owner stylesheet missing current surface: ' +
+      requiredClass,
+  );
+}
 
-assert.equal(
-  cssSource.includes(
+for (
+  const deprecatedClass
+  of [
+    '.all-bookings-table-shell',
     '.all-bookings-mobile-list',
-  ),
-  true,
-);
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      deprecatedClass,
+    ),
+    false,
+    'Deprecated Phase 3D presentation class must not return: ' +
+      deprecatedClass,
+  );
+}
 
 const packageJson =
   JSON.parse(
