@@ -611,6 +611,7 @@ function CustomerHero({ customers }) {
   const followUpCustomers = customers.filter((customer) => customer.hasOpenPayment);
   const openAmount = followUpCustomers.reduce((sum, customer) => sum + customer.openInvoiceAmount, 0);
   const repeatCustomers = customers.filter((customer) => customer.totalBookings > 1).length;
+  const paidCustomers = customers.filter((customer) => customer.paidBookings > 0).length;
   const latestCustomer = customers.find((customer) => customer.latestActivityAt) || null;
 
   return (
@@ -619,10 +620,12 @@ function CustomerHero({ customers }) {
         <span className="customer-overview-kicker">Relationship pulse</span>
         <div className="customer-overview-number">
           <strong>{customers.length}</strong>
-          <span>customer dikenal studio</span>
+          <span>customer di directory</span>
         </div>
-        <p>
-          Directory menggabungkan customer manual dan histori booking tanpa mengubah sumber data existing.
+        <p className="customer-overview-note">
+          <strong>{followUpCustomers.length}</strong> perlu follow-up
+          <span aria-hidden="true"> • </span>
+          <strong>{paidCustomers}</strong> punya booking lunas
         </p>
       </article>
 
@@ -970,11 +973,6 @@ function CustomerToolbar({
 }) {
   return (
     <section className="customer-command-shelf" aria-label="Customer controls">
-      <div className="customer-command-context">
-        <small>Directory</small>
-        <strong>Temukan customer dan riwayatnya</strong>
-      </div>
-
       <label className="customer-search-command">
         <Search aria-hidden="true" size={17} />
         <input
@@ -989,7 +987,7 @@ function CustomerToolbar({
       <div className="customer-command-actions">
         <div className="customer-command-filter">
           <StudioSelect
-            label="Filter"
+            label="Filter customer"
             options={filterOptions}
             selectedKey={activeFilter}
             onChange={onFilterChange}
@@ -1043,6 +1041,19 @@ function CustomerTable({
         </span>
         <em>Quick action mengikuti template Follow-up Center</em>
       </header>
+
+      <div
+        className="customer-directory-columns"
+        aria-hidden="true"
+      >
+        <span />
+        <span>Customer</span>
+        <span>Booking</span>
+        <span>Lunas</span>
+        <span>Terakhir</span>
+        <span>Outstanding</span>
+        <span>Aksi</span>
+      </div>
 
       <div className="customer-directory-list">
         {customers.map((customer) => {
@@ -1101,21 +1112,19 @@ function CustomerTable({
                   </span>
                 </span>
 
-                <span className="customer-directory-summary">
-                  <span>
-                    <small>Booking</small>
-                    <strong>{customer.totalBookings}</strong>
-                  </span>
+                <span className="customer-directory-stat is-bookings">
+                  <small>Booking</small>
+                  <strong>{customer.totalBookings}</strong>
+                </span>
 
-                  <span>
-                    <small>Lunas</small>
-                    <strong>{customer.paidBookings}</strong>
-                  </span>
+                <span className="customer-directory-stat is-paid">
+                  <small>Lunas</small>
+                  <strong>{customer.paidBookings}</strong>
+                </span>
 
-                  <span>
-                    <small>Terakhir</small>
-                    <strong>{latestActivity}</strong>
-                  </span>
+                <span className="customer-directory-stat is-latest">
+                  <small>Terakhir</small>
+                  <strong>{latestActivity}</strong>
                 </span>
 
                 <span
@@ -1218,8 +1227,16 @@ function CustomerFollowUpCenter({
           <strong>Prioritas hubungan yang perlu disentuh</strong>
         </span>
 
-        <span className="customer-followup-total">
-          {candidates.length} target
+        <span className="customer-followup-brief">
+          <span>
+            <strong>{candidates.length}</strong>
+            <small>target</small>
+          </span>
+          <em>
+            {totalOutstanding
+              ? formatMoney(totalOutstanding)
+              : 'Outstanding clear'}
+          </em>
         </span>
 
         <span className="customer-followup-chevron" aria-hidden="true">

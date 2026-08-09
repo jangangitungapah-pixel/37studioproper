@@ -218,6 +218,71 @@ for (const forbiddenDependency of [
   );
 }
 
+
+/**
+ * UI-5 visual QA repair contract
+ * Keep the accepted UI-5 behavior while locking the post-screenshot hierarchy repair.
+ */
+for (
+  const required
+  of [
+    'customer-overview-note',
+    'label="Filter customer"',
+    'customer-directory-columns',
+    'customer-directory-stat is-bookings',
+    'customer-directory-stat is-paid',
+    'customer-directory-stat is-latest',
+    'customer-followup-brief',
+  ]
+) {
+  assert.equal(
+    pageSource.includes(
+      required,
+    ),
+    true,
+    'UI-5 visual QA page marker missing: ' +
+      required
+  );
+}
+
+for (
+  const removed
+  of [
+    'customer-directory-summary',
+    'customer-command-context">',
+  ]
+) {
+  assert.equal(
+    pageSource.includes(
+      removed,
+    ),
+    false,
+    'UI-5 visual QA cleanup regressed: ' +
+      removed
+  );
+}
+
+for (
+  const required
+  of [
+    'UI-5 Visual QA Repair',
+    '.customer-directory-columns',
+    '.customer-directory-stat',
+    '.customer-followup-brief',
+    ".studio-select-list[aria-label='Filter customer']",
+    '@media (max-width: 1040px)',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      required,
+    ),
+    true,
+    'UI-5 visual QA CSS marker missing: ' +
+      required
+  );
+}
+
 process.stdout.write(
   '✅ Admin Spatial Customer UI-5 contract passed.\n'
 );
