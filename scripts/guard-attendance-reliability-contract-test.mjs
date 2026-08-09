@@ -238,7 +238,6 @@ for (
     'resolveGuardAttendanceSession',
     'buildGuardAttendanceCheckOutPatch',
     "eventId:\n      'notif_guard_attendance_submitted__'",
-    "existing.exists()",
     'clockInByUid',
     'clockOutByUid',
   ]
@@ -252,6 +251,14 @@ for (
       required,
   );
 }
+
+assert.equal(
+  repositorySource.includes(
+    'existing.exists()',
+  ),
+  false,
+  'Guard check-in must not pre-read a deterministic document that may not exist yet.',
+);
 
 assert.equal(
   repositorySource.includes(

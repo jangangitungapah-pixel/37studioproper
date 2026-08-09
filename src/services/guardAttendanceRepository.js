@@ -780,19 +780,6 @@ export async function createGuardAttendanceCheckIn({
     return record;
   }
 
-  const existing =
-    await getDoc(
-      documentRef,
-    );
-
-  if (
-    existing.exists()
-  ) {
-    throw new Error(
-      'Anda sudah melakukan absensi hari ini.',
-    );
-  }
-
   await setDoc(
     documentRef,
     record,
