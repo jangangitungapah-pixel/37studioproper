@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 function read(file) {
-  return readFileSync(resolve(file), 'utf8');
+  return readFileSync(resolve(file), 'utf8').replace(/\r\n?/g, '\n');
 }
 
 const billingSource = read('src/pages/admin/BillingPage.jsx');
@@ -129,6 +129,44 @@ for (const required of [
 assert.equal(layoutRepairCss.includes('--auth-'), false, 'Layout repair must use semantic studio tokens.');
 assert.equal(/#[0-9a-f]{3,8}\b/i.test(layoutRepairCss), false, 'Layout repair must not add raw hex colors.');
 // UI-6 visual layout repair contract — end
+
+// UI-6 operations density repair contract — start
+const operationsDensityMarker = 'UI-6 Operations Density Repair — Compact Cashflow & Collection';
+assert.equal(cssSource.includes(operationsDensityMarker), true, 'UI-6 operations density marker missing.');
+const operationsDensityCss = cssSource
+  .split(operationsDensityMarker)[1]
+  .split('End UI-6 Operations Density Repair')[0];
+
+for (const required of [
+  '.billing-operations-grid',
+  'grid-template-columns: minmax(0, 1.25fr) minmax(410px, 0.75fr)',
+  '.billing-cash-summary',
+  'grid-template-columns: repeat(4, minmax(0, 1fr))',
+  '.billing-reminder-card',
+  '.billing-reminder-list',
+  'border-left: 1px solid var(--studio-edge-soft)',
+  '@media (max-width: 1120px)',
+  '@media (max-width: 767px)',
+  '@media (max-width: 520px)',
+]) {
+  assert.equal(
+    operationsDensityCss.includes(required),
+    true,
+    'UI-6 density CSS marker missing: ' + required,
+  );
+}
+
+assert.equal(
+  operationsDensityCss.includes('--auth-'),
+  false,
+  'Density repair must use semantic studio tokens.',
+);
+assert.equal(
+  /#[0-9a-f]{3,8}\b/i.test(operationsDensityCss),
+  false,
+  'Density repair must not add raw hex colors.',
+);
+// UI-6 operations density repair contract — end
 
 const cssMarker = 'UI-6 — Spatial Invoices & Payments Workspace';
 assert.equal(cssSource.includes(cssMarker), true, 'UI-6 stylesheet marker missing.');

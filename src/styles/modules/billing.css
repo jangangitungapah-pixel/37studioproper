@@ -3187,5 +3187,156 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
 }
 
 /* ==========================================================================
+   UI-6 Operations Density Repair — Compact Cashflow & Collection
+   ========================================================================== */
+
+.billing-operations-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(410px, 0.75fr);
+  align-items: stretch;
+}
+
+.billing-cash-summary {
+  min-height: 0;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+  grid-template-rows: auto;
+  align-items: stretch;
+  align-content: stretch;
+}
+
+.billing-cash-summary > header {
+  grid-template-columns: minmax(0, 1fr) minmax(122px, 148px);
+  align-content: center;
+  gap: 8px;
+  padding-right: 10px;
+}
+
+.billing-cash-range {
+  width: auto;
+}
+
+.billing-cash-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-self: stretch;
+}
+
+.billing-cash-grid article {
+  min-height: 56px;
+  align-content: center;
+  border-right: 1px solid var(--studio-edge-soft);
+  border-bottom: 0;
+  padding: 7px 8px;
+}
+
+.billing-cash-grid article:nth-child(2n) {
+  border-right: 1px solid var(--studio-edge-soft);
+}
+
+.billing-cash-grid article:nth-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.billing-cash-grid article:last-child {
+  border-right: 0;
+}
+
+.billing-reminder-card {
+  min-height: 0;
+  grid-template-columns: minmax(154px, 0.62fr) minmax(0, 1.38fr);
+  grid-template-rows: auto;
+  align-items: start;
+}
+
+.billing-reminder-card > header {
+  align-self: start;
+  padding-right: 10px;
+}
+
+.billing-reminder-list {
+  gap: 0;
+  border-left: 1px solid var(--studio-edge-soft);
+  padding-left: 10px;
+}
+
+.billing-reminder-row {
+  min-height: 36px;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.billing-reminder-row a,
+.billing-reminder-row span button {
+  min-height: 28px;
+  padding-inline: 7px;
+}
+
+@media (max-width: 1120px) {
+  .billing-operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-reminder-card {
+    grid-template-columns: minmax(190px, 0.42fr) minmax(0, 1.58fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .billing-cash-summary,
+  .billing-reminder-card {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .billing-cash-summary > header {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 164px);
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-edge-soft);
+    padding-right: 0;
+    padding-bottom: 8px;
+  }
+
+  .billing-reminder-card > header {
+    padding-right: 0;
+  }
+
+  .billing-reminder-list {
+    border-top: 1px solid var(--studio-edge-soft);
+    border-left: 0;
+    padding-top: 6px;
+    padding-left: 0;
+  }
+
+  .billing-reminder-row a,
+  .billing-reminder-row span button {
+    min-height: 32px;
+  }
+}
+
+@media (max-width: 520px) {
+  .billing-cash-summary > header {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-cash-range {
+    width: 100%;
+  }
+
+  .billing-cash-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .billing-cash-grid article:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .billing-cash-grid article:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+}
+
+/* ==========================================================================
+   End UI-6 Operations Density Repair
+   ========================================================================== */
+
+/* ==========================================================================
    End UI-6 Visual Layout Repair
    ========================================================================== */
