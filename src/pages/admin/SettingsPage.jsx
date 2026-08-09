@@ -17,6 +17,7 @@ import {
   writeAccountPreferences,
 } from '../../utils/accountSettings.js';
 import {
+  buildPortalRoleTransitionPatch,
   countEnabledAdminPermissions,
   defaultAdminPermissions,
   defaultGuardPortalPermissions,
@@ -521,17 +522,118 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     });
   }
 
-  async function handleUpdateUserRole(userId, newRole) {
-    try {
-      const docRef = doc(firestoreDb, 'users', userId);
-      await updateDoc(docRef, {
-        role: newRole,
-        updatedAt: new Date().toISOString()
+  async function commitUserRoleTransition(
+    user,
+    newRole,
+    {
+      guardId = '',
+    } = {},
+  ) {
+    if (
+      !user?.id
+    ) {
+      throw new Error(
+        'User tujuan tidak valid.',
+      );
+    }
+
+    const patch =
+      buildPortalRoleTransitionPatch(
+        user,
+        newRole,
+        {
+          guardId,
+        },
+      );
+
+    await updateDoc(
+      doc(
+        firestoreDb,
+        'users',
+        user.id,
+      ),
+      {
+        ...patch,
+
+        updatedAt:
+          new Date().toISOString(),
+      },
+    );
+
+    return patch;
+  }
+
+  async function handleUpdateUserRole(
+    user,
+    newRole,
+    options = {},
+  ) {
+    if (
+      !user?.id ||
+      !newRole ||
+      newRole ===
+        user.role
+    ) {
+      return;
+    }
+
+    if (
+      newRole ===
+        'studio_guard' &&
+      !(
+        options.guardId ||
+        user.guardId
+      )
+    ) {
+      setSelectingGuardUser({
+        ...user,
+
+        pendingRole:
+          'studio_guard',
       });
-      setApprovalSettingsMessage('Peran akun berhasil diperbarui.');
+
+      setSelectedCrewId(
+        null,
+      );
+
+      setApprovalSettingsMessage(
+        'Pilih identitas crew penjaga untuk menyelesaikan perubahan role.',
+      );
+
+      return;
+    }
+
+    try {
+      await commitUserRoleTransition(
+        user,
+        newRole,
+        options,
+      );
+
+      setSelectingGuardUser(
+        null,
+      );
+
+      setSelectedCrewId(
+        null,
+      );
+
+      setApprovalSettingsMessage(
+        newRole ===
+          'studio_guard'
+          ? 'Role berhasil diubah menjadi Guard.'
+          : 'Role berhasil diubah menjadi Admin.',
+      );
     } catch (err) {
-      console.error('Failed to update user role:', err);
-      setApprovalSettingsMessage('Gagal memperbarui peran akun.');
+      console.error(
+        'Failed to update user role:',
+        err,
+      );
+
+      setApprovalSettingsMessage(
+        err?.message ||
+        'Gagal memperbarui peran akun.',
+      );
     }
   }
 
@@ -566,23 +668,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         }
       }
     });
-  }
-
-  async function handleToggleUserIsGuard(userId, currentIsGuard, guardId = null) {
-    const nextIsGuard = !currentIsGuard;
-    try {
-      const docRef = doc(firestoreDb, 'users', userId);
-      await updateDoc(docRef, {
-        isGuard: nextIsGuard,
-        guardId: nextIsGuard ? guardId : null,
-        updatedAt: new Date().toISOString()
-      });
-      setApprovalSettingsMessage(nextIsGuard ? 'Status penjaga admin berhasil diaktifkan.' : 'Status penjaga admin berhasil dinonaktifkan.');
-      setSelectingGuardUser(null);
-    } catch (err) {
-      console.error('Failed to toggle isGuard status:', err);
-      setApprovalSettingsMessage('Gagal memperbarui status penjaga.');
-    }
   }
 
   function openPermissionSettings(user) {
@@ -2355,7 +2440,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                           {/* Role select dropdown */}
                           <select
                             value={user.role}
-                            onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                            onChange={(e) => handleUpdateUserRole(user, e.target.value)}
                             className="settings-role-select"
                             aria-label="Update user role"
                           >
@@ -2373,31 +2458,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                           >
                             <SlidersHorizontal size={12} />
                           </button>
-
-                          {/* Set as Guard checkbox (only for Admins) */}
-                          {user.role === 'admin' && (
-                            <button
-                              type="button"
-                              aria-label="Set as Guard"
-                              title={user.isGuard ? "Bisa absen jaga (Aktif)" : "Jadikan Penjaga"}
-                              onClick={() => {
-                                if (user.isGuard) {
-                                  handleToggleUserIsGuard(user.id, true);
-                                } else {
-                                  setSelectingGuardUser(user);
-                                  setSelectedCrewId(user.guardId || null);
-                                }
-                              }}
-                              className="settings-icon-action-btn"
-                              style={{ 
-                                color: user.isGuard ? 'var(--auth-success)' : 'var(--auth-text-muted)',
-                                borderColor: user.isGuard ? 'var(--auth-success)' : '',
-                                background: user.isGuard ? 'var(--auth-success-soft)' : ''
-                              }}
-                            >
-                              <UserRound size={12} />
-                            </button>
-                          )}
 
                           {/* Transfer Owner (Admin only) */}
                           {user.role === 'admin' && (
@@ -2579,7 +2639,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               <div>
                 <small>Hubungkan Penjaga Studio</small>
                 <h3 id="guard-select-title">Pilih Identitas Crew Penjaga</h3>
-                <span>Pilih crew penjaga yang sesuai untuk menghubungkan absensi admin ini.</span>
+                <span>Pilih crew penjaga yang sesuai untuk mengaktifkan role Guard pada akun ini.</span>
               </div>
               <button type="button" aria-label="Tutup pilihan" onClick={() => setSelectingGuardUser(null)}>
                 <X size={16} />
@@ -2632,7 +2692,16 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 className="settings-mini-button is-primary" 
                 type="button" 
                 disabled={!selectedCrewId}
-                onClick={() => handleToggleUserIsGuard(selectingGuardUser.id, false, selectedCrewId)}
+                onClick={() =>
+                  handleUpdateUserRole(
+                    selectingGuardUser,
+                    'studio_guard',
+                    {
+                      guardId:
+                        selectedCrewId,
+                    },
+                  )
+                }
               >
                 Simpan Penjaga
               </button>

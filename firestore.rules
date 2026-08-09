@@ -155,13 +155,7 @@ service cloud.firestore {
     }
 
     function hasOnlyGuardPortalPermissions(data) {
-      return validPermissions(data) &&
-        data.dashboard == false &&
-        data.bookkeeping == false &&
-        (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] == false) &&
-        (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] == false) &&
-        data.gallery == false &&
-        data.settings == false;
+      return hasNoAdminPermissions(data);
     }
 
     function validPreferences(data) {

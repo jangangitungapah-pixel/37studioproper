@@ -89,6 +89,79 @@ export function normalizeAdminPermissionsForRole(permissions, role) {
   }), {});
 }
 
+export function buildPortalRoleTransitionPatch(
+  user,
+  nextRole,
+  {
+    guardId = '',
+  } = {},
+) {
+  if (
+    nextRole ===
+    STUDIO_GUARD_ROLE
+  ) {
+    const resolvedGuardId =
+      String(
+        guardId ||
+        user?.guardId ||
+        '',
+      ).trim();
+
+    if (
+      !resolvedGuardId
+    ) {
+      throw new Error(
+        'Pilih identitas crew penjaga sebelum mengubah role menjadi Guard.',
+      );
+    }
+
+    return {
+      guardId:
+        resolvedGuardId,
+
+      isGuard:
+        false,
+
+      permissions: {
+        ...defaultGuardPortalPermissions,
+      },
+
+      role:
+        STUDIO_GUARD_ROLE,
+
+      status:
+        'approved',
+    };
+  }
+
+  if (
+    nextRole ===
+    'admin'
+  ) {
+    return {
+      guardId:
+        null,
+
+      isGuard:
+        false,
+
+      permissions: {
+        ...defaultAdminPermissions,
+      },
+
+      role:
+        'admin',
+
+      status:
+        'approved',
+    };
+  }
+
+  throw new Error(
+    'Role portal tidak didukung.',
+  );
+}
+
 export function getAssignablePermissionPages(user) {
   if (user?.role === STUDIO_GUARD_ROLE) {
     return adminPermissionPages.filter((page) => guardPortalPermissionKeys.includes(page.key));
