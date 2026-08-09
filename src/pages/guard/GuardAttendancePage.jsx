@@ -211,7 +211,7 @@ export default function GuardAttendancePage() {
     );
   }, [authUser?.uid, guardAccount]);
 
-  const currentSession = useMemo(  const currentSession = useMemo(
+  const currentSession = useMemo(
     () => sessions.find(isActiveLikeSession) || null,
     [sessions]
   );
@@ -288,7 +288,7 @@ export default function GuardAttendancePage() {
     };
   }, [sessions]);
 
-  const recentSessions = useMemo(  const recentSessions = useMemo(() => sessions.slice(0, 8), [sessions]);
+  const recentSessions = useMemo(() => sessions.slice(0, 8), [sessions]);
   const mealAmount = settings.options?.mealPerPersonPerDay || 40000;
   const todayLabel = formatDate(new Date().toISOString());
 
@@ -330,7 +330,7 @@ export default function GuardAttendancePage() {
     settings.people,
   ]);
 
-  const isAllowedGuard = guardAccount &&  const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
+  const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
   const canUseGuardPage = authUser &&
     isAllowedGuard &&
     guardAccount?.status === 'approved';
@@ -676,7 +676,6 @@ export default function GuardAttendancePage() {
                     </label>
 
                     <label className="guard-input-label">
-                      <span>CATATAN SHIFT (OPSIONAL)</span>                    <label className="guard-input-label">
                       <span>CATATAN SHIFT (OPSIONAL)</span>
                       <textarea
                         placeholder="Masukkan catatan jika ada (misal: shift sore, tukar jadwal, dll.)"
