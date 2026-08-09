@@ -135,11 +135,9 @@ assert.equal(
   'Topbar context must derive from canonical navigation metadata.',
 );
 
-assert.equal(
-  topbarSource.includes(
-    "goTo('/admin/notifications')",
-  ),
-  true,
+assert.match(
+  topbarSource,
+  /goTo\(\s*['"]\/admin\/notifications['"]\s*,?\s*\)/,
   'Notification Console must remain reachable from the topbar.',
 );
 

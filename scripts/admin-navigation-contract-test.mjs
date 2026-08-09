@@ -397,11 +397,9 @@ const topbarSource = readFileSync(
   'utf8',
 );
 
-assert.equal(
-  topbarSource.includes(
-    "goTo('/admin/notifications')",
-  ),
-  true,
+assert.match(
+  topbarSource,
+  /goTo\(\s*['"]\/admin\/notifications['"]\s*,?\s*\)/,
   'Notifications must remain accessible from topbar bell.',
 );
 
