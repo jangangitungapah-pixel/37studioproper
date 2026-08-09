@@ -6605,3 +6605,192 @@ and (
       none !important;
   }
 }
+
+/* UI-0E — Theme + Accessibility + Shell Hardening */
+
+/*
+ * Layout safety:
+ * shell layers may shrink, but page-level horizontal scrolling
+ * remains owned by the child page where required.
+ */
+.admin-shell-layout,
+.admin-navigation-zone,
+.admin-workspace,
+.admin-workspace-canvas,
+.admin-stage,
+.admin-topbar-heading,
+.admin-topbar-actions {
+  min-width:
+    0;
+}
+
+.admin-workspace,
+.admin-workspace-canvas,
+.admin-stage {
+  max-width:
+    100%;
+}
+
+/*
+ * Unified shell focus language.
+ * Earlier phases already define several focus states; UI-0E
+ * provides one final accessibility floor across every shell
+ * interaction surface.
+ */
+.admin-sidebar-collapse:focus-visible,
+.admin-nav-item:focus-visible,
+.admin-account-logout:focus-visible,
+.admin-command-utility:focus-visible,
+.admin-command-icon:focus-visible,
+.admin-notification-shortcut:focus-visible,
+.admin-shell-icon-button:focus-visible,
+.admin-bottom-item:focus-visible,
+.admin-more-item:focus-visible,
+.admin-mobile-sheet-close:focus-visible,
+.admin-mobile-logout:focus-visible {
+  outline:
+    2px solid
+    var(
+      --studio-accent
+    );
+
+  outline-offset:
+    2px;
+}
+
+/*
+ * Keyboard users must be able to identify the selected route
+ * independently from the accent fill itself.
+ */
+.admin-nav-item[
+  aria-current='page'
+],
+.admin-bottom-item[
+  aria-current='page'
+],
+.admin-more-item[
+  aria-current='page'
+] {
+  font-weight:
+    690;
+}
+
+/*
+ * Prevent pointer interaction polish from becoming sluggish on
+ * touch hardware.
+ */
+.admin-sidebar-collapse,
+.admin-nav-item,
+.admin-account-logout,
+.admin-command-utility,
+.admin-command-icon,
+.admin-notification-shortcut,
+.admin-bottom-item,
+.admin-more-item,
+.admin-mobile-sheet-close,
+.admin-mobile-logout {
+  touch-action:
+    manipulation;
+}
+
+/*
+ * Mobile shell must remain within viewport width.
+ */
+@media (max-width: 767px) {
+  .admin-workspace,
+  .admin-workspace-canvas,
+  .admin-stage,
+  .admin-topbar[
+    data-admin-mobile-command='ui-0d'
+  ],
+  .admin-bottom-nav[
+    data-admin-mobile-dock='ui-0d'
+  ],
+  .admin-mobile-more-sheet {
+    max-width:
+      100%;
+  }
+
+  .admin-bottom-nav[
+    data-admin-mobile-dock='ui-0d'
+  ]
+  .admin-bottom-item {
+    min-width:
+      0;
+  }
+}
+
+/*
+ * Windows High Contrast / forced-colors:
+ * never depend exclusively on amber fill or subtle shadow.
+ */
+@media (forced-colors: active) {
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-bottom-nav,
+  .admin-mobile-more-sheet {
+    border:
+      1px solid
+      CanvasText;
+  }
+
+  .admin-nav-item[
+    aria-current='page'
+  ],
+  .admin-bottom-item[
+    aria-current='page'
+  ],
+  .admin-more-item[
+    aria-current='page'
+  ] {
+    outline:
+      2px solid
+      Highlight;
+
+    outline-offset:
+      -2px;
+  }
+
+  .admin-connectivity-dot {
+    border:
+      1px solid
+      CanvasText;
+  }
+}
+
+/*
+ * CSS motion is disabled here.
+ * JS Motion transitions in AdminSidebar/AdminTopbar are also
+ * explicitly disabled through useReducedMotion().
+ */
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    scroll-behavior:
+      auto;
+  }
+
+  .admin-sidebar,
+  .admin-sidebar-collapse,
+  .admin-nav-item,
+  .admin-nav-active-plate,
+  .admin-account-logout,
+  .admin-topbar,
+  .admin-command-utility,
+  .admin-command-icon,
+  .admin-notification-shortcut,
+  .admin-bottom-item,
+  .admin-mobile-nav-icon,
+  .admin-mobile-more-overlay,
+  .admin-mobile-more-sheet,
+  .admin-more-item,
+  .admin-mobile-sheet-close,
+  .admin-mobile-logout {
+    animation:
+      none !important;
+
+    transition:
+      none !important;
+  }
+}

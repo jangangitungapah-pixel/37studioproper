@@ -14,6 +14,7 @@ import {
 
 import {
   motion,
+  useReducedMotion,
 } from 'motion/react';
 
 import StudioTooltip from '../ui/StudioTooltip.jsx';
@@ -116,6 +117,9 @@ export default function AdminTopbar({
     notificationBadgeLabel ||
     'Buka notifikasi';
 
+  const shouldReduceMotion =
+    useReducedMotion();
+
   return (
     <header
       className="admin-topbar"
@@ -132,28 +136,39 @@ export default function AdminTopbar({
             0,
         }}
         className="admin-topbar-heading"
-        initial={{
-          opacity:
-            0,
+        initial={
+          shouldReduceMotion
+            ? false
+            : {
+                opacity:
+                  0,
 
-          y:
-            4,
-        }}
+                y:
+                  4,
+              }
+        }
         key={
           activeItem.key
         }
-        transition={{
-          duration:
-            0.16,
+        transition={
+          shouldReduceMotion
+            ? {
+                duration:
+                  0,
+              }
+            : {
+                duration:
+                  0.16,
 
-          ease:
-            [
-              0.16,
-              1,
-              0.3,
-              1,
-            ],
-        }}
+                ease:
+                  [
+                    0.16,
+                    1,
+                    0.3,
+                    1,
+                  ],
+              }
+        }
       >
         <div
           aria-label="Lokasi halaman admin"

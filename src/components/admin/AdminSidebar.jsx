@@ -7,6 +7,7 @@ import {
 
 import {
   motion,
+  useReducedMotion,
 } from 'motion/react';
 
 import StudioTooltip from '../ui/StudioTooltip.jsx';
@@ -139,6 +140,9 @@ export default function AdminSidebar({
       isSidebarCollapsed,
     );
 
+  const shouldReduceMotion =
+    useReducedMotion();
+
   return (
     <aside
       aria-label="Navigasi admin desktop"
@@ -203,11 +207,13 @@ export default function AdminSidebar({
           >
             {isSidebarCollapsed ? (
               <PanelLeftOpen
+                aria-hidden="true"
                 size={17}
                 strokeWidth={2}
               />
             ) : (
               <PanelLeftClose
+                aria-hidden="true"
                 size={17}
                 strokeWidth={2}
               />
@@ -280,19 +286,26 @@ export default function AdminSidebar({
                             aria-hidden="true"
                             className="admin-nav-active-plate"
                             layoutId="admin-nav-active-plate"
-                            transition={{
-                              type:
-                                'spring',
+                            transition={
+                              shouldReduceMotion
+                                ? {
+                                    duration:
+                                      0,
+                                  }
+                                : {
+                                    type:
+                                      'spring',
 
-                              stiffness:
-                                470,
+                                    stiffness:
+                                      470,
 
-                              damping:
-                                38,
+                                    damping:
+                                      38,
 
-                              mass:
-                                0.7,
-                            }}
+                                    mass:
+                                      0.7,
+                                  }
+                            }
                           />
                         ) : null}
 
@@ -392,6 +405,7 @@ export default function AdminSidebar({
               }
             >
               <LogOut
+                aria-hidden="true"
                 size={16}
                 strokeWidth={2}
               />

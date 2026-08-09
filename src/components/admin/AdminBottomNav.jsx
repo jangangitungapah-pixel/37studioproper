@@ -102,7 +102,7 @@ function getAccountRoleLabel(
       );
 
   return rawRole.replace(
-    /\\b\\w/g,
+    /\b\w/g,
     (
       character,
     ) =>

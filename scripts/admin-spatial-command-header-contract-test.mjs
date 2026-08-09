@@ -55,43 +55,59 @@ assert.match(
   'Notification Console must remain reachable from command header.',
 );
 
-for (
-  const guardInvariant
-  of [
-    "user.role ===\n          'studio_guard'",
-    "user.role ===\n            'admin'",
-    'user.isGuard ===\n            true',
-    'href="/guard/attendance"',
-  ]
-) {
-  assert.equal(
-    topbarSource.includes(
-      guardInvariant,
-    ),
-    true,
-    'Guard eligibility invariant missing: ' +
-      guardInvariant,
-  );
-}
+assert.match(
+  topbarSource,
+  /user\.role\s*===\s*['"]studio_guard['"]/,
+  'Guard studio_guard eligibility must be formatting-agnostic.',
+);
 
-for (
-  const connectivityInvariant
-  of [
-    "window.addEventListener(\n      'online'",
-    "window.addEventListener(\n      'offline'",
-    'navigator.onLine',
-    'setIsOnline(',
-  ]
-) {
-  assert.equal(
-    topbarSource.includes(
-      connectivityInvariant,
-    ),
-    true,
-    'Connectivity invariant missing: ' +
-      connectivityInvariant,
-  );
-}
+assert.match(
+  topbarSource,
+  /user\.role\s*===\s*['"]admin['"]/,
+  'Guard admin eligibility must be formatting-agnostic.',
+);
+
+assert.match(
+  topbarSource,
+  /user\.isGuard\s*===\s*true/,
+  'Guard admin flag eligibility must be formatting-agnostic.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'href="/guard/attendance"'
+  ),
+  true,
+  'Guard Portal destination must remain unchanged.',
+);
+
+assert.match(
+  topbarSource,
+  /window\.addEventListener\(\s*['"]online['"]/,
+  'Online listener must remain registered.',
+);
+
+assert.match(
+  topbarSource,
+  /window\.addEventListener\(\s*['"]offline['"]/,
+  'Offline listener must remain registered.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'navigator.onLine'
+  ),
+  true,
+  'Initial connectivity state must remain browser-derived.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'setIsOnline('
+  ),
+  true,
+  'Connectivity updates must remain state-driven.',
+);
 
 assert.equal(
   topbarSource.includes(
