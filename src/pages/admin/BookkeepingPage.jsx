@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Dialog } from 'radix-ui';
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
+  BookOpenCheck,
   Download,
   Landmark,
+  LockKeyhole,
   Pencil,
   Plus,
   ReceiptText,
+  RotateCcw,
   Search,
+  ShieldCheck,
   Trash2,
   WalletCards,
   X,
@@ -116,18 +122,7 @@ function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
-function formatShortDate(value) {
-  if (!value) return '-';
-
-  const date = new Date(String(value).includes('T') ? value : String(value) + 'T00:00:00');
-
-  if (Number.isNaN(date.getTime())) return '-';
-
-  return new Intl.DateTimeFormat('id-ID', {
-    day: '2-digit',
-    month: 'short',
-  }).format(date);
-}
+/* UI-7 date labels are grouped by ledger date. */
 
 function getOptionLabel(options, key, fallback = '-') {
   return options.find((item) => item.key === key)?.label || fallback;
@@ -206,6 +201,68 @@ function getEntryTypeLabel(type) {
 
 function getEntryActionLabel(type) {
   return type === 'income' ? 'pemasukan' : 'pengeluaran';
+}
+
+function getTransactionSourceMeta(transaction) {
+  const source = cleanText(transaction?.source, 'manual');
+
+  if (source === 'booking') {
+    return {
+      key: 'booking',
+      label: 'Booking',
+      description: 'Pembayaran booking',
+      searchText: 'booking otomatis billing pembayaran',
+      reconciled: true,
+    };
+  }
+
+  if (source === 'booking-refund') {
+    return {
+      key: 'booking-refund',
+      label: 'Refund',
+      description: 'Refund booking',
+      searchText: 'refund booking otomatis billing pengeluaran',
+      reconciled: true,
+    };
+  }
+
+  if (source === 'operatorFee') {
+    return {
+      key: 'operator-fee',
+      label: 'Operator Fee',
+      description: 'Posting rekonsiliasi',
+      searchText: 'operator fee crew posting rekonsiliasi',
+      reconciled: true,
+    };
+  }
+
+  if (source === 'guardAttendanceMeal') {
+    return {
+      key: 'guard-meal',
+      label: 'Meal Guard',
+      description: 'Attendance terposting',
+      searchText: 'guard attendance meal makan posting rekonsiliasi',
+      reconciled: true,
+    };
+  }
+
+  if (source && source !== 'manual') {
+    return {
+      key: 'reconciled',
+      label: 'Rekonsiliasi',
+      description: 'Dibuat sistem',
+      searchText: source + ' rekonsiliasi otomatis sistem',
+      reconciled: true,
+    };
+  }
+
+  return {
+    key: 'manual',
+    label: 'Manual',
+    description: 'Dapat diedit',
+    searchText: 'manual edit transaksi',
+    reconciled: false,
+  };
 }
 
 function buildExpenseTransactions(entries) {
@@ -550,7 +607,7 @@ function addTransactionsSheet(workbook, transactions, period) {
       transaction.title || '-',
       getOptionLabel(paymentMethodOptions, transaction.method, transaction.method),
       toNumber(transaction.amount),
-      transaction.source === 'booking' ? 'Booking' : 'Manual',
+      getTransactionSourceMeta(transaction).label,
       transaction.note || '',
     ]);
 
@@ -745,179 +802,399 @@ function getBookkeepingStats(transactions, bookings, period) {
 }
 
 /* ==========================================================================
-   COMPONENT: SUMMARY (Compact strip layout)
+   UI-7 COMPONENTS — SPATIAL BOOKKEEPING LEDGER
    ========================================================================== */
-function BookkeepingSummary({ bookings, period, transactions }) {
-  const stats = getBookkeepingStats(transactions, bookings, period);
+function BookkeepingEditorialHeader({ manualCount, period, reconciledCount }) {
+  const totalCount = manualCount + reconciledCount;
 
   return (
-    <section className="bookkeeping-hero-strip" aria-label="Ringkasan pembukuan">
-      <div className="hero-strip-item is-income">
-        <ArrowUpRight size={14} className="hero-strip-icon" />
-        <span className="hero-strip-text">
-          Masuk: <strong>{formatCurrency(stats.cashIn)}</strong>
-        </span>
+    <header className="bookkeeping-editorial-header">
+      <div className="bookkeeping-heading">
+        <span className="bookkeeping-kicker">Finance ledger</span>
+        <h2 id="bookkeeping-page-title">Pembukuan</h2>
+        <p>
+          Baca arus uang masuk, pengeluaran, piutang, dan asal setiap transaksi
+          tanpa kehilangan jejak rekonsiliasi.
+        </p>
       </div>
 
-      <div className="hero-strip-item is-expense">
-        <ArrowDownRight size={14} className="hero-strip-icon" />
-        <span className="hero-strip-text">
-          Keluar: <strong>{formatCurrency(stats.cashOut)}</strong>
+      <div className="bookkeeping-ledger-context">
+        <span className="bookkeeping-ledger-context-icon" aria-hidden="true">
+          <BookOpenCheck size={17} />
+        </span>
+        <span>
+          <small>{getPeriodLabel(period)}</small>
+          <strong>{totalCount} transaksi</strong>
+          <em>{reconciledCount} rekonsiliasi terkunci</em>
         </span>
       </div>
+    </header>
+  );
+}
 
-      <div className="hero-strip-item">
-        <WalletCards size={14} className="hero-strip-icon" />
-        <span className="hero-strip-text">
-          Saldo: <strong>{formatCurrency(stats.net)}</strong>
-        </span>
-      </div>
+function BookkeepingSummary({ bookings, period, transactions }) {
+  const stats = getBookkeepingStats(transactions, bookings, period);
+  const incomeCount = transactions.filter((transaction) => transaction.type === 'income').length;
+  const expenseCount = transactions.filter((transaction) => transaction.type === 'expense').length;
 
-      <div className="hero-strip-item is-receivable">
-        <ReceiptText size={14} className="hero-strip-icon" />
-        <span className="hero-strip-text">
-          Piutang: <strong>{formatCurrency(stats.receivable)}</strong>
+  return (
+    <section className="bookkeeping-finance-pulse" aria-label="Ringkasan pembukuan">
+      <article className="bookkeeping-finance-metric is-income">
+        <span className="bookkeeping-finance-metric-icon" aria-hidden="true">
+          <ArrowUpRight size={16} />
         </span>
-      </div>
+        <span>
+          <small>Cash Masuk</small>
+          <strong>{formatCurrency(stats.cashIn)}</strong>
+          <em>{incomeCount} transaksi pemasukan</em>
+        </span>
+      </article>
+
+      <article className="bookkeeping-finance-metric is-expense">
+        <span className="bookkeeping-finance-metric-icon" aria-hidden="true">
+          <ArrowDownRight size={16} />
+        </span>
+        <span>
+          <small>Pengeluaran</small>
+          <strong>{formatCurrency(stats.cashOut)}</strong>
+          <em>{expenseCount} transaksi keluar</em>
+        </span>
+      </article>
+
+      <article className="bookkeeping-finance-metric is-net">
+        <span className="bookkeeping-finance-metric-icon" aria-hidden="true">
+          <WalletCards size={16} />
+        </span>
+        <span>
+          <small>Saldo Bersih</small>
+          <strong>{formatCurrency(stats.net)}</strong>
+          <em>masuk dikurangi keluar</em>
+        </span>
+      </article>
+
+      <article className="bookkeeping-finance-metric is-receivable">
+        <span className="bookkeeping-finance-metric-icon" aria-hidden="true">
+          <ReceiptText size={16} />
+        </span>
+        <span>
+          <small>Piutang</small>
+          <strong>{formatCurrency(stats.receivable)}</strong>
+          <em>sisa tagihan booking</em>
+        </span>
+      </article>
     </section>
   );
 }
 
-/* ==========================================================================
-   COMPONENT: TOOLBAR (Compact inline controls)
-   ========================================================================== */
 function BookkeepingToolbar({
   exportDisabled,
+  filteredCount,
   onAddTransaction,
   onExportTransactions,
   onPeriodChange,
+  onReset,
   onSearchChange,
   onTypeFilterChange,
   period,
   searchText,
+  totalCount,
   typeFilter,
 }) {
-  return (
-    <section className="bookkeeping-toolbar-compact" aria-label="Filter pembukuan">
-      <div className="toolbar-row-main">
-        <div className="bookkeeping-search-shell-compact">
-          <Search size={14} aria-hidden="true" />
-          <input
-            aria-label="Cari transaksi pembukuan"
-            placeholder="Cari transaksi..."
-            type="search"
-            value={searchText}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-        </div>
+  const hasActiveControls = Boolean(searchText.trim()) || typeFilter !== 'all';
 
+  return (
+    <section className="bookkeeping-command-shelf" aria-label="Filter pembukuan">
+      <label className="bookkeeping-search-shell">
+        <Search size={16} aria-hidden="true" />
+        <input
+          aria-label="Cari transaksi pembukuan"
+          placeholder="Cari judul, catatan, metode, atau sumber..."
+          type="search"
+          value={searchText}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      </label>
+
+      <div className="bookkeeping-filter-select">
+        <StudioSelect
+          label="Periode"
+          options={periodOptions}
+          selectedKey={period}
+          onChange={onPeriodChange}
+        />
+      </div>
+
+      <div className="bookkeeping-filter-select">
+        <StudioSelect
+          label="Tipe Transaksi"
+          options={transactionTypeFilterOptions}
+          selectedKey={typeFilter}
+          onChange={onTypeFilterChange}
+        />
+      </div>
+
+      <div className="bookkeeping-command-actions">
         <button
-          className="bookkeeping-export-btn-compact"
+          className="bookkeeping-export-button"
           disabled={exportDisabled}
           type="button"
           onClick={onExportTransactions}
-          title="Export XLSX"
         >
-          <Download size={14} />
+          <Download size={15} aria-hidden="true" />
+          <span>Export</span>
         </button>
 
-        <button className="bookkeeping-add-btn-compact" title="Tambah transaksi" type="button" onClick={onAddTransaction}>
-          <Plus size={14} />
+        <button
+          className="bookkeeping-add-button"
+          type="button"
+          onClick={onAddTransaction}
+        >
+          <Plus size={15} aria-hidden="true" />
+          <span>Transaksi</span>
         </button>
       </div>
 
-      <div className="toolbar-row-filters">
-        <div className="bookkeeping-select-compact">
-          <StudioSelect
-            label="Periode"
-            options={periodOptions}
-            selectedKey={period}
-            onChange={onPeriodChange}
-          />
-        </div>
+      <div className="bookkeeping-filter-context" aria-live="polite">
+        <span>
+          <strong>{filteredCount}</strong>
+          <small>dari {totalCount} transaksi</small>
+        </span>
 
-        <div className="bookkeeping-select-compact">
-          <StudioSelect
-            label="Tipe"
-            options={transactionTypeFilterOptions}
-            selectedKey={typeFilter}
-            onChange={onTypeFilterChange}
-          />
-        </div>
+        {hasActiveControls ? (
+          <button type="button" onClick={onReset}>
+            <RotateCcw size={13} aria-hidden="true" />
+            Reset
+          </button>
+        ) : null}
       </div>
     </section>
   );
 }
 
-/* ==========================================================================
-   COMPONENT: TRANSACTION LIST (Flat 2-Line Row Layout)
-   ========================================================================== */
-function BookkeepingTransactionList({ onDeleteExpense, onEditExpense, transactions }) {
-  if (!transactions.length) {
+function getLedgerDateKey(value) {
+  const date = getDateFromValue(value);
+
+  if (!date) return 'unknown';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return year + '-' + month + '-' + day;
+}
+
+function getLedgerDateLabel(value) {
+  const date = getDateFromValue(value);
+
+  if (!date) return 'Tanggal tidak tersedia';
+
+  const dateKey = getLedgerDateKey(value);
+  const today = getTodayIsoDate();
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = getLedgerDateKey(yesterdayDate.toISOString());
+
+  if (dateKey === today) return 'Hari ini';
+  if (dateKey === yesterday) return 'Kemarin';
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+function groupTransactionsByDate(transactions) {
+  const groups = [];
+
+  transactions.forEach((transaction) => {
+    const key = getLedgerDateKey(transaction.date);
+    const currentGroup = groups[groups.length - 1];
+
+    if (currentGroup?.key === key) {
+      currentGroup.transactions.push(transaction);
+      return;
+    }
+
+    groups.push({
+      key,
+      label: getLedgerDateLabel(transaction.date),
+      transactions: [transaction],
+    });
+  });
+
+  return groups;
+}
+
+function BookkeepingLedgerState({ type }) {
+  if (type === 'loading') {
     return (
-      <section className="bookkeeping-empty-state">
-        <Landmark size={22} />
-        <strong>Belum ada transaksi</strong>
-        <span>Pemasukan dari billing dan transaksi manual akan muncul di sini.</span>
-      </section>
+      <div className="bookkeeping-ledger-state is-loading" role="status">
+        <span className="bookkeeping-state-icon" aria-hidden="true">
+          <BookOpenCheck size={20} />
+        </span>
+        <strong>Menyusun ledger...</strong>
+        <span>Pembayaran booking dan transaksi pembukuan sedang disinkronkan.</span>
+        <div className="bookkeeping-ledger-skeleton" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'error') {
+    return (
+      <div className="bookkeeping-ledger-state is-error" role="alert">
+        <span className="bookkeeping-state-icon" aria-hidden="true">
+          <AlertTriangle size={20} />
+        </span>
+        <strong>Ledger belum tersinkron</strong>
+        <span>Data finance belum dapat dimuat lengkap. Koneksi realtime akan mencoba kembali.</span>
+      </div>
     );
   }
 
   return (
-    <section className="bookkeeping-list-compact" aria-label="Daftar transaksi pembukuan">
-      {transactions.map((transaction) => {
-        const isIncome = transaction.type === 'income';
-        const isManualEntry = transaction.source === 'manual';
+    <div className="bookkeeping-ledger-state is-empty">
+      <span className="bookkeeping-state-icon" aria-hidden="true">
+        <Landmark size={20} />
+      </span>
+      <strong>Belum ada transaksi</strong>
+      <span>Ubah periode atau filter, atau tambahkan transaksi manual pertama.</span>
+    </div>
+  );
+}
 
-        return (
-          <article className={`bookkeeping-row-compact ${isIncome ? 'is-income' : 'is-expense'}`} key={transaction.id}>
-            {/* Left & Middle Info */}
-            <div className="bookkeeping-row-main-compact">
-              <span className="bookkeeping-type-indicator" aria-hidden="true">
-                {isIncome ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-              </span>
+function BookkeepingTransactionLedger({
+  isLoading,
+  loadError,
+  onDeleteExpense,
+  onEditExpense,
+  totalCount,
+  transactions,
+}) {
+  const groups = groupTransactionsByDate(transactions);
 
-              <div className="bookkeeping-row-content-compact">
-                <div className="bookkeeping-row-line1">
-                  <strong className="bookkeeping-title-text">{transaction.title}</strong>
-                  {transaction.note ? <span className="bookkeeping-note-text">• {transaction.note}</span> : null}
-                </div>
-                
-                <div className="bookkeeping-row-line2">
-                  <span className="bookkeeping-meta-text">
-                    {formatShortDate(transaction.date)} • {getOptionLabel(paymentMethodOptions, transaction.method, transaction.method)}
+  return (
+    <section
+      className="bookkeeping-ledger-surface"
+      aria-label="Ledger transaksi pembukuan"
+      aria-busy={isLoading ? 'true' : 'false'}
+    >
+      <header className="bookkeeping-ledger-header">
+        <div>
+          <span>Transaction ledger</span>
+          <strong>{totalCount} record ditemukan</strong>
+        </div>
+        <p>
+          <LockKeyhole size={13} aria-hidden="true" />
+          Rekonsiliasi sistem bersifat read-only
+        </p>
+      </header>
+
+      <div className="bookkeeping-ledger-columns" aria-hidden="true">
+        <span>Transaksi / Sumber</span>
+        <span>Metode</span>
+        <span>Nominal</span>
+        <span>Aksi</span>
+      </div>
+
+      {loadError && transactions.length ? (
+        <div className="bookkeeping-ledger-warning" role="status">
+          <AlertTriangle size={14} aria-hidden="true" />
+          <span>{loadError}</span>
+        </div>
+      ) : null}
+
+      {isLoading && !transactions.length ? <BookkeepingLedgerState type="loading" /> : null}
+      {!isLoading && loadError && !transactions.length ? <BookkeepingLedgerState type="error" /> : null}
+      {!isLoading && !loadError && !transactions.length ? <BookkeepingLedgerState type="empty" /> : null}
+
+      {groups.map((group) => (
+        <div className="bookkeeping-ledger-group" key={group.key}>
+          <div className="bookkeeping-ledger-date">
+            <span>{group.label}</span>
+            <small>{group.transactions.length} transaksi</small>
+          </div>
+
+          {group.transactions.map((transaction) => {
+            const isIncome = transaction.type === 'income';
+            const isManualEntry = transaction.source === 'manual';
+            const sourceMeta = getTransactionSourceMeta(transaction);
+
+            return (
+              <article
+                className={'bookkeeping-ledger-row ' + (isIncome ? 'is-income' : 'is-expense')}
+                data-source={sourceMeta.key}
+                key={transaction.id}
+              >
+                <div className="bookkeeping-ledger-main">
+                  <span className="bookkeeping-flow-icon" aria-hidden="true">
+                    {isIncome ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                  </span>
+
+                  <span className="bookkeeping-ledger-copy">
+                    <strong>{transaction.title}</strong>
+                    <small>{transaction.note || 'Tanpa catatan tambahan'}</small>
+                    <span
+                      className={'bookkeeping-source-badge ' + (sourceMeta.reconciled ? 'is-reconciled' : 'is-manual')}
+                    >
+                      {sourceMeta.reconciled ? <ShieldCheck size={11} aria-hidden="true" /> : <Pencil size={10} aria-hidden="true" />}
+                      {sourceMeta.label}
+                    </span>
                   </span>
                 </div>
-              </div>
-            </div>
 
-            {/* Right Side: Financial value & manual actions */}
-            <div className="bookkeeping-row-tail-compact">
-              <strong className="bookkeeping-amount-text">
-                {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
-              </strong>
-
-              {isManualEntry ? (
-                <div className="bookkeeping-row-actions-compact" aria-label="Aksi transaksi manual">
-                  <button type="button" aria-label={'Edit ' + getEntryActionLabel(transaction.type)} onClick={() => onEditExpense(transaction)} className="row-action-btn">
-                    <Pencil size={11} />
-                  </button>
-
-                  <button className="row-action-btn is-danger" type="button" aria-label={'Hapus ' + getEntryActionLabel(transaction.type)} onClick={() => onDeleteExpense(transaction)}>
-                    <Trash2 size={11} />
-                  </button>
+                <div className="bookkeeping-ledger-method">
+                  <small>Metode</small>
+                  <strong>{getOptionLabel(paymentMethodOptions, transaction.method, transaction.method)}</strong>
+                  <span>{sourceMeta.description}</span>
                 </div>
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
+
+                <div className="bookkeeping-ledger-amount">
+                  <small>{isIncome ? 'Masuk' : 'Keluar'}</small>
+                  <strong>{isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}</strong>
+                </div>
+
+                <div className="bookkeeping-ledger-actions">
+                  {isManualEntry ? (
+                    <>
+                      <button
+                        type="button"
+                        aria-label={'Edit ' + getEntryActionLabel(transaction.type)}
+                        onClick={() => onEditExpense(transaction)}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        className="is-danger"
+                        type="button"
+                        aria-label={'Hapus ' + getEntryActionLabel(transaction.type)}
+                        onClick={() => onDeleteExpense(transaction)}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <span title="Transaksi rekonsiliasi tidak dapat diedit">
+                      <LockKeyhole size={12} aria-hidden="true" />
+                      Terkunci
+                    </span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ))}
     </section>
   );
 }
 
 /* ==========================================================================
-   COMPONENT: TRANSACTION FORM MODAL (Tighter layout spacing)
+   COMPONENT: TRANSACTION FORM MODAL
    ========================================================================== */
 function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
   const initialType = entry?.type === 'income' || mode === 'income' ? 'income' : 'expense';
@@ -1002,87 +1279,101 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
   }
 
   return (
-    <div className="bookkeeping-modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+    <Dialog.Root open onOpenChange={(isOpen) => {
+      if (!isOpen) onClose();
     }}>
-      <section className="bookkeeping-modal-panel" role="dialog" aria-modal="true" aria-labelledby="bookkeeping-entry-title">
-        <header className="bookkeeping-modal-head">
-          <div>
-            <p>Transaksi Pembukuan</p>
-            <h2 id="bookkeeping-entry-title">{isEditing ? 'Edit ' + typeLabel : 'Tambah Transaksi'}</h2>
-          </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="bookkeeping-modal-backdrop" />
+        <Dialog.Content className="bookkeeping-modal-panel">
+          <header className="bookkeeping-modal-head">
+            <div>
+              <p>Transaksi Pembukuan</p>
+              <Dialog.Title asChild>
+                <h2>{isEditing ? 'Edit ' + typeLabel : 'Tambah Transaksi'}</h2>
+              </Dialog.Title>
+              <Dialog.Description>
+                Catat pemasukan atau pengeluaran manual ke dalam ledger studio.
+              </Dialog.Description>
+            </div>
 
-          <button type="button" aria-label="Tutup form pembukuan" onClick={onClose}>
-            <X size={17} />
-          </button>
-        </header>
+            <Dialog.Close asChild>
+              <button type="button" aria-label="Tutup form pembukuan">
+                <X size={17} />
+              </button>
+            </Dialog.Close>
+          </header>
 
-        <form className="bookkeeping-form" onSubmit={handleSubmit}>
-          <div className="bookkeeping-form-grid">
-            <StudioSelect
-              label="Jenis Transaksi"
-              options={transactionKindOptions}
-              selectedKey={activeType}
-              onChange={updateValue('type')}
-            />
+          <form className="bookkeeping-form" onSubmit={handleSubmit}>
+            <div className="bookkeeping-form-grid">
+              <StudioSelect
+                label="Jenis Transaksi"
+                options={transactionKindOptions}
+                selectedKey={activeType}
+                onChange={updateValue('type')}
+              />
 
-            <StudioSelect
-              label="Kategori"
-              options={categoryOptions}
-              selectedKey={form.category}
-              onChange={updateValue('category')}
-            />
-          </div>
+              <StudioSelect
+                label="Kategori"
+                options={categoryOptions}
+                selectedKey={form.category}
+                onChange={updateValue('category')}
+              />
+            </div>
 
-          <label>
-            <span>Judul</span>
-            <input
-              value={form.title}
-              placeholder={isIncome ? 'Contoh: Jual senar gitar' : 'Contoh: Listrik Studio'}
-              onChange={updateField('title')}
-            />
-          </label>
-
-          <div className="bookkeeping-form-grid">
             <label>
-              <span>Nominal</span>
+              <span>Judul</span>
               <input
-                inputMode="numeric"
-                min="0"
-                placeholder={isIncome ? '150000' : '350000'}
-                type="number"
-                value={form.amount}
-                onChange={updateField('amount')}
+                value={form.title}
+                placeholder={isIncome ? 'Contoh: Jual senar gitar' : 'Contoh: Listrik Studio'}
+                onChange={updateField('title')}
               />
             </label>
 
+            <div className="bookkeeping-form-grid">
+              <label>
+                <span>Nominal</span>
+                <input
+                  inputMode="numeric"
+                  min="0"
+                  placeholder={isIncome ? '150000' : '350000'}
+                  type="number"
+                  value={form.amount}
+                  onChange={updateField('amount')}
+                />
+              </label>
+
+              <label>
+                <span>Tanggal</span>
+                <input type="date" value={form.date} onChange={updateField('date')} />
+              </label>
+            </div>
+
+            <StudioSelect
+              label="Metode"
+              options={paymentMethodOptions}
+              selectedKey={form.paymentMethod}
+              onChange={updateValue('paymentMethod')}
+            />
+
             <label>
-              <span>Tanggal</span>
-              <input type="date" value={form.date} onChange={updateField('date')} />
+              <span>Catatan</span>
+              <textarea value={form.note} placeholder="Opsional..." onChange={updateField('note')} />
             </label>
-          </div>
 
-          <StudioSelect
-            label="Metode"
-            options={paymentMethodOptions}
-            selectedKey={form.paymentMethod}
-            onChange={updateValue('paymentMethod')}
-          />
+            {error ? <p className="bookkeeping-form-error" role="alert">{error}</p> : null}
 
-          <label>
-            <span>Catatan</span>
-            <textarea value={form.note} placeholder="Opsional..." onChange={updateField('note')} />
-          </label>
-
-          {error ? <p className="bookkeeping-form-error" role="alert">{error}</p> : null}
-
-          <footer>
-            <button type="button" onClick={onClose}>Batal</button>
-            <button className="is-primary" type="submit">{isEditing ? 'Update' : 'Simpan'}</button>
-          </footer>
-        </form>
-      </section>
-    </div>
+            <footer>
+              <Dialog.Close asChild>
+                <button type="button">Batal</button>
+              </Dialog.Close>
+              <button className="is-primary" type="submit">
+                {isEditing ? 'Update' : 'Simpan'}
+              </button>
+            </footer>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -1099,14 +1390,24 @@ export default function BookkeepingPage() {
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [entryFormMode, setEntryFormMode] = useState('expense');
+  const [isBookingsLoading, setIsBookingsLoading] = useState(true);
+  const [isEntriesLoading, setIsEntriesLoading] = useState(true);
+  const [bookingLoadError, setBookingLoadError] = useState('');
+  const [entriesLoadError, setEntriesLoadError] = useState('');
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
       { limitCount: 150 },
-      (data) => setBookings(data),
+      (data) => {
+        setBookings(data);
+        setIsBookingsLoading(false);
+        setBookingLoadError('');
+      },
       (error) => {
         console.error('Gagal memuat booking untuk pembukuan:', error);
+        setIsBookingsLoading(false);
+        setBookingLoadError('Cash masuk booking belum tersinkron.');
         setToast({
           title: 'Booking belum tersinkron',
           message: 'Cash masuk dari booking belum bisa dimuat.',
@@ -1120,9 +1421,15 @@ export default function BookkeepingPage() {
   useEffect(() => {
     const unsubscribe = bookkeepingRepository.subscribeBookkeepingEntries(
       { limitCount: 150 },
-      (data) => setEntries(data),
+      (data) => {
+        setEntries(data);
+        setIsEntriesLoading(false);
+        setEntriesLoadError('');
+      },
       (error) => {
         console.error('Gagal memuat pembukuan:', error);
+        setIsEntriesLoading(false);
+        setEntriesLoadError('Transaksi manual dan rekonsiliasi belum tersinkron.');
         setToast({
           title: 'Pembukuan belum tersinkron',
           message: 'Data pengeluaran belum bisa dimuat dari Firestore.',
@@ -1141,17 +1448,25 @@ export default function BookkeepingPage() {
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
+  const allTransactions = useMemo(
+    () => [
+      ...buildBookingTransactions(bookings),
+      ...buildExpenseTransactions(entries),
+    ],
+    [bookings, entries]
+  );
+
   const filteredTransactions = useMemo(() => {
     const queryText = cleanLower(transactionSearchText);
-    const bookingTransactions = buildBookingTransactions(bookings);
-    const expenseTransactions = buildExpenseTransactions(entries);
 
-    return [...bookingTransactions, ...expenseTransactions]
+    return allTransactions
       .filter((transaction) => {
         const matchesPeriod = isDateInPeriod(transaction.date, period);
         const matchesType = transactionTypeFilter === 'all' || transaction.type === transactionTypeFilter;
-        const typeLabel = transaction.type === 'income' ? 'pemasukan masuk cash income' : 'pengeluaran keluar biaya expense';
-        const sourceLabel = transaction.source === 'booking' ? 'booking otomatis billing' : transaction.source === 'booking-refund' ? 'refund booking otomatis billing' : 'manual';
+        const typeLabel = transaction.type === 'income'
+          ? 'pemasukan masuk cash income'
+          : 'pengeluaran keluar biaya expense';
+        const sourceLabel = getTransactionSourceMeta(transaction).searchText;
         const haystack = [
           transaction.title,
           transaction.note,
@@ -1170,12 +1485,28 @@ export default function BookkeepingPage() {
 
         return secondDate - firstDate;
       });
-  }, [bookings, entries, period, transactionSearchText, transactionTypeFilter]);
+  }, [allTransactions, period, transactionSearchText, transactionTypeFilter]);
 
   const paginatedTransactions = useMemo(
     () => getPaginationSlice(filteredTransactions, transactionPage, ADMIN_LIST_PAGE_SIZE),
     [filteredTransactions, transactionPage]
   );
+
+  const visibleSourceCounts = useMemo(
+    () => filteredTransactions.reduce(
+      (counts, transaction) => {
+        if (getTransactionSourceMeta(transaction).reconciled) counts.reconciled += 1;
+        else counts.manual += 1;
+
+        return counts;
+      },
+      { manual: 0, reconciled: 0 }
+    ),
+    [filteredTransactions]
+  );
+
+  const isLedgerLoading = isBookingsLoading || isEntriesLoading;
+  const ledgerLoadError = [bookingLoadError, entriesLoadError].filter(Boolean).join(' ');
 
   function handlePeriodChange(nextPeriod) {
     setPeriod(nextPeriod);
@@ -1189,6 +1520,12 @@ export default function BookkeepingPage() {
 
   function handleTransactionTypeFilterChange(nextTypeFilter) {
     setTransactionTypeFilter(nextTypeFilter);
+    setTransactionPage(1);
+  }
+
+  function resetTransactionFilters() {
+    setTransactionSearchText('');
+    setTransactionTypeFilter('all');
     setTransactionPage(1);
   }
 
@@ -1299,22 +1636,42 @@ export default function BookkeepingPage() {
   }
 
   return (
-    <section className="bookkeeping-page" aria-label="Halaman pembukuan">
-      <BookkeepingSummary bookings={bookings} period={period} transactions={filteredTransactions} />
+    <section
+      className="bookkeeping-page"
+      data-bookkeeping-ui="ui-7-spatial"
+      aria-labelledby="bookkeeping-page-title"
+    >
+      <BookkeepingEditorialHeader
+        manualCount={visibleSourceCounts.manual}
+        period={period}
+        reconciledCount={visibleSourceCounts.reconciled}
+      />
+
+      <BookkeepingSummary
+        bookings={bookings}
+        period={period}
+        transactions={filteredTransactions}
+      />
 
       <BookkeepingToolbar
         exportDisabled={!filteredTransactions.length && getBookkeepingStats(filteredTransactions, bookings, period).receivable <= 0}
+        filteredCount={filteredTransactions.length}
         period={period}
         searchText={transactionSearchText}
+        totalCount={allTransactions.length}
         typeFilter={transactionTypeFilter}
         onAddTransaction={openAddTransaction}
         onExportTransactions={exportBookkeepingXlsx}
         onPeriodChange={handlePeriodChange}
+        onReset={resetTransactionFilters}
         onSearchChange={handleTransactionSearchChange}
         onTypeFilterChange={handleTransactionTypeFilterChange}
       />
 
-      <BookkeepingTransactionList
+      <BookkeepingTransactionLedger
+        isLoading={isLedgerLoading}
+        loadError={ledgerLoadError}
+        totalCount={filteredTransactions.length}
         transactions={paginatedTransactions}
         onDeleteExpense={deleteExpense}
         onEditExpense={openEditExpense}

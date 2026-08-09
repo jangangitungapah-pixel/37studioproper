@@ -1,471 +1,854 @@
-/* Bookkeeping: Studio OS finance ledger. Revamped Mobile-First & High-Density styles. */
-.bookkeeping-page {
+/* ==========================================================================
+   UI-7 — Spatial Bookkeeping Ledger
+   Light-first financial ledger; dark mode is a tonal adaptation.
+   ========================================================================== */
+.bookkeeping-page[data-bookkeeping-ui='ui-7-spatial'] {
   width: min(100%, 1560px);
   display: grid;
   gap: 12px;
   margin: 0 auto;
-  padding-bottom: 12px;
-  color: var(--auth-text-main);
+  padding: 2px 4px 18px;
+  color: var(--studio-text-primary);
   font-family: var(--ui-font-sans);
-  font-size: var(--studio-text-sm);
 }
 
-/* ==========================================================================
-   1. BOOKKEEPING HERO STRIP (Super Compact Summary Bar)
-   ========================================================================== */
-.bookkeeping-hero-strip {
+.bookkeeping-page[data-bookkeeping-ui='ui-7-spatial'] button,
+.bookkeeping-page[data-bookkeeping-ui='ui-7-spatial'] input,
+.bookkeeping-page[data-bookkeeping-ui='ui-7-spatial'] textarea,
+.bookkeeping-page[data-bookkeeping-ui='ui-7-spatial'] .studio-select-trigger {
+  font-family: inherit;
+}
+
+.bookkeeping-editorial-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 8px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
-  background: linear-gradient(180deg, var(--studio-border-soft), transparent 80%), var(--auth-bg-card);
-  padding: 8px 12px;
-  box-shadow: var(--auth-shadow-soft);
-  flex-wrap: wrap; /* Wraps to 2x2 on tiny viewports */
+  gap: 20px;
+  padding: 10px 4px 2px;
 }
 
-.bookkeeping-hero-strip .hero-strip-item {
+.bookkeeping-heading {
+  min-width: 0;
+}
+
+.bookkeeping-kicker,
+.bookkeeping-ledger-header > div > span {
+  display: block;
+  color: var(--studio-accent-strong);
+  font-size: 0.57rem;
+  font-weight: 780;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bookkeeping-heading h2 {
+  margin: 3px 0 0;
+  color: var(--studio-text-primary);
+  font-size: clamp(1.18rem, 2vw, 1.42rem);
+  font-weight: 790;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.bookkeeping-heading p {
+  max-width: 680px;
+  margin: 6px 0 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.bookkeeping-ledger-context {
+  min-width: 220px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-2);
+  padding: 9px 12px;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.bookkeeping-ledger-context-icon {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent-strong);
+}
+
+.bookkeeping-ledger-context > span:last-child {
   min-width: 0;
-  flex: 1 1 calc(50% - 8px); /* Take 50% width on wrapping */
+  display: grid;
+  gap: 1px;
 }
 
-.bookkeeping-hero-strip .hero-strip-icon {
-  flex-shrink: 0;
-  color: var(--auth-accent);
+.bookkeeping-ledger-context small,
+.bookkeeping-ledger-context em {
+  color: var(--studio-text-tertiary);
+  font-size: 0.56rem;
+  font-style: normal;
+  line-height: 1.3;
 }
 
-.bookkeeping-hero-strip .hero-strip-text {
-  font-size: var(--studio-text-xs);
-  color: var(--auth-text-muted);
-  white-space: nowrap;
+.bookkeeping-ledger-context small {
+  font-weight: 740;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bookkeeping-ledger-context strong {
+  color: var(--studio-text-primary);
+  font-size: 0.73rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.bookkeeping-finance-pulse {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
-  text-overflow: ellipsis;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-2);
+  box-shadow: var(--studio-shadow-contact);
 }
 
-.bookkeeping-hero-strip .hero-strip-text strong {
-  color: var(--auth-text-strong);
-  font-weight: 700;
-}
-
-.bookkeeping-hero-strip .hero-strip-item.is-income .hero-strip-icon,
-.bookkeeping-hero-strip .hero-strip-item.is-income strong {
-  color: var(--auth-success);
-}
-
-.bookkeeping-hero-strip .hero-strip-item.is-expense .hero-strip-icon,
-.bookkeeping-hero-strip .hero-strip-item.is-expense strong {
-  color: var(--auth-warning);
-}
-
-.bookkeeping-hero-strip .hero-strip-item.is-receivable .hero-strip-icon,
-.bookkeeping-hero-strip .hero-strip-item.is-receivable strong {
-  color: var(--auth-info);
-}
-
-/* ==========================================================================
-   2. BOOKKEEPING TOOLBAR (Compact & Structured)
-   ========================================================================== */
-.bookkeeping-toolbar-compact {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
-  background: var(--auth-bg-soft);
-  padding: 8px;
-}
-
-.toolbar-row-main {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-
-.bookkeeping-search-shell-compact {
-  flex: 1;
+.bookkeeping-finance-metric {
   min-width: 0;
-  height: 36px;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-right: 1px solid var(--studio-edge-soft);
+  padding: 10px 12px;
+}
+
+.bookkeeping-finance-metric:last-child {
+  border-right: 0;
+}
+
+.bookkeeping-finance-metric-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--studio-surface-1);
+  color: var(--studio-accent-strong);
+  box-shadow: inset 0 0 0 1px var(--studio-edge-soft);
+}
+
+.bookkeeping-finance-metric.is-income .bookkeeping-finance-metric-icon {
+  background: var(--studio-success-soft);
+  color: var(--studio-success);
+}
+
+.bookkeeping-finance-metric.is-expense .bookkeeping-finance-metric-icon {
+  background: var(--studio-warning-soft);
+  color: var(--studio-warning);
+}
+
+.bookkeeping-finance-metric.is-receivable .bookkeeping-finance-metric-icon {
+  background: var(--studio-info-soft);
+  color: var(--studio-info);
+}
+
+.bookkeeping-finance-metric > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.bookkeeping-finance-metric small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bookkeeping-finance-metric strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.79rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 780;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookkeeping-finance-metric em {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+  font-style: normal;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookkeeping-command-shelf {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(145px, 180px) minmax(160px, 195px) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-2);
+  padding: 8px;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.bookkeeping-search-shell {
+  min-width: 0;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-control);
-  color: var(--auth-text-muted);
-  padding: 0 10px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-tertiary);
+  padding: 0 11px;
+  transition: border-color var(--studio-duration-fast) var(--studio-ease-standard), box-shadow var(--studio-duration-fast) var(--studio-ease-standard);
 }
 
-.bookkeeping-search-shell-compact input {
+.bookkeeping-search-shell:focus-within {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 3px var(--studio-accent-soft);
+}
+
+.bookkeeping-search-shell input {
   width: 100%;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--auth-text-strong);
-  font: inherit;
-  font-size: var(--studio-text-xs);
+  color: var(--studio-text-primary);
+  font-size: 0.66rem;
 }
 
-.bookkeeping-export-btn-compact,
-.bookkeeping-add-btn-compact {
-  width: 36px;
-  height: 36px;
+.bookkeeping-search-shell input::placeholder {
+  color: var(--studio-text-tertiary);
+}
+
+.bookkeeping-filter-select {
+  min-width: 0;
+}
+
+.bookkeeping-filter-select .studio-select-trigger {
+  min-height: 42px;
+  border-color: var(--studio-edge-soft);
+  background: var(--studio-surface-1);
+}
+
+.bookkeeping-command-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-control);
-  color: var(--auth-text-main);
-  cursor: pointer;
-  flex-shrink: 0;
+  gap: 6px;
 }
 
-.bookkeeping-add-btn-compact {
-  border-color: var(--auth-accent);
-  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+.bookkeeping-command-actions button,
+.bookkeeping-filter-context button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+  padding: 0 10px;
+  font-size: 0.61rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.bookkeeping-command-actions button:hover,
+.bookkeeping-filter-context button:hover {
+  border-color: var(--studio-edge-normal);
+  color: var(--studio-text-primary);
+}
+
+.bookkeeping-command-actions button:focus-visible,
+.bookkeeping-filter-context button:focus-visible,
+.bookkeeping-ledger-actions button:focus-visible,
+.bookkeeping-modal-head button:focus-visible,
+.bookkeeping-form button:focus-visible {
+  outline: 3px solid var(--studio-accent-soft);
+  outline-offset: 2px;
+}
+
+.bookkeeping-command-actions .bookkeeping-add-button {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent);
   color: var(--studio-text-inverse);
 }
 
-.bookkeeping-export-btn-compact:disabled {
-  opacity: 0.5;
+.bookkeeping-command-actions .bookkeeping-add-button:hover {
+  border-color: var(--studio-accent-hover);
+  background: var(--studio-accent-hover);
+  color: var(--studio-text-inverse);
+}
+
+.bookkeeping-command-actions button:disabled {
   cursor: not-allowed;
+  opacity: 0.48;
 }
 
-.toolbar-row-filters {
+.bookkeeping-filter-context {
+  grid-column: 1 / -1;
   display: flex;
-  gap: 6px;
-  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 24px;
+  padding: 0 2px;
 }
 
-.bookkeeping-select-compact {
-  flex: 1;
-  min-width: 0;
-}
-
-.bookkeeping-select-compact .studio-select-trigger {
-  height: 36px;
-  min-height: 36px;
-  border-radius: var(--studio-radius-md);
-  padding: 0 8px;
-}
-
-.bookkeeping-select-compact .studio-select-label {
-  display: none; /* Hide label to save space on mobile */
-}
-
-/* ==========================================================================
-   3. BOOKKEEPING LIST & COMPACT ROW
-   ========================================================================== */
-.bookkeeping-list-compact {
+.bookkeeping-filter-context > span {
   display: flex;
-  flex-direction: column;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
-  background: var(--auth-bg-card);
-  box-shadow: var(--auth-shadow-soft);
+  align-items: baseline;
+  gap: 4px;
+  color: var(--studio-text-tertiary);
+}
+
+.bookkeeping-filter-context strong {
+  color: var(--studio-text-primary);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bookkeeping-filter-context small {
+  font-size: 0.56rem;
+}
+
+.bookkeeping-filter-context button {
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+  color: var(--studio-accent-strong);
+}
+
+.bookkeeping-ledger-surface {
   overflow: hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-1);
+  box-shadow: var(--studio-shadow-surface);
 }
 
-.bookkeeping-row-compact {
+.bookkeeping-ledger-header {
+  min-height: 51px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--auth-border);
-  padding: 8px 12px;
-  gap: 12px;
+  gap: 14px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  padding: 9px 12px;
 }
 
-.bookkeeping-row-compact:last-child {
-  border-bottom: 0;
-}
-
-.bookkeeping-row-main-compact {
-  flex: 1;
+.bookkeeping-ledger-header > div {
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bookkeeping-type-indicator {
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-control);
-  flex-shrink: 0;
-}
-
-.bookkeeping-row-compact.is-income .bookkeeping-type-indicator {
-  color: var(--auth-success);
-  border-color: color-mix(in srgb, var(--auth-success) 20%, var(--auth-border));
-  background: var(--auth-success-soft);
-}
-
-.bookkeeping-row-compact.is-expense .bookkeeping-type-indicator {
-  color: var(--auth-warning);
-  border-color: color-mix(in srgb, var(--auth-warning) 20%, var(--auth-border));
-  background: var(--auth-warning-soft);
-}
-
-.bookkeeping-row-content-compact {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 2px;
 }
 
-.bookkeeping-row-line1 {
+.bookkeeping-ledger-header > div > strong {
+  color: var(--studio-text-primary);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.bookkeeping-ledger-header p {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  gap: 5px;
+  margin: 0;
+  color: var(--studio-text-tertiary);
+  font-size: 0.56rem;
+  line-height: 1.3;
 }
 
-.bookkeeping-title-text {
-  font-size: var(--studio-text-sm);
-  font-weight: 700;
-  color: var(--auth-text-strong);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.bookkeeping-ledger-columns,
+.bookkeeping-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.55fr) minmax(125px, 0.65fr) minmax(130px, 0.55fr) minmax(82px, auto);
+  gap: 12px;
+  align-items: center;
 }
 
-.bookkeeping-note-text {
-  font-size: var(--studio-text-xs);
-  color: var(--auth-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.bookkeeping-ledger-columns {
+  border-bottom: 1px solid var(--studio-edge-soft);
+  background: var(--studio-surface-2);
+  padding: 7px 12px;
+  color: var(--studio-text-tertiary);
+  font-size: 0.52rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.bookkeeping-meta-text {
-  font-size: 0.6875rem;
-  color: var(--auth-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bookkeeping-row-tail-compact {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.bookkeeping-amount-text {
-  font-size: var(--studio-text-sm);
-  font-weight: 780;
+.bookkeeping-ledger-columns span:nth-child(3),
+.bookkeeping-ledger-columns span:nth-child(4) {
   text-align: right;
+}
+
+.bookkeeping-ledger-warning {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--studio-warning) 24%, var(--studio-edge-soft));
+  background: var(--studio-warning-soft);
+  color: var(--studio-warning);
+  padding: 7px 12px;
+  font-size: 0.59rem;
+  line-height: 1.35;
+}
+
+.bookkeeping-ledger-group + .bookkeeping-ledger-group {
+  border-top: 1px solid var(--studio-edge-normal);
+}
+
+.bookkeeping-ledger-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  background: color-mix(in srgb, var(--studio-surface-2) 88%, transparent);
+  padding: 6px 12px;
+}
+
+.bookkeeping-ledger-date span {
+  color: var(--studio-text-secondary);
+  font-size: 0.58rem;
+  font-weight: 740;
+}
+
+.bookkeeping-ledger-date small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.52rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bookkeeping-ledger-row {
+  min-height: 69px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  padding: 8px 12px;
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard);
+}
+
+.bookkeeping-ledger-group .bookkeeping-ledger-row:last-child {
+  border-bottom: 0;
+}
+
+.bookkeeping-ledger-row:hover {
+  background: var(--studio-surface-2);
+}
+
+.bookkeeping-ledger-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.bookkeeping-flow-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  box-shadow: inset 0 0 0 1px var(--studio-edge-soft);
+}
+
+.bookkeeping-ledger-row.is-income .bookkeeping-flow-icon {
+  background: var(--studio-success-soft);
+  color: var(--studio-success);
+}
+
+.bookkeeping-ledger-row.is-expense .bookkeeping-flow-icon {
+  background: var(--studio-warning-soft);
+  color: var(--studio-warning);
+}
+
+.bookkeeping-ledger-copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
+  gap: 2px 6px;
+  align-items: center;
+  justify-content: start;
+}
+
+.bookkeeping-ledger-copy > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.67rem;
+  font-weight: 720;
+  line-height: 1.25;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bookkeeping-row-compact.is-income .bookkeeping-amount-text {
-  color: var(--auth-success);
+.bookkeeping-ledger-copy > small {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.bookkeeping-row-compact.is-expense .bookkeeping-amount-text {
-  color: var(--auth-warning);
+.bookkeeping-source-badge {
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 0.49rem;
+  font-weight: 760;
+  letter-spacing: 0.025em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.bookkeeping-row-actions-compact {
+.bookkeeping-source-badge.is-manual {
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent-strong);
+}
+
+.bookkeeping-source-badge.is-reconciled {
+  background: var(--studio-info-soft);
+  color: var(--studio-info);
+}
+
+.bookkeeping-ledger-method,
+.bookkeeping-ledger-amount {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.bookkeeping-ledger-method small,
+.bookkeeping-ledger-amount small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.5rem;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bookkeeping-ledger-method strong {
+  overflow: hidden;
+  color: var(--studio-text-secondary);
+  font-size: 0.61rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookkeeping-ledger-method span {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.52rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookkeeping-ledger-amount {
+  justify-items: end;
+  text-align: right;
+}
+
+.bookkeeping-ledger-amount strong {
+  color: var(--studio-text-primary);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.bookkeeping-ledger-row.is-income .bookkeeping-ledger-amount strong {
+  color: var(--studio-success);
+}
+
+.bookkeeping-ledger-row.is-expense .bookkeeping-ledger-amount strong {
+  color: var(--studio-warning);
+}
+
+.bookkeeping-ledger-actions {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.bookkeeping-ledger-actions button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 9px;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  padding: 0;
+  cursor: pointer;
+}
+
+.bookkeeping-ledger-actions button:hover {
+  border-color: var(--studio-edge-normal);
+  color: var(--studio-text-primary);
+}
+
+.bookkeeping-ledger-actions button.is-danger {
+  border-color: color-mix(in srgb, var(--studio-danger) 22%, var(--studio-edge-soft));
+  color: var(--studio-danger);
+}
+
+.bookkeeping-ledger-actions button.is-danger:hover {
+  background: var(--studio-danger-soft);
+}
+
+.bookkeeping-ledger-actions > span {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  color: var(--studio-text-tertiary);
+  font-size: 0.52rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.row-action-btn {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-sm);
-  background: var(--auth-bg-control);
-  color: var(--auth-text-muted);
-  cursor: pointer;
-  padding: 0;
-}
-
-.row-action-btn:hover {
-  background: var(--auth-bg-soft);
-  color: var(--auth-text-strong);
-}
-
-.row-action-btn.is-danger {
-  border-color: color-mix(in srgb, var(--auth-danger) 20%, var(--auth-border));
-  color: var(--auth-danger);
-}
-
-.row-action-btn.is-danger:hover {
-  background: var(--auth-danger-soft);
-}
-
-/* Empty State */
-.bookkeeping-empty-state {
+.bookkeeping-ledger-state {
+  min-height: 176px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  gap: 5px;
   padding: 24px;
-  gap: 8px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-lg);
-  background: var(--auth-bg-card);
-  color: var(--auth-text-muted);
+  color: var(--studio-text-tertiary);
+  text-align: center;
 }
 
-.bookkeeping-empty-state strong {
-  color: var(--auth-text-strong);
-  font-size: var(--studio-text-sm);
+.bookkeeping-state-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--studio-surface-2);
+  color: var(--studio-accent-strong);
 }
 
-.bookkeeping-empty-state span {
-  font-size: var(--studio-text-xs);
-  max-width: 300px;
+.bookkeeping-ledger-state strong {
+  color: var(--studio-text-primary);
+  font-size: 0.7rem;
+}
+
+.bookkeeping-ledger-state > span:not(.bookkeeping-state-icon) {
+  max-width: 410px;
+  font-size: 0.59rem;
   line-height: 1.4;
 }
 
-/* ==========================================================================
-   4. MODALS & FORMS
-   ========================================================================== */
+.bookkeeping-ledger-state.is-error .bookkeeping-state-icon {
+  background: var(--studio-danger-soft);
+  color: var(--studio-danger);
+}
+
+.bookkeeping-ledger-skeleton {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.bookkeeping-ledger-skeleton i {
+  height: 9px;
+  border-radius: 999px;
+  background: var(--studio-surface-3);
+  animation: bookkeeping-ui7-pulse 900ms ease-in-out infinite alternate;
+}
+
+.bookkeeping-ledger-skeleton i:nth-child(2) {
+  width: 82%;
+}
+
+.bookkeeping-ledger-skeleton i:nth-child(3) {
+  width: 64%;
+}
+
+.bookkeeping-page .admin-pagination {
+  margin-top: -2px;
+}
+
 .bookkeeping-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: var(--z-modal-backdrop);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  overflow: auto;
   background: rgba(15, 12, 9, 0.62);
-  padding: 12px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
   backdrop-filter: blur(8px);
 }
 
 .bookkeeping-modal-panel {
-  width: min(100%, 540px);
-  max-height: min(92dvh, 620px);
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: var(--z-modal);
+  width: min(calc(100vw - 24px), 560px);
+  max-height: min(90dvh, 680px);
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-xl);
-  background: var(--auth-bg-elevated);
   overflow: hidden;
-  box-shadow: var(--studio-shadow-float);
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-large);
+  outline: 0;
+  background: var(--studio-surface-floating);
+  box-shadow: var(--studio-shadow-floating);
+  transform: translate(-50%, -50%);
 }
 
 .bookkeeping-modal-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
+  grid-template-columns: minmax(0, 1fr) 34px;
   gap: 12px;
-  align-items: center;
-  border-bottom: 1px solid var(--auth-border);
-  padding: 12px 14px;
+  align-items: start;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  padding: 13px 14px 11px;
+}
+
+.bookkeeping-modal-head > div {
+  min-width: 0;
+}
+
+.bookkeeping-modal-head p {
+  margin: 0 0 3px;
+  color: var(--studio-accent-strong);
+  font-size: 0.54rem;
+  font-weight: 760;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .bookkeeping-modal-head h2 {
   margin: 0;
-  color: var(--auth-text-strong);
-  font-size: var(--studio-text-md);
-  font-weight: 760;
-  letter-spacing: -0.02em;
+  color: var(--studio-text-primary);
+  font-size: 0.95rem;
+  font-weight: 780;
+  letter-spacing: -0.025em;
   line-height: 1.2;
 }
 
-.bookkeeping-modal-head button {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-control);
-  color: var(--auth-text-main);
+.bookkeeping-modal-head [data-radix-dialog-description] {
+  margin: 4px 0 0;
+  color: var(--studio-text-tertiary);
+  font-size: 0.58rem;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.bookkeeping-modal-head > button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 10px;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  padding: 0;
   cursor: pointer;
 }
 
 .bookkeeping-form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 10px;
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px 14px 14px;
 }
 
 .bookkeeping-form-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
 }
 
 .bookkeeping-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  gap: 5px;
 }
 
-.bookkeeping-form label span {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--auth-text-muted);
+.bookkeeping-form label > span {
+  color: var(--studio-text-tertiary);
+  font-size: 0.54rem;
+  font-weight: 740;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .bookkeeping-form input,
 .bookkeeping-form textarea {
   width: 100%;
-  min-height: 38px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
+  min-height: 40px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
   outline: 0;
-  background: var(--auth-bg-control);
-  color: var(--auth-text-main);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-primary);
   padding: 0 10px;
-  font: inherit;
-  font-size: var(--studio-text-xs);
+  font-size: 0.64rem;
 }
 
 .bookkeeping-form textarea {
-  min-height: 64px;
-  padding: 8px 10px;
+  min-height: 72px;
+  padding-block: 9px;
   resize: vertical;
 }
 
-.bookkeeping-form .studio-select-trigger {
-  min-height: 38px;
-  height: auto;
-  padding: 4px 10px;
-  border-radius: var(--studio-radius-md);
+.bookkeeping-form input:focus,
+.bookkeeping-form textarea:focus {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 3px var(--studio-accent-soft);
 }
 
-.bookkeeping-form .studio-select-helper {
-  display: none;
+.bookkeeping-form .studio-select-trigger {
+  min-height: 40px;
+  border-color: var(--studio-edge-soft);
+  background: var(--studio-surface-1);
 }
 
 .bookkeeping-form-error {
   margin: 0;
-  border: 1px solid color-mix(in srgb, var(--auth-danger) 30%, var(--auth-border));
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-danger-soft);
-  color: var(--auth-danger);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-danger-soft);
+  color: var(--studio-danger);
   padding: 8px 10px;
-  font-size: var(--studio-text-xs);
+  font-size: 0.6rem;
   line-height: 1.4;
 }
 
@@ -473,138 +856,291 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .bookkeeping-form footer button {
-  min-height: 38px;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-control);
-  color: var(--auth-text-main);
-  font: inherit;
-  font-size: var(--studio-text-xs);
-  font-weight: 700;
+  min-height: 39px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  font-size: 0.62rem;
+  font-weight: 730;
   cursor: pointer;
 }
 
 .bookkeeping-form footer button.is-primary {
-  border-color: var(--auth-accent);
-  background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-strong));
+  border-color: var(--studio-accent);
+  background: var(--studio-accent);
   color: var(--studio-text-inverse);
 }
 
-/* ==========================================================================
-   5. RESPONSIVE MEDIA QUERIES (Desktop Layout Adapters)
-   ========================================================================== */
-@media (min-width: 768px) {
-  .bookkeeping-page {
-    gap: 16px;
-    padding-bottom: 16px;
+html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-finance-pulse,
+html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-command-shelf,
+html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-ledger-context {
+  box-shadow: none;
+}
+
+html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-ledger-surface {
+  box-shadow: var(--studio-shadow-contact);
+}
+
+@keyframes bookkeeping-ui7-pulse {
+  from { opacity: 0.38; }
+  to { opacity: 0.82; }
+}
+
+@media (max-width: 1180px) {
+  .bookkeeping-command-shelf {
+    grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(145px, 180px));
   }
 
-  .bookkeeping-hero-strip {
+  .bookkeeping-command-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 900px) {
+  .bookkeeping-finance-pulse {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bookkeeping-finance-metric:nth-child(2) {
+    border-right: 0;
+  }
+
+  .bookkeeping-finance-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .bookkeeping-command-shelf {
+    grid-template-columns: minmax(0, 1fr) repeat(2, minmax(140px, 180px));
+  }
+
+  .bookkeeping-ledger-columns {
+    display: none;
+  }
+
+  .bookkeeping-ledger-row {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, auto) auto;
+  }
+
+  .bookkeeping-ledger-method {
+    grid-column: 1;
+    padding-left: 37px;
+  }
+
+  .bookkeeping-ledger-amount {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .bookkeeping-ledger-actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
+@media (max-width: 767px) {
+  .bookkeeping-page[data-bookkeeping-ui='ui-7-spatial'] {
+    gap: 9px;
+    padding-inline: 0;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .bookkeeping-editorial-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+    padding: 5px 2px 0;
+  }
+
+  .bookkeeping-heading h2 {
+    font-size: 1.18rem;
+  }
+
+  .bookkeeping-heading p {
+    max-width: none;
+    font-size: 0.65rem;
+  }
+
+  .bookkeeping-ledger-context {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bookkeeping-finance-metric {
+    min-height: 66px;
+    padding: 8px 9px;
+  }
+
+  .bookkeeping-finance-metric-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .bookkeeping-finance-metric strong {
+    font-size: 0.7rem;
+  }
+
+  .bookkeeping-command-shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .bookkeeping-search-shell {
+    grid-column: 1 / -1;
+  }
+
+  .bookkeeping-command-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bookkeeping-command-actions button {
+    width: 100%;
+  }
+
+  .bookkeeping-filter-context {
+    justify-content: space-between;
+  }
+
+  .bookkeeping-ledger-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .bookkeeping-ledger-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 9px;
+    padding: 9px;
+  }
+
+  .bookkeeping-ledger-main {
+    grid-column: 1;
+  }
+
+  .bookkeeping-ledger-method {
+    grid-column: 1;
+    padding-left: 37px;
+  }
+
+  .bookkeeping-ledger-amount {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .bookkeeping-ledger-actions {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+  }
+
+  .bookkeeping-ledger-copy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bookkeeping-source-badge {
+    grid-row: 3;
+    justify-self: start;
+  }
+
+  .bookkeeping-modal-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: var(--studio-radius-large) var(--studio-radius-large) 0 0;
+    transform: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .bookkeeping-finance-pulse {
+    grid-template-columns: 1fr;
+  }
+
+  .bookkeeping-finance-metric,
+  .bookkeeping-finance-metric:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .bookkeeping-finance-metric:last-child {
+    border-bottom: 0;
+  }
+
+  .bookkeeping-command-shelf {
+    grid-template-columns: 1fr;
+  }
+
+  .bookkeeping-search-shell,
+  .bookkeeping-command-actions,
+  .bookkeeping-filter-context {
+    grid-column: 1;
+  }
+
+  .bookkeeping-ledger-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bookkeeping-ledger-main,
+  .bookkeeping-ledger-method,
+  .bookkeeping-ledger-amount,
+  .bookkeeping-ledger-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .bookkeeping-ledger-method {
+    padding-left: 37px;
+  }
+
+  .bookkeeping-ledger-amount {
+    justify-items: start;
+    padding-left: 37px;
+    text-align: left;
+  }
+
+  .bookkeeping-ledger-actions {
     justify-content: flex-start;
-    gap: 32px;
-    padding: 10px 16px;
-    flex-wrap: nowrap;
-  }
-
-  .bookkeeping-hero-strip .hero-strip-item {
-    flex: none;
-  }
-
-  .bookkeeping-toolbar-compact {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    gap: 12px;
-  }
-
-  .toolbar-row-main {
-    flex: 1.5;
-    gap: 8px;
-  }
-
-  .bookkeeping-search-shell-compact {
-    height: 40px;
-  }
-
-  .bookkeeping-export-btn-compact,
-  .bookkeeping-add-btn-compact {
-    height: 40px;
-  }
-
-  .bookkeeping-add-btn-compact {
-    width: auto;
-    padding: 0 16px;
-  }
-
-  .bookkeeping-add-btn-compact::after {
-    content: ' Transaksi';
-    font-size: var(--studio-text-xs);
-    font-weight: 700;
-    margin-left: 6px;
-  }
-
-  .toolbar-row-filters {
-    flex: 1;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-
-  .bookkeeping-select-compact {
-    max-width: 180px;
-  }
-
-  .bookkeeping-select-compact .studio-select-trigger {
-    height: 40px;
-    min-height: 40px;
-    padding: 0 10px;
-  }
-
-  .bookkeeping-select-compact .studio-select-label {
-    display: inline;
-  }
-
-  .bookkeeping-row-compact {
-    padding: 10px 16px;
-  }
-
-  .bookkeeping-row-main-compact {
-    gap: 16px;
-  }
-
-  .bookkeeping-row-content-compact {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
-
-  .bookkeeping-row-line1 {
-    flex: 1.5;
-  }
-
-  .bookkeeping-row-line2 {
-    flex: 1;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .bookkeeping-row-tail-compact {
-    flex-direction: row;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .bookkeeping-amount-text {
-    min-width: 110px;
+    padding-left: 37px;
   }
 
   .bookkeeping-form-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bookkeeping-search-shell,
+  .bookkeeping-ledger-row {
+    transition: none;
+  }
+
+  .bookkeeping-ledger-skeleton i {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .bookkeeping-ledger-row,
+  .bookkeeping-command-shelf,
+  .bookkeeping-finance-pulse,
+  .bookkeeping-ledger-surface {
+    border: 1px solid CanvasText;
+  }
+
+  .bookkeeping-ledger-row:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
