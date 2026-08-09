@@ -1132,6 +1132,31 @@
 }
 
 .booking-modal-panel[data-booking-modal-ui='ui-3a-spatial'] {
+
+  /*
+   * UI-3A.1 — Dialog stacking repair.
+   * Content must sit above the Radix overlay.
+   */
+  position:
+    fixed;
+
+  top:
+    50%;
+
+  left:
+    50%;
+
+  z-index:
+    calc(
+      var(
+        --z-modal-backdrop
+      ) +
+      1
+    );
+
+  translate:
+    -50%
+    -50%;
   width:
     min(
       1120px,
@@ -2995,6 +3020,27 @@ html[data-admin-theme-active='true'][data-theme='dark']
   }
 
   .booking-modal-panel[data-booking-modal-ui='ui-3a-spatial'] {
+
+    top:
+      auto;
+
+    right:
+      auto;
+
+    bottom:
+      calc(
+        6px +
+        env(
+          safe-area-inset-bottom
+        )
+      );
+
+    left:
+      50%;
+
+    translate:
+      -50%
+      0;
     width:
       100%;
 

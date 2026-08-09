@@ -195,6 +195,89 @@ const modalCss =
     modalCssStart,
   );
 
+/**
+ * UI-3A.1 dialog stacking regression
+ *
+ * Radix Dialog.Content is a sibling of Dialog.Overlay inside
+ * the Portal. The content must therefore own a fixed positioned
+ * layer above --z-modal-backdrop.
+ */
+const compactModalCss =
+  modalCss
+    .replace(
+      /\s+/g,
+      ' ',
+    )
+    .trim();
+
+const spatialPanelSelector =
+  ".booking-modal-panel[data-booking-modal-ui='ui-3a-spatial'] {";
+
+const spatialPanelStart =
+  compactModalCss.indexOf(
+    spatialPanelSelector,
+  );
+
+assert.notEqual(
+  spatialPanelStart,
+  -1,
+  'UI-3A spatial modal panel selector must exist.',
+);
+
+const spatialPanelEnd =
+  compactModalCss.indexOf(
+    ".booking-modal-panel[data-booking-modal-ui='ui-3a-spatial'] .booking-modal-head",
+    spatialPanelStart,
+  );
+
+assert.notEqual(
+  spatialPanelEnd,
+  -1,
+  'UI-3A spatial modal base panel region must be readable.',
+);
+
+const spatialPanelCss =
+  compactModalCss.slice(
+    spatialPanelStart,
+    spatialPanelEnd,
+  );
+
+for (
+  const required
+  of [
+    'position: fixed;',
+    'top: 50%;',
+    'left: 50%;',
+    '--z-modal-backdrop',
+    'translate: -50% -50%;',
+  ]
+) {
+  assert.equal(
+    spatialPanelCss.includes(
+      required,
+    ),
+    true,
+    'UI-3A modal stacking missing: ' +
+      required,
+  );
+}
+
+assert.equal(
+  compactModalCss.includes(
+    'translate: -50% 0;'
+  ),
+  true,
+  'UI-3A mobile modal must remain a bottom-positioned sheet.',
+);
+
+assert.equal(
+  compactModalCss.includes(
+    'bottom: 0;'
+  ),
+  true,
+  'UI-3A narrow mobile modal must remain anchored to viewport bottom.',
+);
+
 for (
   const required
   of [
