@@ -23,7 +23,6 @@ import {
   closeGuardAttendanceSession,
   createGuardAttendanceCheckIn,
   subscribeGuardAttendanceSessions,
-  syncOfflineQueue,
 } from '../../services/guardAttendanceRepository.js';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../../lib/firebase.js';
 import { useOperatorFeeSettings } from '../../settings/operatorFeeSettings.js';
@@ -135,26 +134,40 @@ export default function GuardAttendancePage() {
   const [error, setError] = useState(isAuthAvailable ? '' : 'Firebase belum dikonfigurasi.');
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      if (authUser) {
-        syncOfflineQueue(authUser).catch((err) => console.error('[guard-attendance] Sync failed:', err));
-      }
-    };
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline =
+      () =>
+        setIsOnline(
+          true,
+        );
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    const handleOffline =
+      () =>
+        setIsOnline(
+          false,
+        );
 
-    if (navigator.onLine && authUser) {
-      syncOfflineQueue(authUser).catch((err) => console.error('[guard-attendance] Sync failed:', err));
-    }
+    window.addEventListener(
+      'online',
+      handleOnline,
+    );
+
+    window.addEventListener(
+      'offline',
+      handleOffline,
+    );
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener(
+        'online',
+        handleOnline,
+      );
+
+      window.removeEventListener(
+        'offline',
+        handleOffline,
+      );
     };
-  }, [authUser]);
+  }, []);
 
   useEffect(() => {
     if (!isAuthAvailable) return () => {};
@@ -433,18 +446,48 @@ export default function GuardAttendancePage() {
     setNotice('');
 
     try {
-      await createGuardAttendanceCheckIn({
-        guardPerson: selectedGuardPerson,
-        mealAmount,
-        note,
-        user: authUser,
-      });
+      const nextSession =
+        await createGuardAttendanceCheckIn({
+          guardPerson:
+            selectedGuardPerson,
+
+          mealAmount,
+
+          note,
+
+          user:
+            authUser,
+        });
+
+      setSessions(
+        (
+          current,
+        ) => [
+          nextSession,
+
+          ...current.filter(
+            (
+              item,
+            ) =>
+              item.id !==
+              nextSession.id,
+          ),
+        ],
+      );
 
       setNote('');
-      setNotice('Absen dikirim. Tunggu approval owner.');
+
+      setNotice(
+        isOnline
+          ? 'Absen dikirim. Tunggu approval owner.'
+          : 'Absen tersimpan offline dan akan disinkronkan otomatis saat koneksi kembali.',
+      );
     } catch (checkInError) {
       console.error('[guard-attendance] Absen masuk gagal:', checkInError);
-      setError('Absen gagal. Coba ulang atau hubungi owner.');
+      setError(
+        checkInError?.message ||
+        'Absen gagal. Coba ulang atau hubungi owner.',
+      );
     } finally {
       setIsBusy(false);
     }
@@ -462,11 +505,38 @@ export default function GuardAttendancePage() {
     setNotice('');
 
     try {
-      await closeGuardAttendanceSession(currentSession, authUser);
-      setNotice('Selesai jaga tersimpan.');
+      const nextSession =
+        await closeGuardAttendanceSession(
+          currentSession,
+          authUser,
+        );
+
+      setSessions(
+        (
+          current,
+        ) =>
+          current.map(
+            (
+              item,
+            ) =>
+              item.id ===
+              nextSession.id
+                ? nextSession
+                : item,
+          ),
+      );
+
+      setNotice(
+        isOnline
+          ? 'Selesai jaga tersimpan.'
+          : 'Selesai jaga tersimpan offline dan akan disinkronkan otomatis.',
+      );
     } catch (checkOutError) {
       console.error('[guard-attendance] Selesai jaga gagal:', checkOutError);
-      setError('Selesai jaga gagal.');
+      setError(
+        checkOutError?.message ||
+        'Selesai jaga gagal.',
+      );
     } finally {
       setIsBusy(false);
     }

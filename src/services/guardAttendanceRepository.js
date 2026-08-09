@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   setDoc,
@@ -66,11 +67,48 @@ function getDurationHours(startIso, endIso) {
   return Math.max(0, Math.round(((end.getTime() - start.getTime()) / 3_600_000) * 100) / 100);
 }
 
-export function makeGuardAttendanceId({ guardPersonId = '', guardUid = '', date = '' } = {}) {
-  const safePersonId = cleanText(guardPersonId || guardUid, 'guard').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const safeDate = cleanText(date, getTodayIsoDate()).replace(/[^0-9-]/g, '');
+export function makeGuardAttendanceId({
+  guardUid = '',
+  date = '',
+} = {}) {
+  const safeGuardUid =
+    cleanText(
+      guardUid,
+    );
 
-  return 'att__' + safePersonId + '__' + safeDate + '__' + Date.now().toString(36);
+  if (
+    !safeGuardUid
+  ) {
+    throw new Error(
+      'UID penjaga wajib tersedia untuk membuat ID absen.',
+    );
+  }
+
+  if (
+    safeGuardUid.includes(
+      '/',
+    )
+  ) {
+    throw new Error(
+      'UID penjaga tidak valid untuk document ID absen.',
+    );
+  }
+
+  const safeDate =
+    cleanText(
+      date,
+      getTodayIsoDate(),
+    ).replace(
+      /[^0-9-]/g,
+      '',
+    );
+
+  return (
+    'att__' +
+    safeGuardUid +
+    '__' +
+    safeDate
+  );
 }
 
 export function makeGuardMealBookkeepingId({ guardPersonId = '', date = '' } = {}) {
@@ -99,7 +137,9 @@ export function normalizeGuardAttendanceSession(session, fallbackId = '') {
     approvedByUid: cleanText(source.approvedByUid),
     closedAt: cleanText(source.closedAt),
     clockInAt: cleanText(source.clockInAt),
+    clockInByUid: cleanText(source.clockInByUid),
     clockOutAt: cleanText(source.clockOutAt),
+    clockOutByUid: cleanText(source.clockOutByUid),
     createdAt,
     date: cleanText(source.date, getTodayIsoDate()),
     durationHours: toNumber(source.durationHours),
@@ -174,94 +214,390 @@ export function createGuardMealBookkeepingPayload(session) {
 }
 
 
-const OFFLINE_QUEUE_KEY = 'guard_attendance_offline_queue';
+function getGuardAttendanceDocumentRef(
+  attendanceId,
+) {
+  return doc(
+    firestoreDb,
+    GUARD_ATTENDANCE_COLLECTION,
+    attendanceId,
+  );
+}
 
-export function getOfflineQueue() {
-  try {
-    const data = localStorage.getItem(OFFLINE_QUEUE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    console.error('Error reading offline queue:', e);
-    return [];
+function getGuardAttendanceId(
+  sessionOrId,
+) {
+  const id =
+    typeof sessionOrId ===
+    'string'
+      ? cleanText(
+          sessionOrId,
+        )
+      : cleanText(
+          sessionOrId?.id,
+        );
+
+  if (
+    !id
+  ) {
+    throw new Error(
+      'ID absen penjaga tidak valid.',
+    );
+  }
+
+  return id;
+}
+
+async function resolveGuardAttendanceSession(
+  sessionOrId,
+) {
+  const id =
+    getGuardAttendanceId(
+      sessionOrId,
+    );
+
+  const snapshot =
+    await getDoc(
+      getGuardAttendanceDocumentRef(
+        id,
+      ),
+    );
+
+  if (
+    !snapshot.exists()
+  ) {
+    throw new Error(
+      'Data absen penjaga tidak ditemukan.',
+    );
+  }
+
+  return normalizeGuardAttendanceSession(
+    {
+      id:
+        snapshot.id,
+
+      ...snapshot.data(),
+    },
+    snapshot.id,
+  );
+}
+
+function assertOwnerAttendanceActor(
+  ownerUser,
+) {
+  if (
+    !ownerUser?.uid
+  ) {
+    throw new Error(
+      'Identitas admin approval tidak valid.',
+    );
   }
 }
 
-export function saveOfflineQueue(queue) {
-  try {
-    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
-  } catch (e) {
-    console.error('Error saving offline queue:', e);
+function assertGuardAttendanceCanApprove(
+  session,
+) {
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
+
+  if (
+    record.status ===
+    GUARD_ATTENDANCE_STATUSES.VOID
+  ) {
+    throw new Error(
+      'Absen void tidak bisa di-approve.',
+    );
   }
+
+  if (
+    record.approvalStatus ===
+    GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED
+  ) {
+    throw new Error(
+      'Absen sudah di-approve.',
+    );
+  }
+
+  if (
+    ![
+      GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING,
+      GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED,
+    ].includes(
+      record.approvalStatus,
+    )
+  ) {
+    throw new Error(
+      'Transition approval absen tidak valid.',
+    );
+  }
+
+  return record;
 }
 
-export function addToOfflineQueue(action, recordId, payload) {
-  const queue = getOfflineQueue();
-  const existingIndex = queue.findIndex(item => item.recordId === recordId && item.action === action);
-  const newItem = {
-    id: 'q_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 6),
-    action,
-    recordId,
-    payload,
-    timestamp: new Date().toISOString()
+function assertGuardAttendanceCanReject(
+  session,
+) {
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
+
+  if (
+    record.status ===
+    GUARD_ATTENDANCE_STATUSES.VOID
+  ) {
+    throw new Error(
+      'Absen void tidak bisa di-reject.',
+    );
+  }
+
+  if (
+    record.approvalStatus ===
+    GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED
+  ) {
+    throw new Error(
+      'Absen sudah ditolak.',
+    );
+  }
+
+  return record;
+}
+
+function assertGuardAttendanceCanVoid(
+  session,
+) {
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
+
+  if (
+    record.status ===
+    GUARD_ATTENDANCE_STATUSES.VOID
+  ) {
+    throw new Error(
+      'Absen sudah void.',
+    );
+  }
+
+  return record;
+}
+
+export function buildGuardAttendanceCheckOutPatch(
+  session,
+  user,
+  {
+    timestamp =
+      nowIso(),
+  } = {},
+) {
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
+
+  if (
+    !record.id
+  ) {
+    throw new Error(
+      'ID absen penjaga tidak valid.',
+    );
+  }
+
+  if (
+    !user?.uid ||
+    user.uid !==
+      record.guardUid
+  ) {
+    throw new Error(
+      'Hanya penjaga terkait yang bisa menutup absen ini.',
+    );
+  }
+
+  if (
+    record.clockOutAt
+  ) {
+    throw new Error(
+      'Shift ini sudah selesai.',
+    );
+  }
+
+  if (
+    ![
+      GUARD_ATTENDANCE_STATUSES.PENDING_APPROVAL,
+      GUARD_ATTENDANCE_STATUSES.ACTIVE,
+    ].includes(
+      record.status,
+    )
+  ) {
+    throw new Error(
+      'Status absen tidak dapat ditutup.',
+    );
+  }
+
+  const start =
+    new Date(
+      record.clockInAt,
+    );
+
+  const end =
+    new Date(
+      timestamp,
+    );
+
+  if (
+    Number.isNaN(
+      start.getTime(),
+    ) ||
+    Number.isNaN(
+      end.getTime(),
+    ) ||
+    end.getTime() <=
+      start.getTime()
+  ) {
+    throw new Error(
+      'Waktu selesai jaga harus setelah waktu mulai.',
+    );
+  }
+
+  return {
+    closedAt:
+      timestamp,
+
+    clockOutAt:
+      timestamp,
+
+    clockOutByUid:
+      user.uid,
+
+    durationHours:
+      getDurationHours(
+        record.clockInAt,
+        timestamp,
+      ),
+
+    status:
+      GUARD_ATTENDANCE_STATUSES.CLOSED,
+
+    updatedAt:
+      timestamp,
   };
-  if (existingIndex > -1) {
-    queue[existingIndex] = newItem;
-  } else {
-    queue.push(newItem);
-  }
-  saveOfflineQueue(queue);
 }
 
-export async function syncOfflineQueue(user) {
-  if (!navigator.onLine || !isFirebaseConfigured || !firestoreDb) return;
-  const queue = getOfflineQueue();
-  if (queue.length === 0) return;
+async function hasApprovedGuardMealForDay(
+  record,
+) {
+  const snapshot =
+    await getDocs(
+      query(
+        collection(
+          firestoreDb,
+          GUARD_ATTENDANCE_COLLECTION,
+        ),
+        where(
+          'guardUid',
+          '==',
+          record.guardUid,
+        ),
+      ),
+    );
 
-  const remaining = [];
-  for (const item of queue) {
-    try {
-      const docRef = doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, item.recordId);
-      const serverSnap = await getDoc(docRef);
-      if (serverSnap.exists()) {
-        const serverData = serverSnap.data();
-        const serverUpdatedAt = serverData.updatedAt || '';
-        const localUpdatedAt = item.payload.updatedAt || '';
-        if (serverUpdatedAt && localUpdatedAt && String(serverUpdatedAt).localeCompare(String(localUpdatedAt)) > 0) {
-          console.warn('[guard-attendance] LWW: Dropping offline action ' + item.action + ' for ' + item.recordId + '. Server version is newer.');
-          continue;
-        }
+  let hasApprovedMeal =
+    false;
+
+  snapshot.forEach(
+    (
+      sessionDoc,
+    ) => {
+      if (
+        hasApprovedMeal ||
+        sessionDoc.id ===
+          record.id
+      ) {
+        return;
       }
 
-      if (item.action === 'check-in') {
-        await setDoc(docRef, item.payload);
-        await createAdminNotificationEvent({
-          message: item.payload.guardName + ' mengajukan absen jaga pada ' + item.payload.date + '. Perlu approval owner.',
-          metadata: {
-            attendanceId: item.recordId,
-            date: item.payload.date,
-            guardName: item.payload.guardName,
-            guardPersonId: item.payload.guardPersonId,
-            guardUid: item.payload.guardUid,
+      const session =
+        normalizeGuardAttendanceSession(
+          {
+            id:
+              sessionDoc.id,
+
+            ...sessionDoc.data(),
           },
-          priority: 'high',
-          source: 'guard-attendance',
-          title: 'Absen Penjaga Perlu Approval',
-          type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
-          url: '/admin/guard-attendance',
-          user,
-          actorRole: 'guard',
-        }).catch((error) => {
-          console.warn('[guard-attendance] Notification event gagal dibuat saat sync:', error);
-        });
-      } else if (item.action === 'check-out') {
-        await updateDoc(docRef, item.payload);
+          sessionDoc.id,
+        );
+
+      if (
+        session.date ===
+          record.date &&
+        session.approvalStatus ===
+          GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED &&
+        session.mealEligible
+      ) {
+        hasApprovedMeal =
+          true;
       }
-    } catch (error) {
-      console.error('[guard-attendance] Failed to sync item ' + item.id + ':', error);
-      remaining.push(item);
-    }
-  }
-  saveOfflineQueue(remaining);
+    },
+  );
+
+  return hasApprovedMeal;
+}
+
+function createGuardAttendanceSubmittedNotification(
+  record,
+  user,
+) {
+  return createAdminNotificationEvent({
+    eventId:
+      'notif_guard_attendance_submitted__' +
+      record.id,
+
+    message:
+      record.guardName +
+      ' mengajukan absen jaga pada ' +
+      record.date +
+      '. Perlu approval owner.',
+
+    metadata: {
+      attendanceId:
+        record.id,
+
+      date:
+        record.date,
+
+      guardName:
+        record.guardName,
+
+      guardPersonId:
+        record.guardPersonId,
+
+      guardUid:
+        record.guardUid,
+    },
+
+    priority:
+      'high',
+
+    source:
+      'guard-attendance',
+
+    title:
+      'Absen Penjaga Perlu Approval',
+
+    type:
+      NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
+
+    url:
+      '/admin/guard-attendance',
+
+    user,
+
+    actorRole:
+      'guard',
+  });
 }
 
 export async function createGuardAttendanceCheckIn({
@@ -270,126 +606,271 @@ export async function createGuardAttendanceCheckIn({
   note = '',
   user,
 } = {}) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
   }
 
-  if (!user?.uid) {
-    throw new Error('User penjaga belum valid.');
+  if (
+    !user?.uid
+  ) {
+    throw new Error(
+      'User penjaga belum valid.',
+    );
   }
 
-  const date = getTodayIsoDate();
-  const clockInAt = nowIso();
-  const guardPersonId = cleanText(guardPerson.id || user.uid);
-  const id = makeGuardAttendanceId({
-    date,
-    guardPersonId,
-    guardUid: user.uid,
-  });
+  const date =
+    getTodayIsoDate();
 
-  const record = normalizeGuardAttendanceSession({
-    id,
-    approvalStatus: GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING,
-    approvedAt: '',
-    approvedByName: '',
-    approvedByUid: '',
-    closedAt: '',
-    clockInAt,
-    clockOutAt: '',
-    createdAt: clockInAt,
-    date,
-    durationHours: 0,
-    guardEmail: cleanText(user.email),
-    guardName: cleanText(guardPerson.name || user.displayName, 'Penjaga Studio'),
-    guardPersonId,
-    guardUid: user.uid,
-    mealAmount,
-    mealEligible: false,
-    note,
-    ownerActionRequired: true,
-    rejectedAt: '',
-    rejectedByName: '',
-    rejectedByUid: '',
-    rejectionReason: '',
-    source: 'guardAttendance',
-    status: GUARD_ATTENDANCE_STATUSES.PENDING_APPROVAL,
-    updatedAt: clockInAt,
-    voidedAt: '',
-    voidedByUid: '',
-    voidReason: '',
-  }, id);
+  const clockInAt =
+    nowIso();
 
-  if (!navigator.onLine) {
-    addToOfflineQueue('check-in', id, record);
-    setDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, id), record).catch(() => {});
+  const guardPersonId =
+    cleanText(
+      guardPerson.id ||
+      user.uid,
+    );
+
+  const id =
+    makeGuardAttendanceId({
+      date,
+      guardUid:
+        user.uid,
+    });
+
+  const record =
+    normalizeGuardAttendanceSession(
+      {
+        id,
+
+        approvalStatus:
+          GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING,
+
+        approvedAt:
+          '',
+
+        approvedByName:
+          '',
+
+        approvedByUid:
+          '',
+
+        closedAt:
+          '',
+
+        clockInAt,
+
+        clockInByUid:
+          user.uid,
+
+        clockOutAt:
+          '',
+
+        clockOutByUid:
+          '',
+
+        createdAt:
+          clockInAt,
+
+        date,
+
+        durationHours:
+          0,
+
+        guardEmail:
+          cleanText(
+            user.email,
+          ),
+
+        guardName:
+          cleanText(
+            guardPerson.name ||
+              user.displayName,
+            'Penjaga Studio',
+          ),
+
+        guardPersonId,
+
+        guardUid:
+          user.uid,
+
+        mealAmount,
+
+        mealEligible:
+          false,
+
+        note,
+
+        ownerActionRequired:
+          true,
+
+        rejectedAt:
+          '',
+
+        rejectedByName:
+          '',
+
+        rejectedByUid:
+          '',
+
+        rejectionReason:
+          '',
+
+        source:
+          'guardAttendance',
+
+        status:
+          GUARD_ATTENDANCE_STATUSES.PENDING_APPROVAL,
+
+        updatedAt:
+          clockInAt,
+
+        voidedAt:
+          '',
+
+        voidedByUid:
+          '',
+
+        voidReason:
+          '',
+      },
+      id,
+    );
+
+  const documentRef =
+    getGuardAttendanceDocumentRef(
+      id,
+    );
+
+  if (
+    !navigator.onLine
+  ) {
+    setDoc(
+      documentRef,
+      record,
+    ).catch(
+      (
+        error,
+      ) => {
+        console.warn(
+          '[guard-attendance] Offline check-in write gagal:',
+          error,
+        );
+      },
+    );
+
+    createGuardAttendanceSubmittedNotification(
+      record,
+      user,
+    ).catch(
+      (
+        error,
+      ) => {
+        console.warn(
+          '[guard-attendance] Offline notification queue gagal:',
+          error,
+        );
+      },
+    );
+
     return record;
   }
 
-  try {
-    await setDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, id), record);
-    await createAdminNotificationEvent({
-      message: record.guardName + ' mengajukan absen jaga pada ' + record.date + '. Perlu approval owner.',
-      metadata: {
-        attendanceId: id,
-        date: record.date,
-        guardName: record.guardName,
-        guardPersonId: record.guardPersonId,
-        guardUid: record.guardUid,
-      },
-      priority: 'high',
-      source: 'guard-attendance',
-      title: 'Absen Penjaga Perlu Approval',
-      type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
-      url: '/admin/guard-attendance',
-      user,
-      actorRole: 'guard',
-    });
-  } catch (error) {
-    console.warn('[guard-attendance] Check-in online gagal, queuing offline:', error);
-    addToOfflineQueue('check-in', id, record);
+  const existing =
+    await getDoc(
+      documentRef,
+    );
+
+  if (
+    existing.exists()
+  ) {
+    throw new Error(
+      'Anda sudah melakukan absensi hari ini.',
+    );
   }
+
+  await setDoc(
+    documentRef,
+    record,
+  );
+
+  createGuardAttendanceSubmittedNotification(
+    record,
+    user,
+  ).catch(
+    (
+      error,
+    ) => {
+      console.warn(
+        '[guard-attendance] Notification event gagal dibuat:',
+        error,
+      );
+    },
+  );
 
   return record;
 }
 
-export async function closeGuardAttendanceSession(session, user) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
+export async function closeGuardAttendanceSession(
+  session,
+  user,
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
   }
 
-  const record = normalizeGuardAttendanceSession(session);
-  const timestamp = nowIso();
-  const status = record.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED
-    ? GUARD_ATTENDANCE_STATUSES.CLOSED
-    : record.status;
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
 
-  const patch = {
-    clockOutAt: timestamp,
-    closedAt: timestamp,
-    durationHours: getDurationHours(record.clockInAt, timestamp),
-    status,
-    updatedAt: timestamp,
-  };
+  const patch =
+    buildGuardAttendanceCheckOutPatch(
+      record,
+      user,
+    );
 
-  if (user?.uid && user.uid !== record.guardUid) {
-    throw new Error('Hanya penjaga terkait yang bisa menutup absen ini.');
-  }
+  const documentRef =
+    getGuardAttendanceDocumentRef(
+      record.id,
+    );
 
-  if (!navigator.onLine) {
-    addToOfflineQueue('check-out', record.id, patch);
-    updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch).catch(() => {});
+  if (
+    !navigator.onLine
+  ) {
+    updateDoc(
+      documentRef,
+      patch,
+    ).catch(
+      (
+        error,
+      ) => {
+        console.warn(
+          '[guard-attendance] Offline check-out write gagal:',
+          error,
+        );
+      },
+    );
+
     return normalizeGuardAttendanceSession({
       ...record,
       ...patch,
     });
   }
 
-  try {
-    await updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch);
-  } catch (error) {
-    console.warn('[guard-attendance] Check-out online gagal, queuing offline:', error);
-    addToOfflineQueue('check-out', record.id, patch);
-  }
+  await updateDoc(
+    documentRef,
+    patch,
+  );
 
   return normalizeGuardAttendanceSession({
     ...record,
@@ -397,44 +878,93 @@ export async function closeGuardAttendanceSession(session, user) {
   });
 }
 
-export async function approveGuardAttendanceSession(session, ownerUser, existingSessions = []) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
+export async function approveGuardAttendanceSession(
+  sessionOrId,
+  ownerUser,
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
   }
 
-  const record = normalizeGuardAttendanceSession(session);
-  const timestamp = nowIso();
-  const nextStatus = record.clockOutAt ? GUARD_ATTENDANCE_STATUSES.CLOSED : GUARD_ATTENDANCE_STATUSES.ACTIVE;
+  assertOwnerAttendanceActor(
+    ownerUser,
+  );
 
-  // Uang makan hanya diberikan SATU kali per penjaga per hari.
-  // Jika sudah ada sesi approved lain untuk guard+tanggal yang sama, set mealEligible=false.
-  const alreadyHasMealForDay = existingSessions.some((s) => {
-    if (s.id === record.id) return false; // skip sesi yang sedang di-approve
-    if (s.approvalStatus !== GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED) return false;
-    if (s.date !== record.date) return false;
+  const record =
+    assertGuardAttendanceCanApprove(
+      await resolveGuardAttendanceSession(
+        sessionOrId,
+      ),
+    );
 
-    const samePersonId = s.guardPersonId && s.guardPersonId === record.guardPersonId;
-    const sameUid = s.guardUid && s.guardUid === record.guardUid;
+  const timestamp =
+    nowIso();
 
-    return (samePersonId || sameUid) && s.mealEligible;
-  });
+  const nextStatus =
+    record.clockOutAt
+      ? GUARD_ATTENDANCE_STATUSES.CLOSED
+      : GUARD_ATTENDANCE_STATUSES.ACTIVE;
+
+  const alreadyHasMealForDay =
+    await hasApprovedGuardMealForDay(
+      record,
+    );
 
   const patch = {
-    approvalStatus: GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED,
-    approvedAt: timestamp,
-    approvedByName: cleanText(ownerUser?.displayName || ownerUser?.email, 'Owner'),
-    approvedByUid: cleanText(ownerUser?.uid),
-    mealEligible: !alreadyHasMealForDay,
-    ownerActionRequired: false,
-    rejectedAt: '',
-    rejectedByName: '',
-    rejectedByUid: '',
-    rejectionReason: '',
-    status: nextStatus,
-    updatedAt: timestamp,
+    approvalStatus:
+      GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED,
+
+    approvedAt:
+      timestamp,
+
+    approvedByName:
+      cleanText(
+        ownerUser?.displayName ||
+          ownerUser?.email,
+        'Owner',
+      ),
+
+    approvedByUid:
+      cleanText(
+        ownerUser?.uid,
+      ),
+
+    mealEligible:
+      !alreadyHasMealForDay,
+
+    ownerActionRequired:
+      false,
+
+    rejectedAt:
+      '',
+
+    rejectedByName:
+      '',
+
+    rejectedByUid:
+      '',
+
+    rejectionReason:
+      '',
+
+    status:
+      nextStatus,
+
+    updatedAt:
+      timestamp,
   };
 
-  await updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch);
+  await updateDoc(
+    getGuardAttendanceDocumentRef(
+      record.id,
+    ),
+    patch,
+  );
 
   return normalizeGuardAttendanceSession({
     ...record,
@@ -442,27 +972,78 @@ export async function approveGuardAttendanceSession(session, ownerUser, existing
   });
 }
 
-export async function rejectGuardAttendanceSession(session, ownerUser, reason = '') {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
+export async function rejectGuardAttendanceSession(
+  sessionOrId,
+  ownerUser,
+  reason = '',
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
   }
 
-  const record = normalizeGuardAttendanceSession(session);
-  const timestamp = nowIso();
+  assertOwnerAttendanceActor(
+    ownerUser,
+  );
+
+  const record =
+    assertGuardAttendanceCanReject(
+      await resolveGuardAttendanceSession(
+        sessionOrId,
+      ),
+    );
+
+  const timestamp =
+    nowIso();
 
   const patch = {
-    approvalStatus: GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED,
-    mealEligible: false,
-    ownerActionRequired: false,
-    rejectedAt: timestamp,
-    rejectedByName: cleanText(ownerUser?.displayName || ownerUser?.email, 'Owner'),
-    rejectedByUid: cleanText(ownerUser?.uid),
-    rejectionReason: cleanText(reason, 'Ditolak owner.'),
-    status: GUARD_ATTENDANCE_STATUSES.REJECTED,
-    updatedAt: timestamp,
+    approvalStatus:
+      GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED,
+
+    mealEligible:
+      false,
+
+    ownerActionRequired:
+      false,
+
+    rejectedAt:
+      timestamp,
+
+    rejectedByName:
+      cleanText(
+        ownerUser?.displayName ||
+          ownerUser?.email,
+        'Owner',
+      ),
+
+    rejectedByUid:
+      cleanText(
+        ownerUser?.uid,
+      ),
+
+    rejectionReason:
+      cleanText(
+        reason,
+        'Ditolak owner.',
+      ),
+
+    status:
+      GUARD_ATTENDANCE_STATUSES.REJECTED,
+
+    updatedAt:
+      timestamp,
   };
 
-  await updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch);
+  await updateDoc(
+    getGuardAttendanceDocumentRef(
+      record.id,
+    ),
+    patch,
+  );
 
   return normalizeGuardAttendanceSession({
     ...record,
@@ -470,25 +1051,68 @@ export async function rejectGuardAttendanceSession(session, ownerUser, reason = 
   });
 }
 
-export async function voidGuardAttendanceSession(session, ownerUser, reason = '') {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
+export async function voidGuardAttendanceSession(
+  sessionOrId,
+  ownerUser,
+  reason = '',
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
   }
 
-  const record = normalizeGuardAttendanceSession(session);
-  const timestamp = nowIso();
+  assertOwnerAttendanceActor(
+    ownerUser,
+  );
+
+  const record =
+    assertGuardAttendanceCanVoid(
+      await resolveGuardAttendanceSession(
+        sessionOrId,
+      ),
+    );
+
+  const timestamp =
+    nowIso();
 
   const patch = {
-    mealEligible: false,
-    ownerActionRequired: false,
-    status: GUARD_ATTENDANCE_STATUSES.VOID,
-    updatedAt: timestamp,
-    voidReason: cleanText(reason, 'Dibatalkan owner.'),
-    voidedAt: timestamp,
-    voidedByUid: cleanText(ownerUser?.uid),
+    mealEligible:
+      false,
+
+    ownerActionRequired:
+      false,
+
+    status:
+      GUARD_ATTENDANCE_STATUSES.VOID,
+
+    updatedAt:
+      timestamp,
+
+    voidReason:
+      cleanText(
+        reason,
+        'Dibatalkan owner.',
+      ),
+
+    voidedAt:
+      timestamp,
+
+    voidedByUid:
+      cleanText(
+        ownerUser?.uid,
+      ),
   };
 
-  await updateDoc(doc(firestoreDb, GUARD_ATTENDANCE_COLLECTION, record.id), patch);
+  await updateDoc(
+    getGuardAttendanceDocumentRef(
+      record.id,
+    ),
+    patch,
+  );
 
   return normalizeGuardAttendanceSession({
     ...record,
@@ -496,14 +1120,60 @@ export async function voidGuardAttendanceSession(session, ownerUser, reason = ''
   });
 }
 
-export function subscribeGuardAttendanceSessions({
-  approvalStatus = 'all',
-  date = '',
-  guardUid = '',
-  status = 'all',
-} = {}, callback, onError) {
+export function subscribeGuardAttendanceSessions(
+  options = {},
+  callback,
+  onError,
+) {
+  const callbackFirst =
+    typeof options ===
+    'function';
+
+  const normalizedOptions =
+    callbackFirst
+      ? {}
+      : (
+          options &&
+          typeof options ===
+            'object'
+            ? options
+            : {}
+        );
+
+  const resolvedCallback =
+    callbackFirst
+      ? options
+      : callback;
+
+  const resolvedOnError =
+    callbackFirst
+      ? callback
+      : onError;
+
+  if (
+    typeof resolvedCallback !==
+    'function'
+  ) {
+    throw new Error(
+      'Callback subscription guard attendance wajib berupa function.',
+    );
+  }
+
+  const {
+    approvalStatus = 'all',
+    date = '',
+    guardUid = '',
+    status = 'all',
+  } =
+    normalizedOptions;
   if (!isFirebaseConfigured || !firestoreDb) {
-    if (onError) onError(new Error('Firebase belum dikonfigurasi.'));
+    if (resolvedOnError) {
+      resolvedOnError(
+        new Error(
+          'Firebase belum dikonfigurasi.',
+        ),
+      );
+    }
     return () => {};
   }
 
@@ -538,11 +1208,17 @@ export function subscribeGuardAttendanceSessions({
         .filter((session) => approvalStatus === 'all' || session.approvalStatus === approvalStatus)
         .sort((first, second) => String(second.clockInAt || '').localeCompare(String(first.clockInAt || '')));
 
-      callback(filtered);
+      resolvedCallback(
+        filtered,
+      );
     },
     (error) => {
       console.error('Gagal membaca guard attendance sessions:', error);
-      if (onError) onError(error);
+      if (resolvedOnError) {
+        resolvedOnError(
+          error,
+        );
+      }
     }
   );
 }
@@ -556,8 +1232,8 @@ export const guardAttendanceRepository = {
   isGuardFeeLineEligibleByAttendance,
   normalizeGuardAttendanceSession,
   rejectGuardAttendanceSession,
+  buildGuardAttendanceCheckOutPatch,
+  makeGuardAttendanceId,
   subscribeGuardAttendanceSessions,
   voidGuardAttendanceSession,
-  getOfflineQueue,
-  syncOfflineQueue,
 };

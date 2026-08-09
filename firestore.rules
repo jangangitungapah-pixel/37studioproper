@@ -10,8 +10,9 @@ rules_version = '2';
 // Messages are private to the owning client and approved booking admins.
 // users/{uid}: one authoritative account role. Valid states are owner/approved,
 // admin/pending|approved|rejected, client/active, and studio_guard/approved.
-// Client accounts always have every admin permission disabled. Studio guard
-// accounts may only receive schedule, customers, billing, and inventory access.
+// Client accounts always have every admin permission disabled.
+// Studio guard does not use admin-page permissions and may only access
+// its own guard attendance records through the dedicated guard rules.
 // ===============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -348,7 +349,8 @@ service cloud.firestore {
     function validGuardAttendanceSession(data, attendanceId) {
       return data.keys().hasOnly([
           'id', 'approvalStatus', 'approvedAt', 'approvedByName', 'approvedByUid',
-          'closedAt', 'clockInAt', 'clockOutAt', 'createdAt', 'date',
+          'closedAt', 'clockInAt', 'clockInByUid', 'clockOutAt',
+          'clockOutByUid', 'createdAt', 'date',
           'durationHours', 'guardEmail', 'guardName', 'guardPersonId',
           'guardUid', 'mealAmount', 'mealEligible', 'note',
           'ownerActionRequired', 'rejectedAt', 'rejectedByName',
@@ -360,9 +362,11 @@ service cloud.firestore {
         validString(data.approvedAt, 0, 40) &&
         validString(data.approvedByName, 0, 120) &&
         validString(data.approvedByUid, 0, 128) &&
-        validString(data.closedAt, 0, 40) &&
+        (data.closedAt == '' || validIsoTimestampString(data.closedAt)) &&
         validIsoTimestampString(data.clockInAt) &&
-        validString(data.clockOutAt, 0, 40) &&
+        validOptionalString(data, 'clockInByUid', 128) &&
+        (data.clockOutAt == '' || validIsoTimestampString(data.clockOutAt)) &&
+        validOptionalString(data, 'clockOutByUid', 128) &&
         validIsoTimestampString(data.createdAt) &&
         validIsoDate(data.date) &&
         validNumber(data.durationHours, 0, 48) &&
@@ -397,9 +401,12 @@ service cloud.firestore {
         ? account.guardId
         : request.auth.uid;
     }
-    function guardCreatesOwnAttendance(data) {
+    function guardCreatesOwnAttendance(data, attendanceId) {
       return isStudioGuardAccount() &&
+        attendanceId == 'att__' + request.auth.uid + '__' + data.date &&
         data.guardUid == request.auth.uid &&
+        data.clockInByUid == request.auth.uid &&
+        data.clockOutByUid == '' &&
         data.guardPersonId == getCurrentGuardPersonId() &&
         data.status == 'pending_approval' &&
         data.approvalStatus == 'pending' &&
@@ -420,23 +427,121 @@ service cloud.firestore {
         request.resource.data.guardPersonId == resource.data.guardPersonId &&
         request.resource.data.date == resource.data.date &&
         request.resource.data.approvalStatus == resource.data.approvalStatus &&
+        resource.data.clockOutAt == '' &&
+        resource.data.status in ['active', 'pending_approval'] &&
+        request.resource.data.status == 'closed' &&
+        request.resource.data.clockOutAt != '' &&
+        request.resource.data.closedAt == request.resource.data.clockOutAt &&
+        request.resource.data.clockOutByUid == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'clockOutAt', 'closedAt', 'durationHours', 'note', 'status', 'updatedAt'
-        ]) &&
+          'clockOutAt',
+          'clockOutByUid',
+          'closedAt',
+          'durationHours',
+          'status',
+          'updatedAt'
+        ]);
+    }
+
+    function guardAttendanceCoreIdentityUnchanged() {
+      return request.resource.data.id == resource.data.id &&
+        request.resource.data.guardUid == resource.data.guardUid &&
+        request.resource.data.guardPersonId == resource.data.guardPersonId &&
+        request.resource.data.guardEmail == resource.data.guardEmail &&
+        request.resource.data.guardName == resource.data.guardName &&
+        request.resource.data.date == resource.data.date &&
+        request.resource.data.clockInAt == resource.data.clockInAt &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.source == resource.data.source;
+    }
+
+    function adminApprovesGuardAttendance() {
+      return canManageGuardAttendance() &&
+        guardAttendanceCoreIdentityUnchanged() &&
+        resource.data.status != 'void' &&
+        resource.data.approvalStatus in ['pending', 'rejected'] &&
+        request.resource.data.approvalStatus == 'approved' &&
+        request.resource.data.approvedAt != '' &&
+        request.resource.data.approvedByUid != '' &&
+        request.resource.data.ownerActionRequired == false &&
+        request.resource.data.rejectedAt == '' &&
+        request.resource.data.rejectedByUid == '' &&
+        request.resource.data.rejectionReason == '' &&
         (
           (
-            resource.data.approvalStatus == 'approved' &&
-            resource.data.status in ['active', 'pending_approval'] &&
-            request.resource.data.status == 'closed' &&
-            request.resource.data.mealEligible == true
+            resource.data.clockOutAt == '' &&
+            request.resource.data.status == 'active'
           ) ||
           (
-            resource.data.approvalStatus == 'pending' &&
-            resource.data.status == 'pending_approval' &&
-            request.resource.data.status == 'pending_approval' &&
-            request.resource.data.mealEligible == false
+            resource.data.clockOutAt != '' &&
+            request.resource.data.status == 'closed'
           )
-        );
+        ) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'approvalStatus',
+          'approvedAt',
+          'approvedByName',
+          'approvedByUid',
+          'mealEligible',
+          'ownerActionRequired',
+          'rejectedAt',
+          'rejectedByName',
+          'rejectedByUid',
+          'rejectionReason',
+          'status',
+          'updatedAt'
+        ]);
+    }
+
+    function adminRejectsGuardAttendance() {
+      return canManageGuardAttendance() &&
+        guardAttendanceCoreIdentityUnchanged() &&
+        resource.data.status != 'void' &&
+        resource.data.approvalStatus in ['pending', 'approved'] &&
+        request.resource.data.approvalStatus == 'rejected' &&
+        request.resource.data.mealEligible == false &&
+        request.resource.data.ownerActionRequired == false &&
+        request.resource.data.rejectedAt != '' &&
+        request.resource.data.rejectedByUid != '' &&
+        request.resource.data.status == 'rejected' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'approvalStatus',
+          'mealEligible',
+          'ownerActionRequired',
+          'rejectedAt',
+          'rejectedByName',
+          'rejectedByUid',
+          'rejectionReason',
+          'status',
+          'updatedAt'
+        ]);
+    }
+
+    function adminVoidsGuardAttendance() {
+      return canManageGuardAttendance() &&
+        guardAttendanceCoreIdentityUnchanged() &&
+        resource.data.status != 'void' &&
+        request.resource.data.approvalStatus == resource.data.approvalStatus &&
+        request.resource.data.mealEligible == false &&
+        request.resource.data.ownerActionRequired == false &&
+        request.resource.data.status == 'void' &&
+        request.resource.data.voidedAt != '' &&
+        request.resource.data.voidedByUid != '' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'mealEligible',
+          'ownerActionRequired',
+          'status',
+          'updatedAt',
+          'voidReason',
+          'voidedAt',
+          'voidedByUid'
+        ]);
+    }
+
+    function adminUpdatesGuardAttendance() {
+      return adminApprovesGuardAttendance() ||
+        adminRejectsGuardAttendance() ||
+        adminVoidsGuardAttendance();
     }
 
     match /guardAttendanceSessions/{attendanceId} {
@@ -446,10 +551,13 @@ service cloud.firestore {
       );
 
       allow create: if validGuardAttendanceSession(request.resource.data, attendanceId) &&
-        guardCreatesOwnAttendance(request.resource.data);
+        guardCreatesOwnAttendance(
+          request.resource.data,
+          attendanceId
+        );
 
       allow update: if validGuardAttendanceSession(request.resource.data, attendanceId) && (
-        canManageGuardAttendance() ||
+        adminUpdatesGuardAttendance() ||
         guardClosesOwnAttendance()
       );
 

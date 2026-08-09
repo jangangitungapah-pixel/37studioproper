@@ -110,9 +110,29 @@ export default function GuardAttendancePage({ currentUser }) {
   useEffect(() => {
     if (!canManageGuardAttendance) return;
 
-    const unsubscribe = subscribeGuardAttendanceSessions((items) => {
-      setSessions(items);
-    });
+    const unsubscribe =
+      subscribeGuardAttendanceSessions(
+        {},
+        (
+          items,
+        ) => {
+          setSessions(
+            items,
+          );
+        },
+        (
+          error,
+        ) => {
+          console.error(
+            '[guard-attendance-owner] Subscription gagal:',
+            error,
+          );
+
+          setMessage(
+            'Gagal membaca data absen penjaga.',
+          );
+        },
+      );
 
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
@@ -173,7 +193,7 @@ export default function GuardAttendancePage({ currentUser }) {
     setMessage('');
 
     try {
-      await approveGuardAttendanceSession(session.id, currentUser);
+      await approveGuardAttendanceSession(session, currentUser);
       setMessage('Absen ' + session.guardName + ' disetujui. Fee penjaga tanggal itu eligible.');
     } catch (error) {
       console.error('[guard-attendance-owner] Approve gagal:', error);
@@ -191,7 +211,7 @@ export default function GuardAttendancePage({ currentUser }) {
     setMessage('');
 
     try {
-      await rejectGuardAttendanceSession(session.id, currentUser, reason);
+      await rejectGuardAttendanceSession(session, currentUser, reason);
       setMessage('Absen ' + session.guardName + ' ditolak.');
     } catch (error) {
       console.error('[guard-attendance-owner] Reject gagal:', error);
@@ -209,7 +229,7 @@ export default function GuardAttendancePage({ currentUser }) {
     setMessage('');
 
     try {
-      await voidGuardAttendanceSession(session.id, currentUser, reason);
+      await voidGuardAttendanceSession(session, currentUser, reason);
       setMessage('Absen ' + session.guardName + ' di-void.');
     } catch (error) {
       console.error('[guard-attendance-owner] Void gagal:', error);
