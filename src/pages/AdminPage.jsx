@@ -690,8 +690,19 @@ export default function AdminPage() {
 
         <Suspense
           fallback={
-            <div className="admin-page-loading" style={{ minHeight: '40vh', display: 'grid', placeItems: 'center' }}>
-              <LoaderCircle className="auth-spin" size={32} style={{ color: 'var(--auth-accent)' }} />
+            <div
+              aria-live="polite"
+              className="admin-route-loading"
+              role="status"
+            >
+              <LoaderCircle
+                className="auth-spin admin-route-loading-icon"
+                size={24}
+              />
+
+              <span>
+                Memuat {activeItem.title}
+              </span>
             </div>
           }
         >
