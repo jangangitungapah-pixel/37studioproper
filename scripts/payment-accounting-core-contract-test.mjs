@@ -189,9 +189,26 @@ assert.throws(
   /sudah lunas/,
 );
 
+const unpaidVoidCandidate = {
+  id:
+    'booking-void-unpaid',
+
+  invoiceAmount:
+    200000,
+
+  paymentHistory:
+    [],
+
+  paymentStatus:
+    'pending',
+
+  total:
+    200000,
+};
+
 const voidBooking =
   buildBookingVoidPatch(
-    legacyPartial,
+    unpaidVoidCandidate,
     'Invoice duplikat',
     {
       now:
@@ -220,7 +237,19 @@ assert.equal(
 
 assert.equal(
   voidBooking.previousInvoiceAmount,
-  150000,
+  200000,
+);
+
+assert.throws(
+  () =>
+    buildBookingVoidPatch(
+      legacyPartial,
+      'Invoice duplikat',
+    ),
+
+  /sudah memiliki pembayaran tidak bisa di-void/,
+
+  'Partial invoice with received cash must use refund lifecycle instead of void.',
 );
 
 const billingSource =
