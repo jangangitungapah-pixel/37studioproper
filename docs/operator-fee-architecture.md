@@ -686,3 +686,24 @@ Perubahan:
 6. Detail fee dan override crew dipindah ke dropdown per row.
 7. Logic integrasi Pembukuan tetap sama.
 ```
+
+## OPF-5B - Atomic Posting Reconciliation
+
+Booking-based Operator Fee posting is now reconciled atomically:
+
+```txt
+reviewed operator fee
+-> Firestore batch
+   -> bookkeepingEntries/opfee__...
+   -> operatorFeeEntries status = posted
+```
+
+Financial guardrails:
+
+```txt
+1. Bookkeeping expense and posted fee state succeed or fail together.
+2. Posted Operator Fee entries are immutable from normal fee mutation flow.
+3. Auto-generated bookkeeping sources operatorFee and guardAttendanceMeal cannot be manually deleted.
+4. Auto-generated bookkeeping updates require their source document to transition to posted in the same atomic write.
+5. Manual bookkeeping entries remain editable/deletable.
+```

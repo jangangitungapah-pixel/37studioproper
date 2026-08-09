@@ -6,8 +6,10 @@ import {
   orderBy,
   query,
   setDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { normalizeBookkeepingEntry } from './bookkeepingRepository.js';
 
 export const OPERATOR_FEE_ENTRIES_COLLECTION = 'operatorFeeEntries';
 
@@ -157,14 +159,176 @@ export async function markOperatorFeeEntryReviewed(entry) {
   });
 }
 
-export async function markOperatorFeeEntryPosted(entry, bookkeepingEntry = {}, postedByUid = '') {
-  return updateOperatorFeeEntry({
-    ...entry,
-    postedAt: nowIso(),
-    postedBookkeepingEntryId: cleanText(bookkeepingEntry.id),
-    postedByUid: cleanText(postedByUid),
-    status: OPERATOR_FEE_ENTRY_STATUSES.POSTED,
-  });
+export function buildOperatorFeePostedPatch(
+  entry,
+  bookkeepingEntryId,
+  postedByUid,
+  {
+    timestamp =
+      nowIso(),
+  } = {},
+) {
+  const record =
+    normalizeOperatorFeeEntry(
+      entry,
+    );
+
+  if (
+    !record.id
+  ) {
+    throw new Error(
+      'Operator fee entry ID tidak valid.',
+    );
+  }
+
+  if (
+    record.status ===
+    OPERATOR_FEE_ENTRY_STATUSES.POSTED
+  ) {
+    throw new Error(
+      'Operator fee ini sudah diposting.',
+    );
+  }
+
+  if (
+    record.status !==
+    OPERATOR_FEE_ENTRY_STATUSES.REVIEWED
+  ) {
+    throw new Error(
+      'Operator fee harus Reviewed sebelum diposting.',
+    );
+  }
+
+  const cleanBookkeepingEntryId =
+    cleanText(
+      bookkeepingEntryId,
+    );
+
+  const cleanPostedByUid =
+    cleanText(
+      postedByUid,
+    );
+
+  if (
+    !cleanBookkeepingEntryId
+  ) {
+    throw new Error(
+      'Bookkeeping entry ID tidak valid.',
+    );
+  }
+
+  if (
+    !cleanPostedByUid
+  ) {
+    throw new Error(
+      'Identitas user posting tidak valid.',
+    );
+  }
+
+  return {
+    postedAt:
+      timestamp,
+
+    postedBookkeepingEntryId:
+      cleanBookkeepingEntryId,
+
+    postedByUid:
+      cleanPostedByUid,
+
+    status:
+      OPERATOR_FEE_ENTRY_STATUSES.POSTED,
+
+    updatedAt:
+      timestamp,
+  };
+}
+
+export async function postOperatorFeeEntryToBookkeeping(
+  entry,
+  booking = {},
+  postedByUid = '',
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
+  }
+
+  const record =
+    normalizeOperatorFeeEntry(
+      entry,
+    );
+
+  const timestamp =
+    nowIso();
+
+  const bookkeepingPayload =
+    createOperatorFeeBookkeepingPayload(
+      record,
+      booking,
+    );
+
+  const bookkeepingEntry =
+    normalizeBookkeepingEntry(
+      {
+        ...bookkeepingPayload,
+
+        createdAt:
+          timestamp,
+
+        updatedAt:
+          timestamp,
+      },
+      bookkeepingPayload.id,
+    );
+
+  const postingPatch =
+    buildOperatorFeePostedPatch(
+      record,
+      bookkeepingEntry.id,
+      postedByUid,
+      {
+        timestamp,
+      },
+    );
+
+  const batch =
+    writeBatch(
+      firestoreDb,
+    );
+
+  batch.set(
+    doc(
+      firestoreDb,
+      'bookkeepingEntries',
+      bookkeepingEntry.id,
+    ),
+    bookkeepingEntry,
+  );
+
+  batch.update(
+    doc(
+      firestoreDb,
+      OPERATOR_FEE_ENTRIES_COLLECTION,
+      record.id,
+    ),
+    postingPatch,
+  );
+
+  await batch.commit();
+
+  return {
+    bookkeepingEntry,
+
+    operatorFeeEntry:
+      normalizeOperatorFeeEntry({
+        ...record,
+        ...postingPatch,
+      }),
+  };
 }
 
 export async function voidOperatorFeeEntry(entry, note = '') {
@@ -210,10 +374,11 @@ export function createOperatorFeeBookkeepingPayload(entry, booking = {}) {
 }
 
 export const operatorFeeRepository = {
+  buildOperatorFeePostedPatch,
   createOperatorFeeBookkeepingPayload,
   deleteOperatorFeeEntry,
-  markOperatorFeeEntryPosted,
   markOperatorFeeEntryReviewed,
+  postOperatorFeeEntryToBookkeeping,
   normalizeOperatorFeeEntry,
   subscribeOperatorFeeEntries,
   updateOperatorFeeEntry,

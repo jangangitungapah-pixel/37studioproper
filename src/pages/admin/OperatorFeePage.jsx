@@ -10,7 +10,6 @@ import {
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import GuardMealReconciliationPanel from '../../components/operator-fee/GuardMealReconciliationPanel.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
-import { createBookkeepingEntry } from '../../services/bookkeepingRepository.js';
 import {
   isGuardFeeLineEligibleByAttendance,
   subscribeGuardAttendanceSessions,
@@ -18,9 +17,8 @@ import {
 import {
   OPERATOR_FEE_ENTRIES_COLLECTION,
   OPERATOR_FEE_ENTRY_STATUSES,
-  createOperatorFeeBookkeepingPayload,
-  markOperatorFeeEntryPosted,
   markOperatorFeeEntryReviewed,
+  postOperatorFeeEntryToBookkeeping,
   subscribeOperatorFeeEntries,
   upsertOperatorFeeEntry,
 } from '../../services/operatorFeeRepository.js';
@@ -571,10 +569,16 @@ export default function OperatorFeePage({ currentUser }) {
       const createdEntries = [];
 
       for (const entry of reviewedEntries) {
-        const bookkeepingPayload = createOperatorFeeBookkeepingPayload(entry, row.booking);
-        const bookkeepingEntry = await createBookkeepingEntry(bookkeepingPayload);
-        await markOperatorFeeEntryPosted(entry, bookkeepingEntry, currentUser?.uid || '');
-        createdEntries.push(bookkeepingEntry);
+        const result =
+          await postOperatorFeeEntryToBookkeeping(
+            entry,
+            row.booking,
+            currentUser?.uid || '',
+          );
+
+        createdEntries.push(
+          result.bookkeepingEntry,
+        );
       }
 
       setMessage(createdEntries.length + ' fee ' + getBookingCode(row.booking) + ' diposting ke pembukuan.');
@@ -604,9 +608,12 @@ export default function OperatorFeePage({ currentUser }) {
           .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
 
         for (const entry of reviewedEntries) {
-          const bookkeepingPayload = createOperatorFeeBookkeepingPayload(entry, row.booking);
-          const bookkeepingEntry = await createBookkeepingEntry(bookkeepingPayload);
-          await markOperatorFeeEntryPosted(entry, bookkeepingEntry, currentUser?.uid || '');
+          await postOperatorFeeEntryToBookkeeping(
+            entry,
+            row.booking,
+            currentUser?.uid || '',
+          );
+
           postedCount += 1;
         }
       }

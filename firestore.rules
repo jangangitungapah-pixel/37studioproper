@@ -1171,10 +1171,209 @@ match /users/{userId} {
       allow create, update, delete: if isOwner();
     }
 
+    function validOperatorFeeEntry(
+      data,
+      entryId
+    ) {
+      return data.keys().hasOnly([
+          'id',
+          'amount',
+          'bookingCode',
+          'bookingDate',
+          'bookingId',
+          'calculationMode',
+          'durationHours',
+          'mealAmount',
+          'note',
+          'overtimeAmount',
+          'payeeRole',
+          'paymentMethod',
+          'personId',
+          'personName',
+          'postedAt',
+          'postedBookkeepingEntryId',
+          'postedByUid',
+          'ruleId',
+          'ruleName',
+          'serviceLabel',
+          'sourcePricingId',
+          'sourcePricingLabel',
+          'sourcePricingType',
+          'status',
+          'title',
+          'totalAmount',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id == entryId &&
+        validNumber(data.amount, 0, 1000000000) &&
+        validString(data.bookingCode, 0, 160) &&
+        validString(data.bookingDate, 0, 40) &&
+        validString(data.bookingId, 0, 160) &&
+        validString(data.calculationMode, 1, 80) &&
+        validNumber(data.durationHours, 0, 1000) &&
+        validNumber(data.mealAmount, 0, 1000000000) &&
+        validString(data.note, 0, 2000) &&
+        validNumber(data.overtimeAmount, 0, 1000000000) &&
+        data.payeeRole in ['guard', 'recording_operator'] &&
+        validString(data.paymentMethod, 1, 80) &&
+        validString(data.personId, 0, 160) &&
+        validString(data.personName, 1, 160) &&
+        validString(data.postedAt, 0, 40) &&
+        validString(data.postedBookkeepingEntryId, 0, 240) &&
+        validString(data.postedByUid, 0, 128) &&
+        validString(data.ruleId, 0, 240) &&
+        validString(data.ruleName, 1, 240) &&
+        validString(data.serviceLabel, 0, 240) &&
+        validString(data.sourcePricingId, 0, 240) &&
+        validString(data.sourcePricingLabel, 0, 240) &&
+        validString(data.sourcePricingType, 0, 80) &&
+        data.status in ['draft', 'reviewed', 'posted', 'void'] &&
+        validString(data.title, 1, 240) &&
+        validNumber(data.totalAmount, 0, 1000000000) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    function operatorFeePostedFieldsAreClear(
+      data
+    ) {
+      return data.postedAt == '' &&
+        data.postedBookkeepingEntryId == '' &&
+        data.postedByUid == '';
+    }
+
+    function operatorFeeCreatesNonPosted(
+      entryId
+    ) {
+      return canManageOperatorFees() &&
+        validOperatorFeeEntry(
+          request.resource.data,
+          entryId
+        ) &&
+        request.resource.data.status in [
+          'draft',
+          'reviewed'
+        ] &&
+        operatorFeePostedFieldsAreClear(
+          request.resource.data
+        );
+    }
+
+    function operatorFeeUpdatesNonPosted(
+      entryId
+    ) {
+      return canManageOperatorFees() &&
+        validOperatorFeeEntry(
+          request.resource.data,
+          entryId
+        ) &&
+        resource.data.status != 'posted' &&
+        request.resource.data.status in [
+          'draft',
+          'reviewed',
+          'void'
+        ] &&
+        operatorFeePostedFieldsAreClear(
+          request.resource.data
+        );
+    }
+
+    function operatorFeeBookkeepingExistsAfter(
+      entryId
+    ) {
+      let bookkeepingId =
+        request.resource.data.postedBookkeepingEntryId;
+
+      let bookkeepingPath =
+        /databases/$(database)/documents/bookkeepingEntries/$(bookkeepingId);
+
+      return bookkeepingId is string &&
+        bookkeepingId.size() > 0 &&
+        existsAfter(bookkeepingPath) &&
+        getAfter(bookkeepingPath).data.id ==
+          bookkeepingId &&
+        getAfter(bookkeepingPath).data.type ==
+          'expense' &&
+        getAfter(bookkeepingPath).data.source ==
+          'operatorFee' &&
+        getAfter(bookkeepingPath).data.sourceFeeEntryId ==
+          entryId &&
+        getAfter(bookkeepingPath).data.sourceBookingId ==
+          resource.data.bookingId &&
+        getAfter(bookkeepingPath).data.amount ==
+          resource.data.totalAmount;
+    }
+
+    function adminPostsOperatorFee(
+      entryId
+    ) {
+      return canManageOperatorFees() &&
+        validOperatorFeeEntry(
+          request.resource.data,
+          entryId
+        ) &&
+        resource.data.status == 'reviewed' &&
+        request.resource.data.status == 'posted' &&
+        request.resource.data.postedAt != '' &&
+        request.resource.data.postedBookkeepingEntryId != '' &&
+        request.resource.data.postedByUid ==
+          request.auth.uid &&
+        request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'postedAt',
+            'postedBookkeepingEntryId',
+            'postedByUid',
+            'status',
+            'updatedAt'
+          ]) &&
+        operatorFeeBookkeepingExistsAfter(
+          entryId
+        );
+    }
+
     match /operatorFeeEntries/{entryId} {
-      allow read, create, update, delete: if canManageOperatorFees();
+      allow read: if canManageOperatorFees();
+
+      allow create:
+        if operatorFeeCreatesNonPosted(
+          entryId
+        );
+
+      allow update:
+        if operatorFeeUpdatesNonPosted(
+          entryId
+        ) ||
+        adminPostsOperatorFee(
+          entryId
+        );
+
+      allow delete:
+        if canManageOperatorFees() &&
+        resource.data.status != 'posted';
     }
     // <<< STUDIO37 OPERATOR FEE RULES END
+
+    function validOperatorFeeBookkeepingSource(data) {
+      return data.source != 'operatorFee' || (
+        data.keys().hasAll([
+          'sourceBookingId',
+          'sourceFeeEntryId'
+        ]) &&
+        validString(
+          data.sourceBookingId,
+          1,
+          160
+        ) &&
+        validString(
+          data.sourceFeeEntryId,
+          1,
+          240
+        )
+      );
+    }
 
     function validGuardMealBookkeepingSource(data) {
       return data.source != 'guardAttendanceMeal' || (
@@ -1213,15 +1412,147 @@ match /users/{userId} {
         validOptionalString(data, 'sourceFeeEntryId', 240) &&
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt) &&
+        validOperatorFeeBookkeepingSource(data) &&
         validGuardMealBookkeepingSource(data);
     }
 
+    function isReconciledBookkeepingSource(
+      data
+    ) {
+      return data.source in [
+        'operatorFee',
+        'guardAttendanceMeal'
+      ];
+    }
+
+    function operatorFeeBookkeepingBecomesPostedAfter(
+      data
+    ) {
+      let feeEntryId =
+        data.sourceFeeEntryId;
+
+      let feePath =
+        /databases/$(database)/documents/operatorFeeEntries/$(feeEntryId);
+
+      return data.source != 'operatorFee' || (
+        feeEntryId is string &&
+        feeEntryId.size() > 0 &&
+        existsAfter(feePath) &&
+        getAfter(feePath).data.status ==
+          'posted' &&
+        getAfter(feePath).data.postedBookkeepingEntryId ==
+          data.id &&
+        getAfter(feePath).data.bookingId ==
+          data.sourceBookingId &&
+        getAfter(feePath).data.totalAmount ==
+          data.amount &&
+        (
+          !exists(feePath) ||
+          get(feePath).data.status !=
+            'posted'
+        )
+      );
+    }
+
+    function guardMealBookkeepingBecomesPostedAfter(
+      data
+    ) {
+      let attendanceId =
+        data.sourceAttendanceId;
+
+      let attendancePath =
+        /databases/$(database)/documents/guardAttendanceSessions/$(attendanceId);
+
+      return data.source != 'guardAttendanceMeal' || (
+        attendanceId is string &&
+        attendanceId.size() > 0 &&
+        existsAfter(attendancePath) &&
+        getAfter(attendancePath).data.mealBookkeepingStatus ==
+          'posted' &&
+        getAfter(attendancePath).data.mealBookkeepingEntryId ==
+          data.id &&
+        getAfter(attendancePath).data.date ==
+          data.sourceAttendanceDate &&
+        getAfter(attendancePath).data.guardPersonId ==
+          data.sourceGuardPersonId &&
+        getAfter(attendancePath).data.mealAmount ==
+          data.amount &&
+        (
+          !exists(attendancePath) ||
+          !(
+            'mealBookkeepingStatus' in
+            get(attendancePath).data
+          ) ||
+          get(attendancePath).data.mealBookkeepingStatus !=
+            'posted'
+        )
+      );
+    }
+
+    function reconciledBookkeepingWriteAllowed(
+      data
+    ) {
+      return operatorFeeBookkeepingBecomesPostedAfter(
+          data
+        ) &&
+        guardMealBookkeepingBecomesPostedAfter(
+          data
+        );
+    }
+
     match /bookkeepingEntries/{entryId} {
-      allow read: if isApproved() && canAccessBookkeepingData();
-      allow create, update: if isApprovedAdmin() &&
-        (canAccessBookkeepingData() || hasPermission('operator-fee')) &&
-        validBookkeepingEntry(request.resource.data, entryId);
-      allow delete: if isApprovedAdmin() && canAccessBookkeepingData();
+      allow read:
+        if isApproved() &&
+        canAccessBookkeepingData();
+
+      allow create:
+        if isApprovedAdmin() &&
+        (
+          canAccessBookkeepingData() ||
+          hasPermission('operator-fee')
+        ) &&
+        validBookkeepingEntry(
+          request.resource.data,
+          entryId
+        ) &&
+        reconciledBookkeepingWriteAllowed(
+          request.resource.data
+        );
+
+      allow update:
+        if isApprovedAdmin() &&
+        (
+          canAccessBookkeepingData() ||
+          hasPermission('operator-fee')
+        ) &&
+        validBookkeepingEntry(
+          request.resource.data,
+          entryId
+        ) &&
+        (
+          (
+            !isReconciledBookkeepingSource(
+              resource.data
+            ) &&
+            !isReconciledBookkeepingSource(
+              request.resource.data
+            )
+          ) ||
+          (
+            resource.data.source ==
+              request.resource.data.source &&
+            reconciledBookkeepingWriteAllowed(
+              request.resource.data
+            )
+          )
+        );
+
+      allow delete:
+        if isApprovedAdmin() &&
+        canAccessBookkeepingData() &&
+        !isReconciledBookkeepingSource(
+          resource.data
+        );
     }
 
     function validInventoryItem(data, itemId) {
