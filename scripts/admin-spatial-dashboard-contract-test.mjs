@@ -208,6 +208,82 @@ for (
   );
 }
 
+/**
+ * UI-1.1 mobile timeline legibility regression.
+ *
+ * Mobile Today timeline must not return to a fixed narrow time
+ * column. Time, booking identity and payment status receive
+ * dedicated stacked areas beside a small timeline rail.
+ */
+const mobileTimelineRepairIndex =
+  cssSource.lastIndexOf(
+    'UI-1.1 — Mobile Timeline Legibility Repair',
+  );
+
+assert.notEqual(
+  mobileTimelineRepairIndex,
+  -1,
+  'UI-1.1 mobile timeline repair marker must exist.',
+);
+
+const mobileTimelineCss =
+  cssSource.slice(
+    mobileTimelineRepairIndex,
+  );
+
+for (
+  const required
+  of [
+    "@media (max-width: 520px)",
+    '.dashboard-today-surface',
+    '.dashboard-timeline-row',
+    'grid-template-areas:',
+    "'track time'",
+    "'track copy'",
+    "'track status'",
+    '.dashboard-timeline-time',
+    'grid-area:',
+    'time;',
+    '.dashboard-timeline-copy',
+    'copy;',
+    '.dashboard-timeline-track',
+    'span',
+    '3;',
+    '.status-pill',
+    'status;',
+    'grid-column:',
+    'auto;',
+    'white-space:',
+    'nowrap;',
+    'overflow-wrap:',
+    'anywhere;',
+    '@media (max-width: 359px)',
+  ]
+) {
+  assert.equal(
+    mobileTimelineCss.includes(
+      required,
+    ),
+    true,
+    'UI-1.1 mobile timeline CSS missing: ' +
+      required,
+  );
+}
+
+assert.match(
+  mobileTimelineCss,
+  /grid-template-columns:\s*18px\s+minmax\(\s*0,\s*1fr\s*\)/,
+  'Mobile timeline must use a small rail plus one flexible content column.',
+);
+
+assert.equal(
+  mobileTimelineCss.includes(
+    '70px'
+  ),
+  false,
+  'UI-1.1 repair must not reintroduce the narrow 70px time column.',
+);
+
 const adminCssSource =
   read(
     'src/styles/admin-auth.css',

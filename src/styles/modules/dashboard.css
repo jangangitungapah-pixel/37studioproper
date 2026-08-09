@@ -2978,3 +2978,333 @@ html[
       none;
   }
 }
+
+/* UI-1.1 — Mobile Timeline Legibility Repair */
+
+@media (max-width: 520px) {
+  .dashboard-today-surface
+  .dashboard-timeline {
+    margin-top:
+      14px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-row {
+    position:
+      relative;
+
+    grid-template-columns:
+      18px
+      minmax(
+        0,
+        1fr
+      );
+
+    grid-template-areas:
+      'track time'
+      'track copy'
+      'track status';
+
+    align-items:
+      start;
+
+    column-gap:
+      10px;
+
+    row-gap:
+      4px;
+
+    min-height:
+      0;
+
+    padding:
+      10px
+      0
+      12px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-row
+  + .dashboard-timeline-row {
+    margin-top:
+      2px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-time {
+    grid-area:
+      time;
+
+    width:
+      100%;
+
+    max-width:
+      100%;
+
+    min-width:
+      0;
+
+    justify-self:
+      stretch;
+
+    overflow:
+      hidden;
+
+    color:
+      var(
+        --studio-text-secondary
+      );
+
+    font-size:
+      0.62rem;
+
+    font-weight:
+      670;
+
+    line-height:
+      1.2;
+
+    text-overflow:
+      ellipsis;
+
+    white-space:
+      nowrap;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-time
+  svg {
+    width:
+      13px;
+
+    min-width:
+      13px;
+
+    height:
+      13px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-track {
+    grid-area:
+      track;
+
+    grid-row:
+      1 /
+      span
+      3;
+
+    width:
+      18px;
+
+    min-width:
+      18px;
+
+    align-self:
+      stretch;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-track::before {
+    top:
+      -2px;
+
+    bottom:
+      -2px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-track
+  span {
+    width:
+      8px;
+
+    height:
+      8px;
+
+    margin-top:
+      2px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-copy {
+    grid-area:
+      copy;
+
+    width:
+      100%;
+
+    min-width:
+      0;
+
+    gap:
+      3px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-copy
+  strong {
+    overflow:
+      visible;
+
+    color:
+      var(
+        --studio-text-primary
+      );
+
+    font-size:
+      0.76rem;
+
+    font-weight:
+      700;
+
+    line-height:
+      1.25;
+
+    text-overflow:
+      clip;
+
+    white-space:
+      normal;
+
+    overflow-wrap:
+      anywhere;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-copy
+  small {
+    overflow:
+      visible;
+
+    color:
+      var(
+        --studio-text-tertiary
+      );
+
+    font-size:
+      0.63rem;
+
+    line-height:
+      1.35;
+
+    text-overflow:
+      clip;
+
+    white-space:
+      normal;
+
+    overflow-wrap:
+      anywhere;
+  }
+
+  /*
+   * Override the old mobile grid-column: 3 rule.
+   * Status is now a dedicated row beneath the booking identity.
+   */
+  .dashboard-today-surface
+  .dashboard-timeline-row
+  .status-pill {
+    grid-area:
+      status;
+
+    grid-column:
+      auto;
+
+    justify-self:
+      start;
+
+    max-width:
+      100%;
+
+    margin-top:
+      2px;
+  }
+
+  /*
+   * Give the timeline enough breathing room without turning
+   * each booking into another bordered card.
+   */
+  .dashboard-today-surface
+  .dashboard-timeline-row:not(
+    :last-child
+  )::after {
+    content:
+      '';
+
+    position:
+      absolute;
+
+    right:
+      0;
+
+    bottom:
+      0;
+
+    left:
+      28px;
+
+    height:
+      1px;
+
+    background:
+      color-mix(
+        in srgb,
+        var(
+          --studio-edge-soft
+        )
+        72%,
+        transparent
+      );
+  }
+}
+
+@media (max-width: 359px) {
+  .dashboard-today-surface
+  .dashboard-timeline-row {
+    grid-template-columns:
+      16px
+      minmax(
+        0,
+        1fr
+      );
+
+    column-gap:
+      8px;
+
+    padding:
+      9px
+      0
+      11px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-track {
+    width:
+      16px;
+
+    min-width:
+      16px;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-time {
+    font-size:
+      0.58rem;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-copy
+  strong {
+    font-size:
+      0.72rem;
+  }
+
+  .dashboard-today-surface
+  .dashboard-timeline-row:not(
+    :last-child
+  )::after {
+    left:
+      24px;
+  }
+}
