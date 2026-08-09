@@ -5,6 +5,12 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 
+import {
+  motion,
+} from 'motion/react';
+
+import StudioTooltip from '../ui/StudioTooltip.jsx';
+
 function groupSidebarItems(
   items = [],
 ) {
@@ -96,6 +102,14 @@ function getAccountRoleLabel(
   );
 }
 
+function getCollapseLabel(
+  isSidebarCollapsed,
+) {
+  return isSidebarCollapsed
+    ? 'Buka navigation rail'
+    : 'Tutup navigation rail';
+}
+
 export default function AdminSidebar({
   isSidebarCollapsed,
   toggleSidebar,
@@ -120,63 +134,86 @@ export default function AdminSidebar({
       user,
     );
 
+  const collapseLabel =
+    getCollapseLabel(
+      isSidebarCollapsed,
+    );
+
   return (
     <aside
       aria-label="Navigasi admin desktop"
       className="admin-sidebar"
       data-admin-shell-ui="ui-0b-desktop"
+      data-admin-spatial-rail="ui-0b"
+      data-collapsed={
+        isSidebarCollapsed
+          ? 'true'
+          : 'false'
+      }
     >
       <div className="admin-sidebar-brand">
         <div
           aria-hidden="true"
           className="admin-sidebar-logo"
         >
+          <span className="admin-sidebar-logo-halo" />
+
           <Music2
-            size={21}
-            strokeWidth={2.1}
+            size={20}
+            strokeWidth={2.15}
           />
         </div>
 
         <div className="admin-sidebar-copy">
           <span className="admin-sidebar-brand-eyebrow">
-            37 Music Studio
+            37 Music
           </span>
 
           <strong>
-            Admin Console
+            Studio Ops
           </strong>
         </div>
 
-        <button
-          aria-expanded={
-            !isSidebarCollapsed
-          }
-          aria-label={
+        <StudioTooltip
+          content={
             isSidebarCollapsed
-              ? 'Buka sidebar'
-              : 'Tutup sidebar'
+              ? collapseLabel
+              : null
           }
-          className="admin-sidebar-collapse"
-          title={
-            isSidebarCollapsed
-              ? 'Buka sidebar'
-              : 'Tutup sidebar'
-          }
-          type="button"
-          onClick={
-            toggleSidebar
-          }
+          side="right"
+          sideOffset={10}
         >
-          {isSidebarCollapsed ? (
-            <PanelLeftOpen
-              size={17}
-            />
-          ) : (
-            <PanelLeftClose
-              size={17}
-            />
-          )}
-        </button>
+          <button
+            aria-expanded={
+              !isSidebarCollapsed
+            }
+            aria-label={
+              collapseLabel
+            }
+            className="admin-sidebar-collapse"
+            title={
+              isSidebarCollapsed
+                ? undefined
+                : collapseLabel
+            }
+            type="button"
+            onClick={
+              toggleSidebar
+            }
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen
+                size={17}
+                strokeWidth={2}
+              />
+            ) : (
+              <PanelLeftClose
+                size={17}
+                strokeWidth={2}
+              />
+            )}
+          </button>
+        </StudioTooltip>
       </div>
 
       <nav
@@ -199,61 +236,112 @@ export default function AdminSidebar({
                 </span>
               ) : null}
 
-              {section.items.map(
-                (
-                  item,
-                ) => {
-                  const Icon =
-                    item.icon;
+              <div className="admin-nav-section-items">
+                {section.items.map(
+                  (
+                    item,
+                  ) => {
+                    const Icon =
+                      item.icon;
 
-                  const isActive =
-                    activeItem.key ===
-                    item.key;
+                    const isActive =
+                      activeItem.key ===
+                      item.key;
 
-                  return (
-                    <button
-                      aria-current={
-                        isActive
-                          ? 'page'
-                          : undefined
-                      }
-                      className={
-                        isActive
-                          ? 'admin-nav-item is-active'
-                          : 'admin-nav-item'
-                      }
-                      key={
-                        item.key
-                      }
-                      title={
-                        isSidebarCollapsed
-                          ? item.label
-                          : undefined
-                      }
-                      type="button"
-                      onClick={() =>
-                        goTo(
-                          item.path,
-                        )
-                      }
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="admin-nav-icon"
+                    const navigationButton = (
+                      <button
+                        aria-current={
+                          isActive
+                            ? 'page'
+                            : undefined
+                        }
+                        aria-label={
+                          isSidebarCollapsed
+                            ? item.label
+                            : undefined
+                        }
+                        className={
+                          isActive
+                            ? 'admin-nav-item is-active'
+                            : 'admin-nav-item'
+                        }
+                        key={
+                          item.key
+                        }
+                        type="button"
+                        onClick={() =>
+                          goTo(
+                            item.path,
+                          )
+                        }
                       >
-                        <Icon
-                          size={18}
-                          strokeWidth={2}
-                        />
-                      </span>
+                        {isActive ? (
+                          <motion.span
+                            aria-hidden="true"
+                            className="admin-nav-active-plate"
+                            layoutId="admin-nav-active-plate"
+                            transition={{
+                              type:
+                                'spring',
 
-                      <span className="admin-nav-label">
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                },
-              )}
+                              stiffness:
+                                470,
+
+                              damping:
+                                38,
+
+                              mass:
+                                0.7,
+                            }}
+                          />
+                        ) : null}
+
+                        <span
+                          aria-hidden="true"
+                          className="admin-nav-icon"
+                        >
+                          <Icon
+                            size={18}
+                            strokeWidth={
+                              isActive
+                                ? 2.25
+                                : 1.9
+                            }
+                          />
+                        </span>
+
+                        <span className="admin-nav-label">
+                          {item.label}
+                        </span>
+
+                        {isActive ? (
+                          <span
+                            aria-hidden="true"
+                            className="admin-nav-active-dot"
+                          />
+                        ) : null}
+                      </button>
+                    );
+
+                    return (
+                      <StudioTooltip
+                        content={
+                          isSidebarCollapsed
+                            ? item.label
+                            : null
+                        }
+                        key={
+                          item.key
+                        }
+                        side="right"
+                        sideOffset={12}
+                      >
+                        {navigationButton}
+                      </StudioTooltip>
+                    );
+                  },
+                )}
+              </div>
             </div>
           ),
         )}
@@ -261,14 +349,24 @@ export default function AdminSidebar({
 
       <div className="admin-sidebar-footer">
         <div className="admin-sidebar-account">
-          <span
-            aria-hidden="true"
-            className="admin-account-avatar"
+          <StudioTooltip
+            content={
+              isSidebarCollapsed
+                ? accountName
+                : null
+            }
+            side="right"
+            sideOffset={12}
           >
-            {getAccountInitial(
-              user,
-            )}
-          </span>
+            <span
+              aria-hidden="true"
+              className="admin-account-avatar"
+            >
+              {getAccountInitial(
+                user,
+              )}
+            </span>
+          </StudioTooltip>
 
           <span className="admin-account-copy">
             <strong>
@@ -280,19 +378,25 @@ export default function AdminSidebar({
             </small>
           </span>
 
-          <button
-            aria-label="Keluar dari Admin Portal"
-            className="admin-account-logout"
-            title="Keluar"
-            type="button"
-            onClick={
-              onLogout
-            }
+          <StudioTooltip
+            content="Keluar"
+            side="right"
+            sideOffset={12}
           >
-            <LogOut
-              size={16}
-            />
-          </button>
+            <button
+              aria-label="Keluar dari Admin Portal"
+              className="admin-account-logout"
+              type="button"
+              onClick={
+                onLogout
+              }
+            >
+              <LogOut
+                size={16}
+                strokeWidth={2}
+              />
+            </button>
+          </StudioTooltip>
         </div>
       </div>
     </aside>
