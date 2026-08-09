@@ -1841,3 +1841,81 @@
   }
 }
 
+/* Phase 5D — Refund Lifecycle */
+
+.billing-row-actions button.is-refund,
+.billing-invoice-actions button.is-refund,
+.billing-payment-form footer button.is-refund {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-warning) 38%,
+      var(--auth-border)
+    );
+  background:
+    var(--auth-warning-soft);
+  color:
+    var(--auth-warning);
+}
+
+.billing-refund-note {
+  margin:
+    0;
+  border-top:
+    1px solid
+    var(--auth-border);
+  color:
+    var(--auth-warning);
+  padding:
+    7px 0 0;
+  font-size:
+    var(--studio-text-xs);
+  font-weight:
+    680;
+}
+
+.billing-refund-panel {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--auth-warning) 34%,
+      var(--auth-border)
+    );
+}
+
+.billing-refund-help {
+  margin:
+    0;
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--auth-warning) 24%,
+      var(--auth-border)
+    );
+  border-radius:
+    var(--studio-radius-md);
+  background:
+    var(--auth-warning-soft);
+  color:
+    var(--auth-text-muted);
+  padding:
+    10px;
+  font-size:
+    var(--studio-text-xs);
+  line-height:
+    1.5;
+}
+
+.billing-thermal-refunds strong {
+  color:
+    var(--auth-danger);
+}
+
+@media (max-width: 767px) {
+  .billing-refund-note {
+    font-size:
+      9px;
+  }
+}
+

@@ -353,6 +353,173 @@ export function getBookingCashReceivedAmount(
   );
 }
 
+export function getBookingRefundHistory(
+  booking,
+) {
+  const rawHistory =
+    Array.isArray(
+      booking?.refundHistory,
+    )
+      ? booking.refundHistory
+      : [];
+
+  const validHistory =
+    rawHistory.filter(
+      (
+        refund,
+      ) =>
+        toMoney(
+          refund?.amount,
+        ) > 0,
+    );
+
+  if (
+    validHistory.length
+  ) {
+    return validHistory;
+  }
+
+  const legacyAmount =
+    toMoney(
+      booking?.refundedAmount,
+    );
+
+  if (
+    legacyAmount <= 0
+  ) {
+    return [];
+  }
+
+  const refundDate =
+    booking?.lastRefundAt ||
+    booking?.refundCompletedAt ||
+    booking?.updatedAt ||
+    booking?.createdAt ||
+    booking?.date ||
+    '';
+
+  return [
+    {
+      amount:
+        legacyAmount,
+
+      createdAt:
+        refundDate,
+
+      date:
+        refundDate,
+
+      id:
+        'legacy_refund_' +
+        (
+          booking?.id ||
+          booking?.bookingCode ||
+          booking?.bookingId ||
+          'booking'
+        ),
+
+      method:
+        booking?.lastRefundMethod ||
+        'other',
+
+      reason:
+        booking?.lastRefundReason ||
+        'Refund legacy',
+
+      source:
+        'legacy-booking-refund',
+    },
+  ];
+}
+
+export function getBookingRefundedAmount(
+  booking,
+) {
+  return getBookingRefundHistory(
+    booking,
+  ).reduce(
+    (
+      total,
+      refund,
+    ) =>
+      total +
+      toMoney(
+        refund?.amount,
+      ),
+    0,
+  );
+}
+
+export function getBookingRefundableAmount(
+  booking,
+) {
+  const status =
+    getBookingPaymentStatus(
+      booking,
+    );
+
+  if (
+    status ===
+      BOOKING_PAYMENT_STATUS.VOID ||
+    status ===
+      BOOKING_PAYMENT_STATUS.REFUNDED
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    getBookingCashReceivedAmount(
+      booking,
+    ) -
+      getBookingRefundedAmount(
+        booking,
+      ),
+  );
+}
+
+export function getBookingRefundStatus(
+  booking,
+) {
+  const canonicalStatus =
+    getBookingPaymentStatus(
+      booking,
+    );
+
+  if (
+    canonicalStatus ===
+    BOOKING_PAYMENT_STATUS.REFUNDED
+  ) {
+    return 'full';
+  }
+
+  const cashReceived =
+    getBookingCashReceivedAmount(
+      booking,
+    );
+
+  const refunded =
+    getBookingRefundedAmount(
+      booking,
+    );
+
+  if (
+    cashReceived > 0 &&
+    refunded >=
+      cashReceived
+  ) {
+    return 'full';
+  }
+
+  if (
+    refunded > 0
+  ) {
+    return 'partial';
+  }
+
+  return 'none';
+}
+
 export function getBookingFinanceSnapshot(
   booking,
 ) {
@@ -366,11 +533,31 @@ export function getBookingFinanceSnapshot(
       booking,
     );
 
+  const cashRefunded =
+    getBookingRefundedAmount(
+      booking,
+    );
+
+  const refundStatus =
+    getBookingRefundStatus(
+      booking,
+    );
+
+  const refundable =
+    getBookingRefundableAmount(
+      booking,
+    );
+
   return {
     cashReceived,
 
+    cashRefunded,
+
     hasPayments:
       cashReceived > 0,
+
+    hasRefunds:
+      cashRefunded > 0,
 
     isOpen:
       summary.isOpen,
@@ -381,11 +568,20 @@ export function getBookingFinanceSnapshot(
 
     isRefunded:
       summary.status ===
-      BOOKING_PAYMENT_STATUS.REFUNDED,
+        BOOKING_PAYMENT_STATUS.REFUNDED ||
+      refundStatus ===
+        'full',
 
     isVoid:
       summary.status ===
       BOOKING_PAYMENT_STATUS.VOID,
+
+    netCashReceived:
+      Math.max(
+        0,
+        cashReceived -
+          cashRefunded,
+      ),
 
     outstanding:
       summary.outstanding,
@@ -395,6 +591,15 @@ export function getBookingFinanceSnapshot(
 
     paymentHistory:
       summary.paymentHistory,
+
+    refundable,
+
+    refundHistory:
+      getBookingRefundHistory(
+        booking,
+      ),
+
+    refundStatus,
 
     status:
       summary.status,
@@ -423,6 +628,254 @@ export function canVoidBookingInvoice(
     finance.paid <= 0 &&
     finance.cashReceived <= 0
   );
+}
+
+export function canRefundBookingPayment(
+  booking,
+) {
+  const finance =
+    getBookingFinanceSnapshot(
+      booking,
+    );
+
+  if (
+    finance.isVoid ||
+    finance.isRefunded
+  ) {
+    return false;
+  }
+
+  return (
+    finance.cashReceived > 0 &&
+    finance.refundable > 0
+  );
+}
+
+export function assertBookingRefundCanApply(
+  booking,
+  refund,
+) {
+  const amount =
+    toMoney(
+      refund?.amount,
+    );
+
+  const reason =
+    cleanPaymentText(
+      refund?.reason,
+    );
+
+  if (
+    amount <= 0
+  ) {
+    throw new Error(
+      'Nominal refund wajib lebih dari 0.',
+    );
+  }
+
+  if (
+    reason.length < 4
+  ) {
+    throw new Error(
+      'Alasan refund wajib diisi minimal 4 karakter.',
+    );
+  }
+
+  const finance =
+    getBookingFinanceSnapshot(
+      booking,
+    );
+
+  if (
+    finance.isVoid
+  ) {
+    throw new Error(
+      'Invoice void tidak bisa direfund.',
+    );
+  }
+
+  if (
+    finance.isRefunded ||
+    finance.refundStatus ===
+      'full'
+  ) {
+    throw new Error(
+      'Seluruh pembayaran invoice sudah direfund.',
+    );
+  }
+
+  if (
+    finance.cashReceived <= 0
+  ) {
+    throw new Error(
+      'Invoice belum memiliki pembayaran yang bisa direfund.',
+    );
+  }
+
+  if (
+    finance.refundable <= 0
+  ) {
+    throw new Error(
+      'Tidak ada saldo pembayaran yang bisa direfund.',
+    );
+  }
+
+  if (
+    amount >
+    finance.refundable
+  ) {
+    throw new Error(
+      'Nominal refund tidak boleh melebihi saldo pembayaran yang dapat direfund.',
+    );
+  }
+
+  return {
+    amount,
+    reason,
+
+    refundable:
+      finance.refundable,
+  };
+}
+
+export function buildBookingRefundPatch(
+  booking,
+  refund,
+) {
+  const validation =
+    assertBookingRefundCanApply(
+      booking,
+      refund,
+    );
+
+  const now =
+    refund?.createdAt ||
+    new Date().toISOString();
+
+  const normalizedRefund = {
+    ...refund,
+
+    amount:
+      validation.amount,
+
+    createdAt:
+      now,
+
+    date:
+      refund?.date ||
+      String(now).slice(
+        0,
+        10,
+      ),
+
+    id:
+      refund?.id ||
+      'refund_' +
+        Date.now().toString(
+          36,
+        ),
+
+    method:
+      cleanPaymentText(
+        refund?.method,
+      ) ||
+      'other',
+
+    reason:
+      validation.reason,
+
+    source:
+      refund?.source ||
+      'admin-refund',
+  };
+
+  const refundHistory = [
+    ...getBookingRefundHistory(
+      booking,
+    ),
+    normalizedRefund,
+  ];
+
+  const refundedAmount =
+    refundHistory.reduce(
+      (
+        total,
+        item,
+      ) =>
+        total +
+        toMoney(
+          item?.amount,
+        ),
+      0,
+    );
+
+  const cashReceived =
+    getBookingCashReceivedAmount(
+      booking,
+    );
+
+  const isFullRefund =
+    cashReceived > 0 &&
+    refundedAmount >=
+      cashReceived;
+
+  const currentStatus =
+    getBookingPaymentStatus(
+      booking,
+    );
+
+  const paymentStatusBeforeRefund =
+    booking?.paymentStatusBeforeRefund ||
+    getLegacyWriteStatus(
+      currentStatus,
+    );
+
+  const patch = {
+    ...booking,
+
+    lastRefundAt:
+      normalizedRefund.createdAt,
+
+    lastRefundMethod:
+      normalizedRefund.method,
+
+    lastRefundReason:
+      normalizedRefund.reason,
+
+    paymentStatusBeforeRefund,
+
+    refundedAmount:
+
+      refundedAmount,
+
+    refundHistory,
+
+    refundStatus:
+      isFullRefund
+        ? 'full'
+        : 'partial',
+
+    updatedAt:
+      now,
+  };
+
+  if (
+    isFullRefund
+  ) {
+    patch.invoiceAmount =
+      0;
+
+    patch.paymentStatus =
+      'refunded';
+
+    patch.refundCompletedAt =
+      now;
+
+    patch.status =
+      'refunded';
+  }
+
+  return patch;
 }
 
 export function buildBookingIncomeTransactions(
@@ -533,6 +986,117 @@ export function buildBookingIncomeTransactions(
   );
 }
 
+export function buildBookingRefundTransactions(
+  bookings,
+) {
+  const safeBookings =
+    Array.isArray(
+      bookings,
+    )
+      ? bookings
+      : [];
+
+  return safeBookings.flatMap(
+    (
+      booking,
+    ) => {
+      const bookingId =
+        booking?.id ||
+        booking?.bookingId ||
+        booking?.bookingCode ||
+        'unknown';
+
+      return getBookingRefundHistory(
+        booking,
+      ).map(
+        (
+          refund,
+          index,
+        ) => {
+          const refundId =
+            refund?.id ||
+            String(index);
+
+          return {
+            amount:
+              toMoney(
+                refund?.amount,
+              ),
+
+            bookingId,
+
+            customer:
+              booking?.customer ||
+              booking?.customerName ||
+              booking?.name ||
+              'Customer',
+
+            date:
+              refund?.date ||
+              refund?.createdAt ||
+              booking?.updatedAt ||
+              booking?.date ||
+              '',
+
+            id:
+              'booking-refund-' +
+              bookingId +
+              '-' +
+              refundId,
+
+            invoiceNumber:
+              booking?.invoiceNumber ||
+              '',
+
+            method:
+              cleanPaymentText(
+                refund?.method ||
+                'other',
+              ),
+
+            note:
+              cleanPaymentText(
+                refund?.reason,
+              ) ||
+              booking?.invoiceNumber ||
+              booking?.bookingCode ||
+              'Refund booking',
+
+            source:
+              'booking-refund',
+
+            title:
+              'Refund - ' +
+              (
+                booking?.customer ||
+                booking?.customerName ||
+                booking?.name ||
+                'Customer'
+              ),
+
+            type:
+              'expense',
+          };
+        },
+      );
+    },
+  );
+}
+
+export function buildBookingFinanceTransactions(
+  bookings,
+) {
+  return [
+    ...buildBookingIncomeTransactions(
+      bookings,
+    ),
+
+    ...buildBookingRefundTransactions(
+      bookings,
+    ),
+  ];
+}
+
 export function getBookingFinanceTotals(
   bookings,
 ) {
@@ -558,6 +1122,12 @@ export function getBookingFinanceTotals(
 
       totals.cashReceived +=
         finance.cashReceived;
+
+      totals.cashRefunded +=
+        finance.cashRefunded;
+
+      totals.netCashReceived +=
+        finance.netCashReceived;
 
       totals.outstanding +=
         finance.outstanding;
@@ -597,13 +1167,27 @@ export function getBookingFinanceTotals(
           1;
       }
 
+      if (
+        finance.refundStatus ===
+        'partial'
+      ) {
+        totals.partialRefundInvoices +=
+          1;
+      }
+
       return totals;
     },
     {
       cashReceived:
         0,
 
+      cashRefunded:
+        0,
+
       grossBilled:
+        0,
+
+      netCashReceived:
         0,
 
       openInvoices:
@@ -613,6 +1197,9 @@ export function getBookingFinanceTotals(
         0,
 
       paidInvoices:
+        0,
+
+      partialRefundInvoices:
         0,
 
       refundedInvoices:

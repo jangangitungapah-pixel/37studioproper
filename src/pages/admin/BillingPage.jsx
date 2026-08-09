@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Image,
   Printer,
+  RotateCcw,
   Search,
   Share2,
   X,
@@ -27,14 +28,21 @@ import {
   isBookingPaymentOpen,
 } from '../../domain/booking/bookingSelectors.js';
 import {
+  buildBookingFinanceTransactions,
   buildBookingPaymentPatch,
+  buildBookingRefundPatch,
   buildBookingVoidPatch,
+  canRefundBookingPayment,
   canVoidBookingInvoice,
   getBookingBillingTotal,
   getBookingFinanceTotals,
   getBookingOutstandingAmount,
   getBookingPaidAmount,
   getBookingPaymentHistory,
+  getBookingRefundableAmount,
+  getBookingRefundedAmount,
+  getBookingRefundHistory,
+  getBookingRefundStatus,
 } from '../../utils/bookingPaymentUtils.js';
 import {
   getPaymentProofStatusLabel,
@@ -50,7 +58,8 @@ const billingFilterOptions = [
   { key: 'dp', label: 'DP', description: 'Sudah DP, belum lunas' },
   { key: 'lunas', label: 'Lunas', description: 'Sudah selesai' },
   { key: 'void', label: 'Void', description: 'Invoice dibatalkan' },
-  { key: 'refunded', label: 'Refund', description: 'Pembayaran sudah dikembalikan' },
+  { key: 'refund_activity', label: 'Ada Refund', description: 'Partial dan full refund' },
+  { key: 'refunded', label: 'Refund Penuh', description: 'Seluruh pembayaran sudah dikembalikan' },
 ];
 
 const paymentMethodOptions = [
@@ -410,6 +419,22 @@ function getShareText(booking, settings = defaultInvoiceSettings) {
     'Sisa: ' + formatMoney(getOutstandingAmount(booking)),
   ];
 
+  const refundedAmount =
+    getBookingRefundedAmount(
+      booking,
+    );
+
+  if (
+    refundedAmount > 0
+  ) {
+    lines.push(
+      'Refund: ' +
+      formatMoney(
+        refundedAmount,
+      ),
+    );
+  }
+
   if (status === 'void' && booking?.voidReason) {
     lines.push('Alasan void: ' + booking.voidReason);
   }
@@ -460,6 +485,12 @@ function getBillingStats(
     refunded:
       totals.refundedInvoices,
 
+    partialRefunds:
+      totals.partialRefundInvoices,
+
+    refundAmount:
+      totals.cashRefunded,
+
     total:
       totals.totalBookings,
 
@@ -471,34 +502,111 @@ function getBillingStats(
   };
 }
 
-function getCashStats(bookings, range = 'today') {
-  return bookings.reduce(
-    (stats, booking) => {
-      getPaymentHistory(booking).forEach((payment) => {
-        const paymentDate = payment.date || payment.createdAt;
+function getCashStats(
+  bookings,
+  range = 'today',
+) {
+  return buildBookingFinanceTransactions(
+    bookings,
+  ).reduce(
+    (
+      stats,
+      transaction,
+    ) => {
+      if (
+        !isPaymentInCashRange(
+          transaction.date,
+          range,
+        )
+      ) {
+        return stats;
+      }
 
-        if (!isPaymentInCashRange(paymentDate, range)) return;
+      const amount =
+        Number(
+          transaction.amount,
+        ) ||
+        0;
 
-        const amount = Number(payment.amount) || 0;
-        const method = payment.method || 'other';
+      if (
+        transaction.type ===
+          'expense' &&
+        transaction.source ===
+          'booking-refund'
+      ) {
+        stats.refundCount +=
+          1;
 
-        stats.total += amount;
-        stats.count += 1;
-        stats.byMethod[method] = (stats.byMethod[method] || 0) + amount;
-      });
+        stats.refundTotal +=
+          amount;
+
+        stats.net -=
+          amount;
+
+        return stats;
+      }
+
+      if (
+        transaction.type !==
+        'income'
+      ) {
+        return stats;
+      }
+
+      const method =
+        transaction.method ||
+        'other';
+
+      stats.total +=
+        amount;
+
+      stats.count +=
+        1;
+
+      stats.net +=
+        amount;
+
+      stats.byMethod[method] =
+        (
+          stats.byMethod[
+            method
+          ] ||
+          0
+        ) +
+        amount;
 
       return stats;
     },
     {
       byMethod: {
-        cash: 0,
-        transfer: 0,
-        qris: 0,
-        other: 0,
+        cash:
+          0,
+
+        transfer:
+          0,
+
+        qris:
+          0,
+
+        other:
+          0,
       },
-      count: 0,
-      total: 0,
-    }
+
+      count:
+        0,
+
+      net:
+        0,
+
+      refundCount:
+        0,
+
+      refundTotal:
+        0,
+
+      total:
+        0,
+    },
   );
 }
 
@@ -525,7 +633,7 @@ function BillingHero({ bookings }) {
         <span><AlertCircle size={17} /></span>
         <small>Aktivitas</small>
         <strong>{stats.total}</strong>
-        <em>{stats.void} invoice void</em>
+        <em>{stats.void} void • {stats.partialRefunds} partial refund • {stats.refunded} full refund</em>
       </article>
     </section>
   );
@@ -540,7 +648,7 @@ function BillingCashSummary({ activeRange, bookings, onRangeChange }) {
         <div>
           <small>Kas Masuk {getCashRangeLabel(activeRange)}</small>
           <strong>{formatMoney(stats.total)}</strong>
-          <span>{stats.count} pembayaran tercatat</span>
+          <span>{stats.count} pembayaran • {stats.refundCount} refund • keluar {formatMoney(stats.refundTotal)}</span>
         </div>
 
         <div className="billing-cash-range">
@@ -636,7 +744,7 @@ function BillingReminderQueue({ bookings, invoiceSettings, onOpenInvoice, onReco
   );
 }
 
-function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment, onVoidInvoice }) {
+function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment, onRefundPayment, onVoidInvoice }) {
   if (!bookings.length) {
     return (
       <section className="billing-empty-state">
@@ -652,6 +760,8 @@ function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment
       {bookings.map((booking) => {
         const status = normalizeStatus(booking);
         const reminderHref = getReminderHref(booking, invoiceSettings);
+        const refundedAmount = getBookingRefundedAmount(booking);
+        const refundStatus = getBookingRefundStatus(booking);
 
         return (
           <article className={status === 'void' ? 'billing-row is-void' : 'billing-row'} key={booking.id}>
@@ -686,6 +796,12 @@ function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment
               <p className="billing-void-note">Void: {booking.voidReason}</p>
             ) : null}
 
+            {refundedAmount > 0 ? (
+              <p className="billing-refund-note">
+                Refund {refundStatus === 'full' ? 'penuh' : 'sebagian'}: {formatMoney(refundedAmount)}
+              </p>
+            ) : null}
+
             <div className="billing-row-actions">
               {reminderHref ? (
                 <a href={reminderHref} target="_blank" rel="noreferrer">
@@ -700,6 +816,12 @@ function BillingList({ bookings, invoiceSettings, onOpenInvoice, onRecordPayment
               {isOpenBilling(booking) ? (
                 <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
                   Bayar
+                </button>
+              ) : null}
+
+              {canRefundBookingPayment(booking) ? (
+                <button className="is-refund" type="button" onClick={() => onRefundPayment(booking)}>
+                  Refund
                 </button>
               ) : null}
 
@@ -722,6 +844,8 @@ function ThermalInvoice({ booking, settings }) {
   const status = normalizeStatus(booking);
   const studioName = settings.studioName || defaultInvoiceSettings.studioName;
   const subtitle = settings.subtitle || defaultInvoiceSettings.subtitle;
+  const refundHistory = getBookingRefundHistory(booking);
+  const refundedAmount = getBookingRefundedAmount(booking);
 
   return (
     <section
@@ -768,6 +892,8 @@ function ThermalInvoice({ booking, settings }) {
         <span><b>Total</b><em>{formatMoney(getBillingTotal(booking))}</em></span>
         <span><b>Dibayar</b><em>{formatMoney(getPaidAmount(booking))}</em></span>
         <span><b>Sisa</b><em>{formatMoney(getOutstandingAmount(booking))}</em></span>
+        <span><b>Refund</b><em>{formatMoney(refundedAmount)}</em></span>
+        <span><b>Net Diterima</b><em>{formatMoney(Math.max(0, getPaidAmount(booking) - refundedAmount))}</em></span>
         <span><b>Status</b><em>{getStatusLabel(status)}</em></span>
       </div>
 
@@ -799,6 +925,28 @@ function ThermalInvoice({ booking, settings }) {
 
       <div className="billing-thermal-divider" />
 
+      {refundHistory.length ? (
+        <>
+          <div className="billing-thermal-divider" />
+
+          <div className="billing-thermal-payments billing-thermal-refunds">
+            <b>Riwayat Refund</b>
+
+            {refundHistory.map((refund) => (
+              <span key={refund.id || refund.createdAt}>
+                <em>
+                  {formatThermalDate(refund.date || refund.createdAt)} • {getPaymentMethodLabel(refund.method)}
+                </em>
+
+                <strong>
+                  -{formatMoney(refund.amount)}
+                </strong>
+              </span>
+            ))}
+          </div>
+        </>
+      ) : null}
+
       <footer>
         <span>{settings.footer || defaultInvoiceSettings.footer}</span>
         <span>{studioName}</span>
@@ -807,7 +955,7 @@ function ThermalInvoice({ booking, settings }) {
   );
 }
 
-function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPayment, onShare, onVoidInvoice }) {
+function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPayment, onRefundPayment, onShare, onVoidInvoice }) {
   if (!booking) return null;
 
   const reminderHref = getReminderHref(booking, invoiceSettings);
@@ -858,6 +1006,13 @@ function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPaym
           {isOpenBilling(booking) ? (
             <button className="is-primary" type="button" onClick={() => onRecordPayment(booking)}>
               Bayar
+            </button>
+          ) : null}
+
+          {canRefundBookingPayment(booking) ? (
+            <button className="is-refund" type="button" onClick={() => onRefundPayment(booking)}>
+              <RotateCcw size={15} />
+              Refund
             </button>
           ) : null}
 
@@ -1139,6 +1294,350 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
   );
 }
 
+function RefundPaymentModal({
+  booking,
+  onClose,
+  onSubmit,
+}) {
+  const refundable =
+    getBookingRefundableAmount(
+      booking,
+    );
+
+  const [
+    form,
+    setForm,
+  ] =
+    useState(
+      () => ({
+        amount:
+          String(
+            refundable ||
+            '',
+          ),
+
+        date:
+          getTodayIsoDate(),
+
+        method:
+          'transfer',
+
+        reason:
+          '',
+      }),
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState(
+      '',
+    );
+
+  if (
+    !booking
+  ) {
+    return null;
+  }
+
+  function updateField(
+    field,
+  ) {
+    return (
+      event,
+    ) => {
+      setForm(
+        (
+          current,
+        ) => ({
+          ...current,
+
+          [field]:
+            event.target.value,
+        }),
+      );
+
+      if (
+        error
+      ) {
+        setError(
+          '',
+        );
+      }
+    };
+  }
+
+  function updateValue(
+    field,
+  ) {
+    return (
+      value,
+    ) => {
+      setForm(
+        (
+          current,
+        ) => ({
+          ...current,
+
+          [field]:
+            value,
+        }),
+      );
+
+      if (
+        error
+      ) {
+        setError(
+          '',
+        );
+      }
+    };
+  }
+
+  function handleSubmit(
+    event,
+  ) {
+    event.preventDefault();
+
+    const amount =
+      Number(
+        String(
+          form.amount,
+        ).replace(
+          /[^0-9.]/g,
+          '',
+        ),
+      );
+
+    const reason =
+      form.reason.trim();
+
+    if (
+      !Number.isFinite(
+        amount,
+      ) ||
+      amount <= 0
+    ) {
+      setError(
+        'Nominal refund wajib lebih dari 0.',
+      );
+
+      return;
+    }
+
+    if (
+      amount >
+      refundable
+    ) {
+      setError(
+        'Nominal refund tidak boleh melebihi saldo yang dapat direfund.',
+      );
+
+      return;
+    }
+
+    if (
+      reason.length < 4
+    ) {
+      setError(
+        'Alasan refund wajib diisi minimal 4 karakter.',
+      );
+
+      return;
+    }
+
+    onSubmit(
+      booking,
+      {
+        amount,
+
+        createdAt:
+          new Date().toISOString(),
+
+        date:
+          form.date ||
+          getTodayIsoDate(),
+
+        id:
+          'refund_' +
+          Date.now().toString(
+            36,
+          ),
+
+        method:
+          form.method ||
+          'other',
+
+        reason,
+      },
+    );
+  }
+
+  return (
+    <div
+      className="billing-payment-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        className="billing-payment-panel billing-refund-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="billing-refund-title"
+      >
+        <header className="billing-payment-head">
+          <div>
+            <p>
+              Refund Payment
+            </p>
+
+            <h2 id="billing-refund-title">
+              {getInvoiceDisplayNumber(booking)}
+            </h2>
+
+            <span>
+              Maksimal refund {formatMoney(refundable)}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            aria-label="Tutup refund"
+            onClick={
+              onClose
+            }
+          >
+            <X
+              size={18}
+            />
+          </button>
+        </header>
+
+        <form
+          className="billing-payment-form"
+          onSubmit={
+            handleSubmit
+          }
+          noValidate
+        >
+          <p className="billing-refund-help">
+            Refund tidak menghapus riwayat pembayaran. Refund sebagian dicatat sebagai cash-out; setelah seluruh uang yang pernah diterima dikembalikan, invoice berubah menjadi Refund.
+          </p>
+
+          <label>
+            <span>
+              Nominal Refund
+            </span>
+
+            <input
+              inputMode="numeric"
+              placeholder="Contoh: 100000"
+              value={
+                form.amount
+              }
+              onChange={
+                updateField(
+                  'amount',
+                )
+              }
+            />
+          </label>
+
+          <StudioSelect
+            label="Metode Refund"
+            options={
+              paymentMethodOptions
+            }
+            selectedKey={
+              form.method
+            }
+            onChange={
+              updateValue(
+                'method',
+              )
+            }
+          />
+
+          <label>
+            <span>
+              Tanggal Refund
+            </span>
+
+            <input
+              type="date"
+              value={
+                form.date
+              }
+              onChange={
+                updateField(
+                  'date',
+                )
+              }
+            />
+          </label>
+
+          <label>
+            <span>
+              Alasan Refund
+            </span>
+
+            <textarea
+              placeholder="Contoh: customer batal dan DP dikembalikan."
+              value={
+                form.reason
+              }
+              onChange={
+                updateField(
+                  'reason',
+                )
+              }
+            />
+          </label>
+
+          {error ? (
+            <p
+              className="billing-payment-error"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <footer>
+            <button
+              type="button"
+              onClick={
+                onClose
+              }
+            >
+              Batal
+            </button>
+
+            <button
+              className="is-refund"
+              type="submit"
+            >
+              <RotateCcw
+                size={15}
+              />
+
+              Catat Refund
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function VoidInvoiceModal({ booking, onClose, onSubmit }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
@@ -1306,6 +1805,7 @@ export default function BillingPage() {
   const [searchText, setSearchText] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [selectedPaymentBooking, setSelectedPaymentBooking] = useState(null);
+  const [selectedRefundBooking, setSelectedRefundBooking] = useState(null);
   const [selectedVoidBooking, setSelectedVoidBooking] = useState(null);
   const [paymentProofs, setPaymentProofs] = useState(() =>
     isBillingQaPreview
@@ -1466,6 +1966,10 @@ export default function BillingPage() {
         const matchesFilter =
           activeFilter === 'all' ||
           (activeFilter === 'open' && isOpenBilling(booking)) ||
+          (
+            activeFilter === 'refund_activity' &&
+            getBookingRefundedAmount(booking) > 0
+          ) ||
           status === activeFilter;
 
         const haystack = [
@@ -1735,6 +2239,95 @@ export default function BillingPage() {
     }
   }
 
+  async function refundPayment(
+    booking,
+    refund,
+  ) {
+    try {
+      const reviewer =
+        firebaseAuth?.currentUser ||
+        null;
+
+      const nextBooking =
+        buildBookingRefundPatch(
+          booking,
+          {
+            ...refund,
+
+            adminName:
+              reviewer?.displayName ||
+              reviewer?.email ||
+              'Admin',
+
+            adminUid:
+              reviewer?.uid ||
+              '',
+          },
+        );
+
+      await adminBookingRepository
+        .updateManualBooking(
+          nextBooking,
+        );
+
+      setSelectedBooking(
+        (
+          current,
+        ) =>
+          current?.id ===
+          booking.id
+            ? nextBooking
+            : current,
+      );
+
+      setSelectedRefundBooking(
+        null,
+      );
+
+      const refundStatus =
+        getBookingRefundStatus(
+          nextBooking,
+        );
+
+      setToast({
+        title:
+          refundStatus ===
+          'full'
+            ? 'Refund selesai'
+            : 'Refund sebagian tercatat',
+
+        message:
+          (
+            booking.customer ||
+            'Booking'
+          ) +
+          ' direfund ' +
+          formatMoney(
+            refund.amount,
+          ) +
+          ' via ' +
+          getPaymentMethodLabel(
+            refund.method,
+          ) +
+          '.',
+      });
+    } catch (error) {
+      console.error(
+        'Gagal mencatat refund:',
+        error,
+      );
+
+      setToast({
+        title:
+          'Refund gagal',
+
+        message:
+          error?.message ||
+          'Refund belum berhasil disimpan.',
+      });
+    }
+  }
+
   async function voidInvoice(
     booking,
     reason,
@@ -1867,6 +2460,7 @@ export default function BillingPage() {
         invoiceSettings={invoiceSettings}
         onOpenInvoice={setSelectedBooking}
         onRecordPayment={setSelectedPaymentBooking}
+        onRefundPayment={setSelectedRefundBooking}
         onVoidInvoice={setSelectedVoidBooking}
       />
 
@@ -1884,6 +2478,7 @@ export default function BillingPage() {
         onClose={() => setSelectedBooking(null)}
         onPrint={printInvoice}
         onRecordPayment={setSelectedPaymentBooking}
+        onRefundPayment={setSelectedRefundBooking}
         onShare={shareInvoice}
         onVoidInvoice={setSelectedVoidBooking}
       />
@@ -1893,6 +2488,13 @@ export default function BillingPage() {
         booking={selectedPaymentBooking}
         onClose={() => setSelectedPaymentBooking(null)}
         onSubmit={recordPayment}
+      />
+
+      <RefundPaymentModal
+        key={selectedRefundBooking?.id || 'empty-refund'}
+        booking={selectedRefundBooking}
+        onClose={() => setSelectedRefundBooking(null)}
+        onSubmit={refundPayment}
       />
 
       <VoidInvoiceModal

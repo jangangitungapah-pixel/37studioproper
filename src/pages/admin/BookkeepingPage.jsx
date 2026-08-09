@@ -18,7 +18,7 @@ import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
 import {
-  buildBookingIncomeTransactions,
+  buildBookingFinanceTransactions,
   getBookingBillingTotal,
   getBookingOutstandingAmount,
   getBookingPaidAmount as getAccountingPaidAmount,
@@ -188,10 +188,10 @@ function getBookingReceivableAmount(
   );
 }
 
-function buildIncomeTransactions(
+function buildBookingTransactions(
   bookings,
 ) {
-  return buildBookingIncomeTransactions(
+  return buildBookingFinanceTransactions(
     bookings,
   );
 }
@@ -1143,15 +1143,15 @@ export default function BookkeepingPage() {
 
   const filteredTransactions = useMemo(() => {
     const queryText = cleanLower(transactionSearchText);
-    const incomeTransactions = buildIncomeTransactions(bookings);
+    const bookingTransactions = buildBookingTransactions(bookings);
     const expenseTransactions = buildExpenseTransactions(entries);
 
-    return [...incomeTransactions, ...expenseTransactions]
+    return [...bookingTransactions, ...expenseTransactions]
       .filter((transaction) => {
         const matchesPeriod = isDateInPeriod(transaction.date, period);
         const matchesType = transactionTypeFilter === 'all' || transaction.type === transactionTypeFilter;
         const typeLabel = transaction.type === 'income' ? 'pemasukan masuk cash income' : 'pengeluaran keluar biaya expense';
-        const sourceLabel = transaction.source === 'booking' ? 'booking otomatis billing' : 'manual';
+        const sourceLabel = transaction.source === 'booking' ? 'booking otomatis billing' : transaction.source === 'booking-refund' ? 'refund booking otomatis billing' : 'manual';
         const haystack = [
           transaction.title,
           transaction.note,

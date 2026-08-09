@@ -279,7 +279,7 @@ const bookkeepingSource =
 
 assert.equal(
   bookkeepingSource.includes(
-    'buildBookingIncomeTransactions',
+    'buildBookingFinanceTransactions',
   ),
   true,
 );
@@ -317,7 +317,7 @@ const dashboardSource =
 
 assert.equal(
   dashboardSource.includes(
-    'buildBookingIncomeTransactions',
+    'buildBookingFinanceTransactions',
   ),
   true,
 );

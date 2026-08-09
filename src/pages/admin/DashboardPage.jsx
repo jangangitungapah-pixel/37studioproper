@@ -34,7 +34,7 @@ import {
   getLegacyBookingPaymentStatus,
 } from '../../domain/booking/bookingSelectors.js';
 import {
-  buildBookingIncomeTransactions,
+  buildBookingFinanceTransactions,
   getBookingFinanceTotals,
 } from '../../utils/bookingPaymentUtils.js';
 
@@ -161,8 +161,8 @@ function buildBookkeepingTransactions(
   bookings,
   entries,
 ) {
-  const bookingPayments =
-    buildBookingIncomeTransactions(
+  const bookingTransactions =
+    buildBookingFinanceTransactions(
       bookings,
     );
 
@@ -209,7 +209,7 @@ function buildBookkeepingTransactions(
       );
 
   return [
-    ...bookingPayments,
+    ...bookingTransactions,
     ...manualEntries,
   ];
 }

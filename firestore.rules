@@ -496,8 +496,8 @@ match /users/{userId} {
         validNumber(data.startHour, 0, 23) &&
         validNumber(data.durationHours, 0, 24) &&
         validNumber(data.total, 0, 100000000) &&
-        data.paymentStatus in ['pending', 'dp', 'lunas', 'void', 'cancelled', 'canceled', 'deleted'] &&
-        data.status in ['pending', 'dp', 'lunas', 'void', 'cancelled', 'canceled', 'deleted'] &&
+        data.paymentStatus in ['pending', 'dp', 'lunas', 'refunded', 'void', 'cancelled', 'canceled', 'deleted'] &&
+        data.status in ['pending', 'dp', 'lunas', 'refunded', 'void', 'cancelled', 'canceled', 'deleted'] &&
         validOptionalString(data, 'email', 254) &&
         validOptionalString(data, 'clientUid', 128) &&
         validOptionalString(data, 'title', 160) &&
@@ -514,6 +514,14 @@ match /users/{userId} {
         (!data.keys().hasAny(['lastMessageReadByAdmin']) || data.lastMessageReadByAdmin is bool) &&
         (!data.keys().hasAny(['lastMessageReadByClient']) || data.lastMessageReadByClient is bool) &&
         (!data.keys().hasAny(['paymentHistory']) || (data.paymentHistory is list && data.paymentHistory.size() <= 100)) &&
+        (!data.keys().hasAny(['refundHistory']) || (data.refundHistory is list && data.refundHistory.size() <= 100)) &&
+        (!data.keys().hasAny(['refundedAmount']) || validNumber(data.refundedAmount, 0, 100000000)) &&
+        (!data.keys().hasAny(['refundStatus']) || data.refundStatus in ['partial', 'full']) &&
+        validOptionalString(data, 'lastRefundAt', 40) &&
+        validOptionalString(data, 'lastRefundMethod', 40) &&
+        validOptionalString(data, 'lastRefundReason', 600) &&
+        validOptionalString(data, 'refundCompletedAt', 40) &&
+        validOptionalString(data, 'paymentStatusBeforeRefund', 40) &&
         (!data.keys().hasAny(['appliedDiscounts']) || (data.appliedDiscounts is list && data.appliedDiscounts.size() <= 50));
     }
 
