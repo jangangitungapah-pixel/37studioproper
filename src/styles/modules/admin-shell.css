@@ -1778,3 +1778,382 @@
       none;
   }
 }
+
+/* UI-0A v2 — Spatial Environment + Workspace Canvas */
+
+.admin-shell[
+  data-admin-spatial-root='true'
+] {
+  --admin-environment-pad:
+    0px;
+
+  --admin-environment-gap:
+    0px;
+
+  min-height:
+    100dvh;
+
+  display:
+    block;
+
+  background:
+    var(
+      --studio-env
+    );
+
+  color:
+    var(
+      --studio-text-primary
+    );
+
+  isolation:
+    isolate;
+}
+
+.admin-shell-layout {
+  min-width:
+    0;
+
+  min-height:
+    100dvh;
+
+  display:
+    block;
+}
+
+.admin-navigation-zone {
+  display:
+    none;
+
+  min-width:
+    0;
+}
+
+.admin-workspace {
+  min-width:
+    0;
+
+  min-height:
+    100dvh;
+}
+
+.admin-workspace-canvas {
+  position:
+    relative;
+
+  min-width:
+    0;
+
+  min-height:
+    100dvh;
+
+  background:
+    var(
+      --studio-canvas
+    );
+
+  color:
+    var(
+      --studio-text-primary
+    );
+}
+
+.admin-workspace-canvas
+.admin-stage {
+  min-height:
+    100dvh;
+}
+
+@media (min-width: 768px) {
+  .admin-shell[
+    data-admin-spatial-root='true'
+  ] {
+    --admin-environment-pad:
+      12px;
+
+    --admin-environment-gap:
+      12px;
+
+    padding-bottom:
+      0;
+
+    background:
+      var(
+        --studio-env
+      );
+  }
+
+  .admin-shell-layout {
+    min-height:
+      100dvh;
+
+    display:
+      grid;
+
+    grid-template-columns:
+      var(
+        --admin-sidebar-expanded
+      )
+      minmax(
+        0,
+        1fr
+      );
+
+    align-items:
+      start;
+
+    gap:
+      var(
+        --admin-environment-gap
+      );
+
+    padding:
+      var(
+        --admin-environment-pad
+      );
+
+    transition:
+      grid-template-columns
+      var(
+        --studio-duration-normal
+      )
+      var(
+        --studio-ease-spatial
+      );
+  }
+
+  .admin-shell.is-sidebar-collapsed
+  .admin-shell-layout {
+    grid-template-columns:
+      var(
+        --admin-sidebar-collapsed
+      )
+      minmax(
+        0,
+        1fr
+      );
+  }
+
+  .admin-navigation-zone {
+    min-width:
+      0;
+
+    min-height:
+      calc(
+        100dvh -
+        var(
+          --admin-environment-pad
+        ) -
+        var(
+          --admin-environment-pad
+        )
+      );
+
+    display:
+      block;
+
+    align-self:
+      start;
+  }
+
+  .admin-navigation-zone
+  .admin-sidebar {
+    top:
+      var(
+        --admin-environment-pad
+      );
+
+    height:
+      calc(
+        100dvh -
+        var(
+          --admin-environment-pad
+        ) -
+        var(
+          --admin-environment-pad
+        )
+      );
+
+    min-height:
+      calc(
+        100dvh -
+        var(
+          --admin-environment-pad
+        ) -
+        var(
+          --admin-environment-pad
+        )
+      );
+
+    border:
+      1px solid
+      var(
+        --studio-edge-soft
+      );
+
+    border-radius:
+      var(
+        --studio-radius-large
+      );
+
+    background:
+      color-mix(
+        in srgb,
+        var(
+          --studio-surface-1
+        )
+        94%,
+        var(
+          --studio-env
+        )
+      );
+
+    box-shadow:
+      var(
+        --studio-shadow-contact
+      );
+  }
+
+  .admin-workspace {
+    min-width:
+      0;
+
+    min-height:
+      calc(
+        100dvh -
+        var(
+          --admin-environment-pad
+        ) -
+        var(
+          --admin-environment-pad
+        )
+      );
+
+    align-self:
+      start;
+  }
+
+  .admin-workspace-canvas {
+    min-width:
+      0;
+
+    min-height:
+      calc(
+        100dvh -
+        var(
+          --admin-environment-pad
+        ) -
+        var(
+          --admin-environment-pad
+        )
+      );
+
+    border:
+      1px solid
+      var(
+        --studio-edge-soft
+      );
+
+    border-radius:
+      var(
+        --studio-radius-large
+      );
+
+    background:
+      var(
+        --studio-canvas
+      );
+
+    box-shadow:
+      var(
+        --studio-shadow-surface
+      );
+  }
+
+  .admin-workspace-canvas
+  .admin-stage {
+    min-height:
+      calc(
+        100dvh -
+        var(
+          --admin-environment-pad
+        ) -
+        var(
+          --admin-environment-pad
+        )
+      );
+  }
+
+  .admin-workspace-canvas
+  .admin-topbar {
+    top:
+      var(
+        --admin-environment-pad
+      );
+
+    border-top-left-radius:
+      var(
+        --studio-radius-large
+      );
+
+    border-top-right-radius:
+      var(
+        --studio-radius-large
+      );
+  }
+
+  .admin-workspace-canvas
+  .admin-route-loading {
+    min-height:
+      clamp(
+        300px,
+        48vh,
+        520px
+      );
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-shell[
+    data-admin-spatial-root='true'
+  ] {
+    --admin-environment-pad:
+      16px;
+
+    --admin-environment-gap:
+      14px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .admin-shell[
+    data-admin-spatial-root='true'
+  ] {
+    --admin-environment-pad:
+      18px;
+
+    --admin-environment-gap:
+      16px;
+  }
+}
+
+@media (
+  min-width: 768px
+)
+and (
+  max-height: 720px
+) {
+  .admin-shell[
+    data-admin-spatial-root='true'
+  ] {
+    --admin-environment-pad:
+      8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell-layout {
+    transition:
+      none;
+  }
+}

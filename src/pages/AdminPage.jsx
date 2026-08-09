@@ -677,48 +677,71 @@ export default function AdminPage() {
           onOpenPanel={() => goTo('/admin/operations/guard-attendance')}
         />
       )}
-      <AdminSidebar
-        isSidebarCollapsed={isSidebarCollapsed}
-        toggleSidebar={toggleSidebar}
-        permittedNavItems={sidebarNavItems}
-        activeItem={activeItem}
-        goTo={goTo}
-        user={authState.user}
-        onLogout={handleLogout}
-      />
+      <div
+        className="admin-shell-layout"
+        data-admin-spatial-phase="ui-0a"
+      >
+        <div
+          aria-label="Navigasi utama admin"
+          className="admin-navigation-zone"
+        >
+          <AdminSidebar
+            isSidebarCollapsed={isSidebarCollapsed}
+            toggleSidebar={toggleSidebar}
+            permittedNavItems={sidebarNavItems}
+            activeItem={activeItem}
+            goTo={goTo}
+            user={authState.user}
+            onLogout={handleLogout}
+          />
+        </div>
 
-      <section className="admin-stage" aria-labelledby="admin-title">
-        <AdminTopbar
-          activeItem={activeItem}
-          canOpenNotifications={canOpenNotifications}
-          notificationBadgeLabel={notificationBadgeLabel}
-          goTo={goTo}
-          notificationSummary={notificationSummary}
-          onLogout={handleLogout}
-          user={authState.user}
-        />
-
-        <Suspense
-          fallback={
-            <div
-              aria-live="polite"
-              className="admin-route-loading"
-              role="status"
+        <section
+          aria-label="Workspace admin"
+          className="admin-workspace"
+        >
+          <div className="admin-workspace-canvas">
+            <section
+              className="admin-stage"
+              aria-labelledby="admin-title"
             >
-              <LoaderCircle
-                className="auth-spin admin-route-loading-icon"
-                size={24}
+              <AdminTopbar
+                activeItem={activeItem}
+                canOpenNotifications={canOpenNotifications}
+                notificationBadgeLabel={notificationBadgeLabel}
+                goTo={goTo}
+                notificationSummary={notificationSummary}
+                onLogout={handleLogout}
+                user={authState.user}
               />
 
-              <span>
-                Memuat {activeItem.title}
-              </span>
-            </div>
-          }
-        >
-          {renderAdminContent(activeItem.key, authState.user)}
-        </Suspense>
-      </section>
+              <Suspense
+                fallback={
+                  <div
+                    aria-live="polite"
+                    className="admin-route-loading"
+                    role="status"
+                  >
+                    <LoaderCircle
+                      className="auth-spin admin-route-loading-icon"
+                      size={24}
+                    />
+
+                    <span>
+                      Memuat {activeItem.title}
+                    </span>
+                  </div>
+                }
+              >
+                {renderAdminContent(
+                  activeItem.key,
+                  authState.user,
+                )}
+              </Suspense>
+            </section>
+          </div>
+        </section>
+      </div>
 
           <AdminBottomNav
             mobilePrimaryNavItems={mobilePrimaryNavItems}
