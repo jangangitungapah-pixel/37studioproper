@@ -1650,11 +1650,7 @@ svg {
 
 .booking-request-payment.is-warning {
   background:
- --studio-success
-    );
-}
-
-.booking    color-mix(
+    color-mix(
       in srgb,
       var(
         --studio-warning

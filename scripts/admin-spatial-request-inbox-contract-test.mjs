@@ -201,6 +201,35 @@ for (
   );
 }
 
+/**
+ * UI-2.1 payment tone CSS integrity regression.
+ *
+ * Build-level regression guard for the payment status tones.
+ * The warning block was previously corrupted by a malformed
+ * generator output that left raw CSS fragments between selectors.
+ */
+assert.match(
+  cssSource,
+  /\\.booking-request-payment\\.is-warning\\s*\\{[\\s\\S]*?background:\\s*color-mix\\([\\s\\S]*?var\\(\\s*--studio-warning\\s*\\)[\\s\\S]*?10%,[\\s\\S]*?var\\(\\s*--studio-surface-1\\s*\\)[\\s\\S]*?\\);[\\s\\S]*?color:\\s*var\\(\\s*--studio-warning\\s*\\);[\\s\\S]*?\\}/,
+  'Warning payment tone must remain a complete valid color-mix block.',
+);
+
+assert.equal(
+  cssSource.includes(
+    '.booking    color-mix('
+  ),
+  false,
+  'Malformed booking/color-mix selector fragment must never return.',
+);
+
+assert.equal(
+  /background:\\s*--studio-success\\s*\\);/.test(
+    cssSource,
+  ),
+  false,
+  'Malformed raw --studio-success background fragment must never return.',
+);
+
 assert.equal(
   cssSource.includes(
     '--auth-'
