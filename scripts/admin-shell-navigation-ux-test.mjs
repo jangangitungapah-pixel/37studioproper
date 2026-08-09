@@ -177,10 +177,10 @@ assert.equal(
 
 assert.equal(
   bottomNavSource.includes(
-    "event.key === 'Escape'",
+    'Dialog.Content',
   ),
   true,
-  'Mobile More menu must support Escape dismissal.',
+  'Mobile More menu must use Radix Dialog for Escape dismissal and focus management.',
 );
 
 assert.equal(

@@ -121,6 +121,7 @@ export default function AdminTopbar({
       className="admin-topbar"
       data-admin-shell-ui="ui-0b-desktop"
       data-admin-spatial-header="ui-0c"
+      data-admin-mobile-command="ui-0d"
     >
       <motion.div
         animate={{

@@ -236,7 +236,7 @@ for (
   of [
     'groupMobileMoreItems',
     'admin-bottom-more-backdrop',
-    "event.key === 'Escape'",
+    'Dialog.Content',
   ]
 ) {
   assert.equal(

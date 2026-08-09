@@ -216,7 +216,7 @@ for (
   of [
     'admin-bottom-more-backdrop',
     'admin-more-section-label',
-    "event.key === 'Escape'",
+    'Dialog.Content',
   ]
 ) {
   assert.equal(
