@@ -203,10 +203,18 @@ assert.equal(
 
 assert.equal(
   rulesSource.includes(
-    'allow read: if canManageGuardAttendance() || (\n        isStudioGuardAccount() &&\n        resource.data.guardUid == request.auth.uid',
+    'canManageGuardAttendance() ||\n        canManageOperatorFees() ||',
   ),
   true,
-  'Guard must only read own attendance unless account is an attendance admin.',
+  'Attendance reconciliation admins may read attendance through Guard Attendance or Operator Fee permission.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'isStudioGuardAccount() &&\n          resource.data.guardUid == request.auth.uid',
+  ),
+  true,
+  'Studio guard must remain restricted to its own attendance records.',
 );
 
 const packageJson =
