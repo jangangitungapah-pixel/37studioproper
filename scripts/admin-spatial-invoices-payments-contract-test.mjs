@@ -160,6 +160,96 @@ for (const required of [
   );
 }
 
+// UI-6 operations typography contract — start
+function getOperationsRule(selector) {
+  const selectorNeedle = selector.endsWith(',')
+    ? selector
+    : selector + ' {';
+  const selectorIndex = selector.endsWith(',')
+    ? operationsDensityCss.indexOf(selectorNeedle)
+    : operationsDensityCss.lastIndexOf(selectorNeedle);
+
+  assert.notEqual(
+    selectorIndex,
+    -1,
+    'UI-6 typography selector missing: ' + selector,
+  );
+
+  const openIndex = operationsDensityCss.indexOf(
+    '{',
+    selectorIndex,
+  );
+  const closeIndex = operationsDensityCss.indexOf(
+    '}',
+    openIndex,
+  );
+
+  assert.notEqual(
+    openIndex,
+    -1,
+    'UI-6 typography rule opening missing: ' + selector,
+  );
+  assert.notEqual(
+    closeIndex,
+    -1,
+    'UI-6 typography rule closing missing: ' + selector,
+  );
+
+  return operationsDensityCss.slice(
+    openIndex,
+    closeIndex + 1,
+  );
+}
+
+for (const [selector, expected] of [
+  [
+    '.billing-cash-summary header small',
+    'font-size: 0.53rem',
+  ],
+  [
+    '.billing-cash-summary header strong',
+    'font-size: 0.76rem',
+  ],
+  [
+    '.billing-cash-summary header span',
+    'font-size: 0.56rem',
+  ],
+  [
+    '.billing-cash-grid strong',
+    'font-size: 0.62rem',
+  ],
+  [
+    '.billing-reminder-card header strong',
+    'font-size: 0.76rem',
+  ],
+  [
+    '.billing-reminder-card header em',
+    'font-size: 0.56rem',
+  ],
+  [
+    '.billing-reminder-row strong',
+    'font-size: 0.64rem',
+  ],
+  [
+    '.billing-reminder-row small',
+    'font-size: 0.54rem',
+  ],
+  [
+    '.billing-reminder-row a,',
+    'font-size: 0.54rem',
+  ],
+]) {
+  assert.equal(
+    getOperationsRule(selector).includes(expected),
+    true,
+    'UI-6 typography scale missing: ' +
+      selector +
+      ' -> ' +
+      expected,
+  );
+}
+// UI-6 operations typography contract — end
+
 for (const forbidden of [
   'grid-template-columns: minmax(0, 1.25fr) minmax(410px, 0.75fr)',
   'grid-template-columns: minmax(154px, 0.62fr) minmax(0, 1.38fr)',

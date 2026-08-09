@@ -3223,14 +3223,21 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   min-width: 0;
 }
 
+.billing-cash-summary header small {
+  font-size: 0.53rem;
+}
+
 .billing-cash-summary header strong {
   overflow: visible;
+  font-size: 0.76rem;
   text-overflow: clip;
   white-space: nowrap;
 }
 
 .billing-cash-summary header span {
   overflow: visible;
+  font-size: 0.56rem;
+  line-height: 1.35;
   text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -3277,6 +3284,10 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   white-space: nowrap;
 }
 
+.billing-cash-grid strong {
+  font-size: 0.62rem;
+}
+
 .billing-reminder-card {
   grid-template-columns: minmax(180px, 0.48fr) minmax(0, 1.52fr);
   grid-template-rows: auto;
@@ -3310,7 +3321,14 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
 }
 
 .billing-reminder-card header strong {
-  line-height: 1.25;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.billing-reminder-card header em {
+  font-size: 0.56rem;
+  line-height: 1.3;
 }
 
 .billing-reminder-list {
@@ -3345,11 +3363,15 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
 }
 
 .billing-reminder-row strong {
-  line-height: 1.25;
+  font-size: 0.64rem;
+  font-weight: 680;
+  line-height: 1.2;
 }
 
 .billing-reminder-row small {
-  line-height: 1.3;
+  font-size: 0.54rem;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 
 .billing-reminder-row > span {
@@ -3363,6 +3385,7 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   min-height: 28px;
   flex: 0 0 auto;
   padding-inline: 7px;
+  font-size: 0.54rem;
   white-space: nowrap;
 }
 
