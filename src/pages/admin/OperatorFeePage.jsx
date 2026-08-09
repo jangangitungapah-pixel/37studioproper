@@ -8,6 +8,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
+import GuardMealReconciliationPanel from '../../components/operator-fee/GuardMealReconciliationPanel.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { createBookkeepingEntry } from '../../services/bookkeepingRepository.js';
 import {
@@ -651,6 +652,16 @@ export default function OperatorFeePage({ currentUser }) {
           <small>Review cepat fee crew dari jadwal booking. Bulk dulu, cek detail hanya saat perlu.</small>
         </div>
       </section>
+
+      <GuardMealReconciliationPanel
+        busyKey={busyKey}
+        currentUser={currentUser}
+        onBusyChange={setBusyKey}
+        onMessage={setMessage}
+        period={period}
+        sessions={guardSessions}
+        settings={settings}
+      />
 
       <section className="operator-fee-queue-summary" aria-label="Ringkasan operator fee">
         <article>

@@ -346,7 +346,9 @@ service cloud.firestore {
           'closedAt', 'clockInAt', 'clockInByUid', 'clockOutAt',
           'clockOutByUid', 'createdAt', 'date',
           'durationHours', 'guardEmail', 'guardName', 'guardPersonId',
-          'guardUid', 'mealAmount', 'mealEligible', 'note',
+          'guardUid', 'mealAmount', 'mealEligible',
+          'mealBookkeepingEntryId', 'mealBookkeepingStatus',
+          'mealPostedAt', 'mealPostedByUid', 'note',
           'ownerActionRequired', 'rejectedAt', 'rejectedByName',
           'rejectedByUid', 'rejectionReason', 'source', 'status',
           'updatedAt', 'voidedAt', 'voidedByUid', 'voidReason'
@@ -370,6 +372,22 @@ service cloud.firestore {
         validString(data.guardUid, 1, 128) &&
         validNumber(data.mealAmount, 0, 1000000) &&
         data.mealEligible is bool &&
+        (
+          !data.keys().hasAny(['mealBookkeepingEntryId']) ||
+          validString(data.mealBookkeepingEntryId, 0, 200)
+        ) &&
+        (
+          !data.keys().hasAny(['mealBookkeepingStatus']) ||
+          data.mealBookkeepingStatus in ['not_posted', 'posted']
+        ) &&
+        (
+          !data.keys().hasAny(['mealPostedAt']) ||
+          validString(data.mealPostedAt, 0, 40)
+        ) &&
+        (
+          !data.keys().hasAny(['mealPostedByUid']) ||
+          validString(data.mealPostedByUid, 0, 128)
+        ) &&
         validString(data.note, 0, 1000) &&
         data.ownerActionRequired is bool &&
         validString(data.rejectedAt, 0, 40) &&
@@ -395,6 +413,30 @@ service cloud.firestore {
         ? account.guardId
         : request.auth.uid;
     }
+    function guardMealStartsUnposted(data) {
+      return (
+          !data.keys().hasAny(['mealBookkeepingStatus']) ||
+          data.mealBookkeepingStatus == 'not_posted'
+        ) &&
+        (
+          !data.keys().hasAny(['mealBookkeepingEntryId']) ||
+          data.mealBookkeepingEntryId == ''
+        ) &&
+        (
+          !data.keys().hasAny(['mealPostedAt']) ||
+          data.mealPostedAt == ''
+        ) &&
+        (
+          !data.keys().hasAny(['mealPostedByUid']) ||
+          data.mealPostedByUid == ''
+        );
+    }
+
+    function guardMealNotPosted(data) {
+      return !data.keys().hasAny(['mealBookkeepingStatus']) ||
+        data.mealBookkeepingStatus != 'posted';
+    }
+
     function guardCreatesOwnAttendance(data, attendanceId) {
       return isStudioGuardAccount() &&
         attendanceId == 'att__' + request.auth.uid + '__' + data.date &&
@@ -405,6 +447,7 @@ service cloud.firestore {
         data.status == 'pending_approval' &&
         data.approvalStatus == 'pending' &&
         data.mealEligible == false &&
+        guardMealStartsUnposted(data) &&
         data.ownerActionRequired == true &&
         data.approvedAt == '' &&
         data.approvedByUid == '' &&
@@ -516,6 +559,7 @@ service cloud.firestore {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
         resource.data.status != 'void' &&
+        guardMealNotPosted(resource.data) &&
         resource.data.approvalStatus in ['pending', 'approved'] &&
         request.resource.data.approvalStatus == 'rejected' &&
         request.resource.data.mealEligible == false &&
@@ -540,6 +584,7 @@ service cloud.firestore {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
         resource.data.status != 'void' &&
+        guardMealNotPosted(resource.data) &&
         request.resource.data.approvalStatus == resource.data.approvalStatus &&
         request.resource.data.mealEligible == false &&
         request.resource.data.ownerActionRequired == false &&
@@ -557,10 +602,59 @@ service cloud.firestore {
         ]);
     }
 
+    function guardMealBookkeepingExistsAfter() {
+      let entryId =
+        request.resource.data.mealBookkeepingEntryId;
+
+      let entryPath =
+        /databases/$(database)/documents/bookkeepingEntries/$(entryId);
+
+      return entryId is string &&
+        entryId.size() > 0 &&
+        existsAfter(entryPath) &&
+        getAfter(entryPath).data.id == entryId &&
+        getAfter(entryPath).data.type == 'expense' &&
+        getAfter(entryPath).data.source == 'guardAttendanceMeal' &&
+        getAfter(entryPath).data.sourceAttendanceId == resource.data.id &&
+        getAfter(entryPath).data.sourceAttendanceDate == resource.data.date &&
+        getAfter(entryPath).data.sourceGuardPersonId == resource.data.guardPersonId &&
+        getAfter(entryPath).data.amount == resource.data.mealAmount;
+    }
+
+    function adminPostsGuardMeal() {
+      return isApprovedAdmin() &&
+        (
+          hasPermission('operator-fee') ||
+          canManageGuardAttendance()
+        ) &&
+        guardAttendanceCoreIdentityUnchanged() &&
+        resource.data.approvalStatus == 'approved' &&
+        resource.data.status == 'closed' &&
+        resource.data.mealEligible == true &&
+        resource.data.mealAmount > 0 &&
+        guardMealNotPosted(resource.data) &&
+        request.resource.data.approvalStatus == resource.data.approvalStatus &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.mealEligible == resource.data.mealEligible &&
+        request.resource.data.mealBookkeepingStatus == 'posted' &&
+        request.resource.data.mealBookkeepingEntryId != '' &&
+        request.resource.data.mealPostedAt != '' &&
+        request.resource.data.mealPostedByUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'mealBookkeepingEntryId',
+          'mealBookkeepingStatus',
+          'mealPostedAt',
+          'mealPostedByUid',
+          'updatedAt'
+        ]) &&
+        guardMealBookkeepingExistsAfter();
+    }
+
     function adminUpdatesGuardAttendance() {
       return adminApprovesGuardAttendance() ||
         adminRejectsGuardAttendance() ||
-        adminVoidsGuardAttendance();
+        adminVoidsGuardAttendance() ||
+        adminPostsGuardMeal();
     }
 
     match /guardAttendanceSessions/{attendanceId} {
@@ -1079,8 +1173,27 @@ match /users/{userId} {
     }
     // <<< STUDIO37 OPERATOR FEE RULES END
 
+    function validGuardMealBookkeepingSource(data) {
+      return data.source != 'guardAttendanceMeal' || (
+        data.keys().hasAll([
+          'sourceAttendanceId',
+          'sourceAttendanceDate',
+          'sourceGuardPersonId'
+        ]) &&
+        validString(data.sourceAttendanceId, 1, 160) &&
+        validIsoDate(data.sourceAttendanceDate) &&
+        validString(data.sourceGuardPersonId, 1, 160)
+      );
+    }
+
     function validBookkeepingEntry(data, entryId) {
-      return data.keys().hasOnly(['id', 'type', 'category', 'title', 'amount', 'date', 'paymentMethod', 'note', 'source', 'sourceBookingId', 'sourceFeeEntryId', 'createdAt', 'updatedAt']) &&
+      return data.keys().hasOnly([
+          'id', 'type', 'category', 'title', 'amount', 'date',
+          'paymentMethod', 'note', 'source',
+          'sourceAttendanceId', 'sourceAttendanceDate',
+          'sourceGuardPersonId', 'sourceBookingId',
+          'sourceFeeEntryId', 'createdAt', 'updatedAt'
+        ]) &&
         data.id == entryId &&
         data.type in ['income', 'expense'] &&
         validString(data.category, 1, 80) &&
@@ -1090,10 +1203,14 @@ match /users/{userId} {
         validString(data.paymentMethod, 1, 80) &&
         validString(data.note, 0, 2000) &&
         validOptionalString(data, 'source', 80) &&
+        validOptionalString(data, 'sourceAttendanceId', 160) &&
+        validOptionalString(data, 'sourceAttendanceDate', 40) &&
+        validOptionalString(data, 'sourceGuardPersonId', 160) &&
         validOptionalString(data, 'sourceBookingId', 160) &&
         validOptionalString(data, 'sourceFeeEntryId', 240) &&
         validIsoTimestampString(data.createdAt) &&
-        validIsoTimestampString(data.updatedAt);
+        validIsoTimestampString(data.updatedAt) &&
+        validGuardMealBookkeepingSource(data);
     }
 
     match /bookkeepingEntries/{entryId} {

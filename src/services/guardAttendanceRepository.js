@@ -8,8 +8,10 @@ import {
   setDoc,
   where,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { normalizeBookkeepingEntry } from './bookkeepingRepository.js';
 import {
   NOTIFICATION_EVENT_TYPES,
   createAdminNotificationEvent,
@@ -31,6 +33,11 @@ export const GUARD_ATTENDANCE_APPROVAL_STATUSES = Object.freeze({
   APPROVED: 'approved',
   PENDING: 'pending',
   REJECTED: 'rejected',
+});
+
+export const GUARD_MEAL_BOOKKEEPING_STATUSES = Object.freeze({
+  NOT_POSTED: 'not_posted',
+  POSTED: 'posted',
 });
 
 function cleanText(value, fallback = '') {
@@ -149,6 +156,16 @@ export function normalizeGuardAttendanceSession(session, fallbackId = '') {
     guardUid: cleanText(source.guardUid),
     mealAmount: toNumber(source.mealAmount, 40000),
     mealEligible: source.mealEligible === true,
+    mealBookkeepingEntryId: cleanText(source.mealBookkeepingEntryId),
+    mealBookkeepingStatus: Object.values(
+      GUARD_MEAL_BOOKKEEPING_STATUSES,
+    ).includes(
+      source.mealBookkeepingStatus,
+    )
+      ? source.mealBookkeepingStatus
+      : GUARD_MEAL_BOOKKEEPING_STATUSES.NOT_POSTED,
+    mealPostedAt: cleanText(source.mealPostedAt),
+    mealPostedByUid: cleanText(source.mealPostedByUid),
     note: cleanText(source.note),
     ownerActionRequired: source.ownerActionRequired !== false && approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING,
     rejectedAt: cleanText(source.rejectedAt),
@@ -191,25 +208,69 @@ export function isGuardFeeLineEligibleByAttendance(line, sessions = []) {
   });
 }
 
-export function createGuardMealBookkeepingPayload(session) {
-  const record = normalizeGuardAttendanceSession(session);
-  const id = makeGuardMealBookkeepingId({
-    date: record.date,
-    guardPersonId: record.guardPersonId || record.guardUid,
-  });
+export function createGuardMealBookkeepingPayload(
+  session,
+  {
+    paymentMethod = 'cash',
+  } = {},
+) {
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
+
+  const id =
+    makeGuardMealBookkeepingId({
+      date:
+        record.date,
+
+      guardPersonId:
+        record.guardPersonId ||
+        record.guardUid,
+    });
 
   return {
     id,
-    amount: record.mealAmount,
-    category: 'crew',
-    date: record.date,
-    note: 'Auto dari Absen Penjaga | Guard: ' + record.guardName,
-    paymentMethod: 'cash',
-    source: 'guardAttendanceMeal',
-    sourceAttendanceDate: record.date,
-    sourceGuardPersonId: record.guardPersonId,
-    title: 'Uang Makan Penjaga - ' + record.guardName + ' - ' + record.date,
-    type: 'expense',
+
+    amount:
+      record.mealAmount,
+
+    category:
+      'crew',
+
+    date:
+      record.date,
+
+    note:
+      'Auto dari Absen Penjaga | Guard: ' +
+      record.guardName,
+
+    paymentMethod:
+      cleanText(
+        paymentMethod,
+        'cash',
+      ),
+
+    source:
+      'guardAttendanceMeal',
+
+    sourceAttendanceDate:
+      record.date,
+
+    sourceAttendanceId:
+      record.id,
+
+    sourceGuardPersonId:
+      record.guardPersonId,
+
+    title:
+      'Uang Makan Penjaga - ' +
+      record.guardName +
+      ' - ' +
+      record.date,
+
+    type:
+      'expense',
   };
 }
 
@@ -294,6 +355,186 @@ function assertOwnerAttendanceActor(
   }
 }
 
+export function buildGuardMealPostingPatch(
+  session,
+  ownerUser,
+  bookkeepingEntryId,
+  {
+    timestamp =
+      nowIso(),
+  } = {},
+) {
+  const record =
+    normalizeGuardAttendanceSession(
+      session,
+    );
+
+  assertOwnerAttendanceActor(
+    ownerUser,
+  );
+
+  if (
+    record.approvalStatus !==
+    GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED
+  ) {
+    throw new Error(
+      'Uang makan hanya bisa diposting dari attendance approved.',
+    );
+  }
+
+  if (
+    record.status !==
+    GUARD_ATTENDANCE_STATUSES.CLOSED
+  ) {
+    throw new Error(
+      'Selesaikan shift penjaga sebelum posting uang makan.',
+    );
+  }
+
+  if (
+    !record.mealEligible ||
+    record.mealAmount <= 0
+  ) {
+    throw new Error(
+      'Attendance ini tidak eligible untuk uang makan.',
+    );
+  }
+
+  if (
+    record.mealBookkeepingStatus ===
+    GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED
+  ) {
+    throw new Error(
+      'Uang makan attendance ini sudah diposting.',
+    );
+  }
+
+  const cleanEntryId =
+    cleanText(
+      bookkeepingEntryId,
+    );
+
+  if (
+    !cleanEntryId
+  ) {
+    throw new Error(
+      'Bookkeeping entry ID uang makan tidak valid.',
+    );
+  }
+
+  return {
+    mealBookkeepingEntryId:
+      cleanEntryId,
+
+    mealBookkeepingStatus:
+      GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED,
+
+    mealPostedAt:
+      timestamp,
+
+    mealPostedByUid:
+      ownerUser.uid,
+
+    updatedAt:
+      timestamp,
+  };
+}
+
+export async function postGuardMealToBookkeeping(
+  sessionOrId,
+  ownerUser,
+  {
+    paymentMethod =
+      'cash',
+  } = {},
+) {
+  if (
+    !isFirebaseConfigured ||
+    !firestoreDb
+  ) {
+    throw new Error(
+      'Firebase belum dikonfigurasi.',
+    );
+  }
+
+  assertOwnerAttendanceActor(
+    ownerUser,
+  );
+
+  const record =
+    await resolveGuardAttendanceSession(
+      sessionOrId,
+    );
+
+  const timestamp =
+    nowIso();
+
+  const payload =
+    createGuardMealBookkeepingPayload(
+      record,
+      {
+        paymentMethod,
+      },
+    );
+
+  const bookkeepingEntry =
+    normalizeBookkeepingEntry(
+      {
+        ...payload,
+
+        createdAt:
+          timestamp,
+
+        updatedAt:
+          timestamp,
+      },
+      payload.id,
+    );
+
+  const attendancePatch =
+    buildGuardMealPostingPatch(
+      record,
+      ownerUser,
+      bookkeepingEntry.id,
+      {
+        timestamp,
+      },
+    );
+
+  const batch =
+    writeBatch(
+      firestoreDb,
+    );
+
+  batch.set(
+    doc(
+      firestoreDb,
+      'bookkeepingEntries',
+      bookkeepingEntry.id,
+    ),
+    bookkeepingEntry,
+  );
+
+  batch.update(
+    getGuardAttendanceDocumentRef(
+      record.id,
+    ),
+    attendancePatch,
+  );
+
+  await batch.commit();
+
+  return {
+    attendance:
+      normalizeGuardAttendanceSession({
+        ...record,
+        ...attendancePatch,
+      }),
+
+    bookkeepingEntry,
+  };
+}
+
 function assertGuardAttendanceCanApprove(
   session,
 ) {
@@ -354,6 +595,15 @@ function assertGuardAttendanceCanReject(
   }
 
   if (
+    record.mealBookkeepingStatus ===
+    GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED
+  ) {
+    throw new Error(
+      'Absen tidak bisa ditolak karena uang makan sudah diposting.',
+    );
+  }
+
+  if (
     record.approvalStatus ===
     GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED
   ) {
@@ -379,6 +629,15 @@ function assertGuardAttendanceCanVoid(
   ) {
     throw new Error(
       'Absen sudah void.',
+    );
+  }
+
+  if (
+    record.mealBookkeepingStatus ===
+    GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED
+  ) {
+    throw new Error(
+      'Absen tidak bisa di-void karena uang makan sudah diposting.',
     );
   }
 
@@ -702,6 +961,18 @@ export async function createGuardAttendanceCheckIn({
 
         mealEligible:
           false,
+
+        mealBookkeepingEntryId:
+          '',
+
+        mealBookkeepingStatus:
+          GUARD_MEAL_BOOKKEEPING_STATUSES.NOT_POSTED,
+
+        mealPostedAt:
+          '',
+
+        mealPostedByUid:
+          '',
 
         note,
 
@@ -1220,7 +1491,9 @@ export const guardAttendanceRepository = {
   normalizeGuardAttendanceSession,
   rejectGuardAttendanceSession,
   buildGuardAttendanceCheckOutPatch,
+  buildGuardMealPostingPatch,
   makeGuardAttendanceId,
+  postGuardMealToBookkeeping,
   subscribeGuardAttendanceSessions,
   voidGuardAttendanceSession,
 };

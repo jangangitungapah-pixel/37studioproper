@@ -14,6 +14,7 @@ import {
 import {
   GUARD_ATTENDANCE_APPROVAL_STATUSES,
   GUARD_ATTENDANCE_STATUSES,
+  GUARD_MEAL_BOOKKEEPING_STATUSES,
   approveGuardAttendanceSession,
   rejectGuardAttendanceSession,
   subscribeGuardAttendanceSessions,
@@ -333,6 +334,9 @@ export default function GuardAttendancePage({ currentUser }) {
             const isPending = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING;
             const isApproved = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
             const isRejected = session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED;
+            const isMealPosted =
+              session.mealBookkeepingStatus ===
+              GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED;
 
             return (
               <article className="guard-attendance-owner-row" key={session.id}>
@@ -399,7 +403,7 @@ export default function GuardAttendancePage({ currentUser }) {
                     </>
                   )}
 
-                  {isApproved && (
+                  {isApproved && !isMealPosted && (
                     <>
                       <button
                         disabled={isBusy}
@@ -421,6 +425,12 @@ export default function GuardAttendancePage({ currentUser }) {
                       </button>
                     </>
                   )}
+
+                  {isApproved && isMealPosted ? (
+                    <span className="status-badge is-approved">
+                      Uang makan sudah posted
+                    </span>
+                  ) : null}
 
                   {isRejected && (
                     <>

@@ -406,3 +406,31 @@ Catatan teknis:
 ATT-4 belum mem-filter fee penjaga di Operator Fee berdasarkan attendance.
 Integrasi eligibility fee dilakukan di ATT-5.
 ```
+
+## ATT-5 - Attendance Meal Reconciliation
+
+Implemented lifecycle:
+
+```txt
+attendance approved + shift closed
+-> meal eligible
+-> Operator Fee: Uang Makan dari Absen
+-> owner posts meal
+-> atomic bookkeeping + attendance posted state
+```
+
+Deterministic bookkeeping key:
+
+```txt
+guardmeal__{guardPersonId}__{YYYY-MM-DD}
+```
+
+Guardrails:
+
+```txt
+1. Approval does not automatically create bookkeeping expense.
+2. Meal can only be posted after the shift is closed.
+3. One guard + one date has one deterministic meal bookkeeping entry.
+4. Attendance cannot be rejected or voided after its meal is posted.
+5. Posting is atomic between bookkeepingEntries and guardAttendanceSessions.
+```
