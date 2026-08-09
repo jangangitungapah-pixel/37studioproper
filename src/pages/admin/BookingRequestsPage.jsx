@@ -479,8 +479,7 @@ function BookingRequestLoading() {
         <span>
           Menyusun decision queue...
         </span>
-      </>
-div>
+      </div>
 
       {[
         0,
