@@ -12,6 +12,12 @@ import {
   WifiOff,
 } from 'lucide-react';
 
+import {
+  motion,
+} from 'motion/react';
+
+import StudioTooltip from '../ui/StudioTooltip.jsx';
+
 import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 
 export default function AdminTopbar({
@@ -106,23 +112,65 @@ export default function AdminTopbar({
           : 'Admin'
     );
 
+  const notificationLabel =
+    notificationBadgeLabel ||
+    'Buka notifikasi';
+
   return (
     <header
       className="admin-topbar"
       data-admin-shell-ui="ui-0b-desktop"
+      data-admin-spatial-header="ui-0c"
     >
-      <div className="admin-topbar-heading">
+      <motion.div
+        animate={{
+          opacity:
+            1,
+
+          y:
+            0,
+        }}
+        className="admin-topbar-heading"
+        initial={{
+          opacity:
+            0,
+
+          y:
+            4,
+        }}
+        key={
+          activeItem.key
+        }
+        transition={{
+          duration:
+            0.16,
+
+          ease:
+            [
+              0.16,
+              1,
+              0.3,
+              1,
+            ],
+        }}
+      >
         <div
           aria-label="Lokasi halaman admin"
           className="admin-topbar-context"
         >
+          <span
+            aria-hidden="true"
+            className="admin-command-context-mark"
+          />
+
           <span className="admin-topbar-context-studio">
             Admin
           </span>
 
           <ChevronRight
             aria-hidden="true"
-            size={11}
+            size={10}
+            strokeWidth={1.8}
           />
 
           <strong>
@@ -133,58 +181,71 @@ export default function AdminTopbar({
         <h1 id="admin-title">
           {activeItem.title}
         </h1>
-      </div>
+      </motion.div>
 
       <div className="admin-topbar-actions">
         {isGuardEligible ? (
-          <a
-            className="admin-notification-shortcut admin-topbar-guard-shortcut"
-            href="/guard/attendance"
-            title="Buka Portal Guard"
+          <StudioTooltip
+            content="Buka Portal Guard"
+            side="bottom"
+            sideOffset={10}
           >
-            <Clock
-              size={16}
-            />
+            <a
+              aria-label="Buka Portal Guard"
+              className="admin-command-utility admin-topbar-guard-shortcut"
+              href="/guard/attendance"
+            >
+              <Clock
+                aria-hidden="true"
+                size={15}
+                strokeWidth={1.9}
+              />
 
-            <span>
-              Portal Guard
-            </span>
-          </a>
+              <span className="admin-command-utility-label">
+                Guard
+              </span>
+            </a>
+          </StudioTooltip>
         ) : null}
 
         {canOpenNotifications ? (
-          <button
-            aria-label={
-              notificationBadgeLabel ||
-              'Buka notifikasi'
+          <StudioTooltip
+            content={
+              notificationLabel
             }
-            className="admin-notification-shortcut"
-            title={
-              notificationBadgeLabel ||
-              'Buka notifikasi'
-            }
-            type="button"
-            onClick={() =>
-              goTo(
-                '/admin/notifications',
-              )
-            }
+            side="bottom"
+            sideOffset={10}
           >
-            <BellRing
-              size={17}
-            />
-
-            <span>
-              Notifikasi
-            </span>
-
-            <AdminNotificationBadge
-              summary={
-                notificationSummary
+            <button
+              aria-label={
+                notificationLabel
               }
-              variant="shortcut"
-            />
-          </button>
+              className="admin-command-icon admin-notification-shortcut"
+              type="button"
+              onClick={() =>
+                goTo(
+                  '/admin/notifications',
+                )
+              }
+            >
+              <BellRing
+                aria-hidden="true"
+                size={17}
+                strokeWidth={1.9}
+              />
+
+              <span className="admin-command-visually-hidden">
+                Notifikasi
+              </span>
+
+              <AdminNotificationBadge
+                summary={
+                  notificationSummary
+                }
+                variant="shortcut"
+              />
+            </button>
+          </StudioTooltip>
         ) : null}
 
         <span
@@ -203,23 +264,40 @@ export default function AdminTopbar({
               : 'Database terputus'
           }
         >
+          <span
+            aria-hidden="true"
+            className="admin-connectivity-dot"
+          />
+
           {isOnline ? (
             <Wifi
+              aria-hidden="true"
+              className="admin-connectivity-icon"
               size={12}
+              strokeWidth={2}
             />
           ) : (
             <WifiOff
+              aria-hidden="true"
+              className="admin-connectivity-icon"
               size={12}
+              strokeWidth={2}
             />
           )}
 
-          <span>
+          <span className="admin-connectivity-label">
             {isOnline
               ? 'Online'
               : 'Offline'}
           </span>
         </span>
 
+        {/*
+         * Keep logout in markup for the current mobile shell.
+         * UI-0C hides this duplicate action on desktop because
+         * desktop logout already lives in the navigation rail.
+         * Mobile ownership is redesigned later in UI-0D.
+         */}
         <button
           aria-label="Keluar dari Admin Portal"
           className="admin-shell-icon-button admin-topbar-logout"
@@ -230,6 +308,7 @@ export default function AdminTopbar({
           }
         >
           <LogOut
+            aria-hidden="true"
             size={16}
           />
 

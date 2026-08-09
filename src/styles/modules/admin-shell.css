@@ -3842,3 +3842,972 @@ and (
       none;
   }
 }
+
+/* UI-0C v2 — Spatial Command Header */
+
+.admin-command-visually-hidden {
+  position:
+    absolute;
+
+  width:
+    1px;
+
+  height:
+    1px;
+
+  overflow:
+    hidden;
+
+  clip:
+    rect(
+      0,
+      0,
+      0,
+      0
+    );
+
+  clip-path:
+    inset(
+      50%
+    );
+
+  white-space:
+    nowrap;
+}
+
+@media (min-width: 768px) {
+  .admin-workspace-canvas
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ] {
+    position:
+      sticky;
+
+    top:
+      calc(
+        var(
+          --admin-environment-pad
+        ) +
+        12px
+      );
+
+    z-index:
+      var(
+        --z-sticky
+      );
+
+    min-height:
+      68px;
+
+    display:
+      flex;
+
+    align-items:
+      center;
+
+    justify-content:
+      space-between;
+
+    gap:
+      24px;
+
+    margin:
+      14px
+      0
+      24px;
+
+    padding:
+      10px
+      11px
+      10px
+      16px;
+
+    border:
+      1px solid
+      color-mix(
+        in srgb,
+        var(
+          --studio-edge-normal
+        )
+        72%,
+        transparent
+      );
+
+    border-radius:
+      18px;
+
+    background:
+      linear-gradient(
+        118deg,
+        color-mix(
+          in srgb,
+          var(
+            --studio-surface-1
+          )
+          95%,
+          var(
+            --studio-canvas
+          )
+        ),
+        color-mix(
+          in srgb,
+          var(
+            --studio-surface-2
+          )
+          48%,
+          var(
+            --studio-canvas
+          )
+        )
+      );
+
+    box-shadow:
+      0
+      1px
+      0
+      rgba(
+        255,
+        255,
+        255,
+        0.58
+      )
+      inset,
+      var(
+        --studio-shadow-contact
+      );
+
+    backdrop-filter:
+      none;
+  }
+
+  html[
+    data-admin-theme-active='true'
+  ][
+    data-theme='dark'
+  ]
+  .admin-workspace-canvas
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ] {
+    border-color:
+      color-mix(
+        in srgb,
+        var(
+          --studio-edge-normal
+        )
+        76%,
+        transparent
+      );
+
+    background:
+      linear-gradient(
+        118deg,
+        color-mix(
+          in srgb,
+          var(
+            --studio-surface-1
+          )
+          96%,
+          var(
+            --studio-canvas
+          )
+        ),
+        color-mix(
+          in srgb,
+          var(
+            --studio-surface-2
+          )
+          66%,
+          var(
+            --studio-canvas
+          )
+        )
+      );
+
+    box-shadow:
+      0
+      1px
+      0
+      rgba(
+        255,
+        255,
+        255,
+        0.035
+      )
+      inset,
+      var(
+        --studio-shadow-contact
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-heading {
+    min-width:
+      0;
+
+    display:
+      grid;
+
+    align-content:
+      center;
+
+    gap:
+      5px;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-context {
+    min-width:
+      0;
+
+    display:
+      flex;
+
+    align-items:
+      center;
+
+    gap:
+      5px;
+
+    margin:
+      0;
+
+    color:
+      var(
+        --studio-text-tertiary
+      );
+
+    font-size:
+      0.62rem;
+
+    font-weight:
+      620;
+
+    letter-spacing:
+      0.01em;
+
+    line-height:
+      1;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-command-context-mark {
+    width:
+      6px;
+
+    height:
+      6px;
+
+    flex:
+      0 0
+      6px;
+
+    border-radius:
+      999px;
+
+    background:
+      var(
+        --studio-accent
+      );
+
+    box-shadow:
+      0
+      0
+      0
+      4px
+      var(
+        --studio-accent-soft
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-context-studio {
+    color:
+      var(
+        --studio-text-tertiary
+      );
+
+    font-weight:
+      600;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-context
+  svg {
+    color:
+      var(
+        --studio-text-tertiary
+      );
+
+    opacity:
+      0.58;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-context
+  strong {
+    overflow:
+      hidden;
+
+    color:
+      var(
+        --studio-text-secondary
+      );
+
+    font-size:
+      inherit;
+
+    font-weight:
+      690;
+
+    text-overflow:
+      ellipsis;
+
+    white-space:
+      nowrap;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  h1 {
+    max-width:
+      min(
+        54vw,
+        640px
+      );
+
+    overflow:
+      hidden;
+
+    margin:
+      0;
+
+    color:
+      var(
+        --studio-text-primary
+      );
+
+    font-size:
+      clamp(
+        1.18rem,
+        1.25vw,
+        1.42rem
+      );
+
+    font-weight:
+      760;
+
+    letter-spacing:
+      -0.042em;
+
+    line-height:
+      1.02;
+
+    text-overflow:
+      ellipsis;
+
+    white-space:
+      nowrap;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-actions {
+    min-width:
+      0;
+
+    display:
+      inline-flex;
+
+    flex:
+      0
+      0
+      auto;
+
+    align-items:
+      center;
+
+    gap:
+      6px;
+  }
+
+  .admin-command-utility,
+  .admin-command-icon {
+    position:
+      relative;
+
+    min-height:
+      38px;
+
+    display:
+      inline-flex;
+
+    align-items:
+      center;
+
+    justify-content:
+      center;
+
+    border:
+      1px solid
+      transparent;
+
+    border-radius:
+      12px;
+
+    background:
+      transparent;
+
+    color:
+      var(
+        --studio-text-secondary
+      );
+
+    font:
+      inherit;
+
+    cursor:
+      pointer;
+
+    transition:
+      border-color
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-standard
+      ),
+      background
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-standard
+      ),
+      color
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-standard
+      ),
+      transform
+      var(
+        --studio-duration-fast
+      )
+      var(
+        --studio-ease-out
+      );
+  }
+
+  .admin-command-utility {
+    gap:
+      7px;
+
+    padding:
+      0
+      10px;
+
+    font-size:
+      0.68rem;
+
+    font-weight:
+      660;
+
+    text-decoration:
+      none;
+  }
+
+  .admin-command-icon {
+    width:
+      38px;
+
+    min-width:
+      38px;
+
+    padding:
+      0;
+  }
+
+  .admin-command-utility:hover,
+  .admin-command-icon:hover {
+    border-color:
+      var(
+        --studio-edge-soft
+      );
+
+    background:
+      var(
+        --studio-surface-2
+      );
+
+    color:
+      var(
+        --studio-text-primary
+      );
+
+    transform:
+      translateY(
+        -1px
+      );
+  }
+
+  .admin-command-utility:active,
+  .admin-command-icon:active {
+    transform:
+      translateY(
+        0
+      );
+  }
+
+  .admin-command-utility:focus-visible,
+  .admin-command-icon:focus-visible {
+    outline:
+      2px solid
+      var(
+        --studio-accent
+      );
+
+    outline-offset:
+      2px;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-guard-shortcut {
+    min-height:
+      38px;
+
+    border:
+      1px solid
+      transparent;
+
+    border-radius:
+      12px;
+
+    background:
+      transparent;
+
+    color:
+      var(
+        --studio-text-secondary
+      );
+
+    padding:
+      0
+      10px;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-guard-shortcut:hover {
+    border-color:
+      color-mix(
+        in srgb,
+        var(
+          --studio-accent
+        )
+        14%,
+        var(
+          --studio-edge-soft
+        )
+      );
+
+    background:
+      var(
+        --studio-accent-soft
+      );
+
+    color:
+      var(
+        --studio-accent-hover
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-notification-shortcut {
+    position:
+      relative;
+
+    width:
+      38px;
+
+    min-width:
+      38px;
+
+    min-height:
+      38px;
+
+    gap:
+      0;
+
+    border:
+      1px solid
+      transparent;
+
+    border-radius:
+      12px;
+
+    background:
+      transparent;
+
+    color:
+      var(
+        --studio-text-secondary
+      );
+
+    padding:
+      0;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-notification-shortcut:hover {
+    border-color:
+      var(
+        --studio-edge-soft
+      );
+
+    background:
+      var(
+        --studio-surface-2
+      );
+
+    color:
+      var(
+        --studio-text-primary
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-notification-shortcut
+  .admin-notification-badge {
+    position:
+      absolute;
+
+    top:
+      -4px;
+
+    right:
+      -4px;
+
+    min-width:
+      17px;
+
+    height:
+      17px;
+
+    padding:
+      0
+      4px;
+
+    border:
+      2px solid
+      var(
+        --studio-surface-1
+      );
+
+    font-size:
+      0.59rem;
+
+    box-shadow:
+      var(
+        --studio-shadow-contact
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-status-chip {
+    position:
+      relative;
+
+    min-height:
+      34px;
+
+    display:
+      inline-flex;
+
+    align-items:
+      center;
+
+    gap:
+      6px;
+
+    border:
+      1px solid
+      transparent;
+
+    border-radius:
+      999px;
+
+    background:
+      transparent;
+
+    color:
+      var(
+        --studio-text-tertiary
+      );
+
+    padding:
+      0
+      8px;
+
+    font-size:
+      0.62rem;
+
+    font-weight:
+      630;
+
+    letter-spacing:
+      0;
+
+    text-transform:
+      none;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-connectivity-dot {
+    width:
+      7px;
+
+    height:
+      7px;
+
+    flex:
+      0
+      0
+      7px;
+
+    border-radius:
+      999px;
+
+    background:
+      var(
+        --studio-success
+      );
+
+    box-shadow:
+      0
+      0
+      0
+      3px
+      color-mix(
+        in srgb,
+        var(
+          --studio-success
+        )
+        11%,
+        transparent
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-status-chip.is-online {
+    border-color:
+      transparent;
+
+    background:
+      transparent;
+
+    color:
+      var(
+        --studio-text-tertiary
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-status-chip.is-offline {
+    border-color:
+      color-mix(
+        in srgb,
+        var(
+          --studio-danger
+        )
+        18%,
+        var(
+          --studio-edge-soft
+        )
+      );
+
+    background:
+      color-mix(
+        in srgb,
+        var(
+          --studio-danger
+        )
+        8%,
+        var(
+          --studio-surface-1
+        )
+      );
+
+    color:
+      var(
+        --studio-danger
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-status-chip.is-offline
+  .admin-connectivity-dot {
+    background:
+      var(
+        --studio-danger
+      );
+
+    box-shadow:
+      0
+      0
+      0
+      3px
+      color-mix(
+        in srgb,
+        var(
+          --studio-danger
+        )
+        12%,
+        transparent
+      );
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-connectivity-icon {
+    display:
+      none;
+  }
+
+  /*
+   * Desktop logout already exists in the navigation rail.
+   * Keep the topbar control in markup for mobile until UI-0D,
+   * but remove the duplicate desktop action.
+   */
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-logout {
+    display:
+      none;
+  }
+}
+
+@media (
+  min-width: 768px
+)
+and (
+  max-width: 980px
+) {
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-command-utility-label {
+    position:
+      absolute;
+
+    width:
+      1px;
+
+    height:
+      1px;
+
+    overflow:
+      hidden;
+
+    clip-path:
+      inset(
+        50%
+      );
+
+    white-space:
+      nowrap;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-command-utility {
+    width:
+      38px;
+
+    min-width:
+      38px;
+
+    padding:
+      0;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-connectivity-label {
+    display:
+      none;
+  }
+
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ]
+  .admin-topbar-status-chip {
+    width:
+      34px;
+
+    min-width:
+      34px;
+
+    justify-content:
+      center;
+
+    padding:
+      0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-workspace-canvas
+  .admin-topbar[
+    data-admin-spatial-header='ui-0c'
+  ] {
+    margin-top:
+      16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-command-utility,
+  .admin-command-icon {
+    transition:
+      none;
+  }
+}
