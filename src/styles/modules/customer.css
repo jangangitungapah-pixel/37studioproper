@@ -2490,3 +2490,501 @@ html[data-admin-theme-active='true'] {
   }
 }
 
+/* ==========================================================================
+   UI-5 Typography Alignment Repair
+   Matches the typography rhythm established by UI-2, UI-3, and UI-4:
+   restrained editorial headings, compact 0.5x–0.7x rem metadata,
+   and medium body weights instead of heavy dashboard typography.
+   ========================================================================== */
+
+/* Page-level editorial hierarchy */
+
+.customer-editorial-kicker {
+  font-size: 0.61rem;
+  font-weight: 760;
+  letter-spacing: 0.13em;
+  line-height: 1;
+}
+
+.customer-editorial-copy h2 {
+  font-size:
+    clamp(
+      1.65rem,
+      3vw,
+      2.35rem
+    );
+  font-weight: 760;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.customer-editorial-copy p {
+  margin-top: 0;
+  max-width: 68ch;
+  color: var(--studio-text-tertiary);
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.customer-header-signal small {
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.customer-header-signal strong {
+  font-size: 0.66rem;
+  font-weight: 680;
+}
+
+/* Relationship overview */
+
+.customer-overview-kicker {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.customer-overview-number strong {
+  font-size:
+    clamp(
+      1.75rem,
+      2.8vw,
+      2.15rem
+    );
+  font-weight: 770;
+  letter-spacing: -0.06em;
+}
+
+.customer-overview-number span {
+  font-size: 0.65rem;
+  font-weight: 580;
+}
+
+.customer-overview-primary p,
+.customer-overview-primary p.customer-overview-note {
+  font-size: 0.62rem;
+  font-weight: 520;
+  line-height: 1.45;
+}
+
+.customer-overview-note strong {
+  font-weight: 680;
+}
+
+.customer-overview-metrics small {
+  font-size: 0.56rem;
+  font-weight: 650;
+}
+
+.customer-overview-metrics strong {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.customer-overview-metrics em {
+  font-size: 0.58rem;
+  font-weight: 550;
+}
+
+/* Search, filter, and primary action */
+
+.customer-search-command input {
+  font-size: 0.69rem;
+  font-weight: 500;
+}
+
+.customer-command-filter
+.studio-select-copy
+strong {
+  font-size: 0.62rem;
+  font-weight: 660;
+}
+
+.customer-add-button,
+.customer-button {
+  font-size: 0.64rem;
+  font-weight: 680;
+}
+
+.studio-select-list[aria-label='Filter customer']
+.studio-select-option-text
+strong {
+  font-size: 0.64rem;
+  font-weight: 660;
+}
+
+.studio-select-list[aria-label='Filter customer']
+.studio-select-option-text
+span {
+  font-size: 0.56rem;
+  font-weight: 500;
+}
+
+/* Follow-up Center */
+
+.customer-followup-title small {
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.customer-followup-title strong {
+  font-size: 0.7rem;
+  font-weight: 680;
+}
+
+.customer-followup-brief strong {
+  font-size: 0.68rem;
+  font-weight: 720;
+}
+
+.customer-followup-brief small {
+  font-size: 0.55rem;
+  font-weight: 620;
+}
+
+.customer-followup-brief em {
+  font-size: 0.61rem;
+  font-weight: 620;
+}
+
+.customer-followup-select
+.studio-select-label {
+  font-size: 0.53rem;
+  font-weight: 680;
+  letter-spacing: 0.06em;
+}
+
+.customer-followup-select
+.studio-select-copy
+strong {
+  font-size: 0.62rem;
+  font-weight: 660;
+}
+
+.customer-followup-metrics small {
+  font-size: 0.55rem;
+  font-weight: 650;
+}
+
+.customer-followup-metrics strong {
+  font-size: 0.7rem;
+  font-weight: 690;
+}
+
+.customer-followup-queue strong {
+  font-size: 0.68rem;
+  font-weight: 680;
+}
+
+.customer-followup-queue small,
+.customer-followup-hint {
+  font-size: 0.58rem;
+  font-weight: 500;
+}
+
+.customer-followup-queue a {
+  font-size: 0.59rem;
+  font-weight: 660;
+}
+
+/* Relationship directory */
+
+.customer-directory-head small {
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.075em;
+}
+
+.customer-directory-head strong {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.customer-directory-head em {
+  font-size: 0.57rem;
+  font-weight: 520;
+}
+
+.customer-directory-columns {
+  font-size: 0.55rem;
+  font-weight: 720;
+  letter-spacing: 0.055em;
+}
+
+.customer-avatar {
+  font-size: 0.72rem;
+  font-weight: 720;
+}
+
+.customer-directory-name-line > strong {
+  font-size: 0.7rem;
+  font-weight: 710;
+  letter-spacing: -0.01em;
+}
+
+.customer-directory-contact {
+  font-size: 0.59rem;
+  font-weight: 560;
+}
+
+.customer-badge-duplicate,
+.customer-status-badge {
+  font-size: 0.54rem;
+  font-weight: 680;
+}
+
+.customer-directory-stat strong {
+  font-size: 0.61rem;
+  font-weight: 650;
+}
+
+.customer-directory-attention strong {
+  font-size: 0.62rem;
+  font-weight: 720;
+}
+
+.customer-action-icon {
+  font-size: 0.62rem;
+}
+
+/* Customer detail */
+
+.customer-detail-eyebrow {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.customer-detail-title-compact h2 {
+  font-size:
+    clamp(
+      1.4rem,
+      2.5vw,
+      1.95rem
+    );
+  font-weight: 760;
+}
+
+.customer-detail-phone {
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.detail-action-btn {
+  font-size: 0.64rem;
+  font-weight: 660;
+}
+
+.customer-note-card strong {
+  font-size: 0.56rem;
+  font-weight: 700;
+}
+
+.customer-note-card p,
+.customer-payment-alert {
+  font-size: 0.66rem;
+  font-weight: 520;
+}
+
+.customer-payment-alert {
+  font-weight: 620;
+}
+
+.stat-item-compact small {
+  font-size: 0.56rem;
+  font-weight: 650;
+}
+
+.stat-item-compact strong {
+  font-size: 0.84rem;
+  font-weight: 730;
+}
+
+.info-section-compact h3 {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.customer-band-chip-compact {
+  font-size: 0.64rem;
+  font-weight: 560;
+}
+
+.customer-band-chip-compact em {
+  font-size: 0.55rem;
+  font-weight: 650;
+}
+
+.customer-contact-sheet
+.contact-label {
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+}
+
+.contact-row .contact-value {
+  font-size: 0.64rem;
+  font-weight: 620;
+}
+
+.no-data-text {
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
+/* Duplicate and activity history */
+
+.customer-duplicate-card header {
+  font-size: 0.64rem;
+  font-weight: 680;
+}
+
+.customer-duplicate-item strong {
+  font-size: 0.65rem;
+  font-weight: 680;
+}
+
+.customer-duplicate-item small {
+  font-size: 0.56rem;
+  font-weight: 500;
+}
+
+.customer-duplicate-item button:last-child {
+  font-size: 0.59rem;
+  font-weight: 660;
+}
+
+.customer-timeline-month-compact {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.timeline-col-date strong,
+.timeline-col-main b {
+  font-size: 0.66rem;
+  font-weight: 680;
+}
+
+.timeline-col-date small,
+.timeline-col-main small {
+  font-size: 0.56rem;
+  font-weight: 500;
+}
+
+.customer-mini-status {
+  font-size: 0.54rem;
+  font-weight: 680;
+}
+
+.customer-timeline-expanded-compact small {
+  font-size: 0.55rem;
+  font-weight: 620;
+}
+
+.customer-timeline-expanded-compact strong {
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+/* Loading, toast, and customer form */
+
+.customer-loading-kicker,
+.customer-dialog-kicker {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.customer-state strong {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.customer-state span {
+  font-size: 0.64rem;
+  font-weight: 500;
+}
+
+.customer-toast-copy strong {
+  font-size: 0.68rem;
+  font-weight: 680;
+}
+
+.customer-toast-copy span {
+  font-size: 0.6rem;
+  font-weight: 500;
+}
+
+.customer-dialog-head h2 {
+  font-size: 1.35rem;
+  font-weight: 760;
+  letter-spacing: -0.045em;
+}
+
+.customer-dialog-head p {
+  font-size: 0.69rem;
+  font-weight: 500;
+}
+
+.customer-note-field-head {
+  font-size: 0.65rem;
+  font-weight: 650;
+}
+
+.customer-note-field-head small {
+  font-size: 0.56rem;
+  font-weight: 500;
+}
+
+.customer-note-field textarea {
+  font-size: 0.69rem;
+  font-weight: 500;
+}
+
+.customer-form-error {
+  font-size: 0.64rem;
+  font-weight: 620;
+}
+
+@media (max-width: 767px) {
+  .customer-editorial-copy h2 {
+    font-size: 1.55rem;
+  }
+
+  .customer-editorial-copy p {
+    font-size: 0.7rem;
+  }
+
+  .customer-overview-number strong {
+    font-size: 1.85rem;
+  }
+
+  .customer-directory-name-line > strong {
+    font-size: 0.68rem;
+  }
+
+  .customer-directory-stat small,
+  .customer-directory-attention small {
+    font-size: 0.53rem;
+    font-weight: 650;
+  }
+
+  .customer-directory-stat strong,
+  .customer-directory-attention strong {
+    font-size: 0.61rem;
+  }
+
+  .customer-followup-title strong {
+    font-size: 0.67rem;
+  }
+
+  .customer-dialog-head h2 {
+    font-size: 1.25rem;
+  }
+}
+

@@ -283,6 +283,64 @@ for (
   );
 }
 
+
+
+/**
+ * UI-5 typography alignment contract
+ *
+ * UI-5 must follow the restrained typography rhythm already established
+ * by Request Inbox, Booking Calendar, and All Bookings.
+ */
+for (
+  const required
+  of [
+    'UI-5 Typography Alignment Repair',
+    '.customer-editorial-kicker',
+    '.customer-editorial-copy h2',
+    '.customer-editorial-copy p',
+    '.customer-overview-number strong',
+    '.customer-directory-name-line > strong',
+    '.customer-directory-contact',
+    '.customer-status-badge',
+    '.customer-directory-stat strong',
+    '.customer-detail-title-compact h2',
+    '.customer-dialog-head h2',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      required
+    ),
+    true,
+    'UI-5 typography alignment marker missing: ' +
+      required
+  );
+}
+
+for (
+  const requiredValue
+  of [
+    'font-size: 0.61rem;',
+    'font-size: 0.74rem;',
+    'font-size: 0.7rem;',
+    'font-size: 0.59rem;',
+    'font-size: 0.54rem;',
+    'font-weight: 500;',
+    'font-weight: 680;',
+    'font-weight: 710;',
+    'font-weight: 760;',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      requiredValue
+    ),
+    true,
+    'UI-5 typography scale value missing: ' +
+      requiredValue
+  );
+}
+
 process.stdout.write(
   '✅ Admin Spatial Customer UI-5 contract passed.\n'
 );
