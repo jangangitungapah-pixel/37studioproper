@@ -2187,7 +2187,25 @@ and (
     data-admin-spatial-rail='ui-0b'
   ] {
     position:
-      sticky;
+      fixed;
+
+    top:
+      var(
+        --admin-environment-pad
+      );
+
+    left:
+      var(
+        --admin-environment-pad
+      );
+
+    width:
+      var(
+        --admin-sidebar-expanded
+      );
+
+    box-sizing:
+      border-box;
 
     display:
       flex;
@@ -3479,6 +3497,11 @@ and (
   .admin-sidebar[
     data-admin-spatial-rail='ui-0b'
   ] {
+    width:
+      var(
+        --admin-sidebar-collapsed
+      );
+
     align-items:
       stretch;
 

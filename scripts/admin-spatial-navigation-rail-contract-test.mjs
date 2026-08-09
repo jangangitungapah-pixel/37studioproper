@@ -146,22 +146,23 @@ const ui0bCssSource =
   );
 
 /**
- * UI-0B.2 persistent rail regression.
+ * UI-0B.2 viewport-pinned rail regression.
  *
- * The navigation grid item must stretch to the height of the
- * workspace. Otherwise the sticky rail is bounded by a
- * viewport-height parent and scrolls away on long pages.
+ * Desktop navigation is a persistent shell layer.
+ * Do not depend on sticky containing-block behavior for long
+ * pages: the navigation zone stays in the grid as a layout
+ * placeholder while the visual rail is fixed to the viewport.
  */
 assert.match(
   ui0bCssSource,
-  /\.admin-navigation-zone\s*\{[\s\S]*?position:\s*relative;[\s\S]*?align-self:\s*stretch;[\s\S]*?z-index:\s*4;[\s\S]*?\}/,
-  'Navigation zone must stretch with long workspace content.',
+  /\.admin-navigation-zone\s+\.admin-sidebar\[\s*data-admin-spatial-rail='ui-0b'\s*\]\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?top:\s*var\(\s*--admin-environment-pad\s*\);[\s\S]*?left:\s*var\(\s*--admin-environment-pad\s*\);[\s\S]*?width:\s*var\(\s*--admin-sidebar-expanded\s*\);/,
+  'Desktop navigation rail must be pinned directly to the viewport.',
 );
 
 assert.match(
   ui0bCssSource,
-  /\.admin-navigation-zone\s+\.admin-sidebar\[\s*data-admin-spatial-rail='ui-0b'\s*\]\s*\{[\s\S]*?position:\s*sticky;/,
-  'Desktop navigation rail must remain sticky inside the stretched navigation zone.',
+  /\.admin-shell\.is-sidebar-collapsed\s+\.admin-sidebar\[\s*data-admin-spatial-rail='ui-0b'\s*\]\s*\{[\s\S]*?width:\s*var\(\s*--admin-sidebar-collapsed\s*\);/,
+  'Collapsed fixed rail width must follow the collapsed shell column.',
 );
 
 assert.match(
