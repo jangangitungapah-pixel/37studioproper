@@ -44,6 +44,16 @@ export function makeOperatorFeeEntryId({ bookingId = '', personId = '', ruleId =
   return [cleanBookingId, cleanPersonId, cleanRuleId].join('__');
 }
 
+export function makeOperatorFeeRuleEntryId({
+  bookingId = '',
+  ruleId = '',
+} = {}) {
+  const cleanBookingId = cleanText(bookingId, 'booking').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanRuleId = cleanText(ruleId, 'rule').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  return cleanBookingId + '__rule__' + cleanRuleId;
+}
+
 export function normalizeOperatorFeeEntry(entry, fallbackId = '') {
   const source = entry && typeof entry === 'object' ? entry : {};
   const id = cleanText(source.id, fallbackId || makeOperatorFeeEntryId(source));
@@ -166,6 +176,63 @@ export function getOperatorFeeEntriesForBooking(
           )
         ),
     );
+}
+
+function getOperatorFeeStatusPriority(status) {
+  if (status === OPERATOR_FEE_ENTRY_STATUSES.POSTED) return 4;
+  if (status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED) return 3;
+  if (status === OPERATOR_FEE_ENTRY_STATUSES.DRAFT) return 2;
+  return 0;
+}
+
+export function getOperatorFeeEntriesForBookingRule(
+  entries = [],
+  booking = {},
+  ruleId = '',
+) {
+  const cleanRuleId = cleanText(ruleId);
+
+  if (!cleanRuleId) return [];
+
+  return getOperatorFeeEntriesForBooking(entries, booking)
+    .filter(
+      (entry) =>
+        entry.status !== OPERATOR_FEE_ENTRY_STATUSES.VOID &&
+        entry.ruleId === cleanRuleId,
+    )
+    .sort((first, second) => {
+      const statusDelta =
+        getOperatorFeeStatusPriority(second.status) -
+        getOperatorFeeStatusPriority(first.status);
+
+      if (statusDelta) return statusDelta;
+
+      return String(second.updatedAt || second.createdAt || '')
+        .localeCompare(String(first.updatedAt || first.createdAt || ''));
+    });
+}
+
+export function getCanonicalOperatorFeeEntry(
+  entries = [],
+  booking = {},
+  ruleId = '',
+) {
+  return getOperatorFeeEntriesForBookingRule(entries, booking, ruleId)[0] || null;
+}
+
+export function getOperatorFeeDuplicateRuleIds(entries = [], booking = {}) {
+  const counts = new Map();
+
+  getOperatorFeeEntriesForBooking(entries, booking)
+    .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.VOID)
+    .forEach((entry) => {
+      if (!entry.ruleId) return;
+      counts.set(entry.ruleId, (counts.get(entry.ruleId) || 0) + 1);
+    });
+
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([ruleId]) => ruleId);
 }
 
 export function getBookingOperatorFeeVisibility(
@@ -593,6 +660,10 @@ export const operatorFeeRepository = {
   buildOperatorFeePostedPatch,
   createOperatorFeeBookkeepingPayload,
   deleteOperatorFeeEntry,
+  getCanonicalOperatorFeeEntry,
+  getOperatorFeeDuplicateRuleIds,
+  getOperatorFeeEntriesForBookingRule,
+  makeOperatorFeeRuleEntryId,
   markOperatorFeeEntryReviewed,
   postOperatorFeeEntryToBookkeeping,
   normalizeOperatorFeeEntry,

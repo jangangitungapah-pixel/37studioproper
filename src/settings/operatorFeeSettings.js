@@ -451,6 +451,7 @@ export function buildOperatorFeeTargetOptions(pricingSettings = {}) {
 export function createEstimatedOperatorFeeLines({
   assignedPeopleByRole = {},
   booking,
+  includeUnassigned = false,
   settings = getOperatorFeeSettings(),
 } = {}) {
   const normalizedSettings = normalizeOperatorFeeSettings(settings);
@@ -464,9 +465,14 @@ export function createEstimatedOperatorFeeLines({
     .map((rule) => {
       const person = assignedPeopleByRole[rule.payeeRole] || null;
       const amount = calculateOperatorFeeRuleAmount(rule, booking);
+      const requiresAssignment = Boolean(rule.requireAssignedPerson && !person);
+
+      if (requiresAssignment && !includeUnassigned) {
+        return null;
+      }
 
       return {
-        id: bookingCode + ':' + rule.id + ':' + (person?.id || rule.payeeRole),
+        id: bookingCode + ':' + rule.id + ':' + (person?.id || 'unassigned-' + rule.payeeRole),
         amount,
         bookingCode,
         bookingDate: cleanText(booking?.date),
@@ -475,7 +481,15 @@ export function createEstimatedOperatorFeeLines({
         durationHours: getBookingDurationHours(booking),
         payeeRole: rule.payeeRole,
         personId: cleanText(person?.id),
-        personName: cleanText(person?.name, rule.payeeRole === OPERATOR_FEE_PERSON_ROLES.GUARD ? 'Penjaga Studio' : 'Operator Recording'),
+        personName: cleanText(
+          person?.name,
+          requiresAssignment
+            ? ''
+            : rule.payeeRole === OPERATOR_FEE_PERSON_ROLES.GUARD
+              ? 'Penjaga Studio'
+              : 'Operator Recording'
+        ),
+        requiresAssignment,
         ruleId: rule.id,
         ruleName: rule.name,
         serviceLabel,
@@ -488,6 +502,7 @@ export function createEstimatedOperatorFeeLines({
           .replace('{date}', cleanText(booking?.date)),
       };
     })
+    .filter(Boolean)
     .filter((line) => line.amount > 0);
 }
 

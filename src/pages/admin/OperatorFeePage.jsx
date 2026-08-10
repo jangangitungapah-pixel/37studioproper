@@ -19,16 +19,22 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import GuardMealReconciliationPanel from '../../components/operator-fee/GuardMealReconciliationPanel.jsx';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import {
+  GUARD_ATTENDANCE_APPROVAL_STATUSES,
+  GUARD_ATTENDANCE_STATUSES,
   isGuardFeeLineEligibleByAttendance,
   subscribeGuardAttendanceSessions,
 } from '../../services/guardAttendanceRepository.js';
 import {
   OPERATOR_FEE_ENTRIES_COLLECTION,
   OPERATOR_FEE_ENTRY_STATUSES,
-  markOperatorFeeEntryReviewed,
+  getCanonicalOperatorFeeEntry,
+  getOperatorFeeDuplicateRuleIds,
+  getOperatorFeeEntriesForBookingRule,
+  makeOperatorFeeRuleEntryId,
   postOperatorFeeEntryToBookkeeping,
   subscribeOperatorFeeEntries,
   upsertOperatorFeeEntry,
+  voidOperatorFeeEntry,
 } from '../../services/operatorFeeRepository.js';
 import {
   OPERATOR_FEE_PERSON_ROLES,
@@ -146,33 +152,33 @@ function isDateInPeriod(dateValue, period) {
   return true;
 }
 
-function getPeopleOptions(settings, role) {
+function getPeopleOptions(settings, role, selectedPersonId = '') {
   const allowedRoles = role === OPERATOR_FEE_PERSON_ROLES.GUARD
     ? [OPERATOR_FEE_PERSON_ROLES.GUARD, OPERATOR_FEE_PERSON_ROLES.BOTH]
     : [OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR, OPERATOR_FEE_PERSON_ROLES.BOTH];
 
   const people = settings.people
-    .filter((person) => person.active && allowedRoles.includes(person.role))
+    .filter(
+      (person) =>
+        allowedRoles.includes(person.role) &&
+        (person.active || person.id === selectedPersonId)
+    )
     .map((person) => ({
       key: person.id,
-      label: person.name,
-      description: person.defaultPaymentMethod || 'cash',
+      label: person.name + (person.active ? '' : ' · nonaktif'),
+      description: person.active
+        ? person.defaultPaymentMethod || 'cash'
+        : 'Histori · pilih crew aktif untuk assignment baru',
     }));
 
   return [
-    { key: 'none', label: 'Belum dipilih', description: 'Pakai label default.' },
+    { key: 'none', label: 'Belum dipilih', description: 'Assignment wajib sebelum review.' },
     ...people,
   ];
 }
 
 function getPersonById(settings, personId) {
   return settings.people.find((person) => person.id === personId) || null;
-}
-
-function getDefaultPersonId(settings, role) {
-  const options = getPeopleOptions(settings, role);
-
-  return options.find((item) => item.key !== 'none')?.key || 'none';
 }
 
 function getEntriesByBooking(entries, booking) {
@@ -185,68 +191,144 @@ function getEntriesByBooking(entries, booking) {
   );
 }
 
-function getActiveLineIds(lines = []) {
-  return new Set(lines.map((line) => line.id).filter(Boolean));
+function getActiveRuleIds(lines = []) {
+  return new Set(lines.map((line) => line.ruleId).filter(Boolean));
 }
 
-function getEntriesForLineIds(entries, booking, lineIds) {
-  if (!lineIds?.size) return [];
-
-  return getEntriesByBooking(entries, booking).filter((entry) => lineIds.has(entry.id));
+function getEntryStatusPriority(status) {
+  if (status === OPERATOR_FEE_ENTRY_STATUSES.POSTED) return 4;
+  if (status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED) return 3;
+  if (status === OPERATOR_FEE_ENTRY_STATUSES.DRAFT) return 2;
+  return 0;
 }
 
-function getEntriesForRow(entries, row) {
-  return getEntriesForLineIds(entries, row.booking, getActiveLineIds(row.lines));
+function getPersistedPersonIdForRole(entries, booking, role) {
+  return getEntriesByBooking(entries, booking)
+    .filter(
+      (entry) =>
+        entry.status !== OPERATOR_FEE_ENTRY_STATUSES.VOID &&
+        entry.payeeRole === role &&
+        entry.personId
+    )
+    .sort((first, second) => {
+      const priority =
+        getEntryStatusPriority(second.status) -
+        getEntryStatusPriority(first.status);
+
+      if (priority) return priority;
+
+      return String(second.updatedAt || second.createdAt || '')
+        .localeCompare(String(first.updatedAt || first.createdAt || ''));
+    })[0]?.personId || '';
 }
 
-function getBookingFeeStatus(entries, booking, lines) {
-  const lineIds = getActiveLineIds(lines);
-  const relatedEntries = getEntriesForLineIds(entries, booking, lineIds)
-    .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.VOID);
+function getApprovedGuardCandidates(settings, sessions, booking) {
+  const date = cleanText(booking?.date);
 
-  if (!lineIds.size || !relatedEntries.length) return 'estimate';
+  if (!date) return [];
 
-  const statusByLineId = relatedEntries.reduce((result, entry) => {
-    result.set(entry.id, entry.status);
-    return result;
-  }, new Map());
-  const lineStatuses = [...lineIds].map((lineId) => statusByLineId.get(lineId) || 'estimate');
+  const approvedPersonIds = new Set(
+    sessions
+      .filter(
+        (session) =>
+          session.date === date &&
+          session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED &&
+          [
+            GUARD_ATTENDANCE_STATUSES.ACTIVE,
+            GUARD_ATTENDANCE_STATUSES.CLOSED,
+          ].includes(session.status) &&
+          session.guardPersonId
+      )
+      .map((session) => session.guardPersonId)
+  );
 
-  if (lineStatuses.every((status) => status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)) return 'posted';
-  if (lineStatuses.every((status) => [OPERATOR_FEE_ENTRY_STATUSES.REVIEWED, OPERATOR_FEE_ENTRY_STATUSES.POSTED].includes(status))) return 'reviewed';
-  if (lineStatuses.some((status) => [OPERATOR_FEE_ENTRY_STATUSES.DRAFT, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED, OPERATOR_FEE_ENTRY_STATUSES.POSTED].includes(status))) return 'draft';
+  return settings.people.filter(
+    (person) =>
+      person.active &&
+      approvedPersonIds.has(person.id) &&
+      [
+        OPERATOR_FEE_PERSON_ROLES.GUARD,
+        OPERATOR_FEE_PERSON_ROLES.BOTH,
+      ].includes(person.role)
+  );
+}
+
+function getBookingFeeStatus(
+  entries,
+  booking,
+  lines,
+  {
+    assignmentDirty = false,
+    hasUnassigned = false,
+  } = {},
+) {
+  const ruleIds = [...getActiveRuleIds(lines)];
+
+  if (!ruleIds.length) return 'estimate';
+
+  const statuses = ruleIds.map((ruleId) =>
+    getCanonicalOperatorFeeEntry(entries, booking, ruleId)?.status || 'estimate'
+  );
+  const hasPersistedEntry = statuses.some((status) => status !== 'estimate');
+
+  if (statuses.every((status) => status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)) {
+    return 'posted';
+  }
+
+  if (assignmentDirty || hasUnassigned) {
+    return hasPersistedEntry ? 'draft' : 'estimate';
+  }
+
+  if (
+    statuses.every((status) =>
+      [
+        OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+        OPERATOR_FEE_ENTRY_STATUSES.POSTED,
+      ].includes(status)
+    )
+  ) {
+    return 'reviewed';
+  }
+
+  if (
+    statuses.some((status) =>
+      [
+        OPERATOR_FEE_ENTRY_STATUSES.DRAFT,
+        OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+        OPERATOR_FEE_ENTRY_STATUSES.POSTED,
+      ].includes(status)
+    )
+  ) {
+    return 'draft';
+  }
 
   return 'estimate';
 }
 
-function getStatusLabel(status) {
-  if (status === 'posted') return 'Posted';
-  if (status === 'reviewed') return 'Siap Post';
-  if (status === 'draft') return 'Draft';
-
-  return 'Perlu Review';
-}
-
-function getStatusTone(status) {
-  if (status === 'posted') return 'success';
-  if (status === 'reviewed') return 'info';
-  if (status === 'draft') return 'warning';
-
-  return 'muted';
-}
-
-function buildEntryFromLine(line, booking, person, status = OPERATOR_FEE_ENTRY_STATUSES.DRAFT) {
+function buildEntryFromLine(
+  line,
+  booking,
+  person,
+  existingEntry = null,
+  status = OPERATOR_FEE_ENTRY_STATUSES.DRAFT,
+) {
   return {
     ...line,
-    id: line.id,
+    id:
+      existingEntry?.id ||
+      makeOperatorFeeRuleEntryId({
+        bookingId: getBookingId(booking),
+        ruleId: line.ruleId,
+      }),
     amount: line.amount,
     bookingCode: getBookingCode(booking),
     bookingDate: cleanText(booking?.date),
     bookingId: getBookingId(booking),
+    createdAt: existingEntry?.createdAt,
     mealAmount: 0,
-    note: 'Generated from Operator Fee page.',
+    note: existingEntry?.note || 'Generated from Operator Fee page.',
     overtimeAmount: 0,
-    paymentMethod: person?.defaultPaymentMethod || 'cash',
+    paymentMethod: person?.defaultPaymentMethod || existingEntry?.paymentMethod || 'cash',
     personId: cleanText(person?.id || line.personId),
     personName: cleanText(person?.name || line.personName, 'Crew Studio'),
     status,
@@ -269,7 +351,9 @@ function getSearchBlob(row) {
 }
 
 function getRowPrimaryAction(row) {
-  if (!row.lines.length && row.blockedLines.length) return 'Absen';
+  if (row.hardPostedDuplicateRuleIds.length) return 'Audit';
+  if (row.unassignedLines.length) return 'Assign';
+  if (row.blockedLines.length) return 'Absen';
   if (!row.lines.length) return 'No Rule';
   if (row.status === 'posted') return 'Posted';
   if (row.status === 'reviewed') return 'Post';
@@ -604,9 +688,6 @@ export default function OperatorFeePage({ currentUser }) {
     );
   }, [canManageOperatorFee]);
 
-  const guardOptions = useMemo(() => getPeopleOptions(settings, OPERATOR_FEE_PERSON_ROLES.GUARD), [settings]);
-  const operatorOptions = useMemo(() => getPeopleOptions(settings, OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR), [settings]);
-
   const activeBookings = useMemo(() => {
     return bookings
       .filter(isBookingActive)
@@ -623,8 +704,36 @@ export default function OperatorFeePage({ currentUser }) {
     return activeBookings.map((booking) => {
       const bookingId = getBookingId(booking);
       const assignment = assignments[bookingId] || {};
-      const guardId = assignment.guardId || getDefaultPersonId(settings, OPERATOR_FEE_PERSON_ROLES.GUARD);
-      const operatorId = assignment.operatorId || getDefaultPersonId(settings, OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR);
+      const persistedGuardId = getPersistedPersonIdForRole(
+        entries,
+        booking,
+        OPERATOR_FEE_PERSON_ROLES.GUARD,
+      );
+      const persistedOperatorId = getPersistedPersonIdForRole(
+        entries,
+        booking,
+        OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR,
+      );
+      const attendanceGuardCandidates = getApprovedGuardCandidates(
+        settings,
+        guardSessions,
+        booking,
+      );
+      const automaticGuardId =
+        attendanceGuardCandidates.length === 1
+          ? attendanceGuardCandidates[0].id
+          : '';
+      const hasGuardOverride = Object.prototype.hasOwnProperty.call(assignment, 'guardId');
+      const hasOperatorOverride = Object.prototype.hasOwnProperty.call(assignment, 'operatorId');
+      const guardId =
+        (hasGuardOverride ? assignment.guardId : '') ||
+        persistedGuardId ||
+        automaticGuardId ||
+        'none';
+      const operatorId =
+        (hasOperatorOverride ? assignment.operatorId : '') ||
+        persistedOperatorId ||
+        'none';
       const guardPerson = getPersonById(settings, guardId);
       const operatorPerson = getPersonById(settings, operatorId);
       const estimatedLines = createEstimatedOperatorFeeLines({
@@ -633,24 +742,124 @@ export default function OperatorFeePage({ currentUser }) {
           [OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR]: operatorPerson,
         },
         booking,
+        includeUnassigned: true,
         settings,
       });
-      const lines = estimatedLines.filter((line) => isGuardFeeLineEligibleByAttendance(line, guardSessions));
-      const blockedLines = estimatedLines.filter((line) => !isGuardFeeLineEligibleByAttendance(line, guardSessions));
-      const totalFee = lines.reduce((total, line) => total + toNumber(line.amount), 0);
-      const status = getBookingFeeStatus(entries, booking, lines);
+      const unassignedLines = estimatedLines.filter((line) => line.requiresAssignment);
+      const assignedLines = estimatedLines.filter((line) => !line.requiresAssignment);
+      const lines = assignedLines.filter((line) =>
+        isGuardFeeLineEligibleByAttendance(line, guardSessions)
+      );
+      const blockedLines = assignedLines.filter((line) =>
+        !isGuardFeeLineEligibleByAttendance(line, guardSessions)
+      );
+      const activeRuleIds = getActiveRuleIds(estimatedLines);
+      const duplicateRuleIds = getOperatorFeeDuplicateRuleIds(entries, booking)
+        .filter((ruleId) => activeRuleIds.has(ruleId));
+      const hardPostedDuplicateRuleIds = duplicateRuleIds.filter(
+        (ruleId) =>
+          getOperatorFeeEntriesForBookingRule(entries, booking, ruleId)
+            .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
+            .length > 1
+      );
+      const assignmentDirty = Boolean(
+        (
+          persistedGuardId &&
+          guardId !== 'none' &&
+          guardId !== persistedGuardId
+        ) ||
+        (
+          persistedOperatorId &&
+          operatorId !== 'none' &&
+          operatorId !== persistedOperatorId
+        )
+      );
+      const postedDriftLines = assignedLines.filter((line) => {
+        const postedEntry = getOperatorFeeEntriesForBookingRule(
+          entries,
+          booking,
+          line.ruleId,
+        ).find((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        if (!postedEntry) return false;
+
+        return (
+          Number(postedEntry.totalAmount || postedEntry.amount || 0) !==
+            Number(line.amount || 0) ||
+          (
+            line.personId &&
+            postedEntry.personId &&
+            line.personId !== postedEntry.personId
+          )
+        );
+      });
+      const status = getBookingFeeStatus(
+        entries,
+        booking,
+        estimatedLines,
+        {
+          assignmentDirty,
+          hasUnassigned: Boolean(unassignedLines.length),
+        },
+      );
+      const postedSnapshotAmount = estimatedLines.reduce((total, line) => {
+        const postedEntry = getOperatorFeeEntriesForBookingRule(
+          entries,
+          booking,
+          line.ruleId,
+        ).find((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        return postedEntry
+          ? total + Number(postedEntry.totalAmount || postedEntry.amount || 0)
+          : total;
+      }, 0);
+      const unpostedPayableAmount = estimatedLines.reduce((total, line) => {
+        const hasPostedEntry = getOperatorFeeEntriesForBookingRule(
+          entries,
+          booking,
+          line.ruleId,
+        ).some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        if (
+          hasPostedEntry ||
+          line.requiresAssignment ||
+          !isGuardFeeLineEligibleByAttendance(line, guardSessions)
+        ) {
+          return total;
+        }
+
+        return total + toNumber(line.amount);
+      }, 0);
+      const totalFee = postedSnapshotAmount + unpostedPayableAmount;
+      const canReconcile = Boolean(
+        estimatedLines.length &&
+        !unassignedLines.length &&
+        !blockedLines.length &&
+        !hardPostedDuplicateRuleIds.length &&
+        lines.length === estimatedLines.length
+      );
 
       return {
+        allRuleLines: estimatedLines,
+        assignmentDirty,
+        attendanceGuardCandidates,
         blockedLines,
         booking,
         bookingId,
+        canReconcile,
+        duplicateRuleIds,
         guardId,
         guardPerson,
+        hardPostedDuplicateRuleIds,
         lines,
         operatorId,
         operatorPerson,
+        postedDriftLines,
+        postedSnapshotAmount,
         status,
         totalFee,
+        unassignedLines,
+        unpostedPayableAmount,
       };
     });
   }, [activeBookings, assignments, entries, guardSessions, settings]);
@@ -671,31 +880,89 @@ export default function OperatorFeePage({ currentUser }) {
     });
   }, [rows, searchQuery, statusFilter]);
 
-  const actionRows = useMemo(() => filteredRows.filter((row) => row.lines.length && row.status !== 'posted'), [filteredRows]);
-  const reviewableRows = useMemo(() => actionRows.filter((row) => row.status === 'estimate' || row.status === 'draft'), [actionRows]);
-  const postableRows = useMemo(() => filteredRows.filter((row) => row.status === 'reviewed'), [filteredRows]);
+  const actionRows = useMemo(
+    () => filteredRows.filter((row) => row.canReconcile && row.status !== 'posted'),
+    [filteredRows]
+  );
+  const reviewableRows = useMemo(
+    () => actionRows.filter((row) => row.status === 'estimate' || row.status === 'draft'),
+    [actionRows]
+  );
+  const postableRows = useMemo(
+    () => filteredRows.filter((row) => row.canReconcile && row.status === 'reviewed'),
+    [filteredRows]
+  );
+
+  const postedSnapshotTotal = useMemo(
+    () =>
+      entries
+        .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
+        .filter((entry) =>
+          isDateInPeriod(
+            getBookingDateValue({
+              date: entry.bookingDate,
+            }),
+            period,
+          )
+        )
+        .reduce(
+          (total, entry) =>
+            total + Number(entry.totalAmount || entry.amount || 0),
+          0,
+        ),
+    [entries, period]
+  );
 
   const summary = useMemo(() => {
-    return rows.reduce((result, row) => ({
-      draft: result.draft + (row.status === 'draft' ? row.totalFee : 0),
-      estimate: result.estimate + (row.status === 'estimate' ? row.totalFee : 0),
-      posted: result.posted + (row.status === 'posted' ? row.totalFee : 0),
-      reviewed: result.reviewed + (row.status === 'reviewed' ? row.totalFee : 0),
-      total: result.total + row.totalFee,
-      needsReview: result.needsReview + (row.status === 'estimate' || row.status === 'draft' ? 1 : 0),
-      readyPost: result.readyPost + (row.status === 'reviewed' ? 1 : 0),
+    const current = rows.reduce((result, row) => ({
+      draft:
+        result.draft +
+        (row.status === 'draft' ? row.unpostedPayableAmount : 0),
+      estimate:
+        result.estimate +
+        (row.status === 'estimate' ? row.unpostedPayableAmount : 0),
+      integrityWarnings:
+        result.integrityWarnings +
+        (
+          row.duplicateRuleIds.length ||
+          row.postedDriftLines.length
+            ? 1
+            : 0
+        ),
+      reviewed:
+        result.reviewed +
+        (row.status === 'reviewed' ? row.unpostedPayableAmount : 0),
+      unpostedTotal:
+        result.unpostedTotal +
+        row.unpostedPayableAmount,
+      needsReview:
+        result.needsReview +
+        (row.status === 'estimate' || row.status === 'draft' ? 1 : 0),
+      readyPost:
+        result.readyPost +
+        (row.status === 'reviewed' ? 1 : 0),
       totalRows: result.totalRows + 1,
+      unassignedBookings:
+        result.unassignedBookings +
+        (row.unassignedLines.length ? 1 : 0),
     }), {
       draft: 0,
       estimate: 0,
-      posted: 0,
+      integrityWarnings: 0,
       readyPost: 0,
       reviewed: 0,
-      total: 0,
       totalRows: 0,
       needsReview: 0,
+      unassignedBookings: 0,
+      unpostedTotal: 0,
     });
-  }, [rows]);
+
+    return {
+      ...current,
+      posted: postedSnapshotTotal,
+      total: postedSnapshotTotal + current.unpostedTotal,
+    };
+  }, [postedSnapshotTotal, rows]);
 
   function updateAssignment(bookingId, field, value) {
     setAssignments((current) => ({
@@ -714,134 +981,240 @@ export default function OperatorFeePage({ currentUser }) {
       const person = line.payeeRole === OPERATOR_FEE_PERSON_ROLES.GUARD
         ? row.guardPerson
         : row.operatorPerson;
+      const existingEntry = getCanonicalOperatorFeeEntry(
+        entries,
+        row.booking,
+        line.ruleId,
+      );
 
-      return buildEntryFromLine(line, row.booking, person, status);
+      return buildEntryFromLine(
+        line,
+        row.booking,
+        person,
+        existingEntry?.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED
+          ? null
+          : existingEntry,
+        status,
+      );
     });
   }
 
-  async function saveDraft(row) {
-    if (!row.lines.length) {
-      setMessage('Belum ada rule fee yang cocok untuk booking ini.');
-      return;
+  function getReconciliationBlockMessage(row) {
+    if (row.hardPostedDuplicateRuleIds.length) {
+      return 'Ada duplicate fee yang sudah Posted untuk booking ini. Posting diblokir agar Pembukuan tidak double-count.';
     }
 
+    if (row.unassignedLines.length) {
+      return 'Assign semua PIC Guard/Operator terlebih dahulu sebelum Review.';
+    }
+
+    if (row.blockedLines.length) {
+      return 'Fee Guard masih menunggu attendance approved pada tanggal booking.';
+    }
+
+    if (!row.lines.length) {
+      return 'Belum ada rule fee yang cocok untuk booking ini.';
+    }
+
+    return '';
+  }
+
+  async function syncRowEntries(row, status) {
+    const blockMessage = getReconciliationBlockMessage(row);
+
+    if (blockMessage) {
+      throw new Error(blockMessage);
+    }
+
+    let consolidatedCount = 0;
+    const payloadByRuleId = new Map(
+      createEntryPayloads(row, status)
+        .map((payload) => [payload.ruleId, payload])
+    );
+
+    for (const line of row.lines) {
+      const relatedEntries = getOperatorFeeEntriesForBookingRule(
+        entries,
+        row.booking,
+        line.ruleId,
+      );
+      const postedEntries = relatedEntries.filter(
+        (entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED
+      );
+
+      if (postedEntries.length > 1) {
+        throw new Error(
+          'Duplicate Posted terdeteksi untuk rule ' + line.ruleName + '. Posting diblokir.'
+        );
+      }
+
+      if (postedEntries.length === 1) {
+        for (const duplicate of relatedEntries) {
+          if (
+            duplicate.id !== postedEntries[0].id &&
+            duplicate.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED
+          ) {
+            await voidOperatorFeeEntry(
+              duplicate,
+              'Superseded: canonical rule sudah Posted.',
+            );
+            consolidatedCount += 1;
+          }
+        }
+
+        continue;
+      }
+
+      const payload = payloadByRuleId.get(line.ruleId);
+
+      if (!payload) {
+        throw new Error('Payload canonical fee tidak terbentuk untuk ' + line.ruleName + '.');
+      }
+
+      await upsertOperatorFeeEntry(payload);
+
+      for (const duplicate of relatedEntries) {
+        if (
+          duplicate.id !== payload.id &&
+          duplicate.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED
+        ) {
+          await voidOperatorFeeEntry(
+            duplicate,
+            'Superseded by canonical booking + rule fee entry.',
+          );
+          consolidatedCount += 1;
+        }
+      }
+    }
+
+    return consolidatedCount;
+  }
+
+  async function saveDraft(row) {
     setBusyKey(row.bookingId);
 
     try {
-      const existingEntries = getEntriesForRow(entries, row);
-      const isPosted = existingEntries.some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
-      const postedEntryIds = new Set(existingEntries
-        .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
-        .map((entry) => entry.id));
-
-      if (isPosted && row.lines.every((line) => postedEntryIds.has(line.id))) {
-        setMessage('Fee ' + getBookingCode(row.booking) + ' sudah posted.');
-        return;
-      }
-
-      await Promise.all(
-        createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.DRAFT)
-          .filter((entry) => !postedEntryIds.has(entry.id))
-          .map(upsertOperatorFeeEntry)
+      const consolidatedCount = await syncRowEntries(
+        row,
+        OPERATOR_FEE_ENTRY_STATUSES.DRAFT,
       );
-      setMessage('Draft fee ' + getBookingCode(row.booking) + ' disimpan.');
+
+      setMessage(
+        'Draft fee ' +
+        getBookingCode(row.booking) +
+        ' disimpan.' +
+        (consolidatedCount ? ' ' + consolidatedCount + ' duplicate draft lama di-void.' : '')
+      );
     } catch (error) {
       console.error('[operator-fee] Gagal menyimpan draft fee:', error);
-      setMessage('Draft fee gagal disimpan.');
+      setMessage(error?.message || 'Draft fee gagal disimpan.');
     } finally {
       setBusyKey('');
     }
   }
 
   async function markReviewed(row) {
-    if (!row.lines.length) {
-      setMessage('Belum ada rule fee yang cocok untuk booking ini.');
-      return;
-    }
-
     setBusyKey(row.bookingId);
 
     try {
-      const currentEntries = getEntriesForRow(entries, row);
-      const postedEntryIds = new Set(currentEntries
-        .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
-        .map((entry) => entry.id));
-      const relatedEntries = currentEntries
-        .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
-      const existingEntryIds = new Set(relatedEntries.map((entry) => entry.id));
-      const missingEntries = createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED)
-        .filter((entry) => !existingEntryIds.has(entry.id) && !postedEntryIds.has(entry.id));
+      const consolidatedCount = await syncRowEntries(
+        row,
+        OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+      );
 
-      await Promise.all([
-        ...relatedEntries.map(markOperatorFeeEntryReviewed),
-        ...missingEntries.map(upsertOperatorFeeEntry),
-      ]);
-
-      setMessage('Fee ' + getBookingCode(row.booking) + ' sudah reviewed.');
+      setMessage(
+        'Fee ' +
+        getBookingCode(row.booking) +
+        ' sudah reviewed.' +
+        (consolidatedCount ? ' ' + consolidatedCount + ' duplicate draft lama di-void.' : '')
+      );
     } catch (error) {
       console.error('[operator-fee] Gagal mark reviewed:', error);
-      setMessage('Gagal menandai fee sebagai reviewed.');
+      setMessage(error?.message || 'Gagal menandai fee sebagai reviewed.');
     } finally {
       setBusyKey('');
     }
   }
 
   async function reviewMany(targetRows) {
-    const rowsToReview = targetRows.filter((row) => row.lines.length && row.status !== 'posted' && row.status !== 'reviewed');
+    const rowsToReview = targetRows.filter(
+      (row) =>
+        row.canReconcile &&
+        row.status !== 'posted' &&
+        row.status !== 'reviewed'
+    );
 
     if (!rowsToReview.length) {
-      setMessage('Tidak ada fee yang perlu direview di filter ini.');
+      setMessage('Tidak ada fee lengkap yang siap direview di filter ini.');
       return;
     }
 
     setBusyKey('bulk-review');
 
     try {
-      for (const row of rowsToReview) {
-        const currentEntries = getEntriesForRow(entries, row);
-        const postedEntryIds = new Set(currentEntries
-          .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED)
-          .map((entry) => entry.id));
-        const relatedEntries = currentEntries
-          .filter((entry) => entry.status !== OPERATOR_FEE_ENTRY_STATUSES.POSTED);
-        const existingEntryIds = new Set(relatedEntries.map((entry) => entry.id));
-        const missingEntries = createEntryPayloads(row, OPERATOR_FEE_ENTRY_STATUSES.REVIEWED)
-          .filter((entry) => !existingEntryIds.has(entry.id) && !postedEntryIds.has(entry.id));
+      let consolidatedCount = 0;
 
-        await Promise.all([
-          ...relatedEntries.map(markOperatorFeeEntryReviewed),
-          ...missingEntries.map(upsertOperatorFeeEntry),
-        ]);
+      for (const row of rowsToReview) {
+        consolidatedCount += await syncRowEntries(
+          row,
+          OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+        );
       }
 
-      setMessage(rowsToReview.length + ' booking berhasil direview. Cek sekilas, lalu Post Reviewed.');
+      setMessage(
+        rowsToReview.length +
+        ' booking berhasil direview.' +
+        (consolidatedCount ? ' ' + consolidatedCount + ' duplicate draft lama di-void.' : '') +
+        ' Cek sekilas, lalu Post Reviewed.'
+      );
     } catch (error) {
       console.error('[operator-fee] Gagal bulk review:', error);
-      setMessage('Bulk review gagal.');
+      setMessage(error?.message || 'Bulk review gagal.');
     } finally {
       setBusyKey('');
     }
   }
 
   async function postToBookkeeping(row) {
-    const relatedEntries = getEntriesForRow(entries, row);
-    const postedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
-
-    if (postedEntries.length && postedEntries.length === row.lines.length) {
-      setMessage('Fee ' + getBookingCode(row.booking) + ' sudah pernah diposting.');
-      return;
-    }
-
-    const reviewedEntries = relatedEntries.filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
-
-    if (!reviewedEntries.length) {
-      setMessage('Review fee dulu sebelum posting ke pembukuan.');
+    if (!row.canReconcile) {
+      setMessage(getReconciliationBlockMessage(row));
       return;
     }
 
     setBusyKey(row.bookingId);
 
     try {
+      await syncRowEntries(
+        row,
+        OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+      );
+
+      const canonicalEntries = [...getActiveRuleIds(row.allRuleLines)]
+        .map((ruleId) =>
+          getCanonicalOperatorFeeEntry(entries, row.booking, ruleId)
+        )
+        .filter(Boolean);
+      const postedEntries = canonicalEntries.filter(
+        (entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED
+      );
+
+      if (
+        postedEntries.length &&
+        postedEntries.length === row.allRuleLines.length
+      ) {
+        setMessage('Fee ' + getBookingCode(row.booking) + ' sudah pernah diposting.');
+        return;
+      }
+
+      const reviewedEntries = canonicalEntries.filter(
+        (entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED
+      );
+
+      if (!reviewedEntries.length) {
+        setMessage('Review fee dulu sebelum posting ke pembukuan.');
+        return;
+      }
+
       const createdEntries = [];
 
       for (const entry of reviewedEntries) {
@@ -852,25 +1225,30 @@ export default function OperatorFeePage({ currentUser }) {
             currentUser?.uid || '',
           );
 
-        createdEntries.push(
-          result.bookkeepingEntry,
-        );
+        createdEntries.push(result.bookkeepingEntry);
       }
 
-      setMessage(createdEntries.length + ' fee ' + getBookingCode(row.booking) + ' diposting ke pembukuan.');
+      setMessage(
+        createdEntries.length +
+        ' fee ' +
+        getBookingCode(row.booking) +
+        ' diposting ke pembukuan.'
+      );
     } catch (error) {
       console.error('[operator-fee] Gagal posting fee ke pembukuan:', error);
-      setMessage('Posting fee ke pembukuan gagal. Cek koneksi dan Firestore rules.');
+      setMessage(error?.message || 'Posting fee ke pembukuan gagal.');
     } finally {
       setBusyKey('');
     }
   }
 
   async function postMany(targetRows) {
-    const rowsToPost = targetRows.filter((row) => row.status === 'reviewed');
+    const rowsToPost = targetRows.filter(
+      (row) => row.canReconcile && row.status === 'reviewed'
+    );
 
     if (!rowsToPost.length) {
-      setMessage('Tidak ada fee reviewed yang siap diposting.');
+      setMessage('Tidak ada fee reviewed lengkap yang siap diposting.');
       return;
     }
 
@@ -880,8 +1258,19 @@ export default function OperatorFeePage({ currentUser }) {
       let postedCount = 0;
 
       for (const row of rowsToPost) {
-        const reviewedEntries = getEntriesForRow(entries, row)
-          .filter((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED);
+        await syncRowEntries(
+          row,
+          OPERATOR_FEE_ENTRY_STATUSES.REVIEWED,
+        );
+
+        const reviewedEntries = [...getActiveRuleIds(row.allRuleLines)]
+          .map((ruleId) =>
+            getCanonicalOperatorFeeEntry(entries, row.booking, ruleId)
+          )
+          .filter(
+            (entry) =>
+              entry?.status === OPERATOR_FEE_ENTRY_STATUSES.REVIEWED
+          );
 
         for (const entry of reviewedEntries) {
           await postOperatorFeeEntryToBookkeeping(
@@ -897,7 +1286,7 @@ export default function OperatorFeePage({ currentUser }) {
       setMessage(postedCount + ' fee berhasil diposting ke pembukuan.');
     } catch (error) {
       console.error('[operator-fee] Gagal bulk post:', error);
-      setMessage('Bulk post gagal. Cek koneksi dan Firestore rules.');
+      setMessage(error?.message || 'Bulk post gagal.');
     } finally {
       setBusyKey('');
     }
@@ -950,6 +1339,21 @@ export default function OperatorFeePage({ currentUser }) {
         sessions={guardSessions}
         settings={settings}
       />
+
+      {summary.unassignedBookings || summary.integrityWarnings ? (
+        <div className="operator-fee-ledger-warning" role="status">
+          <AlertTriangle size={13} aria-hidden="true" />
+          <span>
+            {summary.unassignedBookings
+              ? summary.unassignedBookings + ' booking masih butuh assignment crew. '
+              : ''}
+            {summary.integrityWarnings
+              ? summary.integrityWarnings + ' booking punya jejak fee yang perlu dicek.'
+              : ''}
+            Review/Post hanya aktif jika satu booking sudah konsisten.
+          </span>
+        </div>
+      ) : null}
 
       <OperatorFeePulse summary={summary} />
 
@@ -1021,7 +1425,10 @@ export default function OperatorFeePage({ currentUser }) {
             const isBusy = busyKey === row.bookingId;
             const statusTone = getStatusTone(row.status);
             const primaryActionLabel = getRowPrimaryAction(row);
-            const primaryDisabled = busyKey !== '' || row.status === 'posted' || !row.lines.length;
+            const primaryDisabled =
+              busyKey !== '' ||
+              row.status === 'posted' ||
+              !row.canReconcile;
 
             return (
               <article
@@ -1047,10 +1454,32 @@ export default function OperatorFeePage({ currentUser }) {
                       <span>Penjaga: {row.guardPerson ? row.guardPerson.name : 'Default'}</span>
                       <span className="dot-separator">·</span>
                       <span>Operator: {row.operatorPerson ? row.operatorPerson.name : 'Default'}</span>
+                      {row.unassignedLines.length > 0 && (
+                        <>
+                          <span className="dot-separator">·</span>
+                          <span className="text-warning">
+                            {row.unassignedLines.length} crew belum di-assign
+                          </span>
+                        </>
+                      )}
                       {row.blockedLines.length > 0 && (
                         <>
                           <span className="dot-separator">·</span>
-                          <span className="text-warning">Menunggu absen</span>
+                          <span className="text-warning">Menunggu absen approved</span>
+                        </>
+                      )}
+                      {row.attendanceGuardCandidates.length > 1 && row.guardId === 'none' && (
+                        <>
+                          <span className="dot-separator">·</span>
+                          <span className="text-warning">
+                            {row.attendanceGuardCandidates.length} Guard hadir · pilih PIC
+                          </span>
+                        </>
+                      )}
+                      {row.hardPostedDuplicateRuleIds.length > 0 && (
+                        <>
+                          <span className="dot-separator">·</span>
+                          <span className="text-warning">Duplicate Posted terdeteksi</span>
                         </>
                       )}
                     </div>
@@ -1087,7 +1516,11 @@ export default function OperatorFeePage({ currentUser }) {
                     <StudioSelect
                       disabled={row.status === 'posted'}
                       label="Penjaga"
-                      options={guardOptions}
+                      options={getPeopleOptions(
+                        settings,
+                        OPERATOR_FEE_PERSON_ROLES.GUARD,
+                        row.guardId,
+                      )}
                       selectedKey={row.guardId}
                       onChange={(value) => updateAssignment(row.bookingId, 'guardId', value)}
                     />
@@ -1095,7 +1528,11 @@ export default function OperatorFeePage({ currentUser }) {
                     <StudioSelect
                       disabled={row.status === 'posted'}
                       label="Operator"
-                      options={operatorOptions}
+                      options={getPeopleOptions(
+                        settings,
+                        OPERATOR_FEE_PERSON_ROLES.RECORDING_OPERATOR,
+                        row.operatorId,
+                      )}
                       selectedKey={row.operatorId}
                       onChange={(value) => updateAssignment(row.bookingId, 'operatorId', value)}
                     />
@@ -1110,24 +1547,48 @@ export default function OperatorFeePage({ currentUser }) {
                     )) : !row.blockedLines.length ? (
                       <p>Belum ada rule yang cocok. Tambahkan rule di Settings → Fee Settings.</p>
                     ) : null}
+                    {row.unassignedLines.map((line) => (
+                      <span key={'unassigned-' + line.id}>
+                        <small>
+                          {line.ruleName} · pilih {
+                            line.payeeRole === OPERATOR_FEE_PERSON_ROLES.GUARD
+                              ? 'Guard'
+                              : 'Operator'
+                          }
+                        </small>
+                        <strong>{formatOperatorFeeCurrency(line.amount)}</strong>
+                      </span>
+                    ))}
                     {row.blockedLines.map((line) => (
                       <span key={'blocked-' + line.id}>
                         <small>{line.ruleName} · menunggu absen approved</small>
                         <strong>{formatOperatorFeeCurrency(line.amount)}</strong>
                       </span>
                     ))}
+                    {row.duplicateRuleIds.length ? (
+                      <p className="operator-fee-empty-note">
+                        Ditemukan entry lama ganda untuk {row.duplicateRuleIds.length} rule.
+                        Draft/Reviewed duplikat akan otomatis di-void saat Review.
+                      </p>
+                    ) : null}
+                    {row.postedDriftLines.length ? (
+                      <p className="operator-fee-empty-note">
+                        {row.postedDriftLines.length} rule sudah Posted tetapi nominal/assignment
+                        setting sekarang berbeda. Pembukuan tetap memakai snapshot saat posting.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="operator-fee-queue-detail-actions">
                     <button
-                      disabled={busyKey !== '' || row.status === 'posted' || !row.lines.length}
+                      disabled={busyKey !== '' || row.status === 'posted' || !row.canReconcile}
                       type="button"
                       onClick={() => saveDraft(row)}
                     >
                       Simpan Draft
                     </button>
                     <button
-                      disabled={busyKey !== '' || row.status === 'posted' || !row.lines.length}
+                      disabled={busyKey !== '' || row.status === 'posted' || !row.canReconcile}
                       type="button"
                       onClick={() => markReviewed(row)}
                     >

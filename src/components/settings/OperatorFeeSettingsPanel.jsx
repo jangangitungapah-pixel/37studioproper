@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCcw, Save, Trash2, WalletCards } from 'lucide-react';
+import { Plus, RefreshCcw, Save, WalletCards } from 'lucide-react';
 import StudioSelect from '../ui/StudioSelect.jsx';
 import StudioTextField from '../ui/StudioTextField.jsx';
 import { usePricingSettings } from '../../settings/pricingSettings.js';
@@ -174,13 +174,22 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
     setMessage('Crew ditambahkan. Jangan lupa klik Simpan Settings.');
   }
 
-  function deletePerson(personId) {
+  function togglePersonActive(personId) {
     setDraft((current) => normalizeOperatorFeeSettings({
       ...current,
-      people: current.people.filter((person) => person.id !== personId),
+      people: current.people.map((person) =>
+        person.id === personId
+          ? {
+              ...person,
+              active: !person.active,
+            }
+          : person
+      ),
     }));
 
-    if (message) setMessage('');
+    setMessage(
+      'Status crew diperbarui. Identitas tidak dihapus agar histori fee dan attendance tetap utuh. Jangan lupa klik Simpan Settings.'
+    );
   }
 
   function addCustomRule(event) {
@@ -235,13 +244,22 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
     setMessage('Rule baru ditambahkan. Rule ini langsung cocok dengan booking yang memakai ' + targetLabel + '.');
   }
 
-  function deleteCustomRule(ruleId) {
+  function toggleRuleActive(ruleId) {
     setDraft((current) => normalizeOperatorFeeSettings({
       ...current,
-      rules: current.rules.filter((rule) => rule.id !== ruleId),
+      rules: current.rules.map((rule) =>
+        rule.id === ruleId
+          ? {
+              ...rule,
+              active: !rule.active,
+            }
+          : rule
+      ),
     }));
 
-    if (message) setMessage('');
+    setMessage(
+      'Status rule diperbarui. Rule tidak dihapus agar histori fee tetap dapat diaudit. Jangan lupa klik Simpan Settings.'
+    );
   }
 
   async function saveAllSettings() {
@@ -368,8 +386,13 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
                 </div>
                 <div className="fee-rule-inputs-wrap">
                   <strong className="fee-rule-amount-badge">{formatOperatorFeeCurrency(rule.amount)}</strong>
-                  <button type="button" className="settings-icon-action-btn is-delete" aria-label="Delete rule" onClick={() => deleteCustomRule(rule.id)}>
-                    <Trash2 size={13} />
+                  <button
+                    type="button"
+                    className="settings-mini-button is-ghost"
+                    aria-label={rule.active ? 'Nonaktifkan rule' : 'Aktifkan rule'}
+                    onClick={() => toggleRuleActive(rule.id)}
+                  >
+                    {rule.active ? 'Nonaktifkan' : 'Aktifkan'}
                   </button>
                 </div>
               </div>
@@ -405,6 +428,11 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
               if (message) setMessage('');
             }}
           />
+          <p className="operator-fee-empty-note">
+            Source of truth uang makan adalah attendance Guard: nominal di-snapshot saat Clock In,
+            eligible setelah approval Owner, lalu diposting satu kali per Guard per tanggal.
+            Uang makan tidak dihitung ulang dari booking fee.
+          </p>
         </div>
       </section>
 
@@ -455,8 +483,13 @@ export default function OperatorFeeSettingsPanel({ currentUser }) {
                   <small className="fee-rule-subtitle">{getRoleLabel(person.role)} · {person.defaultPaymentMethod}</small>
                 </div>
                 <div className="fee-rule-inputs-wrap">
-                  <button type="button" className="settings-icon-action-btn is-delete" aria-label="Delete crew" onClick={() => deletePerson(person.id)}>
-                    <Trash2 size={13} />
+                  <button
+                    type="button"
+                    className="settings-mini-button is-ghost"
+                    aria-label={person.active ? 'Nonaktifkan crew' : 'Aktifkan crew'}
+                    onClick={() => togglePersonActive(person.id)}
+                  >
+                    {person.active ? 'Nonaktifkan' : 'Aktifkan'}
                   </button>
                 </div>
               </div>
