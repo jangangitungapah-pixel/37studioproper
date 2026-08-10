@@ -195,19 +195,15 @@ for (const required of [
   );
 }
 
-assert.equal(
-  timelineSource.includes(
-    'onEditMetadata={() => onEditMetadata(img)}',
-  ),
-  true,
+assert.match(
+  timelineSource,
+  /onEditMetadata\s*=\s*\{\(\)\s*=>\s*onEditMetadata\(img\)\s*\}/,
   'UI-11 timeline must expose metadata editing.',
 );
 
-assert.equal(
-  albumsSource.includes(
-    'onEditMetadata={() => onEditMetadata(img)}',
-  ),
-  true,
+assert.match(
+  albumsSource,
+  /onEditMetadata\s*=\s*\{\(\)\s*=>\s*onEditMetadata\(img\)\s*\}/,
   'UI-11 album detail must expose metadata editing.',
 );
 
@@ -292,7 +288,6 @@ for (const required of [
   '.gallery-trash-header',
   '.gallery-modal-layer',
   '.gallery-metadata-preview',
-  "html[data-admin-theme-active='true'][data-theme='dark']",
   '@media (max-width: 767px)',
   '@media (max-width: 420px)',
   'prefers-reduced-motion: reduce',
@@ -305,6 +300,12 @@ for (const required of [
       required,
   );
 }
+
+assert.match(
+  cssSource,
+  /html\s*\[\s*data-admin-theme-active='true'\s*\]\s*\[\s*data-theme='dark'\s*\]\s*\.gallery-page\s*\[\s*data-gallery-ui='ui-11-spatial'\s*\]/,
+  'UI-11 dark theme must remain scoped to the spatial gallery workspace.',
+);
 
 assert.match(
   cssSource,
