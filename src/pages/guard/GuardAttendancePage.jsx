@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import {
   AlertCircle,
   CheckCircle2,
@@ -19,12 +17,16 @@ import {
 import {
   GUARD_ATTENDANCE_APPROVAL_STATUSES,
   GUARD_ATTENDANCE_STATUSES,
-  STUDIO_GUARD_ROLE,
   closeGuardAttendanceSession,
   createGuardAttendanceCheckIn,
   subscribeGuardAttendanceSessions,
 } from '../../services/guardAttendanceRepository.js';
-import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../../lib/firebase.js';
+import { adminAuthRepository } from '../../services/adminAuthRepository.js';
+import {
+  GUARD_PORTAL_ACCESS,
+  resolveGuardPortalAccess,
+} from '../../utils/accountRoles.js';
+import { isFirebaseConfigured } from '../../lib/firebase.js';
 import { useOperatorFeeSettings } from '../../settings/operatorFeeSettings.js';
 import '../../styles/admin-auth.css';
 
@@ -93,28 +95,9 @@ function isActiveLikeSession(session) {
     [GUARD_ATTENDANCE_STATUSES.PENDING_APPROVAL, GUARD_ATTENDANCE_STATUSES.ACTIVE].includes(session.status);
 }
 
-async function readGuardAccount(user) {
-  if (!firestoreDb || !user?.uid) return null;
-
-  const snap = await getDoc(doc(firestoreDb, 'users', user.uid));
-
-  if (!snap.exists()) {
-    return {
-      role: '',
-      status: '',
-      uid: user.uid,
-    };
-  }
-
-  return {
-    uid: user.uid,
-    ...snap.data(),
-  };
-}
-
 export default function GuardAttendancePage() {
   const settings = useOperatorFeeSettings();
-  const isAuthAvailable = isFirebaseConfigured && Boolean(firebaseAuth);
+  const isAuthAvailable = Boolean(isFirebaseConfigured);
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -170,43 +153,49 @@ export default function GuardAttendancePage() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthAvailable) return () => {};
+    if (!isAuthAvailable) {
+      setIsReady(true);
+      return () => {};
+    }
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-      setAuthUser(user || null);
+    setIsReady(false);
+
+    return adminAuthRepository.subscribeAdminAuth((nextAuthState) => {
+      const nextUser = nextAuthState?.user || null;
+
+      setAuthUser(nextUser);
+      setGuardAccount(nextUser);
+      setIsReady(Boolean(nextAuthState?.isReady));
       setNotice('');
-      setError('');
 
-      if (!user) {
-        setGuardAccount(null);
+      if (!nextUser) {
         setSessions([]);
-        setIsReady(true);
-        return;
       }
 
-      try {
-        const account = await readGuardAccount(user);
-        setGuardAccount(account);
-
-        const isAllowedGuard = account && (account.role === STUDIO_GUARD_ROLE || (account.role === 'admin' && account.isGuard === true));
-        if (!isAllowedGuard || account?.status !== 'approved') {
-          setError('Akun ini belum aktif sebagai Penjaga Studio.');
-        }
-      } catch (readError) {
-        console.error('[guard-attendance] Gagal membaca akun penjaga:', readError);
-        setGuardAccount(null);
-        setError('Gagal membaca data akun penjaga.');
-      } finally {
-        setIsReady(true);
+      if (nextAuthState?.errorMessage) {
+        setError(nextAuthState.errorMessage);
+      } else {
+        setError('');
       }
     });
-
-    return unsubscribe;
   }, [isAuthAvailable]);
 
+  const guardPortalAccess = useMemo(
+    () => resolveGuardPortalAccess(guardAccount),
+    [guardAccount]
+  );
+
+  const canUseGuardPage = Boolean(
+    authUser?.uid &&
+    [
+      GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL,
+      GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL,
+    ].includes(guardPortalAccess)
+  );
+
   useEffect(() => {
-    const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
-    if (!authUser?.uid || !isAllowedGuard || guardAccount?.status !== 'approved') {
+    if (!authUser?.uid || !canUseGuardPage) {
+      setSessions([]);
       return () => {};
     }
 
@@ -218,11 +207,17 @@ export default function GuardAttendancePage() {
         setSessions(nextSessions);
       },
       (subscribeError) => {
-        console.error('[guard-attendance] Gagal membaca riwayat absen:', subscribeError);
-        setError('Gagal membaca riwayat absen.');
+        console.error(
+          '[guard-attendance] Gagal membaca riwayat absen:',
+          subscribeError
+        );
+
+        setError(
+          'Gagal membaca riwayat absen.'
+        );
       }
     );
-  }, [authUser?.uid, guardAccount]);
+  }, [authUser?.uid, canUseGuardPage]);
 
   const currentSession = useMemo(
     () => sessions.find(isActiveLikeSession) || null,
@@ -343,10 +338,6 @@ export default function GuardAttendancePage() {
     settings.people,
   ]);
 
-  const isAllowedGuard = guardAccount && (guardAccount.role === STUDIO_GUARD_ROLE || (guardAccount.role === 'admin' && guardAccount.isGuard === true));
-  const canUseGuardPage = authUser &&
-    isAllowedGuard &&
-    guardAccount?.status === 'approved';
 
   async function handleSignIn(event) {
     event.preventDefault();
@@ -366,10 +357,22 @@ export default function GuardAttendancePage() {
     setNotice('');
 
     try {
-      await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      await adminAuthRepository.signInAdmin({
+        email: email.trim(),
+        password,
+      });
     } catch (signInError) {
-      console.error('[guard-attendance] Login gagal:', signInError);
-      setError('Login gagal. Cek email dan password.');
+      console.error(
+        '[guard-attendance] Login gagal:',
+        signInError
+      );
+
+      setError(
+        adminAuthRepository.getAdminAuthErrorMessage(
+          signInError
+        ) ||
+        'Login gagal. Cek email dan password.'
+      );
     } finally {
       setIsBusy(false);
     }
@@ -386,16 +389,19 @@ export default function GuardAttendancePage() {
     setNotice('');
 
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(firebaseAuth, provider);
+      await adminAuthRepository.signInWithGoogle();
     } catch (googleError) {
-      console.error('[guard-attendance] Login Google gagal:', googleError);
-      if (googleError?.code === 'auth/popup-blocked') {
-        setError('Popup Google diblokir browser. Izinkan pop-up atau coba lagi.');
-      } else {
-        setError('Login Google gagal.');
-      }
+      console.error(
+        '[guard-attendance] Login Google gagal:',
+        googleError
+      );
+
+      setError(
+        adminAuthRepository.getAdminAuthErrorMessage(
+          googleError
+        ) ||
+        'Login Google gagal.'
+      );
     } finally {
       setIsBusy(false);
     }
@@ -407,14 +413,22 @@ export default function GuardAttendancePage() {
     setNotice('');
 
     try {
-      await signOut(firebaseAuth);
+      await adminAuthRepository.signOutAdmin();
+
       setEmail('');
       setPassword('');
       setGuardAccount(null);
+      setAuthUser(null);
       setSessions([]);
     } catch (logoutError) {
-      console.error('[guard-attendance] Logout gagal:', logoutError);
-      setError('Logout gagal.');
+      console.error(
+        '[guard-attendance] Logout gagal:',
+        logoutError
+      );
+
+      setError(
+        'Logout gagal.'
+      );
     } finally {
       setIsBusy(false);
     }
@@ -581,7 +595,7 @@ export default function GuardAttendancePage() {
         {!isReady ? (
           <section className="guard-shift-card is-loading">
             <LoaderCircle className="auth-spin" size={24} />
-            <p>Membaca akun...</p>
+            <p>Memeriksa akses portal...</p>
           </section>
         ) : null}
 
