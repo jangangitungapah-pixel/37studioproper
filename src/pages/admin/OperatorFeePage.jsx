@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
+  Banknote,
+  CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ClipboardCheck,
   HandCoins,
+  Headphones,
   LoaderCircle,
+  Search,
+  ShieldCheck,
   ShieldAlert,
   UserRound,
+  WalletCards,
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import GuardMealReconciliationPanel from '../../components/operator-fee/GuardMealReconciliationPanel.jsx';
@@ -270,6 +278,250 @@ function getRowPrimaryAction(row) {
   return 'Review';
 }
 
+function OperatorFeeEditorialHeader({ period, summary }) {
+  const periodLabel = periodOptions.find((option) => option.key === period)?.label || 'Periode';
+
+  return (
+    <header className="operator-fee-editorial-header">
+      <div className="operator-fee-heading">
+        <span className="operator-fee-kicker">Crew reconciliation</span>
+        <h2 id="operator-fee-title">Operator Fee</h2>
+        <p>
+          Review fee crew, pastikan assignment tepat, lalu post ke pembukuan tanpa
+          memutus jejak rekonsiliasi.
+        </p>
+      </div>
+
+      <div className="operator-fee-period-context" aria-label={'Konteks ' + periodLabel}>
+        <span className="operator-fee-period-icon" aria-hidden="true">
+          <CalendarDays size={16} />
+        </span>
+        <span>
+          <small>{periodLabel}</small>
+          <strong>{summary.totalRows} booking</strong>
+          <em>{summary.needsReview + summary.readyPost} antrean aktif</em>
+        </span>
+      </div>
+    </header>
+  );
+}
+
+function OperatorFeePulse({ summary }) {
+  const metrics = [
+    {
+      key: 'review',
+      icon: ClipboardCheck,
+      label: 'Perlu Review',
+      value: String(summary.needsReview),
+      meta: formatOperatorFeeCurrency(summary.estimate + summary.draft),
+      tone: 'warning',
+    },
+    {
+      key: 'post',
+      icon: WalletCards,
+      label: 'Siap Post',
+      value: String(summary.readyPost),
+      meta: formatOperatorFeeCurrency(summary.reviewed),
+      tone: 'info',
+    },
+    {
+      key: 'posted',
+      icon: CheckCircle2,
+      label: 'Posted',
+      value: formatOperatorFeeCurrency(summary.posted),
+      meta: 'sudah masuk pembukuan',
+      tone: 'success',
+    },
+    {
+      key: 'total',
+      icon: Banknote,
+      label: 'Total Fee',
+      value: formatOperatorFeeCurrency(summary.total),
+      meta: summary.totalRows + ' booking eligible',
+      tone: 'neutral',
+    },
+  ];
+
+  return (
+    <section className="operator-fee-pulse" aria-label="Ringkasan operator fee">
+      {metrics.map((metric) => {
+        const Icon = metric.icon;
+
+        return (
+          <article className={'operator-fee-pulse-metric is-' + metric.tone} key={metric.key}>
+            <span className="operator-fee-pulse-icon" aria-hidden="true">
+              <Icon size={15} />
+            </span>
+            <span>
+              <small>{metric.label}</small>
+              <strong>{metric.value}</strong>
+              <em>{metric.meta}</em>
+            </span>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+function OperatorFeeBulkActions({
+  busyKey,
+  onPostMany,
+  onReviewMany,
+  postableCount,
+  reviewableCount,
+}) {
+  return (
+    <section className="operator-fee-bulk-actions" aria-label="Aksi rekonsiliasi massal">
+      <div>
+        <span className="operator-fee-bulk-icon" aria-hidden="true">
+          <HandCoins size={16} />
+        </span>
+        <span>
+          <small>Approval queue</small>
+          <strong>Selesaikan antrean secara berurutan</strong>
+          <em>Review lebih dulu, lalu post fee yang sudah siap.</em>
+        </span>
+      </div>
+
+      <div className="operator-fee-bulk-buttons">
+        <button
+          disabled={busyKey !== '' || !reviewableCount}
+          type="button"
+          onClick={onReviewMany}
+        >
+          {busyKey === 'bulk-review' ? (
+            <LoaderCircle className="auth-spin" size={14} />
+          ) : (
+            <ClipboardCheck size={14} />
+          )}
+          <span>
+            Review Semua
+            <small>{reviewableCount} booking</small>
+          </span>
+        </button>
+
+        <button
+          className="is-primary"
+          disabled={busyKey !== '' || !postableCount}
+          type="button"
+          onClick={onPostMany}
+        >
+          {busyKey === 'bulk-post' ? (
+            <LoaderCircle className="auth-spin" size={14} />
+          ) : (
+            <CheckCircle2 size={14} />
+          )}
+          <span>
+            Post Reviewed
+            <small>{postableCount} booking</small>
+          </span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function OperatorFeeCommandShelf({
+  filteredCount,
+  onPeriodChange,
+  onReset,
+  onSearchChange,
+  onStatusChange,
+  period,
+  searchQuery,
+  statusFilter,
+  totalCount,
+}) {
+  const hasActiveFilters = Boolean(searchQuery.trim()) || statusFilter !== 'attention';
+
+  return (
+    <section className="operator-fee-command-shelf" aria-label="Filter operator fee">
+      <label className="operator-fee-search-shell">
+        <Search size={15} aria-hidden="true" />
+        <input
+          aria-label="Cari operator fee"
+          placeholder="Cari customer, booking, layanan, atau crew..."
+          type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+      </label>
+
+      <div className="operator-fee-filter-select">
+        <StudioSelect
+          label="Periode"
+          options={periodOptions}
+          selectedKey={period}
+          onChange={onPeriodChange}
+        />
+      </div>
+
+      <div className="operator-fee-filter-select">
+        <StudioSelect
+          label="Status"
+          options={statusOptions}
+          selectedKey={statusFilter}
+          onChange={onStatusChange}
+        />
+      </div>
+
+      <div className="operator-fee-filter-context" aria-live="polite">
+        <span>
+          <strong>{filteredCount}</strong>
+          <small>dari {totalCount} booking</small>
+        </span>
+        {hasActiveFilters ? (
+          <button type="button" onClick={onReset}>
+            Reset
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function OperatorFeeLedgerState({ type }) {
+  if (type === 'loading') {
+    return (
+      <div className="operator-fee-ledger-state is-loading" role="status">
+        <span className="operator-fee-state-icon" aria-hidden="true">
+          <LoaderCircle className="auth-spin" size={19} />
+        </span>
+        <strong>Menyusun antrean fee...</strong>
+        <span>Booking, attendance, dan entry rekonsiliasi sedang disinkronkan.</span>
+        <div className="operator-fee-state-skeleton" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'error') {
+    return (
+      <div className="operator-fee-ledger-state is-error" role="alert">
+        <span className="operator-fee-state-icon" aria-hidden="true">
+          <AlertTriangle size={19} />
+        </span>
+        <strong>Antrean belum berhasil dimuat</strong>
+        <span>Cek koneksi atau akses Firestore, lalu muat ulang halaman.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="operator-fee-ledger-state is-empty">
+      <span className="operator-fee-state-icon" aria-hidden="true">
+        <UserRound size={19} />
+      </span>
+      <strong>Tidak ada fee di filter ini</strong>
+      <span>Ubah periode, status, atau pencarian untuk melihat antrean lain.</span>
+    </div>
+  );
+}
+
 export default function OperatorFeePage({ currentUser }) {
   const settings = useOperatorFeeSettings();
   const [bookings, setBookings] = useState([]);
@@ -281,6 +533,16 @@ export default function OperatorFeePage({ currentUser }) {
   const [assignments, setAssignments] = useState({});
   const [message, setMessage] = useState('');
   const [busyKey, setBusyKey] = useState('');
+  const [loadingState, setLoadingState] = useState({
+    bookings: true,
+    entries: true,
+    guardSessions: true,
+  });
+  const [loadErrors, setLoadErrors] = useState({
+    bookings: '',
+    entries: '',
+    guardSessions: '',
+  });
   const canManageOperatorFee = hasAdminPagePermission(currentUser, 'operator-fee');
 
   useEffect(() => {
@@ -289,10 +551,14 @@ export default function OperatorFeePage({ currentUser }) {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
       (nextBookings) => {
         setBookings(Array.isArray(nextBookings) ? nextBookings : []);
+        setLoadingState((current) => ({ ...current, bookings: false }));
+        setLoadErrors((current) => ({ ...current, bookings: '' }));
       },
       (error) => {
         console.error('[operator-fee] Gagal membaca booking:', error);
         setMessage('Gagal membaca booking untuk Operator Fee.');
+        setLoadingState((current) => ({ ...current, bookings: false }));
+        setLoadErrors((current) => ({ ...current, bookings: 'booking' }));
       }
     );
 
@@ -305,10 +571,14 @@ export default function OperatorFeePage({ currentUser }) {
     const unsubscribe = subscribeOperatorFeeEntries(
       (nextEntries) => {
         setEntries(Array.isArray(nextEntries) ? nextEntries : []);
+        setLoadingState((current) => ({ ...current, entries: false }));
+        setLoadErrors((current) => ({ ...current, entries: '' }));
       },
       (error) => {
         console.error('[operator-fee] Gagal membaca operator fee entries:', error);
         setMessage('Gagal membaca ' + OPERATOR_FEE_ENTRIES_COLLECTION + '.');
+        setLoadingState((current) => ({ ...current, entries: false }));
+        setLoadErrors((current) => ({ ...current, entries: 'entries' }));
       }
     );
 
@@ -322,10 +592,14 @@ export default function OperatorFeePage({ currentUser }) {
       {},
       (nextSessions) => {
         setGuardSessions(Array.isArray(nextSessions) ? nextSessions : []);
+        setLoadingState((current) => ({ ...current, guardSessions: false }));
+        setLoadErrors((current) => ({ ...current, guardSessions: '' }));
       },
       (error) => {
         console.error('[operator-fee] Gagal membaca absen penjaga:', error);
         setMessage('Gagal membaca mapping absen penjaga untuk Operator Fee.');
+        setLoadingState((current) => ({ ...current, guardSessions: false }));
+        setLoadErrors((current) => ({ ...current, guardSessions: 'attendance' }));
       }
     );
   }, [canManageOperatorFee]);
@@ -410,6 +684,7 @@ export default function OperatorFeePage({ currentUser }) {
       total: result.total + row.totalFee,
       needsReview: result.needsReview + (row.status === 'estimate' || row.status === 'draft' ? 1 : 0),
       readyPost: result.readyPost + (row.status === 'reviewed' ? 1 : 0),
+      totalRows: result.totalRows + 1,
     }), {
       draft: 0,
       estimate: 0,
@@ -417,6 +692,7 @@ export default function OperatorFeePage({ currentUser }) {
       readyPost: 0,
       reviewed: 0,
       total: 0,
+      totalRows: 0,
       needsReview: 0,
     });
   }, [rows]);
@@ -637,32 +913,37 @@ export default function OperatorFeePage({ currentUser }) {
     await markReviewed(row);
   }
 
+  const isQueueLoading = loadingState.bookings || loadingState.entries || loadingState.guardSessions;
+  const queueLoadError = loadErrors.bookings || loadErrors.entries || loadErrors.guardSessions;
+
   if (!canManageOperatorFee) {
     return (
-      <section className="operator-fee-page operator-fee-locked">
-        <ShieldAlert size={34} />
-        <h2>Akses Operator Fee Belum Aktif</h2>
-        <p>Owner perlu memberi permission Operator Fee untuk akun ini.</p>
+      <section className="operator-fee-page operator-fee-locked" data-operator-fee-ui="ui-8-spatial">
+        <span aria-hidden="true">
+          <ShieldAlert size={22} />
+        </span>
+        <div>
+          <small>Permission required</small>
+          <h2>Akses Operator Fee Belum Aktif</h2>
+          <p>Owner perlu memberi permission Operator Fee untuk akun ini.</p>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="operator-fee-queue" aria-labelledby="operator-fee-title">
-      <section className="operator-fee-queue-hero">
-        <span aria-hidden="true">
-          <HandCoins size={22} />
-        </span>
-        <div>
-          <p>Owner Workspace</p>
-          <h2 id="operator-fee-title">Operator Fee</h2>
-          <small>Review cepat fee crew dari jadwal booking. Bulk dulu, cek detail hanya saat perlu.</small>
-        </div>
-      </section>
+    <section
+      className="operator-fee-queue"
+      data-operator-fee-ui="ui-8-spatial"
+      aria-labelledby="operator-fee-title"
+    >
+      <OperatorFeeEditorialHeader period={period} summary={summary} />
 
       <GuardMealReconciliationPanel
         busyKey={busyKey}
         currentUser={currentUser}
+        isLoading={loadingState.guardSessions}
+        loadError={loadErrors.guardSessions}
         onBusyChange={setBusyKey}
         onMessage={setMessage}
         period={period}
@@ -670,69 +951,30 @@ export default function OperatorFeePage({ currentUser }) {
         settings={settings}
       />
 
-      <section className="operator-fee-queue-summary" aria-label="Ringkasan operator fee">
-        <article>
-          <small>Perlu Review</small>
-          <strong>{summary.needsReview}</strong>
-          <span>{formatOperatorFeeCurrency(summary.estimate + summary.draft)}</span>
-        </article>
-        <article>
-          <small>Siap Post</small>
-          <strong>{summary.readyPost}</strong>
-          <span>{formatOperatorFeeCurrency(summary.reviewed)}</span>
-        </article>
-        <article>
-          <small>Posted</small>
-          <strong>{formatOperatorFeeCurrency(summary.posted)}</strong>
-          <span>masuk pembukuan</span>
-        </article>
-      </section>
+      <OperatorFeePulse summary={summary} />
 
-      <section className="operator-fee-queue-actions" aria-label="Aksi cepat operator fee">
-        <button
-          disabled={busyKey !== '' || !reviewableRows.length}
-          type="button"
-          onClick={() => reviewMany(filteredRows)}
-        >
-          {busyKey === 'bulk-review' ? <LoaderCircle className="auth-spin" size={14} /> : <ClipboardCheck size={14} />}
-          Review Semua
-          <small>{reviewableRows.length} booking</small>
-        </button>
+      <OperatorFeeBulkActions
+        busyKey={busyKey}
+        postableCount={postableRows.length}
+        reviewableCount={reviewableRows.length}
+        onPostMany={() => postMany(filteredRows)}
+        onReviewMany={() => reviewMany(filteredRows)}
+      />
 
-        <button
-          disabled={busyKey !== '' || !postableRows.length}
-          type="button"
-          onClick={() => postMany(filteredRows)}
-        >
-          {busyKey === 'bulk-post' ? <LoaderCircle className="auth-spin" size={14} /> : <CheckCircle2 size={14} />}
-          Post Reviewed
-          <small>{postableRows.length} booking</small>
-        </button>
-      </section>
-
-      <section className="operator-fee-queue-toolbar">
-        <input
-          aria-label="Cari operator fee"
-          placeholder="Cari customer, booking, layanan..."
-          type="search"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-        />
-
-        <StudioSelect
-          label="Periode"
-          options={periodOptions}
-          selectedKey={period}
-          onChange={setPeriod}
-        />
-
-        <StudioSelect
-          label="Status"
-          options={statusOptions}
-          selectedKey={statusFilter}
-          onChange={setStatusFilter}
-        />
-      </section>
+      <OperatorFeeCommandShelf
+        filteredCount={filteredRows.length}
+        period={period}
+        searchQuery={searchQuery}
+        statusFilter={statusFilter}
+        totalCount={rows.length}
+        onPeriodChange={setPeriod}
+        onSearchChange={setSearchQuery}
+        onStatusChange={setStatusFilter}
+        onReset={() => {
+          setSearchQuery('');
+          setStatusFilter('attention');
+        }}
+      />
 
       {message ? (
         <p className="operator-fee-queue-message" role="status">
@@ -740,7 +982,39 @@ export default function OperatorFeePage({ currentUser }) {
         </p>
       ) : null}
 
-      <section className="operator-fee-queue-list" aria-label="Daftar operator fee">
+      <section
+        className="operator-fee-queue-list"
+        aria-label="Antrean rekonsiliasi operator fee"
+        aria-busy={isQueueLoading ? 'true' : 'false'}
+      >
+        <header className="operator-fee-ledger-header">
+          <div>
+            <span>Fee reconciliation ledger</span>
+            <strong>{filteredRows.length} booking ditemukan</strong>
+          </div>
+          <p>
+            <ShieldCheck size={13} aria-hidden="true" />
+            Posted entries bersifat read-only
+          </p>
+        </header>
+
+        <div className="operator-fee-ledger-columns" aria-hidden="true">
+          <span>Booking / Crew</span>
+          <span>Status &amp; Total</span>
+          <span>Aksi</span>
+        </div>
+
+        {queueLoadError && filteredRows.length ? (
+          <div className="operator-fee-ledger-warning" role="status">
+            <AlertTriangle size={13} aria-hidden="true" />
+            Sebagian data gagal disinkronkan. Data tersedia tetap ditampilkan.
+          </div>
+        ) : null}
+
+        {isQueueLoading && !filteredRows.length ? <OperatorFeeLedgerState type="loading" /> : null}
+        {!isQueueLoading && queueLoadError && !filteredRows.length ? <OperatorFeeLedgerState type="error" /> : null}
+        {!isQueueLoading && !queueLoadError && !filteredRows.length ? <OperatorFeeLedgerState type="empty" /> : null}
+
         {filteredRows.length ? (
           filteredRows.map((row) => {
             const booking = row.booking;
@@ -750,8 +1024,14 @@ export default function OperatorFeePage({ currentUser }) {
             const primaryDisabled = busyKey !== '' || row.status === 'posted' || !row.lines.length;
 
             return (
-              <article className="operator-fee-queue-row" key={row.bookingId}>
+              <article
+                className={'operator-fee-queue-row' + (row.status === 'posted' ? ' is-posted' : '')}
+                key={row.bookingId}
+              >
                 <div className="operator-fee-queue-main">
+                  <span className="operator-fee-row-icon" aria-hidden="true">
+                    <Headphones size={15} />
+                  </span>
                   <div className="operator-fee-queue-info">
                     <div className="operator-fee-meta-top">
                       <span>{getBookingCode(booking)}</span>
@@ -764,13 +1044,13 @@ export default function OperatorFeePage({ currentUser }) {
                     <div className="operator-fee-meta-bottom">
                       <span>{getBookingDurationLabel(booking)}</span>
                       <span className="dot-separator">·</span>
-                      <span>👤 {row.guardPerson ? row.guardPerson.name : 'Default'}</span>
+                      <span>Penjaga: {row.guardPerson ? row.guardPerson.name : 'Default'}</span>
                       <span className="dot-separator">·</span>
-                      <span>🎧 {row.operatorPerson ? row.operatorPerson.name : 'Default'}</span>
+                      <span>Operator: {row.operatorPerson ? row.operatorPerson.name : 'Default'}</span>
                       {row.blockedLines.length > 0 && (
                         <>
                           <span className="dot-separator">·</span>
-                          <span className="text-warning">⚠️ Absen</span>
+                          <span className="text-warning">Menunggu absen</span>
                         </>
                       )}
                     </div>
@@ -798,10 +1078,14 @@ export default function OperatorFeePage({ currentUser }) {
                 </div>
 
                 <details className="operator-fee-queue-detail">
-                  <summary>Detail & override crew</summary>
+                  <summary>
+                    <span>Detail fee &amp; override crew</span>
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </summary>
 
                   <div className="operator-fee-queue-detail-grid">
                     <StudioSelect
+                      disabled={row.status === 'posted'}
                       label="Penjaga"
                       options={guardOptions}
                       selectedKey={row.guardId}
@@ -809,6 +1093,7 @@ export default function OperatorFeePage({ currentUser }) {
                     />
 
                     <StudioSelect
+                      disabled={row.status === 'posted'}
                       label="Operator"
                       options={operatorOptions}
                       selectedKey={row.operatorId}
@@ -853,13 +1138,7 @@ export default function OperatorFeePage({ currentUser }) {
               </article>
             );
           })
-        ) : (
-          <section className="operator-fee-empty">
-            <UserRound size={30} />
-            <h3>Tidak ada fee di filter ini</h3>
-            <p>Ubah periode, status, atau pencarian.</p>
-          </section>
-        )}
+        ) : null}
       </section>
     </section>
   );
