@@ -672,7 +672,6 @@ service cloud.firestore {
         validGuardAttendanceOwnerVoidPatch() &&
         resource.data.status != 'void' &&
         guardMealNotPosted(resource.data) &&
-        request.resource.data.approvalStatus == resource.data.approvalStatus &&
         request.resource.data.mealEligible == false &&
         request.resource.data.ownerActionRequired == false &&
         request.resource.data.status == 'void' &&

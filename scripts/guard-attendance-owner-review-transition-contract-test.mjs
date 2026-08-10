@@ -55,6 +55,29 @@ function getGuardAttendanceUpdateRulesBlock(source) {
 const guardAttendanceUpdateRulesBlock =
   getGuardAttendanceUpdateRulesBlock(rulesSource);
 
+const adminVoidStart = rulesSource.indexOf(
+  'function adminVoidsGuardAttendance() {'
+);
+const adminVoidEnd = rulesSource.indexOf(
+  'function guardMealBookkeepingExistsAfter() {',
+  adminVoidStart,
+);
+
+assert.notEqual(
+  adminVoidStart,
+  -1,
+  'adminVoidsGuardAttendance rule must exist.',
+);
+
+assert.notEqual(
+  adminVoidEnd,
+  -1,
+  'adminVoidsGuardAttendance rule must end before meal bookkeeping helper.',
+);
+
+const adminVoidRulesBlock =
+  rulesSource.slice(adminVoidStart, adminVoidEnd);
+
 for (const required of [
   'function validGuardAttendanceOwnerReviewAuditFields()',
   'function validGuardAttendanceOwnerApprovePatch()',
@@ -152,6 +175,50 @@ for (const required of [
     'Owner review mutable-field allowlist marker missing: ' + required,
   );
 }
+
+assert.equal(
+  adminVoidRulesBlock.includes(
+    'request.resource.data.approvalStatus == resource.data.approvalStatus'
+  ),
+  false,
+  'Void must preserve approvalStatus through its affectedKeys allowlist.',
+);
+
+for (const required of [
+  'guardMealNotPosted(resource.data)',
+  "request.resource.data.mealEligible == false",
+  "request.resource.data.ownerActionRequired == false",
+  "request.resource.data.status == 'void'",
+  "request.resource.data.voidedAt != ''",
+  "request.resource.data.voidedByUid != ''",
+  "'mealEligible'",
+  "'ownerActionRequired'",
+  "'status'",
+  "'updatedAt'",
+  "'voidReason'",
+  "'voidedAt'",
+  "'voidedByUid'",
+]) {
+  assert.equal(
+    adminVoidRulesBlock.includes(required),
+    true,
+    'Void transition security invariant missing: ' + required,
+  );
+}
+
+assert.equal(
+  adminVoidRulesBlock.includes("'approvalStatus'"),
+  false,
+  'Void affectedKeys allowlist must keep approvalStatus immutable.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'request.resource.data.approvalStatus == resource.data.approvalStatus'
+  ),
+  true,
+  'Non-Void reconciliation branches may still require direct approvalStatus equality.',
+);
 
 const repositorySource = readFileSync(
   resolve('src/services/guardAttendanceRepository.js'),
