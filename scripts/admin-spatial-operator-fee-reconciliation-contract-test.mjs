@@ -19,6 +19,8 @@ for (const required of [
   'OperatorFeeBulkActions',
   'OperatorFeeCommandShelf',
   'OperatorFeeLedgerState',
+  'getStatusLabel',
+  'getStatusTone',
   'operator-fee-ledger-header',
   'operator-fee-ledger-columns',
   'operator-fee-queue-detail',

@@ -305,6 +305,22 @@ function getBookingFeeStatus(
   return 'estimate';
 }
 
+function getStatusLabel(status) {
+  if (status === 'posted') return 'Posted';
+  if (status === 'reviewed') return 'Siap Post';
+  if (status === 'draft') return 'Draft';
+
+  return 'Perlu Review';
+}
+
+function getStatusTone(status) {
+  if (status === 'posted') return 'success';
+  if (status === 'reviewed') return 'info';
+  if (status === 'draft') return 'warning';
+
+  return 'muted';
+}
+
 function buildEntryFromLine(
   line,
   booking,
