@@ -17,6 +17,10 @@ import {
   useReducedMotion,
 } from 'motion/react';
 
+import {
+  Link,
+} from 'react-router-dom';
+
 import StudioTooltip from '../ui/StudioTooltip.jsx';
 
 import AdminNotificationBadge from './AdminNotificationBadge.jsx';
@@ -24,6 +28,7 @@ import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 export default function AdminTopbar({
   activeItem,
   canOpenNotifications,
+  currentAdminPath,
   notificationBadgeLabel,
   goTo,
   notificationSummary,
@@ -84,12 +89,12 @@ export default function AdminTopbar({
     };
   }, []);
 
-  const isGuardEligible =
+  const canOpenGuardPortal =
     Boolean(
       user &&
       (
         user.role ===
-          'studio_guard' ||
+          'owner' ||
         (
           user.role ===
             'admin' &&
@@ -200,16 +205,20 @@ export default function AdminTopbar({
       </motion.div>
 
       <div className="admin-topbar-actions">
-        {isGuardEligible ? (
+        {canOpenGuardPortal ? (
           <StudioTooltip
             content="Buka Portal Guard"
             side="bottom"
             sideOffset={10}
           >
-            <a
+            <Link
               aria-label="Buka Portal Guard"
               className="admin-command-utility admin-topbar-guard-shortcut"
-              href="/guard/attendance"
+              state={{
+                returnTo:
+                  currentAdminPath,
+              }}
+              to="/guard/attendance"
             >
               <Clock
                 aria-hidden="true"
@@ -220,7 +229,7 @@ export default function AdminTopbar({
               <span className="admin-command-utility-label">
                 Guard
               </span>
-            </a>
+            </Link>
           </StudioTooltip>
         ) : null}
 

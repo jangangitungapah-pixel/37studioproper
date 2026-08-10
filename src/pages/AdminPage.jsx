@@ -708,6 +708,11 @@ export default function AdminPage() {
               <AdminTopbar
                 activeItem={activeItem}
                 canOpenNotifications={canOpenNotifications}
+                currentAdminPath={
+                  location.pathname +
+                  location.search +
+                  location.hash
+                }
                 notificationBadgeLabel={notificationBadgeLabel}
                 goTo={goTo}
                 notificationSummary={notificationSummary}

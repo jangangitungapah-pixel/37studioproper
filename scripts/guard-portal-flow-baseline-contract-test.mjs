@@ -375,6 +375,104 @@ assert.equal(
 
 
 
+/*
+ * GP-4 separates portal switching from global account logout.
+ */
+for (
+  const required
+  of [
+    'const isAdminCrossPortal = Boolean(',
+    'GUARD_PORTAL_ACCESS.REDIRECT_ADMIN',
+    'Anda login sebagai Admin.',
+    'canReviewGuardAttendance',
+    'Kembali ke Admin',
+    'Keluar Akun',
+    'to={adminReturnPath}',
+    'to="/admin/operations/guard-attendance"',
+  ]
+) {
+  assert.equal(
+    guardPageSource.includes(
+      required
+    ),
+
+    true,
+
+    'GP-4 Guard portal session marker missing: ' +
+      required
+  );
+}
+
+for (
+  const forbidden
+  of [
+    'href="/admin"',
+    'href="/admin/operations/guard-attendance"',
+  ]
+) {
+  assert.equal(
+    guardPageSource.includes(
+      forbidden
+    ),
+
+    false,
+
+    'GP-4 must remove raw Guard-to-Admin reload navigation: ' +
+      forbidden
+  );
+}
+
+assert.equal(
+  adminTopbarSource.includes(
+    "from 'react-router-dom'"
+  ),
+
+  true,
+
+  'Admin Guard shortcut must use React Router after GP-4.'
+);
+
+assert.equal(
+  adminTopbarSource.includes(
+    "user.role ===\n          'owner'"
+  ),
+
+  true,
+
+  'Owner must receive an explicit Guard Portal shortcut.'
+);
+
+assert.equal(
+  adminTopbarSource.includes(
+    "user.role ===\n          'studio_guard'"
+  ),
+
+  false,
+
+  'Unreachable studio_guard AdminTopbar shortcut must be removed.'
+);
+
+assert.equal(
+  adminTopbarSource.includes(
+    'href="/guard/attendance"'
+  ),
+
+  false,
+
+  'Admin-to-Guard switch must not use a raw page reload.'
+);
+
+assert.equal(
+  packageJson.scripts.test.includes(
+    'guard-portal-session-switch-contract-test.mjs'
+  ),
+
+  true,
+
+  'GP-4 portal session switch contract must remain registered.'
+);
+
+
 for (
   const contractName
   of [

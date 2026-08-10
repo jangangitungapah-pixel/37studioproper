@@ -85,9 +85,9 @@ for (
     'Owner · {guardAccount?.email || authUser?.email ||',
     'Tidak ada Guard identity yang dipakai pada mode ini.',
     'Kembali ke Admin',
-    'href="/admin"',
+    'to={adminReturnPath}',
     'Buka Attendance Review',
-    'href="/admin/operations/guard-attendance"',
+    'to="/admin/operations/guard-attendance"',
   ]
 ) {
   assert.equal(
@@ -197,16 +197,26 @@ assert.match(
 );
 
 /*
- * No GP-4 behavior should be pulled into GP-3.
+ * GP-4 clarifies portal switching versus global account logout.
  */
 assert.equal(
   guardSource.includes(
     'Keluar Akun'
   ),
 
+  true,
+
+  'Guard logout must clearly mean global account logout after GP-4.'
+);
+
+assert.equal(
+  guardSource.includes(
+    'href="/admin"'
+  ),
+
   false,
 
-  'Logout wording belongs to GP-4, not GP-3.'
+  'Owner return-to-admin must use SPA routing after GP-4.'
 );
 
 /*

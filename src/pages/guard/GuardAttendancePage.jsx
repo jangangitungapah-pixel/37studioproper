@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Link,
+  useLocation,
+} from 'react-router-dom';
+import {
   AlertCircle,
   CheckCircle2,
   Clock3,
@@ -26,6 +30,9 @@ import {
   GUARD_PORTAL_ACCESS,
   resolveGuardPortalAccess,
 } from '../../utils/accountRoles.js';
+import {
+  hasAdminPagePermission,
+} from '../../utils/adminPermissions.js';
 import { isFirebaseConfigured } from '../../lib/firebase.js';
 import { useOperatorFeeSettings } from '../../settings/operatorFeeSettings.js';
 import '../../styles/admin-auth.css';
@@ -96,6 +103,7 @@ function isActiveLikeSession(session) {
 }
 
 export default function GuardAttendancePage() {
+  const location = useLocation();
   const settings = useOperatorFeeSettings();
   const isAuthAvailable = Boolean(isFirebaseConfigured);
 
@@ -203,6 +211,39 @@ export default function GuardAttendancePage() {
     guardPortalAccess ===
       GUARD_PORTAL_ACCESS.OWNER_OVERSIGHT
   );
+
+  const isAdminCrossPortal = Boolean(
+    authUser?.uid &&
+    guardPortalAccess ===
+      GUARD_PORTAL_ACCESS.REDIRECT_ADMIN
+  );
+
+  const canReviewGuardAttendance = Boolean(
+    isAdminCrossPortal &&
+    hasAdminPagePermission(
+      guardAccount,
+      'guard-attendance',
+    )
+  );
+
+  const adminReturnPath = useMemo(() => {
+    const returnTo =
+      location.state?.returnTo;
+
+    if (
+      typeof returnTo === 'string' &&
+      (
+        returnTo === '/admin' ||
+        returnTo.startsWith('/admin/') ||
+        returnTo.startsWith('/admin?') ||
+        returnTo.startsWith('/admin#')
+      )
+    ) {
+      return returnTo;
+    }
+
+    return '/admin';
+  }, [location.state]);
 
   useEffect(() => {
     if (!authUser?.uid || !canUseGuardPage) {
@@ -593,17 +634,21 @@ export default function GuardAttendancePage() {
             <span>
               {isOwnerOversight
                 ? '37 Studio Guard · Owner Oversight'
-                : '37 Studio Guard'}
+                : isAdminCrossPortal
+                  ? '37 Studio Guard · Admin Context'
+                  : '37 Studio Guard'}
             </span>
             <h1>
-              {isOwnerOversight
+              {isOwnerOversight || isAdminCrossPortal
                 ? 'Guard Portal'
                 : 'Absen Penjaga'}
             </h1>
             <small>
               {isOwnerOversight
                 ? 'Anda sedang melihat Guard Portal sebagai Owner.'
-                : 'Clock-in, clock-out, dan riwayat kehadiran penjaga.'}
+                : isAdminCrossPortal
+                  ? 'Anda login sebagai Admin. Gunakan Admin Portal untuk pengelolaan attendance.'
+                  : 'Clock-in, clock-out, dan riwayat kehadiran penjaga.'}
             </small>
           </div>
 
@@ -617,17 +662,35 @@ export default function GuardAttendancePage() {
               {todayLabel}
             </span>
 
-            {authUser && guardAccount?.role === 'admin' ? (
-              <a href="/admin" className="guard-shift-ghost-button">
+            {authUser &&
+            (
+              isOwnerOversight ||
+              isAdminCrossPortal ||
+              (
+                guardAccount?.role === 'admin' &&
+                guardPortalAccess ===
+                  GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL
+              )
+            ) ? (
+              <Link
+                className="guard-shift-ghost-button"
+                to={adminReturnPath}
+              >
                 <ShieldCheck size={12} />
-                Portal Admin
-              </a>
+                Kembali ke Admin
+              </Link>
             ) : null}
 
             {authUser ? (
-              <button className="guard-shift-ghost-button" type="button" disabled={isBusy} onClick={handleLogout}>
+              <button
+                aria-label="Keluar Akun"
+                className="guard-shift-ghost-button"
+                type="button"
+                disabled={isBusy}
+                onClick={handleLogout}
+              >
                 <LogOut size={12} />
-                Keluar
+                Keluar Akun
               </button>
             ) : null}
           </div>
@@ -813,27 +876,68 @@ export default function GuardAttendancePage() {
                 gap: '10px',
               }}
             >
-              <a
+              <Link
                 className="guard-shift-ghost-button"
-                href="/admin"
+                to={adminReturnPath}
                 style={{
                   textDecoration: 'none',
                 }}
               >
                 <ShieldCheck size={14} />
                 Kembali ke Admin
-              </a>
+              </Link>
 
-              <a
+              <Link
                 className="guard-shift-main-button"
-                href="/admin/operations/guard-attendance"
+                to="/admin/operations/guard-attendance"
                 style={{
                   textDecoration: 'none',
                 }}
               >
                 <Calendar size={14} />
                 Buka Attendance Review
-              </a>
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        {isReady && authUser && isAdminCrossPortal ? (
+          <section
+            aria-label="Admin Cross Portal"
+            className="guard-shift-card is-locked"
+          >
+            <ShieldCheck size={24} />
+            <strong>Anda login sebagai Admin.</strong>
+            <p>
+              Guard Portal adalah workspace operasional penjaga.
+              Gunakan Admin Portal untuk pengelolaan dan review attendance.
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '10px',
+                justifyContent: 'center',
+              }}
+            >
+              <Link
+                className="guard-shift-ghost-button"
+                to={adminReturnPath}
+              >
+                <ShieldCheck size={14} />
+                Kembali ke Admin
+              </Link>
+
+              {canReviewGuardAttendance ? (
+                <Link
+                  className="guard-shift-main-button"
+                  to="/admin/operations/guard-attendance"
+                >
+                  <Calendar size={14} />
+                  Buka Attendance Review
+                </Link>
+              ) : null}
             </div>
           </section>
         ) : null}
@@ -841,7 +945,8 @@ export default function GuardAttendancePage() {
         {isReady &&
         authUser &&
         !canUseGuardPage &&
-        !isOwnerOversight ? (
+        !isOwnerOversight &&
+        !isAdminCrossPortal ? (
           <section className="guard-shift-card is-locked">
             <ShieldCheck size={24} />
             <strong>Akses belum aktif</strong>
