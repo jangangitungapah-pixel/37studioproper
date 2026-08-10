@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Dialog } from 'radix-ui';
 import {
+  AlertTriangle,
   Archive,
   Boxes,
+  CheckCircle2,
   Download,
   History,
+  LoaderCircle,
+  MapPin,
   Minus,
   PackageOpen,
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
   Wrench,
   X,
 } from 'lucide-react';
@@ -65,6 +71,7 @@ const filterStatusOptions = [
   { key: 'low_stock', label: 'Stok Menipis', description: 'Qty di bawah minimal' },
   { key: 'maintenance', label: 'Maintenance', description: 'Perlu perbaikan' },
   { key: 'broken', label: 'Rusak', description: 'Rusak' },
+  { key: 'lost', label: 'Hilang', description: 'Tidak ditemukan' },
   { key: 'inactive', label: 'Nonaktif', description: 'Tidak aktif' },
 ];
 
@@ -88,7 +95,6 @@ function cleanText(value) {
 
 function toNumber(value) {
   const parsed = Number(value);
-
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
@@ -97,9 +103,14 @@ function getOptionLabel(options, key, fallback = '-') {
 }
 
 function getEffectiveStatus(item) {
-  if (item.status === 'inactive' || item.status === 'lost' || item.status === 'broken') return item.status;
+  if (item.status === 'inactive' || item.status === 'lost' || item.status === 'broken') {
+    return item.status;
+  }
+
   if (item.condition === 'maintenance' || item.status === 'maintenance') return 'maintenance';
-  if (Number(item.minStock) > 0 && Number(item.quantity) <= Number(item.minStock)) return 'low_stock';
+  if (Number(item.minStock) > 0 && Number(item.quantity) <= Number(item.minStock)) {
+    return 'low_stock';
+  }
 
   return item.status || 'active';
 }
@@ -110,7 +121,6 @@ function getStatusLabel(status) {
   if (status === 'broken') return 'Rusak';
   if (status === 'lost') return 'Hilang';
   if (status === 'inactive') return 'Nonaktif';
-
   return 'Aktif';
 }
 
@@ -118,7 +128,6 @@ function formatMovementDate(value) {
   if (!value) return '-';
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return '-';
 
   return new Intl.DateTimeFormat('id-ID', {
@@ -135,7 +144,6 @@ function getMovementTypeLabel(type) {
   if (type === 'in') return 'Stok Masuk';
   if (type === 'out') return 'Stok Keluar';
   if (type === 'inactive') return 'Nonaktif';
-
   return 'Aktivitas';
 }
 
@@ -186,7 +194,11 @@ function buildInventoryCsv(items) {
 }
 
 function downloadInventoryCsv(filename, csvContent) {
-  if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
+  if (
+    typeof document === 'undefined' ||
+    typeof Blob === 'undefined' ||
+    typeof URL === 'undefined'
+  ) {
     return false;
   }
 
@@ -197,11 +209,9 @@ function downloadInventoryCsv(filename, csvContent) {
   link.href = url;
   link.download = filename;
   link.style.display = 'none';
-
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-
   window.setTimeout(() => URL.revokeObjectURL(url), 250);
 
   return true;
@@ -213,58 +223,19 @@ function getInventoryStats(items) {
       const status = getEffectiveStatus(item);
 
       stats.total += 1;
+      if (status === 'active') stats.active += 1;
       if (status === 'low_stock') stats.lowStock += 1;
       if (status === 'maintenance') stats.maintenance += 1;
-      if (status === 'active') stats.active += 1;
-
+      if (['low_stock', 'maintenance', 'broken', 'lost'].includes(status)) stats.attention += 1;
       return stats;
     },
     {
       active: 0,
+      attention: 0,
       lowStock: 0,
       maintenance: 0,
       total: 0,
-    }
-  );
-}
-
-function InventorySummary({ items }) {
-  const stats = getInventoryStats(items);
-
-  return (
-    <section className="inventory-summary-grid" aria-label="Ringkasan inventory">
-      <article className="inventory-summary-card">
-        <span><Boxes size={16} /></span>
-        <div>
-          <small>Total Item</small>
-          <strong>{stats.total}</strong>
-        </div>
-      </article>
-
-      <article className="inventory-summary-card is-warning">
-        <span><PackageOpen size={16} /></span>
-        <div>
-          <small>Stok Menipis</small>
-          <strong>{stats.lowStock}</strong>
-        </div>
-      </article>
-
-      <article className="inventory-summary-card is-maintenance">
-        <span><Wrench size={16} /></span>
-        <div>
-          <small>Maintenance</small>
-          <strong>{stats.maintenance}</strong>
-        </div>
-      </article>
-
-      <article className="inventory-summary-card">
-        <span><Archive size={16} /></span>
-        <div>
-          <small>Aktif</small>
-          <strong>{stats.active}</strong>
-        </div>
-      </article>
-    </section>
+    },
   );
 }
 
@@ -277,106 +248,88 @@ function getInventoryAttentionItems(items) {
     .filter((item) => ['low_stock', 'maintenance', 'broken', 'lost'].includes(item.effectiveStatus))
     .sort((first, second) => {
       const priority = {
-        low_stock: 1,
-        maintenance: 2,
-        broken: 3,
-        lost: 4,
+        broken: 1,
+        lost: 2,
+        low_stock: 3,
+        maintenance: 4,
       };
 
       return (priority[first.effectiveStatus] || 9) - (priority[second.effectiveStatus] || 9);
     });
 }
 
-function InventoryAttentionPanel({ items, onAdjustStock, onEdit }) {
-  const attentionItems = getInventoryAttentionItems(items);
-
-  if (!attentionItems.length) return null;
+function InventoryEditorialHeader({ items }) {
+  const stats = getInventoryStats(items);
 
   return (
-    <section className="inventory-attention-panel" aria-label="Inventory yang perlu perhatian">
-      <header>
-        <span><Wrench size={15} /></span>
-        <div>
-          <small>Perlu Perhatian</small>
-          <strong>{attentionItems.length} item butuh dicek</strong>
-        </div>
-      </header>
-
-      <div className="inventory-attention-list">
-        {attentionItems.slice(0, 4).map((item) => {
-          const isLowStock = item.effectiveStatus === 'low_stock';
-
-          return (
-            <article className={'inventory-attention-row is-' + item.effectiveStatus} key={item.id}>
-              <div className="inventory-attention-info">
-                <strong>{item.name}</strong>
-                <span>
-                  {getStatusLabel(item.effectiveStatus)} • {item.quantity} {item.unit}
-                  {Number(item.minStock) > 0 ? ' / min ' + item.minStock + ' ' + item.unit : ''}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                className="inventory-attention-btn"
-                onClick={() => {
-                  if (isLowStock) {
-                    onAdjustStock(item, 'in');
-                    return;
-                  }
-
-                  onEdit(item);
-                }}
-              >
-                {isLowStock ? (
-                  <>
-                    <Plus size={12} />
-                    <span>Restock</span>
-                  </>
-                ) : (
-                  <>
-                    <Pencil size={12} />
-                    <span>Edit</span>
-                  </>
-                )}
-              </button>
-            </article>
-          );
-        })}
+    <header className="inventory-editorial-header">
+      <div className="inventory-heading">
+        <span className="inventory-kicker">Equipment operations</span>
+        <h2 id="inventory-title">Studio Inventory</h2>
+        <p>Jaga alat, stok habis pakai, kondisi, dan kebutuhan service dalam satu workspace.</p>
       </div>
-    </section>
+
+      <div className="inventory-health-context" aria-label="Konteks kesehatan inventory">
+        <span className="inventory-context-icon"><Boxes size={16} aria-hidden="true" /></span>
+        <span>
+          <small>Equipment health</small>
+          <strong>{stats.total} item tercatat</strong>
+          <em>{stats.attention} perlu perhatian</em>
+        </span>
+      </div>
+    </header>
   );
 }
 
-function InventoryMovementPanel({ movements }) {
-  if (!movements.length) return null;
+function InventorySummary({ items }) {
+  const stats = getInventoryStats(items);
+  const metrics = [
+    {
+      detail: 'equipment registry',
+      icon: Boxes,
+      label: 'Total Item',
+      tone: '',
+      value: stats.total,
+    },
+    {
+      detail: 'siap operasional',
+      icon: CheckCircle2,
+      label: 'Aktif',
+      tone: 'is-success',
+      value: stats.active,
+    },
+    {
+      detail: 'perlu restock',
+      icon: PackageOpen,
+      label: 'Stok Menipis',
+      tone: 'is-warning',
+      value: stats.lowStock,
+    },
+    {
+      detail: 'perlu dicek / service',
+      icon: Wrench,
+      label: 'Maintenance',
+      tone: 'is-info',
+      value: stats.maintenance,
+    },
+  ];
 
   return (
-    <section className="inventory-movement-panel" aria-label="Aktivitas inventory terbaru">
-      <header>
-        <span><History size={15} /></span>
-        <div>
-          <small>Aktivitas Terbaru</small>
-          <strong>Movement Log</strong>
-        </div>
-      </header>
+    <section className="inventory-pulse" aria-label="Ringkasan inventory">
+      {metrics.map((metric) => {
+        const Icon = metric.icon;
 
-      <div className="inventory-movement-list">
-        {movements.slice(0, 4).map((movement) => (
-          <article className={'inventory-movement-row is-' + movement.type} key={movement.id}>
-            <div className="inventory-movement-info">
-              <strong>{movement.itemName}</strong>
-              <span>{getMovementTypeLabel(movement.type)} • {formatMovementDate(movement.createdAt)}</span>
-              {movement.note ? <em>{movement.note}</em> : null}
-            </div>
-
-            <b>
-              {movement.type === 'out' ? '-' : '+'}
-              {movement.quantity} {movement.unit}
-            </b>
+        return (
+          <article className={'inventory-pulse-metric ' + metric.tone} key={metric.label}>
+            <span className="inventory-pulse-icon"><Icon size={16} aria-hidden="true" /></span>
+            <span>
+              <small>{metric.label}</small>
+              <strong>{metric.value}</strong>
+              <em>{metric.detail}</em>
+            </span>
           </article>
-        ))}
-      </div>
+        );
+      })}
     </section>
   );
 }
@@ -384,17 +337,21 @@ function InventoryMovementPanel({ movements }) {
 function InventoryToolbar({
   categoryFilter,
   exportDisabled,
+  isFiltered,
   onAddItem,
   onCategoryChange,
   onExportItems,
+  onResetFilters,
   onSearchChange,
   onStatusChange,
+  resultCount,
   searchText,
   statusFilter,
+  totalItems,
 }) {
   return (
-    <section className="inventory-toolbar" aria-label="Inventory toolbar">
-      <div className="inventory-search-shell">
+    <section className="inventory-command-shelf" aria-label="Inventory controls">
+      <label className="inventory-search-shell">
         <Search size={16} aria-hidden="true" />
         <input
           aria-label="Cari inventory"
@@ -403,7 +360,7 @@ function InventoryToolbar({
           value={searchText}
           onChange={(event) => onSearchChange(event.target.value)}
         />
-      </div>
+      </label>
 
       <div className="inventory-toolbar-filters">
         <StudioSelect
@@ -428,110 +385,329 @@ function InventoryToolbar({
           type="button"
           onClick={onExportItems}
         >
-          <Download size={14} />
+          <Download size={14} aria-hidden="true" />
           <span>Export</span>
         </button>
 
         <button className="inventory-add-button" type="button" onClick={onAddItem}>
-          <Plus size={14} />
-          <span>Tambah</span>
+          <Plus size={14} aria-hidden="true" />
+          <span>Tambah Item</span>
         </button>
+      </div>
+
+      <div className="inventory-filter-context">
+        <SlidersHorizontal size={13} aria-hidden="true" />
+        <span><strong>{resultCount}</strong><small>dari {totalItems} item</small></span>
+        {isFiltered ? (
+          <button type="button" onClick={onResetFilters}>Reset</button>
+        ) : (
+          <em>semua inventory</em>
+        )}
       </div>
     </section>
   );
 }
 
-function InventoryList({ items, onArchive, onAdjustStock, onEdit }) {
-  if (!items.length) {
+function InventoryInsightState({ type }) {
+  if (type === 'loading') {
     return (
-      <section className="inventory-empty-state">
-        <PackageOpen size={24} />
-        <strong>Inventory masih kosong</strong>
-        <span>Tambahkan alat studio, kabel, aksesoris, atau barang habis pakai.</span>
-      </section>
+      <div className="inventory-insight-state" role="status">
+        <LoaderCircle className="auth-spin" size={18} aria-hidden="true" />
+        <strong>Menyinkronkan inventory...</strong>
+        <span>Equipment registry sedang dibaca.</span>
+      </div>
+    );
+  }
+
+  if (type === 'error') {
+    return (
+      <div className="inventory-insight-state is-error" role="alert">
+        <AlertTriangle size={18} aria-hidden="true" />
+        <strong>Data belum tersinkron</strong>
+        <span>Cek koneksi atau izin inventory.</span>
+      </div>
+    );
+  }
+
+  if (type === 'clear') {
+    return (
+      <div className="inventory-insight-state is-clear">
+        <CheckCircle2 size={18} aria-hidden="true" />
+        <strong>Semua equipment terkontrol</strong>
+        <span>Belum ada stok, kondisi, atau status yang butuh tindakan.</span>
+      </div>
     );
   }
 
   return (
-    <section className="inventory-list" aria-label="Daftar inventory">
-      {items.map((item) => {
-        const status = getEffectiveStatus(item);
-        const isLowStock = status === 'low_stock';
-        const isAlertStatus = ['broken', 'lost', 'maintenance'].includes(status);
+    <div className="inventory-insight-state">
+      <History size={18} aria-hidden="true" />
+      <strong>Belum ada movement</strong>
+      <span>Perubahan stok dan item akan tercatat di sini.</span>
+    </div>
+  );
+}
 
-        return (
-          <article className={'inventory-item-row is-' + status} key={item.id}>
-            <div className="inventory-item-info">
-              <div className="inventory-item-name-line">
-                <strong className="inventory-item-name" title={item.name}>{item.name}</strong>
-                <span className="inventory-item-badge">{getOptionLabel(formCategoryOptions, item.category, 'Kategori')}</span>
+function InventoryAttentionPanel({ isLoading, items, loadError, onAdjustStock, onEdit }) {
+  const attentionItems = getInventoryAttentionItems(items);
+
+  return (
+    <section className="inventory-attention-panel" aria-label="Inventory yang perlu perhatian">
+      <header>
+        <span className="inventory-panel-icon"><Wrench size={15} aria-hidden="true" /></span>
+        <div>
+          <small>Action queue</small>
+          <strong>Equipment perlu perhatian</strong>
+          <em>{attentionItems.length} item terdeteksi</em>
+        </div>
+      </header>
+
+      {isLoading ? <InventoryInsightState type="loading" /> : null}
+      {!isLoading && loadError ? <InventoryInsightState type="error" /> : null}
+      {!isLoading && !loadError && !attentionItems.length ? (
+        <InventoryInsightState type="clear" />
+      ) : null}
+
+      {!isLoading && !loadError && attentionItems.length ? (
+        <div className="inventory-attention-list">
+          {attentionItems.slice(0, 4).map((item) => {
+            const isLowStock = item.effectiveStatus === 'low_stock';
+
+            return (
+              <article className={'inventory-attention-row is-' + item.effectiveStatus} key={item.id}>
+                <span className={'inventory-status-dot is-' + item.effectiveStatus} aria-hidden="true" />
+                <div className="inventory-attention-info">
+                  <strong>{item.name}</strong>
+                  <span>
+                    {getStatusLabel(item.effectiveStatus)} · {item.quantity} {item.unit}
+                    {Number(item.minStock) > 0 ? ' / min ' + item.minStock + ' ' + item.unit : ''}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="inventory-attention-btn"
+                  onClick={() => {
+                    if (isLowStock) {
+                      onAdjustStock(item, 'in');
+                      return;
+                    }
+
+                    onEdit(item);
+                  }}
+                >
+                  {isLowStock ? <Plus size={12} aria-hidden="true" /> : <Pencil size={12} aria-hidden="true" />}
+                  <span>{isLowStock ? 'Restock' : 'Review'}</span>
+                </button>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function InventoryMovementPanel({ isLoading, loadError, movements }) {
+  return (
+    <section className="inventory-movement-panel" aria-label="Aktivitas inventory terbaru">
+      <header>
+        <span className="inventory-panel-icon"><History size={15} aria-hidden="true" /></span>
+        <div>
+          <small>Movement log</small>
+          <strong>Aktivitas terbaru</strong>
+          <em>{movements.length} movement tersinkron</em>
+        </div>
+      </header>
+
+      {isLoading ? <InventoryInsightState type="loading" /> : null}
+      {!isLoading && loadError ? <InventoryInsightState type="error" /> : null}
+      {!isLoading && !loadError && !movements.length ? <InventoryInsightState type="empty" /> : null}
+
+      {!isLoading && !loadError && movements.length ? (
+        <div className="inventory-movement-list">
+          {movements.slice(0, 4).map((movement) => (
+            <article className={'inventory-movement-row is-' + movement.type} key={movement.id}>
+              <span className="inventory-movement-mark" aria-hidden="true">
+                {movement.type === 'out' ? <Minus size={12} /> : <Plus size={12} />}
+              </span>
+              <div className="inventory-movement-info">
+                <strong>{movement.itemName}</strong>
+                <span>{getMovementTypeLabel(movement.type)} · {formatMovementDate(movement.createdAt)}</span>
+                {movement.note ? <em>{movement.note}</em> : null}
               </div>
-              <div className="inventory-item-details">
-                <span>📍 {item.location || 'No Lokasi'}</span>
-                <span className="dot-separator">·</span>
-                <span>{getOptionLabel(conditionOptions, item.condition, 'Baik')}</span>
-                {item.note && (
-                  <>
+              <b>
+                {movement.type === 'out' ? '-' : '+'}{movement.quantity} {movement.unit}
+              </b>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function InventoryLedgerState({ hasInventory, type }) {
+  if (type === 'loading') {
+    return (
+      <div className="inventory-ledger-state" role="status">
+        <span className="inventory-state-icon"><LoaderCircle className="auth-spin" size={19} /></span>
+        <strong>Menyinkronkan equipment registry...</strong>
+        <span>Inventory dan kondisi terbaru sedang dimuat.</span>
+        <div className="inventory-state-skeleton" aria-hidden="true"><i /><i /><i /></div>
+      </div>
+    );
+  }
+
+  if (type === 'error') {
+    return (
+      <div className="inventory-ledger-state is-error" role="alert">
+        <span className="inventory-state-icon"><AlertTriangle size={19} /></span>
+        <strong>Inventory belum berhasil dimuat</strong>
+        <span>Periksa koneksi atau izin akses Firestore.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="inventory-ledger-state">
+      <span className="inventory-state-icon"><PackageOpen size={19} /></span>
+      <strong>{hasInventory ? 'Tidak ada item di filter ini' : 'Inventory masih kosong'}</strong>
+      <span>
+        {hasInventory
+          ? 'Ubah pencarian, kategori, atau status untuk melihat equipment lain.'
+          : 'Tambahkan alat studio, kabel, aksesoris, atau barang habis pakai.'}
+      </span>
+    </div>
+  );
+}
+
+function InventoryList({
+  hasInventory,
+  isLoading,
+  items,
+  loadError,
+  onArchive,
+  onAdjustStock,
+  onEdit,
+  resultCount,
+}) {
+  return (
+    <section className="inventory-ledger" aria-label="Daftar inventory">
+      <header className="inventory-ledger-header">
+        <div>
+          <span>Equipment registry</span>
+          <strong>{resultCount} item ditemukan</strong>
+        </div>
+        <p><History size={13} aria-hidden="true" /> Adjustment stok menulis movement log</p>
+      </header>
+
+      <div className="inventory-ledger-columns" aria-hidden="true">
+        <span>Equipment / condition</span>
+        <span>Stock</span>
+        <span>Actions</span>
+      </div>
+
+      {isLoading ? <InventoryLedgerState hasInventory={hasInventory} type="loading" /> : null}
+      {!isLoading && loadError ? <InventoryLedgerState hasInventory={hasInventory} type="error" /> : null}
+      {!isLoading && !loadError && !items.length ? (
+        <InventoryLedgerState hasInventory={hasInventory} type="empty" />
+      ) : null}
+
+      {!isLoading && !loadError && items.length ? (
+        <div className="inventory-ledger-rows">
+          {items.map((item) => {
+            const status = getEffectiveStatus(item);
+            const isAlertStatus = ['broken', 'lost', 'maintenance', 'low_stock'].includes(status);
+
+            return (
+              <article className={'inventory-item-row is-' + status} key={item.id}>
+                <span className="inventory-item-icon"><PackageOpen size={15} aria-hidden="true" /></span>
+
+                <div className="inventory-item-info">
+                  <div className="inventory-item-name-line">
+                    <strong className="inventory-item-name" title={item.name}>{item.name}</strong>
+                    <span className="inventory-item-badge">
+                      {getOptionLabel(formCategoryOptions, item.category, 'Kategori')}
+                    </span>
+                    <span className={'inventory-status-pill is-' + status}>
+                      <i aria-hidden="true" />{getStatusLabel(status)}
+                    </span>
+                  </div>
+
+                  <div className="inventory-item-details">
+                    <span><MapPin size={11} aria-hidden="true" />{item.location || 'Belum ada lokasi'}</span>
                     <span className="dot-separator">·</span>
-                    <span className="inventory-note-preview" title={item.note}>📝 {item.note}</span>
-                  </>
-                )}
-              </div>
-            </div>
+                    <span>{getOptionLabel(conditionOptions, item.condition, 'Baik')}</span>
+                    {item.note ? (
+                      <>
+                        <span className="dot-separator">·</span>
+                        <span className="inventory-note-preview" title={item.note}>{item.note}</span>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
 
-            <div className="inventory-item-stock-col">
-              <strong className={'inventory-qty ' + (isLowStock || isAlertStatus ? 'text-danger' : '')}>
-                {item.quantity} <small>{item.unit}</small>
-              </strong>
-              {Number(item.minStock) > 0 && (
-                <span className="inventory-min-stock">Min: {item.minStock}</span>
-              )}
-            </div>
+                <div className="inventory-item-stock-col">
+                  <small>Stok</small>
+                  <strong className={'inventory-qty ' + (isAlertStatus ? 'is-alert' : '')}>
+                    {item.quantity} <em>{item.unit}</em>
+                  </strong>
+                  {Number(item.minStock) > 0 ? (
+                    <span className="inventory-min-stock">Min. {item.minStock}</span>
+                  ) : null}
+                </div>
 
-            <div className="inventory-item-actions-col">
-              <div className="inventory-adjust-group">
-                <button
-                  aria-label="Kurang stok"
-                  className="inventory-adjust-btn is-out"
-                  type="button"
-                  onClick={() => onAdjustStock(item, 'out')}
-                >
-                  <Minus size={12} />
-                </button>
-                <button
-                  aria-label="Tambah stok"
-                  className="inventory-adjust-btn is-in"
-                  type="button"
-                  onClick={() => onAdjustStock(item, 'in')}
-                >
-                  <Plus size={12} />
-                </button>
-              </div>
+                <div className="inventory-item-actions-col">
+                  <div className="inventory-adjust-group" aria-label={'Adjustment stok ' + item.name}>
+                    <button
+                      aria-label={'Kurangi stok ' + item.name}
+                      className="inventory-adjust-btn is-out"
+                      title="Stok keluar"
+                      type="button"
+                      onClick={() => onAdjustStock(item, 'out')}
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <button
+                      aria-label={'Tambah stok ' + item.name}
+                      className="inventory-adjust-btn is-in"
+                      title="Stok masuk"
+                      type="button"
+                      onClick={() => onAdjustStock(item, 'in')}
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
 
-              <div className="inventory-crud-group">
-                <button
-                  aria-label="Edit item"
-                  className="inventory-crud-btn"
-                  type="button"
-                  onClick={() => onEdit(item)}
-                >
-                  <Pencil size={11} />
-                </button>
-                {item.status !== 'inactive' && (
-                  <button
-                    aria-label="Nonaktifkan item"
-                    className="inventory-crud-btn"
-                    type="button"
-                    onClick={() => onArchive(item)}
-                  >
-                    <Archive size={11} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </article>
-        );
-      })}
+                  <div className="inventory-crud-group" aria-label={'Pengelolaan ' + item.name}>
+                    <button
+                      aria-label={'Edit item ' + item.name}
+                      className="inventory-crud-btn"
+                      title="Edit item"
+                      type="button"
+                      onClick={() => onEdit(item)}
+                    >
+                      <Pencil size={11} />
+                    </button>
+                    {item.status !== 'inactive' ? (
+                      <button
+                        aria-label={'Nonaktifkan item ' + item.name}
+                        className="inventory-crud-btn"
+                        title="Nonaktifkan item"
+                        type="button"
+                        onClick={() => onArchive(item)}
+                      >
+                        <Archive size={11} />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -568,60 +744,68 @@ function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
   }
 
   return (
-    <div className="inventory-modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+    <Dialog.Root modal open onOpenChange={(nextOpen) => {
+      if (!nextOpen) onClose();
     }}>
-      <section className="inventory-modal-panel inventory-adjustment-panel" role="dialog" aria-modal="true" aria-labelledby="inventory-adjustment-title">
-        <header className="inventory-modal-head">
-          <div>
-            <p>{title}</p>
-            <h2 id="inventory-adjustment-title">{item?.name || 'Inventory'}</h2>
-          </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="inventory-modal-backdrop" />
+        <Dialog.Content className="inventory-modal-panel inventory-adjustment-panel" data-inventory-modal-ui="ui-9-spatial">
+          <header className="inventory-modal-head">
+            <div>
+              <span>{title}</span>
+              <Dialog.Title asChild>
+                <h2>{item?.name || 'Inventory'}</h2>
+              </Dialog.Title>
+              <Dialog.Description asChild>
+                <p>Catat perubahan stok agar movement log tetap memiliki jejak yang jelas.</p>
+              </Dialog.Description>
+            </div>
 
-          <button type="button" aria-label="Tutup adjustment stok" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </header>
+            <Dialog.Close asChild>
+              <button type="button" aria-label="Tutup adjustment stok"><X size={18} /></button>
+            </Dialog.Close>
+          </header>
 
-        <form className="inventory-form inventory-adjustment-form" onSubmit={handleSubmit}>
-          <div className="inventory-adjustment-current">
-            <small>Stok Saat Ini</small>
-            <strong>{currentQuantity} {item?.unit || 'pcs'}</strong>
-          </div>
+          <form className="inventory-form inventory-adjustment-form" onSubmit={handleSubmit}>
+            <div className="inventory-adjustment-current">
+              <small>Stok Saat Ini</small>
+              <strong>{currentQuantity} {item?.unit || 'pcs'}</strong>
+            </div>
 
-          <label>
-            <span>{isStockIn ? 'Jumlah Masuk' : 'Jumlah Keluar'}</span>
-            <input
-              inputMode="numeric"
-              min="1"
-              placeholder="Contoh: 2"
-              type="number"
-              value={quantity}
-              onChange={(event) => {
-                setQuantity(event.target.value);
-                if (error) setError('');
-              }}
-            />
-          </label>
+            <label>
+              <span>{isStockIn ? 'Jumlah Masuk' : 'Jumlah Keluar'}</span>
+              <input
+                inputMode="numeric"
+                min="1"
+                placeholder="Contoh: 2"
+                type="number"
+                value={quantity}
+                onChange={(event) => {
+                  setQuantity(event.target.value);
+                  if (error) setError('');
+                }}
+              />
+            </label>
 
-          <label>
-            <span>Catatan</span>
-            <textarea
-              placeholder={isStockIn ? 'Contoh: beli baru, restock kabel...' : 'Contoh: dipakai, rusak, hilang...'}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </label>
+            <label>
+              <span>Catatan</span>
+              <textarea
+                placeholder={isStockIn ? 'Contoh: beli baru, restock kabel...' : 'Contoh: dipakai, rusak, hilang...'}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </label>
 
-          {error ? <p className="inventory-form-error" role="alert">{error}</p> : null}
+            {error ? <p className="inventory-form-error" role="alert">{error}</p> : null}
 
-          <footer>
-            <button type="button" onClick={onClose}>Batal</button>
-            <button className="is-primary" type="submit">{title}</button>
-          </footer>
-        </form>
-      </section>
-    </div>
+            <footer>
+              <Dialog.Close asChild><button type="button">Batal</button></Dialog.Close>
+              <button className="is-primary" type="submit">{title}</button>
+            </footer>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -640,7 +824,6 @@ function InventoryFormModal({ item, onClose, onSave }) {
         ...current,
         [field]: event.target.value,
       }));
-
       if (error) setError('');
     };
   }
@@ -651,7 +834,6 @@ function InventoryFormModal({ item, onClose, onSave }) {
         ...current,
         [field]: nextValue,
       }));
-
       if (error) setError('');
     };
   }
@@ -660,7 +842,6 @@ function InventoryFormModal({ item, onClose, onSave }) {
     event.preventDefault();
 
     const name = cleanText(form.name);
-
     if (!name) {
       setError('Nama item wajib diisi.');
       return;
@@ -677,97 +858,102 @@ function InventoryFormModal({ item, onClose, onSave }) {
   }
 
   return (
-    <div className="inventory-modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+    <Dialog.Root modal open onOpenChange={(nextOpen) => {
+      if (!nextOpen) onClose();
     }}>
-      <section className="inventory-modal-panel" role="dialog" aria-modal="true" aria-labelledby="inventory-form-title">
-        <header className="inventory-modal-head">
-          <div>
-            <p>{form.id ? 'Edit Item' : 'Tambah Item'}</p>
-            <h2 id="inventory-form-title">Inventory</h2>
-          </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="inventory-modal-backdrop" />
+        <Dialog.Content className="inventory-modal-panel" data-inventory-modal-ui="ui-9-spatial">
+          <header className="inventory-modal-head">
+            <div>
+              <span>{form.id ? 'Edit equipment' : 'New equipment'}</span>
+              <Dialog.Title asChild>
+                <h2>{form.id ? 'Edit Inventory' : 'Tambah Inventory'}</h2>
+              </Dialog.Title>
+              <Dialog.Description asChild>
+                <p>Kelola identitas, stok, lokasi, kondisi, dan status operasional item.</p>
+              </Dialog.Description>
+            </div>
 
-          <button type="button" aria-label="Tutup inventory form" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </header>
+            <Dialog.Close asChild>
+              <button type="button" aria-label="Tutup inventory form"><X size={18} /></button>
+            </Dialog.Close>
+          </header>
 
-        <form className="inventory-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Nama Item</span>
-            <input value={form.name} placeholder="Contoh: Kabel Jack 3 Meter" onChange={updateField('name')} />
-          </label>
-
-          <div className="inventory-form-grid">
-            <StudioSelect
-              label="Kategori"
-              options={formCategoryOptions}
-              selectedKey={form.category}
-              onChange={updateValue('category')}
-            />
-
-            <StudioSelect
-              label="Tipe"
-              options={typeOptions}
-              selectedKey={form.type}
-              onChange={updateValue('type')}
-            />
-          </div>
-
-          <div className="inventory-form-grid">
+          <form className="inventory-form" onSubmit={handleSubmit}>
             <label>
-              <span>Jumlah</span>
-              <input inputMode="numeric" type="number" min="0" value={form.quantity} onChange={updateField('quantity')} />
+              <span>Nama Item</span>
+              <input value={form.name} placeholder="Contoh: Kabel Jack 3 Meter" onChange={updateField('name')} />
             </label>
 
-            <StudioSelect
-              label="Satuan"
-              options={unitOptions}
-              selectedKey={form.unit}
-              onChange={updateValue('unit')}
-            />
-          </div>
+            <div className="inventory-form-grid">
+              <StudioSelect
+                label="Kategori"
+                options={formCategoryOptions}
+                selectedKey={form.category}
+                onChange={updateValue('category')}
+              />
+              <StudioSelect
+                label="Tipe"
+                options={typeOptions}
+                selectedKey={form.type}
+                onChange={updateValue('type')}
+              />
+            </div>
 
-          <label>
-            <span>Minimal Stok</span>
-            <input inputMode="numeric" type="number" min="0" value={form.minStock} onChange={updateField('minStock')} />
-          </label>
+            <div className="inventory-form-grid">
+              <label>
+                <span>Jumlah</span>
+                <input inputMode="numeric" type="number" min="0" value={form.quantity} onChange={updateField('quantity')} />
+              </label>
+              <StudioSelect
+                label="Satuan"
+                options={unitOptions}
+                selectedKey={form.unit}
+                onChange={updateValue('unit')}
+              />
+            </div>
 
-          <div className="inventory-form-grid">
-            <StudioSelect
-              label="Kondisi"
-              options={conditionOptions}
-              selectedKey={form.condition}
-              onChange={updateValue('condition')}
-            />
+            <label>
+              <span>Minimal Stok</span>
+              <input inputMode="numeric" type="number" min="0" value={form.minStock} onChange={updateField('minStock')} />
+            </label>
 
-            <StudioSelect
-              label="Status"
-              options={statusOptions}
-              selectedKey={form.status}
-              onChange={updateValue('status')}
-            />
-          </div>
+            <div className="inventory-form-grid">
+              <StudioSelect
+                label="Kondisi"
+                options={conditionOptions}
+                selectedKey={form.condition}
+                onChange={updateValue('condition')}
+              />
+              <StudioSelect
+                label="Status"
+                options={statusOptions}
+                selectedKey={form.status}
+                onChange={updateValue('status')}
+              />
+            </div>
 
-          <label>
-            <span>Lokasi</span>
-            <input value={form.location} placeholder="Contoh: Rak Kabel" onChange={updateField('location')} />
-          </label>
+            <label>
+              <span>Lokasi</span>
+              <input value={form.location} placeholder="Contoh: Rak Kabel" onChange={updateField('location')} />
+            </label>
 
-          <label>
-            <span>Catatan</span>
-            <textarea value={form.note} placeholder="Opsional, contoh: jack agak longgar..." onChange={updateField('note')} />
-          </label>
+            <label>
+              <span>Catatan</span>
+              <textarea value={form.note} placeholder="Opsional, contoh: jack agak longgar..." onChange={updateField('note')} />
+            </label>
 
-          {error ? <p className="inventory-form-error" role="alert">{error}</p> : null}
+            {error ? <p className="inventory-form-error" role="alert">{error}</p> : null}
 
-          <footer>
-            <button type="button" onClick={onClose}>Batal</button>
-            <button className="is-primary" type="submit">Simpan</button>
-          </footer>
-        </form>
-      </section>
-    </div>
+            <footer>
+              <Dialog.Close asChild><button type="button">Batal</button></Dialog.Close>
+              <button className="is-primary" type="submit">Simpan</button>
+            </footer>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -782,17 +968,27 @@ export default function InventoryPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stockAdjustment, setStockAdjustment] = useState(null);
   const [toast, setToast] = useState(null);
+  const [isItemsLoading, setIsItemsLoading] = useState(true);
+  const [itemsLoadError, setItemsLoadError] = useState('');
+  const [isMovementsLoading, setIsMovementsLoading] = useState(true);
+  const [movementsLoadError, setMovementsLoadError] = useState('');
 
   useEffect(() => {
     const unsubscribe = inventoryRepository.subscribeInventoryItems(
-      (data) => setItems(data),
+      (data) => {
+        setItems(data);
+        setIsItemsLoading(false);
+        setItemsLoadError('');
+      },
       (error) => {
         console.error('Gagal memuat inventory:', error);
+        setIsItemsLoading(false);
+        setItemsLoadError('Data inventory belum bisa dimuat dari Firestore.');
         setToast({
           title: 'Inventory belum tersinkron',
           message: 'Data inventory belum bisa dimuat dari Firestore.',
         });
-      }
+      },
     );
 
     return unsubscribe;
@@ -800,11 +996,17 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const unsubscribe = inventoryRepository.subscribeInventoryMovements(
-      (data) => setMovements(data),
+      (data) => {
+        setMovements(data);
+        setIsMovementsLoading(false);
+        setMovementsLoadError('');
+      },
       (error) => {
         console.error('Gagal memuat movement inventory:', error);
+        setIsMovementsLoading(false);
+        setMovementsLoadError('Movement log belum bisa dimuat.');
       },
-      8
+      8,
     );
 
     return unsubscribe;
@@ -812,9 +1014,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     if (!toast) return undefined;
-
     const timerId = window.setTimeout(() => setToast(null), 4200);
-
     return () => window.clearTimeout(timerId);
   }, [toast]);
 
@@ -841,8 +1041,10 @@ export default function InventoryPage() {
 
   const paginatedItems = useMemo(
     () => getPaginationSlice(filteredItems, inventoryPage, ADMIN_LIST_PAGE_SIZE),
-    [filteredItems, inventoryPage]
+    [filteredItems, inventoryPage],
   );
+
+  const isFiltered = Boolean(searchText.trim()) || categoryFilter !== 'all' || statusFilter !== 'all';
 
   function handleInventorySearchChange(nextSearchText) {
     setSearchText(nextSearchText);
@@ -856,6 +1058,13 @@ export default function InventoryPage() {
 
   function handleInventoryStatusChange(nextStatus) {
     setStatusFilter(nextStatus);
+    setInventoryPage(1);
+  }
+
+  function resetFilters() {
+    setSearchText('');
+    setCategoryFilter('all');
+    setStatusFilter('all');
     setInventoryPage(1);
   }
 
@@ -891,10 +1100,7 @@ export default function InventoryPage() {
   }
 
   function openStockAdjustment(item, mode) {
-    setStockAdjustment({
-      item,
-      mode,
-    });
+    setStockAdjustment({ item, mode });
   }
 
   async function saveItem(nextItem) {
@@ -1012,37 +1218,52 @@ export default function InventoryPage() {
   }
 
   return (
-    <section className="inventory-page" aria-labelledby="inventory-title">
-      <div className="inventory-title-block">
-        <p>Inventory</p>
-        <h2 id="inventory-title">Studio Inventory</h2>
-        <span>Catat alat, stok habis pakai, kondisi barang, dan kebutuhan maintenance.</span>
-      </div>
-
+    <section
+      aria-labelledby="inventory-title"
+      className="inventory-page"
+      data-inventory-ui="ui-9-spatial"
+    >
+      <InventoryEditorialHeader items={items} />
       <InventorySummary items={items} />
 
       <InventoryToolbar
         categoryFilter={categoryFilter}
         exportDisabled={!filteredItems.length}
+        isFiltered={isFiltered}
+        resultCount={filteredItems.length}
         searchText={searchText}
         statusFilter={statusFilter}
+        totalItems={items.length}
         onAddItem={openAddForm}
         onCategoryChange={handleInventoryCategoryChange}
         onExportItems={exportInventoryCsv}
+        onResetFilters={resetFilters}
         onSearchChange={handleInventorySearchChange}
         onStatusChange={handleInventoryStatusChange}
       />
 
-      <InventoryAttentionPanel
-        items={items}
-        onAdjustStock={openStockAdjustment}
-        onEdit={openEditForm}
-      />
+      <div className="inventory-operations-grid">
+        <InventoryAttentionPanel
+          isLoading={isItemsLoading}
+          items={items}
+          loadError={itemsLoadError}
+          onAdjustStock={openStockAdjustment}
+          onEdit={openEditForm}
+        />
 
-      <InventoryMovementPanel movements={movements} />
+        <InventoryMovementPanel
+          isLoading={isMovementsLoading}
+          loadError={movementsLoadError}
+          movements={movements}
+        />
+      </div>
 
       <InventoryList
+        hasInventory={Boolean(items.length)}
+        isLoading={isItemsLoading}
         items={paginatedItems}
+        loadError={itemsLoadError}
+        resultCount={filteredItems.length}
         onArchive={archiveItem}
         onAdjustStock={openStockAdjustment}
         onEdit={openEditForm}
@@ -1079,19 +1300,21 @@ export default function InventoryPage() {
       ) : null}
 
       {toast ? (
-        <aside className="schedule-toast is-warning" role="status" aria-live="polite">
-          <span className="schedule-toast-orb" aria-hidden="true" />
-          <span className="schedule-toast-copy">
+        <aside className="inventory-toast" role="status" aria-live="polite">
+          <span className="inventory-toast-icon" aria-hidden="true">
+            <CheckCircle2 size={14} />
+          </span>
+          <span className="inventory-toast-copy">
             <strong>{toast.title}</strong>
             <span>{toast.message}</span>
           </span>
           <button
             aria-label="Tutup notifikasi"
-            className="schedule-toast-close"
+            className="inventory-toast-close"
             type="button"
             onClick={() => setToast(null)}
           >
-            ×
+            <X size={14} aria-hidden="true" />
           </button>
         </aside>
       ) : null}
