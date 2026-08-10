@@ -209,6 +209,8 @@ async function promptHidden(label) {
           previousRawMode,
         );
 
+        input.pause();
+
         output.write('\n');
       }
 
@@ -507,6 +509,14 @@ function printReportSummary(report) {
     report.summary.totalUsersScanned,
   );
   console.log(
+    'Canonical studio_guard:',
+    report.summary.canonicalStudioGuardCount,
+  );
+  console.log(
+    'Approved canonical studio_guard:',
+    report.summary.approvedCanonicalStudioGuardCount,
+  );
+  console.log(
     'Legacy admin+isGuard:',
     report.summary.legacyAdminGuardCount,
   );
@@ -530,8 +540,16 @@ function printReportSummary(report) {
 
   if (!report.accounts.length) {
     console.log(
-      'Tidak ada akun role=admin + isGuard=true yang ditemukan.',
+      'Tidak ada akun LEGACY role=admin + isGuard=true yang ditemukan.',
     );
+
+    if (
+      report.summary.canonicalStudioGuardCount > 0
+    ) {
+      console.log(
+        'Akun role=studio_guard tetap terdeteksi sebagai Guard canonical dan tidak termasuk target migrasi GP6.',
+      );
+    }
 
     return;
   }

@@ -92,6 +92,8 @@ const report =
 
 assert.equal(report.mode, 'READ_ONLY');
 assert.equal(report.summary.totalUsersScanned, 3);
+assert.equal(report.summary.canonicalStudioGuardCount, 1);
+assert.equal(report.summary.approvedCanonicalStudioGuardCount, 1);
 assert.equal(report.summary.legacyAdminGuardCount, 1);
 assert.equal(report.summary.activeLegacyAdminGuardCount, 1);
 assert.equal(report.summary.withGuardAttendanceEvidence, 1);
@@ -121,6 +123,10 @@ for (const required of [
   'assertOwnerIdentity',
   'signInWithEmailAndPassword',
   'reviewedTarget tetap null',
+  'input.pause();',
+  'Canonical studio_guard:',
+  'Approved canonical studio_guard:',
+  'Akun role=studio_guard tetap terdeteksi sebagai Guard canonical',
 ]) {
   assert.equal(
     auditSource.includes(required),

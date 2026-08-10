@@ -147,6 +147,16 @@ export function buildLegacyAdminGuardAuditReport({
     generatedAt: new Date().toISOString(),
     summary: {
       totalUsersScanned: allUsers.length,
+      canonicalStudioGuardCount:
+        allUsers.filter(
+          (user) => user?.role === 'studio_guard'
+        ).length,
+      approvedCanonicalStudioGuardCount:
+        allUsers.filter(
+          (user) =>
+            user?.role === 'studio_guard' &&
+            user?.status === 'approved'
+        ).length,
       legacyAdminGuardCount: legacyEntries.length,
       activeLegacyAdminGuardCount:
         legacyEntries.filter(
