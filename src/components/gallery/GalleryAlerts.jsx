@@ -5,23 +5,45 @@ export default function GalleryAlerts({
   onClearSuccess,
   success,
 }) {
-  if (!error && !success) return null;
+  if (!error && !success) {
+    return null;
+  }
 
   return (
-    <>
+    <div
+      className="gallery-alert-stack"
+      aria-live="polite"
+    >
       {error ? (
-        <div className="p-4 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs flex items-center justify-between gap-2 animate-in fade-in-50 slide-in-from-top-3">
-          <span className="flex items-center gap-2">⚠️ {error}</span>
-          <button onClick={onClearError} className="p-1 text-red-400 hover:text-red-200"><CloseIcon size={14} /></button>
+        <div
+          className="gallery-alert is-error"
+          role="alert"
+        >
+          <span>{error}</span>
+
+          <button
+            type="button"
+            onClick={onClearError}
+            aria-label="Tutup pesan error"
+          >
+            <CloseIcon size={14} />
+          </button>
         </div>
       ) : null}
 
       {success ? (
-        <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs flex items-center justify-between gap-2 animate-in fade-in-50 slide-in-from-top-3">
-          <span className="flex items-center gap-2">✨ {success}</span>
-          <button onClick={onClearSuccess} className="p-1 text-emerald-400 hover:text-emerald-200"><CloseIcon size={14} /></button>
+        <div className="gallery-alert is-success">
+          <span>{success}</span>
+
+          <button
+            type="button"
+            onClick={onClearSuccess}
+            aria-label="Tutup pesan sukses"
+          >
+            <CloseIcon size={14} />
+          </button>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

@@ -44,6 +44,7 @@ import GalleryTimelineView from '../../components/gallery/GalleryTimelineView.js
 import GalleryTrashView from '../../components/gallery/GalleryTrashView.jsx';
 import GalleryUploadModal from '../../components/gallery/GalleryUploadModal.jsx';
 import GalleryLightbox from '../../components/gallery/GalleryLightbox.jsx';
+import GalleryMetadataModal from '../../components/gallery/GalleryMetadataModal.jsx';
 import AlbumFolderCard from '../../components/gallery/AlbumFolderCard.jsx';
 import EmptyGalleryState from '../../components/gallery/EmptyGalleryState.jsx';
 import PhotoCard from '../../components/gallery/PhotoCard.jsx';
@@ -67,6 +68,13 @@ export default function GalleryPage() {
   // Batch Select State
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  // Metadata editor state — uses canonical galleryRepository.updateGalleryItem.
+  const [metadataPhoto, setMetadataPhoto] = useState(null);
+  const [metadataTitle, setMetadataTitle] = useState('');
+  const [metadataDesc, setMetadataDesc] = useState('');
+  const [metadataCategory, setMetadataCategory] = useState('Control Room');
+  const [isSavingMetadata, setIsSavingMetadata] = useState(false);
 
   // Upload States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -303,6 +311,62 @@ export default function GalleryPage() {
       setError(err.message || 'Gagal mengupload foto. Periksa koneksi Anda.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const openMetadataEditor = useCallback((img) => {
+    if (!img?.id || img.isDeleted) return;
+
+    setMetadataPhoto(img);
+    setMetadataTitle(img.title || '');
+    setMetadataDesc(img.description || '');
+    setMetadataCategory(img.category || 'Control Room');
+    setError('');
+    setSuccess('');
+  }, []);
+
+  const closeMetadataEditor = useCallback(() => {
+    if (isSavingMetadata) return;
+
+    setMetadataPhoto(null);
+    setMetadataTitle('');
+    setMetadataDesc('');
+    setMetadataCategory('Control Room');
+  }, [isSavingMetadata]);
+
+  const handleMetadataSave = async (event) => {
+    event.preventDefault();
+
+    if (!metadataPhoto?.id || isSavingMetadata) return;
+
+    const normalizedTitle = metadataTitle.trim();
+
+    if (!normalizedTitle) {
+      setError('Judul foto wajib diisi.');
+      return;
+    }
+
+    setIsSavingMetadata(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await galleryRepository.updateGalleryItem(metadataPhoto.id, {
+        title: normalizedTitle,
+        description: metadataDesc.trim(),
+        category: metadataCategory,
+      });
+
+      setSuccess('Metadata foto berhasil diperbarui.');
+      setMetadataPhoto(null);
+      setMetadataTitle('');
+      setMetadataDesc('');
+      setMetadataCategory('Control Room');
+    } catch (err) {
+      console.error('Metadata update failed:', err);
+      setError('Gagal memperbarui metadata foto.');
+    } finally {
+      setIsSavingMetadata(false);
     }
   };
 
@@ -672,12 +736,12 @@ export default function GalleryPage() {
   }, [activePhoto]);
 
   return (
-    <section className="gallery-page" aria-labelledby="gallery-page-title">
+    <section className="gallery-page" data-gallery-ui="ui-11-spatial" aria-labelledby="gallery-page-title">
       
       {/* Floating Action Button (FAB) for mobile upload */}
       {!isSelectMode && (
         <button
-          className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-orange-500 text-black flex items-center justify-center shadow-lg active:scale-95 transition-all md:hidden"
+          className="gallery-mobile-upload-fab"
           type="button"
           onClick={() => {
             setError('');
@@ -691,11 +755,37 @@ export default function GalleryPage() {
         </button>
       )}
 
-      {/* 1. COHESIVE CRM TITLE BLOCK */}
-      <div className="customer-page-title">
-        <p>Studio Gallery</p>
-        <h2 id="gallery-page-title">Photos</h2>
-      </div>
+      <header className="gallery-editorial-header">
+        <div className="gallery-editorial-copy">
+          <p className="gallery-eyebrow">
+            Content / Studio Gallery
+          </p>
+
+          <h2 id="gallery-page-title">
+            Visual archive
+          </h2>
+
+          <p className="gallery-editorial-summary">
+            Kurasi foto studio, album, favorit, dan arsip terhapus
+            dalam satu workspace media.
+          </p>
+        </div>
+
+        <div
+          className="gallery-editorial-status"
+          aria-label="Status koleksi"
+        >
+          <span
+            className="gallery-live-dot"
+            aria-hidden="true"
+          />
+
+          <div>
+            <strong>Live library</strong>
+            <small>Sinkron dari koleksi gallery</small>
+          </div>
+        </div>
+      </header>
 
       {/* 2. COHESIVE GALLERY STATS GRID (GalleryHero) */}
       <GalleryHero
@@ -788,6 +878,7 @@ export default function GalleryPage() {
               isSelectMode={isSelectMode}
               onDeleteClick={handleSoftDelete}
               onFavoriteClick={handleToggleFavorite}
+              onEditMetadata={openMetadataEditor}
               onOpenPhoto={setActivePhotoIndex}
               onSelectToggle={handleSelectToggle}
               PhotoCard={PhotoCard}
@@ -812,6 +903,7 @@ export default function GalleryPage() {
               isSelectMode={isSelectMode}
               onDeleteClick={handleSoftDelete}
               onFavoriteClick={handleToggleFavorite}
+              onEditMetadata={openMetadataEditor}
               onOpenPhoto={setActivePhotoIndex}
               onOpenTrash={() => {
                 setActiveTab('trash');
@@ -831,6 +923,7 @@ export default function GalleryPage() {
           {/* TAB C: TRASH BIN */}
           {activeTab === 'trash' && (
             <GalleryTrashView
+              categories={CATEGORIES}
               displayedImages={displayedImages}
               EmptyGalleryState={EmptyGalleryState}
               gridColumns={gridColumns}
@@ -858,6 +951,21 @@ export default function GalleryPage() {
           )}
         </>
       )}
+
+      <GalleryMetadataModal
+        categories={CATEGORIES}
+        category={metadataCategory}
+        description={metadataDesc}
+        isOpen={Boolean(metadataPhoto)}
+        isSaving={isSavingMetadata}
+        onCategoryChange={setMetadataCategory}
+        onClose={closeMetadataEditor}
+        onDescriptionChange={setMetadataDesc}
+        onSubmit={handleMetadataSave}
+        onTitleChange={setMetadataTitle}
+        photo={metadataPhoto}
+        title={metadataTitle}
+      />
 
       {/* 6. UPLOAD NEW PHOTO MODAL */}
       <GalleryUploadModal

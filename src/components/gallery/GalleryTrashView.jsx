@@ -14,60 +14,97 @@ export default function GalleryTrashView({
   TrashIcon,
 }) {
   return (
-    <div className="space-y-4">
-      <div className="p-3 rounded-2xl bg-zinc-900/60 border border-[var(--auth-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="space-y-0.5">
-          <h4 className="text-xs font-bold text-white flex items-center gap-2">
-            <TrashIcon size={14} className="text-red-400" />
-            <span>Baru Dihapus (Recycle Bin)</span>
-          </h4>
-          <p className="text-[10px] text-[var(--ui-text-muted)]">
-            Foto di bawah telah dihapus dari galeri publik. Anda dapat memulihkannya atau menghapusnya secara permanen.
-          </p>
+    <section className="gallery-trash-view">
+      <header className="gallery-trash-header">
+        <div className="gallery-trash-heading">
+          <span
+            className="gallery-trash-heading-icon"
+            aria-hidden="true"
+          >
+            <TrashIcon size={17} />
+          </span>
+
+          <div>
+            <small>Recycle bin</small>
+
+            <h3>
+              Media yang baru dihapus
+            </h3>
+
+            <p>
+              Restore bila masih dibutuhkan,
+              atau hapus permanen bila
+              sudah final.
+            </p>
+          </div>
         </div>
 
         {displayedImages.length > 0 ? (
           <button
+            type="button"
             onClick={onEmptyTrash}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] font-bold transition-all"
+            className="gallery-danger-button"
           >
-            <TrashIcon size={12} />
-            <span>KOSONGKAN SAMPAH</span>
+            <TrashIcon
+              size={13}
+              aria-hidden="true"
+            />
+
+            <span>
+              Kosongkan sampah
+            </span>
           </button>
         ) : null}
-      </div>
+      </header>
 
       {displayedImages.length === 0 ? (
-        <EmptyGalleryState activeTab="trash" />
+        <EmptyGalleryState
+          activeTab="trash"
+        />
       ) : (
         <div
-          className="gallery-photo-grid grid gap-[2px] sm:gap-[3px]"
+          className="gallery-photo-grid"
           style={{
-            gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+            gridTemplateColumns:
+              'repeat(' +
+              gridColumns +
+              ', minmax(0, 1fr))',
           }}
         >
-          {displayedImages.map((img, index) => (
-            <PhotoCard
-              key={img.id}
-              categories={categories}
-              img={img}
-              isDeletedTab={true}
-              isSelectMode={isSelectMode}
-              isSelected={selectedIds.has(img.id)}
-              onSelectToggle={onSelectToggle}
-              onCardClick={() => {
-                if (isSelectMode) {
-                  onSelectToggle(img.id);
-                } else {
-                  onOpenPhoto(index);
+          {displayedImages.map(
+            (img, index) => (
+              <PhotoCard
+                key={img.id}
+                categories={categories}
+                img={img}
+                isDeletedTab={true}
+                isSelectMode={isSelectMode}
+                isSelected={selectedIds.has(
+                  img.id,
+                )}
+                onSelectToggle={
+                  onSelectToggle
                 }
-              }}
-              onRestoreClick={() => onRestoreClick(img.id)}
-              onDeleteClick={() => onPermanentDeleteClick(img.id)}
-            />
-          ))}
+                onCardClick={() => {
+                  if (isSelectMode) {
+                    onSelectToggle(img.id);
+                  } else {
+                    onOpenPhoto(index);
+                  }
+                }}
+                onRestoreClick={() =>
+                  onRestoreClick(img.id)
+                }
+                onDeleteClick={() =>
+                  onPermanentDeleteClick(
+                    img.id,
+                  )
+                }
+              />
+            ),
+          )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

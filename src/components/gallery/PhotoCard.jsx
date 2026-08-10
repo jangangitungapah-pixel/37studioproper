@@ -1,4 +1,11 @@
-import { Calendar, Check, Heart, RefreshCw, Trash, Trash2, User } from 'lucide-react';
+import {
+  Check,
+  Heart,
+  Pencil,
+  RefreshCw,
+  Trash,
+  Trash2,
+} from 'lucide-react';
 
 export default function PhotoCard({
   categories = [],
@@ -11,69 +18,142 @@ export default function PhotoCard({
   onFavoriteClick,
   onRestoreClick,
   onDeleteClick,
+  onEditMetadata,
 }) {
-  return (
-    <div
-      onClick={onCardClick}
-      className={`group aspect-square bg-zinc-950 overflow-hidden relative cursor-pointer transition-all duration-200 border border-transparent ${
-        isSelected
-          ? 'ring-2 ring-orange-500'
-          : 'hover:opacity-90'
-      }`}
-    >
-      <img
-        src={img.url}
-        alt={img.title}
-        className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-        loading="lazy"
-      />
+  const categoryLabel =
+    categories.find(
+      (category) =>
+        category.value === img.category,
+    )?.label || 'Lain-lain';
 
-      {isSelectMode && (
+  const cardClassName = [
+    'gallery-photo-card',
+    isSelected ? 'is-selected' : '',
+    isDeletedTab ? 'is-deleted' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <article className={cardClassName}>
+      <button
+        type="button"
+        className="gallery-photo-open"
+        onClick={onCardClick}
+        aria-label={
+          'Buka foto ' +
+          (img.title || 'tanpa judul')
+        }
+      >
+        <img
+          src={img.url}
+          alt={img.title || 'Gallery photo'}
+          loading="lazy"
+        />
+
+        <span
+          className="gallery-photo-scrim"
+          aria-hidden="true"
+        />
+
+        <span className="gallery-photo-category">
+          {categoryLabel}
+        </span>
+
+        <span className="gallery-photo-caption">
+          <strong>
+            {img.title || 'Untitled media'}
+          </strong>
+
+          <small>
+            {img.uploadedBy || 'Admin studio'}
+          </small>
+        </span>
+      </button>
+
+      {isSelectMode ? (
         <button
           type="button"
+          className={
+            'gallery-photo-select' +
+            (isSelected ? ' is-selected' : '')
+          }
           onClick={(event) => {
             event.stopPropagation();
             onSelectToggle(img.id);
           }}
-          className="absolute top-2 left-2 z-20 w-8 h-8 rounded-full border flex items-center justify-center backdrop-blur-md transition-all shadow-md"
-          style={{
-            backgroundColor: isSelected ? 'var(--ui-accent, #f97316)' : 'rgba(0, 0, 0, 0.4)',
-            borderColor: isSelected ? 'transparent' : 'rgba(255, 255, 255, 0.3)',
-            color: isSelected ? '#000000' : '#ffffff',
-          }}
+          aria-label={
+            isSelected
+              ? 'Batalkan pilihan foto'
+              : 'Pilih foto'
+          }
+          aria-pressed={isSelected}
         >
-          <Check size={16} className="stroke-[3px]" />
+          <Check
+            size={16}
+            aria-hidden="true"
+          />
         </button>
-      )}
+      ) : null}
 
-      {!isSelectMode && !isDeletedTab && img.isFavorite && (
-        <div className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-red-500 backdrop-blur-md border border-white/10 z-10">
-          <Heart size={12} className="fill-current" />
-        </div>
-      )}
+      {!isSelectMode &&
+      !isDeletedTab &&
+      img.isFavorite ? (
+        <span
+          className="gallery-photo-favorite-badge"
+          title="Favorit"
+        >
+          <Heart
+            size={13}
+            aria-hidden="true"
+          />
+        </span>
+      ) : null}
 
-      <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm border border-white/5 text-[8px] text-zinc-300 font-bold uppercase tracking-wider z-10">
-        {categories.find((category) => category.value === img.category)?.label || 'Lain-lain'}
-      </div>
-
-      {!isSelectMode && (
-        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+      {!isSelectMode ? (
+        <div
+          className="gallery-photo-actions"
+          aria-label="Aksi foto"
+        >
           {!isDeletedTab ? (
             <>
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
+                  onEditMetadata?.();
+                }}
+                title="Edit metadata"
+                aria-label="Edit metadata foto"
+              >
+                <Pencil
+                  size={13}
+                  aria-hidden="true"
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
                   onFavoriteClick();
                 }}
-                className={`p-1.5 rounded-lg border backdrop-blur-md transition-all ${
+                className={
                   img.isFavorite
-                    ? 'bg-red-500 text-white border-transparent'
-                    : 'bg-black/60 text-zinc-300 hover:text-white border-white/10'
-                }`}
+                    ? 'is-favorite'
+                    : ''
+                }
                 title="Favorit"
+                aria-label={
+                  img.isFavorite
+                    ? 'Hapus dari favorit'
+                    : 'Tambahkan ke favorit'
+                }
               >
-                <Heart size={12} className={img.isFavorite ? 'fill-current' : ''} />
+                <Heart
+                  size={13}
+                  aria-hidden="true"
+                />
               </button>
 
               <button
@@ -82,10 +162,14 @@ export default function PhotoCard({
                   event.stopPropagation();
                   onDeleteClick();
                 }}
-                className="p-1.5 rounded-lg bg-red-500/80 text-white border border-red-500/20 hover:bg-red-600 transition-all backdrop-blur-md"
-                title="Pindahkan ke Tempat Sampah"
+                className="is-danger"
+                title="Pindahkan ke tempat sampah"
+                aria-label="Pindahkan foto ke tempat sampah"
               >
-                <Trash2 size={12} />
+                <Trash2
+                  size={13}
+                  aria-hidden="true"
+                />
               </button>
             </>
           ) : (
@@ -96,10 +180,14 @@ export default function PhotoCard({
                   event.stopPropagation();
                   onRestoreClick();
                 }}
-                className="p-1.5 rounded-lg bg-emerald-500/80 text-white border border-emerald-500/20 hover:bg-emerald-600 transition-all backdrop-blur-md"
+                className="is-success"
                 title="Pulihkan"
+                aria-label="Pulihkan foto"
               >
-                <RefreshCw size={12} />
+                <RefreshCw
+                  size={13}
+                  aria-hidden="true"
+                />
               </button>
 
               <button
@@ -108,15 +196,19 @@ export default function PhotoCard({
                   event.stopPropagation();
                   onDeleteClick();
                 }}
-                className="p-1.5 rounded-lg bg-red-500/80 text-white border border-red-500/20 hover:bg-red-600 transition-all backdrop-blur-md"
-                title="Hapus Permanen"
+                className="is-danger"
+                title="Hapus permanen"
+                aria-label="Hapus foto permanen"
               >
-                <Trash size={12} />
+                <Trash
+                  size={13}
+                  aria-hidden="true"
+                />
               </button>
             </>
           )}
         </div>
-      )}
-    </div>
+      ) : null}
+    </article>
   );
 }
