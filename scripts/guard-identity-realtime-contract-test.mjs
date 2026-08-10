@@ -117,15 +117,32 @@ assert.match(
 
 /*
  * If Owner changes role/status/guardId and operational
- * access disappears, old Guard attendance data must
- * immediately be removed from local component state.
+ * access disappears, stale Guard attendance must be cleared
+ * from the external realtime auth callback, not synchronously
+ * from an effect body.
  */
 assert.match(
   guardSource,
 
-  /if \(!authUser\?\.uid \|\| !canUseGuardPage\) \{[\s\S]*?setSessions\(\[\]\)/,
+  /adminAuthRepository\.subscribeAdminAuth\([\s\S]*?const nextCanUseGuardPage = Boolean\([\s\S]*?if \(!nextCanUseGuardPage\) \{[\s\S]*?setSessions\(\[\]\)/,
 
-  'Losing operational Guard access must clear locally held attendance sessions.'
+  'Realtime auth callback must clear stale attendance when Guard operational access disappears.'
+);
+
+assert.doesNotMatch(
+  guardSource,
+
+  /useEffect\(\(\) => \{\s*if \(!isAuthAvailable\) \{\s*setIsReady/,
+
+  'Auth effect must not synchronously call setIsReady before subscribing.'
+);
+
+assert.doesNotMatch(
+  guardSource,
+
+  /if \(!authUser\?\.uid \|\| !canUseGuardPage\) \{\s*setSessions/,
+
+  'Attendance effect must not synchronously clear sessions.'
 );
 
 /*

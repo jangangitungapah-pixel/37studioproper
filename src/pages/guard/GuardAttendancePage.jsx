@@ -154,21 +154,26 @@ export default function GuardAttendancePage() {
 
   useEffect(() => {
     if (!isAuthAvailable) {
-      setIsReady(true);
       return () => {};
     }
 
-    setIsReady(false);
-
     return adminAuthRepository.subscribeAdminAuth((nextAuthState) => {
       const nextUser = nextAuthState?.user || null;
+      const nextGuardPortalAccess = resolveGuardPortalAccess(nextUser);
+      const nextCanUseGuardPage = Boolean(
+        nextUser?.uid &&
+        [
+          GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL,
+          GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL,
+        ].includes(nextGuardPortalAccess)
+      );
 
       setAuthUser(nextUser);
       setGuardAccount(nextUser);
       setIsReady(Boolean(nextAuthState?.isReady));
       setNotice('');
 
-      if (!nextUser) {
+      if (!nextCanUseGuardPage) {
         setSessions([]);
       }
 
@@ -195,7 +200,6 @@ export default function GuardAttendancePage() {
 
   useEffect(() => {
     if (!authUser?.uid || !canUseGuardPage) {
-      setSessions([]);
       return () => {};
     }
 
