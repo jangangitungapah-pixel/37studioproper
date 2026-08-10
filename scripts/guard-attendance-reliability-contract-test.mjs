@@ -362,6 +362,54 @@ const rulesSource =
     'utf8',
   );
 
+function getGuardAttendanceUpdateRulesBlock(source) {
+  const matchStart = source.indexOf(
+    'match /guardAttendanceSessions/{attendanceId} {'
+  );
+
+  assert.notEqual(
+    matchStart,
+    -1,
+    'Guard attendance Firestore match block must exist.',
+  );
+
+  const matchEnd = source.indexOf(
+    '// <<< STUDIO37 GUARD ATTENDANCE RULES END',
+    matchStart,
+  );
+
+  assert.notEqual(
+    matchEnd,
+    -1,
+    'Guard attendance Firestore match block must have an end marker.',
+  );
+
+  const matchBlock = source.slice(matchStart, matchEnd);
+  const updateStart = matchBlock.indexOf('allow update: if');
+
+  assert.notEqual(
+    updateStart,
+    -1,
+    'Guard attendance update rule must exist.',
+  );
+
+  const updateEnd = matchBlock.indexOf(
+    'allow delete:',
+    updateStart,
+  );
+
+  assert.notEqual(
+    updateEnd,
+    -1,
+    'Guard attendance update rule must end before delete rule.',
+  );
+
+  return matchBlock.slice(updateStart, updateEnd);
+}
+
+const guardAttendanceUpdateRulesBlock =
+  getGuardAttendanceUpdateRulesBlock(rulesSource);
+
 for (
   const required
   of [
@@ -415,12 +463,38 @@ assert.equal(
   'Guard checkout and Owner review transitions must not depend on full-document schema validation.',
 );
 
+const ownerReviewIndex =
+  guardAttendanceUpdateRulesBlock.indexOf(
+    'adminReviewsGuardAttendance()'
+  );
+const fullSchemaIndex =
+  guardAttendanceUpdateRulesBlock.indexOf(
+    'validGuardAttendanceSession('
+  );
+const mealPostingIndex =
+  guardAttendanceUpdateRulesBlock.indexOf(
+    'adminPostsGuardMeal()'
+  );
+
+assert.ok(
+  ownerReviewIndex >= 0 &&
+    fullSchemaIndex > ownerReviewIndex,
+  'Owner review transitions must be an independent OR branch before full-document validation.',
+);
+
+assert.ok(
+  mealPostingIndex > fullSchemaIndex,
+  'Full-document validation must only guard the meal-posting branch.',
+);
+
 assert.equal(
-  rulesSource.includes(
-    'adminReviewsGuardAttendance() || (\n          validGuardAttendanceSession('
-  ),
-  false,
-  'Owner review transitions must remain outside the full-document validator.',
+  (
+    guardAttendanceUpdateRulesBlock.match(
+      /validGuardAttendanceSession\(/g
+    ) || []
+  ).length,
+  1,
+  'Guard attendance update rule must contain exactly one full-document validation branch.',
 );
 
 assert.equal(
