@@ -8,6 +8,1573 @@
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+/* UI-10 — Spatial Guard Attendance Admin Review */
+
+.guard-attendance-review[data-guard-attendance-ui='ui-10-spatial'],
+.guard-review-locked[data-guard-attendance-ui='ui-10-spatial'] {
+  width: min(100%, 1560px);
+  margin: 0 auto;
+  color: var(--studio-text-primary);
+}
+
+.guard-attendance-review[data-guard-attendance-ui='ui-10-spatial'],
+.guard-attendance-review[data-guard-attendance-ui='ui-10-spatial'] *,
+.guard-review-locked[data-guard-attendance-ui='ui-10-spatial'],
+.guard-review-locked[data-guard-attendance-ui='ui-10-spatial'] *,
+.guard-review-dialog,
+.guard-review-dialog *,
+.guard-review-attention-modal,
+.guard-review-attention-modal * {
+  box-sizing: border-box;
+}
+
+.guard-attendance-review[data-guard-attendance-ui='ui-10-spatial'] {
+  display: grid;
+  gap: 12px;
+  padding: 2px 0 18px;
+}
+
+.guard-review-editorial-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 5px 5px 2px;
+}
+
+.guard-review-heading {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.guard-review-kicker,
+.guard-review-context small,
+.guard-review-pulse-metric small,
+.guard-review-priority header small,
+.guard-review-ledger-header span,
+.guard-review-ledger-columns,
+.guard-review-date-field small,
+.guard-review-person small,
+.guard-review-shift small,
+.guard-review-meal small,
+.guard-review-dialog header small,
+.guard-review-reason-field > span,
+.guard-review-attention-modal header small,
+.guard-review-attention-facts small,
+.guard-review-attention-reason > span,
+.guard-review-locked small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guard-review-kicker,
+.guard-review-priority header small,
+.guard-review-ledger-header span,
+.guard-review-dialog header small,
+.guard-review-attention-modal header small,
+.guard-review-locked small {
+  color: var(--studio-accent);
+}
+
+.guard-review-heading h2 {
+  margin: 0;
+  color: var(--studio-text-primary);
+  font-size: clamp(1.32rem, 2.4vw, 1.76rem);
+  font-weight: 790;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.guard-review-heading p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.guard-review-context {
+  min-width: 224px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-2);
+  padding: 8px 11px;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-review-context-icon,
+.guard-review-pulse-icon,
+.guard-review-panel-icon,
+.guard-review-dialog-icon,
+.guard-review-attention-icon,
+.guard-review-locked > span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+}
+
+.guard-review-context-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: var(--studio-radius-control);
+}
+
+.guard-review-context.is-attention .guard-review-context-icon {
+  color: var(--studio-warning);
+  background: color-mix(in srgb, var(--studio-warning) 12%, var(--studio-surface-1));
+}
+
+.guard-review-context.is-clear .guard-review-context-icon {
+  color: var(--studio-success);
+  background: color-mix(in srgb, var(--studio-success) 12%, var(--studio-surface-1));
+}
+
+.guard-review-context > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.guard-review-context strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.7rem;
+  font-weight: 760;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-context em {
+  color: var(--studio-text-tertiary);
+  font-size: 0.54rem;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.guard-review-pulse {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-2);
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-review-pulse-metric {
+  min-width: 0;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-right: 1px solid var(--studio-edge-soft);
+  padding: 10px 12px;
+}
+
+.guard-review-pulse-metric:last-child {
+  border-right: 0;
+}
+
+.guard-review-pulse-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--studio-surface-1);
+  box-shadow: inset 0 0 0 1px var(--studio-edge-soft);
+}
+
+.guard-review-pulse-metric.is-warning .guard-review-pulse-icon {
+  color: var(--studio-warning);
+  background: color-mix(in srgb, var(--studio-warning) 11%, var(--studio-surface-1));
+}
+
+.guard-review-pulse-metric.is-success .guard-review-pulse-icon {
+  color: var(--studio-success);
+  background: color-mix(in srgb, var(--studio-success) 11%, var(--studio-surface-1));
+}
+
+.guard-review-pulse-metric.is-info .guard-review-pulse-icon {
+  color: var(--studio-info);
+  background: color-mix(in srgb, var(--studio-info) 11%, var(--studio-surface-1));
+}
+
+.guard-review-pulse-metric > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.guard-review-pulse-metric strong {
+  color: var(--studio-text-primary);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 790;
+  line-height: 1.2;
+}
+
+.guard-review-pulse-metric em {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+  font-style: normal;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-priority,
+.guard-review-ledger {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-1);
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-review-priority > header {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  padding: 9px 12px;
+}
+
+.guard-review-priority > header > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.guard-review-panel-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: var(--studio-radius-control);
+}
+
+.guard-review-priority header span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.guard-review-priority h3,
+.guard-review-priority p {
+  margin: 0;
+}
+
+.guard-review-priority h3 {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.71rem;
+  font-weight: 760;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-priority p {
+  color: var(--studio-text-tertiary);
+  font-size: 0.54rem;
+  line-height: 1.3;
+}
+
+.guard-review-priority-link,
+.guard-review-priority-actions button,
+.guard-review-filter-context button,
+.guard-review-row-actions button,
+.guard-review-dialog header > button,
+.guard-review-dialog footer button,
+.guard-review-attention-modal header > button,
+.guard-review-attention-actions button,
+.guard-review-attention-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+  font: inherit;
+  font-size: 0.56rem;
+  font-weight: 710;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    border-color var(--studio-duration-fast) var(--studio-ease-standard),
+    background var(--studio-duration-fast) var(--studio-ease-standard),
+    color var(--studio-duration-fast) var(--studio-ease-standard),
+    transform var(--studio-duration-fast) var(--studio-ease-out);
+}
+
+.guard-review-priority-link {
+  min-height: 32px;
+  padding: 0 8px 0 10px;
+  white-space: nowrap;
+}
+
+.guard-review-priority-link span {
+  min-width: 20px;
+  min-height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent);
+  font-size: 0.52rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.guard-review-priority-link:disabled,
+.guard-review-priority-actions button:disabled,
+.guard-review-row-actions button:disabled,
+.guard-review-dialog button:disabled,
+.guard-review-attention-modal button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.guard-review-priority-link:hover:not(:disabled),
+.guard-review-priority-actions button:hover:not(:disabled),
+.guard-review-filter-context button:hover:not(:disabled),
+.guard-review-row-actions button:hover:not(:disabled),
+.guard-review-dialog button:hover:not(:disabled),
+.guard-review-attention-modal button:hover:not(:disabled) {
+  border-color: var(--studio-edge-normal);
+  color: var(--studio-text-primary);
+}
+
+.guard-review-priority-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.guard-review-priority-row {
+  min-width: 0;
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid var(--studio-edge-soft);
+  padding: 9px 10px;
+}
+
+.guard-review-priority-row:last-child {
+  border-right: 0;
+}
+
+.guard-review-priority-date {
+  width: 34px;
+  height: 38px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 9px;
+  background: var(--studio-surface-2);
+}
+
+.guard-review-priority-date strong {
+  color: var(--studio-text-primary);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.guard-review-priority-date small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.45rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guard-review-priority-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.guard-review-priority-copy strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.64rem;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-priority-copy small {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.51rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-priority-actions,
+.guard-review-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.guard-review-priority-actions button,
+.guard-review-row-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.guard-review-priority-actions button.is-primary,
+.guard-review-row-actions button.is-primary,
+.guard-review-dialog footer button.is-primary,
+.guard-review-attention-actions button.is-primary {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent);
+  color: var(--studio-surface-1);
+}
+
+.guard-review-row-actions button.is-danger,
+.guard-review-dialog footer button.is-danger,
+.guard-review-attention-actions button.is-danger {
+  border-color: color-mix(in srgb, var(--studio-danger) 38%, var(--studio-edge-soft));
+  color: var(--studio-danger);
+  background: color-mix(in srgb, var(--studio-danger) 8%, var(--studio-surface-1));
+}
+
+.guard-review-priority-actions button.is-primary:hover:not(:disabled),
+.guard-review-row-actions button.is-primary:hover:not(:disabled),
+.guard-review-dialog footer button.is-primary:hover:not(:disabled),
+.guard-review-attention-actions button.is-primary:hover:not(:disabled) {
+  border-color: var(--studio-accent-hover);
+  background: var(--studio-accent-hover);
+  color: var(--studio-surface-1);
+}
+
+.guard-review-priority-clear {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--studio-success);
+  padding: 12px;
+  text-align: center;
+}
+
+.guard-review-priority-clear span {
+  color: var(--studio-text-secondary);
+  font-size: 0.6rem;
+  line-height: 1.4;
+}
+
+.guard-review-priority-clear.is-error {
+  color: var(--studio-danger);
+}
+
+.guard-review-command-shelf {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(164px, 0.34fr) minmax(168px, 0.34fr) minmax(170px, auto);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-2);
+  padding: 8px;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-review-search,
+.guard-review-date-field {
+  min-width: 0;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-tertiary);
+  padding: 0 11px;
+  transition:
+    border-color var(--studio-duration-fast) var(--studio-ease-standard),
+    box-shadow var(--studio-duration-fast) var(--studio-ease-standard);
+}
+
+.guard-review-search:focus-within,
+.guard-review-date-field:focus-within {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 3px var(--studio-accent-soft);
+}
+
+.guard-review-search input,
+.guard-review-date-field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--studio-text-primary);
+  font: inherit;
+  font-size: 0.62rem;
+  line-height: 1.3;
+}
+
+.guard-review-search input::placeholder {
+  color: var(--studio-text-tertiary);
+}
+
+.guard-review-date-field > span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.guard-review-date-field input {
+  min-height: 16px;
+  padding: 0;
+  font-weight: 710;
+}
+
+.guard-review-filter-select,
+.guard-review-filter-select .studio-select {
+  min-width: 0;
+}
+
+.guard-review-filter-select .studio-select-trigger {
+  min-height: 42px;
+  border-color: var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-1);
+  padding: 6px 9px;
+}
+
+.guard-review-filter-select .studio-select-copy {
+  min-width: 0;
+  gap: 1px;
+}
+
+.guard-review-filter-select .studio-select-label {
+  font-size: 0.5rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  line-height: 1.1;
+}
+
+.guard-review-filter-select .studio-select-copy strong {
+  overflow: hidden;
+  font-size: 0.62rem;
+  font-weight: 720;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-filter-select .studio-select-chevron {
+  width: 15px;
+  height: 15px;
+}
+
+.guard-review-filter-context {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--studio-text-tertiary);
+}
+
+.guard-review-filter-context > span {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.guard-review-filter-context strong {
+  color: var(--studio-text-primary);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.guard-review-filter-context small,
+.guard-review-filter-context em {
+  color: var(--studio-text-tertiary);
+  font-size: 0.51rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.guard-review-filter-context button {
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.guard-review-feedback {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--studio-success) 28%, var(--studio-edge-soft));
+  border-radius: var(--studio-radius-control);
+  background: color-mix(in srgb, var(--studio-success) 7%, var(--studio-surface-1));
+  color: var(--studio-success);
+  padding: 8px 10px;
+  font-size: 0.59rem;
+  line-height: 1.35;
+}
+
+.guard-review-feedback.is-error {
+  border-color: color-mix(in srgb, var(--studio-danger) 28%, var(--studio-edge-soft));
+  background: color-mix(in srgb, var(--studio-danger) 7%, var(--studio-surface-1));
+  color: var(--studio-danger);
+}
+
+.guard-review-ledger-header {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 12px;
+}
+
+.guard-review-ledger-header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.guard-review-ledger-header strong {
+  color: var(--studio-text-primary);
+  font-size: 0.65rem;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.guard-review-ledger-header p {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--studio-text-tertiary);
+  font-size: 0.53rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.guard-review-ledger-columns {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(145px, 0.7fr) minmax(145px, 0.65fr) minmax(108px, 0.5fr) minmax(158px, 0.7fr);
+  gap: 10px;
+  border-top: 1px solid var(--studio-edge-soft);
+  border-bottom: 1px solid var(--studio-edge-soft);
+  background: var(--studio-surface-2);
+  padding: 8px 12px 8px 50px;
+}
+
+.guard-review-ledger-columns span:last-child {
+  text-align: right;
+}
+
+.guard-review-ledger-rows {
+  display: grid;
+}
+
+.guard-review-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 28px minmax(220px, 1.35fr) minmax(145px, 0.7fr) minmax(145px, 0.65fr) minmax(108px, 0.5fr) minmax(158px, 0.7fr);
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  padding: 10px 12px;
+}
+
+.guard-review-row:last-child {
+  border-bottom: 0;
+}
+
+.guard-review-row:hover {
+  background: color-mix(in srgb, var(--studio-accent) 3%, transparent);
+}
+
+.guard-review-row-mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent);
+}
+
+.guard-review-row.is-success .guard-review-row-mark {
+  background: color-mix(in srgb, var(--studio-success) 11%, var(--studio-surface-1));
+  color: var(--studio-success);
+}
+
+.guard-review-row.is-danger .guard-review-row-mark {
+  background: color-mix(in srgb, var(--studio-danger) 10%, var(--studio-surface-1));
+  color: var(--studio-danger);
+}
+
+.guard-review-row.is-neutral .guard-review-row-mark {
+  background: var(--studio-surface-2);
+  color: var(--studio-text-tertiary);
+}
+
+.guard-review-person,
+.guard-review-shift,
+.guard-review-meal,
+.guard-review-decision {
+  min-width: 0;
+}
+
+.guard-review-person {
+  display: grid;
+  gap: 2px;
+}
+
+.guard-review-person small {
+  overflow: hidden;
+  font-size: 0.47rem;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-person strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.66rem;
+  font-weight: 760;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-person em,
+.guard-review-shift em,
+.guard-review-meal em {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.51rem;
+  font-style: normal;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-shift,
+.guard-review-meal {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--studio-text-tertiary);
+}
+
+.guard-review-shift > svg,
+.guard-review-meal > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.guard-review-shift > span,
+.guard-review-meal > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.guard-review-meal strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.6rem;
+  font-weight: 740;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-meal.is-posted {
+  color: var(--studio-success);
+}
+
+.guard-review-meal.is-ready {
+  color: var(--studio-info);
+}
+
+.guard-review-decision {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.guard-review-decision > small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.49rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-status {
+  min-height: 21px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  padding: 0 7px;
+  font-size: 0.49rem;
+  font-weight: 740;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.guard-review-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.guard-review-status.is-warning {
+  border-color: color-mix(in srgb, var(--studio-warning) 30%, var(--studio-edge-soft));
+  background: color-mix(in srgb, var(--studio-warning) 8%, var(--studio-surface-1));
+  color: var(--studio-warning);
+}
+
+.guard-review-status.is-success {
+  border-color: color-mix(in srgb, var(--studio-success) 28%, var(--studio-edge-soft));
+  background: color-mix(in srgb, var(--studio-success) 8%, var(--studio-surface-1));
+  color: var(--studio-success);
+}
+
+.guard-review-status.is-danger {
+  border-color: color-mix(in srgb, var(--studio-danger) 28%, var(--studio-edge-soft));
+  background: color-mix(in srgb, var(--studio-danger) 8%, var(--studio-surface-1));
+  color: var(--studio-danger);
+}
+
+.guard-review-status.is-info {
+  border-color: color-mix(in srgb, var(--studio-info) 28%, var(--studio-edge-soft));
+  background: color-mix(in srgb, var(--studio-info) 8%, var(--studio-surface-1));
+  color: var(--studio-info);
+}
+
+.guard-review-lock-note {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--studio-text-tertiary);
+  font-size: 0.52rem;
+  font-weight: 680;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.guard-review-lock-note.is-posted {
+  color: var(--studio-success);
+}
+
+.guard-review-state {
+  min-height: 170px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  color: var(--studio-accent);
+  padding: 22px;
+  text-align: center;
+}
+
+.guard-review-state.is-error {
+  color: var(--studio-danger);
+}
+
+.guard-review-state strong {
+  color: var(--studio-text-primary);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.guard-review-state span {
+  color: var(--studio-text-tertiary);
+  font-size: 0.56rem;
+  line-height: 1.4;
+}
+
+.guard-review-locked {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-1);
+  padding: 24px;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-review-locked > span {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--studio-radius-object);
+}
+
+.guard-review-locked > div {
+  display: grid;
+  gap: 3px;
+}
+
+.guard-review-locked h2,
+.guard-review-locked p {
+  margin: 0;
+}
+
+.guard-review-locked h2 {
+  color: var(--studio-text-primary);
+  font-size: 0.88rem;
+}
+
+.guard-review-locked p {
+  color: var(--studio-text-secondary);
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
+.guard-review-dialog-backdrop,
+.guard-review-attention-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  background: color-mix(in srgb, var(--studio-text-primary) 42%, transparent);
+  backdrop-filter: blur(10px);
+  animation: guard-review-fade-in var(--studio-duration-normal) var(--studio-ease-standard);
+}
+
+.guard-review-dialog,
+.guard-review-attention-modal {
+  position: fixed;
+  z-index: 1401;
+  top: 50%;
+  left: 50%;
+  width: min(calc(100vw - 28px), 470px);
+  max-height: min(86dvh, 660px);
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-surface);
+  outline: 0;
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-primary);
+  padding: 13px;
+  box-shadow: var(--studio-shadow-floating);
+  animation: guard-review-dialog-in var(--studio-duration-slow) var(--studio-ease-out);
+}
+
+.guard-review-dialog > header,
+.guard-review-attention-modal > header {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 30px;
+  align-items: start;
+  gap: 10px;
+}
+
+.guard-review-dialog-icon,
+.guard-review-attention-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--studio-radius-control);
+}
+
+.guard-review-dialog-icon.is-reject,
+.guard-review-dialog-icon.is-void {
+  color: var(--studio-danger);
+  background: color-mix(in srgb, var(--studio-danger) 10%, var(--studio-surface-1));
+}
+
+.guard-review-dialog header > span:nth-child(2),
+.guard-review-attention-modal header > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.guard-review-dialog h2,
+.guard-review-attention-modal h2 {
+  margin: 0;
+  color: var(--studio-text-primary);
+  font-size: 0.87rem;
+  font-weight: 780;
+  line-height: 1.2;
+}
+
+.guard-review-dialog header p,
+.guard-review-attention-modal header p {
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.59rem;
+  line-height: 1.4;
+}
+
+.guard-review-dialog header > button,
+.guard-review-attention-modal header > button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+.guard-review-reason-field,
+.guard-review-attention-reason {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.guard-review-reason-field textarea,
+.guard-review-attention-reason textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-control);
+  outline: 0;
+  background: var(--studio-surface-1);
+  color: var(--studio-text-primary);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 0.62rem;
+  line-height: 1.45;
+}
+
+.guard-review-reason-field textarea:focus,
+.guard-review-attention-reason textarea:focus {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 3px var(--studio-accent-soft);
+}
+
+.guard-review-dialog > footer,
+.guard-review-attention-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.guard-review-dialog footer button,
+.guard-review-attention-actions button {
+  min-height: 34px;
+  padding: 0 11px;
+}
+
+.guard-review-attention-modal {
+  width: min(calc(100vw - 28px), 500px);
+}
+
+.guard-review-attention-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.guard-review-attention-facts > span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 2px 6px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-2);
+  color: var(--studio-accent);
+  padding: 8px;
+}
+
+.guard-review-attention-facts svg {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.guard-review-attention-facts strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.61rem;
+  font-weight: 740;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-review-attention-note {
+  margin: 10px 0 0;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  padding: 8px 9px;
+  font-size: 0.58rem;
+  line-height: 1.4;
+}
+
+.guard-review-attention-link {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+  background: transparent;
+  color: var(--studio-accent);
+}
+
+html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-priority,
+html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-ledger,
+html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-dialog,
+html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-attention-modal {
+  border-color: var(--studio-edge-normal);
+}
+
+@keyframes guard-review-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes guard-review-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 12px)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (max-width: 1240px) {
+  .guard-review-priority-list {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-review-priority-row {
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .guard-review-priority-row:last-child {
+    border-bottom: 0;
+  }
+
+  .guard-review-row {
+    grid-template-columns: 28px minmax(190px, 1.25fr) minmax(132px, 0.7fr) minmax(132px, 0.65fr) minmax(104px, 0.5fr) minmax(150px, 0.7fr);
+  }
+
+  .guard-review-ledger-columns {
+    grid-template-columns: minmax(190px, 1.25fr) minmax(132px, 0.7fr) minmax(132px, 0.65fr) minmax(104px, 0.5fr) minmax(150px, 0.7fr);
+  }
+}
+
+@media (max-width: 1080px) {
+  .guard-review-command-shelf {
+    grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(160px, 0.48fr));
+  }
+
+  .guard-review-filter-context {
+    grid-column: 1 / -1;
+  }
+
+  .guard-review-ledger-columns {
+    display: none;
+  }
+
+  .guard-review-ledger-rows {
+    gap: 8px;
+    border-top: 1px solid var(--studio-edge-soft);
+    padding: 8px;
+  }
+
+  .guard-review-row {
+    grid-template-columns: 28px minmax(220px, 1.2fr) repeat(3, minmax(120px, 0.65fr));
+    border: 1px solid var(--studio-edge-soft);
+    border-radius: var(--studio-radius-object);
+    background: var(--studio-surface-1);
+    padding: 9px;
+  }
+
+  .guard-review-row:last-child {
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .guard-review-row-actions,
+  .guard-review-lock-note {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .guard-review-editorial-header {
+    align-items: stretch;
+  }
+
+  .guard-review-context {
+    min-width: 200px;
+  }
+
+  .guard-review-pulse {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .guard-review-pulse-metric:nth-child(2) {
+    border-right: 0;
+  }
+
+  .guard-review-pulse-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .guard-review-row {
+    grid-template-columns: 28px minmax(200px, 1fr) repeat(2, minmax(128px, 0.7fr));
+  }
+
+  .guard-review-decision {
+    grid-column: 2 / 3;
+  }
+
+  .guard-review-row-actions,
+  .guard-review-lock-note {
+    grid-column: 3 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .guard-attendance-review[data-guard-attendance-ui='ui-10-spatial'] {
+    gap: 10px;
+    padding: 0 0 calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .guard-review-editorial-header {
+    display: grid;
+    gap: 10px;
+    padding: 4px 3px 0;
+  }
+
+  .guard-review-heading h2 {
+    font-size: clamp(1.25rem, 7vw, 1.55rem);
+  }
+
+  .guard-review-heading p {
+    font-size: 0.68rem;
+  }
+
+  .guard-review-context {
+    width: 100%;
+    min-width: 0;
+    min-height: 58px;
+  }
+
+  .guard-review-pulse,
+  .guard-review-priority,
+  .guard-review-ledger {
+    border-radius: var(--studio-radius-object);
+  }
+
+  .guard-review-pulse-metric {
+    min-height: 66px;
+    padding: 9px 10px;
+  }
+
+  .guard-review-priority > header {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .guard-review-priority h3 {
+    white-space: normal;
+  }
+
+  .guard-review-priority-link {
+    flex: 0 0 auto;
+  }
+
+  .guard-review-priority-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .guard-review-priority-actions {
+    grid-column: 1 / -1;
+  }
+
+  .guard-review-priority-actions button {
+    min-height: 38px;
+    flex: 1;
+  }
+
+  .guard-review-command-shelf {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: var(--studio-radius-object);
+    padding: 7px;
+  }
+
+  .guard-review-search {
+    grid-column: 1 / -1;
+  }
+
+  .guard-review-search,
+  .guard-review-date-field,
+  .guard-review-filter-select .studio-select-trigger {
+    min-height: 44px;
+  }
+
+  .guard-review-filter-context {
+    grid-column: 1 / -1;
+    min-height: 30px;
+  }
+
+  .guard-review-ledger-header {
+    align-items: flex-start;
+    padding: 10px;
+  }
+
+  .guard-review-ledger-header p {
+    max-width: 150px;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .guard-review-ledger-rows {
+    padding: 7px;
+  }
+
+  .guard-review-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 9px;
+    border-radius: var(--studio-radius-control);
+    padding: 10px;
+  }
+
+  .guard-review-row-mark {
+    align-self: start;
+  }
+
+  .guard-review-person {
+    min-height: 30px;
+  }
+
+  .guard-review-person small,
+  .guard-review-person strong,
+  .guard-review-person em,
+  .guard-review-shift em,
+  .guard-review-meal em,
+  .guard-review-decision > small {
+    white-space: normal;
+  }
+
+  .guard-review-shift,
+  .guard-review-meal,
+  .guard-review-decision,
+  .guard-review-row-actions,
+  .guard-review-lock-note {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--studio-edge-soft);
+    padding-top: 8px;
+  }
+
+  .guard-review-decision {
+    justify-items: start;
+  }
+
+  .guard-review-row-actions {
+    width: 100%;
+  }
+
+  .guard-review-row-actions button {
+    min-height: 40px;
+    flex: 1;
+  }
+
+  .guard-review-lock-note {
+    min-height: 32px;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .guard-review-state {
+    min-height: 210px;
+  }
+
+  .guard-review-dialog,
+  .guard-review-attention-modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 88dvh;
+    transform: none;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--studio-radius-surface) var(--studio-radius-surface) 0 0;
+    padding: 14px 14px calc(16px + env(safe-area-inset-bottom));
+    animation: guard-review-sheet-in var(--studio-duration-slow) var(--studio-ease-out);
+  }
+
+  .guard-review-dialog footer button,
+  .guard-review-attention-actions button,
+  .guard-review-attention-link {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 520px) {
+  .guard-review-pulse {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-review-pulse-metric,
+  .guard-review-pulse-metric:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .guard-review-pulse-metric:last-child {
+    border-bottom: 0;
+  }
+
+  .guard-review-command-shelf {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-review-search,
+  .guard-review-filter-context {
+    grid-column: 1;
+  }
+
+  .guard-review-priority > header {
+    display: grid;
+  }
+
+  .guard-review-priority-link {
+    width: 100%;
+  }
+
+  .guard-review-ledger-header {
+    display: grid;
+  }
+
+  .guard-review-ledger-header p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .guard-review-attention-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-review-dialog > header,
+  .guard-review-attention-modal > header {
+    grid-template-columns: 34px minmax(0, 1fr) 30px;
+    gap: 8px;
+  }
+
+  .guard-review-dialog-icon,
+  .guard-review-attention-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .guard-review-dialog > footer,
+  .guard-review-attention-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .guard-review-attention-actions button:only-child,
+  .guard-review-dialog footer button:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@keyframes guard-review-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guard-review-dialog-backdrop,
+  .guard-review-attention-backdrop,
+  .guard-review-dialog,
+  .guard-review-attention-modal {
+    animation: none;
+  }
+
+  .guard-review-priority-link,
+  .guard-review-priority-actions button,
+  .guard-review-filter-context button,
+  .guard-review-row-actions button,
+  .guard-review-dialog button,
+  .guard-review-attention-modal button {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .guard-review-context,
+  .guard-review-pulse,
+  .guard-review-priority,
+  .guard-review-command-shelf,
+  .guard-review-ledger,
+  .guard-review-row,
+  .guard-review-dialog,
+  .guard-review-attention-modal {
+    border: 1px solid CanvasText;
+  }
+
+  .guard-review-status i {
+    forced-color-adjust: none;
+  }
+}
+
+
 .guard-shift-shell {
   width: min(100%, 460px);
   display: flex;
@@ -2017,4 +3584,3 @@
     border-radius: var(--studio-radius-md) !important;
   }
 }
-
