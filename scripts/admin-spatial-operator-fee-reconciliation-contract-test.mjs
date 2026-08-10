@@ -101,6 +101,17 @@ for (const required of [
   assert.equal(cssSource.includes(required), true, 'UI-8 CSS contract missing: ' + required);
 }
 
+for (const required of [
+  'UI-8 Visual QA — compact mobile operations',
+  '.operator-fee-pulse-metric:nth-child(2n)',
+  '.operator-fee-pulse-metric:nth-last-child(-n + 2)',
+  'grid-template-columns: repeat(2, minmax(0, 1fr))',
+  'grid-template-columns: repeat(3, minmax(0, 1fr))',
+  '.operator-fee-meal-pulse em { overflow: visible; text-overflow: clip; white-space: normal; }',
+]) {
+  assert.equal(cssSource.includes(required), true, 'UI-8 mobile visual QA contract missing: ' + required);
+}
+
 const ui8Css = cssSource.slice(
   cssSource.indexOf('UI-8 — Spatial Operator Fee Reconciliation Workspace'),
 );

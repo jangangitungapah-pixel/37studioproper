@@ -1836,34 +1836,54 @@ html[data-admin-theme-active='true'][data-theme='dark'] .operator-fee-queue-list
 }
 
 @media (max-width: 520px) {
-  .operator-fee-pulse { grid-template-columns: 1fr; }
+  /* UI-8 Visual QA — compact mobile operations */
+  .operator-fee-pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .operator-fee-pulse-metric,
   .operator-fee-pulse-metric:nth-child(2) {
-    border-right: 0;
+    min-height: 64px;
+    border-right: 1px solid var(--studio-edge-soft);
     border-bottom: 1px solid var(--studio-edge-soft);
+    padding: 9px 10px;
   }
 
-  .operator-fee-pulse-metric:last-child { border-bottom: 0; }
-  .operator-fee-bulk-buttons { display: grid; grid-template-columns: 1fr; }
-  .operator-fee-bulk-buttons button { width: 100%; }
-  .operator-fee-command-shelf { grid-template-columns: 1fr; }
+  .operator-fee-pulse-metric:nth-child(2n) { border-right: 0; }
+  .operator-fee-pulse-metric:nth-last-child(-n + 2) { border-bottom: 0; }
+
+  .operator-fee-bulk-actions { gap: 10px; padding: 10px; }
+  .operator-fee-bulk-buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .operator-fee-bulk-buttons button { width: 100%; min-width: 0; padding-inline: 8px; }
+
+  .operator-fee-command-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .operator-fee-search-shell,
-  .operator-fee-filter-context { grid-column: 1; }
+  .operator-fee-filter-context { grid-column: 1 / -1; }
   .operator-fee-queue-detail-grid { grid-template-columns: 1fr !important; }
 
-  .operator-fee-meal-pulse { grid-template-columns: 1fr; }
+  .operator-fee-meal-pulse { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .operator-fee-meal-pulse > span {
-    border-right: 0;
-    border-bottom: 1px solid var(--studio-edge-soft);
+    border-right: 1px solid var(--studio-edge-soft);
+    border-bottom: 0;
+    padding-inline: 8px;
   }
-  .operator-fee-meal-pulse > span:last-child { border-bottom: 0; }
+  .operator-fee-meal-pulse > span:last-child { border-right: 0; }
+  .operator-fee-meal-pulse em { overflow: visible; text-overflow: clip; white-space: normal; }
 
   .operator-fee-meal-row {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 8px;
   }
-  .operator-fee-meal-amount { grid-column: 2; justify-items: start; text-align: left; }
-  .operator-fee-meal-row > button { grid-column: 2; justify-self: start; }
+  .operator-fee-meal-amount {
+    grid-column: 3;
+    grid-row: 1;
+    justify-items: end;
+    text-align: right;
+  }
+  .operator-fee-meal-row > button { grid-column: 3; justify-self: end; }
 }
 
 @media (prefers-reduced-motion: reduce) {
