@@ -177,13 +177,36 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
-function getAccountProviderLabel(user) {
-  const provider = String(user?.provider || '').toLowerCase();
+function getAccountProviderIds(user) {
+  const directProviderIds = Array.isArray(user?.providerIds)
+    ? user.providerIds.map((providerId) => String(providerId || '').trim()).filter(Boolean)
+    : [];
 
-  if (provider.includes('google')) return 'Google';
-  if (provider.includes('phone')) return 'Phone OTP';
+  if (directProviderIds.length) {
+    return Array.from(new Set(directProviderIds));
+  }
+
+  const legacyProvider = String(user?.provider || '').toLowerCase();
+  const fallbackProviders = [];
+
+  if (legacyProvider.includes('google')) fallbackProviders.push('google.com');
+  if (legacyProvider.includes('password')) fallbackProviders.push('password');
+  if (legacyProvider.includes('phone')) fallbackProviders.push('phone');
+
+  return Array.from(new Set(fallbackProviders));
+}
+
+function getAccountProviderLabel(user) {
+  const providerIds = getAccountProviderIds(user);
+  const labels = [];
+
+  if (providerIds.includes('google.com')) labels.push('Google');
+  if (providerIds.includes('password')) labels.push('Email / Password');
+  if (providerIds.includes('phone')) labels.push('Phone OTP');
+
+  if (labels.length) return labels.join(' + ');
   if (user?.phoneNumber && !user?.email) return 'Phone OTP';
-  if (user?.email) return 'Email / Password';
+  if (user?.email) return 'Email account';
 
   return 'Unknown';
 }
@@ -363,6 +386,17 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const [selectingGuardUser, setSelectingGuardUser] = useState(null);
   const [selectedCrewId, setSelectedCrewId] = useState(null);
   const [accountProfileMessage, setAccountProfileMessage] = useState('');
+  const [accountPasswordForm, setAccountPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [accountPasswordMessage, setAccountPasswordMessage] = useState('');
+  const [accountPasswordHasError, setAccountPasswordHasError] = useState(false);
+  const [accountPasswordIsSaving, setAccountPasswordIsSaving] = useState(false);
+  const [accountSecurityProviderIds, setAccountSecurityProviderIds] = useState(
+    () => getAccountProviderIds(currentUser)
+  );
   const [dangerConfirmText, setDangerConfirmText] = useState('');
   const [dangerFinalCheck, setDangerFinalCheck] = useState(false);
   const [dangerIsDeleting, setDangerIsDeleting] = useState(false);
@@ -420,6 +454,17 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       window.cancelAnimationFrame(profileFrameId);
     };
   }, [currentUser?.displayName]);
+
+  useEffect(() => {
+    const providerFrameId = window.requestAnimationFrame(() => {
+      setAccountSecurityProviderIds(getAccountProviderIds(currentUser));
+    });
+
+    return () => {
+      window.cancelAnimationFrame(providerFrameId);
+    };
+  }, [currentUser?.provider, currentUser?.providerIds]);
+
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
   const [discountForm, setDiscountForm] = useState(emptyDiscountForm);
@@ -948,13 +993,89 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     }
   }
 
+  function updateAccountPasswordField(field) {
+    return (event) => {
+      const value = event.target.value;
+
+      setAccountPasswordForm((current) => ({
+        ...current,
+        [field]: value,
+      }));
+
+      if (accountPasswordMessage) {
+        setAccountPasswordMessage('');
+        setAccountPasswordHasError(false);
+      }
+    };
+  }
+
+  async function saveAccountPasswordPage(event) {
+    event.preventDefault();
+
+    const newPassword = accountPasswordForm.newPassword;
+    const confirmPassword = accountPasswordForm.confirmPassword;
+
+    if (newPassword.length < 6) {
+      setAccountPasswordMessage('Password baru minimal 6 karakter.');
+      setAccountPasswordHasError(true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setAccountPasswordMessage('Konfirmasi password baru belum sama.');
+      setAccountPasswordHasError(true);
+      return;
+    }
+
+    setAccountPasswordIsSaving(true);
+    setAccountPasswordMessage('');
+    setAccountPasswordHasError(false);
+
+    try {
+      const result = await adminAuthRepository.changeAdminPassword({
+        currentPassword: accountPasswordForm.currentPassword,
+        newPassword,
+      });
+
+      if (Array.isArray(result?.user?.providerIds)) {
+        setAccountSecurityProviderIds(result.user.providerIds);
+      }
+
+      setAccountPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      setAccountPasswordMessage(
+        result?.mode === 'linked'
+          ? 'Password login berhasil dibuat. Akun ini sekarang bisa login dengan Google maupun email/password.'
+          : 'Password akun berhasil diganti.'
+      );
+    } catch (err) {
+      console.error('Gagal memperbarui password akun:', err);
+      setAccountPasswordMessage(
+        adminAuthRepository.getAdminPasswordErrorMessage?.(err) ||
+        err?.message ||
+        'Password akun belum berhasil diperbarui.'
+      );
+      setAccountPasswordHasError(true);
+    } finally {
+      setAccountPasswordIsSaving(false);
+    }
+  }
+
   async function sendPasswordResetPage() {
     try {
       await adminAuthRepository.sendAdminPasswordReset(currentUser?.email);
-      setAccountProfileMessage('Email reset password sudah dikirim.');
+      setAccountPasswordMessage('Email reset password sudah dikirim.');
+      setAccountPasswordHasError(false);
     } catch (err) {
       console.error('Gagal mengirim reset password:', err);
-      setAccountProfileMessage(err?.message || 'Email reset password belum berhasil dikirim.');
+      setAccountPasswordMessage(
+        err?.message || 'Email reset password belum berhasil dikirim.'
+      );
+      setAccountPasswordHasError(true);
     }
   }
 
@@ -1406,7 +1527,25 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     return subpages.find((page) => page.key === activeSubpage) || subpages[0];
   }, [subpages, activeSubpage]);
 
-  const accountProviderLabel = getAccountProviderLabel(currentUser);
+  const accountProviderView = {
+    ...currentUser,
+    providerIds: accountSecurityProviderIds,
+  };
+  const accountProviderLabel = getAccountProviderLabel(accountProviderView);
+  const accountHasGoogleProvider = accountSecurityProviderIds.includes('google.com');
+  const accountHasPasswordProvider = accountSecurityProviderIds.includes('password');
+  const accountNeedsCurrentPassword = accountHasPasswordProvider && !accountHasGoogleProvider;
+  const accountCanManagePassword = Boolean(
+    currentUser?.email &&
+    (accountHasGoogleProvider || accountHasPasswordProvider)
+  );
+  const accountPasswordActionLabel = accountHasGoogleProvider && !accountPasswordForm.currentPassword
+    ? accountHasPasswordProvider
+      ? 'Verifikasi Google & Ganti'
+      : 'Verifikasi Google & Buat Password'
+    : accountHasPasswordProvider
+      ? 'Ganti Password'
+      : 'Buat Password';
   const accountRoleLabel = getAccountRoleLabel(currentUser);
   const accountStatusLabel = getAccountStatusLabel(currentUser);
   const accountContactValue = currentUser?.email || currentUser?.phoneNumber || 'Belum tersedia';
@@ -1581,21 +1720,147 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               ) : null}
 
               <div className="settings-account-actions-row">
-                <button
-                  className="settings-mini-button is-ghost"
-                  disabled={!currentUser?.email}
-                  type="button"
-                  onClick={sendPasswordResetPage}
-                >
-                  Kirim Reset Password
-                </button>
-
-                <button className="settings-mini-button is-primary" type="submit">
+<button className="settings-mini-button is-primary" type="submit">
                   <Save size={14} />
                   Simpan Profil
                 </button>
               </div>
             </form>
+          </section>
+
+          {/* ── PASSWORD & SIGN-IN SECURITY ─────────────────── */}
+          <section className="settings-section settings-password-security-section">
+            <div className="settings-section-head-row">
+              <h3 className="settings-section-title">Password &amp; Sign-in</h3>
+              <span className={
+                accountHasGoogleProvider
+                  ? 'settings-password-provider-badge is-google'
+                  : accountHasPasswordProvider
+                    ? 'settings-password-provider-badge is-password'
+                    : 'settings-password-provider-badge'
+              }>
+                {accountHasGoogleProvider
+                  ? accountHasPasswordProvider
+                    ? 'Google + Password'
+                    : 'Google-only'
+                  : accountHasPasswordProvider
+                    ? 'Password'
+                    : 'Provider lain'}
+              </span>
+            </div>
+
+            <div className={
+              accountHasGoogleProvider
+                ? 'settings-password-provider-note is-google'
+                : 'settings-password-provider-note'
+            }>
+              <KeyRound size={16} aria-hidden="true" />
+              <span>
+                <strong>
+                  {accountHasGoogleProvider
+                    ? accountHasPasswordProvider
+                      ? 'Verifikasi perubahan lewat Google'
+                      : 'Buat password tanpa memutus login Google'
+                    : accountHasPasswordProvider
+                      ? 'Verifikasi dengan password saat ini'
+                      : 'Password belum tersedia untuk provider ini'}
+                </strong>
+                <small>
+                  {accountHasGoogleProvider
+                    ? accountHasPasswordProvider
+                      ? 'Isi password saat ini untuk verifikasi langsung, atau kosongkan kolom tersebut untuk verifikasi lewat Google. Login Google tetap aktif.'
+                      : 'Setelah verifikasi Google, login email/password ditambahkan ke UID Firebase yang sama.'
+                    : accountHasPasswordProvider
+                      ? 'Password lama hanya dipakai untuk re-authentication dan tidak pernah disimpan.'
+                      : 'Akun perlu memiliki email dan provider Google atau Email/Password untuk mengelola password.'}
+                </small>
+              </span>
+            </div>
+
+            {accountCanManagePassword ? (
+              <form className="settings-account-form-compact" onSubmit={saveAccountPasswordPage}>
+                <div className={
+                  accountNeedsCurrentPassword
+                    ? 'settings-password-form-grid is-three-field'
+                    : 'settings-password-form-grid'
+                }>
+                  {accountHasPasswordProvider ? (
+                    <StudioTextField
+                      autoComplete="current-password"
+                      helper={accountHasGoogleProvider ? 'Opsional · kosongkan untuk verifikasi Google' : undefined}
+                      id="account-password-current"
+                      label="Password Saat Ini"
+                      placeholder="Masukkan password saat ini"
+                      required={accountNeedsCurrentPassword}
+                      type="password"
+                      value={accountPasswordForm.currentPassword}
+                      onChange={updateAccountPasswordField('currentPassword')}
+                    />
+                  ) : null}
+
+                  <StudioTextField
+                    autoComplete="new-password"
+                    id="account-password-new"
+                    label={accountHasPasswordProvider ? 'Password Baru' : 'Buat Password'}
+                    placeholder="Minimal 6 karakter"
+                    required
+                    type="password"
+                    value={accountPasswordForm.newPassword}
+                    onChange={updateAccountPasswordField('newPassword')}
+                  />
+
+                  <StudioTextField
+                    autoComplete="new-password"
+                    id="account-password-confirm"
+                    label="Ulangi Password Baru"
+                    placeholder="Ketik ulang password baru"
+                    required
+                    type="password"
+                    value={accountPasswordForm.confirmPassword}
+                    onChange={updateAccountPasswordField('confirmPassword')}
+                  />
+                </div>
+
+                {accountPasswordMessage ? (
+                  <p
+                    className={
+                      accountPasswordHasError
+                        ? 'settings-password-message is-error'
+                        : 'settings-password-message is-success'
+                    }
+                    role={accountPasswordHasError ? 'alert' : 'status'}
+                  >
+                    {accountPasswordMessage}
+                  </p>
+                ) : null}
+
+                <div className="settings-account-actions-row">
+                  {accountHasPasswordProvider ? (
+                    <button
+                      className="settings-mini-button is-ghost"
+                      disabled={accountPasswordIsSaving || !currentUser?.email}
+                      type="button"
+                      onClick={sendPasswordResetPage}
+                    >
+                      Kirim Email Reset
+                    </button>
+                  ) : null}
+
+                  <button
+                    className="settings-mini-button is-primary"
+                    disabled={accountPasswordIsSaving}
+                    type="submit"
+                  >
+                    <KeyRound size={14} />
+                    {accountPasswordIsSaving ? 'Memverifikasi...' : accountPasswordActionLabel}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="settings-password-message is-error" role="status">
+                Provider akun saat ini belum mendukung perubahan password dari halaman ini.
+              </p>
+            )}
           </section>
 
           {/* ── PREFERENSI ACCOUNT ──────────────────────────── */}

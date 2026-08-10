@@ -2303,3 +2303,141 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
     outline-offset: 2px;
   }
 }
+
+
+/* ==========================================================================
+   ACCOUNT PASSWORD SECURITY
+   ========================================================================== */
+.settings-password-security-section {
+  position: relative;
+}
+
+.settings-password-provider-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-full);
+  background: var(--auth-bg-soft);
+  color: var(--auth-text-muted);
+  padding: 0 9px;
+  font-size: 0.6875rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.settings-password-provider-badge.is-google {
+  border-color: color-mix(in srgb, var(--auth-accent) 28%, var(--auth-border));
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
+.settings-password-provider-badge.is-password {
+  border-color: color-mix(in srgb, var(--auth-success) 25%, var(--auth-border));
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
+.settings-password-provider-note {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 9px;
+  align-items: flex-start;
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-soft);
+  padding: 10px 11px;
+  color: var(--auth-text-muted);
+}
+
+.settings-password-provider-note > svg {
+  margin-top: 1px;
+  color: var(--auth-text-muted);
+}
+
+.settings-password-provider-note.is-google {
+  background: color-mix(in srgb, var(--auth-accent-soft) 62%, var(--auth-bg-soft));
+}
+
+.settings-password-provider-note.is-google > svg {
+  color: var(--auth-accent);
+}
+
+.settings-password-provider-note > span {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-password-provider-note strong {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+}
+
+.settings-password-provider-note small {
+  color: var(--auth-text-muted);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+}
+
+.settings-password-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-password-form-grid.is-three-field {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-password-message {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  padding: 8px 10px;
+  font-size: var(--studio-text-xs);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.settings-password-message.is-success {
+  border-color: color-mix(in srgb, var(--auth-success) 30%, var(--auth-border));
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
+.settings-password-message.is-error {
+  border-color: color-mix(in srgb, var(--auth-danger) 30%, var(--auth-border));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
+
+@media (max-width: 767px) {
+  .settings-password-form-grid,
+  .settings-password-form-grid.is-three-field {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-password-security-section .settings-section-head-row {
+    align-items: flex-start;
+  }
+
+  .settings-password-security-section .settings-account-actions-row {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .settings-password-security-section .settings-account-actions-row .settings-mini-button {
+    width: 100%;
+  }
+}
+
+@media (forced-colors: active) {
+  .settings-password-provider-badge,
+  .settings-password-provider-note,
+  .settings-password-message {
+    border: 1px solid CanvasText;
+  }
+}

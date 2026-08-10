@@ -6,6 +6,11 @@ import {
   signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
+  EmailAuthProvider,
+  linkWithCredential,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  updatePassword,
   browserLocalPersistence,
   setPersistence,
   signInWithPhoneNumber,
@@ -37,13 +42,28 @@ function createUnauthenticatedState(errorMessage = '') {
   };
 }
 
+function getFirebaseUserProviderIds(user) {
+  return Array.from(
+    new Set(
+      (Array.isArray(user?.providerData) ? user.providerData : [])
+        .map((provider) => String(provider?.providerId || '').trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function serializeFirebaseUser(user) {
   if (!user) return null;
+
+  const providerIds = getFirebaseUserProviderIds(user);
+
   return {
     displayName: user.displayName || user.phoneNumber || '',
     email: user.email || '',
     phoneNumber: user.phoneNumber || '',
     emailVerified: Boolean(user.emailVerified),
+    provider: providerIds.join(','),
+    providerIds,
     uid: user.uid
   };
 }
@@ -176,6 +196,55 @@ export function getAdminAuthErrorMessage(error) {
   }
 
   return error?.message || 'Login Firebase gagal. Periksa koneksi dan kredensial Anda.';
+}
+
+export function getAdminPasswordErrorMessage(error) {
+  const code = error?.code || '';
+
+  if (code === 'account-password/current-password-required') {
+    return 'Masukkan password saat ini untuk memverifikasi perubahan.';
+  }
+  if (code === 'account-password/email-required') {
+    return 'Akun ini belum memiliki email yang dapat dipakai untuk login password.';
+  }
+  if (code === 'account-password/unsupported-provider') {
+    return 'Akun ini belum memiliki provider Google atau Email/Password yang dapat dipakai untuk verifikasi.';
+  }
+  if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+    return 'Password saat ini salah. Periksa kembali lalu coba lagi.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password baru terlalu lemah. Gunakan minimal 6 karakter.';
+  }
+  if (code === 'auth/requires-recent-login') {
+    return 'Sesi login sudah terlalu lama. Login ulang lalu coba ganti password lagi.';
+  }
+  if (code === 'auth/user-mismatch') {
+    return 'Akun Google yang dipilih berbeda dari akun yang sedang login.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Popup verifikasi Google diblokir browser. Izinkan pop-up lalu coba lagi.';
+  }
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Verifikasi Google dibatalkan sebelum selesai.';
+  }
+  if (
+    code === 'auth/credential-already-in-use' ||
+    code === 'auth/email-already-in-use'
+  ) {
+    return 'Kredensial email/password ini sudah terhubung ke akun Firebase lain.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Terlalu banyak percobaan keamanan. Tunggu beberapa saat lalu coba lagi.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Koneksi ke Firebase gagal saat memperbarui password.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Provider Email/Password belum diaktifkan di Firebase Authentication.';
+  }
+
+  return error?.message || 'Password akun belum berhasil diperbarui.';
 }
 
 async function ensureAdminAccount(user) {
@@ -471,6 +540,146 @@ export async function updateAdminProfile({ displayName }) {
   };
 }
 
+export async function changeAdminPassword({
+  currentPassword = '',
+  newPassword = '',
+} = {}) {
+  if (!isFirebaseConfigured || !firebaseAuth) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  const currentUser = firebaseAuth.currentUser;
+  const cleanEmail = String(currentUser?.email || '').trim();
+  const cleanCurrentPassword = String(currentPassword || '');
+  const cleanNewPassword = String(newPassword || '');
+  const providerIds = getFirebaseUserProviderIds(currentUser);
+  const hasGoogleProvider = providerIds.includes('google.com');
+  const hasPasswordProvider = providerIds.includes('password');
+
+  if (!currentUser) {
+    throw new Error('Akun belum login.');
+  }
+
+  if (!cleanEmail) {
+    const error = new Error('Email akun belum tersedia.');
+    error.code = 'account-password/email-required';
+    throw error;
+  }
+
+  if (cleanNewPassword.length < 6) {
+    const error = new Error('Password baru minimal 6 karakter.');
+    error.code = 'auth/weak-password';
+    throw error;
+  }
+
+  try {
+    /*
+     * If a password provider already exists and the user supplied the
+     * current password, use it as the recent-login proof. This also lets
+     * Google+password accounts avoid a popup when they know the old password.
+     */
+    if (hasPasswordProvider && cleanCurrentPassword) {
+      const currentCredential = EmailAuthProvider.credential(
+        cleanEmail,
+        cleanCurrentPassword
+      );
+
+      await reauthenticateWithCredential(
+        currentUser,
+        currentCredential
+      );
+
+      await updatePassword(
+        currentUser,
+        cleanNewPassword
+      );
+
+      return {
+        mode: 'updated',
+        verification: 'password',
+        user: serializeFirebaseUser(currentUser),
+      };
+    }
+
+    /*
+     * Google-linked accounts can use Google as the recent-login proof.
+     * Google-only accounts then link email/password to the same Firebase UID.
+     */
+    if (hasGoogleProvider) {
+      await reauthenticateWithPopup(
+        currentUser,
+        createGoogleProvider()
+      );
+
+      if (hasPasswordProvider) {
+        await updatePassword(currentUser, cleanNewPassword);
+
+        return {
+          mode: 'updated',
+          verification: 'google',
+          user: serializeFirebaseUser(currentUser),
+        };
+      }
+
+      const passwordCredential = EmailAuthProvider.credential(
+        cleanEmail,
+        cleanNewPassword
+      );
+
+      try {
+        const linkedCredential = await linkWithCredential(
+          currentUser,
+          passwordCredential
+        );
+
+        return {
+          mode: 'linked',
+          verification: 'google',
+          user: serializeFirebaseUser(linkedCredential.user),
+        };
+      } catch (linkError) {
+        /*
+         * A stale provider snapshot can report Google-only even though
+         * password is already linked. After successful Google re-auth,
+         * updating the password is safe in that specific case.
+         */
+        if (linkError?.code === 'auth/provider-already-linked') {
+          await updatePassword(currentUser, cleanNewPassword);
+
+          return {
+            mode: 'updated',
+            verification: 'google',
+            user: serializeFirebaseUser(currentUser),
+          };
+        }
+
+        throw linkError;
+      }
+    }
+
+    if (hasPasswordProvider) {
+      const error = new Error('Password saat ini wajib diisi.');
+      error.code = 'account-password/current-password-required';
+      throw error;
+    }
+
+    const error = new Error('Provider akun belum mendukung perubahan password.');
+    error.code = 'account-password/unsupported-provider';
+    throw error;
+  } catch (error) {
+    if (String(error?.code || '').startsWith('account-password/')) {
+      throw error;
+    }
+
+    const normalizedError = new Error(
+      getAdminPasswordErrorMessage(error)
+    );
+
+    normalizedError.code = error?.code || 'account-password/update-failed';
+    throw normalizedError;
+  }
+}
+
 export async function sendAdminPasswordReset(email) {
   if (!isFirebaseConfigured || !firebaseAuth) {
     throw new Error('Firebase belum dikonfigurasi.');
@@ -496,6 +705,8 @@ export async function signOutAdmin() {
 
 export const adminAuthRepository = {
   getAdminAuthErrorMessage,
+  getAdminPasswordErrorMessage,
+  changeAdminPassword,
   hasGoogleRedirectPending,
   signInAdmin,
   signUpAdmin,
