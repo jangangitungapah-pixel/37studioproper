@@ -46,30 +46,43 @@ const CURRENT_GUARD_PORTAL_MATRIX = Object.freeze({
 assert.deepEqual(
   Object.keys(CURRENT_GUARD_PORTAL_MATRIX),
   ['owner', 'admin', 'studio_guard', 'client', 'legacy_admin_guard'],
-  'GP-0 must freeze the five audited account contexts.'
+  'GP-0 must retain the five audited account contexts.'
 );
 
-// Current account-role resolver only models Admin and Client portals.
-// GP-1 is expected to intentionally replace this baseline.
+// The baseline document remains the immutable record of pre-remediation policy.
+for (const marker of [
+  'CURRENT ACCESS MATRIX',
+  'TARGET BOUNDARIES',
+  'Guard Portal access is still decided inside',
+  'Owner -> current: generic blocked; target: OWNER_OVERSIGHT',
+  'Studio Guard -> current: operational; target: GUARD_OPERATIONAL',
+  'Legacy Admin + isGuard -> current: compatibility operational; target: MIGRATION_REQUIRED',
+  'No runtime behavior change in GP-0.',
+]) {
+  assert.equal(
+    baselineDocSource.includes(marker),
+    true,
+    'Guard portal baseline documentation missing: ' + marker
+  );
+}
+
+// GP-1 intentionally promotes Guard to a first-class portal intent.
 assert.equal(
-  accountRolesSource.includes("if (portal === 'admin')"),
+  accountRolesSource.includes("if (portal === 'guard')"),
   true,
-  'Admin portal access branch must exist in the GP-0 baseline.'
+  'After GP-1 the shared account-role resolver must include Guard portal intent.'
 );
 assert.equal(
-  accountRolesSource.includes("if (portal === 'client')"),
+  packageJson.scripts.test.includes(
+    'node scripts/guard-portal-access-resolution-contract-test.mjs'
+  ),
   true,
-  'Client portal access branch must exist in the GP-0 baseline.'
-);
-assert.equal(
-  accountRolesSource.includes("portal === 'guard'"),
-  false,
-  'GP-0 records that Guard is not yet a first-class portal intent.'
+  'GP-1 resolver contract must accompany the intentional baseline transition.'
 );
 
 // Existing studio_guard isolation is a hard invariant, not technical debt.
 assert.equal(
-  adminPermissionsSource.includes("export const guardPortalPermissionKeys = [];"),
+  adminPermissionsSource.includes('export const guardPortalPermissionKeys = [];'),
   true,
   'studio_guard must continue owning zero admin-page permissions.'
 );
@@ -84,8 +97,8 @@ assert.equal(
   'studio_guard direct Admin access must continue redirecting to Guard Portal.'
 );
 
-// Guard Portal currently owns a duplicate Firebase Auth / identity stack.
-// GP-2 will intentionally remove these direct dependencies.
+// Guard Portal still owns duplicate Firebase Auth / identity logic at GP-1.
+// GP-2 is explicitly responsible for removing these direct dependencies.
 for (const marker of [
   'onAuthStateChanged',
   'signInWithEmailAndPassword',
@@ -98,12 +111,11 @@ for (const marker of [
   assert.equal(
     guardPageSource.includes(marker),
     true,
-    'GP-0 direct Guard auth evidence missing: ' + marker
+    'GP-1 direct Guard auth evidence missing before GP-2: ' + marker
   );
 }
 
-// Legacy mixed Admin + Guard compatibility is recorded explicitly.
-// It is debt to migrate, not a product feature to preserve indefinitely.
+// Legacy mixed Admin + Guard compatibility remains migration debt until GP-6.
 assert.match(
   guardPageSource,
   /account\.role === 'admin' && account\.isGuard === true/,
@@ -120,8 +132,7 @@ assert.match(
   'Firestore legacy admin+isGuard compatibility evidence missing.'
 );
 
-// Owner already has attendance review authority. Future Owner Oversight UI
-// must reuse this authority and must not broaden Firestore rules.
+// Owner already has attendance review authority. Owner Oversight must reuse it.
 assert.match(
   rulesSource,
   /function canManageGuardAttendance\(\) \{\s*return isOwner\(\) \|\|/,
@@ -133,50 +144,25 @@ assert.match(
   'Owner/admin attendance read path must remain protected by the review authority.'
 );
 
-// The current misleading Owner/Admin lock copy is deliberately frozen as a
-// known GP-0 defect so GP-3/GP-7 can replace it with role-aware states.
+// The misleading lock copy remains a known UI defect until GP-3/GP-7.
 assert.equal(
   guardPageSource.includes('Akun ini belum aktif sebagai Penjaga Studio.'),
   true,
-  'GP-0 expected current generic Guard blocked copy.'
+  'GP-1 must not silently mix UI remediation into the resolver phase.'
 );
 
-// Baseline documentation must keep current-vs-target semantics explicit.
-for (const marker of [
-  'CURRENT ACCESS MATRIX',
-  'TARGET BOUNDARIES',
-  'Owner -> current: generic blocked; target: OWNER_OVERSIGHT',
-  'Studio Guard -> current: operational; target: GUARD_OPERATIONAL',
-  'Legacy Admin + isGuard -> current: compatibility operational; target: MIGRATION_REQUIRED',
-  'No runtime behavior change in GP-0.',
-]) {
-  assert.equal(
-    baselineDocSource.includes(marker),
-    true,
-    'Guard portal baseline documentation missing: ' + marker
-  );
-}
-
-// Existing Guard lifecycle/security contracts remain mandatory.
 for (const contractName of [
   'guard-portal-isolation-contract-test.mjs',
   'guard-role-transition-contract-test.mjs',
   'guard-attendance-reliability-contract-test.mjs',
   'guard-meal-reconciliation-contract-test.mjs',
+  'guard-portal-flow-baseline-contract-test.mjs',
 ]) {
   assert.equal(
     packageJson.scripts.test.includes(contractName),
     true,
-    'Existing Guard regression gate missing from npm test: ' + contractName
+    'Guard regression gate missing from npm test: ' + contractName
   );
 }
-
-assert.equal(
-  packageJson.scripts.test.includes(
-    'node scripts/guard-portal-flow-baseline-contract-test.mjs'
-  ),
-  true,
-  'GP-0 baseline contract must be registered in npm test.'
-);
 
 console.log('guard-portal-flow-baseline-contract-test: PASS');
