@@ -16,3 +16,6 @@ workers/**/*.local
 # Local schedule QA captures
 .schedule-qa.cjs
 .schedule-*.png
+
+# Local Guard legacy migration audit reports
+.guard-migration-audit/
