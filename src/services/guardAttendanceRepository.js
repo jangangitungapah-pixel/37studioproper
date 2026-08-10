@@ -17,6 +17,9 @@ import {
   createAdminNotificationEvent,
 } from './notificationEventRepository.js';
 import { OPERATOR_FEE_PERSON_ROLES } from '../settings/operatorFeeSettings.js';
+import {
+  assertValidGuardIdentityLink,
+} from '../utils/guardIdentity.js';
 
 export const GUARD_ATTENDANCE_COLLECTION = 'guardAttendanceSessions';
 export const STUDIO_GUARD_ROLE = 'studio_guard';
@@ -888,11 +891,29 @@ export async function createGuardAttendanceCheckIn({
   const clockInAt =
     nowIso();
 
-  const guardPersonId =
-    cleanText(
-      guardPerson.id ||
-      user.uid,
+  const guardIdentityLink =
+    assertValidGuardIdentityLink(
+      [guardPerson],
+      guardPerson?.id,
     );
+
+  const guardPersonId =
+    guardIdentityLink.guardId;
+
+  const accountGuardId =
+    cleanText(
+      user?.guardId,
+    );
+
+  if (
+    !accountGuardId ||
+    accountGuardId !==
+      guardPersonId
+  ) {
+    throw new Error(
+      'Identitas crew Guard tidak sesuai dengan guardId akun. Hubungi Owner.',
+    );
+  }
 
   const id =
     makeGuardAttendanceId({

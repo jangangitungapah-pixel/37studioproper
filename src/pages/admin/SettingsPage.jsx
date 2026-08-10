@@ -51,6 +51,11 @@ import {
   useOperatorFeeSettings,
   OPERATOR_FEE_PERSON_ROLES,
 } from '../../settings/operatorFeeSettings.js';
+import {
+  GUARD_IDENTITY_LINK_STATES,
+  getGuardIdentityRepairMessage,
+  resolveGuardIdentityLink,
+} from '../../utils/guardIdentity.js';
 
 
 const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';
@@ -545,11 +550,57 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     [guardPeople]
   );
 
+  const getGuardIdentityLink = (guardId) =>
+    resolveGuardIdentityLink(
+      operatorFeeSettings?.people || [],
+      guardId,
+    );
+
   const getLinkedGuardName = (guardId) => {
-    if (!guardId) return 'Umum';
-    const match = guardPeople.find((p) => p.id === guardId);
-    return match ? match.name : 'Terhapus/Nonaktif';
+    const link = getGuardIdentityLink(guardId);
+
+    if (link.state === GUARD_IDENTITY_LINK_STATES.MISSING_GUARD_ID) {
+      return 'Belum terhubung';
+    }
+
+    if (link.state === GUARD_IDENTITY_LINK_STATES.PERSON_NOT_FOUND) {
+      return 'Crew tidak ditemukan';
+    }
+
+    if (link.state === GUARD_IDENTITY_LINK_STATES.PERSON_INACTIVE) {
+      return (link.person?.name || 'Crew Guard') + ' · Nonaktif';
+    }
+
+    if (link.state === GUARD_IDENTITY_LINK_STATES.INVALID_PERSON_ROLE) {
+      return (link.person?.name || 'Crew') + ' · Bukan Guard';
+    }
+
+    return link.person?.name || 'Belum terhubung';
   };
+
+  function openGuardIdentityLinker(user) {
+    const currentLink =
+      getGuardIdentityLink(
+        user?.guardId,
+      );
+
+    setSelectingGuardUser({
+      ...user,
+      pendingRole: 'studio_guard',
+    });
+
+    setSelectedCrewId(
+      currentLink.isValid
+        ? currentLink.guardId
+        : null,
+    );
+
+    setApprovalSettingsMessage(
+      currentLink.isValid
+        ? 'Pilih crew Guard aktif untuk menghubungkan ulang identitas akun.'
+        : getGuardIdentityRepairMessage(currentLink),
+    );
+  }
 
   // Sync users list for owner-only user management pages
   useEffect(() => {
@@ -677,6 +728,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           displayName,
           email,
           guardId: provisionAccountForm.guardId,
+          guardPeople: operatorFeeSettings?.people || [],
           password,
           role: provisionAccountForm.role,
         });
@@ -792,6 +844,8 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         newRole,
         {
           guardId,
+          guardPeople:
+            operatorFeeSettings?.people || [],
         },
       );
 
@@ -817,39 +871,53 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     newRole,
     options = {},
   ) {
+    const isGuardLinkSave = Boolean(
+      user?.role === 'studio_guard' &&
+      newRole === 'studio_guard' &&
+      options.guardId
+    );
+
     if (
       !user?.id ||
       !newRole ||
-      newRole ===
-        user.role
+      (
+        newRole === user.role &&
+        !isGuardLinkSave
+      )
     ) {
       return;
     }
 
     if (
-      newRole ===
-        'studio_guard' &&
-      !(
-        options.guardId ||
-        user.guardId
-      )
+      newRole === 'studio_guard'
     ) {
-      setSelectingGuardUser({
-        ...user,
+      const requestedGuardId =
+        options.guardId ||
+        user.guardId ||
+        '';
 
-        pendingRole:
-          'studio_guard',
-      });
+      const guardIdentityLink =
+        getGuardIdentityLink(
+          requestedGuardId,
+        );
 
-      setSelectedCrewId(
-        null,
-      );
+      if (!guardIdentityLink.isValid) {
+        openGuardIdentityLinker(user);
 
-      setApprovalSettingsMessage(
-        'Pilih identitas crew penjaga untuk menyelesaikan perubahan role.',
-      );
+        setApprovalSettingsMessage(
+          getGuardIdentityRepairMessage(
+            guardIdentityLink,
+          ),
+        );
 
-      return;
+        return;
+      }
+
+      options = {
+        ...options,
+        guardId:
+          guardIdentityLink.guardId,
+      };
     }
 
     try {
@@ -868,9 +936,12 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       );
 
       setApprovalSettingsMessage(
-        newRole ===
-          'studio_guard'
-          ? 'Role berhasil diubah menjadi Guard.'
+        newRole === 'studio_guard'
+          ? (
+              user.role === 'studio_guard'
+                ? 'Identitas Guard berhasil dihubungkan ulang.'
+                : 'Role berhasil diubah menjadi Guard.'
+            )
           : 'Role berhasil diubah menjadi Admin.',
       );
     } catch (err) {
@@ -886,18 +957,74 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     }
   }
 
-  async function handleToggleUserStatus(userId, currentStatus) {
-    const nextStatus = currentStatus === 'approved' ? 'rejected' : 'approved';
+  async function handleToggleUserStatus(
+    user,
+    currentStatus,
+  ) {
+    if (!user?.id) {
+      setApprovalSettingsMessage('User tujuan tidak valid.');
+      return;
+    }
+
+    const nextStatus =
+      currentStatus === 'approved'
+        ? 'rejected'
+        : 'approved';
+
+    if (
+      nextStatus === 'approved' &&
+      user.role === 'studio_guard'
+    ) {
+      const guardIdentityLink =
+        getGuardIdentityLink(
+          user.guardId,
+        );
+
+      if (!guardIdentityLink.isValid) {
+        openGuardIdentityLinker(user);
+
+        setApprovalSettingsMessage(
+          'Akun Guard tidak bisa diaktifkan sebelum identity link diperbaiki. ' +
+          getGuardIdentityRepairMessage(
+            guardIdentityLink,
+          ),
+        );
+
+        return;
+      }
+    }
+
     try {
-      const docRef = doc(firestoreDb, 'users', userId);
+      const docRef =
+        doc(
+          firestoreDb,
+          'users',
+          user.id,
+        );
+
       await updateDoc(docRef, {
         status: nextStatus,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
-      setApprovalSettingsMessage(`Status akses berhasil diubah menjadi ${nextStatus === 'approved' ? 'Aktif' : 'Nonaktif'}.`);
+
+      setApprovalSettingsMessage(
+        'Status akses berhasil diubah menjadi ' +
+        (
+          nextStatus === 'approved'
+            ? 'Aktif'
+            : 'Nonaktif'
+        ) +
+        '.',
+      );
     } catch (err) {
-      console.error('Failed to toggle user status:', err);
-      setApprovalSettingsMessage('Gagal mengubah status akses.');
+      console.error(
+        'Failed to toggle user status:',
+        err,
+      );
+
+      setApprovalSettingsMessage(
+        'Gagal mengubah status akses.',
+      );
     }
   }
 
@@ -3152,6 +3279,15 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 const assignablePages = getAssignablePermissionPages(user);
                 const enabledCount = countEnabledAdminPermissions(user.permissions, user.role);
                 const canEditPermissions = user.role !== 'owner';
+                const guardIdentityLink =
+                  user.role === 'studio_guard'
+                    ? getGuardIdentityLink(user.guardId)
+                    : null;
+                const guardIdentityNeedsRepair =
+                  Boolean(
+                    guardIdentityLink &&
+                    !guardIdentityLink.isValid
+                  );
 
                 return (
                   <article className="settings-user-access-item" key={user.id}>
@@ -3162,9 +3298,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                       <div className="settings-user-info-stacked">
                         <strong className="settings-user-name-inline">{user.displayName || user.email || 'User'}</strong>
                         <span className="settings-user-email-inline">
-                          {user.role === 'owner' 
-                            ? 'Owner Akses Utama' 
-                            : `${enabledCount}/${assignablePages.length} halaman${user.role === 'admin' && user.isGuard ? ` (+ Guard: ${getLinkedGuardName(user.guardId)})` : ''}`}
+                          {user.role === 'owner'
+                            ? 'Owner Akses Utama'
+                            : user.role === 'studio_guard'
+                              ? 'Guard Identity: ' + getLinkedGuardName(user.guardId)
+                              : `${enabledCount}/${assignablePages.length} halaman${user.role === 'admin' && user.isGuard ? ` (+ Guard: ${getLinkedGuardName(user.guardId)})` : ''}`}
                         </span>
                       </div>
                     </div>
@@ -3182,6 +3320,32 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                             <option value="admin">Admin</option>
                             <option value="studio_guard">Guard</option>
                           </select>
+
+                          {user.role === 'studio_guard' ? (
+                            <button
+                              type="button"
+                              aria-label={
+                                guardIdentityNeedsRepair
+                                  ? 'Perbaiki identitas Guard'
+                                  : 'Hubungkan ulang identitas Guard'
+                              }
+                              title={
+                                guardIdentityNeedsRepair
+                                  ? 'Perbaiki identitas Guard'
+                                  : 'Hubungkan ulang identitas Guard'
+                              }
+                              onClick={() => openGuardIdentityLinker(user)}
+                              className={
+                                guardIdentityNeedsRepair
+                                  ? 'settings-icon-action-btn is-delete'
+                                  : 'settings-icon-action-btn'
+                              }
+                            >
+                              {guardIdentityNeedsRepair
+                                ? <ShieldAlert size={12} />
+                                : <RefreshCcw size={12} />}
+                            </button>
+                          ) : null}
 
                           {/* Access page permissions button */}
                           <button
@@ -3213,7 +3377,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                             <input
                               type="checkbox"
                               checked={user.status === 'approved'}
-                              onChange={() => handleToggleUserStatus(user.id, user.status)}
+                              onChange={() => handleToggleUserStatus(user, user.status)}
                             />
                             <span className="settings-user-toggle-slider"></span>
                           </label>
@@ -3269,7 +3433,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                         type="button"
                         aria-label="Aktifkan user"
                         title="Aktifkan user"
-                        onClick={() => handleToggleUserStatus(user.id, 'rejected')}
+                        onClick={() => handleToggleUserStatus(user, 'rejected')}
                         className="settings-mini-button is-primary settings-approval-icon-button is-approve"
                         style={{ height: '26px', minHeight: '26px', padding: '0 8px', fontSize: '10px' }}
                       >
@@ -3374,9 +3538,16 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           <div className="settings-permission-panel" role="dialog" aria-modal="true" aria-labelledby="guard-select-title">
             <header className="settings-permission-head">
               <div>
-                <small>Hubungkan Penjaga Studio</small>
+                <small>
+                  {selectingGuardUser.role === 'studio_guard'
+                    ? 'Perbaiki Identitas Guard'
+                    : 'Hubungkan Penjaga Studio'}
+                </small>
                 <h3 id="guard-select-title">Pilih Identitas Crew Penjaga</h3>
-                <span>Pilih crew penjaga yang sesuai untuk mengaktifkan role Guard pada akun ini.</span>
+                <span>
+                  Pilih satu crew Guard/Both aktif. Link ini menjadi identitas operasional
+                  untuk attendance baru dari akun tersebut.
+                </span>
               </div>
               <button type="button" aria-label="Tutup pilihan" onClick={() => setSelectingGuardUser(null)}>
                 <X size={16} />
@@ -3440,7 +3611,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                   )
                 }
               >
-                Simpan Penjaga
+                {selectingGuardUser.role === 'studio_guard'
+                  ? 'Simpan Link Guard'
+                  : 'Simpan Penjaga'}
               </button>
             </footer>
           </div>

@@ -67,6 +67,13 @@ service cloud.firestore {
       );
     }
 
+    function hasCanonicalGuardId(data) {
+      return 'guardId' in data &&
+        data.guardId is string &&
+        data.guardId.size() > 0 &&
+        data.guardId.size() <= 160;
+    }
+
     function hasPermission(page) {
       return isOwner() || (
         isApprovedAdmin() &&
@@ -189,7 +196,7 @@ service cloud.firestore {
           (data.role == 'owner' && data.status == 'approved') ||
           (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected']) ||
           (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions)) ||
-          (data.role == 'studio_guard' && data.status == 'approved' && hasOnlyGuardPortalPermissions(data.permissions))
+          (data.role == 'studio_guard' && data.status == 'approved' && hasOnlyGuardPortalPermissions(data.permissions) && hasCanonicalGuardId(data))
         ) &&
         (!data.keys().hasAny(['preferences']) || validPreferences(data.preferences)) &&
         validIsoTimestampString(data.createdAt) &&
@@ -403,15 +410,7 @@ service cloud.firestore {
     }
 
     function getCurrentGuardPersonId() {
-      let account = getUserData();
-
-      return (
-        'guardId' in account &&
-        account.guardId is string &&
-        account.guardId.size() > 0
-      )
-        ? account.guardId
-        : request.auth.uid;
+      return getUserData().guardId;
     }
     function guardMealStartsUnposted(data) {
       return (
@@ -439,6 +438,7 @@ service cloud.firestore {
 
     function guardCreatesOwnAttendance(data, attendanceId) {
       return isStudioGuardAccount() &&
+        hasCanonicalGuardId(getUserData()) &&
         attendanceId == 'att__' + request.auth.uid + '__' + data.date &&
         data.guardUid == request.auth.uid &&
         data.clockInByUid == request.auth.uid &&

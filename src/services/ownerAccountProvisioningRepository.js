@@ -33,6 +33,10 @@ import {
 } from '../utils/adminPermissions.js';
 
 import {
+  assertValidGuardIdentityLink,
+} from '../utils/guardIdentity.js';
+
+import {
   createAdminPermissions,
 } from '../utils/accountRoles.js';
 
@@ -123,6 +127,7 @@ function validateProvisionInput({
   displayName,
   email,
   guardId,
+  guardPeople = [],
   password,
   role,
 }) {
@@ -196,13 +201,21 @@ function validateProvisionInput({
 
   if (
     normalizedRole ===
-      'studio_guard' &&
-    !normalizedGuardId
+      'studio_guard'
   ) {
-    throw createProvisioningError(
-      'owner-provision/guard-required',
-      'Pilih identitas crew Guard sebelum membuat akun.',
-    );
+    try {
+      assertValidGuardIdentityLink(
+        guardPeople,
+        normalizedGuardId,
+      );
+    } catch (guardIdentityError) {
+      throw createProvisioningError(
+        'owner-provision/guard-required',
+        guardIdentityError?.message ||
+          'Pilih identitas crew Guard sebelum membuat akun.',
+        guardIdentityError,
+      );
+    }
   }
 
   return {
@@ -347,6 +360,7 @@ export async function provisionPortalAccount({
   displayName,
   email,
   guardId = '',
+  guardPeople = [],
   password,
   role,
 }) {
@@ -360,6 +374,7 @@ export async function provisionPortalAccount({
       displayName,
       email,
       guardId,
+      guardPeople,
       password,
       role,
     });
@@ -448,6 +463,7 @@ export async function provisionPortalAccount({
         {
           guardId:
             input.guardId,
+          guardPeople,
         },
       );
 

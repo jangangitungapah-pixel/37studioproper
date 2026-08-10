@@ -35,6 +35,10 @@ import {
 } from '../../utils/adminPermissions.js';
 import { isFirebaseConfigured } from '../../lib/firebase.js';
 import { useOperatorFeeSettings } from '../../settings/operatorFeeSettings.js';
+import {
+  getGuardIdentityRepairMessage,
+  resolveGuardIdentityLink,
+} from '../../utils/guardIdentity.js';
 import '../../styles/admin-auth.css';
 
 function formatDateTime(value) {
@@ -173,6 +177,7 @@ export default function GuardAttendancePage() {
         [
           GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL,
           GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL,
+          GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED,
         ].includes(nextGuardPortalAccess)
       );
 
@@ -193,9 +198,21 @@ export default function GuardAttendancePage() {
     });
   }, [isAuthAvailable]);
 
-  const guardPortalAccess = useMemo(
+  const accountGuardPortalAccess = useMemo(
     () => resolveGuardPortalAccess(guardAccount),
     [guardAccount]
+  );
+
+  const guardIdentityLink = useMemo(
+    () =>
+      resolveGuardIdentityLink(
+        settings.people,
+        guardAccount?.guardId,
+      ),
+    [
+      guardAccount?.guardId,
+      settings.people,
+    ]
   );
 
   const canUseGuardPage = Boolean(
@@ -203,7 +220,24 @@ export default function GuardAttendancePage() {
     [
       GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL,
       GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL,
-    ].includes(guardPortalAccess)
+      GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED,
+    ].includes(accountGuardPortalAccess)
+  );
+
+  const isGuardIdentityRepairRequired = Boolean(
+    canUseGuardPage &&
+    !guardIdentityLink.isValid
+  );
+
+  const guardPortalAccess =
+    isGuardIdentityRepairRequired
+      ? GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED
+      : accountGuardPortalAccess;
+
+  const canStartGuardShift = Boolean(
+    canUseGuardPage &&
+    !isGuardIdentityRepairRequired &&
+    guardIdentityLink.isValid
   );
 
   const isOwnerOversight = Boolean(
@@ -352,46 +386,44 @@ export default function GuardAttendancePage() {
   const todayLabel = formatDate(new Date().toISOString());
 
   const assignedGuardPersonId =
-    canUseGuardPage
-      ? (
+    canStartGuardShift
+      ? String(
           guardAccount?.guardId ||
-          authUser?.uid ||
-          ''
-        )
+          '',
+        ).trim()
       : '';
 
   const selectedGuardPerson = useMemo(() => {
-    const assignedPerson =
-      settings.people.find(
-        (person) =>
-          person.id ===
-          assignedGuardPersonId,
-      );
-
-    if (assignedPerson) {
-      return assignedPerson;
+    if (
+      !canStartGuardShift ||
+      !guardIdentityLink.isValid ||
+      guardIdentityLink.person?.id !==
+        assignedGuardPersonId
+    ) {
+      return null;
     }
 
-    return {
-      defaultPaymentMethod:
-        'cash',
-
-      id:
-        assignedGuardPersonId,
-
-      name:
-        authUser?.displayName ||
-        guardAccount?.displayName ||
-        authUser?.email ||
-        'Penjaga Studio',
-    };
+    return guardIdentityLink.person;
   }, [
     assignedGuardPersonId,
-    authUser?.displayName,
-    authUser?.email,
-    guardAccount?.displayName,
-    settings.people,
+    canStartGuardShift,
+    guardIdentityLink,
   ]);
+
+  const guardDisplayName =
+    selectedGuardPerson?.name ||
+    guardIdentityLink.person?.name ||
+    guardAccount?.displayName ||
+    authUser?.displayName ||
+    authUser?.email ||
+    'Penjaga Studio';
+
+  const guardIdentityRepairMessage =
+    isGuardIdentityRepairRequired
+      ? getGuardIdentityRepairMessage(
+          guardIdentityLink,
+        )
+      : '';
 
 
   async function handleSignIn(event) {
@@ -490,9 +522,10 @@ export default function GuardAttendancePage() {
   }
 
   async function handleCheckIn() {
-    if (!canUseGuardPage) {
+    if (!canStartGuardShift) {
       setError(
-        'Akses operasional Guard tidak tersedia untuk akun ini.'
+        guardIdentityRepairMessage ||
+        'Akses operasional Guard tidak tersedia untuk membuat attendance baru.'
       );
       return;
     }
@@ -502,8 +535,14 @@ export default function GuardAttendancePage() {
       return;
     }
 
-    if (!selectedGuardPerson?.id) {
-      setError('Pilih profil penjaga dulu.');
+    if (
+      !selectedGuardPerson?.id ||
+      selectedGuardPerson.id !==
+        guardAccount?.guardId
+    ) {
+      setError(
+        'Identitas Guard belum valid. Hubungi Owner untuk menghubungkan ulang akun.'
+      );
       return;
     }
 
@@ -954,6 +993,25 @@ export default function GuardAttendancePage() {
           </section>
         ) : null}
 
+        {isReady && authUser && isGuardIdentityRepairRequired ? (
+          <section
+            className="guard-shift-card is-locked"
+            aria-label="Guard Identity Repair Required"
+          >
+            <AlertCircle size={24} />
+            <strong>Identitas Guard perlu diperbaiki</strong>
+            <p>
+              {guardIdentityRepairMessage ||
+                'Akun Guard belum terhubung ke identitas crew. Hubungi Owner.'}
+            </p>
+            <small>
+              Clock In baru dikunci sampai Owner memperbaiki link di
+              Settings → User &amp; Access Settings. Riwayat attendance tetap
+              terikat ke UID akun ini.
+            </small>
+          </section>
+        ) : null}
+
         {canUseGuardPage ? (
           <section className="guard-shift-workspace" aria-label="Panel absen penjaga" style={{ display: 'grid', gap: '12px' }}>
             
@@ -961,10 +1019,10 @@ export default function GuardAttendancePage() {
             <div className="guard-profile-dashboard-card">
               <div className="guard-profile-info-header">
                 <div className="guard-avatar-large">
-                  {selectedGuardPerson.name ? selectedGuardPerson.name.slice(0, 2).toUpperCase() : 'GD'}
+                  {guardDisplayName ? guardDisplayName.slice(0, 2).toUpperCase() : 'GD'}
                 </div>
                 <div className="guard-name-details">
-                  <h2>{selectedGuardPerson.name}</h2>
+                  <h2>{guardDisplayName}</h2>
                   <span className="guard-email-chip">{guardAccount?.email}</span>
                   <div className="guard-badge-row">
                     <span className="guard-role-badge">Penjaga Studio</span>
@@ -1018,7 +1076,7 @@ export default function GuardAttendancePage() {
                         className="guard-select"
                         disabled
                         readOnly
-                        value={selectedGuardPerson.name}
+                        value={guardDisplayName}
                       />
                     </label>
 
@@ -1036,7 +1094,11 @@ export default function GuardAttendancePage() {
                   <button
                     className="guard-shift-btn-glow"
                     type="button"
-                    disabled={isBusy || !selectedGuardPerson?.id}
+                    disabled={
+                      isBusy ||
+                      !canStartGuardShift ||
+                      !selectedGuardPerson?.id
+                    }
                     onClick={handleCheckIn}
                   >
                     {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <CheckCircle2 size={16} />}

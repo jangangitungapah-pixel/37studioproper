@@ -1,4 +1,5 @@
 import { OWNER_EMAIL } from '../constants/appConstants.js';
+import { assertValidGuardIdentityLink } from './guardIdentity.js';
 export { OWNER_EMAIL };
 export const STUDIO_GUARD_ROLE = 'studio_guard';
 export const guardPortalPermissionKeys = [];
@@ -94,6 +95,7 @@ export function buildPortalRoleTransitionPatch(
   nextRole,
   {
     guardId = '',
+    guardPeople = [],
   } = {},
 ) {
   if (
@@ -107,17 +109,15 @@ export function buildPortalRoleTransitionPatch(
         '',
       ).trim();
 
-    if (
-      !resolvedGuardId
-    ) {
-      throw new Error(
-        'Pilih identitas crew penjaga sebelum mengubah role menjadi Guard.',
+    const guardIdentityLink =
+      assertValidGuardIdentityLink(
+        guardPeople,
+        resolvedGuardId,
       );
-    }
 
     return {
       guardId:
-        resolvedGuardId,
+        guardIdentityLink.guardId,
 
       isGuard:
         false,
