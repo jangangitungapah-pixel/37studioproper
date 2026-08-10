@@ -242,6 +242,20 @@ function getOptionLabel(options, key, fallback = '-') {
   return options.find((item) => item.key === key)?.label || fallback;
 }
 
+const SETTINGS_GROUP_LABELS = {
+  account: 'Account & access',
+  'user-settings': 'Account & access',
+  studio: 'Studio configuration',
+  pricing: 'Commerce',
+  invoice: 'Commerce',
+  'fee-settings': 'Operations',
+  danger: 'System safety',
+};
+
+function getSettingsGroupLabel(key) {
+  return SETTINGS_GROUP_LABELS[key] || 'Studio settings';
+}
+
 function createDangerZoneInitialProgress() {
   return dangerZoneCollections.reduce((progress, item) => ({
     ...progress,
@@ -1415,38 +1429,82 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 ? 'settings-page is-fee-settings'
                 : 'settings-page'
       }
+      data-settings-ui="ui-12-spatial"
       aria-labelledby="settings-title"
     >
-      <div className="settings-subnav-mobile">
+      <div className="settings-command-mobile">
         <StudioSelect
-          label="Settings Page"
+          label="Settings Area"
           options={subpages}
           selectedKey={activeSubpage}
           onChange={setActiveSubpage}
         />
       </div>
 
-      <div className="settings-tabs-desktop" role="tablist" aria-label="Settings subpage">
-        {subpages.map((item) => (
-          <button
-            aria-selected={activeSubpage === item.key}
-            className={activeSubpage === item.key ? 'settings-tab is-active' : 'settings-tab'}
-            key={item.key}
-            role="tab"
-            type="button"
-            onClick={() => setActiveSubpage(item.key)}
-          >
-            <strong>{item.label}</strong>
-            <span>{item.description}</span>
-          </button>
-        ))}
-      </div>
+      <header className="settings-editorial-header">
+        <div className="settings-editorial-copy">
+          <p className="settings-editorial-kicker">Studio control room</p>
+          <h2 id="settings-title">{activePageInfo.label}</h2>
+          <span>{activePageInfo.description}</span>
+        </div>
 
-      <div className="settings-title-block">
-        <p>{activePageInfo.label}</p>
-        <h2 id="settings-title">{activePageInfo.label}</h2>
-        <span>{activePageInfo.description}</span>
-      </div>
+        <div className="settings-editorial-context" aria-label="Settings workspace context">
+          <span className="settings-context-pill">
+            <SlidersHorizontal size={14} aria-hidden="true" />
+            {subpages.length} area konfigurasi
+          </span>
+          <span className="settings-context-pill is-safe">
+            <ShieldCheck size={14} aria-hidden="true" />
+            {isOwnerAdminUser(currentUser) ? 'Owner scope' : 'Admin scope'}
+          </span>
+        </div>
+      </header>
+
+      <div className="settings-workspace-grid">
+        <aside className="settings-navigation-panel" aria-label="Settings navigation">
+          <div className="settings-navigation-intro">
+            <small>Settings map</small>
+            <strong>Control room</strong>
+            <span>Pilih area konfigurasi tanpa kehilangan konteks workspace.</span>
+          </div>
+
+          <div className="settings-navigation-list" role="tablist" aria-label="Settings subpage">
+            {subpages.map((item, index) => (
+              <button
+                aria-selected={activeSubpage === item.key}
+                className={activeSubpage === item.key ? 'settings-navigation-tab is-active' : 'settings-navigation-tab'}
+                key={item.key}
+                role="tab"
+                type="button"
+                onClick={() => setActiveSubpage(item.key)}
+              >
+                <span className="settings-navigation-index" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="settings-navigation-copy">
+                  <small>{getSettingsGroupLabel(item.key)}</small>
+                  <strong>{item.label}</strong>
+                  <em>{item.description}</em>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="settings-navigation-safety">
+            <ShieldCheck size={16} aria-hidden="true" />
+            <span>
+              <strong>Safe editing</strong>
+              <small>Perubahan UI tidak mengubah schema, route, atau permission semantics.</small>
+            </span>
+          </div>
+        </aside>
+
+        <main className="settings-workspace-content" aria-label={activePageInfo.label}>
+          <div className="settings-current-context">
+            <span>{getSettingsGroupLabel(activeSubpage)}</span>
+            <strong>{activePageInfo.label}</strong>
+            <small>{activePageInfo.description}</small>
+          </div>
 
       {activeSubpage === 'account' && (
         <section className="settings-account-grid" aria-label="Account settings">
@@ -2565,6 +2623,8 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           {/* ── DRAWER MODAL ATUR PERMISSION ── */}
         </section>
       )}
+        </main>
+      </div>
       </section>
 
       {selectedPermissionUser ? (
