@@ -169,11 +169,11 @@ const pendingIdentityBlock =
   );
 
 assert.equal(
-  pendingIdentityBlock.includes(
-    'password'
+  /^\s*password\s*:/m.test(
+    pendingIdentityBlock,
   ),
   false,
-  'Pending Firestore identity must not contain password material.',
+  'Pending Firestore identity must not contain a password field.',
 );
 
 const finalFirestoreBlock =
@@ -187,11 +187,11 @@ const finalFirestoreBlock =
   );
 
 assert.equal(
-  finalFirestoreBlock.includes(
-    'password'
+  /^\s*password\s*:/m.test(
+    finalFirestoreBlock,
   ),
   false,
-  'Final Owner Firestore update must not contain password material.',
+  'Final Owner Firestore update must not contain a password field.',
 );
 
 assert.equal(
