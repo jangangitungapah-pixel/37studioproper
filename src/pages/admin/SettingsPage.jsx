@@ -8,6 +8,7 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import OperatorFeeSettingsPanel from '../../components/settings/OperatorFeeSettingsPanel.jsx';
 import { adminAuthRepository } from '../../services/adminAuthRepository.js';
+import { ownerAccountProvisioningRepository } from '../../services/ownerAccountProvisioningRepository.js';
 import {
   accountContactOptions,
   accountLandingOptions,
@@ -170,6 +171,26 @@ const emptyPackageForm = {
   durationHours: '',
   price: '',
 };
+
+const emptyProvisionAccountForm = {
+  confirmPassword: '',
+  displayName: '',
+  email: '',
+  guardId: '',
+  password: '',
+  role: 'admin',
+};
+
+const OWNER_PROVISION_ROLE_OPTIONS = [
+  {
+    key: 'admin',
+    label: 'Admin',
+  },
+  {
+    key: 'studio_guard',
+    label: 'Guard',
+  },
+];
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -357,7 +378,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       pages.push({
         key: 'user-settings',
         label: 'User & Access Settings',
-        description: 'Daftar user admin portal, role, persetujuan akun baru, dan hak akses halaman.',
+        description: 'Buat akun Admin/Guard, kelola role, status, identitas Guard, dan hak akses halaman.',
       });
       pages.push({
         key: 'danger',
@@ -477,6 +498,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const [selectedPermissionUser, setSelectedPermissionUser] = useState(null);
   const [permissionDraft, setPermissionDraft] = useState(defaultAdminPermissions);
   const [approvalSettingsMessage, setApprovalSettingsMessage] = useState('');
+  const [provisionAccountForm, setProvisionAccountForm] = useState(emptyProvisionAccountForm);
+  const [provisionAccountIsSaving, setProvisionAccountIsSaving] = useState(false);
+  const [provisionAccountMessage, setProvisionAccountMessage] = useState('');
+  const [provisionAccountHasError, setProvisionAccountHasError] = useState(false);
+  const [provisionedCredentials, setProvisionedCredentials] = useState(null);
 
   const sessionOptions = useMemo(() => getSessionOptions(settings), [settings]);
 
@@ -507,6 +533,17 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         [OPERATOR_FEE_PERSON_ROLES.GUARD, OPERATOR_FEE_PERSON_ROLES.BOTH].includes(person.role)
     );
   }, [operatorFeeSettings]);
+
+  const guardProvisionOptions = useMemo(
+    () =>
+      guardPeople.map(
+        (person) => ({
+          key: person.id,
+          label: person.name,
+        })
+      ),
+    [guardPeople]
+  );
 
   const getLinkedGuardName = (guardId) => {
     if (!guardId) return 'Umum';
@@ -549,6 +586,159 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       unsubscribe();
     };
   }, [activeSubpage, currentUser]);
+
+  function updateProvisionAccountField(field) {
+    return (event) => {
+      const value = event.target.value;
+
+      setProvisionAccountForm((current) => ({
+        ...current,
+        [field]: value,
+        ...(field === 'role' && value !== 'studio_guard'
+          ? { guardId: '' }
+          : {}),
+      }));
+
+      setProvisionAccountMessage('');
+      setProvisionAccountHasError(false);
+    };
+  }
+
+  function updateProvisionAccountValue(field) {
+    return (nextValue) => {
+      setProvisionAccountForm((current) => ({
+        ...current,
+        [field]: nextValue,
+        ...(field === 'role' && nextValue !== 'studio_guard'
+          ? { guardId: '' }
+          : {}),
+      }));
+
+      setProvisionAccountMessage('');
+      setProvisionAccountHasError(false);
+    };
+  }
+
+  async function handleProvisionPortalAccount(event) {
+    event.preventDefault();
+
+    if (!isOwnerAdminUser(currentUser)) {
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Hanya Owner yang dapat membuat akun portal.');
+      return;
+    }
+
+    const email = provisionAccountForm.email.trim().toLowerCase();
+    const displayName = provisionAccountForm.displayName.trim();
+    const password = provisionAccountForm.password;
+
+    if (!displayName) {
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Nama akun wajib diisi.');
+      return;
+    }
+
+    if (!email || !email.includes('@')) {
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Email akun belum valid.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Password minimal 6 karakter.');
+      return;
+    }
+
+    if (password !== provisionAccountForm.confirmPassword) {
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Konfirmasi password belum sama.');
+      return;
+    }
+
+    if (
+      provisionAccountForm.role === 'studio_guard' &&
+      !provisionAccountForm.guardId
+    ) {
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Pilih identitas crew Guard terlebih dahulu.');
+      return;
+    }
+
+    setProvisionAccountIsSaving(true);
+    setProvisionAccountHasError(false);
+    setProvisionAccountMessage('');
+    setProvisionedCredentials(null);
+
+    try {
+      const createdAccount =
+        await ownerAccountProvisioningRepository.provisionPortalAccount({
+          currentOwner: currentUser,
+          displayName,
+          email,
+          guardId: provisionAccountForm.guardId,
+          password,
+          role: provisionAccountForm.role,
+        });
+
+      const roleLabel =
+        createdAccount.role === 'studio_guard'
+          ? 'Guard'
+          : 'Admin';
+
+      setProvisionedCredentials({
+        displayName: createdAccount.displayName,
+        email: createdAccount.email,
+        password,
+        role: createdAccount.role,
+        roleLabel,
+        loginPath:
+          createdAccount.role === 'studio_guard'
+            ? '/guard/attendance'
+            : '/login',
+      });
+
+      setProvisionAccountForm(emptyProvisionAccountForm);
+      setProvisionAccountMessage(
+        'Akun ' + roleLabel + ' berhasil dibuat dan langsung aktif.'
+      );
+    } catch (err) {
+      console.error(
+        '[owner-account-provision] Gagal membuat akun portal:',
+        err,
+      );
+
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage(
+        ownerAccountProvisioningRepository.getOwnerProvisioningErrorMessage(err)
+      );
+    } finally {
+      setProvisionAccountIsSaving(false);
+    }
+  }
+
+  async function copyProvisionedCredentials() {
+    if (!provisionedCredentials) return;
+
+    const text = [
+      '37 Studio Portal',
+      'Nama: ' + provisionedCredentials.displayName,
+      'Role: ' + provisionedCredentials.roleLabel,
+      'Email: ' + provisionedCredentials.email,
+      'Password: ' + provisionedCredentials.password,
+      'Login: ' + provisionedCredentials.loginPath,
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setProvisionAccountHasError(false);
+      setProvisionAccountMessage('Kredensial berhasil disalin.');
+    } catch (err) {
+      console.error('Gagal menyalin kredensial akun:', err);
+      setProvisionAccountHasError(true);
+      setProvisionAccountMessage('Browser tidak mengizinkan copy otomatis. Salin kredensial secara manual.');
+    }
+  }
 
   async function handleApproveUser(userId) {
     try {
@@ -2678,6 +2868,228 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       {activeSubpage === 'user-settings' && isOwnerAdminUser(currentUser) && (
         <section className="settings-section settings-user-access-section">
           
+          {/* ── OWNER MANAGED ACCOUNT PROVISIONING ── */}
+          <div className="settings-section-head">
+            <div>
+              <h3>Buat Akun Portal</h3>
+              <p>
+                Buat akun login Admin atau Guard langsung dari Owner.
+                Session Owner tetap aktif selama proses provisioning.
+              </p>
+            </div>
+          </div>
+
+          <form
+            className="settings-account-form-compact"
+            aria-label="Buat akun portal Admin atau Guard"
+            onSubmit={handleProvisionPortalAccount}
+          >
+            <div className="settings-studio-grid">
+              <StudioTextField
+                autoComplete="off"
+                id="owner-provision-display-name"
+                label="Nama PIC / Nama Akun"
+                placeholder="Contoh: Dede Karawang"
+                required
+                value={provisionAccountForm.displayName}
+                onChange={updateProvisionAccountField('displayName')}
+              />
+
+              <StudioTextField
+                autoComplete="off"
+                id="owner-provision-email"
+                label="Email Login"
+                placeholder="pic@37studio.com"
+                required
+                type="email"
+                value={provisionAccountForm.email}
+                onChange={updateProvisionAccountField('email')}
+              />
+            </div>
+
+            <div className="settings-studio-grid">
+              <StudioTextField
+                autoComplete="new-password"
+                id="owner-provision-password"
+                label="Password Awal"
+                placeholder="Minimal 6 karakter"
+                required
+                type="password"
+                value={provisionAccountForm.password}
+                onChange={updateProvisionAccountField('password')}
+              />
+
+              <StudioTextField
+                autoComplete="new-password"
+                id="owner-provision-confirm-password"
+                label="Ulangi Password"
+                placeholder="Ketik ulang password"
+                required
+                type="password"
+                value={provisionAccountForm.confirmPassword}
+                onChange={updateProvisionAccountField('confirmPassword')}
+              />
+            </div>
+
+            <div className="settings-studio-grid">
+              <StudioSelect
+                label="Role Portal"
+                options={OWNER_PROVISION_ROLE_OPTIONS}
+                selectedKey={provisionAccountForm.role}
+                onChange={updateProvisionAccountValue('role')}
+              />
+
+              {provisionAccountForm.role === 'studio_guard' ? (
+                guardProvisionOptions.length ? (
+                  <StudioSelect
+                    label="Identitas Crew Guard"
+                    options={guardProvisionOptions}
+                    selectedKey={provisionAccountForm.guardId}
+                    onChange={updateProvisionAccountValue('guardId')}
+                  />
+                ) : (
+                  <div className="settings-password-provider-note">
+                    <ShieldAlert size={16} aria-hidden="true" />
+                    <span>
+                      <strong>Belum ada crew Guard aktif</strong>
+                      <small>
+                        Tambahkan crew ber-role Guard/Both di Fee Settings
+                        sebelum membuat akun Guard.
+                      </small>
+                    </span>
+                  </div>
+                )
+              ) : (
+                <div className="settings-password-provider-note">
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  <span>
+                    <strong>Admin langsung aktif</strong>
+                    <small>
+                      Admin dibuat dengan permission default.
+                      Hak akses bisa disesuaikan setelah akun dibuat.
+                    </small>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="settings-password-provider-note">
+              <KeyRound size={16} aria-hidden="true" />
+              <span>
+                <strong>Password tidak disimpan di database aplikasi</strong>
+                <small>
+                  Password hanya dikirim ke Firebase Authentication dan
+                  ditampilkan sementara setelah akun berhasil dibuat.
+                </small>
+              </span>
+            </div>
+
+            {provisionAccountMessage ? (
+              <p
+                className={
+                  provisionAccountHasError
+                    ? 'settings-password-message is-error'
+                    : 'settings-password-message is-success'
+                }
+                role={provisionAccountHasError ? 'alert' : 'status'}
+              >
+                {provisionAccountMessage}
+              </p>
+            ) : null}
+
+            <div className="settings-account-actions-row">
+              <button
+                className="settings-mini-button is-primary"
+                disabled={
+                  provisionAccountIsSaving ||
+                  (
+                    provisionAccountForm.role === 'studio_guard' &&
+                    !provisionAccountForm.guardId
+                  )
+                }
+                type="submit"
+              >
+                <UserRound size={14} />
+                {provisionAccountIsSaving
+                  ? 'Membuat Akun...'
+                  : 'Buat Akun & Aktifkan'}
+              </button>
+            </div>
+          </form>
+
+          {provisionedCredentials ? (
+            <div
+              aria-label="Kredensial akun baru"
+              className="settings-password-provider-note is-google"
+            >
+              <KeyRound size={18} aria-hidden="true" />
+
+              <span style={{ width: '100%' }}>
+                <strong>Kredensial siap diberikan</strong>
+                <small>
+                  Salin sekarang. Password tidak disimpan di Firestore
+                  dan receipt ini hilang saat halaman direfresh.
+                </small>
+
+                <div className="settings-info-flat-list" style={{ marginTop: '10px' }}>
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-label">Nama</span>
+                    <strong className="settings-info-flat-value">
+                      {provisionedCredentials.displayName}
+                    </strong>
+                  </div>
+
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-label">Role</span>
+                    <strong className="settings-info-flat-value">
+                      {provisionedCredentials.roleLabel}
+                    </strong>
+                  </div>
+
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-label">Email</span>
+                    <strong className="settings-info-flat-value">
+                      {provisionedCredentials.email}
+                    </strong>
+                  </div>
+
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-label">Password</span>
+                    <strong className="settings-info-flat-value">
+                      {provisionedCredentials.password}
+                    </strong>
+                  </div>
+
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-label">Login</span>
+                    <strong className="settings-info-flat-value">
+                      {provisionedCredentials.loginPath}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="settings-account-actions-row" style={{ marginTop: '10px' }}>
+                  <button
+                    className="settings-mini-button is-primary"
+                    type="button"
+                    onClick={copyProvisionedCredentials}
+                  >
+                    <Clipboard size={14} />
+                    Copy Kredensial
+                  </button>
+
+                  <button
+                    className="settings-mini-button is-ghost"
+                    type="button"
+                    onClick={() => setProvisionedCredentials(null)}
+                  >
+                    Tutup Receipt
+                  </button>
+                </div>
+              </span>
+            </div>
+          ) : null}
+
           {/* ── SEKSI 1: REQUEST REGISTER BARU ── */}
           {approvalUsers.length ? (
             <div className="settings-pending-approvals-block">
