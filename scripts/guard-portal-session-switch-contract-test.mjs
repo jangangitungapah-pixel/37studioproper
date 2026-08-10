@@ -64,8 +64,8 @@ assert.equal(
 );
 
 /*
- * Admin shell exposes Guard Portal to Owner and keeps legacy Admin+isGuard
- * compatibility only until GP-6.
+ * Admin shell exposes the explicit Guard Portal bridge to Owner only.
+ * GP-6 has retired legacy Admin+isGuard shortcut compatibility.
  */
 assert.equal(
   adminTopbarSource.includes(
@@ -85,12 +85,20 @@ assert.equal(
   'Owner must receive the Guard Portal shortcut.'
 );
 
-assert.match(
+assert.equal(
+  adminTopbarSource.includes(
+    'user.isGuard'
+  ),
+  false,
+  'Legacy Admin+isGuard shortcut must be absent after GP-6.'
+);
+
+assert.doesNotMatch(
   adminTopbarSource,
 
-  /user\.role ===\s*'admin'[\s\S]*?user\.isGuard ===\s*true/,
+  /user\.role\s*===\s*['"]admin['"]/,
 
-  'Legacy Admin+isGuard shortcut compatibility must survive until GP-6.'
+  'Approved Admin must use the Guard cross-portal state, not an AdminTopbar Guard shortcut.'
 );
 
 assert.equal(

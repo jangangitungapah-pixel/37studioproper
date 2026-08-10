@@ -216,7 +216,6 @@ for (
     'adminAuthRepository.signOutAdmin',
     'resolveGuardPortalAccess',
     'GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL',
-    'GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL',
     'Memeriksa akses portal...',
   ]
 ) {
@@ -290,33 +289,41 @@ assert.equal(
 );
 
 /*
- * Legacy Admin + isGuard survives only through
- * GP-1 canonical resolver until GP-6 migration.
+ * GP-6 closes the migration window.
+ * The GP-0 baseline document remains historical evidence, while live runtime
+ * and Firestore authorization must no longer accept mixed Admin + Guard.
  */
+for (
+  const forbidden
+  of [
+    'LEGACY_GUARD_OPERATIONAL',
+    'identity?.isGuard === true',
+  ]
+) {
+  assert.equal(
+    accountRolesSource.includes(
+      forbidden
+    ),
+    false,
+    'GP-6 must retire legacy resolver marker: ' +
+      forbidden
+  );
+}
+
 assert.equal(
-  accountRolesSource.includes(
-    'identity?.isGuard === true'
+  adminTopbarSource.includes(
+    'user.isGuard'
   ),
-
-  true,
-
-  'Canonical resolver must still carry legacy isGuard compatibility until GP-6.'
+  false,
+  'GP-6 must retire legacy Admin Guard shortcut.'
 );
 
-assert.match(
-  adminTopbarSource,
-
-  /user\.role ===\s*'admin'[\s\S]*?user\.isGuard ===\s*true/,
-
-  'Admin topbar legacy admin+isGuard compatibility evidence missing.'
-);
-
-assert.match(
-  rulesSource,
-
-  /getUserData\(\)\.role == 'admin'[\s\S]*?getUserData\(\)\.isGuard == true/,
-
-  'Firestore legacy admin+isGuard compatibility evidence missing.'
+assert.equal(
+  rulesSource.includes(
+    'getUserData().isGuard == true'
+  ),
+  false,
+  'GP-6 must retire legacy Admin Guard Firestore authorization.'
 );
 
 /*

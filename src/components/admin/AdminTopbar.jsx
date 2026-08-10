@@ -91,17 +91,8 @@ export default function AdminTopbar({
 
   const canOpenGuardPortal =
     Boolean(
-      user &&
-      (
-        user.role ===
-          'owner' ||
-        (
-          user.role ===
-            'admin' &&
-          user.isGuard ===
-            true
-        )
-      ),
+      user?.role ===
+        'owner',
     );
 
   const contextLabel =

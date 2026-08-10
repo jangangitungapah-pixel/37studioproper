@@ -316,7 +316,6 @@ export function subscribeAdminAuth(callback) {
               : defaultAdminPermissions,
             isApproved: false,
             isOwner: false,
-            isGuard: err?.identity?.isGuard || false,
             guardId: err?.identity?.guardId || null,
           }
         });
@@ -357,7 +356,6 @@ export function subscribeAdminAuth(callback) {
               permissions: normalizeAdminPermissionsForRole(userData?.permissions, userData?.role),
               isApproved,
               access,
-              isGuard: userData?.isGuard || false,
               guardId: userData?.guardId || null,
             }
           });

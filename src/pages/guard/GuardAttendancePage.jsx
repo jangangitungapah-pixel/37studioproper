@@ -176,7 +176,6 @@ export default function GuardAttendancePage() {
         nextUser?.uid &&
         [
           GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL,
-          GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL,
           GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED,
         ].includes(nextGuardPortalAccess)
       );
@@ -219,7 +218,6 @@ export default function GuardAttendancePage() {
     authUser?.uid &&
     [
       GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL,
-      GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL,
       GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED,
     ].includes(accountGuardPortalAccess)
   );
@@ -704,12 +702,7 @@ export default function GuardAttendancePage() {
             {authUser &&
             (
               isOwnerOversight ||
-              isAdminCrossPortal ||
-              (
-                guardAccount?.role === 'admin' &&
-                guardPortalAccess ===
-                  GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL
-              )
+              isAdminCrossPortal
             ) ? (
               <Link
                 className="guard-shift-ghost-button"

@@ -3302,7 +3302,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                             ? 'Owner Akses Utama'
                             : user.role === 'studio_guard'
                               ? 'Guard Identity: ' + getLinkedGuardName(user.guardId)
-                              : `${enabledCount}/${assignablePages.length} halaman${user.role === 'admin' && user.isGuard ? ` (+ Guard: ${getLinkedGuardName(user.guardId)})` : ''}`}
+                              : `${enabledCount}/${assignablePages.length} halaman`}
                         </span>
                       </div>
                     </div>

@@ -293,16 +293,16 @@ assert.match(
   'Owner Guard shortcut eligibility must remain intact.',
 );
 
-assert.match(
+assert.doesNotMatch(
   topbarSource,
   /user\.role\s*===\s*['"]admin['"]/,
-  'Legacy Admin Guard shortcut eligibility must remain intact until GP-6.',
+  'GP-6 must remove legacy Admin Guard shortcut eligibility.',
 );
 
-assert.match(
+assert.doesNotMatch(
   topbarSource,
   /user\.isGuard\s*===\s*true/,
-  'Legacy Admin Guard flag requirement must remain intact until GP-6.',
+  'GP-6 must remove legacy Admin Guard flag requirement.',
 );
 
 assert.doesNotMatch(

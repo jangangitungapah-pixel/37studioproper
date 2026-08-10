@@ -87,7 +87,6 @@ for (
     'adminAuthRepository.getAdminAuthErrorMessage',
     'resolveGuardPortalAccess(guardAccount)',
     'GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL',
-    'GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL',
     'Memeriksa akses portal...',
   ]
 ) {
@@ -178,7 +177,6 @@ for (
     'onAuthStateChanged',
     'onSnapshot',
     'guardId: userData?.guardId || null',
-    'isGuard: userData?.isGuard || false',
     'role: userData?.role',
     'status: userData?.status',
   ]
@@ -205,7 +203,6 @@ for (
     'OWNER_OVERSIGHT',
     'GUARD_OPERATIONAL',
     'IDENTITY_REPAIR_REQUIRED',
-    'LEGACY_GUARD_OPERATIONAL',
   ]
 ) {
   assert.equal(
@@ -219,6 +216,22 @@ for (
       required
   );
 }
+
+assert.equal(
+  authSource.includes(
+    '?.isGuard'
+  ),
+  false,
+  'GP6 runtime auth identity must not project deprecated isGuard.'
+);
+
+assert.equal(
+  accountRolesSource.includes(
+    'LEGACY_GUARD_OPERATIONAL'
+  ),
+  false,
+  'GP6 canonical Guard resolver must not expose a legacy mixed-role state.'
+);
 
 /*
  * Attendance ownership semantics must not change.

@@ -60,7 +60,7 @@ assert.match(
  *
  * studio_guard never owns the Admin shell: AdminPage redirects it to Guard
  * before AdminTopbar renders. Owner now owns the explicit cross-portal
- * shortcut. Legacy admin+isGuard remains compatibility until GP-6.
+ * shortcut. GP-6 retires legacy admin+isGuard compatibility.
  */
 assert.match(
   topbarSource,
@@ -68,16 +68,16 @@ assert.match(
   'Owner Guard shortcut eligibility must remain formatting-agnostic.',
 );
 
-assert.match(
+assert.doesNotMatch(
   topbarSource,
   /user\.role\s*===\s*['"]admin['"]/,
-  'Legacy Admin Guard shortcut eligibility must remain formatting-agnostic.',
+  'GP-6 must remove legacy Admin Guard shortcut eligibility.',
 );
 
-assert.match(
+assert.doesNotMatch(
   topbarSource,
   /user\.isGuard\s*===\s*true/,
-  'Legacy Admin Guard flag eligibility must remain formatting-agnostic.',
+  'GP-6 must remove legacy Admin Guard flag eligibility.',
 );
 
 assert.doesNotMatch(
