@@ -176,6 +176,12 @@ const adminPageSource =
     'src/pages/AdminPage.jsx',
   );
 
+assert.match(
+  adminPageSource,
+  /ACCOUNT_ROLES\.STUDIO_GUARD[\s\S]*?to="\/guard\/attendance"/,
+  'studio_guard must remain redirected before the Admin shell renders.',
+);
+
 for (
   const invariant
   of [
@@ -276,22 +282,57 @@ assert.match(
   'Notification Console must remain topbar-accessible.',
 );
 
+/*
+ * GP-4 removes the unreachable studio_guard shortcut from AdminTopbar.
+ * AdminPage remains the owner of studio_guard -> Guard redirect.
+ * Owner receives the intentional cross-portal entry instead.
+ */
 assert.match(
   topbarSource,
-  /user\.role\s*===\s*['"]studio_guard['"]/,
-  'studio_guard Guard shortcut eligibility must remain intact.',
+  /user\.role\s*===\s*['"]owner['"]/,
+  'Owner Guard shortcut eligibility must remain intact.',
 );
 
 assert.match(
   topbarSource,
   /user\.role\s*===\s*['"]admin['"]/,
-  'admin Guard shortcut eligibility must remain intact.',
+  'Legacy Admin Guard shortcut eligibility must remain intact until GP-6.',
 );
 
 assert.match(
   topbarSource,
   /user\.isGuard\s*===\s*true/,
-  'Admin Guard flag requirement must remain intact.',
+  'Legacy Admin Guard flag requirement must remain intact until GP-6.',
+);
+
+assert.doesNotMatch(
+  topbarSource,
+  /user\.role\s*===\s*['"]studio_guard['"]/,
+  'studio_guard must not regain an unreachable AdminTopbar shortcut.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    "from 'react-router-dom'"
+  ),
+  true,
+  'Admin Guard shortcut must stay router-driven after GP-4.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'to="/guard/attendance"'
+  ),
+  true,
+  'Guard Portal target must remain canonical.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'href="/guard/attendance"'
+  ),
+  false,
+  'Cross-portal switch must not regress to a raw reload.',
 );
 
 assert.match(

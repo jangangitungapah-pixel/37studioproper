@@ -55,30 +55,75 @@ assert.match(
   'Notification Console must remain reachable from command header.',
 );
 
+/*
+ * GP-4 portal ownership must remain reflected in the command header contract.
+ *
+ * studio_guard never owns the Admin shell: AdminPage redirects it to Guard
+ * before AdminTopbar renders. Owner now owns the explicit cross-portal
+ * shortcut. Legacy admin+isGuard remains compatibility until GP-6.
+ */
 assert.match(
   topbarSource,
-  /user\.role\s*===\s*['"]studio_guard['"]/,
-  'Guard studio_guard eligibility must be formatting-agnostic.',
+  /user\.role\s*===\s*['"]owner['"]/,
+  'Owner Guard shortcut eligibility must remain formatting-agnostic.',
 );
 
 assert.match(
   topbarSource,
   /user\.role\s*===\s*['"]admin['"]/,
-  'Guard admin eligibility must be formatting-agnostic.',
+  'Legacy Admin Guard shortcut eligibility must remain formatting-agnostic.',
 );
 
 assert.match(
   topbarSource,
   /user\.isGuard\s*===\s*true/,
-  'Guard admin flag eligibility must be formatting-agnostic.',
+  'Legacy Admin Guard flag eligibility must remain formatting-agnostic.',
+);
+
+assert.doesNotMatch(
+  topbarSource,
+  /user\.role\s*===\s*['"]studio_guard['"]/,
+  'studio_guard shortcut must stay absent because AdminPage owns its redirect.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    "from 'react-router-dom'"
+  ),
+  true,
+  'Guard Portal shortcut must use React Router after GP-4.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'to="/guard/attendance"'
+  ),
+  true,
+  'Guard Portal destination must remain /guard/attendance.',
 );
 
 assert.equal(
   topbarSource.includes(
     'href="/guard/attendance"'
   ),
+  false,
+  'Guard Portal switch must not use a raw page reload after GP-4.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'currentAdminPath'
+  ),
   true,
-  'Guard Portal destination must remain unchanged.',
+  'Guard Portal shortcut must preserve the current Admin return route.',
+);
+
+assert.equal(
+  topbarSource.includes(
+    'returnTo:'
+  ),
+  true,
+  'Admin-to-Guard navigation must carry return intent.',
 );
 
 assert.match(
@@ -216,6 +261,12 @@ const adminPageSource =
     ),
     'utf8',
   );
+
+assert.match(
+  adminPageSource,
+  /ACCOUNT_ROLES\.STUDIO_GUARD[\s\S]*?to="\/guard\/attendance"/,
+  'studio_guard must remain redirected before the Admin command header renders.',
+);
 
 for (
   const invariant
