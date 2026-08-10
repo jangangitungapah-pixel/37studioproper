@@ -435,9 +435,9 @@ function OperatorFeePulse({ summary }) {
     {
       key: 'total',
       icon: Banknote,
-      label: 'Total Fee',
+      label: 'Estimasi Total',
       value: formatOperatorFeeCurrency(summary.total),
-      meta: summary.totalRows + ' booking eligible',
+      meta: summary.totalRows + ' booking · termasuk fee menunggu eligibility',
       tone: 'neutral',
     },
   ];
@@ -829,6 +829,19 @@ export default function OperatorFeePage({ currentUser }) {
           ? total + Number(postedEntry.totalAmount || postedEntry.amount || 0)
           : total;
       }, 0);
+      const unpostedEstimatedAmount = estimatedLines.reduce((total, line) => {
+        const hasPostedEntry = getOperatorFeeEntriesForBookingRule(
+          entries,
+          booking,
+          line.ruleId,
+        ).some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        if (hasPostedEntry) {
+          return total;
+        }
+
+        return total + toNumber(line.amount);
+      }, 0);
       const unpostedPayableAmount = estimatedLines.reduce((total, line) => {
         const hasPostedEntry = getOperatorFeeEntriesForBookingRule(
           entries,
@@ -846,7 +859,29 @@ export default function OperatorFeePage({ currentUser }) {
 
         return total + toNumber(line.amount);
       }, 0);
-      const totalFee = postedSnapshotAmount + unpostedPayableAmount;
+      const blockedEstimateAmount = blockedLines.reduce((total, line) => {
+        const hasPostedEntry = getOperatorFeeEntriesForBookingRule(
+          entries,
+          booking,
+          line.ruleId,
+        ).some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        return hasPostedEntry
+          ? total
+          : total + toNumber(line.amount);
+      }, 0);
+      const unassignedEstimateAmount = unassignedLines.reduce((total, line) => {
+        const hasPostedEntry = getOperatorFeeEntriesForBookingRule(
+          entries,
+          booking,
+          line.ruleId,
+        ).some((entry) => entry.status === OPERATOR_FEE_ENTRY_STATUSES.POSTED);
+
+        return hasPostedEntry
+          ? total
+          : total + toNumber(line.amount);
+      }, 0);
+      const totalFee = postedSnapshotAmount + unpostedEstimatedAmount;
       const canReconcile = Boolean(
         estimatedLines.length &&
         !unassignedLines.length &&
@@ -859,6 +894,7 @@ export default function OperatorFeePage({ currentUser }) {
         allRuleLines: estimatedLines,
         assignmentDirty,
         attendanceGuardCandidates,
+        blockedEstimateAmount,
         blockedLines,
         booking,
         bookingId,
@@ -874,7 +910,9 @@ export default function OperatorFeePage({ currentUser }) {
         postedSnapshotAmount,
         status,
         totalFee,
+        unassignedEstimateAmount,
         unassignedLines,
+        unpostedEstimatedAmount,
         unpostedPayableAmount,
       };
     });
@@ -933,10 +971,10 @@ export default function OperatorFeePage({ currentUser }) {
     const current = rows.reduce((result, row) => ({
       draft:
         result.draft +
-        (row.status === 'draft' ? row.unpostedPayableAmount : 0),
+        (row.status === 'draft' ? row.unpostedEstimatedAmount : 0),
       estimate:
         result.estimate +
-        (row.status === 'estimate' ? row.unpostedPayableAmount : 0),
+        (row.status === 'estimate' ? row.unpostedEstimatedAmount : 0),
       integrityWarnings:
         result.integrityWarnings +
         (
@@ -947,16 +985,20 @@ export default function OperatorFeePage({ currentUser }) {
         ),
       reviewed:
         result.reviewed +
-        (row.status === 'reviewed' ? row.unpostedPayableAmount : 0),
+        (
+          row.status === 'reviewed' && row.canReconcile
+            ? row.unpostedPayableAmount
+            : 0
+        ),
       unpostedTotal:
         result.unpostedTotal +
-        row.unpostedPayableAmount,
+        row.unpostedEstimatedAmount,
       needsReview:
         result.needsReview +
         (row.status === 'estimate' || row.status === 'draft' ? 1 : 0),
       readyPost:
         result.readyPost +
-        (row.status === 'reviewed' ? 1 : 0),
+        (row.status === 'reviewed' && row.canReconcile ? 1 : 0),
       totalRows: result.totalRows + 1,
       unassignedBookings:
         result.unassignedBookings +
@@ -1503,6 +1545,15 @@ export default function OperatorFeePage({ currentUser }) {
 
                   <div className="operator-fee-amount-col">
                     <b className="operator-fee-total-amount">{formatOperatorFeeCurrency(row.totalFee)}</b>
+                    {row.blockedEstimateAmount > 0 ? (
+                      <small>
+                        Termasuk {formatOperatorFeeCurrency(row.blockedEstimateAmount)} Guard menunggu absen
+                      </small>
+                    ) : row.unassignedEstimateAmount > 0 ? (
+                      <small>
+                        Termasuk {formatOperatorFeeCurrency(row.unassignedEstimateAmount)} fee belum di-assign
+                      </small>
+                    ) : null}
                     <span className={'operator-fee-status-dot is-' + statusTone}>
                       <span className="status-dot"></span>
                       {getStatusLabel(row.status)}
