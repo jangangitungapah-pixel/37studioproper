@@ -114,37 +114,53 @@ assert.match(
 );
 
 /*
- * Operational Guard workspace remains separate.
+ * Guard-owned workspace remains separate from Owner Oversight.
+ * GP-5 may keep this workspace mounted for Guard history / legacy checkout
+ * while a broken identity link is being repaired, but Owner never enters it.
  */
 assert.match(
   guardSource,
 
   /\{canUseGuardPage \? \([\s\S]*?aria-label="Panel absen penjaga"/,
 
-  'Clock In/Out workspace must remain gated by operational Guard access.'
+  'Guard history / checkout workspace must remain inaccessible to Owner Oversight.'
 );
 
 /*
  * Owner and other non-operational actors must never inherit a Guard identity.
- * GP-5 still owns removal of the UID fallback for operational Guard accounts.
+ * GP-5 removes the UID fallback entirely for new attendance identity:
+ * assignedGuardPersonId is available only from a validated canonical guardId.
  */
 assert.match(
   guardSource,
 
-  /const assignedGuardPersonId =[\s\S]*?canUseGuardPage[\s\S]*?guardAccount\?\.guardId \|\|[\s\S]*?authUser\?\.uid/,
+  /const assignedGuardPersonId =[\s\S]*?canStartGuardShift[\s\S]*?guardAccount\?\.guardId \|\|[\s\S]*?''/,
 
-  'Guard identity fallback must only exist inside operational Guard access.'
+  'Canonical guardId must only become an attendance identity after canStartGuardShift.'
+);
+
+assert.equal(
+  /guardAccount\?\.guardId\s*\|\|\s*authUser\?\.uid/.test(
+    guardSource
+  ),
+
+  false,
+
+  'Guard Portal must not fall back from guardId to Firebase UID.'
 );
 
 /*
- * Defense-in-depth: even if a stale UI event fires, mutation handlers fail closed.
+ * Defense-in-depth after GP-5:
+ * - new Clock In requires a fully valid canonical Guard identity;
+ * - Clock Out stays UID-bound through canUseGuardPage so an already-open
+ *   historical shift is not stranded while Owner repairs guardId.
  */
 assert.match(
   guardSource,
 
-  /async function handleCheckIn\(\) \{[\s\S]*?if \(!canUseGuardPage\)/,
+  /async function handleCheckIn\(\) \{[\s\S]*?if \(!canStartGuardShift\)/,
 
-  'Check-in handler must reject non-operational actors.'
+  'Check-in handler must reject missing, deleted, inactive, or otherwise invalid Guard identity links.'
 );
 
 assert.match(
@@ -152,7 +168,7 @@ assert.match(
 
   /async function handleCheckOut\(\) \{[\s\S]*?if \(!canUseGuardPage\)/,
 
-  'Check-out handler must reject non-operational actors.'
+  'Historical checkout must stay available only to the authenticated Guard account context.'
 );
 
 assert.equal(
