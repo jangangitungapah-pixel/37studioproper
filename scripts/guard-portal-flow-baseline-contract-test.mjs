@@ -439,22 +439,18 @@ assert.equal(
   'Admin Guard shortcut must use React Router after GP-4.'
 );
 
-assert.equal(
-  adminTopbarSource.includes(
-    "user.role ===\n          'owner'"
-  ),
+assert.match(
+  adminTopbarSource,
 
-  true,
+  /user\??\.role\s*===\s*['"]owner['"]/,
 
   'Owner must receive an explicit Guard Portal shortcut.'
 );
 
-assert.equal(
-  adminTopbarSource.includes(
-    "user.role ===\n          'studio_guard'"
-  ),
+assert.doesNotMatch(
+  adminTopbarSource,
 
-  false,
+  /user\??\.role\s*===\s*['"]studio_guard['"]/,
 
   'Unreachable studio_guard AdminTopbar shortcut must be removed.'
 );

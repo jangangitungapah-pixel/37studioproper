@@ -76,12 +76,11 @@ assert.equal(
   'Admin Guard shortcut must use React Router Link.'
 );
 
-assert.equal(
-  adminTopbarSource.includes(
-    "user.role ===\n          'owner'"
-  ),
+assert.match(
+  adminTopbarSource,
 
-  true,
+  /user\??\.role\s*===\s*['"]owner['"]/,
+
   'Owner must receive the Guard Portal shortcut.'
 );
 
@@ -96,17 +95,16 @@ assert.equal(
 assert.doesNotMatch(
   adminTopbarSource,
 
-  /user\.role\s*===\s*['"]admin['"]/,
+  /user\??\.role\s*===\s*['"]admin['"]/,
 
   'Approved Admin must use the Guard cross-portal state, not an AdminTopbar Guard shortcut.'
 );
 
-assert.equal(
-  adminTopbarSource.includes(
-    "user.role ===\n          'studio_guard'"
-  ),
+assert.doesNotMatch(
+  adminTopbarSource,
 
-  false,
+  /user\??\.role\s*===\s*['"]studio_guard['"]/,
+
   'AdminTopbar must not carry an unreachable studio_guard shortcut.'
 );
 

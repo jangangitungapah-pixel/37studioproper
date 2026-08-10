@@ -64,13 +64,13 @@ assert.match(
  */
 assert.match(
   topbarSource,
-  /user\.role\s*===\s*['"]owner['"]/,
+  /user\??\.role\s*===\s*['"]owner['"]/,
   'Owner Guard shortcut eligibility must remain formatting-agnostic.',
 );
 
 assert.doesNotMatch(
   topbarSource,
-  /user\.role\s*===\s*['"]admin['"]/,
+  /user\??\.role\s*===\s*['"]admin['"]/,
   'GP-6 must remove legacy Admin Guard shortcut eligibility.',
 );
 
@@ -82,7 +82,7 @@ assert.doesNotMatch(
 
 assert.doesNotMatch(
   topbarSource,
-  /user\.role\s*===\s*['"]studio_guard['"]/,
+  /user\??\.role\s*===\s*['"]studio_guard['"]/,
   'studio_guard shortcut must stay absent because AdminPage owns its redirect.',
 );
 
