@@ -517,9 +517,94 @@ service cloud.firestore {
         request.resource.data.source == resource.data.source;
     }
 
+    function validGuardAttendanceOwnerReviewAuditFields() {
+      return validIsoTimestampString(
+          request.resource.data.updatedAt
+        ) &&
+        request.resource.data.ownerActionRequired is bool &&
+        request.resource.data.mealEligible is bool;
+    }
+
+    function validGuardAttendanceOwnerApprovePatch() {
+      return validGuardAttendanceOwnerReviewAuditFields() &&
+        validIsoTimestampString(
+          request.resource.data.approvedAt
+        ) &&
+        validString(
+          request.resource.data.approvedByName,
+          0,
+          120
+        ) &&
+        validString(
+          request.resource.data.approvedByUid,
+          1,
+          128
+        ) &&
+        validString(
+          request.resource.data.rejectedAt,
+          0,
+          40
+        ) &&
+        validString(
+          request.resource.data.rejectedByName,
+          0,
+          120
+        ) &&
+        validString(
+          request.resource.data.rejectedByUid,
+          0,
+          128
+        ) &&
+        validString(
+          request.resource.data.rejectionReason,
+          0,
+          1000
+        );
+    }
+
+    function validGuardAttendanceOwnerRejectPatch() {
+      return validGuardAttendanceOwnerReviewAuditFields() &&
+        validIsoTimestampString(
+          request.resource.data.rejectedAt
+        ) &&
+        validString(
+          request.resource.data.rejectedByName,
+          0,
+          120
+        ) &&
+        validString(
+          request.resource.data.rejectedByUid,
+          1,
+          128
+        ) &&
+        validString(
+          request.resource.data.rejectionReason,
+          1,
+          1000
+        );
+    }
+
+    function validGuardAttendanceOwnerVoidPatch() {
+      return validGuardAttendanceOwnerReviewAuditFields() &&
+        validIsoTimestampString(
+          request.resource.data.voidedAt
+        ) &&
+        validString(
+          request.resource.data.voidedByUid,
+          1,
+          128
+        ) &&
+        validString(
+          request.resource.data.voidReason,
+          1,
+          1000
+        );
+    }
+
     function adminApprovesGuardAttendance() {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
+        validGuardAttendanceOwnerApprovePatch() &&
         resource.data.status != 'void' &&
         resource.data.approvalStatus in ['pending', 'rejected'] &&
         request.resource.data.approvalStatus == 'approved' &&
@@ -558,6 +643,7 @@ service cloud.firestore {
     function adminRejectsGuardAttendance() {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
+        validGuardAttendanceOwnerRejectPatch() &&
         resource.data.status != 'void' &&
         guardMealNotPosted(resource.data) &&
         resource.data.approvalStatus in ['pending', 'approved'] &&
@@ -583,6 +669,7 @@ service cloud.firestore {
     function adminVoidsGuardAttendance() {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
+        validGuardAttendanceOwnerVoidPatch() &&
         resource.data.status != 'void' &&
         guardMealNotPosted(resource.data) &&
         request.resource.data.approvalStatus == resource.data.approvalStatus &&
@@ -650,10 +737,14 @@ service cloud.firestore {
         guardMealBookkeepingExistsAfter();
     }
 
-    function adminUpdatesGuardAttendance() {
+    function adminReviewsGuardAttendance() {
       return adminApprovesGuardAttendance() ||
         adminRejectsGuardAttendance() ||
-        adminVoidsGuardAttendance() ||
+        adminVoidsGuardAttendance();
+    }
+
+    function adminUpdatesGuardAttendance() {
+      return adminReviewsGuardAttendance() ||
         adminPostsGuardMeal();
     }
 
@@ -672,13 +763,14 @@ service cloud.firestore {
           attendanceId
         );
 
-      allow update: if guardClosesOwnAttendance() || (
-        validGuardAttendanceSession(
-          request.resource.data,
-          attendanceId
-        ) &&
-        adminUpdatesGuardAttendance()
-      );
+      allow update: if guardClosesOwnAttendance() ||
+        adminReviewsGuardAttendance() || (
+          validGuardAttendanceSession(
+            request.resource.data,
+            attendanceId
+          ) &&
+          adminPostsGuardMeal()
+        );
 
       allow delete: if isOwner();
     }

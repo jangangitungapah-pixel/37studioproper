@@ -373,6 +373,11 @@ for (
     'function adminApprovesGuardAttendance()',
     'function adminRejectsGuardAttendance()',
     'function adminVoidsGuardAttendance()',
+    'function validGuardAttendanceOwnerReviewAuditFields()',
+    'function validGuardAttendanceOwnerApprovePatch()',
+    'function validGuardAttendanceOwnerRejectPatch()',
+    'function validGuardAttendanceOwnerVoidPatch()',
+    'function adminReviewsGuardAttendance()',
     'adminUpdatesGuardAttendance()',
   ]
 ) {
@@ -404,10 +409,26 @@ assert.equal(
 
 assert.equal(
   rulesSource.includes(
-    'allow update: if guardClosesOwnAttendance() || (',
+    'allow update: if guardClosesOwnAttendance() ||\n        adminReviewsGuardAttendance() || (',
   ),
   true,
-  'Guard checkout must not depend on full-document schema validation.',
+  'Guard checkout and Owner review transitions must not depend on full-document schema validation.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'adminReviewsGuardAttendance() || (\n          validGuardAttendanceSession('
+  ),
+  false,
+  'Owner review transitions must remain outside the full-document validator.',
+);
+
+assert.equal(
+  rulesSource.includes(
+    'validGuardAttendanceSession(\n            request.resource.data,\n            attendanceId\n          ) &&\n          adminPostsGuardMeal()'
+  ),
+  true,
+  'Meal posting must retain full-document validation because it reconciles Bookkeeping.',
 );
 
 assert.equal(
