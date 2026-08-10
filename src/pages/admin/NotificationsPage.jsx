@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  ArrowUpRight,
   BellRing,
   CheckCircle2,
   ChevronDown,
@@ -94,6 +95,84 @@ function getStatusBadgeClass(status) {
   return 'notif-badge-pending';
 }
 
+function getEventAttentionState(event) {
+  const status = String(event?.status || 'pending');
+
+  if (status === 'failed') {
+    return {
+      key: 'problem',
+      label: 'Perlu diperiksa',
+    };
+  }
+
+  if (status === 'pending') {
+    return {
+      key: 'actionable',
+      label: 'Menunggu proses',
+    };
+  }
+
+  if (status === 'processing') {
+    return {
+      key: 'active',
+      label: 'Sedang diproses',
+    };
+  }
+
+  if (status === 'cancelled') {
+    return {
+      key: 'muted',
+      label: 'Dibatalkan',
+    };
+  }
+
+  if (event?.priority === 'high') {
+    return {
+      key: 'priority',
+      label: 'Prioritas tinggi',
+    };
+  }
+
+  return {
+    key: 'settled',
+    label: 'Terkirim',
+  };
+}
+
+function getEventDestination(event) {
+  const url = String(event?.url || '').trim();
+
+  if (!url) return null;
+
+  const type = String(event?.type || '');
+
+  if (type.includes('payment') || type.includes('proof')) {
+    return {
+      label: 'Buka pembayaran',
+      url,
+    };
+  }
+
+  if (type.includes('booking')) {
+    return {
+      label: 'Buka booking',
+      url,
+    };
+  }
+
+  if (type.includes('guard') || type.includes('attendance')) {
+    return {
+      label: 'Buka attendance',
+      url,
+    };
+  }
+
+  return {
+    label: 'Buka tujuan',
+    url,
+  };
+}
+
 function getReadinessTone(isReady) { return isReady ? 'success' : 'warning'; }
 
 function formatHealthValue(value) {
@@ -145,39 +224,116 @@ function summarizeWorkerResult(result) {
 
 function NotifRow({ event, onRetry, onCancel, onSelect, isSelected }) {
   const relTime = formatRelativeTime(event.createdAt);
+  const exactTime = formatDateTime(event.createdAt);
   const typeLabel = formatTypeLabel(event.type);
   const statusLabel = getNotificationEventStatusLabel(event.status);
   const dotClass = getStatusDotClass(event.status);
   const badgeClass = getStatusBadgeClass(event.status);
+  const attention = getEventAttentionState(event);
+  const destination = getEventDestination(event);
   const canRetry = event.status === 'failed' || event.status === 'cancelled';
   const canCancel = event.status === 'pending';
+
   return (
-    <article className={'notif-row' + (isSelected ? ' is-selected' : '')} role="listitem">
+    <article
+      className={
+        'notif-row is-' +
+        attention.key +
+        (isSelected ? ' is-selected' : '')
+      }
+      data-notification-attention={attention.key}
+      role="listitem"
+    >
       <div className="notif-row-left" aria-hidden="true">
         <span className={'notif-dot ' + dotClass} />
         <span className="notif-type-tag">{getEventTypeIcon(event.type)}</span>
       </div>
+
       <div className="notif-row-body">
-        <p className="notif-row-title">
-          <span className={'notif-badge ' + badgeClass}>{statusLabel}</span>
-          <span className="notif-row-title-text">{event.title || typeLabel}</span>
-        </p>
+        <div className="notif-row-heading">
+          <p className="notif-row-title">
+            <span className={'notif-badge ' + badgeClass}>{statusLabel}</span>
+            <span className="notif-row-title-text">{event.title || typeLabel}</span>
+          </p>
+
+          <span className={'notif-attention-tag is-' + attention.key}>
+            {attention.label}
+          </span>
+        </div>
+
         <p className="notif-row-msg">{event.message || 'Tidak ada isi pesan.'}</p>
-        {event.errorMessage ? <p className="notif-row-error">{event.errorMessage}</p> : null}
+
+        <div className="notif-row-meta">
+          <span>{typeLabel}</span>
+          <span aria-hidden="true">·</span>
+          <time dateTime={event.createdAt} title={exactTime}>
+            {exactTime}
+          </time>
+          {event.priority === 'high' ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <strong>High priority</strong>
+            </>
+          ) : null}
+        </div>
+
+        {event.errorMessage ? (
+          <p className="notif-row-error">{event.errorMessage}</p>
+        ) : null}
       </div>
+
       <div className="notif-row-right">
-        <time className="notif-row-time" dateTime={event.createdAt} title={formatDateTime(event.createdAt)}>{relTime}</time>
-        <div className="notif-row-actions" role="group" aria-label="Aksi">
-          <button className={'notif-action-btn' + (isSelected ? ' is-active' : '')} title="Pilih event" type="button" onClick={() => onSelect(event)} aria-pressed={isSelected}>
+        <time
+          className="notif-row-time"
+          dateTime={event.createdAt}
+          title={exactTime}
+        >
+          {relTime}
+        </time>
+
+        <div className="notif-row-actions" role="group" aria-label="Aksi event">
+          {destination ? (
+            <a
+              aria-label={destination.label}
+              className="notif-action-btn notif-context-link"
+              href={destination.url}
+              title={destination.label}
+            >
+              <ArrowUpRight size={12} />
+            </a>
+          ) : null}
+
+          <button
+            aria-label={isSelected ? 'Batalkan pilihan event' : 'Pilih event untuk worker'}
+            aria-pressed={isSelected}
+            className={'notif-action-btn' + (isSelected ? ' is-active' : '')}
+            title="Pilih event untuk worker"
+            type="button"
+            onClick={() => onSelect(event)}
+          >
             <RadioTower size={11} />
           </button>
+
           {canRetry ? (
-            <button className="notif-action-btn" title="Retry" type="button" onClick={() => onRetry(event)}>
+            <button
+              aria-label="Retry event"
+              className="notif-action-btn"
+              title="Retry event"
+              type="button"
+              onClick={() => onRetry(event)}
+            >
               <RotateCcw size={11} />
             </button>
           ) : null}
+
           {canCancel ? (
-            <button className="notif-action-btn is-danger" title="Cancel" type="button" onClick={() => onCancel(event)}>
+            <button
+              aria-label="Batalkan event pending"
+              className="notif-action-btn is-danger"
+              title="Batalkan event pending"
+              type="button"
+              onClick={() => onCancel(event)}
+            >
               <XCircle size={11} />
             </button>
           ) : null}
@@ -219,6 +375,26 @@ export default function NotificationsPage({ currentUser }) {
     (result, event) => ({ ...result, [event.status]: (result[event.status] || 0) + 1, total: result.total + 1 }),
     { cancelled: 0, failed: 0, pending: 0, processing: 0, sent: 0, total: 0 },
   ), [events]);
+  const attentionStats = useMemo(() => {
+    const result = {
+      actionable: 0,
+      active: 0,
+      highPriority: 0,
+      problem: 0,
+    };
+
+    events.forEach((event) => {
+      const attention = getEventAttentionState(event);
+
+      if (attention.key === 'problem') result.problem += 1;
+      if (attention.key === 'actionable') result.actionable += 1;
+      if (attention.key === 'active') result.active += 1;
+      if (event.priority === 'high') result.highPriority += 1;
+    });
+
+    return result;
+  }, [events]);
+
 
   const visibleEvents = useMemo(() => events.slice(0, 80), [events]);
 
@@ -302,44 +478,117 @@ export default function NotificationsPage({ currentUser }) {
   const allReady = readinessScore.readyCount === readinessScore.totalCount;
 
   return (
-    <section className="notif-page" aria-labelledby="notif-page-title">
-      <header className="notif-hero">
+    <section className="notif-page" data-notification-ui="ui-13-spatial" aria-labelledby="notif-page-title">
+      <header className="notif-hero notif-editorial-header">
         <div className="notif-hero-left">
-          <span className="notif-hero-icon" aria-hidden="true"><BellRing size={14} /></span>
+          <span className="notif-hero-icon" aria-hidden="true">
+            <BellRing size={16} />
+          </span>
+
           <div className="notif-hero-copy">
+            <span className="notif-editorial-kicker">Communication operations</span>
             <h2 id="notif-page-title">Notification Console</h2>
-            <p>Push event queue &amp; manual worker ops</p>
+            <p>
+              Pantau delivery event, prioritaskan kegagalan, dan buka konteks operasional
+              tanpa mengubah pipeline pengiriman.
+            </p>
           </div>
         </div>
-        <div className="notif-hero-operator">
-          <span>Operator</span>
-          <strong>{currentUser?.displayName || currentUser?.email || 'Admin'}</strong>
+
+        <div className="notif-hero-context" aria-label="Notification console context">
+          <span className="notif-context-pill">
+            <RadioTower size={13} aria-hidden="true" />
+            {stats.total} event dimuat
+          </span>
+          <span
+            className={
+              'notif-context-pill ' +
+              (attentionStats.problem > 0 ? 'is-danger' : 'is-safe')
+            }
+          >
+            <ShieldAlert size={13} aria-hidden="true" />
+            {attentionStats.problem > 0
+              ? attentionStats.problem + ' gagal'
+              : 'Queue tanpa failure'}
+          </span>
+          <span className="notif-context-operator">
+            <small>Operator</small>
+            <strong>{currentUser?.displayName || currentUser?.email || 'Admin'}</strong>
+          </span>
         </div>
       </header>
 
-      <div className="notif-stats" role="list" aria-label="Ringkasan notifikasi">
-        <div className="notif-stat" role="listitem"><span>Total</span><strong>{stats.total}</strong></div>
-        <div className={'notif-stat' + (stats.pending > 0 ? ' is-warn' : '')} role="listitem"><span>Pending</span><strong>{stats.pending}</strong></div>
-        <div className={'notif-stat' + (stats.sent > 0 ? ' is-ok' : '')} role="listitem"><span>Sent</span><strong>{stats.sent}</strong></div>
-        <div className={'notif-stat' + (stats.failed > 0 ? ' is-err' : '')} role="listitem"><span>Failed</span><strong>{stats.failed}</strong></div>
+      <div className="notif-stats notif-ops-strip" role="list" aria-label="Ringkasan operasi notifikasi">
+        <article className={'notif-stat is-attention' + (attentionStats.actionable > 0 ? ' has-value' : '')} role="listitem">
+          <span>Menunggu proses</span>
+          <strong>{attentionStats.actionable}</strong>
+          <small>Event pending</small>
+        </article>
+
+        <article className={'notif-stat is-problem' + (attentionStats.problem > 0 ? ' has-value' : '')} role="listitem">
+          <span>Perlu diperiksa</span>
+          <strong>{attentionStats.problem}</strong>
+          <small>Delivery failed</small>
+        </article>
+
+        <article className={'notif-stat is-active' + (attentionStats.active > 0 ? ' has-value' : '')} role="listitem">
+          <span>Sedang diproses</span>
+          <strong>{attentionStats.active}</strong>
+          <small>Worker active</small>
+        </article>
+
+        <article className={'notif-stat is-priority' + (attentionStats.highPriority > 0 ? ' has-value' : '')} role="listitem">
+          <span>High priority</span>
+          <strong>{attentionStats.highPriority}</strong>
+          <small>Event penting</small>
+        </article>
       </div>
 
       <section className="notif-health-wrap" aria-labelledby="notif-health-title">
-        <button className="notif-health-toggle" type="button" aria-expanded={isHealthOpen} onClick={() => setIsHealthOpen((v) => !v)}>
-          <span className="notif-health-toggle-left">
-            <Activity size={12} />
-            <span id="notif-health-title">System Health</span>
-            <span className={'notif-health-score' + (allReady ? ' is-ok' : ' is-warn')}>{readinessScore.readyCount}/{readinessScore.totalCount}</span>
-          </span>
-          <span className="notif-health-toggle-right">
-            {readinessState.checkedAt ? <span className="notif-checked-time">{formatRelativeTime(readinessState.checkedAt)} ago</span> : null}
-            <button className="notif-mini-btn" disabled={readinessState.isChecking} type="button" title="Refresh health" onClick={(e) => { e.stopPropagation(); handleRefreshReadiness({ includeWorker: true }); }}>
-              {readinessState.isChecking ? <LoaderCircle className="auth-spin" size={11} /> : <Wifi size={11} />}
+        <div className="notif-health-toggle">
+          <button
+            aria-expanded={isHealthOpen}
+            className="notif-health-main"
+            type="button"
+            onClick={() => setIsHealthOpen((value) => !value)}
+          >
+            <span className="notif-health-toggle-left">
+              <Activity size={12} />
+              <span id="notif-health-title">System Health</span>
+              <span className={'notif-health-score' + (allReady ? ' is-ok' : ' is-warn')}>
+                {readinessScore.readyCount}/{readinessScore.totalCount}
+              </span>
+            </span>
+
+            <span className="notif-health-chevron" aria-hidden="true">
+              {isHealthOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </span>
+          </button>
+
+          <div className="notif-health-toggle-right">
+            {readinessState.checkedAt ? (
+              <span className="notif-checked-time">
+                Dicek {formatRelativeTime(readinessState.checkedAt)} lalu
+              </span>
+            ) : null}
+
+            <button
+              aria-label="Refresh system health"
+              className="notif-mini-btn"
+              disabled={readinessState.isChecking}
+              type="button"
+              title="Refresh health"
+              onClick={() => handleRefreshReadiness({ includeWorker: true })}
+            >
+              {readinessState.isChecking ? (
+                <LoaderCircle className="auth-spin" size={11} />
+              ) : (
+                <Wifi size={11} />
+              )}
             </button>
-            {isHealthOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </span>
-        </button>
-        {isHealthOpen ? (
+          </div>
+        </div>
+{isHealthOpen ? (
           <div className="notif-health-body">
             {readinessState.errorMessage ? <div className="notif-alert" role="alert"><ShieldAlert size={12} /><span>{readinessState.errorMessage}</span></div> : null}
             <div className="notif-health-grid">
@@ -358,7 +607,10 @@ export default function NotificationsPage({ currentUser }) {
       <div className="notif-grid">
         <section className="notif-panel" aria-labelledby="notif-queue-title">
           <div className="notif-panel-head">
-            <h3 id="notif-queue-title">Antrean Event</h3>
+            <div className="notif-panel-title-group">
+              <span>Delivery feed</span>
+              <h3 id="notif-queue-title">Antrean Event</h3>
+            </div>
             <nav className="notif-filter-strip" aria-label="Filter status">
               {visibleStatusOptions.map((item) => (
                 <button className={'notif-filter-pill' + (filterStatus === item.key ? ' is-active' : '')} key={item.key} type="button" onClick={() => setFilterStatus(item.key)} aria-pressed={filterStatus === item.key}>

@@ -802,3 +802,654 @@
   .notif-row-title-text { font-size: 0.67rem; }
   .notif-row-msg { font-size: 0.6rem; }
 }
+
+/* UI-13 — Spatial Notification Operations Console */
+.notif-page[data-notification-ui='ui-13-spatial'] {
+  --notif-surface:
+    color-mix(in srgb, var(--studio-surface-1) 88%, transparent);
+  --notif-surface-raised:
+    color-mix(in srgb, var(--studio-surface-2) 90%, transparent);
+  --notif-edge:
+    color-mix(in srgb, var(--studio-edge-soft) 76%, transparent);
+  --notif-problem:
+    var(--studio-danger);
+  --notif-attention:
+    var(--studio-warning);
+  width: min(100%, 1480px);
+  gap: 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-editorial-header {
+  position: relative;
+  align-items: flex-start;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--studio-radius-large);
+  background:
+    radial-gradient(
+      circle at 12% -20%,
+      color-mix(in srgb, var(--studio-accent) 18%, transparent),
+      transparent 46%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--studio-surface-2) 94%, transparent),
+      color-mix(in srgb, var(--studio-surface-1) 86%, transparent)
+    );
+  box-shadow:
+    var(--studio-shadow-contact),
+    inset 0 1px 0 color-mix(in srgb, white 64%, transparent);
+  padding: clamp(18px, 2.3vw, 28px);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-editorial-header::after {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -88px;
+  bottom: -142px;
+  border-radius: 50%;
+  background:
+    color-mix(in srgb, var(--studio-accent) 8%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-left {
+  align-items: flex-start;
+  max-width: 760px;
+  gap: 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-icon {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: var(--studio-radius-object);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--studio-accent) 20%, transparent);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-editorial-kicker {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: var(--studio-accent);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-copy h2 {
+  font-size: clamp(1.45rem, 2.8vw, 2.15rem);
+  letter-spacing: -0.055em;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-copy p {
+  max-width: 640px;
+  margin-top: 8px;
+  font-size: var(--studio-text-sm);
+  line-height: 1.55;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-context {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  max-width: 410px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-pill,
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-operator {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background:
+    color-mix(in srgb, var(--studio-surface-floating) 82%, transparent);
+  color: var(--studio-text-secondary);
+  box-shadow:
+    inset 0 0 0 1px var(--notif-edge),
+    var(--studio-shadow-contact);
+  padding: 0 10px;
+  font-size: var(--studio-text-xs);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-pill.is-danger {
+  color: var(--studio-danger);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--studio-danger) 24%, transparent);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-pill.is-safe {
+  color: var(--studio-success);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-operator {
+  display: grid;
+  gap: 0;
+  border-radius: var(--studio-radius-object);
+  padding-block: 6px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-operator small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-operator strong {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: var(--studio-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-ops-strip {
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat {
+  min-height: 78px;
+  justify-content: space-between;
+  border: 0;
+  border-radius: var(--studio-radius-object);
+  background: var(--notif-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--notif-edge);
+  padding: 12px 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat strong {
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.64rem;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat.is-attention.has-value strong,
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat.is-priority.has-value strong {
+  color: var(--studio-warning);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat.is-problem.has-value strong {
+  color: var(--studio-danger);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-stat.is-active.has-value strong {
+  color: var(--studio-info);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-wrap {
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--studio-radius-surface);
+  background: var(--notif-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--notif-edge);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-toggle {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 0;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-main {
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0 0 0 14px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-main:hover {
+  background:
+    color-mix(in srgb, var(--studio-accent) 5%, transparent);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-chevron {
+  display: inline-grid;
+  place-items: center;
+  color: var(--studio-text-tertiary);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-toggle-right {
+  flex-shrink: 0;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-health-body {
+  border-top-color: var(--notif-edge);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-grid {
+  grid-template-columns:
+    minmax(0, 1.5fr)
+    minmax(280px, 0.58fr);
+  gap: 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-panel,
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-worker-wrap {
+  border: 0;
+  border-radius: var(--studio-radius-surface);
+  background: var(--notif-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--notif-edge),
+    var(--studio-shadow-contact);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-panel {
+  gap: 12px;
+  padding: 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-panel-title-group {
+  display: grid;
+  gap: 2px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-panel-title-group > span {
+  color: var(--studio-accent);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-panel-head h3 {
+  font-size: 1rem;
+  letter-spacing: -0.025em;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-filter-strip {
+  padding: 3px;
+  border-radius: 999px;
+  background:
+    color-mix(in srgb, var(--studio-surface-2) 74%, transparent);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-filter-pill {
+  border-color: transparent;
+  background: transparent;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-filter-pill.is-active {
+  border-color:
+    color-mix(in srgb, var(--studio-accent) 24%, transparent);
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent);
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-list {
+  border: 0;
+  border-radius: var(--studio-radius-object);
+  background:
+    color-mix(in srgb, var(--studio-surface-2) 48%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--notif-edge);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row {
+  position: relative;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 76px;
+  border-bottom-color: var(--notif-edge);
+  background: transparent;
+  padding: 10px 12px 10px 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row::before {
+  position: absolute;
+  width: 3px;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  border-radius: 999px;
+  background: transparent;
+  content: '';
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row.is-problem::before {
+  background: var(--studio-danger);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row.is-actionable::before,
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row.is-priority::before {
+  background: var(--studio-warning);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row.is-active::before {
+  background: var(--studio-info);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row:hover {
+  background:
+    color-mix(in srgb, var(--studio-accent) 4%, transparent);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row.is-selected {
+  background:
+    color-mix(in srgb, var(--studio-accent) 9%, transparent);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row-title {
+  flex: 1;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-attention-tag {
+  flex-shrink: 0;
+  color: var(--studio-text-tertiary);
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-attention-tag.is-problem {
+  color: var(--studio-danger);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-attention-tag.is-actionable,
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-attention-tag.is-priority {
+  color: var(--studio-warning);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-attention-tag.is-active {
+  color: var(--studio-info);
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+  color: var(--studio-text-tertiary);
+  font-size: 0.59rem;
+  line-height: 1.35;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row-meta strong {
+  color: var(--studio-warning);
+  font-size: inherit;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-row-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-context-link {
+  text-decoration: none;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-worker-wrap {
+  position: sticky;
+  top: 12px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-worker-toggle {
+  min-height: 48px;
+  padding-inline: 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-worker-body {
+  gap: 12px;
+  padding-inline: 14px;
+  padding-bottom: 14px;
+}
+
+.notif-page[data-notification-ui='ui-13-spatial'] .notif-empty {
+  min-height: 190px;
+  border-color: var(--notif-edge);
+  border-radius: var(--studio-radius-object);
+  background:
+    color-mix(in srgb, var(--studio-surface-2) 32%, transparent);
+}
+
+html[data-admin-theme-active='true'][data-theme='dark']
+  .notif-page[data-notification-ui='ui-13-spatial'] {
+  --notif-surface:
+    color-mix(in srgb, var(--studio-surface-1) 93%, transparent);
+  --notif-surface-raised:
+    color-mix(in srgb, var(--studio-surface-2) 92%, transparent);
+  --notif-edge:
+    color-mix(in srgb, var(--studio-edge-soft) 62%, transparent);
+}
+
+html[data-admin-theme-active='true'][data-theme='dark']
+  .notif-page[data-notification-ui='ui-13-spatial']
+  .notif-editorial-header {
+  background:
+    radial-gradient(
+      circle at 12% -20%,
+      color-mix(in srgb, var(--studio-accent) 12%, transparent),
+      transparent 48%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--studio-surface-2) 96%, transparent),
+      color-mix(in srgb, var(--studio-surface-1) 92%, transparent)
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+}
+
+html[data-admin-theme-active='true'][data-theme='dark']
+  .notif-page[data-notification-ui='ui-13-spatial']
+  .notif-panel,
+html[data-admin-theme-active='true'][data-theme='dark']
+  .notif-page[data-notification-ui='ui-13-spatial']
+  .notif-worker-wrap {
+  box-shadow:
+    inset 0 0 0 1px var(--notif-edge);
+}
+
+@media (max-width: 980px) {
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(250px, 0.55fr);
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-context {
+    max-width: 330px;
+  }
+}
+
+@media (max-width: 767px) {
+  .notif-page[data-notification-ui='ui-13-spatial'] {
+    gap: 10px;
+    padding-bottom:
+      calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-editorial-header {
+    display: grid;
+    gap: 14px;
+    border-radius: var(--studio-radius-surface);
+    padding: 16px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-context {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-context-operator {
+    display: none;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-ops-strip {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-worker-wrap {
+    position: static;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-panel-head {
+    align-items: stretch;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-filter-strip {
+    justify-content: flex-start;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row-right {
+    grid-column: 2;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row-time {
+    display: none;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row-actions {
+    margin-left: auto;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-action-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-health-toggle {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-health-main {
+    padding-inline: 12px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-health-toggle-right {
+    justify-content: flex-end;
+    padding: 0 12px 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-editorial-header {
+    padding: 14px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-hero-copy h2 {
+    font-size: 1.34rem;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-context-pill {
+    min-height: 30px;
+    font-size: 0.62rem;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-stat {
+    min-height: 68px;
+    padding: 10px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-stat strong {
+    font-size: 1.25rem;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-panel {
+    padding: 10px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row {
+    padding: 9px 9px 9px 12px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row-left {
+    align-items: flex-start;
+    padding-top: 2px;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row-heading {
+    align-items: flex-start;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-attention-tag {
+    max-width: 86px;
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-page[data-notification-ui='ui-13-spatial'] *,
+  .notif-page[data-notification-ui='ui-13-spatial'] *::before,
+  .notif-page[data-notification-ui='ui-13-spatial'] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-editorial-header,
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-stat,
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-health-wrap,
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-panel,
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-worker-wrap,
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-list {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+
+  .notif-page[data-notification-ui='ui-13-spatial'] .notif-row::before {
+    background: Highlight;
+  }
+}
+
