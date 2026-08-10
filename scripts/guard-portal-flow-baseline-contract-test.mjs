@@ -332,17 +332,48 @@ assert.match(
 );
 
 /*
- * Role-aware Owner UI intentionally remains GP-3 / GP-7.
+ * GP-3 gives approved Owner a dedicated oversight state.
+ * The generic blocked copy may remain for Admin/Client/pending states,
+ * but Owner must be excluded from that branch.
  */
+for (
+  const required
+  of [
+    'const isOwnerOversight = Boolean(',
+    'GUARD_PORTAL_ACCESS.OWNER_OVERSIGHT',
+    'Owner Mode',
+    'Read-only Oversight',
+    'Anda sedang melihat Guard Portal sebagai Owner',
+    'Mode Owner tidak membuat attendance. Gunakan akun Guard',
+    'Kembali ke Admin',
+    'Buka Attendance Review',
+    '/admin/operations/guard-attendance',
+    '!isOwnerOversight',
+  ]
+) {
+  assert.equal(
+    guardPageSource.includes(
+      required
+    ),
+
+    true,
+
+    'GP-3 Owner Oversight marker missing: ' +
+      required
+  );
+}
+
 assert.equal(
-  guardPageSource.includes(
-    'Akun ini belum punya role Penjaga Studio approved.'
+  packageJson.scripts.test.includes(
+    'guard-owner-oversight-contract-test.mjs'
   ),
 
   true,
 
-  'GP-2 must not silently absorb Owner Oversight UI work.'
+  'GP-3 Owner Oversight contract must remain registered.'
 );
+
+
 
 for (
   const contractName

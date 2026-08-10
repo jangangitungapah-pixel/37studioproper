@@ -198,6 +198,12 @@ export default function GuardAttendancePage() {
     ].includes(guardPortalAccess)
   );
 
+  const isOwnerOversight = Boolean(
+    authUser?.uid &&
+    guardPortalAccess ===
+      GUARD_PORTAL_ACCESS.OWNER_OVERSIGHT
+  );
+
   useEffect(() => {
     if (!authUser?.uid || !canUseGuardPage) {
       return () => {};
@@ -305,9 +311,13 @@ export default function GuardAttendancePage() {
   const todayLabel = formatDate(new Date().toISOString());
 
   const assignedGuardPersonId =
-    guardAccount?.guardId ||
-    authUser?.uid ||
-    '';
+    canUseGuardPage
+      ? (
+          guardAccount?.guardId ||
+          authUser?.uid ||
+          ''
+        )
+      : '';
 
   const selectedGuardPerson = useMemo(() => {
     const assignedPerson =
@@ -439,6 +449,13 @@ export default function GuardAttendancePage() {
   }
 
   async function handleCheckIn() {
+    if (!canUseGuardPage) {
+      setError(
+        'Akses operasional Guard tidak tersedia untuk akun ini.'
+      );
+      return;
+    }
+
     if (!authUser?.uid) {
       setError('Login penjaga dulu.');
       return;
@@ -512,6 +529,14 @@ export default function GuardAttendancePage() {
   }
 
   async function handleCheckOut() {
+    if (!canUseGuardPage) {
+      setShowCheckOutConfirm(false);
+      setError(
+        'Akses operasional Guard tidak tersedia untuk akun ini.'
+      );
+      return;
+    }
+
     if (!currentSession) {
       setError('Tidak ada sesi jaga aktif.');
       return;
@@ -565,9 +590,21 @@ export default function GuardAttendancePage() {
       <section className="guard-shift-shell">
         <header className="guard-shift-hero">
           <div className="guard-shift-brand">
-            <span>37 Studio Guard</span>
-            <h1>Absen Penjaga</h1>
-            <small>Clock-in, clock-out, dan riwayat kehadiran penjaga.</small>
+            <span>
+              {isOwnerOversight
+                ? '37 Studio Guard · Owner Oversight'
+                : '37 Studio Guard'}
+            </span>
+            <h1>
+              {isOwnerOversight
+                ? 'Guard Portal'
+                : 'Absen Penjaga'}
+            </h1>
+            <small>
+              {isOwnerOversight
+                ? 'Anda sedang melihat Guard Portal sebagai Owner.'
+                : 'Clock-in, clock-out, dan riwayat kehadiran penjaga.'}
+            </small>
           </div>
 
           <div className="guard-shift-hero-actions">
@@ -687,7 +724,124 @@ export default function GuardAttendancePage() {
           </section>
         ) : null}
 
-        {isReady && authUser && !canUseGuardPage ? (
+        {isReady && authUser && isOwnerOversight ? (
+          <section
+            className="guard-shift-card"
+            aria-label="Owner Oversight Mode"
+            style={{
+              display: 'grid',
+              gap: '16px',
+            }}
+          >
+            <div
+              style={{
+                alignItems: 'flex-start',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gap: '8px',
+                  minWidth: 0,
+                }}
+              >
+                <div className="guard-badge-row">
+                  <span className="guard-role-badge">
+                    Owner Mode
+                  </span>
+                  <span className="guard-status-badge">
+                    Read-only Oversight
+                  </span>
+                </div>
+
+                <div>
+                  <strong>
+                    Anda sedang melihat Guard Portal sebagai Owner
+                  </strong>
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                    }}
+                  >
+                    Mode Owner tidak membuat attendance. Gunakan akun Guard
+                    untuk Clock In/Out.
+                  </p>
+                </div>
+              </div>
+
+              <ShieldCheck
+                aria-hidden="true"
+                size={28}
+              />
+            </div>
+
+            <div
+              className="guard-profile-dashboard-card"
+              style={{
+                padding: '14px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gap: '4px',
+                }}
+              >
+                <small>ACCOUNT CONTEXT</small>
+                <strong>
+                  Owner · {guardAccount?.email || authUser?.email || '-'}
+                </strong>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    opacity: 0.72,
+                  }}
+                >
+                  Tidak ada Guard identity yang dipakai pada mode ini.
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <a
+                className="guard-shift-ghost-button"
+                href="/admin"
+                style={{
+                  textDecoration: 'none',
+                }}
+              >
+                <ShieldCheck size={14} />
+                Kembali ke Admin
+              </a>
+
+              <a
+                className="guard-shift-main-button"
+                href="/admin/operations/guard-attendance"
+                style={{
+                  textDecoration: 'none',
+                }}
+              >
+                <Calendar size={14} />
+                Buka Attendance Review
+              </a>
+            </div>
+          </section>
+        ) : null}
+
+        {isReady &&
+        authUser &&
+        !canUseGuardPage &&
+        !isOwnerOversight ? (
           <section className="guard-shift-card is-locked">
             <ShieldCheck size={24} />
             <strong>Akses belum aktif</strong>
@@ -898,7 +1052,7 @@ export default function GuardAttendancePage() {
       </section>
 
       {/* ── CHECKOUT CONFIRMATION MODAL ── */}
-      {showCheckOutConfirm ? (
+      {showCheckOutConfirm && canUseGuardPage ? (
         <div
           className="guard-modal-backdrop settings-permission-backdrop"
           role="presentation"
