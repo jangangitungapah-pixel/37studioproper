@@ -26,6 +26,18 @@ export const PORTAL_ACCESS = Object.freeze({
   MISSING_ACCOUNT: 'missing_account',
 });
 
+export const GUARD_PORTAL_ACCESS = Object.freeze({
+  GUARD_OPERATIONAL: 'guard_operational',
+  OWNER_OVERSIGHT: 'owner_oversight',
+  LEGACY_GUARD_OPERATIONAL: 'legacy_guard_operational',
+  REDIRECT_ADMIN: 'redirect_admin',
+  WRONG_PORTAL_CLIENT: PORTAL_ACCESS.WRONG_PORTAL_CLIENT,
+  BLOCKED: 'guard_blocked',
+  IDENTITY_REPAIR_REQUIRED: 'guard_identity_repair_required',
+  INVALID_ACCOUNT: PORTAL_ACCESS.INVALID_ACCOUNT,
+  MISSING_ACCOUNT: PORTAL_ACCESS.MISSING_ACCOUNT,
+});
+
 export function createAdminPermissions(enabled = false) {
   return adminPermissionPages.reduce((permissions, page) => ({
     ...permissions,
@@ -43,6 +55,86 @@ export function isAdminPortalAccount(identity) {
 
 export function isClientAccount(identity) {
   return identity?.role === ACCOUNT_ROLES.CLIENT && identity?.status === ACCOUNT_STATUSES.ACTIVE;
+}
+
+function hasGuardIdentity(identity) {
+  return Boolean(String(identity?.guardId || '').trim());
+}
+
+export function isGuardOperationalAccount(identity) {
+  return Boolean(
+    identity?.role === ACCOUNT_ROLES.STUDIO_GUARD &&
+    identity?.status === ACCOUNT_STATUSES.APPROVED &&
+    hasGuardIdentity(identity)
+  );
+}
+
+export function isOwnerOversightAccount(identity) {
+  return Boolean(
+    identity?.role === ACCOUNT_ROLES.OWNER &&
+    identity?.status === ACCOUNT_STATUSES.APPROVED
+  );
+}
+
+export function isLegacyGuardOperationalAccount(identity) {
+  return Boolean(
+    identity?.role === ACCOUNT_ROLES.ADMIN &&
+    identity?.status === ACCOUNT_STATUSES.APPROVED &&
+    identity?.isGuard === true &&
+    hasGuardIdentity(identity)
+  );
+}
+
+export function resolveGuardPortalAccess(identity) {
+  if (!identity) return GUARD_PORTAL_ACCESS.MISSING_ACCOUNT;
+
+  if (isOwnerOversightAccount(identity)) {
+    return GUARD_PORTAL_ACCESS.OWNER_OVERSIGHT;
+  }
+
+  if (identity.role === ACCOUNT_ROLES.STUDIO_GUARD) {
+    if (identity.status !== ACCOUNT_STATUSES.APPROVED) {
+      return GUARD_PORTAL_ACCESS.BLOCKED;
+    }
+
+    if (!hasGuardIdentity(identity)) {
+      return GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED;
+    }
+
+    return GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL;
+  }
+
+  if (identity.role === ACCOUNT_ROLES.ADMIN) {
+    if (identity.status !== ACCOUNT_STATUSES.APPROVED) {
+      return GUARD_PORTAL_ACCESS.BLOCKED;
+    }
+
+    if (identity.isGuard === true) {
+      if (!hasGuardIdentity(identity)) {
+        return GUARD_PORTAL_ACCESS.IDENTITY_REPAIR_REQUIRED;
+      }
+
+      return GUARD_PORTAL_ACCESS.LEGACY_GUARD_OPERATIONAL;
+    }
+
+    return GUARD_PORTAL_ACCESS.REDIRECT_ADMIN;
+  }
+
+  if (identity.role === ACCOUNT_ROLES.CLIENT) {
+    return GUARD_PORTAL_ACCESS.WRONG_PORTAL_CLIENT;
+  }
+
+  if (identity.role === ACCOUNT_ROLES.OWNER) {
+    return GUARD_PORTAL_ACCESS.BLOCKED;
+  }
+
+  return GUARD_PORTAL_ACCESS.INVALID_ACCOUNT;
+}
+
+export function getAccountIdentityIntentForPortal(portal) {
+  if (portal === 'client') return 'client';
+  if (portal === 'admin' || portal === 'guard') return 'admin';
+  return '';
 }
 
 export function getPortalAccess(identity, portal) {
@@ -69,6 +161,10 @@ export function getPortalAccess(identity, portal) {
     if (identity.role === ACCOUNT_ROLES.ADMIN && identity.status === ACCOUNT_STATUSES.REJECTED) {
       return PORTAL_ACCESS.ADMIN_INACTIVE_CLIENT_CHOICE;
     }
+  }
+
+  if (portal === 'guard') {
+    return resolveGuardPortalAccess(identity);
   }
 
   return PORTAL_ACCESS.INVALID_ACCOUNT;

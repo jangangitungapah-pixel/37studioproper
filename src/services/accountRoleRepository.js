@@ -7,6 +7,7 @@ import {
   PORTAL_ACCESS,
   canConvertAdminRequestToClient,
   createAdminPermissions,
+  getAccountIdentityIntentForPortal,
   getPortalAccess,
 } from '../utils/accountRoles.js';
 
@@ -115,7 +116,13 @@ export async function ensureAccountIdentity(user, intent = 'client') {
 }
 
 export async function resolvePortalAccount(user, portal) {
-  const result = await ensureAccountIdentity(user, portal === 'admin' ? 'admin' : 'client');
+  const intent = getAccountIdentityIntentForPortal(portal);
+
+  if (!intent) {
+    throw new Error('Portal akun tidak didukung.');
+  }
+
+  const result = await ensureAccountIdentity(user, intent);
   return {
     ...result,
     access: getPortalAccess(result.identity, portal),
