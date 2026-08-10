@@ -16,7 +16,7 @@
 
 .inventory-editorial-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
   padding: 5px 5px 2px;
@@ -196,7 +196,7 @@
 
 .inventory-command-shelf {
   display: grid;
-  grid-template-columns: minmax(250px, 1fr) minmax(282px, 0.72fr) auto minmax(112px, auto);
+  grid-template-columns: minmax(250px, 1fr) minmax(282px, 0.72fr) auto minmax(144px, auto);
   align-items: center;
   gap: 8px;
   border: 1px solid var(--studio-edge-soft);
@@ -373,9 +373,10 @@
 
 .inventory-filter-context > span {
   min-width: 0;
-  display: grid;
-  justify-items: end;
-  gap: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
   white-space: nowrap;
 }
 
@@ -562,7 +563,7 @@
 }
 
 .inventory-insight-state {
-  min-height: 132px;
+  min-height: 108px;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -913,7 +914,7 @@
 }
 
 .inventory-ledger-state {
-  min-height: 182px;
+  min-height: 148px;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -1332,6 +1333,7 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
 }
 
 @media (max-width: 767px) {
+  /* UI-9 Visual QA — alignment and mobile dock clearance */
   .inventory-page[data-inventory-ui='ui-9-spatial'] {
     gap: 9px;
     padding: 0 1px 98px;
@@ -1418,6 +1420,14 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
     min-height: 24px;
   }
 
+  .inventory-filter-context em {
+    white-space: nowrap;
+  }
+
+  .inventory-operations-grid {
+    margin-bottom: 64px;
+  }
+
   .inventory-attention-panel,
   .inventory-movement-panel,
   .inventory-ledger {
@@ -1426,13 +1436,13 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
 
   .inventory-attention-panel > header,
   .inventory-movement-panel > header {
-    min-height: 56px;
-    padding: 8px 10px;
+    min-height: 52px;
+    padding: 7px 10px;
   }
 
   .inventory-insight-state {
-    min-height: 112px;
-    padding: 15px;
+    min-height: 84px;
+    padding: 12px 14px;
   }
 
   .inventory-ledger-header {
@@ -1493,7 +1503,7 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
   }
 
   .inventory-ledger-state {
-    min-height: 166px;
+    min-height: 140px;
   }
 
   .inventory-modal-panel,

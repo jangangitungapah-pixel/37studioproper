@@ -120,6 +120,57 @@ for (const required of [
   assert.equal(cssSource.includes(required), true, 'UI-9 CSS contract missing: ' + required);
 }
 
+assert.match(
+  cssSource,
+  /\.inventory-editorial-header\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*center;/,
+  'UI-9 desktop editorial header must share one vertical axis.',
+);
+assert.match(
+  cssSource,
+  /\.inventory-command-shelf\s*\{[\s\S]*?minmax\(144px, auto\)/,
+  'UI-9 command shelf must reserve stable room for result context.',
+);
+assert.match(
+  cssSource,
+  /\.inventory-filter-context\s*>\s*span\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*baseline;[\s\S]*?gap:\s*4px;/,
+  'UI-9 result count must remain on one aligned baseline.',
+);
+assert.match(
+  cssSource,
+  /\.inventory-insight-state\s*\{\s*min-height:\s*108px;/,
+  'UI-9 desktop operation empty states must stay compact.',
+);
+assert.match(
+  cssSource,
+  /\.inventory-ledger-state\s*\{\s*min-height:\s*148px;/,
+  'UI-9 desktop registry empty state must stay compact.',
+);
+
+const mobileVisualQaStart = cssSource.indexOf('/* UI-9 Visual QA — alignment and mobile dock clearance */');
+const mobileVisualQaEnd = cssSource.indexOf('@media (max-width: 520px)', mobileVisualQaStart);
+assert.notEqual(mobileVisualQaStart, -1, 'UI-9 mobile visual QA marker missing.');
+assert.notEqual(mobileVisualQaEnd, -1, 'UI-9 mobile visual QA boundary missing.');
+
+const mobileVisualQaSource = cssSource.slice(mobileVisualQaStart, mobileVisualQaEnd);
+for (const required of [
+  '.inventory-operations-grid {\n    margin-bottom: 64px;',
+  'min-height: 52px;\n    padding: 7px 10px;',
+  '.inventory-insight-state {\n    min-height: 84px;\n    padding: 12px 14px;',
+  '.inventory-ledger-state {\n    min-height: 140px;',
+]) {
+  assert.equal(
+    mobileVisualQaSource.includes(required),
+    true,
+    'UI-9 mobile alignment contract missing: ' + required,
+  );
+}
+
+assert.equal(
+  cssSource.includes('.admin-bottom-nav'),
+  false,
+  'UI-9 repair must not override the shared mobile dock.',
+);
+
 for (const token of [
   '--studio-surface-1',
   '--studio-surface-2',
