@@ -30,6 +30,11 @@ const guardSource =
     'src/pages/guard/GuardAttendancePage.jsx'
   );
 
+const loginSource =
+  read(
+    'src/pages/LoginPage.jsx'
+  );
+
 const rulesSource =
   read(
     'firestore.rules'
@@ -254,45 +259,52 @@ assert.match(
 );
 
 /*
- * Dedicated Guard login stays on the requested Guard route after auth.
- * No Admin redirect is inserted into either login handler.
+ * GP-7 routes unauthenticated Guard users through the shared auth entry.
+ * Email/password, Google, and Phone OTP all preserve the Guard destination.
  */
-const signInBlock =
-  guardSource.slice(
-    guardSource.indexOf(
-      'async function handleSignIn'
-    ),
-    guardSource.indexOf(
-      'async function handleGoogleSignIn'
-    ),
-  );
+assert.equal(
+  guardSource.includes(
+    '/login?portal=guard&redirectTo=%2Fguard%2Fattendance'
+  ),
+  true,
+  'Guard unauthenticated state must use the shared Guard-intent login entry.'
+);
 
-const googleBlock =
-  guardSource.slice(
-    guardSource.indexOf(
-      'async function handleGoogleSignIn'
+for (
+  const required
+  of [
+    "searchParams.get('portal') === 'guard'",
+    "startsWith('/guard')",
+    'guardRedirectTarget',
+    'adminAuthRepository.sendPhoneOTP',
+    '!guardIntent',
+    'Masuk Guard Portal',
+  ]
+) {
+  assert.equal(
+    loginSource.includes(
+      required
     ),
-    guardSource.indexOf(
-      'async function handleLogout'
-    ),
+    true,
+    'Shared login Guard-intent marker missing: ' +
+      required
   );
+}
 
 assert.equal(
-  signInBlock.includes(
-    '/admin'
+  guardSource.includes(
+    'async function handleSignIn'
   ),
-
   false,
-  'Email/password Guard login must preserve Guard route intent.'
+  'Guard page must not own a duplicate email/password login handler after GP-7.'
 );
 
 assert.equal(
-  googleBlock.includes(
-    '/admin'
+  guardSource.includes(
+    'async function handleGoogleSignIn'
   ),
-
   false,
-  'Google Guard login must preserve Guard route intent.'
+  'Guard page must not own a duplicate Google login handler after GP-7.'
 );
 
 /*

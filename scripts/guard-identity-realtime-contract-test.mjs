@@ -81,10 +81,7 @@ for (
     "from '../../services/adminAuthRepository.js'",
     "from '../../utils/accountRoles.js'",
     'adminAuthRepository.subscribeAdminAuth',
-    'adminAuthRepository.signInAdmin',
-    'adminAuthRepository.signInWithGoogle',
     'adminAuthRepository.signOutAdmin',
-    'adminAuthRepository.getAdminAuthErrorMessage',
     'resolveGuardPortalAccess(guardAccount)',
     'GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL',
     'Memeriksa akses portal...',
@@ -156,17 +153,34 @@ assert.match(
 );
 
 /*
- * Owner role-aware locked UI is intentionally a GP-3/GP-7 concern.
+ * GP-7 closes the generic wrong-role lock state.
  */
 assert.equal(
   guardSource.includes(
     'Akun ini belum punya role Penjaga Studio approved.'
   ),
-
-  true,
-
-  'Owner/Admin role-aware locked UI remains reserved for GP-3/GP-7.'
+  false,
+  'GP-7 must remove the generic wrong-role Guard lock copy.'
 );
+
+for (
+  const required
+  of [
+    'aria-label="Wrong Portal Client"',
+    'aria-label="Guard Access Blocked"',
+    'aria-label="Guard Account Recovery Required"',
+    '/login?portal=guard&redirectTo=%2Fguard%2Fattendance',
+  ]
+) {
+  assert.equal(
+    guardSource.includes(
+      required
+    ),
+    true,
+    'GP-7 role-aware Guard state missing: ' +
+      required
+  );
+}
 
 /*
  * Shared auth service must remain realtime.

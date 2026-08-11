@@ -211,9 +211,8 @@ for (
   const required
   of [
     'adminAuthRepository.subscribeAdminAuth',
-    'adminAuthRepository.signInAdmin',
-    'adminAuthRepository.signInWithGoogle',
     'adminAuthRepository.signOutAdmin',
+    '/login?portal=guard&redirectTo=%2Fguard%2Fattendance',
     'resolveGuardPortalAccess',
     'GUARD_PORTAL_ACCESS.GUARD_OPERATIONAL',
     'Memeriksa akses portal...',

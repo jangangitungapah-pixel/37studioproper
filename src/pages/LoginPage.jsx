@@ -52,12 +52,38 @@ export default function LoginPage() {
 
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirectTo');
+  const guardIntent =
+    searchParams.get('portal') === 'guard' ||
+    String(
+      redirectTo ||
+      '',
+    ).startsWith('/guard');
+  const guardRedirectTarget =
+    guardIntent &&
+    String(
+      redirectTo ||
+      '',
+    ).startsWith('/guard')
+      ? redirectTo
+      : '/guard/attendance';
 
   // Subscribe to Auth State
   useEffect(() => {
     const unsubscribe = adminAuthRepository.subscribeAdminAuth((authState) => {
       if (authState.isReady && authState.isAuthenticated) {
         const access = authState.user?.access;
+
+        if (guardIntent) {
+          navigate(
+            guardRedirectTarget,
+            {
+              replace:
+                true,
+            },
+          );
+
+          return;
+        }
 
         if (
           authState.user?.role ===
@@ -95,7 +121,12 @@ export default function LoginPage() {
     });
 
     return unsubscribe;
-  }, [navigate, redirectTo]);
+  }, [
+    guardIntent,
+    guardRedirectTarget,
+    navigate,
+    redirectTo,
+  ]);
 
   // Handle Google Sign-In redirect result
   useEffect(() => {
@@ -120,7 +151,21 @@ export default function LoginPage() {
         }
       } catch (err) {
         if (isMounted) {
-          setError(adminAuthRepository.getAdminAuthErrorMessage(err));
+          if (
+            guardIntent &&
+            firebaseAuth?.currentUser
+          ) {
+            setSuccess(
+              'Login berhasil. Membuka Guard Portal...',
+            );
+          } else {
+            setError(
+              adminAuthRepository.getAdminAuthErrorMessage(
+                err,
+              ),
+            );
+          }
+
           setIsSubmitting(false);
         }
       }
@@ -131,7 +176,7 @@ export default function LoginPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [guardIntent]);
 
   // Resend Timer Effect
   useEffect(() => {
@@ -179,9 +224,16 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      if (authMode === 'signIn') {
+      if (
+        guardIntent ||
+        authMode === 'signIn'
+      ) {
         await adminAuthRepository.signInAdmin({ email, password });
-        setSuccess('Masuk berhasil! Mengarahkan...');
+        setSuccess(
+          guardIntent
+            ? 'Masuk berhasil! Membuka Guard Portal...'
+            : 'Masuk berhasil! Mengarahkan...',
+        );
       } else {
         if (password !== confirmPassword) {
           setError('Konfirmasi kata sandi tidak sesuai.');
@@ -192,10 +244,24 @@ export default function LoginPage() {
         setSuccess('Pendaftaran berhasil! Akun Anda telah dibuat.');
       }
     } catch (err) {
-      if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
-        setRoleDecision({ access: err.access, identity: err.identity });
+      if (
+        guardIntent &&
+        firebaseAuth?.currentUser
+      ) {
+        setSuccess(
+          'Masuk berhasil! Membuka Guard Portal...',
+        );
+      } else {
+        if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+          setRoleDecision({ access: err.access, identity: err.identity });
+        }
+
+        setError(
+          adminAuthRepository.getAdminAuthErrorMessage(
+            err,
+          ),
+        );
       }
-      setError(adminAuthRepository.getAdminAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -268,8 +334,16 @@ export default function LoginPage() {
         throw new Error('Hasil verifikasi tidak ditemukan. Kirim ulang OTP.');
       }
       await verificationResult.confirm(verificationCode);
-      await adminAuthRepository.ensureCurrentAdminAccess();
-      setSuccess('Verifikasi berhasil! Mengarahkan...');
+
+      if (!guardIntent) {
+        await adminAuthRepository.ensureCurrentAdminAccess();
+      }
+
+      setSuccess(
+        guardIntent
+          ? 'Verifikasi berhasil! Membuka Guard Portal...'
+          : 'Verifikasi berhasil! Mengarahkan...',
+      );
     } catch (err) {
       if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
         setRoleDecision({ access: err.access, identity: err.identity });
@@ -298,10 +372,25 @@ export default function LoginPage() {
       }
       // Redirect fallback will leave this page, so do not reset submitting there.
     } catch (err) {
-      if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
-        setRoleDecision({ access: err.access, identity: err.identity });
+      if (
+        guardIntent &&
+        firebaseAuth?.currentUser
+      ) {
+        setSuccess(
+          'Login Google berhasil! Membuka Guard Portal...',
+        );
+      } else {
+        if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
+          setRoleDecision({ access: err.access, identity: err.identity });
+        }
+
+        setError(
+          adminAuthRepository.getAdminAuthErrorMessage(
+            err,
+          ),
+        );
       }
-      setError(adminAuthRepository.getAdminAuthErrorMessage(err));
+
       setIsSubmitting(false);
     }
   }
@@ -331,8 +420,16 @@ export default function LoginPage() {
             <Sparkles size={11} className="text-[var(--auth-accent)]" />
             <span>Studio OS Console</span>
           </div>
-          <h1 id="login-title" className="text-center">37 Music</h1>
-          <p className="text-center">Masuk ke portal kontrol studio.</p>
+          <h1 id="login-title" className="text-center">
+            {guardIntent
+              ? 'Guard Portal'
+              : '37 Music'}
+          </h1>
+          <p className="text-center">
+            {guardIntent
+              ? 'Masuk dengan akun yang sudah diberikan Owner. Role tidak dibuat dari halaman login.'
+              : 'Masuk ke portal kontrol studio.'}
+          </p>
         </div>
 
         {/* Tab Selection */}
@@ -385,7 +482,11 @@ export default function LoginPage() {
         {activeTab === 'email' && (
           <form className="auth-form" onSubmit={handleEmailAuth} noValidate>
             <label className="auth-field">
-              <span>Email Admin</span>
+              <span>
+                {guardIntent
+                  ? 'Email Akun'
+                  : 'Email Admin'}
+              </span>
               <div className="auth-input-wrap">
                 <Mail size={14} aria-hidden="true" />
                 <input
@@ -424,7 +525,7 @@ export default function LoginPage() {
               </div>
             </label>
 
-            {authMode === 'signUp' && (
+            {!guardIntent && authMode === 'signUp' && (
               <label className="auth-field">
                 <span>Konfirmasi Password</span>
                 <div className="auth-input-wrap">
@@ -459,13 +560,16 @@ export default function LoginPage() {
               <span>
                 {isSubmitting
                   ? 'Memeriksa...'
-                  : authMode === 'signIn'
-                  ? 'Masuk Admin'
-                  : 'Daftar Admin'}
+                  : guardIntent
+                    ? 'Masuk Guard Portal'
+                    : authMode === 'signIn'
+                      ? 'Masuk Admin'
+                      : 'Daftar Admin'}
               </span>
             </button>
 
-            <div className="auth-mode-toggle">
+            {!guardIntent ? (
+              <div className="auth-mode-toggle">
               <span>
                 {authMode === 'signIn'
                   ? 'Belum punya akun admin?'
@@ -479,7 +583,8 @@ export default function LoginPage() {
               >
                 {authMode === 'signIn' ? 'Daftar sekarang' : 'Masuk portal'}
               </button>
-            </div>
+              </div>
+            ) : null}
           </form>
         )}
 
