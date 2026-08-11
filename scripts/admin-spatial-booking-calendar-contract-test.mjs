@@ -421,6 +421,143 @@ for (
   );
 }
 
+/**
+ * UI-3.1 mobile gesture arbitration.
+ *
+ * Horizontal-dominant touch/pen drags move the Calendar grid explicitly.
+ * Vertical-dominant gestures remain browser-owned so the page (or bounded
+ * Month viewport) can keep scrolling from the same touch surface.
+ */
+for (
+  const required
+  of [
+    'gridGestureRef',
+    'gridClickReleaseTimerRef',
+    'suppressGridClickRef',
+    'handleGridPointerDown',
+    'handleGridPointerMove',
+    'finishGridPointerGesture',
+    'handleGridClickCapture',
+    "event.pointerType !== 'touch'",
+    "event.pointerType !== 'pen'",
+    "gesture.axis =\n        'horizontal'",
+    "gesture.axis =\n          'vertical'",
+    '.setPointerCapture?.(',
+    '.releasePointerCapture(',
+    "event.preventDefault();",
+    "event.stopPropagation();",
+    "scrollContainer.scrollLeft =",
+    "'is-horizontal-dragging'",
+    'onClickCapture={',
+    'onPointerCancel={',
+    'onPointerDown={',
+    'onPointerMove={',
+    'onPointerUp={',
+  ]
+) {
+  assert.equal(
+    scheduleSource.includes(
+      required,
+    ),
+    true,
+    'UI-3.1 Calendar gesture contract missing: ' +
+      required,
+  );
+}
+
+assert.equal(
+  scheduleSource.includes(
+    'onTouchMove='
+  ),
+  false,
+  'UI-3.1 must use Pointer Events instead of passive-sensitive touch handlers.',
+);
+
+const gridScrollCssMatch =
+  cssSource.match(
+    /\.schedule-grid-scroll\s*\{([\s\S]*?)\n\}/,
+  );
+
+assert.notEqual(
+  gridScrollCssMatch,
+  null,
+  'UI-3.1 Calendar grid scroll CSS block must exist.',
+);
+
+const gridScrollCss =
+  gridScrollCssMatch[1];
+
+for (
+  const required
+  of [
+    'overflow-x:\n    auto;',
+    'overflow-y:\n    hidden;',
+    'overscroll-behavior-x:\n    contain;',
+    'overscroll-behavior-y:\n    auto;',
+    'touch-action:\n    pan-y\n    pinch-zoom;',
+    '-webkit-overflow-scrolling:\n    touch;',
+  ]
+) {
+  assert.equal(
+    gridScrollCss.includes(
+      required,
+    ),
+    true,
+    'UI-3.1 Calendar scroll CSS missing: ' +
+      required,
+  );
+}
+
+assert.equal(
+  gridScrollCss.includes(
+    'pan-x'
+  ),
+  false,
+  'Browser horizontal panning must not compete with gesture arbitration.',
+);
+
+assert.equal(
+  cssSource.includes(
+    'UI-3.1 — Mobile Calendar Gesture Arbitration'
+  ),
+  true,
+  'UI-3.1 Calendar gesture CSS marker must exist.',
+);
+
+assert.match(
+  cssSource,
+  /\.schedule-grid-scroll\.is-horizontal-dragging\s*\{[\s\S]*?user-select:\s*none;[\s\S]*?-webkit-user-select:\s*none;/,
+  'UI-3.1 horizontal drag must suppress accidental selection.',
+);
+
+const monthScrollCssMatch =
+  cssSource.match(
+    /\.schedule-grid-scroll\.is-month-scroll\s*\{([\s\S]*?)\n\}/,
+  );
+
+assert.notEqual(
+  monthScrollCssMatch,
+  null,
+  'UI-3.1 Month scroll CSS block must exist.',
+);
+
+for (
+  const required
+  of [
+    'overscroll-behavior-x:\n    contain;',
+    'overscroll-behavior-y:\n    auto;',
+  ]
+) {
+  assert.equal(
+    monthScrollCssMatch[1].includes(
+      required,
+    ),
+    true,
+    'UI-3.1 Month scroll chaining missing: ' +
+      required,
+  );
+}
+
 process.stdout.write(
   '✅ Admin Spatial Booking Calendar UI-3 contract passed.\n',
 );

@@ -1005,6 +1005,13 @@ strong {
     );
 }
 
+/*
+ * UI-3.1 — Mobile Calendar Gesture Arbitration
+ *
+ * The browser owns vertical page panning and pinch zoom. Pointer handling in
+ * CalendarGrid owns only horizontal-dominant drags, so starting a gesture on
+ * the grid never traps vertical page scrolling.
+ */
 .schedule-grid-scroll {
   width:
     100%;
@@ -1018,6 +1025,9 @@ strong {
   overscroll-behavior-x:
     contain;
 
+  overscroll-behavior-y:
+    auto;
+
   scroll-padding-left:
     calc(
       var(
@@ -1027,7 +1037,6 @@ strong {
     );
 
   touch-action:
-    pan-x
     pan-y
     pinch-zoom;
 
@@ -1035,6 +1044,17 @@ strong {
     touch;
 
   scrollbar-width:
+    none;
+}
+
+.schedule-grid-scroll.is-horizontal-dragging {
+  cursor:
+    grabbing;
+
+  user-select:
+    none;
+
+  -webkit-user-select:
     none;
 }
 
@@ -1062,8 +1082,11 @@ strong {
   overflow-y:
     auto;
 
-  overscroll-behavior:
+  overscroll-behavior-x:
     contain;
+
+  overscroll-behavior-y:
+    auto;
 
   scrollbar-gutter:
     stable;

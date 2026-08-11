@@ -775,6 +775,10 @@ function CalendarGrid({
 }) {
   const gridScrollRef = useRef(null);
   const focusDayRef = useRef(null);
+  const gridGestureRef = useRef(null);
+  const gridClickReleaseTimerRef = useRef(null);
+  const suppressGridClickRef = useRef(false);
+
   const today = startOfDay(new Date());
   const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
   const bookingBlocks = useMemo(
@@ -783,6 +787,238 @@ function CalendarGrid({
   );
   const gridTemplateColumns = getGridTemplate(viewMode, visibleDays.length);
 
+  function handleGridPointerDown(event) {
+    if (
+      gridClickReleaseTimerRef.current
+    ) {
+      window.clearTimeout(
+        gridClickReleaseTimerRef.current,
+      );
+
+      gridClickReleaseTimerRef.current =
+        null;
+    }
+
+    suppressGridClickRef.current =
+      false;
+
+    if (
+      (
+        event.pointerType !== 'touch' &&
+        event.pointerType !== 'pen'
+      ) ||
+      !event.isPrimary
+    ) {
+      return;
+    }
+
+    const scrollContainer =
+      gridScrollRef.current;
+
+    if (!scrollContainer) return;
+
+    gridGestureRef.current = {
+      axis: 'pending',
+      didDrag: false,
+      pointerId: event.pointerId,
+      startScrollLeft:
+        scrollContainer.scrollLeft,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+  }
+
+  function handleGridPointerMove(event) {
+    const gesture =
+      gridGestureRef.current;
+
+    if (
+      !gesture ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    const deltaX =
+      event.clientX -
+      gesture.startX;
+
+    const deltaY =
+      event.clientY -
+      gesture.startY;
+
+    const horizontalDistance =
+      Math.abs(
+        deltaX,
+      );
+
+    const verticalDistance =
+      Math.abs(
+        deltaY,
+      );
+
+    if (
+      gesture.axis === 'pending'
+    ) {
+      if (
+        Math.max(
+          horizontalDistance,
+          verticalDistance,
+        ) < 6
+      ) {
+        return;
+      }
+
+      if (
+        horizontalDistance <=
+        verticalDistance * 1.15
+      ) {
+        gesture.axis =
+          'vertical';
+
+        return;
+      }
+
+      gesture.axis =
+        'horizontal';
+
+      event.currentTarget
+        .setPointerCapture?.(
+          event.pointerId,
+        );
+
+      event.currentTarget
+        .classList
+        .add(
+          'is-horizontal-dragging',
+        );
+    }
+
+    if (
+      gesture.axis !== 'horizontal'
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const scrollContainer =
+      gridScrollRef.current;
+
+    if (!scrollContainer) return;
+
+    const maxScrollLeft =
+      Math.max(
+        0,
+        scrollContainer.scrollWidth -
+          scrollContainer.clientWidth,
+      );
+
+    scrollContainer.scrollLeft =
+      Math.min(
+        maxScrollLeft,
+        Math.max(
+          0,
+          gesture.startScrollLeft -
+            deltaX,
+        ),
+      );
+
+    gesture.didDrag =
+      gesture.didDrag ||
+      horizontalDistance >= 8;
+  }
+
+  function finishGridPointerGesture(
+    event,
+  ) {
+    const gesture =
+      gridGestureRef.current;
+
+    if (
+      !gesture ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    event.currentTarget
+      .classList
+      .remove(
+        'is-horizontal-dragging',
+      );
+
+    if (
+      event.currentTarget
+        .hasPointerCapture?.(
+          event.pointerId,
+        )
+    ) {
+      event.currentTarget
+        .releasePointerCapture(
+          event.pointerId,
+        );
+    }
+
+    if (
+      gesture.didDrag
+    ) {
+      suppressGridClickRef.current =
+        true;
+
+      gridClickReleaseTimerRef.current =
+        window.setTimeout(
+          () => {
+            suppressGridClickRef.current =
+              false;
+
+            gridClickReleaseTimerRef.current =
+              null;
+          },
+          400,
+        );
+    }
+
+    gridGestureRef.current =
+      null;
+  }
+
+  function handleGridClickCapture(event) {
+    if (
+      !suppressGridClickRef.current
+    ) {
+      return;
+    }
+
+    suppressGridClickRef.current =
+      false;
+
+    if (
+      gridClickReleaseTimerRef.current
+    ) {
+      window.clearTimeout(
+        gridClickReleaseTimerRef.current,
+      );
+
+      gridClickReleaseTimerRef.current =
+        null;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  useEffect(() => {
+    return () => {
+      if (
+        gridClickReleaseTimerRef.current
+      ) {
+        window.clearTimeout(
+          gridClickReleaseTimerRef.current,
+        );
+      }
+    };
+  }, []);
   useEffect(() => {
     if (!todayFocusRequest || !todayFocusDateIso) return undefined;
 
@@ -854,6 +1090,21 @@ function CalendarGrid({
         className={
           'schedule-grid-scroll ' +
           (viewMode === 'month' ? 'is-month-scroll' : '')
+        }
+        onClickCapture={
+          handleGridClickCapture
+        }
+        onPointerCancel={
+          finishGridPointerGesture
+        }
+        onPointerDown={
+          handleGridPointerDown
+        }
+        onPointerMove={
+          handleGridPointerMove
+        }
+        onPointerUp={
+          finishGridPointerGesture
         }
         ref={gridScrollRef}
       >
