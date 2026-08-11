@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
 } from 'radix-ui';
@@ -244,6 +244,8 @@ export default function BookingFormModal({
   const [form, setForm] = useState(() => createInitialForm(initialSlot, editingBooking));
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const bookingFormLayoutRef = useRef(null);
+
 
   const pricingSettings = usePricingSettings();
   const sessionTypeOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
@@ -565,6 +567,35 @@ export default function BookingFormModal({
     paymentStepComplete,
   ];
 
+  const bookingStepItems = [
+    {
+      complete: bookingStepStates[0],
+      key: 'customer',
+      label: 'Customer',
+    },
+    {
+      complete: bookingStepStates[1],
+      key: 'service',
+      label: 'Layanan',
+    },
+    {
+      complete: bookingStepStates[2],
+      key: 'slot',
+      label: 'Slot',
+    },
+    {
+      complete: bookingStepStates[3],
+      key: 'payment',
+      label: 'Bayar',
+    },
+  ];
+
+  const nextBookingStepKey =
+    bookingStepItems.find((
+      item,
+    ) => !item.complete)?.key ||
+    '';
+
   const completedStepCount =
     bookingStepStates.filter(
       Boolean,
@@ -583,6 +614,39 @@ export default function BookingFormModal({
       ? 'Siap disimpan'
       : incompleteStepCount +
         ' langkah belum lengkap';
+
+  function navigateToBookingStep(stepKey) {
+    const target =
+      bookingFormLayoutRef.current?.querySelector(
+        '[data-booking-step="' +
+          stepKey +
+          '"]',
+      );
+
+    if (!target) return;
+
+    const shouldReduceMotion =
+      window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches;
+
+    target.scrollIntoView({
+      behavior: shouldReduceMotion
+        ? 'auto'
+        : 'smooth',
+      block: 'start',
+    });
+
+    window.requestAnimationFrame(() => {
+      target
+        .querySelector(
+          'input, button:not([disabled])',
+        )
+        ?.focus({
+          preventScroll: true,
+        });
+    });
+  }
 
   return (
     <Dialog.Root
@@ -605,14 +669,14 @@ export default function BookingFormModal({
 
         <Dialog.Content
           className="booking-modal-panel"
-          data-booking-modal-ui="ui-3b-guided"
+          data-booking-modal-ui="ui-3c-mobile-first"
         >
           <header className="booking-modal-head">
             <div className="booking-modal-heading">
               <span className="booking-modal-kicker">
                 {editingBooking
-                  ? 'Edit calendar booking'
-                  : 'New calendar booking'}
+                  ? 'Perbarui booking kalender'
+                  : 'Booking kalender baru'}
               </span>
 
               <Dialog.Title
@@ -629,8 +693,8 @@ export default function BookingFormModal({
                 asChild
               >
                 <p className="booking-modal-description">
-                  Lengkapi empat langkah utama.
-                  Ringkasan dan tagihan akan diperbarui otomatis.
+                  Lengkapi data inti dalam empat langkah.
+                  Ringkasan dan tagihan diperbarui otomatis.
                 </p>
               </Dialog.Description>
 
@@ -643,7 +707,7 @@ export default function BookingFormModal({
                 className="booking-modal-progress"
               >
                 <div className="booking-modal-progress-copy">
-                  <span>Progress form</span>
+                  <span>Progres form</span>
                   <strong>
                     {completedStepCount}/4 siap
                   </strong>
@@ -687,6 +751,66 @@ export default function BookingFormModal({
             </Dialog.Close>
           </header>
 
+          <nav
+            aria-label="Langkah Booking"
+            className="booking-step-rail"
+          >
+            {bookingStepItems.map((
+              item,
+              index,
+            ) => (
+              <button
+                aria-current={
+                  item.key === nextBookingStepKey
+                    ? 'step'
+                    : undefined
+                }
+                aria-label={
+                  'Buka langkah ' +
+                  (index + 1) +
+                  ': ' +
+                  item.label
+                }
+                className={[
+                  'booking-step-jump',
+                  item.complete
+                    ? 'is-complete'
+                    : '',
+                  item.key === nextBookingStepKey
+                    ? 'is-next'
+                    : '',
+                ].filter(Boolean).join(' ')}
+                key={item.key}
+                type="button"
+                onClick={() => {
+                  navigateToBookingStep(
+                    item.key,
+                  );
+                }}
+              >
+                <span aria-hidden="true">
+                  {item.complete ? (
+                    <Check
+                      size={13}
+                      strokeWidth={2.6}
+                    />
+                  ) : (
+                    String(
+                      index + 1,
+                    ).padStart(
+                      2,
+                      '0',
+                    )
+                  )}
+                </span>
+
+                <strong>
+                  {item.label}
+                </strong>
+              </button>
+            ))}
+          </nav>
+
           <form
             aria-busy={
               isSaving
@@ -697,7 +821,233 @@ export default function BookingFormModal({
               handleSubmit
             }
           >
-            <div className="booking-form-layout">
+            <div
+              className="booking-form-layout"
+              ref={bookingFormLayoutRef}
+            >
+              <aside
+                aria-label="Ringkasan booking"
+                className="booking-form-summary"
+              >
+                <section
+                  className={
+                    'booking-summary-readiness ' +
+                    (
+                      isBookingReady
+                        ? 'is-ready'
+                        : ''
+                    )
+                  }
+                >
+                  <span className="booking-summary-readiness-icon">
+                    {isBookingReady ? (
+                      <Check
+                        size={15}
+                        strokeWidth={2.6}
+                      />
+                    ) : (
+                      completedStepCount
+                    )}
+                  </span>
+
+                  <div>
+                    <small>Kesiapan booking</small>
+                    <strong>
+                      {bookingReadinessLabel}
+                    </strong>
+                  </div>
+
+                  <em>
+                    {completedStepCount}/4
+                  </em>
+                </section>
+
+                <section className="booking-summary-hero">
+                  <span>
+                    Estimasi tagihan
+                  </span>
+
+                  <strong>
+                    {formatRupiah(
+                      totals.invoiceAmount,
+                    )}
+                  </strong>
+
+                  <small>
+                    tagihan tersisa
+                  </small>
+                </section>
+
+                <section className="booking-summary-slot">
+                  <header>
+                    <span>
+                      Slot preview
+                    </span>
+
+                    <strong>
+                      {activeServiceLabel}
+                    </strong>
+                  </header>
+
+                  <div>
+                    <span>
+                      <CalendarDays
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Tanggal
+                      </small>
+                    </span>
+
+                    <strong>
+                      {activeDateLabel}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      <Clock3
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Jam
+                      </small>
+                    </span>
+
+                    <strong>
+                      {activeTimeLabel}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      <Clock3
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Durasi
+                      </small>
+                    </span>
+
+                    <strong>
+                      {activeDurationLabel}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      <CreditCard
+                        aria-hidden="true"
+                        size={15}
+                      />
+
+                      <small>
+                        Status
+                      </small>
+                    </span>
+
+                    <strong>
+                      {paymentStatusLabel}
+                    </strong>
+                  </div>
+                </section>
+
+                <section
+                  aria-label="Detail pembayaran"
+                  className="booking-summary-money"
+                >
+                  <div>
+                    <span>
+                      Subtotal
+                    </span>
+
+                    <strong>
+                      {formatRupiah(
+                        totals.subtotal,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Diskon
+                    </span>
+
+                    <strong
+                      className={
+                        totals.discountAmount
+                          ? 'is-discount'
+                          : ''
+                      }
+                    >
+                      {totals.discountAmount
+                        ? '-'
+                        : ''}
+                      {formatRupiah(
+                        totals.discountAmount,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Total
+                    </span>
+
+                    <strong>
+                      {formatRupiah(
+                        totals.total,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Dibayar / DP
+                    </span>
+
+                    <strong className="is-paid">
+                      {formatRupiah(
+                        totals.dpAmount,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div className="is-total">
+                    <span>
+                      Tagihan
+                    </span>
+
+                    <strong>
+                      {formatRupiah(
+                        totals.invoiceAmount,
+                      )}
+                    </strong>
+                  </div>
+                </section>
+
+                {totals.appliedDiscounts.length ? (
+                  <p className="booking-summary-discount">
+                    Discount aktif sebesar{' '}
+                    <strong>
+                      {formatRupiah(
+                        totals.discountAmount,
+                      )}
+                    </strong>
+                    {' '}untuk{' '}
+                    {totals.durationHours}
+                    {' '}jam{' '}
+                    {totals.session?.label}.
+                  </p>
+                ) : null}
+              </aside>
+
               <div className="booking-form-fields">
                 <section
                   aria-labelledby="booking-section-customer"
@@ -1052,228 +1402,6 @@ export default function BookingFormModal({
                 </section>
               </div>
 
-              <aside
-                aria-label="Ringkasan booking"
-                className="booking-form-summary"
-              >
-                <section
-                  className={
-                    'booking-summary-readiness ' +
-                    (
-                      isBookingReady
-                        ? 'is-ready'
-                        : ''
-                    )
-                  }
-                >
-                  <span className="booking-summary-readiness-icon">
-                    {isBookingReady ? (
-                      <Check
-                        size={15}
-                        strokeWidth={2.6}
-                      />
-                    ) : (
-                      completedStepCount
-                    )}
-                  </span>
-
-                  <div>
-                    <small>Booking readiness</small>
-                    <strong>
-                      {bookingReadinessLabel}
-                    </strong>
-                  </div>
-
-                  <em>
-                    {completedStepCount}/4
-                  </em>
-                </section>
-
-                <section className="booking-summary-hero">
-                  <span>
-                    Live booking quote
-                  </span>
-
-                  <strong>
-                    {formatRupiah(
-                      totals.invoiceAmount,
-                    )}
-                  </strong>
-
-                  <small>
-                    tagihan tersisa
-                  </small>
-                </section>
-
-                <section className="booking-summary-slot">
-                  <header>
-                    <span>
-                      Slot preview
-                    </span>
-
-                    <strong>
-                      {activeServiceLabel}
-                    </strong>
-                  </header>
-
-                  <div>
-                    <span>
-                      <CalendarDays
-                        aria-hidden="true"
-                        size={15}
-                      />
-
-                      <small>
-                        Tanggal
-                      </small>
-                    </span>
-
-                    <strong>
-                      {activeDateLabel}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      <Clock3
-                        aria-hidden="true"
-                        size={15}
-                      />
-
-                      <small>
-                        Jam
-                      </small>
-                    </span>
-
-                    <strong>
-                      {activeTimeLabel}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      <Clock3
-                        aria-hidden="true"
-                        size={15}
-                      />
-
-                      <small>
-                        Durasi
-                      </small>
-                    </span>
-
-                    <strong>
-                      {activeDurationLabel}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      <CreditCard
-                        aria-hidden="true"
-                        size={15}
-                      />
-
-                      <small>
-                        Status
-                      </small>
-                    </span>
-
-                    <strong>
-                      {paymentStatusLabel}
-                    </strong>
-                  </div>
-                </section>
-
-                <section
-                  aria-label="Detail pembayaran"
-                  className="booking-summary-money"
-                >
-                  <div>
-                    <span>
-                      Subtotal
-                    </span>
-
-                    <strong>
-                      {formatRupiah(
-                        totals.subtotal,
-                      )}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      Diskon
-                    </span>
-
-                    <strong
-                      className={
-                        totals.discountAmount
-                          ? 'is-discount'
-                          : ''
-                      }
-                    >
-                      {totals.discountAmount
-                        ? '-'
-                        : ''}
-                      {formatRupiah(
-                        totals.discountAmount,
-                      )}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      Total
-                    </span>
-
-                    <strong>
-                      {formatRupiah(
-                        totals.total,
-                      )}
-                    </strong>
-                  </div>
-
-                  <div>
-                    <span>
-                      Dibayar / DP
-                    </span>
-
-                    <strong className="is-paid">
-                      {formatRupiah(
-                        totals.dpAmount,
-                      )}
-                    </strong>
-                  </div>
-
-                  <div className="is-total">
-                    <span>
-                      Tagihan
-                    </span>
-
-                    <strong>
-                      {formatRupiah(
-                        totals.invoiceAmount,
-                      )}
-                    </strong>
-                  </div>
-                </section>
-
-                {totals.appliedDiscounts.length ? (
-                  <p className="booking-summary-discount">
-                    Discount aktif sebesar{' '}
-                    <strong>
-                      {formatRupiah(
-                        totals.discountAmount,
-                      )}
-                    </strong>
-                    {' '}untuk{' '}
-                    {totals.durationHours}
-                    {' '}jam{' '}
-                    {totals.session?.label}.
-                  </p>
-                ) : null}
-              </aside>
             </div>
 
             {error ? (
