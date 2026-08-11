@@ -2441,3 +2441,732 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
     border: 1px solid CanvasText;
   }
 }
+
+/* UI-12A — Mobile-First Account Control Center */
+
+/* UI-12A.1 — Compact Settings subpage context, shell owns the page title */
+.settings-page[data-settings-ui='ui-12-spatial'] > .settings-editorial-header {
+  display: none;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-editorial-kicker {
+  font-size: 0.61rem;
+  font-weight: 760;
+  letter-spacing: 0.13em;
+  line-height: 1;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-editorial-copy h2 {
+  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  font-weight: 760;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-editorial-copy > span {
+  max-width: 68ch;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-navigation-copy strong,
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-current-context > strong {
+  font-weight: 700;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-navigation-copy strong {
+  font-size: 0.7rem;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-navigation-copy em,
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-navigation-safety small {
+  font-size: 0.56rem;
+  font-weight: 500;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial'].is-account-settings
+  .settings-account-control-center {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-section {
+  min-width: 0;
+  gap: 13px;
+  padding: 16px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-hero-strip {
+  min-height: 86px;
+  display: grid;
+  grid-template-columns:
+    42px
+    minmax(150px, 1fr)
+    auto
+    minmax(180px, 0.48fr)
+    auto;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 17px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-avatar-sm {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-hero-copy p,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-section-heading > span {
+  margin: 0;
+  color: var(--settings-accent);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-hero-copy h3 {
+  font-size: 0.84rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-hero-copy > span {
+  overflow: hidden;
+  color: var(--settings-text-muted);
+  font-size: 0.59rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-badge,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-password-provider-badge {
+  min-height: 28px;
+  font-size: 0.56rem;
+  font-weight: 680;
+}
+
+.settings-account-health {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.settings-account-health > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-account-health > div span {
+  color: var(--settings-text-muted);
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.settings-account-health > div strong {
+  overflow: hidden;
+  color: var(--settings-text);
+  font-size: 0.61rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-account-health-track,
+.settings-password-strength-track {
+  height: 5px;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--settings-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft);
+}
+
+.settings-account-health-track i,
+.settings-password-strength-track i {
+  width: var(--account-health-progress, var(--password-strength-progress, 0%));
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--settings-success);
+  transition: width var(--studio-duration-normal, 220ms) var(--studio-ease-out, ease-out);
+}
+
+.settings-account-save-state {
+  min-height: 42px;
+  display: inline-grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 14px;
+  color: var(--settings-success);
+  background: color-mix(in srgb, var(--settings-success) 7%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-success) 20%, var(--settings-edge-soft));
+}
+
+.settings-account-save-state.is-dirty {
+  color: var(--settings-warning);
+  background: color-mix(in srgb, var(--settings-warning) 8%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-warning) 22%, var(--settings-edge-soft));
+}
+
+.settings-account-save-state > span {
+  display: grid;
+  gap: 1px;
+}
+
+.settings-account-save-state strong {
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.settings-account-save-state small {
+  color: var(--settings-text-muted);
+  font-size: 0.53rem;
+  font-weight: 500;
+}
+
+.settings-account-layout {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.settings-account-overview,
+.settings-account-editor {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.settings-account-overview {
+  position: sticky;
+  top: 10px;
+}
+
+.settings-section-heading {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.settings-section-heading p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--settings-text-muted);
+  font-size: 0.58rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-info-flat-row {
+  grid-template-columns: 24px 88px minmax(0, 1fr);
+  min-height: 42px;
+  gap: 7px;
+  padding: 8px 9px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-info-flat-label {
+  font-size: 0.55rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-info-flat-value {
+  font-size: 0.64rem;
+  font-weight: 620;
+}
+
+.settings-security-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.settings-security-check {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 11px;
+  padding: 0 8px;
+  color: var(--settings-text-muted);
+  background: var(--settings-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft);
+  font-size: 0.56rem;
+  font-weight: 620;
+}
+
+.settings-security-check.is-complete {
+  color: var(--settings-success);
+  background: color-mix(in srgb, var(--settings-success) 7%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-success) 18%, var(--settings-edge-soft));
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-security-flat-row {
+  grid-template-columns: 22px minmax(82px, 1fr) auto;
+  min-height: 40px;
+  padding: 8px 9px;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-security-label,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-security-value {
+  font-size: 0.59rem;
+  font-weight: 620;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .studio-field-label,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .studio-select-label,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-note-field > span {
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .studio-native-input,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .studio-select-copy strong,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-account-note-field textarea {
+  font-size: 0.69rem;
+  font-weight: 500;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .studio-input-wrap,
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .studio-select-trigger {
+  min-height: 44px;
+}
+
+.settings-field-status {
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--settings-text-muted);
+  font-size: 0.55rem;
+  font-weight: 500;
+}
+
+.settings-field-status strong {
+  color: var(--settings-text-secondary);
+  font-weight: 650;
+}
+
+.settings-account-message {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: var(--settings-info);
+  background: color-mix(in srgb, var(--settings-info) 7%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-info) 19%, var(--settings-edge-soft));
+  font-size: 0.6rem;
+  font-weight: 620;
+  line-height: 1.4;
+}
+
+.settings-account-message.is-success {
+  color: var(--settings-success);
+  background: color-mix(in srgb, var(--settings-success) 7%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-success) 19%, var(--settings-edge-soft));
+}
+
+.settings-account-message.is-warning {
+  color: var(--settings-warning);
+  background: color-mix(in srgb, var(--settings-warning) 8%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-warning) 21%, var(--settings-edge-soft));
+}
+
+.settings-account-message.is-error {
+  color: var(--settings-danger);
+  background: color-mix(in srgb, var(--settings-danger) 7%, var(--settings-surface-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--settings-danger) 20%, var(--settings-edge-soft));
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-mini-button {
+  min-height: 40px;
+  font-size: 0.64rem;
+  font-weight: 680;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-mini-button:disabled {
+  opacity: 0.48;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-password-provider-note {
+  border: 0;
+  background: var(--settings-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft);
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-password-provider-note strong {
+  font-size: 0.64rem;
+  font-weight: 680;
+}
+
+.settings-page[data-settings-ui='ui-12-spatial']
+  [data-account-settings-ui='ui-12a-control-center']
+  .settings-password-provider-note small {
+  font-size: 0.56rem;
+  font-weight: 500;
+}
+
+.settings-password-strength {
+  display: grid;
+  gap: 7px;
+  border-radius: 14px;
+  padding: 9px 10px;
+  background: var(--settings-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft);
+}
+
+.settings-password-strength-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-password-strength-head span {
+  color: var(--settings-text-muted);
+  font-size: 0.56rem;
+  font-weight: 620;
+}
+
+.settings-password-strength-head strong {
+  color: var(--settings-text-secondary);
+  font-size: 0.59rem;
+  font-weight: 680;
+}
+
+.settings-password-strength-track i {
+  width: var(--password-strength-progress, 0%);
+  background: var(--settings-text-muted);
+}
+
+.settings-password-strength.is-weak .settings-password-strength-track i {
+  background: var(--settings-danger);
+}
+
+.settings-password-strength.is-medium .settings-password-strength-track i {
+  background: var(--settings-warning);
+}
+
+.settings-password-strength.is-strong .settings-password-strength-track i {
+  background: var(--settings-success);
+}
+
+.settings-password-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.settings-password-checks span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 0 7px;
+  color: var(--settings-text-muted);
+  background: var(--settings-surface);
+  font-size: 0.53rem;
+  font-weight: 600;
+}
+
+.settings-password-checks span.is-complete {
+  color: var(--settings-success);
+}
+
+.settings-field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-field-label-row small {
+  color: var(--settings-text-muted);
+  font-size: 0.53rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.settings-prefs-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.settings-prefs-summary-grid > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: var(--settings-surface-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft);
+}
+
+.settings-prefs-summary-grid small {
+  color: var(--settings-text-muted);
+  font-size: 0.53rem;
+  font-weight: 620;
+  text-transform: uppercase;
+}
+
+.settings-prefs-summary-grid strong {
+  overflow: hidden;
+  color: var(--settings-text-secondary);
+  font-size: 0.61rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-hero-strip {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-health {
+    grid-column: 2;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-save-state {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .settings-account-layout {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .settings-security-check-grid,
+  .settings-prefs-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-prefs-selects {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-editorial-copy h2 {
+    font-size: 1.55rem;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-editorial-copy > span {
+    font-size: 0.7rem;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-command-mobile {
+    top: 4px;
+    padding: 6px;
+    border-radius: 16px;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-section {
+    padding: 13px;
+    border-radius: 18px;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-hero-strip {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 9px;
+    padding: 13px;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-avatar-sm {
+    width: 40px;
+    height: 40px;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-badges,
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-health,
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-save-state {
+    grid-column: 1 / -1;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-badges {
+    margin-left: 0;
+  }
+
+  .settings-account-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-account-editor {
+    order: 1;
+  }
+
+  .settings-account-overview {
+    position: static;
+    order: 2;
+  }
+
+  .settings-security-check-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-prefs-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-actions-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-actions-row > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-mini-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-info-flat-row {
+    grid-template-columns: 22px 76px minmax(0, 1fr);
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial']
+    [data-account-settings-ui='ui-12a-control-center']
+    .settings-account-actions-row,
+  .settings-security-check-grid,
+  .settings-prefs-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (forced-colors: active) {
+  .settings-account-health-track,
+  .settings-account-save-state,
+  .settings-security-check,
+  .settings-account-message,
+  .settings-password-strength,
+  .settings-prefs-summary-grid > span {
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-account-health-track i,
+  .settings-password-strength-track i {
+    transition: none;
+  }
+}

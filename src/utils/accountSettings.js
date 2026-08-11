@@ -61,16 +61,23 @@ export function normalizeAccountPreferences(preferences = {}) {
   };
 }
 
-export function readAccountPreferences(uid) {
-  if (typeof window === 'undefined') return defaultAccountPreferences;
+export function readAccountPreferences(
+  uid,
+  fallbackPreferences = defaultAccountPreferences,
+) {
+  const normalizedFallback = normalizeAccountPreferences(
+    fallbackPreferences
+  );
+
+  if (typeof window === 'undefined') return normalizedFallback;
 
   try {
     const raw = window.localStorage.getItem(getStorageKey(uid));
-    const parsed = raw ? JSON.parse(raw) : defaultAccountPreferences;
+    const parsed = raw ? JSON.parse(raw) : normalizedFallback;
 
     return normalizeAccountPreferences(parsed);
   } catch {
-    return defaultAccountPreferences;
+    return normalizedFallback;
   }
 }
 

@@ -73,6 +73,12 @@ for (const marker of [
   'Verifikasi Google & Buat Password',
   'Verifikasi Google & Ganti',
   'Kirim Email Reset',
+  'getAccountPasswordStrength',
+  'accountPasswordStrength',
+  'accountPasswordConfirmationMatches',
+  'accountPasswordCanSubmit',
+  'accountPasswordResetIsSending',
+  'settings-password-checks',
 ]) {
   assert.equal(
     settingsSource.includes(marker),
@@ -93,6 +99,18 @@ assert.equal(
   'Password reset email must remain available as a fallback.'
 );
 
+assert.equal(
+  settingsSource.includes('disabled={!accountPasswordCanSubmit}'),
+  true,
+  'Password submit must remain disabled until required client-side checks pass.'
+);
+
+assert.match(
+  settingsSource,
+  /if \(accountPasswordResetIsSending\) return;[\s\S]*?setAccountPasswordResetIsSending\(true\)[\s\S]*?finally[\s\S]*?setAccountPasswordResetIsSending\(false\)/,
+  'Password reset email must guard against duplicate sends.'
+);
+
 for (const marker of [
   'ACCOUNT PASSWORD SECURITY',
   '.settings-password-provider-note',
@@ -101,6 +119,10 @@ for (const marker of [
   '.settings-password-message.is-error',
   '@media (max-width: 767px)',
   '@media (forced-colors: active)',
+  'UI-12A — Mobile-First Account Control Center',
+  '.settings-password-strength',
+  '.settings-password-strength-track',
+  '.settings-password-checks',
 ]) {
   assert.equal(
     cssSource.includes(marker),

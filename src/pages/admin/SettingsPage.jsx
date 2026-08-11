@@ -13,8 +13,9 @@ import {
   accountContactOptions,
   accountLandingOptions,
   accountNotificationOptions,
+  defaultAccountPreferences,
+  normalizeAccountPreferences,
   readAccountPreferences,
-  resetAccountPreferences,
   writeAccountPreferences,
 } from '../../utils/accountSettings.js';
 import {
@@ -291,6 +292,71 @@ function getOptionLabel(options, key, fallback = '-') {
   return options.find((item) => item.key === key)?.label || fallback;
 }
 
+function resolveAccountPreferences(user) {
+  return normalizeAccountPreferences(
+    readAccountPreferences(
+      user?.uid,
+      user?.preferences
+    )
+  );
+}
+
+function accountPreferencesMatch(left, right) {
+  return JSON.stringify(
+    normalizeAccountPreferences(left)
+  ) === JSON.stringify(
+    normalizeAccountPreferences(right)
+  );
+}
+
+function getAccountPasswordStrength(password) {
+  const value = String(password || '');
+  const checks = [
+    {
+      complete: value.length >= 6,
+      key: 'length',
+      label: '6+ karakter',
+    },
+    {
+      complete: /[a-z]/i.test(value) && /\d/.test(value),
+      key: 'mixed',
+      label: 'Huruf + angka',
+    },
+    {
+      complete: /[^a-z0-9]/i.test(value),
+      key: 'symbol',
+      label: 'Simbol',
+    },
+  ];
+  const completed = checks.filter((item) => item.complete).length;
+
+  if (!value) {
+    return {
+      checks,
+      label: 'Belum diisi',
+      percent: 0,
+      tone: 'empty',
+    };
+  }
+
+  return {
+    checks,
+    label:
+      completed === checks.length
+        ? 'Kuat'
+        : completed === 2
+          ? 'Cukup'
+          : 'Lemah',
+    percent: Math.round((completed / checks.length) * 100),
+    tone:
+      completed === checks.length
+        ? 'strong'
+        : completed === 2
+          ? 'medium'
+          : 'weak',
+  };
+}
+
 const SETTINGS_GROUP_LABELS = {
   account: 'Account & access',
   'user-settings': 'Account & access',
@@ -403,15 +469,24 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const remoteStudioSettings = useStudioSettings();
   const [studioSettings, setStudioSettings] = useState(() => remoteStudioSettings);
   const [studioSettingsMessage, setStudioSettingsMessage] = useState('');
-  const [accountPreferences, setAccountPreferences] = useState(() => readAccountPreferences(currentUser?.uid));
+  const [accountPreferences, setAccountPreferences] = useState(() => resolveAccountPreferences(currentUser));
+  const [savedAccountPreferences, setSavedAccountPreferences] = useState(() => resolveAccountPreferences(currentUser));
   const [accountSettingsMessage, setAccountSettingsMessage] = useState('');
+  const [accountSettingsMessageTone, setAccountSettingsMessageTone] = useState('info');
+  const [accountSettingsIsSaving, setAccountSettingsIsSaving] = useState(false);
+  const [accountCopyMessage, setAccountCopyMessage] = useState('');
   const [accountProfileForm, setAccountProfileForm] = useState(() => ({
     displayName: currentUser?.displayName || '',
   }));
+  const [accountProfileSavedName, setAccountProfileSavedName] = useState(
+    () => String(currentUser?.displayName || '').trim()
+  );
+  const [accountProfileIsSaving, setAccountProfileIsSaving] = useState(false);
   const operatorFeeSettings = useOperatorFeeSettings();
   const [selectingGuardUser, setSelectingGuardUser] = useState(null);
   const [selectedCrewId, setSelectedCrewId] = useState(null);
   const [accountProfileMessage, setAccountProfileMessage] = useState('');
+  const [accountProfileMessageTone, setAccountProfileMessageTone] = useState('info');
   const [accountPasswordForm, setAccountPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -420,6 +495,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const [accountPasswordMessage, setAccountPasswordMessage] = useState('');
   const [accountPasswordHasError, setAccountPasswordHasError] = useState(false);
   const [accountPasswordIsSaving, setAccountPasswordIsSaving] = useState(false);
+  const [accountPasswordResetIsSending, setAccountPasswordResetIsSending] = useState(false);
   const [accountSecurityProviderIds, setAccountSecurityProviderIds] = useState(
     () => getAccountProviderIds(currentUser)
   );
@@ -461,25 +537,40 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
   useEffect(() => {
     const accountFrameId = window.requestAnimationFrame(() => {
-      setAccountPreferences(readAccountPreferences(currentUser?.uid));
+      const nextPreferences = resolveAccountPreferences(currentUser);
+
+      setAccountPreferences(nextPreferences);
+      setSavedAccountPreferences(nextPreferences);
+      setAccountSettingsMessage('');
     });
 
     return () => {
       window.cancelAnimationFrame(accountFrameId);
     };
-  }, [currentUser?.uid]);
+  }, [currentUser?.preferences, currentUser?.uid]);
 
   useEffect(() => {
     const profileFrameId = window.requestAnimationFrame(() => {
       setAccountProfileForm({
         displayName: currentUser?.displayName || '',
       });
+      setAccountProfileSavedName(
+        String(currentUser?.displayName || '').trim()
+      );
+      setAccountProfileMessage('');
+      setAccountProfileMessageTone('info');
     });
 
     return () => {
       window.cancelAnimationFrame(profileFrameId);
     };
   }, [currentUser?.displayName]);
+
+  useEffect(() => {
+    if (subpages.some((page) => page.key === activeSubpage)) return;
+
+    setActiveSubpage('account');
+  }, [activeSubpage, subpages]);
 
   useEffect(() => {
     const providerFrameId = window.requestAnimationFrame(() => {
@@ -1201,7 +1292,10 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         ...current,
         [field]: value,
       }));
-      if (accountSettingsMessage) setAccountSettingsMessage('');
+      if (accountSettingsMessage) {
+        setAccountSettingsMessage('');
+        setAccountSettingsMessageTone('info');
+      }
     };
   }
 
@@ -1211,71 +1305,89 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         ...current,
         [field]: nextValue,
       }));
-      if (accountSettingsMessage) setAccountSettingsMessage('');
+      if (accountSettingsMessage) {
+        setAccountSettingsMessage('');
+        setAccountSettingsMessageTone('info');
+      }
     };
   }
 
   async function saveAccountSettingsPage(event) {
     event.preventDefault();
 
-    const nextPreferences = writeAccountPreferences(currentUser?.uid, accountPreferences);
-    setAccountPreferences(nextPreferences);
+    if (accountSettingsIsSaving) return;
 
-    if (currentUser?.uid) {
-      try {
+    const nextPreferences = normalizeAccountPreferences(accountPreferences);
+
+    if (accountPreferencesMatch(nextPreferences, savedAccountPreferences)) {
+      setAccountSettingsMessage('Tidak ada perubahan preferensi yang perlu disimpan.');
+      setAccountSettingsMessageTone('info');
+      return;
+    }
+
+    setAccountSettingsIsSaving(true);
+    setAccountSettingsMessage('');
+    setAccountSettingsMessageTone('info');
+
+    try {
+      writeAccountPreferences(currentUser?.uid, nextPreferences);
+      setAccountPreferences(nextPreferences);
+      setSavedAccountPreferences(nextPreferences);
+
+      if (currentUser?.uid) {
         await updateDoc(doc(firestoreDb, 'users', currentUser.uid), {
           preferences: nextPreferences,
           updatedAt: new Date().toISOString()
         });
         setAccountSettingsMessage('Account settings berhasil disimpan dan disinkronkan ke cloud.');
-      } catch (err) {
-        console.error('Gagal sinkronisasi preferensi ke Firestore:', err);
-        setAccountSettingsMessage('Account settings disimpan secara lokal tetapi gagal disinkronkan ke cloud.');
+        setAccountSettingsMessageTone('success');
+      } else {
+        setAccountSettingsMessage('Account settings berhasil disimpan di perangkat ini.');
+        setAccountSettingsMessageTone('success');
       }
-    } else {
-      setAccountSettingsMessage('Account settings berhasil disimpan di perangkat ini.');
+    } catch (err) {
+      console.error('Gagal menyimpan preferensi account:', err);
+
+      if (accountPreferencesMatch(nextPreferences, readAccountPreferences(currentUser?.uid))) {
+        setSavedAccountPreferences(nextPreferences);
+        setAccountSettingsMessage('Preferensi tersimpan di perangkat, tetapi sinkronisasi cloud belum berhasil.');
+        setAccountSettingsMessageTone('warning');
+      } else {
+        setAccountSettingsMessage('Preferensi belum berhasil disimpan. Coba kembali.');
+        setAccountSettingsMessageTone('error');
+      }
+    } finally {
+      setAccountSettingsIsSaving(false);
     }
   }
 
-  async function resetAccountSettingsPage() {
-    const nextPreferences = resetAccountPreferences(currentUser?.uid);
-    setAccountPreferences(nextPreferences);
+  function resetAccountSettingsPage() {
+    const nextPreferences = normalizeAccountPreferences(defaultAccountPreferences);
 
-    if (currentUser?.uid) {
-      try {
-        await updateDoc(doc(firestoreDb, 'users', currentUser.uid), {
-          preferences: nextPreferences,
-          updatedAt: new Date().toISOString()
-        });
-        setAccountSettingsMessage('Preferensi lokal dikembalikan ke default dan disinkronkan ke cloud.');
-      } catch (err) {
-        console.error('Gagal reset preferensi di Firestore:', err);
-        setAccountSettingsMessage('Preferensi lokal dikembalikan ke default, tetapi gagal disinkronkan ke cloud.');
-      }
-    } else {
-      setAccountSettingsMessage('Preferensi account lokal dikembalikan ke default.');
-    }
+    setAccountPreferences(nextPreferences);
+    setAccountSettingsMessage('Nilai default sudah dimuat sebagai draft. Tekan Simpan Preferensi untuk menerapkannya.');
+    setAccountSettingsMessageTone('info');
   }
 
   async function copyAccountUid() {
     const uid = currentUser?.uid || '';
 
     if (!uid) {
-      setAccountSettingsMessage('UID akun belum tersedia.');
+      setAccountCopyMessage('UID akun belum tersedia.');
       return;
     }
 
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(uid);
-        setAccountSettingsMessage('UID akun berhasil disalin.');
+        setAccountCopyMessage('UID akun berhasil disalin.');
         return;
       }
 
-      setAccountSettingsMessage('Clipboard browser tidak tersedia.');
+      setAccountCopyMessage('Clipboard browser tidak tersedia.');
     } catch (err) {
       console.error('Gagal menyalin UID akun:', err);
-      setAccountSettingsMessage('UID akun belum berhasil disalin.');
+      setAccountCopyMessage('UID akun belum berhasil disalin.');
     }
   }
 
@@ -1288,25 +1400,62 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         [field]: value,
       }));
 
-      if (accountProfileMessage) setAccountProfileMessage('');
+      if (accountProfileMessage) {
+        setAccountProfileMessage('');
+        setAccountProfileMessageTone('info');
+      }
     };
   }
 
   async function saveAccountProfilePage(event) {
     event.preventDefault();
 
+    if (accountProfileIsSaving) return;
+
+    const cleanDisplayName = accountProfileForm.displayName.trim();
+
+    if (cleanDisplayName.length < 2) {
+      setAccountProfileMessage('Nama tampilan minimal 2 karakter.');
+      setAccountProfileMessageTone('error');
+      return;
+    }
+
+    if (cleanDisplayName.length > 60) {
+      setAccountProfileMessage('Nama tampilan maksimal 60 karakter.');
+      setAccountProfileMessageTone('error');
+      return;
+    }
+
+    if (cleanDisplayName === accountProfileSavedName) {
+      setAccountProfileMessage('Nama tampilan belum berubah.');
+      setAccountProfileMessageTone('info');
+      return;
+    }
+
+    setAccountProfileIsSaving(true);
+    setAccountProfileMessage('');
+    setAccountProfileMessageTone('info');
+
     try {
       const updatedProfile = await adminAuthRepository.updateAdminProfile({
-        displayName: accountProfileForm.displayName,
+        displayName: cleanDisplayName,
       });
+      const savedDisplayName = String(
+        updatedProfile.displayName || cleanDisplayName
+      ).trim();
 
       setAccountProfileForm({
-        displayName: updatedProfile.displayName || accountProfileForm.displayName,
+        displayName: savedDisplayName,
       });
+      setAccountProfileSavedName(savedDisplayName);
       setAccountProfileMessage('Profil akun berhasil diperbarui.');
+      setAccountProfileMessageTone('success');
     } catch (err) {
       console.error('Gagal menyimpan profil akun:', err);
       setAccountProfileMessage(err?.message || 'Profil akun belum berhasil diperbarui.');
+      setAccountProfileMessageTone('error');
+    } finally {
+      setAccountProfileIsSaving(false);
     }
   }
 
@@ -1383,6 +1532,12 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   }
 
   async function sendPasswordResetPage() {
+    if (accountPasswordResetIsSending) return;
+
+    setAccountPasswordResetIsSending(true);
+    setAccountPasswordMessage('');
+    setAccountPasswordHasError(false);
+
     try {
       await adminAuthRepository.sendAdminPasswordReset(currentUser?.email);
       setAccountPasswordMessage('Email reset password sudah dikirim.');
@@ -1393,6 +1548,8 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         err?.message || 'Email reset password belum berhasil dikirim.'
       );
       setAccountPasswordHasError(true);
+    } finally {
+      setAccountPasswordResetIsSending(false);
     }
   }
 
@@ -1870,6 +2027,80 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const accountPreferredContactLabel = getOptionLabel(accountContactOptions, accountPreferences.preferredContact, 'Email');
   const accountLandingLabel = getOptionLabel(accountLandingOptions, accountPreferences.defaultLandingKey, 'Dashboard');
   const accountNotificationLabel = getOptionLabel(accountNotificationOptions, accountPreferences.notificationLevel, 'Penting Saja');
+  const accountProfileCleanName = accountProfileForm.displayName.trim();
+  const accountProfileIsDirty = accountProfileCleanName !== accountProfileSavedName;
+  const accountPreferencesIsDirty = !accountPreferencesMatch(
+    accountPreferences,
+    savedAccountPreferences
+  );
+  const accountPreferencesAreDefault = accountPreferencesMatch(
+    accountPreferences,
+    defaultAccountPreferences
+  );
+  const accountPasswordStrength = getAccountPasswordStrength(
+    accountPasswordForm.newPassword
+  );
+  const accountPasswordConfirmationMatches = Boolean(
+    accountPasswordForm.confirmPassword &&
+    accountPasswordForm.newPassword === accountPasswordForm.confirmPassword
+  );
+  const accountPasswordCanSubmit = Boolean(
+    accountCanManagePassword &&
+    accountPasswordForm.newPassword.length >= 6 &&
+    accountPasswordConfirmationMatches &&
+    (
+      !accountNeedsCurrentPassword ||
+      accountPasswordForm.currentPassword
+    ) &&
+    !accountPasswordIsSaving
+  );
+  const accountPendingChangeCount =
+    Number(accountProfileIsDirty) +
+    Number(accountPreferencesIsDirty);
+  const accountHealthChecks = [
+    {
+      complete: Boolean(accountProfileSavedName),
+      label: 'Profil',
+    },
+    {
+      complete: accountContactValue !== 'Belum tersedia',
+      label: 'Kontak',
+    },
+    {
+      complete: accountStatusLabel === 'Approved',
+      label: 'Akses',
+    },
+    {
+      complete: Boolean(
+        accountHasGoogleProvider ||
+        accountHasPasswordProvider
+      ),
+      label: 'Login',
+    },
+    {
+      complete: Boolean(
+        !currentUser?.email ||
+        currentUser?.emailVerified
+      ),
+      label: 'Verifikasi',
+    },
+  ];
+  const accountHealthCompleted = accountHealthChecks.filter(
+    (item) => item.complete
+  ).length;
+  const accountHealthPercent = Math.round(
+    (
+      accountHealthCompleted /
+      accountHealthChecks.length
+    ) *
+    100
+  );
+  const accountHealthLabel =
+    accountHealthPercent === 100
+      ? 'Siap'
+      : accountHealthPercent >= 60
+        ? 'Perlu ditinjau'
+        : 'Perlu dilengkapi';
 
   return (
     <>
@@ -1886,7 +2117,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 : 'settings-page'
       }
       data-settings-ui="ui-12-spatial"
-      aria-labelledby="settings-title"
+      aria-labelledby="settings-current-page-title"
     >
       <div className="settings-command-mobile">
         <StudioSelect
@@ -1896,25 +2127,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           onChange={setActiveSubpage}
         />
       </div>
-
-      <header className="settings-editorial-header">
-        <div className="settings-editorial-copy">
-          <p className="settings-editorial-kicker">Studio control room</p>
-          <h2 id="settings-title">{activePageInfo.label}</h2>
-          <span>{activePageInfo.description}</span>
-        </div>
-
-        <div className="settings-editorial-context" aria-label="Settings workspace context">
-          <span className="settings-context-pill">
-            <SlidersHorizontal size={14} aria-hidden="true" />
-            {subpages.length} area konfigurasi
-          </span>
-          <span className="settings-context-pill is-safe">
-            <ShieldCheck size={14} aria-hidden="true" />
-            {isOwnerAdminUser(currentUser) ? 'Owner scope' : 'Admin scope'}
-          </span>
-        </div>
-      </header>
 
       <div className="settings-workspace-grid">
         <aside className="settings-navigation-panel" aria-label="Settings navigation">
@@ -1958,22 +2170,30 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         <main className="settings-workspace-content" aria-label={activePageInfo.label}>
           <div className="settings-current-context">
             <span>{getSettingsGroupLabel(activeSubpage)}</span>
-            <strong>{activePageInfo.label}</strong>
+            <strong id="settings-current-page-title">{activePageInfo.label}</strong>
             <small>{activePageInfo.description}</small>
           </div>
 
       {activeSubpage === 'account' && (
-        <section className="settings-account-grid" aria-label="Account settings">
-
-          {/* ── HERO STRIP ─────────────────────────────────── */}
-          <section className="settings-section settings-account-hero-strip">
+        <section
+          aria-label="Account settings"
+          className="settings-account-grid settings-account-control-center"
+          data-account-settings-ui="ui-12a-control-center"
+        >
+          <section
+            aria-labelledby="settings-account-title"
+            className="settings-section settings-account-hero-strip"
+          >
             <div className="settings-account-avatar-sm" aria-hidden="true">
-              <UserRound size={18} />
+              <UserRound size={19} />
             </div>
 
             <div className="settings-account-hero-copy">
-              <p>Admin Account</p>
-              <h3>{currentUser?.displayName || currentUser?.email || currentUser?.phoneNumber || 'Admin 37 Music'}</h3>
+              <p>Admin account</p>
+              <h3 id="settings-account-title">
+                {accountProfileCleanName || currentUser?.email || currentUser?.phoneNumber || 'Admin 37 Music'}
+              </h3>
+              <span>{accountContactValue}</span>
             </div>
 
             <div className="settings-account-badges" aria-label="Status akun">
@@ -1986,295 +2206,444 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 {accountRoleLabel}
               </span>
             </div>
-          </section>
 
-          {/* ── IDENTITAS LOGIN (flat list) ─────────────────── */}
-          <section className="settings-section">
-            <h3 className="settings-section-title">Identitas Login</h3>
-
-            <div className="settings-info-flat-list">
-              <div className="settings-info-flat-row">
-                <span className="settings-info-flat-icon"><Mail size={13} /></span>
-                <span className="settings-info-flat-label">Email</span>
-                <strong className="settings-info-flat-value" title={currentUser?.email || 'Belum tersedia'}>{currentUser?.email || '—'}</strong>
+            <div className="settings-account-health">
+              <div>
+                <span>Account health</span>
+                <strong>{accountHealthPercent}% · {accountHealthLabel}</strong>
               </div>
-
-              <div className="settings-info-flat-row">
-                <span className="settings-info-flat-icon"><Phone size={13} /></span>
-                <span className="settings-info-flat-label">Nomor HP</span>
-                <strong className="settings-info-flat-value" title={currentUser?.phoneNumber || 'Belum tersedia'}>{currentUser?.phoneNumber || '—'}</strong>
-              </div>
-
-              <div className="settings-info-flat-row">
-                <span className="settings-info-flat-icon"><MonitorSmartphone size={13} /></span>
-                <span className="settings-info-flat-label">Provider</span>
-                <strong className="settings-info-flat-value">{accountProviderLabel}</strong>
-              </div>
-
-              <div className="settings-info-flat-row">
-                <span className="settings-info-flat-icon"><KeyRound size={13} /></span>
-                <span className="settings-info-flat-label">User ID</span>
-                <strong className="settings-info-flat-value" title={currentUser?.uid || accountUidLabel}>{accountUidLabel}</strong>
-              </div>
-            </div>
-          </section>
-
-          {/* ── PROFIL AKUN ─────────────────────────────────── */}
-          <section className="settings-section">
-            <h3 className="settings-section-title">Profil Akun</h3>
-
-            <form className="settings-account-form-compact" onSubmit={saveAccountProfilePage}>
-              <StudioTextField
-                id="account-profile-display-name"
-                label="Nama Tampilan"
-                placeholder="Contoh: Owner 37 Music"
-                value={accountProfileForm.displayName}
-                onChange={updateAccountProfileField('displayName')}
-              />
-
-              {accountProfileMessage ? (
-                <p className="settings-invoice-message" role="status">{accountProfileMessage}</p>
-              ) : null}
-
-              <div className="settings-account-actions-row">
-<button className="settings-mini-button is-primary" type="submit">
-                  <Save size={14} />
-                  Simpan Profil
-                </button>
-              </div>
-            </form>
-          </section>
-
-          {/* ── PASSWORD & SIGN-IN SECURITY ─────────────────── */}
-          <section className="settings-section settings-password-security-section">
-            <div className="settings-section-head-row">
-              <h3 className="settings-section-title">Password &amp; Sign-in</h3>
-              <span className={
-                accountHasGoogleProvider
-                  ? 'settings-password-provider-badge is-google'
-                  : accountHasPasswordProvider
-                    ? 'settings-password-provider-badge is-password'
-                    : 'settings-password-provider-badge'
-              }>
-                {accountHasGoogleProvider
-                  ? accountHasPasswordProvider
-                    ? 'Google + Password'
-                    : 'Google-only'
-                  : accountHasPasswordProvider
-                    ? 'Password'
-                    : 'Provider lain'}
+              <span
+                aria-label={'Kelengkapan account ' + accountHealthPercent + ' persen'}
+                aria-valuemax="100"
+                aria-valuemin="0"
+                aria-valuenow={accountHealthPercent}
+                className="settings-account-health-track"
+                role="progressbar"
+              >
+                <i style={{ '--account-health-progress': accountHealthPercent + '%' }} />
               </span>
             </div>
 
-            <div className={
-              accountHasGoogleProvider
-                ? 'settings-password-provider-note is-google'
-                : 'settings-password-provider-note'
-            }>
-              <KeyRound size={16} aria-hidden="true" />
+            <div
+              aria-live="polite"
+              className={
+                accountPendingChangeCount
+                  ? 'settings-account-save-state is-dirty'
+                  : 'settings-account-save-state is-saved'
+              }
+            >
+              {accountPendingChangeCount ? (
+                <RefreshCcw size={14} aria-hidden="true" />
+              ) : (
+                <ShieldCheck size={14} aria-hidden="true" />
+              )}
               <span>
                 <strong>
-                  {accountHasGoogleProvider
-                    ? accountHasPasswordProvider
-                      ? 'Verifikasi perubahan lewat Google'
-                      : 'Buat password tanpa memutus login Google'
-                    : accountHasPasswordProvider
-                      ? 'Verifikasi dengan password saat ini'
-                      : 'Password belum tersedia untuk provider ini'}
+                  {accountPendingChangeCount
+                    ? accountPendingChangeCount + ' perubahan'
+                    : 'Tersimpan'}
                 </strong>
                 <small>
-                  {accountHasGoogleProvider
-                    ? accountHasPasswordProvider
-                      ? 'Isi password saat ini untuk verifikasi langsung, atau kosongkan kolom tersebut untuk verifikasi lewat Google. Login Google tetap aktif.'
-                      : 'Setelah verifikasi Google, login email/password ditambahkan ke UID Firebase yang sama.'
-                    : accountHasPasswordProvider
-                      ? 'Password lama hanya dipakai untuk re-authentication dan tidak pernah disimpan.'
-                      : 'Akun perlu memiliki email dan provider Google atau Email/Password untuk mengelola password.'}
+                  {accountPendingChangeCount
+                    ? 'Belum diterapkan'
+                    : 'Tidak ada draft'}
                 </small>
               </span>
             </div>
+          </section>
 
-            {accountCanManagePassword ? (
-              <form className="settings-account-form-compact" onSubmit={saveAccountPasswordPage}>
-                <div className={
-                  accountNeedsCurrentPassword
-                    ? 'settings-password-form-grid is-three-field'
-                    : 'settings-password-form-grid'
-                }>
-                  {accountHasPasswordProvider ? (
-                    <StudioTextField
-                      autoComplete="current-password"
-                      helper={accountHasGoogleProvider ? 'Opsional · kosongkan untuk verifikasi Google' : undefined}
-                      id="account-password-current"
-                      label="Password Saat Ini"
-                      placeholder="Masukkan password saat ini"
-                      required={accountNeedsCurrentPassword}
-                      type="password"
-                      value={accountPasswordForm.currentPassword}
-                      onChange={updateAccountPasswordField('currentPassword')}
-                    />
-                  ) : null}
-
-                  <StudioTextField
-                    autoComplete="new-password"
-                    id="account-password-new"
-                    label={accountHasPasswordProvider ? 'Password Baru' : 'Buat Password'}
-                    placeholder="Minimal 6 karakter"
-                    required
-                    type="password"
-                    value={accountPasswordForm.newPassword}
-                    onChange={updateAccountPasswordField('newPassword')}
-                  />
-
-                  <StudioTextField
-                    autoComplete="new-password"
-                    id="account-password-confirm"
-                    label="Ulangi Password Baru"
-                    placeholder="Ketik ulang password baru"
-                    required
-                    type="password"
-                    value={accountPasswordForm.confirmPassword}
-                    onChange={updateAccountPasswordField('confirmPassword')}
-                  />
+          <div className="settings-account-layout">
+            <aside className="settings-account-overview" aria-label="Ringkasan account">
+              <section className="settings-section">
+                <div className="settings-section-heading">
+                  <span>Identity</span>
+                  <h3 className="settings-section-title">Identitas Login</h3>
+                  <p>Data utama yang terhubung ke autentikasi admin.</p>
                 </div>
 
-                {accountPasswordMessage ? (
-                  <p
-                    className={
-                      accountPasswordHasError
-                        ? 'settings-password-message is-error'
-                        : 'settings-password-message is-success'
-                    }
-                    role={accountPasswordHasError ? 'alert' : 'status'}
-                  >
-                    {accountPasswordMessage}
-                  </p>
-                ) : null}
+                <div className="settings-info-flat-list">
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-icon"><Mail size={13} /></span>
+                    <span className="settings-info-flat-label">Email</span>
+                    <strong className="settings-info-flat-value" title={currentUser?.email || 'Belum tersedia'}>{currentUser?.email || '—'}</strong>
+                  </div>
 
-                <div className="settings-account-actions-row">
-                  {accountHasPasswordProvider ? (
-                    <button
-                      className="settings-mini-button is-ghost"
-                      disabled={accountPasswordIsSaving || !currentUser?.email}
-                      type="button"
-                      onClick={sendPasswordResetPage}
-                    >
-                      Kirim Email Reset
-                    </button>
-                  ) : null}
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-icon"><Phone size={13} /></span>
+                    <span className="settings-info-flat-label">Nomor HP</span>
+                    <strong className="settings-info-flat-value" title={currentUser?.phoneNumber || 'Belum tersedia'}>{currentUser?.phoneNumber || '—'}</strong>
+                  </div>
 
-                  <button
-                    className="settings-mini-button is-primary"
-                    disabled={accountPasswordIsSaving}
-                    type="submit"
-                  >
-                    <KeyRound size={14} />
-                    {accountPasswordIsSaving ? 'Memverifikasi...' : accountPasswordActionLabel}
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-icon"><MonitorSmartphone size={13} /></span>
+                    <span className="settings-info-flat-label">Provider</span>
+                    <strong className="settings-info-flat-value">{accountProviderLabel}</strong>
+                  </div>
+
+                  <div className="settings-info-flat-row">
+                    <span className="settings-info-flat-icon"><KeyRound size={13} /></span>
+                    <span className="settings-info-flat-label">User ID</span>
+                    <strong className="settings-info-flat-value" title={currentUser?.uid || accountUidLabel}>{accountUidLabel}</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section className="settings-section">
+                <div className="settings-section-head-row">
+                  <div className="settings-section-heading">
+                    <span>Security</span>
+                    <h3 className="settings-section-title">Access &amp; Security</h3>
+                  </div>
+                  <button className="settings-mini-button" type="button" onClick={copyAccountUid}>
+                    <Clipboard size={13} />
+                    Copy UID
                   </button>
                 </div>
-              </form>
-            ) : (
-              <p className="settings-password-message is-error" role="status">
-                Provider akun saat ini belum mendukung perubahan password dari halaman ini.
-              </p>
-            )}
-          </section>
 
-          {/* ── PREFERENSI ACCOUNT ──────────────────────────── */}
-          <section className="settings-section">
-            <h3 className="settings-section-title">Preferensi Account</h3>
+                <div className="settings-security-check-grid">
+                  {accountHealthChecks.map((item) => (
+                    <span
+                      className={
+                        item.complete
+                          ? 'settings-security-check is-complete'
+                          : 'settings-security-check'
+                      }
+                      key={item.label}
+                    >
+                      <ShieldCheck size={13} aria-hidden="true" />
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
 
-            <form className="settings-account-form-compact" onSubmit={saveAccountSettingsPage}>
-              <div className="settings-prefs-selects">
-                <StudioSelect
-                  label="Halaman Awal"
-                  options={accountLandingOptions}
-                  selectedKey={accountPreferences.defaultLandingKey}
-                  onChange={updateAccountPreferenceValue('defaultLandingKey')}
-                />
+                <div className="settings-security-flat-list">
+                  <div className="settings-security-flat-row">
+                    <ShieldCheck size={14} />
+                    <span className="settings-security-label">Status akses</span>
+                    <span className="settings-security-value">{accountStatusLabel}</span>
+                  </div>
 
-                <StudioSelect
-                  label="Kontak Utama"
-                  options={accountContactOptions}
-                  selectedKey={accountPreferences.preferredContact}
-                  onChange={updateAccountPreferenceValue('preferredContact')}
-                />
+                  <div className="settings-security-flat-row">
+                    <Mail size={14} />
+                    <span className="settings-security-label">Verifikasi email</span>
+                    <span className="settings-security-value">{currentUser?.emailVerified ? 'Verified' : 'Belum verified'}</span>
+                  </div>
 
-                <StudioSelect
-                  label="Level Notifikasi"
-                  options={accountNotificationOptions}
-                  selectedKey={accountPreferences.notificationLevel}
-                  onChange={updateAccountPreferenceValue('notificationLevel')}
-                />
-              </div>
+                  <div className="settings-security-flat-row">
+                    <MonitorSmartphone size={14} />
+                    <span className="settings-security-label">Login aktif</span>
+                    <span className="settings-security-value">{accountProviderLabel}</span>
+                  </div>
+                </div>
 
-              <label className="settings-account-note-field" htmlFor="account-setting-note">
-                <span>Catatan Account</span>
-                <textarea
-                  id="account-setting-note"
-                  maxLength={240}
-                  placeholder="Contoh: akun owner utama, dipakai untuk approval admin..."
-                  value={accountPreferences.accountNote}
-                  onChange={updateAccountPreference('accountNote')}
-                />
-              </label>
+                {accountCopyMessage ? (
+                  <p className="settings-account-message is-info" role="status">{accountCopyMessage}</p>
+                ) : null}
+              </section>
+            </aside>
 
-              <div className="settings-prefs-preview-strip">
-                <span>Landing: <strong>{accountLandingLabel}</strong></span>
-                <span>·</span>
-                <span>Kontak: <strong>{accountPreferredContactLabel}</strong></span>
-                <span>·</span>
-                <span>Notifikasi: <strong>{accountNotificationLabel}</strong></span>
-              </div>
+            <div className="settings-account-editor">
+              <section className="settings-section">
+                <div className="settings-section-heading">
+                  <span>Profile</span>
+                  <h3 className="settings-section-title">Profil Akun</h3>
+                  <p>Nama ini tampil di header, aktivitas, dan approval admin.</p>
+                </div>
 
-              {accountSettingsMessage ? (
-                <p className="settings-invoice-message" role="status">{accountSettingsMessage}</p>
-              ) : null}
+                <form
+                  aria-busy={accountProfileIsSaving}
+                  className="settings-account-form-compact"
+                  onSubmit={saveAccountProfilePage}
+                >
+                  <StudioTextField
+                    id="account-profile-display-name"
+                    label="Nama Tampilan"
+                    placeholder="Contoh: Owner 37 Music"
+                    value={accountProfileForm.displayName}
+                    onChange={updateAccountProfileField('displayName')}
+                  />
 
-              <div className="settings-account-actions-row">
-                <button className="settings-mini-button is-ghost" type="button" onClick={resetAccountSettingsPage}>
-                  <RefreshCcw size={14} />
-                  Reset Lokal
-                </button>
-                <button className="settings-mini-button is-primary" type="submit">
-                  <Save size={14} />
-                  Simpan Account
-                </button>
-              </div>
-            </form>
-          </section>
+                  <div className="settings-field-status">
+                    <span>{accountProfileCleanName.length}/60 karakter</span>
+                    <strong>{accountProfileIsDirty ? 'Draft berubah' : 'Sudah tersimpan'}</strong>
+                  </div>
 
-          {/* ── ACCESS & SECURITY ───────────────────────────── */}
-          <section className="settings-section">
-            <div className="settings-section-head-row">
-              <h3 className="settings-section-title">Access &amp; Security</h3>
-              <button className="settings-mini-button" type="button" onClick={copyAccountUid}>
-                <Clipboard size={13} />
-                Copy UID
-              </button>
+                  {accountProfileMessage ? (
+                    <p
+                      className={'settings-account-message is-' + accountProfileMessageTone}
+                      role={accountProfileMessageTone === 'error' ? 'alert' : 'status'}
+                    >
+                      {accountProfileMessage}
+                    </p>
+                  ) : null}
+
+                  <div className="settings-account-actions-row">
+                    <button
+                      className="settings-mini-button is-primary"
+                      disabled={!accountProfileIsDirty || accountProfileIsSaving}
+                      type="submit"
+                    >
+                      <Save size={14} />
+                      {accountProfileIsSaving ? 'Menyimpan...' : 'Simpan Profil'}
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <section className="settings-section settings-password-security-section">
+                <div className="settings-section-head-row">
+                  <div className="settings-section-heading">
+                    <span>Sign-in</span>
+                    <h3 className="settings-section-title">Password &amp; Sign-in</h3>
+                    <p>Kelola kredensial tanpa memutus provider yang sudah aktif.</p>
+                  </div>
+                  <span className={
+                    accountHasGoogleProvider
+                      ? 'settings-password-provider-badge is-google'
+                      : accountHasPasswordProvider
+                        ? 'settings-password-provider-badge is-password'
+                        : 'settings-password-provider-badge'
+                  }>
+                    {accountHasGoogleProvider
+                      ? accountHasPasswordProvider
+                        ? 'Google + Password'
+                        : 'Google-only'
+                      : accountHasPasswordProvider
+                        ? 'Password'
+                        : 'Provider lain'}
+                  </span>
+                </div>
+
+                <div className={
+                  accountHasGoogleProvider
+                    ? 'settings-password-provider-note is-google'
+                    : 'settings-password-provider-note'
+                }>
+                  <KeyRound size={16} aria-hidden="true" />
+                  <span>
+                    <strong>
+                      {accountHasGoogleProvider
+                        ? accountHasPasswordProvider
+                          ? 'Verifikasi perubahan lewat Google'
+                          : 'Buat password tanpa memutus login Google'
+                        : accountHasPasswordProvider
+                          ? 'Verifikasi dengan password saat ini'
+                          : 'Password belum tersedia untuk provider ini'}
+                    </strong>
+                    <small>
+                      {accountHasGoogleProvider
+                        ? accountHasPasswordProvider
+                          ? 'Isi password saat ini untuk verifikasi langsung, atau kosongkan untuk verifikasi Google. Login Google tetap aktif.'
+                          : 'Setelah verifikasi Google, login email/password ditambahkan ke UID Firebase yang sama.'
+                        : accountHasPasswordProvider
+                          ? 'Password lama hanya dipakai untuk re-authentication dan tidak pernah disimpan.'
+                          : 'Akun perlu memiliki email dan provider Google atau Email/Password untuk mengelola password.'}
+                    </small>
+                  </span>
+                </div>
+
+                {accountCanManagePassword ? (
+                  <form
+                    aria-busy={accountPasswordIsSaving}
+                    className="settings-account-form-compact"
+                    onSubmit={saveAccountPasswordPage}
+                  >
+                    <div className={
+                      accountNeedsCurrentPassword
+                        ? 'settings-password-form-grid is-three-field'
+                        : 'settings-password-form-grid'
+                    }>
+                      {accountHasPasswordProvider ? (
+                        <StudioTextField
+                          autoComplete="current-password"
+                          helper={accountHasGoogleProvider ? 'Opsional · verifikasi Google jika kosong' : undefined}
+                          id="account-password-current"
+                          label="Password Saat Ini"
+                          placeholder="Masukkan password saat ini"
+                          required={accountNeedsCurrentPassword}
+                          type="password"
+                          value={accountPasswordForm.currentPassword}
+                          onChange={updateAccountPasswordField('currentPassword')}
+                        />
+                      ) : null}
+
+                      <StudioTextField
+                        autoComplete="new-password"
+                        id="account-password-new"
+                        label={accountHasPasswordProvider ? 'Password Baru' : 'Buat Password'}
+                        placeholder="Minimal 6 karakter"
+                        required
+                        type="password"
+                        value={accountPasswordForm.newPassword}
+                        onChange={updateAccountPasswordField('newPassword')}
+                      />
+
+                      <StudioTextField
+                        autoComplete="new-password"
+                        id="account-password-confirm"
+                        label="Ulangi Password Baru"
+                        placeholder="Ketik ulang password baru"
+                        required
+                        type="password"
+                        value={accountPasswordForm.confirmPassword}
+                        onChange={updateAccountPasswordField('confirmPassword')}
+                      />
+                    </div>
+
+                    <div
+                      aria-live="polite"
+                      className={'settings-password-strength is-' + accountPasswordStrength.tone}
+                    >
+                      <div className="settings-password-strength-head">
+                        <span>Kekuatan password</span>
+                        <strong>{accountPasswordStrength.label}</strong>
+                      </div>
+                      <span className="settings-password-strength-track" aria-hidden="true">
+                        <i style={{ '--password-strength-progress': accountPasswordStrength.percent + '%' }} />
+                      </span>
+                      <div className="settings-password-checks">
+                        {accountPasswordStrength.checks.map((item) => (
+                          <span className={item.complete ? 'is-complete' : ''} key={item.key}>
+                            <ShieldCheck size={12} aria-hidden="true" />
+                            {item.label}
+                          </span>
+                        ))}
+                        <span className={accountPasswordConfirmationMatches ? 'is-complete' : ''}>
+                          <ShieldCheck size={12} aria-hidden="true" />
+                          Konfirmasi sama
+                        </span>
+                      </div>
+                    </div>
+
+                    {accountPasswordMessage ? (
+                      <p
+                        className={
+                          accountPasswordHasError
+                            ? 'settings-password-message is-error'
+                            : 'settings-password-message is-success'
+                        }
+                        role={accountPasswordHasError ? 'alert' : 'status'}
+                      >
+                        {accountPasswordMessage}
+                      </p>
+                    ) : null}
+
+                    <div className="settings-account-actions-row">
+                      {accountHasPasswordProvider ? (
+                        <button
+                          className="settings-mini-button is-ghost"
+                          disabled={accountPasswordIsSaving || accountPasswordResetIsSending || !currentUser?.email}
+                          type="button"
+                          onClick={sendPasswordResetPage}
+                        >
+                          {accountPasswordResetIsSending ? 'Mengirim...' : 'Kirim Email Reset'}
+                        </button>
+                      ) : null}
+
+                      <button
+                        className="settings-mini-button is-primary"
+                        disabled={!accountPasswordCanSubmit}
+                        type="submit"
+                      >
+                        <KeyRound size={14} />
+                        {accountPasswordIsSaving ? 'Memverifikasi...' : accountPasswordActionLabel}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="settings-password-message is-error" role="status">
+                    Provider akun saat ini belum mendukung perubahan password dari halaman ini.
+                  </p>
+                )}
+              </section>
+
+              <section className="settings-section">
+                <div className="settings-section-heading">
+                  <span>Preferences</span>
+                  <h3 className="settings-section-title">Preferensi Account</h3>
+                  <p>Pilihan disimpan per akun dan disinkronkan ke cloud saat tersedia.</p>
+                </div>
+
+                <form
+                  aria-busy={accountSettingsIsSaving}
+                  className="settings-account-form-compact"
+                  onSubmit={saveAccountSettingsPage}
+                >
+                  <div className="settings-prefs-selects">
+                    <StudioSelect
+                      label="Halaman Awal"
+                      options={accountLandingOptions}
+                      selectedKey={accountPreferences.defaultLandingKey}
+                      onChange={updateAccountPreferenceValue('defaultLandingKey')}
+                    />
+
+                    <StudioSelect
+                      label="Kontak Utama"
+                      options={accountContactOptions}
+                      selectedKey={accountPreferences.preferredContact}
+                      onChange={updateAccountPreferenceValue('preferredContact')}
+                    />
+
+                    <StudioSelect
+                      label="Level Notifikasi"
+                      options={accountNotificationOptions}
+                      selectedKey={accountPreferences.notificationLevel}
+                      onChange={updateAccountPreferenceValue('notificationLevel')}
+                    />
+                  </div>
+
+                  <label className="settings-account-note-field" htmlFor="account-setting-note">
+                    <span className="settings-field-label-row">
+                      <span>Catatan Account</span>
+                      <small>{accountPreferences.accountNote.length}/240</small>
+                    </span>
+                    <textarea
+                      id="account-setting-note"
+                      maxLength={240}
+                      placeholder="Contoh: akun owner utama, dipakai untuk approval admin..."
+                      value={accountPreferences.accountNote}
+                      onChange={updateAccountPreference('accountNote')}
+                    />
+                  </label>
+
+                  <div className="settings-prefs-summary-grid" aria-label="Preview preferensi">
+                    <span><small>Landing</small><strong>{accountLandingLabel}</strong></span>
+                    <span><small>Kontak</small><strong>{accountPreferredContactLabel}</strong></span>
+                    <span><small>Notifikasi</small><strong>{accountNotificationLabel}</strong></span>
+                  </div>
+
+                  {accountSettingsMessage ? (
+                    <p
+                      className={'settings-account-message is-' + accountSettingsMessageTone}
+                      role={accountSettingsMessageTone === 'error' ? 'alert' : 'status'}
+                    >
+                      {accountSettingsMessage}
+                    </p>
+                  ) : null}
+
+                  <div className="settings-account-actions-row">
+                    <button
+                      className="settings-mini-button is-ghost"
+                      disabled={accountSettingsIsSaving || accountPreferencesAreDefault}
+                      type="button"
+                      onClick={resetAccountSettingsPage}
+                    >
+                      <RefreshCcw size={14} />
+                      Muat Default
+                    </button>
+                    <button
+                      className="settings-mini-button is-primary"
+                      disabled={!accountPreferencesIsDirty || accountSettingsIsSaving}
+                      type="submit"
+                    >
+                      <Save size={14} />
+                      {accountSettingsIsSaving ? 'Menyimpan...' : 'Simpan Preferensi'}
+                    </button>
+                  </div>
+                </form>
+              </section>
             </div>
-
-            <div className="settings-security-flat-list">
-              <div className="settings-security-flat-row">
-                <ShieldCheck size={14} />
-                <span className="settings-security-label">Status akses</span>
-                <span className="settings-security-value">{accountStatusLabel}</span>
-              </div>
-
-              <div className="settings-security-flat-row">
-                <Mail size={14} />
-                <span className="settings-security-label">Verifikasi email</span>
-                <span className="settings-security-value">{currentUser?.emailVerified ? 'Verified' : 'Belum verified'}</span>
-              </div>
-
-              <div className="settings-security-flat-row">
-                <MonitorSmartphone size={14} />
-                <span className="settings-security-label">Login aktif</span>
-                <span className="settings-security-value">{accountProviderLabel}</span>
-              </div>
-            </div>
-          </section>
-
+          </div>
         </section>
       )}
 
