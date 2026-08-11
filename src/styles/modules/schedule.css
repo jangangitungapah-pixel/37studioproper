@@ -1222,6 +1222,19 @@ em {
 
 .schedule-grid-corner,
 .schedule-day-head {
+  /* UI-3M.2 — Opaque Sticky Date Headers */
+  --schedule-day-head-overlay:
+    color-mix(
+      in srgb,
+      var(
+        --studio-surface-floating
+      )
+      96%,
+      var(
+        --studio-surface-1
+      )
+    );
+
   position:
     sticky;
 
@@ -1237,15 +1250,18 @@ em {
       --studio-edge-soft
     );
 
-  background:
-    color-mix(
-      in srgb,
+  background-color:
+    var(
+      --studio-canvas
+    );
+
+  background-image:
+    linear-gradient(
       var(
-        --studio-surface-floating
-      )
-      96%,
+        --schedule-day-head-overlay
+      ),
       var(
-        --studio-surface-1
+        --schedule-day-head-overlay
       )
     );
 }
@@ -1359,7 +1375,7 @@ strong {
 }
 
 .schedule-day-head.is-today {
-  background:
+  --schedule-day-head-overlay:
     color-mix(
       in srgb,
       var(
@@ -3162,7 +3178,7 @@ html[
   data-theme='dark'
 ]
 .schedule-day-head.is-today {
-  background:
+  --schedule-day-head-overlay:
     color-mix(
       in srgb,
       var(
@@ -3492,13 +3508,13 @@ html[
   }
 
   .schedule-day-head {
-    gap:
-      2px;
-
-    background:
+    --schedule-day-head-overlay:
       var(
         --studio-surface-floating
       );
+
+    gap:
+      2px;
   }
 
   .schedule-day-head
@@ -3517,7 +3533,7 @@ html[
   }
 
   .schedule-day-head.is-selected {
-    background:
+    --schedule-day-head-overlay:
       color-mix(
         in srgb,
         var(

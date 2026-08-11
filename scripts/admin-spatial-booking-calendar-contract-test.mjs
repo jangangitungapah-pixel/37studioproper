@@ -675,6 +675,65 @@ assert.match(
   'UI-3M compact mobile date context must stay out of the desktop layout.',
 );
 
+/**
+ * UI-3M.2 opaque sticky date headers.
+ *
+ * Tonal header overlays can contain alpha, so every sticky date header must
+ * paint that tone over an opaque canvas before booking blocks pass behind it.
+ */
+for (
+  const required
+  of [
+    'UI-3M.2 — Opaque Sticky Date Headers',
+    '--schedule-day-head-overlay:',
+    'background-color:\n    var(\n      --studio-canvas',
+    'background-image:\n    linear-gradient(',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      required,
+    ),
+    true,
+    'UI-3M.2 opaque date header CSS missing: ' +
+      required,
+  );
+}
+
+const dayHeaderOverlayAssignments =
+  cssSource.match(
+    /--schedule-day-head-overlay:/g,
+  ) || [];
+
+assert.equal(
+  dayHeaderOverlayAssignments.length >= 5,
+  true,
+  'UI-3M.2 must cover default, today, dark today, mobile, and selected header states.',
+);
+
+assert.match(
+  cssSource,
+  /\.schedule-grid-corner,[\s\S]*?\.schedule-day-head\s*\{[\s\S]*?--schedule-day-head-overlay:[\s\S]*?background-color:[\s\S]*?--studio-canvas[\s\S]*?background-image:[\s\S]*?linear-gradient\([\s\S]*?--schedule-day-head-overlay/,
+  'UI-3M.2 sticky headers must layer their tonal overlay over an opaque canvas.',
+);
+
+for (
+  const transparentState
+  of [
+    '.schedule-day-head.is-today {\n  background:',
+    '  .schedule-day-head.is-selected {\n    background:',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      transparentState,
+    ),
+    false,
+    'UI-3M.2 must not restore transparent header shorthand: ' +
+      transparentState,
+  );
+}
+
 process.stdout.write(
   '✅ Admin Spatial Booking Calendar UI-3 contract passed.\n',
 );
