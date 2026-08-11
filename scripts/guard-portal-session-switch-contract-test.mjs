@@ -225,7 +225,6 @@ for (
     'Anda login sebagai Admin.',
     'canReviewGuardAttendance',
     "hasAdminPagePermission(\n      guardAccount,\n      'guard-attendance'",
-    '!isAdminCrossPortal',
   ]
 ) {
   assert.equal(
@@ -235,6 +234,36 @@ for (
 
     true,
     'Admin cross-portal marker missing: ' + required
+  );
+}
+
+/*
+ * GP7 replaced the old generic "not Admin cross-portal" fallback with
+ * explicit Client / Blocked / Invalid role-aware states.
+ */
+assert.equal(
+  guardSource.includes(
+    '!isAdminCrossPortal'
+  ),
+  false,
+  'GP7 no longer uses the retired generic !isAdminCrossPortal fallback guard.'
+);
+
+for (
+  const required
+  of [
+    'aria-label="Wrong Portal Client"',
+    'aria-label="Guard Access Blocked"',
+    'aria-label="Guard Account Recovery Required"',
+  ]
+) {
+  assert.equal(
+    guardSource.includes(
+      required
+    ),
+    true,
+    'GP7 explicit wrong-portal/access state missing from session-switch contract: ' +
+      required
   );
 }
 
