@@ -426,8 +426,7 @@ for (const required of [
   'if (guardIntent) {',
   'adminAuthRepository.sendPhoneOTP',
   '!guardIntent && authMode',
-  "guardIntent
-            ? 'Masuk Guard Portal'",
+  'Masuk Guard Portal',
 ]) {
   assert.equal(
     loginSource.includes(
@@ -438,6 +437,12 @@ for (const required of [
       required,
   );
 }
+
+assert.match(
+  loginSource,
+  /guardIntent[\s\S]*?\?\s*'Masuk Guard Portal'/,
+  'Guard login submit copy must remain driven by guardIntent.'
+);
 
 assert.equal(
   loginSource.includes(
