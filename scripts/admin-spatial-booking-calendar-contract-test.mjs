@@ -61,6 +61,25 @@ for (
 }
 
 /**
+ * Month view must expose a dedicated vertical scroll viewport.
+ */
+assert.equal(
+  scheduleSource.includes(
+    "(viewMode === 'month' ? 'is-month-scroll' : '')"
+  ),
+  true,
+  'Month Calendar must opt into the vertical scroll viewport.',
+);
+
+assert.equal(
+  scheduleSource.includes(
+    "style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}"
+  ),
+  false,
+  'Calendar must not suppress scrollbar visibility through inline style.',
+);
+
+/**
  * Presentation debt from previous Calendar implementation must be gone.
  */
 for (
@@ -240,6 +259,44 @@ for (
       required,
   );
 }
+
+assert.match(
+  cssSource,
+  /\.schedule-grid-scroll\.is-month-scroll\s*\{[\s\S]*?max-height:[\s\S]*?overflow-y:\s*auto;[\s\S]*?scrollbar-gutter:\s*stable;[\s\S]*?scrollbar-width:\s*thin;/,
+  'Month Calendar vertical scroll viewport must remain bounded and scrollbar-visible.',
+);
+
+for (
+  const required
+  of [
+    '.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar',
+    '.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar-track',
+    '.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar-thumb',
+    'width:\n    10px;',
+    'height:\n    0;',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      required,
+    ),
+    true,
+    'Month Calendar scrollbar styling missing: ' +
+      required,
+  );
+}
+
+assert.match(
+  cssSource,
+  /\.schedule-grid-corner,[\s\S]*?\.schedule-day-head\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
+  'Calendar day header must remain sticky during vertical month scrolling.',
+);
+
+assert.match(
+  cssSource,
+  /\.schedule-time-cell\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?left:\s*0;/,
+  'Calendar time column must remain sticky during Calendar scrolling.',
+);
 
 assert.equal(
   cssSource.includes(

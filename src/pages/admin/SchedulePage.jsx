@@ -850,10 +850,12 @@ function CalendarGrid({
         </strong>
       </header>
 
-      <div 
-        className="schedule-grid-scroll overflow-x-auto scrollbar-none" 
+      <div
+        className={
+          'schedule-grid-scroll ' +
+          (viewMode === 'month' ? 'is-month-scroll' : '')
+        }
         ref={gridScrollRef}
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <div
           className={'schedule-grid schedule-grid--' + viewMode}

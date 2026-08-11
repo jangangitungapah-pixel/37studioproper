@@ -1043,6 +1043,84 @@ strong {
     none;
 }
 
+/*
+ * Month view can exceed the available workspace height because the schedule
+ * keeps time on the vertical axis. Give it its own vertical viewport instead
+ * of growing the entire Admin page indefinitely.
+ */
+.schedule-grid-scroll.is-month-scroll {
+  max-height:
+    clamp(
+      420px,
+      calc(
+        100dvh -
+        250px
+      ),
+      760px
+    );
+
+  overflow-y:
+    auto;
+
+  overscroll-behavior:
+    contain;
+
+  scrollbar-gutter:
+    stable;
+
+  scrollbar-width:
+    thin;
+
+  scrollbar-color:
+    var(
+      --studio-edge-normal
+    )
+    var(
+      --studio-surface-2
+    );
+}
+
+.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar {
+  display:
+    block;
+
+  width:
+    10px;
+
+  height:
+    0;
+}
+
+.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar-track {
+  background:
+    var(
+      --studio-surface-2
+    );
+}
+
+.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar-thumb {
+  border:
+    2px solid
+    var(
+      --studio-surface-2
+    );
+
+  border-radius:
+    999px;
+
+  background:
+    var(
+      --studio-edge-normal
+    );
+}
+
+.schedule-grid-scroll.is-month-scroll::-webkit-scrollbar-thumb:hover {
+  background:
+    var(
+      --studio-text-tertiary
+    );
+}
+
 .schedule-grid {
   min-width:
     max-content;
