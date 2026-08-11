@@ -909,7 +909,8 @@ strong {
 }
 
 /*
- * Mobile date context.
+ * UI-3M — Mobile-first Calendar Planning Deck.
+ * Date context and a tappable day rail stay outside the moving grid.
  */
 .schedule-mobile-date-strip {
   min-width:
@@ -943,8 +944,19 @@ strong {
     11px;
 }
 
-.schedule-mobile-date-strip
-span {
+.schedule-mobile-date-copy {
+  min-width:
+    0;
+
+  display:
+    grid;
+
+  gap:
+    2px;
+}
+
+.schedule-mobile-date-copy
+small {
   color:
     var(
       --studio-text-tertiary
@@ -963,7 +975,7 @@ span {
     uppercase;
 }
 
-.schedule-mobile-date-strip
+.schedule-mobile-date-copy
 strong {
   min-width:
     0;
@@ -987,6 +999,225 @@ strong {
 
   white-space:
     nowrap;
+}
+
+.schedule-mobile-gesture-hint {
+  flex:
+    0
+    0
+    auto;
+
+  display:
+    inline-flex;
+
+  align-items:
+    center;
+
+  gap:
+    3px;
+
+  color:
+    var(
+      --studio-accent-hover
+    );
+}
+
+.schedule-mobile-gesture-hint
+em {
+  font-size:
+    0.56rem;
+
+  font-style:
+    normal;
+
+  font-weight:
+    680;
+}
+
+.schedule-mobile-day-rail {
+  min-width:
+    0;
+
+  display:
+    flex;
+
+  gap:
+    5px;
+
+  overflow-x:
+    auto;
+
+  border-bottom:
+    1px solid
+    var(
+      --studio-edge-soft
+    );
+
+  background:
+    var(
+      --studio-surface-1
+    );
+
+  padding:
+    7px
+    8px;
+
+  scroll-snap-type:
+    x
+    proximity;
+
+  scrollbar-width:
+    none;
+
+  -webkit-overflow-scrolling:
+    touch;
+}
+
+.schedule-mobile-day-rail::-webkit-scrollbar {
+  display:
+    none;
+}
+
+.schedule-mobile-day-rail
+button {
+  min-width:
+    44px;
+
+  min-height:
+    44px;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  align-content:
+    center;
+
+  gap:
+    1px;
+
+  scroll-snap-align:
+    center;
+
+  border:
+    1px solid
+    transparent;
+
+  border-radius:
+    12px;
+
+  background:
+    transparent;
+
+  color:
+    var(
+      --studio-text-tertiary
+    );
+
+  padding:
+    4px
+    8px;
+
+  font:
+    inherit;
+
+  cursor:
+    pointer;
+}
+
+.schedule-mobile-day-rail
+button
+span {
+  font-size:
+    0.5rem;
+
+  font-weight:
+    680;
+
+  letter-spacing:
+    0.04em;
+
+  text-transform:
+    uppercase;
+}
+
+.schedule-mobile-day-rail
+button
+strong {
+  color:
+    var(
+      --studio-text-secondary
+    );
+
+  font-size:
+    0.73rem;
+
+  font-weight:
+    760;
+
+  line-height:
+    1;
+}
+
+.schedule-mobile-day-rail
+button.is-today {
+  color:
+    var(
+      --studio-accent-hover
+    );
+}
+
+.schedule-mobile-day-rail
+button.is-selected {
+  border-color:
+    color-mix(
+      in srgb,
+      var(
+        --studio-accent
+      )
+      24%,
+      var(
+        --studio-edge-soft
+      )
+    );
+
+  background:
+    var(
+      --studio-accent-soft
+    );
+
+  color:
+    var(
+      --studio-accent-hover
+    );
+
+  box-shadow:
+    var(
+      --studio-shadow-contact
+    );
+}
+
+.schedule-mobile-day-rail
+button.is-selected
+strong {
+  color:
+    var(
+      --studio-accent-hover
+    );
+}
+
+.schedule-mobile-day-rail
+button:focus-visible {
+  outline:
+    2px solid
+    var(
+      --studio-accent
+    );
+
+  outline-offset:
+    1px;
 }
 
 /*
@@ -3136,18 +3367,209 @@ html[
 @media (max-width: 767px) {
   .schedule-page {
     --schedule-time-col:
-      58px;
+      54px;
 
     --schedule-month-day-col:
-      78px;
+      88px;
 
     --schedule-week-day-col:
-      92px;
+      116px;
+
+    gap:
+      12px;
+  }
+
+  .schedule-editorial-header {
+    display:
+      grid;
+
+    grid-template-columns:
+      minmax(
+        0,
+        1fr
+      )
+      auto;
+
+    grid-template-areas:
+      'kicker count'
+      'title title'
+      'description description';
+
+    align-items:
+      start;
+
+    gap:
+      6px
+      10px;
+
+    padding:
+      2px
+      2px
+      0;
+  }
+
+  .schedule-editorial-copy {
+    display:
+      contents;
+  }
+
+  .schedule-kicker {
+    grid-area:
+      kicker;
+
+    align-self:
+      center;
+
+    font-size:
+      0.58rem;
+  }
+
+  .schedule-editorial-copy
+  h2 {
+    grid-area:
+      title;
+
+    font-size:
+      clamp(
+        1.68rem,
+        8vw,
+        2.08rem
+      );
+  }
+
+  .schedule-editorial-copy
+  p {
+    grid-area:
+      description;
+
+    max-width:
+      48ch;
+
+    font-size:
+      0.68rem;
+
+    line-height:
+      1.42;
+  }
+
+  .schedule-range-object {
+    grid-area:
+      count;
+
+    min-height:
+      34px;
+
+    align-self:
+      start;
+
+    gap:
+      5px;
+
+    border-radius:
+      999px;
+
+    padding:
+      5px
+      8px;
+
+    box-shadow:
+      none;
+  }
+
+  .schedule-range-object
+  > svg {
+    width:
+      14px;
+
+    height:
+      14px;
+  }
+
+  .schedule-range-object
+  > span {
+    display:
+      flex;
+
+    align-items:
+      baseline;
+
+    gap:
+      4px;
+  }
+
+  .schedule-range-object
+  small {
+    display:
+      none;
+  }
+
+  .schedule-range-object
+  strong {
+    font-size:
+      0.76rem;
+  }
+
+  .schedule-range-object
+  em {
+    align-self:
+      auto;
+
+    font-size:
+      0.52rem;
+  }
+
+  .schedule-command-shelf {
+    gap:
+      6px;
+
+    border-radius:
+      18px;
+
+    padding:
+      6px;
   }
 
   .schedule-command-primary {
     grid-template-columns:
-      1fr;
+      minmax(
+        132px,
+        0.82fr
+      )
+      minmax(
+        0,
+        1.18fr
+      );
+
+    gap:
+      6px;
+  }
+
+  .schedule-nav {
+    grid-template-columns:
+      42px
+      minmax(
+        48px,
+        1fr
+      )
+      42px;
+  }
+
+  .schedule-nav
+  button,
+  .schedule-view-switcher
+  button {
+    min-height:
+      44px;
+
+    padding:
+      0
+      5px;
+  }
+
+  .schedule-view-switcher
+  button {
+    font-size:
+      0.59rem;
   }
 
   .schedule-command-actions {
@@ -3156,7 +3578,16 @@ html[
         0,
         1fr
       )
-      auto;
+      46px;
+
+    gap:
+      6px;
+  }
+
+  .schedule-add-button,
+  .schedule-request-button {
+    min-height:
+      46px;
   }
 
   .schedule-request-button
@@ -3165,10 +3596,88 @@ html[
       none;
   }
 
+  .schedule-status-filter {
+    min-height:
+      44px;
+
+    padding:
+      0
+      6px;
+
+    font-size:
+      0.57rem;
+  }
+
+  .schedule-calendar-surface {
+    border-radius:
+      20px;
+
+    box-shadow:
+      var(
+        --studio-shadow-surface
+      ),
+      0
+      14px
+      34px
+      color-mix(
+        in srgb,
+        var(
+          --studio-text-primary
+        )
+        5%,
+        transparent
+      );
+  }
+
+  .schedule-mobile-date-strip {
+    min-height:
+      45px;
+
+    padding:
+      7px
+      10px;
+  }
+
+  .schedule-mobile-date-copy
+  strong {
+    font-size:
+      0.7rem;
+  }
+
+  .schedule-mobile-day-rail {
+    padding-inline:
+      7px;
+  }
+
+  .schedule-grid-scroll {
+    scroll-snap-type:
+      x
+      proximity;
+  }
+
+  .schedule-grid-scroll:focus-visible {
+    outline:
+      2px solid
+      var(
+        --studio-accent
+      );
+
+    outline-offset:
+      -2px;
+  }
+
+  .schedule-grid-scroll.is-month-scroll {
+    max-height:
+      min(
+        64dvh,
+        620px
+      );
+  }
+
   .schedule-grid {
     grid-auto-rows:
       minmax(
-        42px,
+        44px,
         auto
       );
   }
@@ -3176,14 +3685,125 @@ html[
   .schedule-day-head,
   .schedule-grid-corner {
     min-height:
-      40px;
+      48px;
+  }
+
+  .schedule-day-head {
+    scroll-snap-align:
+      start;
+
+    gap:
+      2px;
+
+    background:
+      var(
+        --studio-surface-floating
+      );
+  }
+
+  .schedule-day-head
+  span {
+    font-size:
+      0.54rem;
+
+    letter-spacing:
+      0.04em;
+  }
+
+  .schedule-day-head
+  strong {
+    font-size:
+      0.82rem;
+  }
+
+  .schedule-day-head.is-selected {
+    background:
+      color-mix(
+        in srgb,
+        var(
+          --studio-accent-soft
+        )
+        78%,
+        var(
+          --studio-surface-floating
+        )
+      );
+
+    color:
+      var(
+        --studio-accent-hover
+      );
+
+    box-shadow:
+      inset
+      0
+      -2px
+      0
+      var(
+        --studio-accent
+      );
+  }
+
+  .schedule-day-head.is-selected
+  strong {
+    color:
+      var(
+        --studio-accent-hover
+      );
+  }
+
+  .schedule-grid-corner,
+  .schedule-time-cell {
+    background:
+      var(
+        --studio-surface-2
+      );
+
+    box-shadow:
+      8px
+      0
+      14px
+      color-mix(
+        in srgb,
+        var(
+          --studio-text-primary
+        )
+        7%,
+        transparent
+      );
   }
 
   .schedule-time-cell,
   .schedule-slot-cell,
   .schedule-slot-button {
     min-height:
-      42px;
+      44px;
+  }
+
+  .schedule-time-cell {
+    padding:
+      0
+      4px;
+  }
+
+  .schedule-time-cell
+  span {
+    font-size:
+      0.55rem;
+  }
+
+  .schedule-slot-cell {
+    background:
+      color-mix(
+        in srgb,
+        var(
+          --studio-surface-2
+        )
+        24%,
+        var(
+          --studio-surface-1
+        )
+      );
   }
 
   .schedule-booking-block {
@@ -3215,14 +3835,43 @@ html[
 
   .schedule-booking-topline
   .status-pill {
-    max-width:
-      44px;
+    display:
+      none;
+  }
 
-    padding-inline:
-      4px;
+  .schedule-booking-status-dot {
+    width:
+      6px;
 
-    font-size:
-      0.48rem;
+    height:
+      6px;
+
+    display:
+      block;
+
+    border-radius:
+      999px;
+
+    background:
+      var(
+        --studio-warning
+      );
+  }
+
+  .schedule-booking-block.is-dp
+  .schedule-booking-status-dot {
+    background:
+      var(
+        --studio-info
+      );
+  }
+
+  .schedule-booking-block.is-lunas
+  .schedule-booking-status-dot {
+    background:
+      var(
+        --studio-success
+      );
   }
 
   .schedule-booking-title {
@@ -3273,6 +3922,19 @@ html[
   .schedule-upcoming-side {
     min-width:
       92px;
+  }
+
+  .schedule-upcoming-panel.is-empty
+  .schedule-upcoming-head {
+    min-height:
+      44px;
+  }
+
+  .schedule-upcoming-panel.is-empty
+  .schedule-upcoming-empty {
+    padding:
+      9px
+      11px;
   }
 
   .schedule-loading-grid {
@@ -3393,7 +4055,8 @@ html[
       560px;
   }
 
-  .schedule-mobile-date-strip {
+  .schedule-mobile-date-strip,
+  .schedule-mobile-day-rail {
     display:
       none;
   }
@@ -3582,29 +4245,39 @@ html[
 
 @media (max-width: 390px) {
   .schedule-page {
+    --schedule-week-day-col:
+      108px;
+
     gap:
-      12px;
+      10px;
   }
 
   .schedule-editorial-copy
   h2 {
     font-size:
-      1.42rem;
+      1.56rem;
   }
 
-  .schedule-command-shelf {
-    padding:
-      6px;
+  .schedule-command-primary {
+    grid-template-columns:
+      minmax(
+        126px,
+        0.76fr
+      )
+      minmax(
+        0,
+        1.24fr
+      );
   }
 
   .schedule-nav {
     grid-template-columns:
-      32px
+      40px
       minmax(
-        58px,
-        auto
+        46px,
+        1fr
       )
-      32px;
+      40px;
   }
 
   .schedule-view-switcher
@@ -3646,8 +4319,14 @@ html[
 
   .schedule-mobile-date-strip {
     padding:
-      8px
+      7px
       9px;
+  }
+
+  .schedule-mobile-gesture-hint
+  em {
+    display:
+      none;
   }
 
   .schedule-upcoming-side {
@@ -3657,6 +4336,22 @@ html[
 }
 
 @media (max-width: 340px) {
+  .schedule-page {
+    --schedule-week-day-col:
+      102px;
+  }
+
+  .schedule-range-object
+  em {
+    display:
+      none;
+  }
+
+  .schedule-command-primary {
+    grid-template-columns:
+      1fr;
+  }
+
   .schedule-add-button
   span {
     display:
@@ -3665,22 +4360,27 @@ html[
 
   .schedule-status-row {
     grid-template-columns:
-      1fr;
+      repeat(
+        3,
+        minmax(
+          0,
+          1fr
+        )
+      );
   }
 
   .schedule-status-filter {
-    justify-content:
-      flex-start;
-
     padding:
       0
-      9px;
+      6px;
   }
 
   .schedule-status-filter
-  strong {
-    margin-left:
-      auto;
+  > span:not(
+    .schedule-status-dot
+  ) {
+    display:
+      none;
   }
 }
 
@@ -3711,10 +4411,23 @@ html[
     outline-offset:
       -2px;
   }
+
+  .schedule-mobile-day-rail
+  button.is-selected,
+  .schedule-day-head.is-selected {
+    outline:
+      2px solid
+      Highlight;
+
+    outline-offset:
+      -2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .schedule-booking-block,
+  .schedule-mobile-day-rail
+  button,
   .schedule-slot-add-hint,
   .schedule-loading-orb,
   .schedule-toast,

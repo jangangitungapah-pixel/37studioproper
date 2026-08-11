@@ -143,6 +143,18 @@ function getGridTemplate(viewMode, visibleDayCount) {
   return 'var(--schedule-time-col, 112px) repeat(' + visibleDayCount + ', minmax(var(--schedule-month-day-col, 92px), 1fr))';
 }
 
+function getInitialScheduleViewMode() {
+  if (typeof window === 'undefined') return 'month';
+  return window.matchMedia?.('(max-width: 767px)')?.matches ? 'week' : 'month';
+}
+
+function getScheduleScrollBehavior() {
+  if (typeof window === 'undefined') return 'auto';
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    ? 'auto'
+    : 'smooth';
+}
+
 function readStoredBookings() {
   if (typeof window === 'undefined') return [];
   try {
@@ -638,7 +650,13 @@ function ScheduleUpcomingTable({
   const desktopRemainingCount = Math.max(0, upcomingBookings.length - previewBookings.length);
 
   return (
-    <section className="schedule-upcoming-panel" aria-labelledby="schedule-upcoming-title">
+    <section
+      className={
+        'schedule-upcoming-panel' +
+        (previewBookings.length ? '' : ' is-empty')
+      }
+      aria-labelledby="schedule-upcoming-title"
+    >
       <header className="schedule-upcoming-head">
         <h3 id="schedule-upcoming-title">Jadwal Mendatang</h3>
         <span>{upcomingBookings.length}</span>
@@ -766,6 +784,7 @@ function CalendarGrid({
   activeStatuses,
   bookings,
   getOperatorFeeVisibility,
+  onDateSelect,
   onSlotClick,
   onBookingClick,
   selectedDate,
@@ -775,17 +794,55 @@ function CalendarGrid({
 }) {
   const gridScrollRef = useRef(null);
   const focusDayRef = useRef(null);
+  const mobileDayRailRef = useRef(null);
   const gridGestureRef = useRef(null);
   const gridClickReleaseTimerRef = useRef(null);
   const suppressGridClickRef = useRef(false);
 
   const today = startOfDay(new Date());
   const visibleDays = useMemo(() => getVisibleDays(selectedDate, viewMode), [selectedDate, viewMode]);
+  const selectedDayIso = toIsoDate(selectedDate);
   const bookingBlocks = useMemo(
     () => getVisibleBookingBlocks(bookings, visibleDays, activeStatuses),
     [activeStatuses, bookings, visibleDays]
   );
   const gridTemplateColumns = getGridTemplate(viewMode, visibleDays.length);
+
+  function scrollGridToDay(dayIso) {
+    const scrollContainer = gridScrollRef.current;
+    const target = scrollContainer?.querySelector(
+      '[data-calendar-day="' + dayIso + '"]',
+    );
+
+    if (!scrollContainer || !target) return;
+
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const stickyTimeColumnWidth = Number.parseFloat(
+      window
+        .getComputedStyle(scrollContainer)
+        .getPropertyValue('--schedule-time-col'),
+    ) || 54;
+    const targetLeft =
+      scrollContainer.scrollLeft +
+      targetRect.left -
+      containerRect.left -
+      stickyTimeColumnWidth -
+      6;
+
+    scrollContainer.scrollTo({
+      behavior: getScheduleScrollBehavior(),
+      left: Math.max(0, targetLeft),
+    });
+  }
+
+  function handleMobileDaySelect(day, dayIso) {
+    onDateSelect?.(startOfDay(day));
+
+    window.requestAnimationFrame(() => {
+      scrollGridToDay(dayIso);
+    });
+  }
 
   function handleGridPointerDown(event) {
     if (
@@ -1019,6 +1076,34 @@ function CalendarGrid({
       }
     };
   }, []);
+
+  useEffect(() => {
+    const rail = mobileDayRailRef.current;
+
+    if (!rail) return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const target = rail.querySelector(
+        '[data-mobile-day="' + selectedDayIso + '"]',
+      );
+
+      if (!target) return;
+
+      const targetLeft =
+        target.offsetLeft -
+        (rail.clientWidth - target.clientWidth) / 2;
+
+      rail.scrollTo({
+        behavior: getScheduleScrollBehavior(),
+        left: Math.max(0, targetLeft),
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [selectedDayIso, viewMode]);
+
   useEffect(() => {
     if (!todayFocusRequest || !todayFocusDateIso) return undefined;
 
@@ -1039,14 +1124,14 @@ function CalendarGrid({
         8;
 
       scrollContainer.scrollIntoView({
-        behavior: 'smooth',
+        behavior: getScheduleScrollBehavior(),
         block: 'nearest',
         inline: 'nearest',
       });
 
       scrollContainer.scrollTo({
         left: Math.max(0, targetLeft),
-        behavior: 'smooth',
+        behavior: getScheduleScrollBehavior(),
       });
 
       target.focus({ preventScroll: true });
@@ -1070,23 +1155,71 @@ function CalendarGrid({
         aria-label="Konteks tanggal kalender mobile"
         className="schedule-mobile-date-strip"
       >
-        <span>
-          {viewMode === 'day'
-            ? 'Hari dipilih'
-            : viewMode === 'week'
-              ? 'Minggu aktif'
-              : 'Geser tanggal'}
+        <span className="schedule-mobile-date-copy">
+          <small>
+            {viewMode === 'day'
+              ? 'Hari dipilih'
+              : viewMode === 'week'
+                ? 'Minggu aktif'
+                : 'Bulan aktif'}
+          </small>
+
+          <strong>
+            {formatRangeLabel(
+              selectedDate,
+              viewMode,
+            )}
+          </strong>
         </span>
 
-        <strong>
-          {formatRangeLabel(
-            selectedDate,
-            viewMode,
-          )}
-        </strong>
+        <span
+          className="schedule-mobile-gesture-hint"
+          id="schedule-grid-gesture-hint"
+        >
+          <em>Geser grid</em>
+          <ChevronRight aria-hidden="true" size={13} />
+        </span>
       </header>
 
+      <nav
+        aria-label="Pilih tanggal dalam rentang aktif"
+        className="schedule-mobile-day-rail"
+        ref={mobileDayRailRef}
+      >
+        {visibleDays.map((day) => {
+          const dayIso = toIsoDate(day);
+          const isSelected = dayIso === selectedDayIso;
+          const isToday = isSameDay(day, today);
+
+          return (
+            <button
+              aria-current={isSelected ? 'date' : undefined}
+              aria-label={day.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                weekday: 'long',
+              })}
+              className={[
+                isSelected ? 'is-selected' : '',
+                isToday ? 'is-today' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              data-mobile-day={dayIso}
+              key={dayIso}
+              type="button"
+              onClick={() => handleMobileDaySelect(day, dayIso)}
+            >
+              <span>{dayNames[day.getDay()]}</span>
+              <strong>{day.getDate()}</strong>
+            </button>
+          );
+        })}
+      </nav>
+
       <div
+        aria-describedby="schedule-grid-gesture-hint"
+        aria-label="Grid jadwal. Geser horizontal untuk melihat tanggal lain."
         className={
           'schedule-grid-scroll ' +
           (viewMode === 'month' ? 'is-month-scroll' : '')
@@ -1107,6 +1240,7 @@ function CalendarGrid({
           finishGridPointerGesture
         }
         ref={gridScrollRef}
+        tabIndex={0}
       >
         <div
           className={'schedule-grid schedule-grid--' + viewMode}
@@ -1122,10 +1256,12 @@ function CalendarGrid({
           {visibleDays.map((day, dayIndex) => {
             const dayIso = toIsoDate(day);
             const isToday = isSameDay(day, today);
+            const isSelectedDay = dayIso === selectedDayIso;
             const isFocusDay = dayIso === todayFocusDateIso;
             const dayHeadClassName = [
               'schedule-day-head',
               isToday ? 'is-today' : '',
+              isSelectedDay ? 'is-selected' : '',
               isFocusDay ? 'is-focus-target' : '',
             ]
               .filter(Boolean)
@@ -1134,6 +1270,7 @@ function CalendarGrid({
             return (
               <div
                 className={dayHeadClassName}
+                data-calendar-day={dayIso}
                 data-today-focus={isFocusDay ? 'true' : undefined}
                 key={dayIso}
                 ref={isFocusDay ? focusDayRef : null}
@@ -1203,7 +1340,7 @@ export default function SchedulePage({
   currentUser,
 }) {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState('month');
+  const [viewMode, setViewMode] = useState(getInitialScheduleViewMode);
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeStatuses, setActiveStatuses] = useState(() => statusFilters.map((item) => item.key));
   const [bookings, setBookings] = useState(() => isScheduleQaPreview ? SCHEDULE_QA_PREVIEW_BOOKINGS : []);
@@ -1468,6 +1605,8 @@ export default function SchedulePage({
     <section
       aria-labelledby="schedule-calendar-title"
       className="schedule-page"
+      data-calendar-view={viewMode}
+      data-schedule-mobile-ui="ui-3m-planning-deck"
       data-schedule-ui="ui-3-spatial"
     >
       <header className="schedule-editorial-header">
@@ -1713,6 +1852,7 @@ export default function SchedulePage({
               bookings={bookings}
               getOperatorFeeVisibility={resolveOperatorFeeVisibility}
               onBookingClick={openBookingDetail}
+              onDateSelect={setSelectedDate}
               selectedDate={selectedDate}
               todayFocusDateIso={todayIsoDate}
               todayFocusRequest={todayFocusRequest}

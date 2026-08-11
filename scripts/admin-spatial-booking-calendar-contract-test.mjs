@@ -558,6 +558,95 @@ for (
   );
 }
 
+/**
+ * UI-3M mobile-first planning deck.
+ *
+ * Mobile opens in the readable week view, keeps a tappable date rail outside
+ * the moving grid, and exposes the grid's horizontal gesture without changing
+ * desktop's month default or Calendar business ownership.
+ */
+for (
+  const required
+  of [
+    'data-schedule-mobile-ui="ui-3m-planning-deck"',
+    'getInitialScheduleViewMode',
+    "matchMedia?.('(max-width: 767px)')?.matches ? 'week' : 'month'",
+    'getScheduleScrollBehavior',
+    'schedule-mobile-date-copy',
+    'schedule-mobile-gesture-hint',
+    'schedule-mobile-day-rail',
+    'mobileDayRailRef',
+    'handleMobileDaySelect',
+    'scrollGridToDay',
+    'onDateSelect?.(startOfDay(day))',
+    'onDateSelect={setSelectedDate}',
+    'aria-current={isSelected',
+    'data-mobile-day={dayIso}',
+    'data-calendar-day={dayIso}',
+    'aria-describedby="schedule-grid-gesture-hint"',
+    'tabIndex={0}',
+    "(previewBookings.length ? '' : ' is-empty')",
+  ]
+) {
+  assert.equal(
+    scheduleSource.includes(
+      required,
+    ),
+    true,
+    'UI-3M Calendar source missing: ' +
+      required,
+  );
+}
+
+for (
+  const required
+  of [
+    'UI-3M — Mobile-first Calendar Planning Deck',
+    '.schedule-mobile-date-copy',
+    '.schedule-mobile-gesture-hint',
+    '.schedule-mobile-day-rail',
+    '.schedule-day-head.is-selected',
+    '.schedule-upcoming-panel.is-empty',
+    'scroll-snap-type:',
+    'scroll-snap-align:',
+    '--schedule-week-day-col:\n      116px;',
+    '--schedule-time-col:\n      54px;',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      required,
+    ),
+    true,
+    'UI-3M Calendar CSS missing: ' +
+      required,
+  );
+}
+
+assert.match(
+  cssSource,
+  /@media \(max-width: 767px\)[\s\S]*?\.schedule-editorial-header\s*\{[\s\S]*?grid-template-areas:[\s\S]*?'kicker count'[\s\S]*?'title title'[\s\S]*?'description description';/,
+  'UI-3M must compact the mobile editorial header into a deliberate grid.',
+);
+
+assert.match(
+  cssSource,
+  /@media \(max-width: 767px\)[\s\S]*?\.schedule-command-primary\s*\{[\s\S]*?grid-template-columns:[\s\S]*?0\.82fr[\s\S]*?1\.18fr[\s\S]*?\);/,
+  'UI-3M must keep mobile date navigation and view switching on one row.',
+);
+
+assert.match(
+  cssSource,
+  /@media \(max-width: 767px\)[\s\S]*?\.schedule-grid-corner,[\s\S]*?\.schedule-time-cell\s*\{[\s\S]*?background:[\s\S]*?--studio-surface-2[\s\S]*?box-shadow:/,
+  'UI-3M sticky time objects must be opaque and separated from scrolled days.',
+);
+
+assert.match(
+  cssSource,
+  /@media \(min-width: 768px\)[\s\S]*?\.schedule-mobile-date-strip,[\s\S]*?\.schedule-mobile-day-rail\s*\{[\s\S]*?display:\s*none;/,
+  'UI-3M mobile date controls must stay out of the desktop layout.',
+);
+
 process.stdout.write(
   '✅ Admin Spatial Booking Calendar UI-3 contract passed.\n',
 );
