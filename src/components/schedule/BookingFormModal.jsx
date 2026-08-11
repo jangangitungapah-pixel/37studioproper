@@ -4,6 +4,7 @@ import {
 } from 'radix-ui';
 import {
   CalendarDays,
+  Check,
   Clock3,
   CreditCard,
   Phone,
@@ -512,6 +513,77 @@ export default function BookingFormModal({
     selectedPaymentStatus?.label ||
     form.paymentStatus;
 
+  const customerStepComplete =
+    Boolean(
+      form.name.trim() &&
+      form.phone.trim(),
+    );
+
+  const serviceStepComplete =
+    Boolean(
+      isPackageSelected ||
+      (
+        form.sessionType &&
+        (
+          !isRecordingSessionSelected ||
+          (
+            recordingTypeOptions.length > 0 &&
+            activeRecordingTypeKey !== 'none'
+          )
+        )
+      ),
+    );
+
+  const slotStepComplete =
+    Boolean(
+      form.date &&
+      form.startHour &&
+      (
+        isNoDurationPackageSelected ||
+        Number(
+          totals.durationHours,
+        ) > 0
+      ),
+    );
+
+  const paymentStepComplete =
+    Boolean(
+      form.paymentStatus === 'pending' ||
+      form.paymentStatus === 'lunas' ||
+      (
+        form.paymentStatus === 'dp' &&
+        parseRupiahInput(
+          form.dpAmount,
+        ) > 0
+      ),
+    );
+
+  const bookingStepStates = [
+    customerStepComplete,
+    serviceStepComplete,
+    slotStepComplete,
+    paymentStepComplete,
+  ];
+
+  const completedStepCount =
+    bookingStepStates.filter(
+      Boolean,
+    ).length;
+
+  const incompleteStepCount =
+    bookingStepStates.length -
+    completedStepCount;
+
+  const isBookingReady =
+    completedStepCount ===
+    bookingStepStates.length;
+
+  const bookingReadinessLabel =
+    isBookingReady
+      ? 'Siap disimpan'
+      : incompleteStepCount +
+        ' langkah belum lengkap';
+
   return (
     <Dialog.Root
       modal={true}
@@ -533,7 +605,7 @@ export default function BookingFormModal({
 
         <Dialog.Content
           className="booking-modal-panel"
-          data-booking-modal-ui="ui-3a-spatial"
+          data-booking-modal-ui="ui-3b-guided"
         >
           <header className="booking-modal-head">
             <div className="booking-modal-heading">
@@ -557,10 +629,45 @@ export default function BookingFormModal({
                 asChild
               >
                 <p className="booking-modal-description">
-                  Susun customer, layanan, slot studio,
-                  dan pembayaran dalam satu alur booking.
+                  Lengkapi empat langkah utama.
+                  Ringkasan dan tagihan akan diperbarui otomatis.
                 </p>
               </Dialog.Description>
+
+              <div
+                aria-label={
+                  'Progress booking ' +
+                  completedStepCount +
+                  ' dari 4 langkah'
+                }
+                className="booking-modal-progress"
+              >
+                <div className="booking-modal-progress-copy">
+                  <span>Progress form</span>
+                  <strong>
+                    {completedStepCount}/4 siap
+                  </strong>
+                </div>
+
+                <div
+                  aria-hidden="true"
+                  className="booking-modal-progress-track"
+                >
+                  {bookingStepStates.map((
+                    isComplete,
+                    index,
+                  ) => (
+                    <span
+                      className={
+                        isComplete
+                          ? 'is-complete'
+                          : ''
+                      }
+                      key={'booking-step-' + index}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
 
             <Dialog.Close
@@ -594,11 +701,29 @@ export default function BookingFormModal({
               <div className="booking-form-fields">
                 <section
                   aria-labelledby="booking-section-customer"
-                  className="booking-form-section"
+                  className={
+                    'booking-form-section ' +
+                    (
+                      customerStepComplete
+                        ? 'is-complete'
+                        : 'is-pending'
+                    )
+                  }
+                  data-booking-step="customer"
                 >
                   <header className="booking-form-section-head">
-                    <span aria-hidden="true">
-                      01
+                    <span
+                      aria-hidden="true"
+                      className="booking-form-step-index"
+                    >
+                      {customerStepComplete ? (
+                        <Check
+                          size={13}
+                          strokeWidth={2.6}
+                        />
+                      ) : (
+                        '01'
+                      )}
                     </span>
 
                     <div>
@@ -607,8 +732,13 @@ export default function BookingFormModal({
                       </h3>
 
                       <p>
-                        Siapa yang memakai slot studio ini?
+                        Identitas utama pemakai slot studio.
                       </p>
+                      <small className="booking-form-step-state">
+                        {customerStepComplete
+                          ? 'Customer lengkap'
+                          : 'Nama & No HP wajib'}
+                      </small>
                     </div>
                   </header>
 
@@ -651,11 +781,29 @@ export default function BookingFormModal({
 
                 <section
                   aria-labelledby="booking-section-service"
-                  className="booking-form-section"
+                  className={
+                    'booking-form-section ' +
+                    (
+                      serviceStepComplete
+                        ? 'is-complete'
+                        : 'is-pending'
+                    )
+                  }
+                  data-booking-step="service"
                 >
                   <header className="booking-form-section-head">
-                    <span aria-hidden="true">
-                      02
+                    <span
+                      aria-hidden="true"
+                      className="booking-form-step-index"
+                    >
+                      {serviceStepComplete ? (
+                        <Check
+                          size={13}
+                          strokeWidth={2.6}
+                        />
+                      ) : (
+                        '02'
+                      )}
                     </span>
 
                     <div>
@@ -664,8 +812,13 @@ export default function BookingFormModal({
                       </h3>
 
                       <p>
-                        Pilih paket atau session yang akan dijalankan.
+                        Paket atau session menentukan harga dan durasi.
                       </p>
+                      <small className="booking-form-step-state">
+                        {serviceStepComplete
+                          ? 'Layanan siap'
+                          : 'Pilih layanan'}
+                      </small>
                     </div>
                   </header>
 
@@ -721,11 +874,29 @@ export default function BookingFormModal({
 
                 <section
                   aria-labelledby="booking-section-slot"
-                  className="booking-form-section"
+                  className={
+                    'booking-form-section ' +
+                    (
+                      slotStepComplete
+                        ? 'is-complete'
+                        : 'is-pending'
+                    )
+                  }
+                  data-booking-step="slot"
                 >
                   <header className="booking-form-section-head">
-                    <span aria-hidden="true">
-                      03
+                    <span
+                      aria-hidden="true"
+                      className="booking-form-step-index"
+                    >
+                      {slotStepComplete ? (
+                        <Check
+                          size={13}
+                          strokeWidth={2.6}
+                        />
+                      ) : (
+                        '03'
+                      )}
                     </span>
 
                     <div>
@@ -734,12 +905,17 @@ export default function BookingFormModal({
                       </h3>
 
                       <p>
-                        Tentukan tanggal, jam mulai, dan durasi penggunaan.
+                        Tentukan tanggal, jam mulai, dan durasi.
                       </p>
+                      <small className="booking-form-step-state">
+                        {slotStepComplete
+                          ? 'Slot siap'
+                          : 'Atur jadwal'}
+                      </small>
                     </div>
                   </header>
 
-                  <div className="booking-form-section-grid">
+                  <div className="booking-form-section-grid is-slot-grid">
                     <StudioTextField
                       icon={CalendarDays}
                       id="booking-date"
@@ -759,13 +935,6 @@ export default function BookingFormModal({
                     />
 
                     <StudioSelect
-                      className={
-                        form.duration === 'custom' &&
-                        !isPackageSelected &&
-                        !isRecordingSessionSelected
-                          ? ''
-                          : 'booking-field-span-2'
-                      }
                       inlineList
                       disabled={
                         isPackageSelected ||
@@ -799,11 +968,29 @@ export default function BookingFormModal({
 
                 <section
                   aria-labelledby="booking-section-payment"
-                  className="booking-form-section"
+                  className={
+                    'booking-form-section ' +
+                    (
+                      paymentStepComplete
+                        ? 'is-complete'
+                        : 'is-pending'
+                    )
+                  }
+                  data-booking-step="payment"
                 >
                   <header className="booking-form-section-head">
-                    <span aria-hidden="true">
-                      04
+                    <span
+                      aria-hidden="true"
+                      className="booking-form-step-index"
+                    >
+                      {paymentStepComplete ? (
+                        <Check
+                          size={13}
+                          strokeWidth={2.6}
+                        />
+                      ) : (
+                        '04'
+                      )}
                     </span>
 
                     <div>
@@ -814,10 +1001,15 @@ export default function BookingFormModal({
                       <p>
                         Catat status dan pembayaran awal booking.
                       </p>
+                      <small className="booking-form-step-state">
+                        {paymentStepComplete
+                          ? 'Pembayaran siap'
+                          : 'Lengkapi pembayaran'}
+                      </small>
                     </div>
                   </header>
 
-                  <div className="booking-form-section-grid">
+                  <div className="booking-form-section-grid is-payment-grid">
                     <StudioSelect
                       className={
                         form.paymentStatus === 'pending'
@@ -864,6 +1056,39 @@ export default function BookingFormModal({
                 aria-label="Ringkasan booking"
                 className="booking-form-summary"
               >
+                <section
+                  className={
+                    'booking-summary-readiness ' +
+                    (
+                      isBookingReady
+                        ? 'is-ready'
+                        : ''
+                    )
+                  }
+                >
+                  <span className="booking-summary-readiness-icon">
+                    {isBookingReady ? (
+                      <Check
+                        size={15}
+                        strokeWidth={2.6}
+                      />
+                    ) : (
+                      completedStepCount
+                    )}
+                  </span>
+
+                  <div>
+                    <small>Booking readiness</small>
+                    <strong>
+                      {bookingReadinessLabel}
+                    </strong>
+                  </div>
+
+                  <em>
+                    {completedStepCount}/4
+                  </em>
+                </section>
+
                 <section className="booking-summary-hero">
                   <span>
                     Live booking quote
@@ -1074,6 +1299,16 @@ export default function BookingFormModal({
                     totals.invoiceAmount,
                   )}
                 </strong>
+
+                <small
+                  className={
+                    isBookingReady
+                      ? 'is-ready'
+                      : ''
+                  }
+                >
+                  {bookingReadinessLabel}
+                </small>
               </div>
 
               <div className="booking-form-action-buttons">

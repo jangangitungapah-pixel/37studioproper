@@ -33,7 +33,7 @@ for (
     'Dialog.Title',
     'Dialog.Description',
     'Dialog.Close',
-    'data-booking-modal-ui="ui-3a-spatial"',
+    'data-booking-modal-ui="ui-3b-guided"',
     'booking-form-layout',
     'booking-form-fields',
     'booking-form-section',
@@ -41,6 +41,19 @@ for (
     'booking-summary-hero',
     'booking-summary-slot',
     'booking-summary-money',
+    'booking-modal-progress',
+    'bookingStepStates',
+    'completedStepCount',
+    'bookingReadinessLabel',
+    'customerStepComplete',
+    'serviceStepComplete',
+    'slotStepComplete',
+    'paymentStepComplete',
+    'booking-summary-readiness',
+    'data-booking-step="customer"',
+    'data-booking-step="service"',
+    'data-booking-step="slot"',
+    'data-booking-step="payment"',
     'formatBookingModalDate',
     'Live booking quote',
     'Slot preview',
@@ -51,7 +64,7 @@ for (
       required,
     ),
     true,
-    'UI-3A modal missing: ' +
+    'UI-3B modal missing: ' +
       required,
   );
 }
@@ -75,7 +88,7 @@ for (
       deprecated,
     ),
     false,
-    'UI-3A must remove manual dialog behavior: ' +
+    'UI-3B must remove manual dialog behavior: ' +
       deprecated,
   );
 }
@@ -177,7 +190,7 @@ const bookingCss =
   );
 
 const cssMarker =
-  '/* UI-3A — Spatial Booking Form Modal */';
+  '/* UI-3B — Guided Booking Composer */';
 
 const modalCssStart =
   bookingCss.indexOf(
@@ -187,7 +200,7 @@ const modalCssStart =
 assert.notEqual(
   modalCssStart,
   -1,
-  'UI-3A spatial modal CSS marker must exist.',
+  'UI-3B spatial modal CSS marker must exist.',
 );
 
 const modalCss =
@@ -196,7 +209,7 @@ const modalCss =
   );
 
 /**
- * UI-3A.1 dialog stacking regression
+ * UI-3B.1 dialog stacking regression
  *
  * Radix Dialog.Content is a sibling of Dialog.Overlay inside
  * the Portal. The content must therefore own a fixed positioned
@@ -211,7 +224,7 @@ const compactModalCss =
     .trim();
 
 const spatialPanelSelector =
-  ".booking-modal-panel[data-booking-modal-ui='ui-3a-spatial'] {";
+  ".booking-modal-panel[data-booking-modal-ui='ui-3b-guided'] {";
 
 const spatialPanelStart =
   compactModalCss.indexOf(
@@ -221,19 +234,19 @@ const spatialPanelStart =
 assert.notEqual(
   spatialPanelStart,
   -1,
-  'UI-3A spatial modal panel selector must exist.',
+  'UI-3B spatial modal panel selector must exist.',
 );
 
 const spatialPanelEnd =
   compactModalCss.indexOf(
-    ".booking-modal-panel[data-booking-modal-ui='ui-3a-spatial'] .booking-modal-head",
+    ".booking-modal-panel[data-booking-modal-ui='ui-3b-guided'] .booking-modal-head",
     spatialPanelStart,
   );
 
 assert.notEqual(
   spatialPanelEnd,
   -1,
-  'UI-3A spatial modal base panel region must be readable.',
+  'UI-3B spatial modal base panel region must be readable.',
 );
 
 const spatialPanelCss =
@@ -257,7 +270,7 @@ for (
       required,
     ),
     true,
-    'UI-3A modal stacking missing: ' +
+    'UI-3B modal stacking missing: ' +
       required,
   );
 }
@@ -267,7 +280,7 @@ assert.equal(
     'translate: -50% 0;'
   ),
   true,
-  'UI-3A mobile modal must remain a bottom-positioned sheet.',
+  'UI-3B mobile modal must remain a bottom-positioned sheet.',
 );
 
 assert.equal(
@@ -275,14 +288,14 @@ assert.equal(
     'bottom: 0;'
   ),
   true,
-  'UI-3A narrow mobile modal must remain anchored to viewport bottom.',
+  'UI-3B narrow mobile modal must remain anchored to viewport bottom.',
 );
 
 for (
   const required
   of [
     '.booking-modal-backdrop',
-    ".booking-modal-panel[data-booking-modal-ui='ui-3a-spatial']",
+    ".booking-modal-panel[data-booking-modal-ui='ui-3b-guided']",
     '.booking-modal-heading',
     '.booking-modal-kicker',
     '.booking-form-layout',
@@ -293,6 +306,11 @@ for (
     '.booking-summary-hero',
     '.booking-summary-slot',
     '.booking-summary-money',
+    '.booking-summary-readiness',
+    '.booking-modal-progress',
+    '.booking-form-section.is-complete',
+    '.booking-form-section-grid.is-slot-grid',
+    '.booking-form-section-grid.is-payment-grid',
     '.booking-form-actions',
     '--studio-surface-1',
     '--studio-surface-2',
@@ -319,7 +337,7 @@ for (
       required,
     ),
     true,
-    'UI-3A modal CSS missing: ' +
+    'UI-3B modal CSS missing: ' +
       required,
   );
 }
@@ -329,7 +347,7 @@ assert.equal(
     '--auth-'
   ),
   false,
-  'UI-3A modal CSS must use Spatial semantic tokens.',
+  'UI-3B modal CSS must use Spatial semantic tokens.',
 );
 
 const rawHexMatches =
@@ -341,7 +359,36 @@ const rawHexMatches =
 assert.equal(
   rawHexMatches.length,
   0,
-  'UI-3A modal CSS must not contain raw hex colors.',
+  'UI-3B modal CSS must not contain raw hex colors.',
+);
+
+/**
+ * Guided UX stays presentation-only.
+ */
+assert.equal(
+  modalSource.includes(
+    'disabled={!isBookingReady || isSaving}'
+  ),
+  false,
+  'UI-3B readiness must not replace authoritative submit validation.',
+);
+
+assert.match(
+  modalCss,
+  /\.booking-form-summary\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
+  'UI-3B desktop live summary must remain sticky.',
+);
+
+assert.match(
+  modalCss,
+  /@media \(max-width: 767px\)[\s\S]*?\.booking-summary-slot,[\s\S]*?\.booking-summary-money,[\s\S]*?\.booking-summary-discount\s*\{[\s\S]*?display:\s*none;/,
+  'UI-3B mobile must collapse detailed summary into the compact readiness + quote row.',
+);
+
+assert.match(
+  modalCss,
+  /\.booking-modal-description\s*\{[\s\S]*?text-transform:\s*none;/,
+  'UI-3B modal subtitle must not inherit uppercase presentation.',
 );
 
 /**
@@ -367,7 +414,7 @@ for (
       accessibility,
     ),
     true,
-    'UI-3A accessibility marker missing: ' +
+    'UI-3B accessibility marker missing: ' +
       accessibility,
   );
 }
@@ -400,7 +447,7 @@ for (
         ],
     ),
     false,
-    'UI-3A must not introduce generic visual framework: ' +
+    'UI-3B must not introduce generic visual framework: ' +
       forbidden,
   );
 }
@@ -412,7 +459,7 @@ assert.equal(
     ] !==
     undefined,
   true,
-  'UI-3A expects the existing radix-ui dependency.',
+  'UI-3B expects the existing radix-ui dependency.',
 );
 
 assert.equal(
@@ -423,9 +470,9 @@ assert.equal(
       'admin-spatial-booking-form-modal-contract-test.mjs'
     ),
   true,
-  'UI-3A modal contract must be registered.',
+  'UI-3B modal contract must be registered.',
 );
 
 process.stdout.write(
-  '✅ Admin Spatial Booking Form Modal UI-3A contract passed.\n',
+  '✅ Admin Guided Booking Composer UI-3B contract passed.\n',
 );
