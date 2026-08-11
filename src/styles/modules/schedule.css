@@ -909,8 +909,8 @@ strong {
 }
 
 /*
- * UI-3M — Mobile-first Calendar Planning Deck.
- * Date context and a tappable day rail stay outside the moving grid.
+ * UI-3M.1 — Compact Mobile Calendar Context.
+ * Date context stays visible without duplicating the grid's date headers.
  */
 .schedule-mobile-date-strip {
   min-width:
@@ -1032,192 +1032,6 @@ em {
 
   font-weight:
     680;
-}
-
-.schedule-mobile-day-rail {
-  min-width:
-    0;
-
-  display:
-    flex;
-
-  gap:
-    5px;
-
-  overflow-x:
-    auto;
-
-  border-bottom:
-    1px solid
-    var(
-      --studio-edge-soft
-    );
-
-  background:
-    var(
-      --studio-surface-1
-    );
-
-  padding:
-    7px
-    8px;
-
-  scroll-snap-type:
-    x
-    proximity;
-
-  scrollbar-width:
-    none;
-
-  -webkit-overflow-scrolling:
-    touch;
-}
-
-.schedule-mobile-day-rail::-webkit-scrollbar {
-  display:
-    none;
-}
-
-.schedule-mobile-day-rail
-button {
-  min-width:
-    44px;
-
-  min-height:
-    44px;
-
-  display:
-    grid;
-
-  place-items:
-    center;
-
-  align-content:
-    center;
-
-  gap:
-    1px;
-
-  scroll-snap-align:
-    center;
-
-  border:
-    1px solid
-    transparent;
-
-  border-radius:
-    12px;
-
-  background:
-    transparent;
-
-  color:
-    var(
-      --studio-text-tertiary
-    );
-
-  padding:
-    4px
-    8px;
-
-  font:
-    inherit;
-
-  cursor:
-    pointer;
-}
-
-.schedule-mobile-day-rail
-button
-span {
-  font-size:
-    0.5rem;
-
-  font-weight:
-    680;
-
-  letter-spacing:
-    0.04em;
-
-  text-transform:
-    uppercase;
-}
-
-.schedule-mobile-day-rail
-button
-strong {
-  color:
-    var(
-      --studio-text-secondary
-    );
-
-  font-size:
-    0.73rem;
-
-  font-weight:
-    760;
-
-  line-height:
-    1;
-}
-
-.schedule-mobile-day-rail
-button.is-today {
-  color:
-    var(
-      --studio-accent-hover
-    );
-}
-
-.schedule-mobile-day-rail
-button.is-selected {
-  border-color:
-    color-mix(
-      in srgb,
-      var(
-        --studio-accent
-      )
-      24%,
-      var(
-        --studio-edge-soft
-      )
-    );
-
-  background:
-    var(
-      --studio-accent-soft
-    );
-
-  color:
-    var(
-      --studio-accent-hover
-    );
-
-  box-shadow:
-    var(
-      --studio-shadow-contact
-    );
-}
-
-.schedule-mobile-day-rail
-button.is-selected
-strong {
-  color:
-    var(
-      --studio-accent-hover
-    );
-}
-
-.schedule-mobile-day-rail
-button:focus-visible {
-  outline:
-    2px solid
-    var(
-      --studio-accent
-    );
-
-  outline-offset:
-    1px;
 }
 
 /*
@@ -3644,17 +3458,6 @@ html[
       0.7rem;
   }
 
-  .schedule-mobile-day-rail {
-    padding-inline:
-      7px;
-  }
-
-  .schedule-grid-scroll {
-    scroll-snap-type:
-      x
-      proximity;
-  }
-
   .schedule-grid-scroll:focus-visible {
     outline:
       2px solid
@@ -3689,9 +3492,6 @@ html[
   }
 
   .schedule-day-head {
-    scroll-snap-align:
-      start;
-
     gap:
       2px;
 
@@ -4055,8 +3855,7 @@ html[
       560px;
   }
 
-  .schedule-mobile-date-strip,
-  .schedule-mobile-day-rail {
+  .schedule-mobile-date-strip {
     display:
       none;
   }
@@ -4412,8 +4211,6 @@ html[
       -2px;
   }
 
-  .schedule-mobile-day-rail
-  button.is-selected,
   .schedule-day-head.is-selected {
     outline:
       2px solid
@@ -4426,8 +4223,6 @@ html[
 
 @media (prefers-reduced-motion: reduce) {
   .schedule-booking-block,
-  .schedule-mobile-day-rail
-  button,
   .schedule-slot-add-hint,
   .schedule-loading-orb,
   .schedule-toast,

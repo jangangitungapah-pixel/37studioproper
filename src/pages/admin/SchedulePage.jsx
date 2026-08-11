@@ -784,7 +784,6 @@ function CalendarGrid({
   activeStatuses,
   bookings,
   getOperatorFeeVisibility,
-  onDateSelect,
   onSlotClick,
   onBookingClick,
   selectedDate,
@@ -794,7 +793,6 @@ function CalendarGrid({
 }) {
   const gridScrollRef = useRef(null);
   const focusDayRef = useRef(null);
-  const mobileDayRailRef = useRef(null);
   const gridGestureRef = useRef(null);
   const gridClickReleaseTimerRef = useRef(null);
   const suppressGridClickRef = useRef(false);
@@ -807,42 +805,6 @@ function CalendarGrid({
     [activeStatuses, bookings, visibleDays]
   );
   const gridTemplateColumns = getGridTemplate(viewMode, visibleDays.length);
-
-  function scrollGridToDay(dayIso) {
-    const scrollContainer = gridScrollRef.current;
-    const target = scrollContainer?.querySelector(
-      '[data-calendar-day="' + dayIso + '"]',
-    );
-
-    if (!scrollContainer || !target) return;
-
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const stickyTimeColumnWidth = Number.parseFloat(
-      window
-        .getComputedStyle(scrollContainer)
-        .getPropertyValue('--schedule-time-col'),
-    ) || 54;
-    const targetLeft =
-      scrollContainer.scrollLeft +
-      targetRect.left -
-      containerRect.left -
-      stickyTimeColumnWidth -
-      6;
-
-    scrollContainer.scrollTo({
-      behavior: getScheduleScrollBehavior(),
-      left: Math.max(0, targetLeft),
-    });
-  }
-
-  function handleMobileDaySelect(day, dayIso) {
-    onDateSelect?.(startOfDay(day));
-
-    window.requestAnimationFrame(() => {
-      scrollGridToDay(dayIso);
-    });
-  }
 
   function handleGridPointerDown(event) {
     if (
@@ -1078,33 +1040,6 @@ function CalendarGrid({
   }, []);
 
   useEffect(() => {
-    const rail = mobileDayRailRef.current;
-
-    if (!rail) return undefined;
-
-    const frameId = window.requestAnimationFrame(() => {
-      const target = rail.querySelector(
-        '[data-mobile-day="' + selectedDayIso + '"]',
-      );
-
-      if (!target) return;
-
-      const targetLeft =
-        target.offsetLeft -
-        (rail.clientWidth - target.clientWidth) / 2;
-
-      rail.scrollTo({
-        behavior: getScheduleScrollBehavior(),
-        left: Math.max(0, targetLeft),
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [selectedDayIso, viewMode]);
-
-  useEffect(() => {
     if (!todayFocusRequest || !todayFocusDateIso) return undefined;
 
     const frameId = window.requestAnimationFrame(() => {
@@ -1180,42 +1115,6 @@ function CalendarGrid({
           <ChevronRight aria-hidden="true" size={13} />
         </span>
       </header>
-
-      <nav
-        aria-label="Pilih tanggal dalam rentang aktif"
-        className="schedule-mobile-day-rail"
-        ref={mobileDayRailRef}
-      >
-        {visibleDays.map((day) => {
-          const dayIso = toIsoDate(day);
-          const isSelected = dayIso === selectedDayIso;
-          const isToday = isSameDay(day, today);
-
-          return (
-            <button
-              aria-current={isSelected ? 'date' : undefined}
-              aria-label={day.toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                weekday: 'long',
-              })}
-              className={[
-                isSelected ? 'is-selected' : '',
-                isToday ? 'is-today' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              data-mobile-day={dayIso}
-              key={dayIso}
-              type="button"
-              onClick={() => handleMobileDaySelect(day, dayIso)}
-            >
-              <span>{dayNames[day.getDay()]}</span>
-              <strong>{day.getDate()}</strong>
-            </button>
-          );
-        })}
-      </nav>
 
       <div
         aria-describedby="schedule-grid-gesture-hint"
@@ -1852,7 +1751,6 @@ export default function SchedulePage({
               bookings={bookings}
               getOperatorFeeVisibility={resolveOperatorFeeVisibility}
               onBookingClick={openBookingDetail}
-              onDateSelect={setSelectedDate}
               selectedDate={selectedDate}
               todayFocusDateIso={todayIsoDate}
               todayFocusRequest={todayFocusRequest}

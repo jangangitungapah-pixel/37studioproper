@@ -559,11 +559,10 @@ for (
 }
 
 /**
- * UI-3M mobile-first planning deck.
+ * UI-3M.1 compact, continuously scrolling planning deck.
  *
- * Mobile opens in the readable week view, keeps a tappable date rail outside
- * the moving grid, and exposes the grid's horizontal gesture without changing
- * desktop's month default or Calendar business ownership.
+ * Mobile opens in the readable week view, keeps only the compact range context,
+ * and leaves horizontal grid movement continuous instead of snapping columns.
  */
 for (
   const required
@@ -574,14 +573,6 @@ for (
     'getScheduleScrollBehavior',
     'schedule-mobile-date-copy',
     'schedule-mobile-gesture-hint',
-    'schedule-mobile-day-rail',
-    'mobileDayRailRef',
-    'handleMobileDaySelect',
-    'scrollGridToDay',
-    'onDateSelect?.(startOfDay(day))',
-    'onDateSelect={setSelectedDate}',
-    'aria-current={isSelected',
-    'data-mobile-day={dayIso}',
     'data-calendar-day={dayIso}',
     'aria-describedby="schedule-grid-gesture-hint"',
     'tabIndex={0}',
@@ -601,14 +592,11 @@ for (
 for (
   const required
   of [
-    'UI-3M — Mobile-first Calendar Planning Deck',
+    'UI-3M.1 — Compact Mobile Calendar Context',
     '.schedule-mobile-date-copy',
     '.schedule-mobile-gesture-hint',
-    '.schedule-mobile-day-rail',
     '.schedule-day-head.is-selected',
     '.schedule-upcoming-panel.is-empty',
-    'scroll-snap-type:',
-    'scroll-snap-align:',
     '--schedule-week-day-col:\n      116px;',
     '--schedule-time-col:\n      54px;',
   ]
@@ -620,6 +608,46 @@ for (
     true,
     'UI-3M Calendar CSS missing: ' +
       required,
+  );
+}
+
+for (
+  const removedSource
+  of [
+    'schedule-mobile-day-rail',
+    'mobileDayRailRef',
+    'handleMobileDaySelect',
+    'scrollGridToDay',
+    'onDateSelect?.(startOfDay(day))',
+    'onDateSelect={setSelectedDate}',
+    'data-mobile-day={dayIso}',
+  ]
+) {
+  assert.equal(
+    scheduleSource.includes(
+      removedSource,
+    ),
+    false,
+    'UI-3M.1 must remove redundant mobile date selector: ' +
+      removedSource,
+  );
+}
+
+for (
+  const removedCss
+  of [
+    '.schedule-mobile-day-rail',
+    'scroll-snap-type:',
+    'scroll-snap-align:',
+  ]
+) {
+  assert.equal(
+    cssSource.includes(
+      removedCss,
+    ),
+    false,
+    'UI-3M.1 must keep horizontal Calendar movement continuous: ' +
+      removedCss,
   );
 }
 
@@ -643,8 +671,8 @@ assert.match(
 
 assert.match(
   cssSource,
-  /@media \(min-width: 768px\)[\s\S]*?\.schedule-mobile-date-strip,[\s\S]*?\.schedule-mobile-day-rail\s*\{[\s\S]*?display:\s*none;/,
-  'UI-3M mobile date controls must stay out of the desktop layout.',
+  /@media \(min-width: 768px\)[\s\S]*?\.schedule-mobile-date-strip\s*\{[\s\S]*?display:\s*none;/,
+  'UI-3M compact mobile date context must stay out of the desktop layout.',
 );
 
 process.stdout.write(
