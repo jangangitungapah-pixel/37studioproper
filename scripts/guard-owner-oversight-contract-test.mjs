@@ -103,15 +103,45 @@ for (
 }
 
 /*
- * Generic blocked state must explicitly exclude Owner Oversight.
+ * Owner safety is provided by mutually exclusive GP7 access states.
+ * The generic blocked branch no longer exists, so there is no
+ * !isOwnerOversight escape condition to maintain.
  */
-assert.match(
-  guardSource,
-
-  /authUser &&[\s\S]*?!canUseGuardPage &&[\s\S]*?!isOwnerOversight/,
-
-  'Owner Oversight must not fall through to generic Guard blocked state.'
+assert.equal(
+  guardSource.includes(
+    '!isOwnerOversight'
+  ),
+  false,
+  'GP7 must not use the retired generic Owner exclusion guard.'
 );
+
+for (
+  const required
+  of [
+    'const isOwnerOversight = Boolean(',
+    'GUARD_PORTAL_ACCESS.OWNER_OVERSIGHT',
+    'const isWrongPortalClient = Boolean(',
+    'GUARD_PORTAL_ACCESS.WRONG_PORTAL_CLIENT',
+    'const isBlockedGuardAccess = Boolean(',
+    'GUARD_PORTAL_ACCESS.BLOCKED',
+    'const isInvalidGuardAccess = Boolean(',
+    'GUARD_PORTAL_ACCESS.INVALID_ACCOUNT',
+    'GUARD_PORTAL_ACCESS.MISSING_ACCOUNT',
+    'aria-label="Owner Oversight Mode"',
+    'aria-label="Wrong Portal Client"',
+    'aria-label="Guard Access Blocked"',
+    'aria-label="Guard Account Recovery Required"',
+  ]
+) {
+  assert.equal(
+    guardSource.includes(
+      required
+    ),
+    true,
+    'Owner/GP7 mutually exclusive access-state marker missing: ' +
+      required
+  );
+}
 
 /*
  * Guard-owned workspace remains separate from Owner Oversight.

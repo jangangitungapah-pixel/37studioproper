@@ -339,8 +339,8 @@ assert.match(
 
 /*
  * GP-3 gives approved Owner a dedicated oversight state.
- * The generic blocked copy may remain for Admin/Client/pending states,
- * but Owner must be excluded from that branch.
+ * GP-7 replaces the old generic blocked branch with mutually exclusive
+ * Client / Blocked / Invalid access states.
  */
 for (
   const required
@@ -354,7 +354,6 @@ for (
     'Kembali ke Admin',
     'Buka Attendance Review',
     '/admin/operations/guard-attendance',
-    '!isOwnerOversight',
   ]
 ) {
   assert.equal(
@@ -380,6 +379,44 @@ assert.equal(
 );
 
 
+
+/*
+ * GP7 explicit access states supersede the old generic Owner exclusion guard.
+ * Owner is isolated by OWNER_OVERSIGHT itself; wrong-role states each have
+ * their own canonical predicate.
+ */
+assert.equal(
+  guardPageSource.includes(
+    '!isOwnerOversight'
+  ),
+  false,
+  'GP7 must not restore the retired generic !isOwnerOversight fallback guard.'
+);
+
+for (
+  const required
+  of [
+    'const isWrongPortalClient = Boolean(',
+    'GUARD_PORTAL_ACCESS.WRONG_PORTAL_CLIENT',
+    'const isBlockedGuardAccess = Boolean(',
+    'GUARD_PORTAL_ACCESS.BLOCKED',
+    'const isInvalidGuardAccess = Boolean(',
+    'GUARD_PORTAL_ACCESS.INVALID_ACCOUNT',
+    'GUARD_PORTAL_ACCESS.MISSING_ACCOUNT',
+    'aria-label="Wrong Portal Client"',
+    'aria-label="Guard Access Blocked"',
+    'aria-label="Guard Account Recovery Required"',
+  ]
+) {
+  assert.equal(
+    guardPageSource.includes(
+      required
+    ),
+    true,
+    'GP7 explicit access-state marker missing from phase baseline: ' +
+      required
+  );
+}
 
 /*
  * GP-4 separates portal switching from global account logout.
