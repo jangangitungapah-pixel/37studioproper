@@ -576,12 +576,43 @@ assert.match(
   'Guard attendance create must remain canonical Guard self-only.',
 );
 
+const guardCreateRuleBlock =
+  rulesSource.slice(
+    rulesSource.indexOf(
+      'function guardCreatesOwnAttendance(data, attendanceId) {'
+    ),
+    rulesSource.indexOf(
+      'function validGuardSelfCheckoutPatch() {'
+    ),
+  );
+
+assert.notEqual(
+  guardCreateRuleBlock,
+  '',
+  'Guard attendance create rule block must remain present.',
+);
+
+for (const required of [
+  "attendanceId == 'att__' + request.auth.uid + '__' + data.date",
+  'data.guardUid == request.auth.uid',
+  'data.clockInByUid == request.auth.uid',
+]) {
+  assert.equal(
+    guardCreateRuleBlock.includes(
+      required,
+    ),
+    true,
+    'Guard attendance create UID binding missing: ' +
+      required,
+  );
+}
+
 assert.equal(
-  rulesSource.includes(
-    'request.auth.uid == data.guardUid'
+  guardCreateRuleBlock.includes(
+    'request.auth.uid'
   ),
   true,
-  'Guard attendance create must remain tied to request.auth.uid.',
+  'Guard attendance create UID bindings must remain scoped to request.auth.uid.',
 );
 
 /*
