@@ -1404,6 +1404,11 @@
   gap: 9px;
 }
 
+/* UI-3C.1 — Slot Studio field baseline alignment */
+.booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-section-grid.is-slot-grid {
+  align-items: end;
+}
+
 .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-field-span-2,
 .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-section-grid > .booking-field-span-2 {
   grid-column: auto;

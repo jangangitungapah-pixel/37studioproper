@@ -225,6 +225,12 @@ const modalCss =
     modalCssStart,
   );
 
+assert.match(
+  modalCss,
+  /\/\* UI-3C\.1 — Slot Studio field baseline alignment \*\/[\s\S]*?\.booking-form-section-grid\.is-slot-grid\s*\{[\s\S]*?align-items:\s*end;/,
+  'UI-3C.1 Slot Studio date, start time, and duration controls must share one bottom baseline.',
+);
+
 const compactModalCss =
   modalCss
     .replace(
