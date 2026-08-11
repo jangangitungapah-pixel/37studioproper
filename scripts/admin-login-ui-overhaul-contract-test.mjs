@@ -137,6 +137,58 @@ for (const required of [
   );
 }
 
+/*
+ * Admin Login must own a local light palette independent of root theme.
+ * ThemeProvider / global preference must not be mutated by this page.
+ */
+for (const required of [
+  '/* Admin Login is intentionally light-first regardless of root theme. */',
+  'color-scheme: light;',
+  '--studio-bg-page: #f7f1e8;',
+  '--studio-surface-1: #fffaf2;',
+  '--studio-text-strong: #201812;',
+  '--studio-text-main: #382c22;',
+  '--studio-text-muted: #756657;',
+  '--studio-accent: #b66b19;',
+  '--studio-accent-strong: #934f10;',
+  '--auth-bg-card: var(--studio-surface-1);',
+  '--auth-text-strong: var(--studio-text-strong);',
+  '--auth-accent: var(--studio-accent);',
+]) {
+  assert.equal(
+    cssSource.includes(
+      required,
+    ),
+    true,
+    'Admin Login light-first CSS marker missing: ' +
+      required,
+  );
+}
+
+assert.equal(
+  loginSource.includes(
+    'document.documentElement'
+  ),
+  false,
+  'Admin Login must not mutate the root document theme.',
+);
+
+assert.equal(
+  loginSource.includes(
+    'localStorage.setItem'
+  ),
+  false,
+  'Admin Login must not overwrite the saved global theme preference.',
+);
+
+assert.equal(
+  cssSource.includes(
+    'Admin Login must own a local light palette independent of root theme.'
+  ),
+  false,
+  'Contract-only message must not leak into runtime CSS.',
+);
+
 assert.equal(
   clientLoginSource.includes(
     'admin-login-'

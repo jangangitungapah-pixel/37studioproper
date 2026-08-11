@@ -214,6 +214,80 @@
  * Scoped to data-auth-surface="login" so ClientLoginPage remains untouched.
  */
 .auth-page[data-auth-surface="login"].admin-login-page {
+  /* Admin Login is intentionally light-first regardless of root theme. */
+  color-scheme: light;
+
+  --studio-bg-app: #f3eee5;
+  --studio-bg-page: #f7f1e8;
+  --studio-bg-shell: #efe5d7;
+
+  --studio-surface-1: #fffaf2;
+  --studio-surface-2: #f5ecdf;
+  --studio-surface-3: #eadcc9;
+  --studio-surface-glass: rgba(255, 250, 242, 0.94);
+  --studio-surface-inverse: #17110d;
+
+  --studio-text-strong: #201812;
+  --studio-text-main: #382c22;
+  --studio-text-muted: #756657;
+  --studio-text-subtle: #968675;
+  --studio-text-inverse: #fff8ed;
+
+  --studio-border-soft: rgba(48, 35, 24, 0.08);
+  --studio-border: rgba(48, 35, 24, 0.14);
+  --studio-border-strong: rgba(164, 95, 24, 0.28);
+
+  --studio-accent: #b66b19;
+  --studio-accent-strong: #934f10;
+  --studio-accent-muted: #d8953c;
+  --studio-accent-soft: rgba(182, 107, 25, 0.13);
+  --studio-accent-glow: rgba(182, 107, 25, 0.18);
+
+  --studio-success: #16805c;
+  --studio-success-soft: #e5f7ee;
+  --studio-warning: #a96505;
+  --studio-warning-soft: #fff4db;
+  --studio-danger: #c33b4a;
+  --studio-danger-soft: #fff0f1;
+  --studio-info: #2563eb;
+  --studio-info-soft: #eff6ff;
+
+  --studio-shadow-card: 0 16px 42px rgba(72, 48, 25, 0.10);
+  --studio-shadow-soft: 0 8px 24px rgba(72, 48, 25, 0.08);
+  --studio-shadow-float: 0 24px 70px rgba(72, 48, 25, 0.16);
+
+  --auth-bg-page: var(--studio-bg-page);
+  --auth-bg-card: var(--studio-surface-1);
+  --auth-bg-elevated: var(--studio-surface-1);
+  --auth-bg-soft: var(--studio-surface-2);
+  --auth-bg-control: var(--studio-surface-1);
+  --auth-panel: var(--studio-surface-1);
+
+  --auth-text: var(--studio-text-main);
+  --auth-text-main: var(--studio-text-main);
+  --auth-text-strong: var(--studio-text-strong);
+  --auth-text-muted: var(--studio-text-muted);
+  --auth-muted: var(--studio-text-muted);
+
+  --auth-border: var(--studio-border);
+  --auth-border-strong: var(--studio-border-strong);
+
+  --auth-accent: var(--studio-accent);
+  --auth-accent-strong: var(--studio-accent-strong);
+  --auth-accent-soft: var(--studio-accent-soft);
+
+  --auth-success: var(--studio-success);
+  --auth-success-soft: var(--studio-success-soft);
+  --auth-warning: var(--studio-warning);
+  --auth-warning-soft: var(--studio-warning-soft);
+  --auth-danger: var(--studio-danger);
+  --auth-danger-soft: var(--studio-danger-soft);
+  --auth-info: var(--studio-info);
+  --auth-info-soft: var(--studio-info-soft);
+
+  --auth-shadow: var(--studio-shadow-card);
+  --auth-shadow-soft: var(--studio-shadow-soft);
+
   position: relative;
   isolation: isolate;
   min-height: 100dvh;
@@ -232,7 +306,7 @@
       color-mix(in srgb, var(--auth-info) 11%, transparent) 0,
       transparent 30%
     ),
-    var(--studio-bg-page);
+    #f7f1e8;
 }
 
 .auth-page[data-auth-surface="login"].admin-login-page::before {
