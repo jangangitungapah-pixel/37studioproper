@@ -138,6 +138,25 @@ assert.match(
   'UI-12A.1 must defensively suppress the deprecated large subpage hero.',
 );
 
+for (const required of [
+  'UI-12A.2 — Derive a safe visible page without effect-driven state repair.',
+  'const resolvedActiveSubpage = subpages.some',
+  'selectedKey={resolvedActiveSubpage}',
+  "resolvedActiveSubpage === 'account'",
+]) {
+  assert.equal(pageSource.includes(required), true, 'UI-12A.2 lint-safe page resolution missing: ' + required);
+}
+
+for (const forbidden of [
+  "setActiveSubpage('account');",
+  'function getPortalUserStatusLabel(',
+  'function getPermissionSummary(',
+  '}, [currentUser?.preferences, currentUser?.uid]);',
+  '}, [currentUser?.provider, currentUser?.providerIds]);',
+]) {
+  assert.equal(pageSource.includes(forbidden), false, 'UI-12A.2 obsolete lint trigger remains: ' + forbidden);
+}
+
 assert.match(
   cssSource,
   /\.settings-workspace-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(228px,\s*0\.34fr\)\s*minmax\(0,\s*1fr\)/,

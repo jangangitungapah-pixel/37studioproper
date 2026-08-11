@@ -258,27 +258,6 @@ function getAccountStatusLabel(user) {
   return user?.status || 'Unknown';
 }
 
-function getPortalUserStatusLabel(user) {
-  if (user?.status === 'approved') return 'Approved';
-  if (user?.status === 'pending') return 'Pending';
-  if (user?.status === 'rejected') return 'Rejected';
-  if (user?.status === 'active') return 'Active';
-
-  return user?.status || 'Unknown';
-}
-
-function getPermissionSummary(user) {
-  if (user?.role === 'owner') return 'Full access';
-
-  const pages = getAssignablePermissionPages(user);
-  const permissions = normalizeAdminPermissionsForRole(user?.permissions, user?.role);
-  const enabled = pages.filter((page) => permissions[page.key]);
-
-  if (!enabled.length) return 'Belum ada akses halaman';
-
-  return enabled.map((page) => page.label).join(', ');
-}
-
 function getMaskedUid(uid) {
   const text = String(uid || '');
 
@@ -461,6 +440,10 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   }, [currentUser]);
 
   const [activeSubpage, setActiveSubpage] = useState('account');
+  // UI-12A.2 — Derive a safe visible page without effect-driven state repair.
+  const resolvedActiveSubpage = subpages.some((page) => page.key === activeSubpage)
+    ? activeSubpage
+    : subpages[0]?.key || 'account';
   const remoteSettings = usePricingSettings();
   const [settings, setSettings] = useState(() => remoteSettings);
   const remoteInvoiceSettings = useInvoiceSettings();
@@ -547,7 +530,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     return () => {
       window.cancelAnimationFrame(accountFrameId);
     };
-  }, [currentUser?.preferences, currentUser?.uid]);
+  }, [currentUser]);
 
   useEffect(() => {
     const profileFrameId = window.requestAnimationFrame(() => {
@@ -567,12 +550,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   }, [currentUser?.displayName]);
 
   useEffect(() => {
-    if (subpages.some((page) => page.key === activeSubpage)) return;
-
-    setActiveSubpage('account');
-  }, [activeSubpage, subpages]);
-
-  useEffect(() => {
     const providerFrameId = window.requestAnimationFrame(() => {
       setAccountSecurityProviderIds(getAccountProviderIds(currentUser));
     });
@@ -580,7 +557,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     return () => {
       window.cancelAnimationFrame(providerFrameId);
     };
-  }, [currentUser?.provider, currentUser?.providerIds]);
+  }, [currentUser]);
 
 
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
@@ -695,7 +672,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
   // Sync users list for owner-only user management pages
   useEffect(() => {
-    if (activeSubpage !== 'user-settings' || !isOwnerAdminUser(currentUser)) return;
+    if (resolvedActiveSubpage !== 'user-settings' || !isOwnerAdminUser(currentUser)) return;
 
     const usersLoadingFrameId = window.requestAnimationFrame(() => {
       setUsersLoading(true);
@@ -727,7 +704,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       window.cancelAnimationFrame(usersLoadingFrameId);
       unsubscribe();
     };
-  }, [activeSubpage, currentUser]);
+  }, [resolvedActiveSubpage, currentUser]);
 
   function updateProvisionAccountField(field) {
     return (event) => {
@@ -1998,8 +1975,8 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   }, [selectedPermissionUser]);
 
   const activePageInfo = useMemo(() => {
-    return subpages.find((page) => page.key === activeSubpage) || subpages[0];
-  }, [subpages, activeSubpage]);
+    return subpages.find((page) => page.key === resolvedActiveSubpage) || subpages[0];
+  }, [subpages, resolvedActiveSubpage]);
 
   const accountProviderView = {
     ...currentUser,
@@ -2106,13 +2083,13 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     <>
       <section
       className={
-        activeSubpage === 'account'
+        resolvedActiveSubpage === 'account'
           ? 'settings-page is-account-settings'
-          : activeSubpage === 'user-settings'
+          : resolvedActiveSubpage === 'user-settings'
             ? 'settings-page is-user-settings'
-            : activeSubpage === 'danger'
+            : resolvedActiveSubpage === 'danger'
               ? 'settings-page is-danger-settings'
-              : activeSubpage === 'fee-settings'
+              : resolvedActiveSubpage === 'fee-settings'
                 ? 'settings-page is-fee-settings'
                 : 'settings-page'
       }
@@ -2123,7 +2100,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         <StudioSelect
           label="Settings Area"
           options={subpages}
-          selectedKey={activeSubpage}
+          selectedKey={resolvedActiveSubpage}
           onChange={setActiveSubpage}
         />
       </div>
@@ -2139,8 +2116,8 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           <div className="settings-navigation-list" role="tablist" aria-label="Settings subpage">
             {subpages.map((item, index) => (
               <button
-                aria-selected={activeSubpage === item.key}
-                className={activeSubpage === item.key ? 'settings-navigation-tab is-active' : 'settings-navigation-tab'}
+                aria-selected={resolvedActiveSubpage === item.key}
+                className={resolvedActiveSubpage === item.key ? 'settings-navigation-tab is-active' : 'settings-navigation-tab'}
                 key={item.key}
                 role="tab"
                 type="button"
@@ -2169,12 +2146,12 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
         <main className="settings-workspace-content" aria-label={activePageInfo.label}>
           <div className="settings-current-context">
-            <span>{getSettingsGroupLabel(activeSubpage)}</span>
+            <span>{getSettingsGroupLabel(resolvedActiveSubpage)}</span>
             <strong id="settings-current-page-title">{activePageInfo.label}</strong>
             <small>{activePageInfo.description}</small>
           </div>
 
-      {activeSubpage === 'account' && (
+      {resolvedActiveSubpage === 'account' && (
         <section
           aria-label="Account settings"
           className="settings-account-grid settings-account-control-center"
@@ -2647,11 +2624,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         </section>
       )}
 
-      {activeSubpage === 'fee-settings' && isOwnerAdminUser(currentUser) && (
+      {resolvedActiveSubpage === 'fee-settings' && isOwnerAdminUser(currentUser) && (
         <OperatorFeeSettingsPanel currentUser={currentUser} />
       )}
 
-      {activeSubpage === 'danger' && isOwnerAdminUser(currentUser) && (
+      {resolvedActiveSubpage === 'danger' && isOwnerAdminUser(currentUser) && (
         <section className="settings-section settings-owner-danger-zone" aria-label="Danger zone reset data app">
           <div className="settings-danger-hero">
             <span className="settings-danger-icon" aria-hidden="true">
@@ -2779,7 +2756,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         </section>
       )}
 
-      {activeSubpage === 'studio' && (
+      {resolvedActiveSubpage === 'studio' && (
         <section className="settings-section" aria-label="Studio settings">
 
           {/* ── STUDIO IDENTITY ─────────────────────────────── */}
@@ -2926,7 +2903,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         </section>
       )}
 
-      {activeSubpage === 'pricing' && (
+      {resolvedActiveSubpage === 'pricing' && (
         <section className="settings-pricing-container" aria-label="Pricing and session settings">
 
           {/* ── SESSION LIST ────────────────────────────────── */}
@@ -3211,7 +3188,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         </section>
       )}
 
-      {activeSubpage === 'invoice' && (
+      {resolvedActiveSubpage === 'invoice' && (
         <section className="settings-section" aria-label="Invoice settings">
           <h3 className="settings-section-title">Invoice Thermal</h3>
 
@@ -3361,7 +3338,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         </section>
       )}
 
-      {activeSubpage === 'user-settings' && isOwnerAdminUser(currentUser) && (
+      {resolvedActiveSubpage === 'user-settings' && isOwnerAdminUser(currentUser) && (
         <section className="settings-section settings-user-access-section">
           
           {/* ── OWNER MANAGED ACCOUNT PROVISIONING ── */}
