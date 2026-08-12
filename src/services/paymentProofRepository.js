@@ -4,12 +4,10 @@ import {
   onSnapshot,
   query,
   setDoc,
-  updateDoc,
   where,
-  writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
-import { buildBookingPaymentPatch, buildPaymentFromProof } from '../utils/bookingPaymentUtils.js';
+import { reviewCanonicalPaymentProof } from './adminOperationsRepository.js';
 import {
   createAdminNotificationEvent,
   createClientNotificationEvent,
@@ -449,30 +447,17 @@ export async function rejectPaymentProof(proof, reviewer, adminNote = '') {
   assertFirebaseReady();
 
   const cleanProof = normalizePaymentProof(proof);
-  const now = new Date().toISOString();
 
   if (!cleanProof.id) {
     throw new Error('Bukti pembayaran tidak valid.');
   }
-
-  await updateDoc(doc(firestoreDb, PAYMENT_PROOFS_COLLECTION, cleanProof.id), {
-    adminNote: cleanText(adminNote),
-    reviewedAt: now,
-    reviewedByName: cleanText(reviewer?.displayName || reviewer?.email || 'Admin'),
-    reviewedByUid: cleanText(reviewer?.uid),
-    status: 'rejected',
-    updatedAt: now,
-  });
-
-  const rejectedProof = {
-    ...cleanProof,
-    adminNote: cleanText(adminNote),
-    reviewedAt: now,
-    reviewedByName: cleanText(reviewer?.displayName || reviewer?.email || 'Admin'),
-    reviewedByUid: cleanText(reviewer?.uid),
-    status: 'rejected',
-    updatedAt: now,
-  };
+  const result = await reviewCanonicalPaymentProof(
+    cleanProof.id,
+    'reject',
+    { reason: cleanText(adminNote) },
+    `payment-proof:reject:${cleanProof.id}`,
+  );
+  const rejectedProof = normalizePaymentProof(result.proof);
 
   await safeCreatePaymentProofReviewEvent({
     booking: null,
@@ -484,11 +469,17 @@ export async function rejectPaymentProof(proof, reviewer, adminNote = '') {
   return rejectedProof;
 }
 
-export async function approvePaymentProofAndRecordPayment({ booking, proof, reviewer, adminNote = '' }) {
+export async function approvePaymentProofAndRecordPayment({
+  adminNote = '',
+  amount,
+  booking,
+  method,
+  proof,
+  reviewer,
+}) {
   assertFirebaseReady();
 
   const cleanProof = normalizePaymentProof(proof);
-  const now = new Date().toISOString();
 
   if (!booking?.id || !cleanProof.id) {
     throw new Error('Booking atau bukti pembayaran tidak valid.');
@@ -498,36 +489,17 @@ export async function approvePaymentProofAndRecordPayment({ booking, proof, revi
     throw new Error('Bukti pembayaran sudah pernah direview.');
   }
 
-  const payment = buildPaymentFromProof(cleanProof, {
-    createdAt: now,
-    date: now.slice(0, 10),
-    note: adminNote || cleanProof.clientNote || 'Bukti pembayaran client disetujui admin',
-  });
-
-  const nextBooking = buildBookingPaymentPatch(booking, payment);
-  const batch = writeBatch(firestoreDb);
-
-  batch.update(doc(firestoreDb, 'bookings', booking.id), nextBooking);
-  batch.update(doc(firestoreDb, PAYMENT_PROOFS_COLLECTION, cleanProof.id), {
-    adminNote: cleanText(adminNote),
-    reviewedAt: now,
-    reviewedByName: cleanText(reviewer?.displayName || reviewer?.email || 'Admin'),
-    reviewedByUid: cleanText(reviewer?.uid),
-    status: 'approved',
-    updatedAt: now,
-  });
-
-  await batch.commit();
-
-  const approvedProof = {
-    ...cleanProof,
-    adminNote: cleanText(adminNote),
-    reviewedAt: now,
-    reviewedByName: cleanText(reviewer?.displayName || reviewer?.email || 'Admin'),
-    reviewedByUid: cleanText(reviewer?.uid),
-    status: 'approved',
-    updatedAt: now,
-  };
+  const result = await reviewCanonicalPaymentProof(
+    cleanProof.id,
+    'approve',
+    {
+      amount: Number(amount || cleanProof.amount),
+      method: cleanText(method || cleanProof.method),
+      note: cleanText(adminNote),
+    },
+    `payment-proof:approve:${cleanProof.id}`,
+  );
+  const approvedProof = normalizePaymentProof(result.proof);
 
   await safeCreatePaymentProofReviewEvent({
     booking,
@@ -536,11 +508,7 @@ export async function approvePaymentProofAndRecordPayment({ booking, proof, revi
     status: 'approved',
   });
 
-  return {
-    booking: nextBooking,
-    payment,
-    proof: approvedProof,
-  };
+  return { ...result, proof: approvedProof };
 }
 
 export const paymentProofRepository = {

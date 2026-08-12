@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/billing.css';
 import { useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -21,6 +22,12 @@ import PaymentProofCommandCenter from '../../components/billing/PaymentProofComm
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
+import {
+  createAdminOperationKey,
+  recordCanonicalPayment,
+  recordCanonicalRefund,
+  voidCanonicalInvoice,
+} from '../../services/adminOperationsRepository.js';
 import { BOOKING_PAYMENT_STATUS } from '../../domain/booking/bookingStatus.js';
 import {
   getBookingPaymentStatus,
@@ -29,9 +36,6 @@ import {
 } from '../../domain/booking/bookingSelectors.js';
 import {
   buildBookingFinanceTransactions,
-  buildBookingPaymentPatch,
-  buildBookingRefundPatch,
-  buildBookingVoidPatch,
   canRefundBookingPayment,
   canVoidBookingInvoice,
   getBookingBillingTotal,
@@ -75,14 +79,6 @@ const cashRangeOptions = [
   { key: 'year', label: 'Tahun Ini', description: 'Kas masuk tahun ini' },
   { key: 'all', label: 'Semua', description: 'Semua kas masuk' },
 ];
-
-function cleanText(value) {
-  return String(value || '').trim();
-}
-
-function cleanLower(value) {
-  return cleanText(value).toLowerCase();
-}
 
 function formatMoney(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -426,12 +422,6 @@ function getProofMethodLabel(method) {
   if (method === 'qris') return 'QRIS';
   if (method === 'transfer') return 'Transfer';
   return getPaymentMethodLabel(method);
-}
-
-function getProofTone(status) {
-  if (status === 'approved') return 'is-approved';
-  if (status === 'rejected') return 'is-rejected';
-  return 'is-pending';
 }
 
 function findBookingForProof(bookingsById, proof) {
@@ -997,8 +987,6 @@ function InvoiceModal({ booking, invoiceSettings, onClose, onPrint, onRecordPaym
   if (!booking) return null;
 
   const reminderHref = getReminderHref(booking, invoiceSettings);
-  const status = normalizeStatus(booking);
-
   return (
     <div className="billing-invoice-backdrop" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
@@ -1076,9 +1064,18 @@ function PaymentProofReviewModal({
   onReject,
   proof,
 }) {
+  const [approvalAmount, setApprovalAmount] = useState(() => String(proof?.amount || ''));
+  const [approvalMethod, setApprovalMethod] = useState(() => proof?.method || 'transfer');
+
   if (!proof) return null;
 
-  const canApprove = Boolean(booking) && proof.status === 'pending';
+  const outstanding = getOutstandingAmount(booking);
+  const numericApprovalAmount = Number(String(approvalAmount).replace(/[^0-9.]/g, ''));
+  const canApprove = Boolean(booking) &&
+    proof.status === 'pending' &&
+    Number.isFinite(numericApprovalAmount) &&
+    numericApprovalAmount > 0 &&
+    numericApprovalAmount <= outstanding;
 
   return (
     <div className="billing-proof-modal-backdrop" role="presentation" onMouseDown={(event) => {
@@ -1174,10 +1171,41 @@ function PaymentProofReviewModal({
             </div>
           ) : null}
 
+          {proof.status === 'pending' && booking ? (
+            <div className="billing-proof-approval-fields">
+              <label>
+                <span>Nominal yang Dicatat</span>
+                <input
+                  inputMode="numeric"
+                  value={approvalAmount}
+                  disabled={isReviewing}
+                  onChange={(event) => setApprovalAmount(event.target.value)}
+                />
+                <small>
+                  Bukti {formatMoney(proof.amount)} · outstanding {formatMoney(outstanding)} · sisa setelah approve {formatMoney(Math.max(0, outstanding - (numericApprovalAmount || 0)))}
+                </small>
+              </label>
+
+              <StudioSelect
+                label="Metode yang Dikonfirmasi"
+                options={paymentMethodOptions}
+                selectedKey={approvalMethod}
+                disabled={isReviewing}
+                onChange={setApprovalMethod}
+              />
+
+              {!canApprove ? (
+                <p className="billing-payment-error" role="alert">
+                  Nominal konfirmasi harus lebih dari 0 dan tidak melebihi outstanding.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <label className="billing-proof-admin-note">
-            <span>Catatan Admin</span>
+            <span>Catatan Admin / Alasan Reject</span>
             <textarea
-              placeholder="Opsional. Contoh: Bukti valid, transfer masuk BCA."
+              placeholder="Wajib minimal 4 karakter untuk Reject. Opsional untuk Approve."
               value={
                 proof.status === 'pending'
                   ? adminNote
@@ -1199,7 +1227,12 @@ function PaymentProofReviewModal({
           <button className="is-reject" type="button" disabled={isReviewing || proof.status !== 'pending'} onClick={onReject}>
             Reject
           </button>
-          <button className="is-approve" type="button" disabled={isReviewing || !canApprove} onClick={onApprove}>
+          <button
+            className="is-approve"
+            type="button"
+            disabled={isReviewing || !canApprove}
+            onClick={() => onApprove({ amount: numericApprovalAmount, method: approvalMethod })}
+          >
             {isReviewing ? 'Memproses...' : 'Approve & Catat Bayar'}
           </button>
         </footer>
@@ -1217,6 +1250,8 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
     note: '',
   }));
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [operationKey] = useState(() => createAdminOperationKey('payment', booking?.id));
 
   if (!booking) return null;
 
@@ -1242,8 +1277,10 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
     };
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isSubmitting) return;
 
     const amount = Number(String(form.amount).replace(/[^0-9.]/g, ''));
 
@@ -1257,19 +1294,26 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
       return;
     }
 
-    onSubmit(booking, {
-      amount,
-      createdAt: new Date().toISOString(),
-      date: form.date || getTodayIsoDate(),
-      id: 'pay_' + Date.now().toString(36),
-      method: form.method || 'other',
-      note: form.note.trim(),
-    });
+    setIsSubmitting(true);
+    try {
+      await onSubmit(booking, {
+        amount,
+        createdAt: new Date().toISOString(),
+        date: form.date || getTodayIsoDate(),
+        id: 'pay_' + Date.now().toString(36),
+        method: form.method || 'other',
+        note: form.note.trim(),
+      }, operationKey);
+    } catch {
+      // The page-level handler keeps the form open and surfaces the canonical error.
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <div className="billing-payment-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+      if (event.target === event.currentTarget && !isSubmitting) onClose();
     }}>
       <section className="billing-payment-panel" role="dialog" aria-modal="true" aria-labelledby="billing-payment-title">
         <header className="billing-payment-head">
@@ -1279,7 +1323,7 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
             <span>Sisa tagihan {formatMoney(outstanding)}</span>
           </div>
 
-          <button type="button" aria-label="Tutup pembayaran" onClick={onClose}>
+          <button type="button" aria-label="Tutup pembayaran" disabled={isSubmitting} onClick={onClose}>
             <X size={18} />
           </button>
         </header>
@@ -1323,8 +1367,10 @@ function PaymentRecordModal({ booking, onClose, onSubmit }) {
           {error ? <p className="billing-payment-error" role="alert">{error}</p> : null}
 
           <footer>
-            <button type="button" onClick={onClose}>Batal</button>
-            <button className="is-primary" type="submit">Simpan Pembayaran</button>
+            <button type="button" disabled={isSubmitting} onClick={onClose}>Batal</button>
+            <button className="is-primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Pembayaran'}
+            </button>
           </footer>
         </form>
       </section>
@@ -1372,6 +1418,8 @@ function RefundPaymentModal({
     useState(
       '',
     );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [operationKey] = useState(() => createAdminOperationKey('refund', booking?.id));
 
   if (
     !booking
@@ -1433,10 +1481,12 @@ function RefundPaymentModal({
     };
   }
 
-  function handleSubmit(
+  async function handleSubmit(
     event,
   ) {
     event.preventDefault();
+
+    if (isSubmitting) return;
 
     const amount =
       Number(
@@ -1485,9 +1535,11 @@ function RefundPaymentModal({
       return;
     }
 
-    onSubmit(
-      booking,
-      {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(
+        booking,
+        {
         amount,
 
         createdAt:
@@ -1507,9 +1559,15 @@ function RefundPaymentModal({
           form.method ||
           'other',
 
-        reason,
-      },
-    );
+          reason,
+        },
+        operationKey,
+      );
+    } catch {
+      // The page-level handler keeps the form open and surfaces the canonical error.
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -1521,7 +1579,7 @@ function RefundPaymentModal({
           event.target ===
           event.currentTarget
         ) {
-          onClose();
+          if (!isSubmitting) onClose();
         }
       }}
     >
@@ -1549,6 +1607,7 @@ function RefundPaymentModal({
           <button
             type="button"
             aria-label="Tutup refund"
+            disabled={isSubmitting}
             onClick={
               onClose
             }
@@ -1652,6 +1711,7 @@ function RefundPaymentModal({
           <footer>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={
                 onClose
               }
@@ -1662,12 +1722,13 @@ function RefundPaymentModal({
             <button
               className="is-refund"
               type="submit"
+              disabled={isSubmitting}
             >
               <RotateCcw
                 size={15}
               />
 
-              Catat Refund
+              {isSubmitting ? 'Menyimpan...' : 'Catat Refund'}
             </button>
           </footer>
         </form>
@@ -1679,11 +1740,15 @@ function RefundPaymentModal({
 function VoidInvoiceModal({ booking, onClose, onSubmit }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [operationKey] = useState(() => createAdminOperationKey('void', booking?.id));
 
   if (!booking) return null;
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isSubmitting) return;
 
     const cleanReason = reason.trim();
 
@@ -1692,12 +1757,19 @@ function VoidInvoiceModal({ booking, onClose, onSubmit }) {
       return;
     }
 
-    onSubmit(booking, cleanReason);
+    setIsSubmitting(true);
+    try {
+      await onSubmit(booking, cleanReason, operationKey);
+    } catch {
+      // The page-level handler keeps the form open and surfaces the canonical error.
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <div className="billing-payment-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+      if (event.target === event.currentTarget && !isSubmitting) onClose();
     }}>
       <section className="billing-payment-panel billing-void-panel" role="dialog" aria-modal="true" aria-labelledby="billing-void-title">
         <header className="billing-payment-head">
@@ -1707,7 +1779,7 @@ function VoidInvoiceModal({ booking, onClose, onSubmit }) {
             <span>Invoice akan dibatalkan, bukan dihapus.</span>
           </div>
 
-          <button type="button" aria-label="Tutup void invoice" onClick={onClose}>
+          <button type="button" aria-label="Tutup void invoice" disabled={isSubmitting} onClick={onClose}>
             <X size={18} />
           </button>
         </header>
@@ -1728,8 +1800,10 @@ function VoidInvoiceModal({ booking, onClose, onSubmit }) {
           {error ? <p className="billing-payment-error" role="alert">{error}</p> : null}
 
           <footer>
-            <button type="button" onClick={onClose}>Batal</button>
-            <button className="is-danger" type="submit">Void Invoice</button>
+            <button type="button" disabled={isSubmitting} onClick={onClose}>Batal</button>
+            <button className="is-danger" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Memproses...' : 'Void Invoice'}
+            </button>
           </footer>
         </form>
       </section>
@@ -2158,7 +2232,7 @@ export default function BillingPage() {
     clearPaymentProofSelection();
   }
 
-  async function approveSelectedPaymentProof() {
+  async function approveSelectedPaymentProof(confirmation = {}) {
     if (!selectedPaymentProof || !selectedPaymentProofBooking || isReviewingPaymentProof) return;
 
     setIsReviewingPaymentProof(true);
@@ -2166,7 +2240,9 @@ export default function BillingPage() {
     try {
       const result = await paymentProofRepository.approvePaymentProofAndRecordPayment({
         adminNote: paymentProofAdminNote,
+        amount: confirmation.amount,
         booking: selectedPaymentProofBooking,
+        method: confirmation.method,
         proof: selectedPaymentProof,
         reviewer: firebaseAuth?.currentUser || null,
       });
@@ -2179,7 +2255,7 @@ export default function BillingPage() {
 
       setToast({
         title: 'Bukti pembayaran disetujui',
-        message: (selectedPaymentProof.customer || selectedPaymentProofBooking.customer || 'Client') + ' membayar ' + formatMoney(selectedPaymentProof.amount) + '.',
+        message: (selectedPaymentProof.customer || selectedPaymentProofBooking.customer || 'Client') + ' membayar ' + formatMoney(result.payment?.amount || confirmation.amount) + '.',
       });
     } catch (error) {
       console.error('Gagal approve bukti pembayaran:', error);
@@ -2194,6 +2270,14 @@ export default function BillingPage() {
 
   async function rejectSelectedPaymentProof() {
     if (!selectedPaymentProof || isReviewingPaymentProof) return;
+
+    if (paymentProofAdminNote.trim().length < 4) {
+      setToast({
+        title: 'Alasan reject diperlukan',
+        message: 'Isi alasan minimal 4 karakter agar keputusan dapat diaudit.',
+      });
+      return;
+    }
 
     setIsReviewingPaymentProof(true);
 
@@ -2240,6 +2324,7 @@ export default function BillingPage() {
   async function recordPayment(
     booking,
     payment,
+    operationKey,
   ) {
     if (
       getBookingPaymentStatus(
@@ -2258,16 +2343,19 @@ export default function BillingPage() {
     }
 
     try {
-      const nextBooking =
-        buildBookingPaymentPatch(
-          booking,
-          payment,
-        );
+      const result = await recordCanonicalPayment({
+        amount: payment.amount,
+        bookingId: booking.id,
+        date: payment.date,
+        method: payment.method,
+        note: payment.note,
+        source: 'admin-payment',
+      }, operationKey);
+      const nextBooking = result.booking;
 
-      await adminBookingRepository
-        .updateManualBooking(
-          nextBooking,
-        );
+      setBookings((current) => current.map((item) => (
+        item.id === booking.id ? nextBooking : item
+      )));
 
       setSelectedBooking(
         (
@@ -2310,6 +2398,8 @@ export default function BillingPage() {
           ) +
           '.',
       });
+
+      return result;
     } catch (error) {
       console.error(
         'Gagal mencatat pembayaran:',
@@ -2324,39 +2414,30 @@ export default function BillingPage() {
           error?.message ||
           'Pembayaran belum berhasil disimpan.',
       });
+
+      throw error;
     }
   }
 
   async function refundPayment(
     booking,
     refund,
+    operationKey,
   ) {
     try {
-      const reviewer =
-        firebaseAuth?.currentUser ||
-        null;
+      const result = await recordCanonicalRefund({
+        amount: refund.amount,
+        bookingId: booking.id,
+        date: refund.date,
+        method: refund.method,
+        reason: refund.reason,
+        source: 'admin-refund',
+      }, operationKey);
+      const nextBooking = result.booking;
 
-      const nextBooking =
-        buildBookingRefundPatch(
-          booking,
-          {
-            ...refund,
-
-            adminName:
-              reviewer?.displayName ||
-              reviewer?.email ||
-              'Admin',
-
-            adminUid:
-              reviewer?.uid ||
-              '',
-          },
-        );
-
-      await adminBookingRepository
-        .updateManualBooking(
-          nextBooking,
-        );
+      setBookings((current) => current.map((item) => (
+        item.id === booking.id ? nextBooking : item
+      )));
 
       setSelectedBooking(
         (
@@ -2399,6 +2480,8 @@ export default function BillingPage() {
           ) +
           '.',
       });
+
+      return result;
     } catch (error) {
       console.error(
         'Gagal mencatat refund:',
@@ -2413,24 +2496,26 @@ export default function BillingPage() {
           error?.message ||
           'Refund belum berhasil disimpan.',
       });
+
+      throw error;
     }
   }
 
   async function voidInvoice(
     booking,
     reason,
+    operationKey,
   ) {
     try {
-      const nextBooking =
-        buildBookingVoidPatch(
-          booking,
-          reason,
-        );
+      const result = await voidCanonicalInvoice({
+        bookingId: booking.id,
+        reason,
+      }, operationKey);
+      const nextBooking = result.booking;
 
-      await adminBookingRepository
-        .updateManualBooking(
-          nextBooking,
-        );
+      setBookings((current) => current.map((item) => (
+        item.id === booking.id ? nextBooking : item
+      )));
 
       setSelectedBooking(
         (
@@ -2456,6 +2541,8 @@ export default function BillingPage() {
           ) +
           ' sudah dibatalkan.',
       });
+
+      return result;
     } catch (error) {
       console.error(
         'Gagal void invoice:',
@@ -2470,6 +2557,8 @@ export default function BillingPage() {
           error?.message ||
           'Invoice belum berhasil dibatalkan.',
       });
+
+      throw error;
     }
   }
 
@@ -2608,6 +2697,7 @@ export default function BillingPage() {
       />
 
       <PaymentProofReviewModal
+        key={selectedPaymentProof?.id || 'empty-proof'}
         adminNote={paymentProofAdminNote}
         booking={selectedPaymentProofBooking}
         isReviewing={isReviewingPaymentProof}

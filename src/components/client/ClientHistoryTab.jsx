@@ -1,7 +1,6 @@
 import { Search, CalendarDays, Copy } from 'lucide-react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
-import { getBookingRequestStatusMeta } from '../../services/bookingCommunicationRepository.js';
-import { statusFilters } from '../../pages/admin/scheduleConfig.js';
+import { statusFilters } from '../../constants/scheduleConfig.js';
 
 function getStatusLabel(status) {
   return statusFilters.find((item) => item.key === status)?.label || status;
@@ -81,7 +80,6 @@ export default function ClientHistoryTab({
             const startHourNum = Number(booking.startHour || 0);
             const durationNum = Number(booking.durationHours || booking.duration || 1);
             const endHourNum = startHourNum + durationNum;
-            const timeString = `${String(startHourNum).padStart(2, '0')}.00 - ${String(endHourNum).padStart(2, '0')}.00 WIB`;
 
             return (
               <article

@@ -4076,23 +4076,23 @@ html[
   .schedule-command-primary {
     grid-template-columns:
       minmax(
-        126px,
-        0.76fr
+        138px,
+        0.82fr
       )
       minmax(
         0,
-        1.24fr
+        1.18fr
       );
   }
 
   .schedule-nav {
     grid-template-columns:
-      40px
+      44px
       minmax(
         46px,
         1fr
       )
-      40px;
+      44px;
   }
 
   .schedule-view-switcher

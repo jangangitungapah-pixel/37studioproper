@@ -506,23 +506,30 @@ export function createEstimatedOperatorFeeLines({
     .filter((line) => line.amount > 0);
 }
 
-let cachedOperatorFeeSettings = (() => {
+let cachedOperatorFeeSettings = normalizeOperatorFeeSettings(DEFAULT_OPERATOR_FEE_SETTINGS);
+let isOperatorFeeCacheHydrated = false;
+
+function hydrateOperatorFeeSettingsCache() {
+  if (isOperatorFeeCacheHydrated) return cachedOperatorFeeSettings;
+
+  isOperatorFeeCacheHydrated = true;
+
   if (typeof window === 'undefined') {
-    return normalizeOperatorFeeSettings(DEFAULT_OPERATOR_FEE_SETTINGS);
+    return cachedOperatorFeeSettings;
   }
 
   try {
     const raw = window.localStorage.getItem(OPERATOR_FEE_SETTINGS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : DEFAULT_OPERATOR_FEE_SETTINGS;
-
-    return normalizeOperatorFeeSettings(parsed);
+    if (raw) cachedOperatorFeeSettings = normalizeOperatorFeeSettings(JSON.parse(raw));
   } catch {
-    return normalizeOperatorFeeSettings(DEFAULT_OPERATOR_FEE_SETTINGS);
+    cachedOperatorFeeSettings = normalizeOperatorFeeSettings(DEFAULT_OPERATOR_FEE_SETTINGS);
   }
-})();
+
+  return cachedOperatorFeeSettings;
+}
 
 export function getOperatorFeeSettings() {
-  return cachedOperatorFeeSettings;
+  return hydrateOperatorFeeSettingsCache();
 }
 
 export async function saveOperatorFeeSettings(settings, meta = {}) {
@@ -533,6 +540,7 @@ export async function saveOperatorFeeSettings(settings, meta = {}) {
   });
 
   cachedOperatorFeeSettings = normalized;
+  isOperatorFeeCacheHydrated = true;
 
   if (typeof window !== 'undefined') {
     try {
@@ -552,8 +560,10 @@ export async function saveOperatorFeeSettings(settings, meta = {}) {
 
 let listeners = [];
 let isSubscribed = false;
+let unsubscribeRemoteOperatorFeeSettings = null;
 
 export function subscribeOperatorFeeSettings(callback, onError) {
+  hydrateOperatorFeeSettingsCache();
   listeners.push(callback);
   callback(cachedOperatorFeeSettings);
 
@@ -561,7 +571,7 @@ export function subscribeOperatorFeeSettings(callback, onError) {
     isSubscribed = true;
     const docRef = doc(firestoreDb, ...OPERATOR_FEE_SETTINGS_DOC_PATH);
 
-    onSnapshot(
+    unsubscribeRemoteOperatorFeeSettings = onSnapshot(
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
@@ -598,13 +608,25 @@ export function subscribeOperatorFeeSettings(callback, onError) {
 
   return () => {
     listeners = listeners.filter((listener) => listener !== callback);
+
+    if (!listeners.length && unsubscribeRemoteOperatorFeeSettings) {
+      unsubscribeRemoteOperatorFeeSettings();
+      unsubscribeRemoteOperatorFeeSettings = null;
+      isSubscribed = false;
+    }
   };
 }
 
-export function useOperatorFeeSettings() {
-  const [settings, setSettings] = useState(cachedOperatorFeeSettings);
+export function useOperatorFeeSettings({ enabled = true } = {}) {
+  const [settings, setSettings] = useState(() => (
+    enabled ? hydrateOperatorFeeSettingsCache() : null
+  ));
 
-  useEffect(() => subscribeOperatorFeeSettings(setSettings), []);
+  useEffect(() => {
+    if (!enabled) return undefined;
 
-  return settings;
+    return subscribeOperatorFeeSettings(setSettings);
+  }, [enabled]);
+
+  return enabled ? settings : null;
 }

@@ -123,8 +123,8 @@
 }
 
 .auth-icon-button {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -649,8 +649,8 @@
 }
 
 .admin-login-form-panel .auth-tab-btn {
-  min-height: 40px;
-  height: 40px;
+  min-height: 44px;
+  height: 44px;
   border-radius: 10px;
   font-size: 11px;
 }
@@ -771,7 +771,16 @@
 
 .admin-login-secondary-link.auth-mode-link {
   width: fit-content;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   margin: 2px auto 0;
+}
+
+.admin-login-form-panel .auth-mode-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .admin-login-divider.auth-divider {

@@ -15,6 +15,11 @@ import {
   resolveAdminNavigationPath,
 } from '../src/config/adminNavigation.js';
 
+import {
+  parseBookingListUrlState,
+  updateBookingListSearch,
+} from '../src/domain/booking/bookingUrlState.js';
+
 const itemByKey =
   new Map(
     ADMIN_NAV_ITEMS.map(
@@ -97,6 +102,45 @@ assert.equal(
   'schedule',
   'All Bookings parent route must not swallow Calendar.',
 );
+
+const allBookingsUrlConfig = {
+  paymentFilters: ['all', 'unpaid', 'paid'],
+  requestFilters: ['all', 'submitted', 'confirmed'],
+  sessionFilters: ['all', 'upcoming', 'completed'],
+};
+const urlState = parseBookingListUrlState(
+  '?q=Raka&request=confirmed&payment=unpaid&session=upcoming&page=2&bookingId=bkg-1&tab=activity',
+  allBookingsUrlConfig,
+);
+
+assert.deepEqual(
+  urlState,
+  {
+    bookingId: 'bkg-1',
+    page: 2,
+    paymentFilter: 'unpaid',
+    query: 'Raka',
+    requestFilter: 'confirmed',
+    sessionFilter: 'upcoming',
+    tab: 'activity',
+  },
+);
+
+const closedDrawerSearch = updateBookingListSearch(
+  '?q=Raka&request=confirmed&payment=unpaid&session=upcoming&page=2&bookingId=bkg-1&tab=activity&utm=admin',
+  { bookingId: '', tab: 'overview' },
+  allBookingsUrlConfig,
+);
+const closedDrawerParams = new URLSearchParams(
+  closedDrawerSearch,
+);
+
+assert.equal(closedDrawerParams.get('bookingId'), null);
+assert.equal(closedDrawerParams.get('tab'), null);
+assert.equal(closedDrawerParams.get('q'), 'Raka');
+assert.equal(closedDrawerParams.get('request'), 'confirmed');
+assert.equal(closedDrawerParams.get('page'), '2');
+assert.equal(closedDrawerParams.get('utm'), 'admin');
 
 const adminPageSource =
   readFileSync(

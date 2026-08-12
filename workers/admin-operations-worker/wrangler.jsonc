@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "studio37-admin-operations-worker",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 }
+  },
+  "vars": {
+    "APP_ENVIRONMENT": "production",
+    "FIREBASE_PROJECT_ID": "studio-proper",
+    "SITE_ORIGIN": "https://studio-37.web.app"
+  }
+}

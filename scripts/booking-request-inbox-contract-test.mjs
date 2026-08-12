@@ -19,6 +19,18 @@ import {
   isBookingRequestActionable,
 } from '../src/domain/booking/bookingSelectors.js';
 
+import {
+  buildBookingDecisionKey,
+  buildBookingDecisionPatch,
+  doBookingDecisionWindowsOverlap,
+  validateBookingDecision,
+} from '../src/domain/booking/bookingDecision.js';
+
+import {
+  parseBookingListUrlState,
+  updateBookingListSearch,
+} from '../src/domain/booking/bookingUrlState.js';
+
 const requestsItem =
   ADMIN_NAV_ITEMS.find(
     (item) =>
@@ -116,6 +128,189 @@ assert.equal(
   }),
   'submitted',
 );
+
+/**
+ * Decision integrity and URL restoration are behavioral contracts.
+ */
+const submittedRequest = {
+  bookingRequestStatus: 'submitted',
+  clientRequestUpdatedAt: '2026-08-12T08:00:00.000Z',
+  customer: 'Nadia',
+  date: '2026-08-14',
+  durationHours: 2,
+  id: 'request-1',
+  paymentStatus: 'dp',
+  sessionLabel: 'Recording',
+  startHour: 10,
+  status: 'dp',
+};
+
+assert.equal(
+  validateBookingDecision({
+    booking: submittedRequest,
+    status: 'confirmed',
+  }).ok,
+  true,
+);
+
+assert.equal(
+  validateBookingDecision({
+    booking: { ...submittedRequest, customer: '' },
+    status: 'confirmed',
+  }).code,
+  'incomplete-booking',
+);
+
+assert.equal(
+  validateBookingDecision({
+    booking: submittedRequest,
+    currentBookings: [{
+      bookingRequestStatus: 'confirmed',
+      customer: 'Existing session',
+      date: '2026-08-14',
+      durationHours: 2,
+      id: 'existing-1',
+      startHour: 11,
+    }],
+    status: 'confirmed',
+  }).code,
+  'schedule-conflict',
+);
+
+assert.equal(
+  validateBookingDecision({
+    booking: {
+      ...submittedRequest,
+      durationHours: 0,
+      packageId: 'package-production',
+      pricingMode: 'package',
+    },
+    status: 'confirmed',
+  }).ok,
+  true,
+  'A package without studio duration must not create a blocking interval.',
+);
+
+assert.equal(
+  validateBookingDecision({
+    booking: submittedRequest,
+    currentBookings: [{
+      bookingRequestStatus: 'cancelled',
+      customer: 'Cancelled session',
+      date: '2026-08-14',
+      durationHours: 2,
+      id: 'cancelled-1',
+      startHour: 11,
+    }],
+    status: 'confirmed',
+  }).ok,
+  true,
+  'Cancelled sessions must not block confirmation.',
+);
+
+assert.equal(
+  doBookingDecisionWindowsOverlap(
+    submittedRequest,
+    {
+      date: '2026-08-14',
+      durationHours: 1,
+      startHour: 12,
+    },
+  ),
+  false,
+  'Back-to-back sessions must remain valid.',
+);
+
+assert.equal(
+  validateBookingDecision({
+    booking: submittedRequest,
+    status: 'rejected',
+  }).code,
+  'reason-required',
+);
+
+assert.equal(
+  validateBookingDecision({
+    booking: submittedRequest,
+    reason: 'Jadwal tidak tersedia',
+    status: 'rejected',
+  }).ok,
+  true,
+);
+
+const firstDecisionKey = buildBookingDecisionKey({
+  booking: submittedRequest,
+  status: 'confirmed',
+});
+
+assert.equal(
+  firstDecisionKey,
+  buildBookingDecisionKey({
+    booking: { ...submittedRequest },
+    status: 'confirmed',
+  }),
+  'The same retry must produce the same idempotency key.',
+);
+
+assert.notEqual(
+  firstDecisionKey,
+  buildBookingDecisionKey({
+    booking: submittedRequest,
+    status: 'rejected',
+  }),
+);
+
+assert.notEqual(
+  firstDecisionKey,
+  buildBookingDecisionKey({
+    booking: {
+      ...submittedRequest,
+      clientRequestUpdatedAt: '2026-08-12T10:00:00.000Z',
+    },
+    status: 'confirmed',
+  }),
+  'A new request version must receive a new decision key.',
+);
+
+const cancelledPatch = buildBookingDecisionPatch({
+  actor: { uid: 'admin-1' },
+  decisionKey: 'decision-1',
+  note: 'Client meminta pembatalan',
+  status: 'cancelled',
+  timestamp: '2026-08-12T09:00:00.000Z',
+});
+
+assert.equal(cancelledPatch.requestStatus, 'cancelled');
+assert.equal(cancelledPatch.sessionStatus, 'cancelled');
+assert.equal('paymentStatus' in cancelledPatch, false);
+assert.equal('status' in cancelledPatch, false);
+
+const requestUrlConfig = {
+  requestFilters: ['all', 'submitted', 'cancellation_requested'],
+  requestParam: 'filter',
+};
+const requestUrlState = parseBookingListUrlState(
+  '?q=Nadia&filter=submitted&page=3&bookingId=request-1&tab=messages',
+  requestUrlConfig,
+);
+
+assert.equal(requestUrlState.query, 'Nadia');
+assert.equal(requestUrlState.requestFilter, 'submitted');
+assert.equal(requestUrlState.page, 3);
+assert.equal(requestUrlState.bookingId, 'request-1');
+assert.equal(requestUrlState.tab, 'messages');
+
+const closedRequestSearch = updateBookingListSearch(
+  '?q=Nadia&filter=submitted&page=3&bookingId=request-1&tab=messages',
+  { bookingId: '', tab: 'overview' },
+  requestUrlConfig,
+);
+
+assert.equal(closedRequestSearch.includes('bookingId='), false);
+assert.equal(closedRequestSearch.includes('tab='), false);
+assert.equal(closedRequestSearch.includes('q=Nadia'), true);
+assert.equal(closedRequestSearch.includes('filter=submitted'), true);
+assert.equal(closedRequestSearch.includes('page=3'), true);
 
 /**
  * Admin shell integration.

@@ -6,7 +6,7 @@
  * - introduce grouped navigation;
  * - move finance/operations/content modules to canonical URL namespaces;
  * - preserve old admin URLs through redirects;
- * - keep existing permission keys unchanged;
+ * - keep legacy permission compatibility during permission migrations;
  * - keep Notifications in the topbar instead of the sidebar.
  *
  * Request Inbox is introduced during Phase 3A Booking Command Center.
@@ -53,7 +53,7 @@ export const ADMIN_NAV_ITEMS = Object.freeze([
     path: '/admin/notifications',
     iconKey: 'notifications',
     title: 'Notification Console',
-    permissionKey: 'settings',
+    permissionKey: 'notifications',
     group: '',
     groupLabel: '',
     sidebar: false,

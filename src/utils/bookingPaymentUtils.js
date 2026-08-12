@@ -968,6 +968,11 @@ export function buildBookingIncomeTransactions(
               source:
                 'booking',
 
+              sourceEventId:
+                cleanPaymentText(
+                  paymentId,
+                ),
+
               title:
                 'Booking - ' +
                 (
@@ -1064,6 +1069,11 @@ export function buildBookingRefundTransactions(
 
             source:
               'booking-refund',
+
+            sourceEventId:
+              cleanPaymentText(
+                refundId,
+              ),
 
             title:
               'Refund - ' +

@@ -378,7 +378,7 @@ for (
     "request.resource.data.mealBookkeepingStatus == 'posted'",
     'request.resource.data.mealPostedByUid == request.auth.uid',
     'guardMealNotPosted(resource.data)',
-    'adminPostsGuardMeal();',
+    'adminPostsGuardMeal()',
     'sourceAttendanceId',
     'sourceAttendanceDate',
     'sourceGuardPersonId',

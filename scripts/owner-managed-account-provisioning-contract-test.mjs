@@ -249,7 +249,7 @@ assert.match(
 assert.match(
   settingsSource,
 
-  /if \(isOwnerAdminUser\(currentUser\)\) \{[\s\S]*?pages\.push\(\{[\s\S]*?key: 'user-settings'/,
+  /if \(isOwner\) \{[\s\S]*?pages\.push\(\{[\s\S]*?key: 'user-settings'/,
 
   'User & Access Settings navigation must remain Owner-only.',
 );

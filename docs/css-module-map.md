@@ -1,18 +1,30 @@
 # CSS Module Map - 37 Studio Proper
 
-Dokumen ini memetakan arsitektur pemecahan modul CSS di dalam folder `src/styles/modules/` dari yang awalnya berupa satu file monolitik raksasa menjadi struktur modular berbasis domain.
+Dokumen ini memetakan arsitektur CSS berbasis route dan domain. CSS inti berada di `src/styles/routes/`, sedangkan style workspace tetap berada di `src/styles/modules/` dan dimuat oleh lazy page/component pemiliknya.
 
 ## Hierarki Import Utama
-File entry utama adalah `src/styles/admin-auth.css`. File ini **TIDAK** memuat gaya apa pun, melainkan hanya bertindak sebagai *aggregator* urutan kompilasi CSS:
 
-```css
-@import './modules/base.css';
-@import './modules/shared.css';
-@import './modules/auth.css';
-@import './modules/admin-shell.css';
-@import './modules/schedule.css';
-/* ... module feature lainnya */
+Tidak ada lagi aggregator global yang memasukkan seluruh workspace ke setiap route. Masing-masing surface memiliki entry inti:
+
+| Route core | Pemakai | Isi |
+| --- | --- | --- |
+| `routes/auth.css` | Login admin, login client, PWA launch | `base`, `shared`, `modal`, `auth` |
+| `routes/admin.css` | Shell admin | `base`, `shared`, `modal`, `auth`, `admin-shell` |
+| `routes/client.css` | Landing dan portal client | `base`, `shared`, `modal` |
+| `routes/public.css` | Public booking | `base` |
+| `routes/guard.css` | Portal guard standalone | `base`, `auth`, `guard-attendance` |
+
+Feature admin dimuat oleh lazy entry pemiliknya. Contoh:
+
+```js
+// src/pages/admin/SchedulePage.jsx
+import '../../styles/modules/schedule.css';
+
+// src/components/schedule/BookingFormModal.jsx
+import '../../styles/modules/booking.css';
 ```
+
+Dengan pola ini, login/public/client tidak lagi mengunduh CSS schedule, billing, inventory, settings, atau workspace admin lain yang tidak dirender.
 
 ## Daftar Modul Berdasarkan Domain
 
@@ -31,13 +43,13 @@ File entry utama adalah `src/styles/admin-auth.css`. File ini **TIDAK** memuat g
 | `bookkeeping.css` | Pembukuan transaksi manual dan mutasi (cashflow). | `shared.css` |
 | `dashboard.css` | Widget grafik analitik utama dan *quick stat* di dashboard. | `shared.css` |
 | `gallery.css` | Manajemen foto dan aset profil. | `shared.css` |
-| `operator-fee.css` | Modul sistem komisi. (Saat ini bersifat *placeholder* tanpa CSS custom aktif). | N/A |
-| `notifications.css` | Modul log sistem. (Saat ini bersifat *placeholder* tanpa CSS custom aktif). | N/A |
+| `operator-fee.css` | Modul sistem komisi dan settings fee operator. | `shared.css` |
+| `notifications.css` | Console event dan kontrol notifikasi admin. | `shared.css` |
 | `guard-attendance.css`| Styling UI mesin absensi untuk Penjaga (Check in/out). | `base.css` |
 
-## Catatan Audit Fase UI-8
+## Aturan Kepemilikan
 
-- Ekstraksi `.schedule-actions` dari `shared.css` ke `schedule.css`.
-- Ekstraksi `.booking-price-note` dari `shared.css` ke `booking.css`.
-- `notifications.css` dan `operator-fee.css` dikonfirmasi sebagai *placeholder file* murni yang normal dan tidak mengandung CSS liar.
-- `base.css` dipastikan bebas dari global element selectors berbahaya (seperti `button {}` / `input {}`). Semua styling element dilakukan via *class*.
+- Route core hanya boleh memuat token, primitive bersama, dan shell milik route tersebut.
+- Lazy admin page mengimpor satu modul workspace miliknya; modul tambahan hanya boleh masuk bila komponen embedded benar-benar memakai selector tersebut.
+- CSS komponen lintas-workspace, seperti `booking.css` untuk `BookingFormModal` dan `BookingConversationPanel`, diimpor oleh komponen pemilik agar hanya ikut saat komponen dirender.
+- `base.css` tetap bebas dari global element selector berbahaya seperti `button {}` atau `input {}`.

@@ -30,7 +30,10 @@ import {
   isBookingRequestActionable,
 } from '../../domain/booking/bookingSelectors.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+import useBookingListUrlState from '../../hooks/useBookingListUrlState.js';
 import {
+  ADMIN_LIST_PAGE_SIZE,
+  clampPage,
   getPaginationSlice,
 } from '../../utils/pagination.js';
 import '../../styles/modules/all-bookings.css';
@@ -62,6 +65,21 @@ const SESSION_FILTERS = Object.freeze(
     BOOKING_SESSION_STATUS_META,
   ),
 );
+
+const REQUEST_FILTER_KEYS = Object.freeze([
+  FILTER_ALL,
+  ...REQUEST_FILTERS.map((item) => item.key),
+]);
+
+const PAYMENT_FILTER_KEYS = Object.freeze([
+  FILTER_ALL,
+  ...PAYMENT_FILTERS.map((item) => item.key),
+]);
+
+const SESSION_FILTER_KEYS = Object.freeze([
+  FILTER_ALL,
+  ...SESSION_FILTERS.map((item) => item.key),
+]);
 
 const REQUEST_SELECT_OPTIONS =
   Object.freeze([
@@ -363,6 +381,25 @@ function DomainStatus({
 }
 
 export default function AllBookingsPage() {
+  const {
+    bookingId: selectedBookingId,
+    closeDetail,
+    openDetail,
+    page,
+    paymentFilter,
+    query,
+    requestFilter,
+    sessionFilter,
+    setPage,
+    setTab,
+    tab: selectedBookingTab,
+    update: updateUrlState,
+  } = useBookingListUrlState({
+    paymentFilters: PAYMENT_FILTER_KEYS,
+    requestFilters: REQUEST_FILTER_KEYS,
+    sessionFilters: SESSION_FILTER_KEYS,
+  });
+
   const [
     bookings,
     setBookings,
@@ -379,39 +416,8 @@ export default function AllBookingsPage() {
   ] = useState('');
 
   const [
-    query,
-    setQuery,
-  ] = useState('');
-
-  const [
-    requestFilter,
-    setRequestFilter,
-  ] = useState(
-    FILTER_ALL,
-  );
-
-  const [
-    paymentFilter,
-    setPaymentFilter,
-  ] = useState(
-    FILTER_ALL,
-  );
-
-  const [
-    sessionFilter,
-    setSessionFilter,
-  ] = useState(
-    FILTER_ALL,
-  );
-
-  const [
-    page,
-    setPage,
-  ] = useState(1);
-
-  const [
-    selectedBookingId,
-    setSelectedBookingId,
+    urlNotice,
+    setUrlNotice,
   ] = useState('');
 
   /**
@@ -588,6 +594,48 @@ export default function AllBookingsPage() {
       ],
     );
 
+  useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(
+        visibleBookings.length /
+        ADMIN_LIST_PAGE_SIZE,
+      ),
+    );
+    const safePage = clampPage(
+      page,
+      totalPages,
+    );
+
+    if (safePage !== page) {
+      setPage(safePage);
+    }
+  }, [page, setPage, visibleBookings.length]);
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      !selectedBookingId ||
+      selectedBooking
+    ) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      closeDetail();
+      setUrlNotice(
+        'Booking pada tautan sudah tidak tersedia. Pencarian dan filter tetap dipertahankan.',
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    closeDetail,
+    isLoading,
+    selectedBooking,
+    selectedBookingId,
+  ]);
+
   const hasActiveFilters =
     Boolean(
       cleanSearchText(
@@ -604,66 +652,58 @@ export default function AllBookingsPage() {
   function changeQuery(
     value,
   ) {
-    setQuery(value);
-    setPage(1);
+    updateUrlState({
+      page: 1,
+      query: value,
+    });
   }
 
   function changeRequestFilter(
     value,
   ) {
-    setRequestFilter(
-      value,
-    );
-
-    setPage(1);
+    updateUrlState({
+      page: 1,
+      requestFilter: value,
+    });
   }
 
   function changePaymentFilter(
     value,
   ) {
-    setPaymentFilter(
-      value,
-    );
-
-    setPage(1);
+    updateUrlState({
+      page: 1,
+      paymentFilter: value,
+    });
   }
 
   function changeSessionFilter(
     value,
   ) {
-    setSessionFilter(
-      value,
-    );
-
-    setPage(1);
+    updateUrlState({
+      page: 1,
+      sessionFilter: value,
+    });
   }
 
   function resetFilters() {
-    setQuery('');
-    setRequestFilter(
-      FILTER_ALL,
-    );
-    setPaymentFilter(
-      FILTER_ALL,
-    );
-    setSessionFilter(
-      FILTER_ALL,
-    );
-    setPage(1);
+    updateUrlState({
+      page: 1,
+      paymentFilter: FILTER_ALL,
+      query: '',
+      requestFilter: FILTER_ALL,
+      sessionFilter: FILTER_ALL,
+    });
   }
 
   function openBooking(
     booking,
   ) {
-    setSelectedBookingId(
-      booking.id,
-    );
+    setUrlNotice('');
+    openDetail(booking.id);
   }
 
   function closeBooking() {
-    setSelectedBookingId(
-      '',
-    );
+    closeDetail();
   }
 
   return (
@@ -886,6 +926,32 @@ export default function AllBookingsPage() {
           </span>
         )}
       </section>
+
+      {urlNotice ? (
+        <aside
+          className="all-bookings-state"
+          role="status"
+        >
+          <span className="all-bookings-state-icon">
+            <AlertCircle
+              aria-hidden="true"
+              size={20}
+            />
+          </span>
+
+          <div>
+            <small>Deep link booking</small>
+            <strong>Detail booking tidak ditemukan</strong>
+            <p>{urlNotice}</p>
+            <button
+              type="button"
+              onClick={() => setUrlNotice('')}
+            >
+              Tutup
+            </button>
+          </div>
+        </aside>
+      ) : null}
 
       {isLoading ? (
         <section
@@ -1387,6 +1453,7 @@ export default function AllBookingsPage() {
       )}
 
       <BookingDetailDrawer
+        activeTab={selectedBookingTab}
         booking={
           selectedBooking
         }
@@ -1398,6 +1465,7 @@ export default function AllBookingsPage() {
         onClose={
           closeBooking
         }
+        onTabChange={setTab}
       />
     </section>
   );

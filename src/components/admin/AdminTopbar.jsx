@@ -8,6 +8,8 @@ import {
   ChevronRight,
   Clock,
   LogOut,
+  Moon,
+  Sun,
   Wifi,
   WifiOff,
 } from 'lucide-react';
@@ -22,6 +24,7 @@ import {
 } from 'react-router-dom';
 
 import StudioTooltip from '../ui/StudioTooltip.jsx';
+import { useTheme } from '../../theme/ThemeProvider.jsx';
 
 import AdminNotificationBadge from './AdminNotificationBadge.jsx';
 
@@ -35,6 +38,11 @@ export default function AdminTopbar({
   onLogout,
   user,
 }) {
+  const {
+    resolvedTheme,
+    toggleTheme,
+  } = useTheme();
+
   const [
     isOnline,
     setIsOnline,
@@ -112,6 +120,14 @@ export default function AdminTopbar({
   const notificationLabel =
     notificationBadgeLabel ||
     'Buka notifikasi';
+
+  const isDarkTheme =
+    resolvedTheme === 'dark';
+
+  const themeToggleLabel =
+    isDarkTheme
+      ? 'Gunakan mode terang'
+      : 'Gunakan mode gelap';
 
   const shouldReduceMotion =
     useReducedMotion();
@@ -263,6 +279,35 @@ export default function AdminTopbar({
             </button>
           </StudioTooltip>
         ) : null}
+
+        <StudioTooltip
+          content={themeToggleLabel}
+          side="bottom"
+          sideOffset={10}
+        >
+          <button
+            aria-label={themeToggleLabel}
+            aria-pressed={isDarkTheme}
+            className="admin-command-icon admin-theme-toggle"
+            title={themeToggleLabel}
+            type="button"
+            onClick={toggleTheme}
+          >
+            {isDarkTheme ? (
+              <Sun
+                aria-hidden="true"
+                size={17}
+                strokeWidth={1.9}
+              />
+            ) : (
+              <Moon
+                aria-hidden="true"
+                size={17}
+                strokeWidth={1.9}
+              />
+            )}
+          </button>
+        </StudioTooltip>
 
         <span
           aria-live="polite"

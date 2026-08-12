@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/booking.css';
 import { MessageCircle, Send } from 'lucide-react';
 import { bookingCommunicationRepository } from '../../services/bookingCommunicationRepository.js';
 

@@ -23,12 +23,12 @@ import {
 } from '../services/adminBookingRepository.js';
 import {
   businessHours,
-} from './admin/scheduleConfig.js';
+} from '../constants/scheduleConfig.js';
 import {
   buildClientBookingResumePath,
   isBookingStartOccupied,
 } from '../utils/clientBookingHandoff.js';
-import '../styles/admin-auth.css';
+import '../styles/routes/public.css';
 import '../styles/public-booking.css';
 
 function getLocalDateKey(

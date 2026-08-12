@@ -315,19 +315,19 @@ assert.equal(
 );
 
 /**
- * CSS must stay registered through the main admin aggregator.
+ * CSS must stay owned by the lazy schedule route.
  */
-const adminCss =
+const schedulePageSource =
   read(
-    'src/styles/admin-auth.css',
+    'src/pages/admin/SchedulePage.jsx',
   );
 
 assert.equal(
-  adminCss.includes(
-    "@import './modules/schedule.css';"
+  schedulePageSource.includes(
+    "import '../../styles/modules/schedule.css';"
   ),
   true,
-  'Schedule CSS must remain registered in admin-auth.css.',
+  'Schedule CSS must remain owned by the lazy schedule page.',
 );
 
 /**

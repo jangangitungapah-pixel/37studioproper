@@ -1,5 +1,8 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import { firestoreDb } from '../lib/firebase.js';
+import {
+  permanentlyDeleteGalleryItem as runProtectedPermanentDelete,
+} from './adminOperationsRepository.js';
 
 const GALLERY_COLLECTION = 'gallery';
 
@@ -43,13 +46,17 @@ export function updateGalleryItem(itemId, data) {
   return updateDoc(doc(firestoreDb, GALLERY_COLLECTION, itemId), data);
 }
 
-export function deleteGalleryItem(itemId) {
+export function permanentlyDeleteGalleryItem(itemId, idempotencyKey = '') {
   if (!itemId) {
     throw new Error('Gallery item id wajib ada.');
   }
 
-  return deleteDoc(doc(firestoreDb, GALLERY_COLLECTION, itemId));
+  return runProtectedPermanentDelete({ itemId }, idempotencyKey);
 }
+
+// Compatibility alias kept for older consumers. This no longer bypasses the
+// Owner-only server operation or deletes Firestore documents from the browser.
+export const deleteGalleryItem = permanentlyDeleteGalleryItem;
 
 export function setGalleryFavorite(itemId, isFavorite) {
   return updateGalleryItem(itemId, { isFavorite });
@@ -81,18 +88,43 @@ export function batchUpdateGalleryItems(itemIds, dataOrFactory) {
   );
 }
 
-export function batchDeleteGalleryItems(itemIds) {
-  const ids = Array.from(itemIds || []);
+export async function batchPermanentlyDeleteGalleryItems(itemIds) {
+  const ids = Array.from(new Set(itemIds || [])).filter(Boolean);
+  const settled = await Promise.allSettled(
+    ids.map((itemId) => permanentlyDeleteGalleryItem(itemId)),
+  );
 
-  return Promise.all(ids.map((itemId) => deleteGalleryItem(itemId)));
+  const successes = [];
+  const failures = [];
+
+  settled.forEach((result, index) => {
+    const itemId = ids[index];
+
+    if (result.status === 'fulfilled') {
+      successes.push({ itemId, result: result.value });
+      return;
+    }
+
+    failures.push({
+      error: result.reason,
+      itemId,
+      message: result.reason?.message || 'Permanent delete gagal.',
+    });
+  });
+
+  return { failures, successes };
 }
+
+export const batchDeleteGalleryItems = batchPermanentlyDeleteGalleryItems;
 
 export const galleryRepository = {
   batchDeleteGalleryItems,
+  batchPermanentlyDeleteGalleryItems,
   batchUpdateGalleryItems,
   createGalleryItem,
   deleteGalleryItem,
   moveGalleryItemToTrash,
+  permanentlyDeleteGalleryItem,
   restoreGalleryItem,
   setGalleryFavorite,
   subscribeGalleryItems,

@@ -5,12 +5,18 @@ import {
 import {
   LogOut,
   MoreHorizontal,
+  Moon,
+  Sun,
   X,
 } from 'lucide-react';
 
 import {
   Dialog,
 } from 'radix-ui';
+
+import {
+  useTheme,
+} from '../../theme/ThemeProvider.jsx';
 
 function groupMobileMoreItems(
   items = [],
@@ -121,6 +127,11 @@ export default function AdminBottomNav({
   user,
   onLogout,
 }) {
+  const {
+    resolvedTheme,
+    toggleTheme,
+  } = useTheme();
+
   const moreSections =
     groupMobileMoreItems(
       mobileMoreNavItems,
@@ -135,6 +146,15 @@ export default function AdminBottomNav({
     getAccountRoleLabel(
       user,
     );
+
+  const isDarkTheme =
+    resolvedTheme ===
+    'dark';
+
+  const themeToggleLabel =
+    isDarkTheme
+      ? 'Gunakan mode terang'
+      : 'Gunakan mode gelap';
 
   useEffect(() => {
     if (
@@ -469,6 +489,29 @@ export default function AdminBottomNav({
                 {accountRole}
               </small>
             </span>
+
+            <button
+              aria-label={themeToggleLabel}
+              aria-pressed={isDarkTheme}
+              className="admin-mobile-theme-toggle"
+              title={themeToggleLabel}
+              type="button"
+              onClick={toggleTheme}
+            >
+              {isDarkTheme ? (
+                <Sun
+                  aria-hidden="true"
+                  size={17}
+                  strokeWidth={2}
+                />
+              ) : (
+                <Moon
+                  aria-hidden="true"
+                  size={17}
+                  strokeWidth={2}
+                />
+              )}
+            </button>
 
             <button
               aria-label="Keluar dari Admin Portal"

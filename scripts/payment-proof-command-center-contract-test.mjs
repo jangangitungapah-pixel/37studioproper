@@ -71,10 +71,10 @@ assert.equal(
 
 assert.equal(
   repositorySource.includes(
-    'buildBookingPaymentPatch(booking, payment)',
+    'reviewCanonicalPaymentProof(',
   ),
   true,
-  'Phase 5A accounting core must remain payment approval owner.',
+  'Protected canonical accounting service must own payment approval.',
 );
 
 assert.equal(

@@ -1593,6 +1593,26 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
   }
 }
 
+.inventory-movement-info small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.inventory-adjust-btn:disabled,
+.inventory-attention-btn:disabled,
+.inventory-form button:disabled,
+.inventory-modal-head button:disabled {
+  cursor: wait;
+  opacity: 0.52;
+}
+
+.inventory-form label > small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.65rem;
+  line-height: 1.45;
+}
+
 @keyframes inventory-sheet-in {
   from {
     opacity: 0;

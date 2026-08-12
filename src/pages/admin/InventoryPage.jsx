@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import '../../styles/modules/inventory.css';
 import { Dialog } from 'radix-ui';
 import {
   AlertTriangle,
@@ -22,6 +23,7 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
+import { adjustCanonicalInventory } from '../../services/adminOperationsRepository.js';
 
 const categoryOptions = [
   { key: 'all', label: 'Semua Kategori', description: 'Tampilkan semua item' },
@@ -141,8 +143,8 @@ function formatMovementDate(value) {
 function getMovementTypeLabel(type) {
   if (type === 'create') return 'Item Baru';
   if (type === 'edit') return 'Update Item';
-  if (type === 'in') return 'Stok Masuk';
-  if (type === 'out') return 'Stok Keluar';
+  if (type === 'in' || type === 'stock-in') return 'Stok Masuk';
+  if (type === 'out' || type === 'stock-out') return 'Stok Keluar';
   if (type === 'inactive') return 'Nonaktif';
   return 'Aktivitas';
 }
@@ -448,7 +450,7 @@ function InventoryInsightState({ type }) {
   );
 }
 
-function InventoryAttentionPanel({ isLoading, items, loadError, onAdjustStock, onEdit }) {
+function InventoryAttentionPanel({ adjustingItemIds, isLoading, items, loadError, onAdjustStock, onEdit }) {
   const attentionItems = getInventoryAttentionItems(items);
 
   return (
@@ -487,6 +489,7 @@ function InventoryAttentionPanel({ isLoading, items, loadError, onAdjustStock, o
                 <button
                   type="button"
                   className="inventory-attention-btn"
+                  disabled={adjustingItemIds.has(item.id)}
                   onClick={() => {
                     if (isLowStock) {
                       onAdjustStock(item, 'in');
@@ -526,21 +529,31 @@ function InventoryMovementPanel({ isLoading, loadError, movements }) {
 
       {!isLoading && !loadError && movements.length ? (
         <div className="inventory-movement-list">
-          {movements.slice(0, 4).map((movement) => (
-            <article className={'inventory-movement-row is-' + movement.type} key={movement.id}>
-              <span className="inventory-movement-mark" aria-hidden="true">
-                {movement.type === 'out' ? <Minus size={12} /> : <Plus size={12} />}
-              </span>
-              <div className="inventory-movement-info">
-                <strong>{movement.itemName}</strong>
-                <span>{getMovementTypeLabel(movement.type)} · {formatMovementDate(movement.createdAt)}</span>
-                {movement.note ? <em>{movement.note}</em> : null}
-              </div>
-              <b>
-                {movement.type === 'out' ? '-' : '+'}{movement.quantity} {movement.unit}
-              </b>
-            </article>
-          ))}
+          {movements.slice(0, 4).map((movement) => {
+            const isStockOut = movement.type === 'out' || movement.type === 'stock-out';
+            const movementClass = movement.type === 'stock-in'
+              ? 'in'
+              : isStockOut
+                ? 'out'
+                : movement.type;
+
+            return (
+              <article className={'inventory-movement-row is-' + movementClass} key={movement.id}>
+                <span className="inventory-movement-mark" aria-hidden="true">
+                  {isStockOut ? <Minus size={12} /> : <Plus size={12} />}
+                </span>
+                <div className="inventory-movement-info">
+                  <strong>{movement.itemName}</strong>
+                  <span>{getMovementTypeLabel(movement.type)} · {formatMovementDate(movement.createdAt)}</span>
+                  {movement.reason || movement.note ? <em>{movement.reason || movement.note}</em> : null}
+                  {movement.actorName ? <small>Oleh {movement.actorName}</small> : null}
+                </div>
+                <b>
+                  {isStockOut ? '-' : '+'}{movement.quantity} {movement.unit}
+                </b>
+              </article>
+            );
+          })}
         </div>
       ) : null}
     </section>
@@ -583,6 +596,7 @@ function InventoryLedgerState({ hasInventory, type }) {
 }
 
 function InventoryList({
+  adjustingItemIds,
   hasInventory,
   isLoading,
   items,
@@ -619,6 +633,7 @@ function InventoryList({
           {items.map((item) => {
             const status = getEffectiveStatus(item);
             const isAlertStatus = ['broken', 'lost', 'maintenance', 'low_stock'].includes(status);
+            const isAdjusting = adjustingItemIds.has(item.id);
 
             return (
               <article className={'inventory-item-row is-' + status} key={item.id}>
@@ -663,6 +678,7 @@ function InventoryList({
                     <button
                       aria-label={'Kurangi stok ' + item.name}
                       className="inventory-adjust-btn is-out"
+                      disabled={isAdjusting}
                       title="Stok keluar"
                       type="button"
                       onClick={() => onAdjustStock(item, 'out')}
@@ -672,6 +688,7 @@ function InventoryList({
                     <button
                       aria-label={'Tambah stok ' + item.name}
                       className="inventory-adjust-btn is-in"
+                      disabled={isAdjusting}
                       title="Stok masuk"
                       type="button"
                       onClick={() => onAdjustStock(item, 'in')}
@@ -712,7 +729,7 @@ function InventoryList({
   );
 }
 
-function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
+function StockAdjustmentModal({ isSubmitting, item, mode, onClose, onSubmit }) {
   const [quantity, setQuantity] = useState('1');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
@@ -721,8 +738,10 @@ function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
   const title = isStockIn ? 'Tambah Stok' : 'Kurangi Stok';
   const currentQuantity = Number(item?.quantity || 0);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isSubmitting) return;
 
     const amount = toNumber(quantity);
 
@@ -736,16 +755,24 @@ function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
       return;
     }
 
-    onSubmit(item, {
+    const reason = cleanText(note);
+    if (reason.length < 4) {
+      setError('Alasan adjustment wajib diisi minimal 4 karakter.');
+      return;
+    }
+
+    const result = await onSubmit(item, {
       amount,
       mode,
-      note: cleanText(note),
+      note: reason,
     });
+
+    if (result?.error) setError(result.error);
   }
 
   return (
     <Dialog.Root modal open onOpenChange={(nextOpen) => {
-      if (!nextOpen) onClose();
+      if (!nextOpen && !isSubmitting) onClose();
     }}>
       <Dialog.Portal>
         <Dialog.Overlay className="inventory-modal-backdrop" />
@@ -762,7 +789,7 @@ function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
             </div>
 
             <Dialog.Close asChild>
-              <button type="button" aria-label="Tutup adjustment stok"><X size={18} /></button>
+              <button type="button" aria-label="Tutup adjustment stok" disabled={isSubmitting}><X size={18} /></button>
             </Dialog.Close>
           </header>
 
@@ -788,19 +815,26 @@ function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
             </label>
 
             <label>
-              <span>Catatan</span>
+              <span>Alasan adjustment</span>
               <textarea
-                placeholder={isStockIn ? 'Contoh: beli baru, restock kabel...' : 'Contoh: dipakai, rusak, hilang...'}
+                aria-required="true"
+                placeholder={isStockIn ? 'Contoh: pembelian stok baru...' : 'Contoh: dipakai untuk sesi Studio A...'}
+                required
                 value={note}
-                onChange={(event) => setNote(event.target.value)}
+                onChange={(event) => {
+                  setNote(event.target.value);
+                  if (error) setError('');
+                }}
               />
             </label>
 
             {error ? <p className="inventory-form-error" role="alert">{error}</p> : null}
 
             <footer>
-              <Dialog.Close asChild><button type="button">Batal</button></Dialog.Close>
-              <button className="is-primary" type="submit">{title}</button>
+              <Dialog.Close asChild><button type="button" disabled={isSubmitting}>Batal</button></Dialog.Close>
+              <button aria-busy={isSubmitting} className="is-primary" disabled={isSubmitting} type="submit">
+                {isSubmitting ? 'Menyimpan...' : title}
+              </button>
             </footer>
           </form>
         </Dialog.Content>
@@ -810,6 +844,7 @@ function StockAdjustmentModal({ item, mode, onClose, onSubmit }) {
 }
 
 function InventoryFormModal({ item, onClose, onSave }) {
+  const isEditing = Boolean(item?.id);
   const [form, setForm] = useState(() => ({
     ...emptyForm,
     ...(item || {}),
@@ -852,7 +887,7 @@ function InventoryFormModal({ item, onClose, onSave }) {
       name,
       location: cleanText(form.location),
       note: cleanText(form.note),
-      quantity: toNumber(form.quantity),
+      quantity: isEditing ? toNumber(item?.quantity) : toNumber(form.quantity),
       minStock: toNumber(form.minStock),
     });
   }
@@ -903,8 +938,20 @@ function InventoryFormModal({ item, onClose, onSave }) {
 
             <div className="inventory-form-grid">
               <label>
-                <span>Jumlah</span>
-                <input inputMode="numeric" type="number" min="0" value={form.quantity} onChange={updateField('quantity')} />
+                <span>{isEditing ? 'Stok saat ini' : 'Jumlah awal'}</span>
+                <input
+                  aria-describedby={isEditing ? 'inventory-quantity-edit-hint' : undefined}
+                  disabled={isEditing}
+                  inputMode="numeric"
+                  min="0"
+                  readOnly={isEditing}
+                  type="number"
+                  value={form.quantity}
+                  onChange={updateField('quantity')}
+                />
+                {isEditing ? (
+                  <small id="inventory-quantity-edit-hint">Gunakan Tambah/Kurangi Stok agar perubahan tercatat di movement log.</small>
+                ) : null}
               </label>
               <StudioSelect
                 label="Satuan"
@@ -972,6 +1019,8 @@ export default function InventoryPage() {
   const [itemsLoadError, setItemsLoadError] = useState('');
   const [isMovementsLoading, setIsMovementsLoading] = useState(true);
   const [movementsLoadError, setMovementsLoadError] = useState('');
+  const [adjustingItemIds, setAdjustingItemIds] = useState(() => new Set());
+  const adjustingItemIdsRef = useRef(new Set());
 
   useEffect(() => {
     const unsubscribe = inventoryRepository.subscribeInventoryItems(
@@ -1100,6 +1149,7 @@ export default function InventoryPage() {
   }
 
   function openStockAdjustment(item, mode) {
+    if (adjustingItemIdsRef.current.has(item.id)) return;
     setStockAdjustment({ item, mode });
   }
 
@@ -1107,7 +1157,10 @@ export default function InventoryPage() {
     try {
       const isEditing = Boolean(nextItem.id);
       const savedItem = isEditing
-        ? await inventoryRepository.updateInventoryItem(nextItem)
+        ? await inventoryRepository.updateInventoryItem({
+            ...nextItem,
+            quantity: editingItem?.quantity ?? nextItem.quantity,
+          })
         : await inventoryRepository.createInventoryItem(nextItem);
 
       await inventoryRepository.createInventoryMovement({
@@ -1137,50 +1190,40 @@ export default function InventoryPage() {
   }
 
   async function adjustStock(item, adjustment) {
+    if (adjustingItemIdsRef.current.has(item.id)) {
+      return { error: 'Adjustment item ini masih diproses.' };
+    }
+
+    adjustingItemIdsRef.current.add(item.id);
+    setAdjustingItemIds(new Set(adjustingItemIdsRef.current));
+
     try {
-      const currentQuantity = Number(item.quantity || 0);
       const amount = Number(adjustment.amount || 0);
-      const nextQuantity = adjustment.mode === 'in'
-        ? currentQuantity + amount
-        : Math.max(0, currentQuantity - amount);
-      const actionLabel = adjustment.mode === 'in' ? 'Tambah stok' : 'Kurangi stok';
-      const adjustmentNote = adjustment.note
-        ? '[' + actionLabel + ' ' + amount + ' ' + item.unit + '] ' + adjustment.note
-        : '[' + actionLabel + ' ' + amount + ' ' + item.unit + ']';
-      const nextNote = cleanText(item.note)
-        ? cleanText(item.note) + '\n' + adjustmentNote
-        : adjustmentNote;
-
-      await inventoryRepository.updateInventoryItem({
-        ...item,
-        quantity: nextQuantity,
-        note: nextNote,
-        lastMovementAt: new Date().toISOString(),
-        lastMovementType: adjustment.mode,
-      });
-
-      await inventoryRepository.createInventoryMovement({
+      const delta = adjustment.mode === 'in' ? amount : -amount;
+      const result = await adjustCanonicalInventory({
+        delta,
         itemId: item.id,
-        itemName: item.name,
-        type: adjustment.mode,
-        quantity: amount,
-        previousQuantity: currentQuantity,
-        nextQuantity,
-        unit: item.unit,
-        note: adjustment.note,
+        reason: adjustment.note,
       });
+      const nextQuantity = Number(result?.item?.quantity ?? item.quantity);
 
       setStockAdjustment(null);
       setToast({
         title: 'Stok diperbarui',
         message: item.name + ' sekarang ' + nextQuantity + ' ' + item.unit + '.',
       });
+      return { result };
     } catch (error) {
       console.error('Gagal update stok inventory:', error);
+      const message = error?.message || 'Perubahan stok belum berhasil disimpan.';
       setToast({
         title: 'Gagal update stok',
-        message: 'Perubahan stok belum berhasil disimpan ke Firestore.',
+        message,
       });
+      return { error: message };
+    } finally {
+      adjustingItemIdsRef.current.delete(item.id);
+      setAdjustingItemIds(new Set(adjustingItemIdsRef.current));
     }
   }
 
@@ -1244,6 +1287,7 @@ export default function InventoryPage() {
 
       <div className="inventory-operations-grid">
         <InventoryAttentionPanel
+          adjustingItemIds={adjustingItemIds}
           isLoading={isItemsLoading}
           items={items}
           loadError={itemsLoadError}
@@ -1259,6 +1303,7 @@ export default function InventoryPage() {
       </div>
 
       <InventoryList
+        adjustingItemIds={adjustingItemIds}
         hasInventory={Boolean(items.length)}
         isLoading={isItemsLoading}
         items={paginatedItems}
@@ -1281,6 +1326,7 @@ export default function InventoryPage() {
         <StockAdjustmentModal
           key={stockAdjustment.item?.id + '-' + stockAdjustment.mode}
           item={stockAdjustment.item}
+          isSubmitting={adjustingItemIds.has(stockAdjustment.item?.id)}
           mode={stockAdjustment.mode}
           onClose={() => setStockAdjustment(null)}
           onSubmit={adjustStock}

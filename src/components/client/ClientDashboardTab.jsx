@@ -14,7 +14,7 @@ import {
 } from '../../settings/pricingSettings.js';
 import {
   statusFilters,
-} from '../../pages/admin/scheduleConfig.js';
+} from '../../constants/scheduleConfig.js';
 import {
   getLegacyBookingPaymentStatus,
 } from '../../domain/booking/bookingSelectors.js';

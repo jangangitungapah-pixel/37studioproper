@@ -53,7 +53,8 @@ for (const required of [
   'adminAuthRepository.updateAdminProfile({',
   'buildPortalRoleTransitionPatch(',
   'normalizeAdminPermissionsForRole(',
-  'writeBatch(firestoreDb)',
+  'adminOperationsRepository.startDangerZoneJob({',
+  'adminOperationsRepository.transferOwnership({',
   'handleDangerZoneDeleteAllData',
   "const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';",
   '<OperatorFeeSettingsPanel currentUser={currentUser} />',
@@ -139,7 +140,7 @@ assert.match(
 );
 
 for (const required of [
-  'UI-12A.2 — Derive a safe visible page without effect-driven state repair.',
+  'UI-12A.2 — Resolve access before any Owner-only subscription is enabled.',
   'const resolvedActiveSubpage = subpages.some',
   'selectedKey={resolvedActiveSubpage}',
   "resolvedActiveSubpage === 'account'",

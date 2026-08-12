@@ -30,7 +30,7 @@ import {
   getDiscountOptions
 } from '../settings/pricingSettings.js';
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
-import { businessHours, durationOptions } from './admin/scheduleConfig.js';
+import { businessHours, durationOptions } from '../constants/scheduleConfig.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
@@ -38,7 +38,7 @@ import { adminBookingRepository } from '../services/adminBookingRepository.js';
 import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
 import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
-import '../styles/admin-auth.css';
+import '../styles/routes/client.css';
 import '../styles/client-landing.css';
 
 export default function ClientLandingPage() {
@@ -1345,4 +1345,3 @@ Apakah slot jadwal tersebut masih tersedia? Terima kasih!`;
     </div>
   );
 }
-

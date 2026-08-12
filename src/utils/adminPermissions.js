@@ -2,6 +2,7 @@ import { OWNER_EMAIL } from '../constants/appConstants.js';
 import { assertValidGuardIdentityLink } from './guardIdentity.js';
 export { OWNER_EMAIL };
 export const STUDIO_GUARD_ROLE = 'studio_guard';
+export const NOTIFICATIONS_PERMISSION_KEY = 'notifications';
 export const guardPortalPermissionKeys = [];
 
 export const adminPermissionPages = [
@@ -55,6 +56,11 @@ export const adminPermissionPages = [
     label: 'Settings',
     description: 'Pengaturan harga, invoice, account, dan approval admin.',
   },
+  {
+    key: NOTIFICATIONS_PERMISSION_KEY,
+    label: 'Notifications',
+    description: 'Membaca antrean serta menjalankan retry, cancel, dan proses notifikasi.',
+  },
 ];
 
 export const defaultAdminPermissions = adminPermissionPages.reduce((result, page) => ({
@@ -72,7 +78,17 @@ export function normalizeAdminPermissions(permissions, fallbackValue = true) {
 
   return adminPermissionPages.reduce((result, page) => ({
     ...result,
-    [page.key]: typeof source[page.key] === 'boolean' ? source[page.key] : fallbackValue,
+    [page.key]: page.key === NOTIFICATIONS_PERMISSION_KEY
+      ? (
+          typeof source[NOTIFICATIONS_PERMISSION_KEY] === 'boolean'
+            ? source[NOTIFICATIONS_PERMISSION_KEY]
+            : typeof source.settings === 'boolean'
+              ? source.settings
+              : fallbackValue
+        )
+      : typeof source[page.key] === 'boolean'
+        ? source[page.key]
+        : fallbackValue,
   }), {});
 }
 

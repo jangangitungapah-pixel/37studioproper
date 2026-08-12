@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test": "node ../../scripts/notification-security-contract-test.mjs",
     "tail": "wrangler tail"
   },
   "devDependencies": {

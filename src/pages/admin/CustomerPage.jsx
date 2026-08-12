@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/customer.css';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Dialog } from 'radix-ui';
 import {

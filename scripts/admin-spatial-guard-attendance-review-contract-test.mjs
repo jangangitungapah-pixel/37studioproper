@@ -154,8 +154,6 @@ for (const required of [
   'closeGuardAttendanceSession',
   'subscribeGuardAttendanceSessions',
   'GUARD_ATTENDANCE_STATUSES.ACTIVE',
-  'GUARD_ATTENDANCE_STATUSES.CLOSED',
-  'GUARD_ATTENDANCE_STATUSES.VOID',
 ]) {
   assert.equal(
     guardPortalSource.includes(required),

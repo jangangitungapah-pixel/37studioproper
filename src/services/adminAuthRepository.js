@@ -327,8 +327,7 @@ export function subscribeAdminAuth(callback) {
         userDocRef,
         (docSnap) => {
           const userData = docSnap.exists() ? docSnap.data() : null;
-          const hasExplicitRole = Boolean(userData?.role);
-          const isOwner = userData?.role === 'owner' || (!hasExplicitRole && isOwnerEmail);
+          const isOwner = userData?.role === 'owner';
           const isAdminPortalRole = isOwner ||
             userData?.role === ACCOUNT_ROLES.ADMIN ||
             userData?.role === ACCOUNT_ROLES.STUDIO_GUARD;
@@ -350,8 +349,8 @@ export function subscribeAdminAuth(callback) {
             isReady: true,
             user: {
               ...serializeFirebaseUser(user),
-              status: userData?.status || (isApproved ? 'approved' : 'pending'),
-              role: userData?.role || (isOwner ? 'owner' : 'admin'),
+              status: userData?.status || 'pending',
+              role: userData?.role || 'admin',
               isOwner,
               permissions: normalizeAdminPermissionsForRole(userData?.permissions, userData?.role),
               isApproved,
@@ -368,11 +367,11 @@ export function subscribeAdminAuth(callback) {
             isReady: true,
             user: {
               ...serializeFirebaseUser(user),
-              status: isOwnerEmail ? 'approved' : 'pending',
-                role: isOwnerEmail ? 'owner' : 'admin',
+              status: 'pending',
+                role: 'admin',
                 permissions: defaultAdminPermissions,
-                isApproved: isOwnerEmail,
-                access: isOwnerEmail ? PORTAL_ACCESS.ALLOWED : PORTAL_ACCESS.INVALID_ACCOUNT,
+                isApproved: false,
+                access: PORTAL_ACCESS.INVALID_ACCOUNT,
             }
           });
         }
@@ -497,6 +496,72 @@ export async function ensureCurrentAdminAccess() {
   const result = await ensureAdminAccount(firebaseAuth.currentUser);
   assertAdminPortalIntent(result);
   return result;
+}
+
+/**
+ * Re-establishes a recent Firebase session before a protected admin operation.
+ * The password only lives in the caller's in-memory form state and is never
+ * written to storage. Google-capable accounts use the provider popup whenever
+ * a password was not supplied.
+ */
+export async function reauthenticateCurrentAdmin({ password = '' } = {}) {
+  if (!isFirebaseConfigured || !firebaseAuth) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  const currentUser = firebaseAuth.currentUser;
+  const cleanPassword = String(password || '');
+  const cleanEmail = String(currentUser?.email || '').trim();
+  const providerIds = getFirebaseUserProviderIds(currentUser);
+
+  if (!currentUser) {
+    throw new Error('Akun belum login.');
+  }
+
+  try {
+    let verification = '';
+
+    if (cleanPassword) {
+      if (!cleanEmail) {
+        const error = new Error('Email akun belum tersedia.');
+        error.code = 'account-password/email-required';
+        throw error;
+      }
+
+      await reauthenticateWithCredential(
+        currentUser,
+        EmailAuthProvider.credential(cleanEmail, cleanPassword),
+      );
+      verification = 'password';
+    } else if (providerIds.includes('google.com')) {
+      await reauthenticateWithPopup(currentUser, createGoogleProvider());
+      verification = 'google';
+    } else if (providerIds.includes('password')) {
+      const error = new Error('Password saat ini wajib diisi.');
+      error.code = 'account-password/current-password-required';
+      throw error;
+    } else {
+      const error = new Error('Provider akun belum mendukung verifikasi ulang.');
+      error.code = 'account-password/unsupported-provider';
+      throw error;
+    }
+
+    const token = await currentUser.getIdToken(true);
+
+    return {
+      token,
+      user: serializeFirebaseUser(currentUser),
+      verification,
+    };
+  } catch (error) {
+    if (String(error?.code || '').startsWith('account-password/')) {
+      throw error;
+    }
+
+    const normalizedError = new Error(getAdminPasswordErrorMessage(error));
+    normalizedError.code = error?.code || 'account-password/reauthentication-failed';
+    throw normalizedError;
+  }
 }
 
 export async function updateAdminProfile({ displayName }) {
@@ -712,6 +777,7 @@ export const adminAuthRepository = {
   handleRedirectResult,
   sendPhoneOTP,
   ensureCurrentAdminAccess,
+  reauthenticateCurrentAdmin,
   sendAdminPasswordReset,
   signOutAdmin,
   updateAdminProfile,

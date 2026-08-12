@@ -13,7 +13,6 @@ DEFAULT_LIMIT = "10"
 
 # Jangan taruh secret di [vars].
 # Set secret production pakai:
-# npx wrangler secret put WORKER_SECRET
 # npx wrangler secret put ONESIGNAL_REST_API_KEY
 # npx wrangler secret put FIREBASE_CLIENT_EMAIL
 # npx wrangler secret put FIREBASE_PRIVATE_KEY

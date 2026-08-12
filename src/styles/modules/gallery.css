@@ -2431,6 +2431,40 @@ html[
   }
 }
 
+.gallery-owner-operation-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  color: var(--studio-text-secondary);
+  background: var(--studio-surface-2);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.gallery-page[data-can-permanent-delete='false']
+  .gallery-trash-header
+  .gallery-danger-button,
+.gallery-page[data-can-permanent-delete='false']
+  .gallery-photo-card.is-deleted
+  .gallery-photo-actions
+  button.is-danger,
+.gallery-page[data-can-permanent-delete='false'][data-gallery-tab='trash']
+  .gallery-batch-actions
+  button.is-danger,
+.gallery-page[data-can-permanent-delete='false']
+  button[title='Hapus Permanen'] {
+  display: none;
+}
+
+.gallery-page[aria-busy='true'][data-gallery-tab='trash']
+  .gallery-trash-view,
+.gallery-page[aria-busy='true'][data-gallery-tab='trash']
+  .gallery-batch-banner {
+  pointer-events: none;
+  opacity: 0.68;
+}
+
 @media (
   prefers-reduced-motion: reduce
 ) {
@@ -2448,6 +2482,11 @@ html[
 
     animation-iteration-count:
       1 !important;
+  }
+
+  .gallery-page[data-reduced-motion='true'] .animate-in {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

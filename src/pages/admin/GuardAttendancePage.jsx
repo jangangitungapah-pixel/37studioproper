@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/guard-attendance.css';
 import { Dialog } from 'radix-ui';
 import {
   AlertTriangle,

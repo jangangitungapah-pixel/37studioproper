@@ -1,0 +1,9 @@
+/**
+ * Route core for the authenticated admin shell.
+ * Workspace styles are owned by their lazy page/component entry points.
+ */
+@import '../modules/base.css';
+@import '../modules/shared.css';
+@import '../modules/modal.css';
+@import '../modules/auth.css';
+@import '../modules/admin-shell.css';

@@ -606,7 +606,9 @@
   color: var(--auth-text-muted);
 }
 
-.settings-danger-collection.is-deleting em {
+.settings-danger-collection.is-deleting em,
+.settings-danger-collection.is-running em,
+.settings-danger-collection.is-pending em {
   background: rgba(251, 146, 60, 0.1);
   border-color: rgba(251, 146, 60, 0.2);
   color: #fb923c;
@@ -4091,5 +4093,101 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
 @media (prefers-reduced-motion: reduce) {
   .settings-studio-health-track > span {
     transition: none;
+  }
+}
+
+/* UI-12C — protected Settings operations */
+.settings-danger-environment,
+.settings-danger-exclusions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-danger-environment > span,
+.settings-danger-exclusions > span,
+.settings-sensitive-auth {
+  min-width: 0;
+  border-radius: var(--settings-radius-object, 12px);
+  background: var(--settings-surface-soft, var(--auth-bg-soft));
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft, var(--auth-border));
+}
+
+.settings-danger-environment > span {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.settings-danger-environment small,
+.settings-danger-exclusions span,
+.settings-sensitive-auth small {
+  color: var(--settings-text-muted, var(--auth-text-muted));
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.settings-danger-environment strong {
+  overflow: hidden;
+  color: var(--settings-text, var(--auth-text-strong));
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-danger-exclusions > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+}
+
+.settings-danger-exclusions svg,
+.settings-sensitive-auth > svg {
+  flex: 0 0 auto;
+  color: var(--auth-success);
+}
+
+.settings-sensitive-auth {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 11px;
+}
+
+.settings-sensitive-auth label,
+.settings-sensitive-auth > span {
+  display: grid;
+  gap: 5px;
+}
+
+.settings-sensitive-auth label > span,
+.settings-sensitive-auth strong {
+  color: var(--settings-text, var(--auth-text-strong));
+  font-size: 0.75rem;
+  font-weight: 720;
+}
+
+.settings-sensitive-auth input {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 11px;
+  background: var(--settings-surface, var(--auth-bg-card));
+  color: var(--settings-text, var(--auth-text-strong));
+  box-shadow: inset 0 0 0 1px var(--settings-edge-soft, var(--auth-border));
+}
+
+.settings-sensitive-auth input:focus-visible {
+  outline: 2px solid var(--settings-accent, var(--auth-accent));
+  outline-offset: 2px;
+}
+
+@media (max-width: 899px) {
+  .settings-danger-environment,
+  .settings-danger-exclusions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

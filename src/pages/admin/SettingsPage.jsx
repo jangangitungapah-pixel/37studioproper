@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import '../../styles/modules/settings.css';
+import '../../styles/modules/operator-fee.css';
 import { AlertTriangle, Building2, CheckCircle2, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Landmark, Mail, MapPin, MessageCircle, MonitorSmartphone, Phone, QrCode, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, X } from 'lucide-react';
-import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { firestoreDb } from '../../lib/firebase.js';
 import { OWNER_EMAIL } from '../../constants/appConstants.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
@@ -8,6 +11,10 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import OperatorFeeSettingsPanel from '../../components/settings/OperatorFeeSettingsPanel.jsx';
 import { adminAuthRepository } from '../../services/adminAuthRepository.js';
+import {
+  adminOperationsRepository,
+  createAdminOperationKey,
+} from '../../services/adminOperationsRepository.js';
 import { ownerAccountProvisioningRepository } from '../../services/ownerAccountProvisioningRepository.js';
 import {
   accountContactOptions,
@@ -61,7 +68,6 @@ import {
 
 
 const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';
-const DANGER_ZONE_DELETE_BATCH_SIZE = 450;
 const STUDIO_PAYMENT_TERM_LIMIT = 12;
 const STUDIO_DRAFT_FIELDS = [
   'studioName',
@@ -112,6 +118,18 @@ const dangerZoneCollections = [
     preserveCurrentOwner: false,
   },
   {
+    key: 'operatorFeeEntries',
+    label: 'Operator fee',
+    collectionName: 'operatorFeeEntries',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'guardAttendanceSessions',
+    label: 'Guard attendance',
+    collectionName: 'guardAttendanceSessions',
+    preserveCurrentOwner: false,
+  },
+  {
     key: 'inventoryItems',
     label: 'Inventory items',
     collectionName: 'inventoryItems',
@@ -136,6 +154,12 @@ const dangerZoneCollections = [
     preserveCurrentOwner: false,
   },
   {
+    key: 'notificationEventAudits',
+    label: 'Notification audit',
+    collectionName: 'notificationEventAudits',
+    preserveCurrentOwner: false,
+  },
+  {
     key: 'notificationSubscriptions',
     label: 'Notification subscriptions legacy',
     collectionName: 'notificationSubscriptions',
@@ -151,6 +175,12 @@ const dangerZoneCollections = [
     key: 'settings',
     label: 'Remote app settings',
     collectionName: 'settings',
+    preserveCurrentOwner: false,
+  },
+  {
+    key: 'mail',
+    label: 'Mail queue',
+    collectionName: 'mail',
     preserveCurrentOwner: false,
   },
   {
@@ -438,28 +468,6 @@ function getSettingsGroupLabel(key) {
   return SETTINGS_GROUP_LABELS[key] || 'Studio settings';
 }
 
-function createDangerZoneInitialProgress() {
-  return dangerZoneCollections.reduce((progress, item) => ({
-    ...progress,
-    [item.key]: {
-      deleted: 0,
-      error: '',
-      status: 'idle',
-    },
-  }), {});
-}
-
-function getDangerZoneProgressSummary(progress) {
-  return dangerZoneCollections.reduce((summary, item) => {
-    const row = progress[item.key] || {};
-
-    return {
-      deleted: summary.deleted + Number(row.deleted || 0),
-      errors: summary.errors + (row.error ? 1 : 0),
-    };
-  }, { deleted: 0, errors: 0 });
-}
-
 function FormActions({ editing, onCancel }) {
   return (
     <div className="settings-form-actions">
@@ -483,6 +491,9 @@ function EmptyState({ children }) {
 export default function SettingsPage({ authState, currentUser: currentUserProp }) {
   const [confirmConfig, setConfirmConfig] = useState(null);
   const currentUser = useMemo(() => currentUserProp || authState?.user || {}, [currentUserProp, authState?.user]);
+  const isOwner = isOwnerAdminUser(currentUser);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const subpages = useMemo(() => {
     const pages = [
@@ -507,7 +518,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
         description: 'Header, footer, nomor kontak, dan ukuran thermal invoice.',
       }
     ];
-    if (isOwnerAdminUser(currentUser)) {
+    if (isOwner) {
       pages.push({
         key: 'fee-settings',
         label: 'Fee Settings',
@@ -525,13 +536,49 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       });
     }
     return pages;
-  }, [currentUser]);
+  }, [isOwner]);
 
-  const [activeSubpage, setActiveSubpage] = useState('account');
-  // UI-12A.2 — Derive a safe visible page without effect-driven state repair.
-  const resolvedActiveSubpage = subpages.some((page) => page.key === activeSubpage)
-    ? activeSubpage
+  const requestedSettingsArea = useMemo(() => (
+    new URLSearchParams(location.search).get('area') || 'account'
+  ), [location.search]);
+  const dangerJobIdFromUrl = useMemo(() => (
+    new URLSearchParams(location.search).get('dangerJob') || ''
+  ), [location.search]);
+  // UI-12A.2 — Resolve access before any Owner-only subscription is enabled.
+  const resolvedActiveSubpage = subpages.some((page) => page.key === requestedSettingsArea)
+    ? requestedSettingsArea
     : subpages[0]?.key || 'account';
+  const setSettingsArea = useCallback((nextArea, { replace = false } = {}) => {
+    const safeArea = subpages.some((page) => page.key === nextArea)
+      ? nextArea
+      : subpages[0]?.key || 'account';
+    const nextSearch = new URLSearchParams(location.search);
+    nextSearch.set('area', safeArea);
+
+    navigate({
+      hash: location.hash,
+      pathname: location.pathname,
+      search: `?${nextSearch.toString()}`,
+    }, { replace });
+  }, [location.hash, location.pathname, location.search, navigate, subpages]);
+  const setDangerJobInUrl = useCallback((jobId, { replace = true } = {}) => {
+    const nextSearch = new URLSearchParams(location.search);
+    nextSearch.set('area', 'danger');
+    if (jobId) nextSearch.set('dangerJob', jobId);
+    else nextSearch.delete('dangerJob');
+
+    navigate({
+      hash: location.hash,
+      pathname: location.pathname,
+      search: `?${nextSearch.toString()}`,
+    }, { replace });
+  }, [location.hash, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    if (requestedSettingsArea === resolvedActiveSubpage) return;
+    setSettingsArea(resolvedActiveSubpage, { replace: true });
+  }, [requestedSettingsArea, resolvedActiveSubpage, setSettingsArea]);
+
   const remoteSettings = usePricingSettings();
   const [settings, setSettings] = useState(() => remoteSettings);
   const remoteInvoiceSettings = useInvoiceSettings();
@@ -557,7 +604,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     () => String(currentUser?.displayName || '').trim()
   );
   const [accountProfileIsSaving, setAccountProfileIsSaving] = useState(false);
-  const operatorFeeSettings = useOperatorFeeSettings();
+  const operatorFeeSettings = useOperatorFeeSettings({
+    enabled: isOwner && resolvedActiveSubpage === 'user-settings',
+  });
   const [selectingGuardUser, setSelectingGuardUser] = useState(null);
   const [selectedCrewId, setSelectedCrewId] = useState(null);
   const [accountProfileMessage, setAccountProfileMessage] = useState('');
@@ -577,8 +626,107 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const [dangerConfirmText, setDangerConfirmText] = useState('');
   const [dangerFinalCheck, setDangerFinalCheck] = useState(false);
   const [dangerIsDeleting, setDangerIsDeleting] = useState(false);
+  const [dangerIsLoading, setDangerIsLoading] = useState(false);
   const [dangerMessage, setDangerMessage] = useState('');
-  const [dangerProgress, setDangerProgress] = useState(createDangerZoneInitialProgress);
+  const [dangerDryRun, setDangerDryRun] = useState(null);
+  const [dangerJob, setDangerJob] = useState(null);
+  const [dangerResumeToken, setDangerResumeToken] = useState(0);
+  const [sensitiveCurrentPassword, setSensitiveCurrentPassword] = useState('');
+  const dangerDryRunKeyRef = useRef(createAdminOperationKey('danger-dry-run', currentUser?.uid));
+
+  useEffect(() => {
+    if (!isOwner || resolvedActiveSubpage !== 'danger') return undefined;
+
+    let cancelled = false;
+    const loadingFrame = window.requestAnimationFrame(() => {
+      setDangerIsLoading(true);
+    });
+    const request = dangerJobIdFromUrl
+      ? adminOperationsRepository.getDangerZoneJob(dangerJobIdFromUrl)
+      : adminOperationsRepository.createDangerZoneDryRun(dangerDryRunKeyRef.current);
+
+    request
+      .then((response) => {
+        if (cancelled) return;
+
+        if (dangerJobIdFromUrl) {
+          setDangerJob(response.job || null);
+          setDangerDryRun(null);
+          setDangerMessage(
+            response.job?.status === 'completed'
+              ? `Reset selesai. ${Number(response.job.totalDeleted || 0)} dokumen terhapus.`
+              : 'Job reset ditemukan dan akan dilanjutkan dari checkpoint terakhir.',
+          );
+        } else {
+          setDangerDryRun(response);
+          setDangerJob(null);
+          setDangerMessage('Dry-run siap. Verifikasi project, environment, dan jumlah dokumen sebelum melanjutkan.');
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setDangerMessage(error?.message || 'Status Danger Zone belum dapat dimuat.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDangerIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(loadingFrame);
+    };
+  }, [dangerJobIdFromUrl, isOwner, resolvedActiveSubpage]);
+
+  useEffect(() => {
+    if (
+      !isOwner ||
+      resolvedActiveSubpage !== 'danger' ||
+      !dangerJob?.id ||
+      !['queued', 'running'].includes(dangerJob.status)
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const stepTimer = window.setTimeout(async () => {
+      try {
+        setDangerIsDeleting(true);
+        const response = await adminOperationsRepository.stepDangerZoneJob(dangerJob.id);
+        if (cancelled) return;
+
+        const nextJob = response.job || null;
+        setDangerJob(nextJob);
+        if (nextJob?.status === 'completed') {
+          setDangerConfirmText('');
+          setDangerFinalCheck(false);
+          setDangerMessage(`Reset selesai. ${Number(nextJob.totalDeleted || 0)} dokumen terhapus. Akun Owner aktif tetap dipertahankan.`);
+          setDangerIsDeleting(false);
+        } else {
+          setDangerMessage('Reset server sedang berjalan dan checkpoint terakhir sudah tersimpan.');
+          setDangerResumeToken((current) => current + 1);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setDangerIsDeleting(false);
+          setDangerMessage(`${error?.message || 'Job belum dapat dilanjutkan.'} Tekan Lanjutkan Job untuk mencoba lagi.`);
+        }
+      }
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(stepTimer);
+    };
+  }, [dangerJob?.id, dangerJob?.status, dangerJob?.updatedAt, dangerResumeToken, isOwner, resolvedActiveSubpage]);
+
+  useEffect(() => {
+    const clearSensitivePasswordFrame = window.requestAnimationFrame(() => {
+      setSensitiveCurrentPassword('');
+    });
+
+    return () => window.cancelAnimationFrame(clearSensitivePasswordFrame);
+  }, [resolvedActiveSubpage]);
 
   useEffect(() => {
     const settingsFrameId = window.requestAnimationFrame(() => {
@@ -1194,24 +1342,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     }
   }
 
-  async function handleDeleteUser(userId, userEmail) {
-    setConfirmConfig({
-      title: 'Hapus User Permanen',
-      message: `Apakah Anda yakin ingin menghapus user ${userEmail || ''} secara permanen dari 37 Studio? Data user ini akan dihapus selamanya.`,
-      confirmLabel: 'Hapus Permanen',
-      onConfirm: async () => {
-        try {
-          const docRef = doc(firestoreDb, 'users', userId);
-          await deleteDoc(docRef);
-          setApprovalSettingsMessage('User berhasil dihapus secara permanen.');
-        } catch (err) {
-          console.error('Failed to delete user:', err);
-          setApprovalSettingsMessage('Gagal menghapus user.');
-        }
-      }
-    });
-  }
-
   function openPermissionSettings(user) {
     setSelectedPermissionUser(user);
     setPermissionDraft(normalizeAdminPermissionsForRole(user.permissions, user.role));
@@ -1287,6 +1417,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       return;
     }
 
+    if (accountNeedsCurrentPassword && !sensitiveCurrentPassword) {
+      setApprovalSettingsMessage('Masukkan password Owner saat ini sebelum transfer ownership.');
+      return;
+    }
+
     const targetLabel = user.displayName || user.email || user.phoneNumber || 'user ini';
     
     setConfirmConfig({
@@ -1295,31 +1430,21 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       confirmLabel: 'Ya, Transfer',
       onConfirm: async () => {
         try {
-          const now = new Date().toISOString();
-          const batch = writeBatch(firestoreDb);
-
-          batch.update(doc(firestoreDb, 'users', currentUser.uid), {
-            role: 'admin',
-            status: 'approved',
-            permissions: defaultAdminPermissions,
-            ownershipTransferredOutAt: now,
-            updatedAt: now,
+          setApprovalSettingsMessage('Memverifikasi ulang sesi Owner...');
+          await adminAuthRepository.reauthenticateCurrentAdmin({
+            password: sensitiveCurrentPassword,
           });
-
-          batch.update(doc(firestoreDb, 'users', user.id), {
-            role: 'owner',
-            status: 'approved',
-            permissions: defaultAdminPermissions,
-            ownershipTransferredInAt: now,
-            updatedAt: now,
+          setSensitiveCurrentPassword('');
+          await adminOperationsRepository.transferOwnership({
+            targetUid: user.id,
           });
-
-          await batch.commit();
 
           setApprovalSettingsMessage('Ownership berhasil ditransfer ke ' + targetLabel + '.');
         } catch (err) {
+          setSensitiveCurrentPassword('');
           console.error('Gagal transfer ownership:', err);
-          setApprovalSettingsMessage('Terjadi kesalahan saat mentransfer ownership.');
+          setApprovalSettingsMessage(err?.message || 'Terjadi kesalahan saat mentransfer ownership.');
+          throw err;
         }
       }
     });
@@ -1990,66 +2115,33 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     return sessionOptions.find((item) => item.key === sessionId)?.label || 'Session';
   }
 
-  function setDangerCollectionProgress(key, patch) {
-    setDangerProgress((current) => ({
-      ...current,
-      [key]: {
-        ...(current[key] || {}),
-        ...patch,
-      },
-    }));
-  }
-
-  async function deleteDangerZoneCollection(item) {
-    const snapshot = await getDocs(collection(firestoreDb, item.collectionName));
-    const docsToDelete = snapshot.docs.filter((snapshotDoc) => {
-      if (item.preserveCurrentOwner && snapshotDoc.id === currentUser?.uid) return false;
-
-      return true;
-    });
-
-    if (!docsToDelete.length) {
-      setDangerCollectionProgress(item.key, {
-        deleted: 0,
-        error: '',
-        status: 'empty',
-      });
-
-      return 0;
+  async function refreshDangerZoneDryRun() {
+    if (!isOwner) {
+      setDangerMessage('Aksi ini hanya tersedia untuk Owner.');
+      return;
     }
 
-    let deletedCount = 0;
+    setDangerIsLoading(true);
+    setDangerMessage('Menghitung dry-run di server...');
+    const requestKey = createAdminOperationKey('danger-dry-run', currentUser?.uid);
+    dangerDryRunKeyRef.current = requestKey;
 
-    for (let index = 0; index < docsToDelete.length; index += DANGER_ZONE_DELETE_BATCH_SIZE) {
-      const chunk = docsToDelete.slice(index, index + DANGER_ZONE_DELETE_BATCH_SIZE);
-      const batch = writeBatch(firestoreDb);
-
-      chunk.forEach((snapshotDoc) => {
-        batch.delete(snapshotDoc.ref);
-      });
-
-      await batch.commit();
-
-      deletedCount += chunk.length;
-      setDangerCollectionProgress(item.key, {
-        deleted: deletedCount,
-        error: '',
-        status: 'deleting',
-      });
+    try {
+      const response = await adminOperationsRepository.createDangerZoneDryRun(requestKey);
+      setDangerDryRun(response);
+      setDangerJob(null);
+      setDangerJobInUrl('', { replace: true });
+      setDangerMessage('Dry-run baru siap. Periksa project, environment, dan jumlah dokumen.');
+    } catch (error) {
+      setDangerMessage(error?.message || 'Dry-run belum dapat dibuat.');
+    } finally {
+      setDangerIsLoading(false);
     }
-
-    setDangerCollectionProgress(item.key, {
-      deleted: deletedCount,
-      error: '',
-      status: 'done',
-    });
-
-    return deletedCount;
   }
 
   async function handleDangerZoneDeleteAllData() {
-    if (!isOwnerAdminUser(currentUser)) {
-      setDangerMessage('Aksi ini hanya tersedia untuk owner.');
+    if (!isOwner) {
+      setDangerMessage('Aksi ini hanya tersedia untuk Owner.');
       return;
     }
 
@@ -2058,56 +2150,46 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       return;
     }
 
+    if (!dangerDryRun?.snapshotId) {
+      setDangerMessage('Dry-run server wajib selesai sebelum reset dapat dimulai.');
+      return;
+    }
+
     setConfirmConfig({
       title: 'Hapus Seluruh Data?',
-      message: 'Aksi ini akan menghapus data operasional app dari Firestore. Data tidak bisa dikembalikan dari UI. Lanjutkan?',
+      message: `Project ${dangerDryRun.projectId || 'unknown'} (${dangerDryRun.environment || 'unknown'}) akan menjalankan reset terproteksi. Data tidak dapat dikembalikan dari UI.`,
       confirmLabel: 'Lanjut',
       onConfirm: () => {
         setConfirmConfig({
           title: 'Konfirmasi Terakhir',
-          message: 'Hapus data booking, customer, inventory, pembukuan, gallery metadata, notifikasi, settings, dan akun non-owner?',
-          confirmLabel: 'Ya, Hapus Semua Data',
+          message: `Hapus ${Number(dangerDryRun.totalDocuments || 0)} dokumen sesuai dry-run? Owner aktif, Firebase Auth users, dan file Cloudinary tetap dipertahankan.`,
+          confirmLabel: 'Ya, Mulai Server Job',
           onConfirm: async () => {
             setDangerIsDeleting(true);
-            setDangerMessage('Proses reset data dimulai...');
-            setDangerProgress(createDangerZoneInitialProgress());
+            setDangerMessage('Memverifikasi ulang sesi Owner...');
 
-            let totalDeleted = 0;
-            let errorCount = 0;
-
-            for (const item of dangerZoneCollections) {
-              setDangerCollectionProgress(item.key, {
-                deleted: 0,
-                error: '',
-                status: 'deleting',
+            try {
+              await adminAuthRepository.reauthenticateCurrentAdmin({
+                password: sensitiveCurrentPassword,
               });
+              setSensitiveCurrentPassword('');
 
-              try {
-                totalDeleted += await deleteDangerZoneCollection(item);
-              } catch (error) {
-                errorCount += 1;
-                console.error('[danger-zone] Gagal menghapus collection ' + item.collectionName + ':', error);
-                setDangerCollectionProgress(item.key, {
-                  error: error?.message || 'Gagal menghapus collection.',
-                  status: 'error',
-                });
-              }
+              const response = await adminOperationsRepository.startDangerZoneJob({
+                confirmationPhrase: dangerConfirmText,
+                finalConfirmation: dangerFinalCheck,
+                snapshotId: dangerDryRun.snapshotId,
+              });
+              const nextJob = response.job || null;
+              setDangerJob(nextJob);
+              setDangerDryRun(null);
+              if (nextJob?.id) setDangerJobInUrl(nextJob.id, { replace: true });
+              setDangerMessage('Server job dimulai. Setiap batch menyimpan checkpoint agar aman dilanjutkan setelah refresh.');
+            } catch (error) {
+              setDangerIsDeleting(false);
+              setSensitiveCurrentPassword('');
+              setDangerMessage(error?.message || 'Server job belum dapat dimulai.');
+              throw error;
             }
-
-            setDangerIsDeleting(false);
-
-            if (errorCount) {
-              setDangerMessage(
-                'Reset selesai sebagian. ' + totalDeleted + ' dokumen terhapus, ' + errorCount + ' collection gagal. Cek detail di bawah.'
-              );
-              return;
-            }
-
-            setDangerConfirmText('');
-            setDangerFinalCheck(false);
-            setDangerMessage(
-              'Reset selesai. ' + totalDeleted + ' dokumen terhapus. Akun owner aktif tetap dipertahankan.'
-            );
           }
         });
       }
@@ -2151,6 +2233,37 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const accountHasGoogleProvider = accountSecurityProviderIds.includes('google.com');
   const accountHasPasswordProvider = accountSecurityProviderIds.includes('password');
   const accountNeedsCurrentPassword = accountHasPasswordProvider && !accountHasGoogleProvider;
+  const dangerCollectionRows = dangerJob?.collections || (
+    Array.isArray(dangerDryRun?.collections)
+      ? dangerDryRun.collections.map((row) => ({
+          ...row,
+          deleted: 0,
+          estimated: Number(row.count || 0),
+          status: Number(row.count || 0) > 0 ? 'ready' : 'empty',
+        }))
+      : dangerZoneCollections.map((row) => ({
+          collectionId: row.collectionName,
+          deleted: 0,
+          estimated: 0,
+          label: row.label,
+          preserved: 0,
+          status: 'waiting',
+        }))
+  );
+  const dangerTotalEstimated = dangerCollectionRows.reduce(
+    (sum, row) => sum + Number(row.estimated ?? row.count ?? 0),
+    0,
+  );
+  const dangerTotalDeleted = dangerCollectionRows.reduce(
+    (sum, row) => sum + Number(row.deleted || 0),
+    0,
+  );
+  const dangerTotalPreserved = dangerCollectionRows.reduce(
+    (sum, row) => sum + Number(row.preserved || 0),
+    0,
+  );
+  const dangerErrorCount = dangerCollectionRows.filter((row) => row.error).length;
+  const dangerEnvironment = dangerJob || dangerDryRun || {};
   const accountCanManagePassword = Boolean(
     currentUser?.email &&
     (accountHasGoogleProvider || accountHasPasswordProvider)
@@ -2268,7 +2381,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           label="Settings Area"
           options={subpages}
           selectedKey={resolvedActiveSubpage}
-          onChange={setActiveSubpage}
+          onChange={setSettingsArea}
         />
       </div>
 
@@ -2288,7 +2401,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                 key={item.key}
                 role="tab"
                 type="button"
-                onClick={() => setActiveSubpage(item.key)}
+                onClick={() => setSettingsArea(item.key)}
               >
                 <span className="settings-navigation-index" aria-hidden="true">
                   {String(index + 1).padStart(2, '0')}
@@ -2805,9 +2918,24 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               <p>Owner Only</p>
               <h3>Hapus Seluruh Data App</h3>
               <span>
-                Reset data operasional Firestore untuk testing ulang atau mulai dari nol. Aksi ini tidak menghapus Firebase Auth users dan tidak menghapus file eksternal Cloudinary.
+                Reset berjalan sebagai server job terproteksi dan resumable. Refresh halaman tidak mengulang batch yang sudah memiliki checkpoint.
               </span>
             </div>
+          </div>
+
+          <div className="settings-danger-environment" aria-label="Target Danger Zone">
+            <span>
+              <small>Firebase project</small>
+              <strong>{dangerEnvironment.projectId || 'Memuat...'}</strong>
+            </span>
+            <span>
+              <small>Environment</small>
+              <strong>{dangerEnvironment.environment || 'Memuat...'}</strong>
+            </span>
+            <span>
+              <small>{dangerJob ? 'Job ID' : 'Dry-run snapshot'}</small>
+              <strong>{dangerJob?.id || dangerDryRun?.snapshotId || 'Belum tersedia'}</strong>
+            </span>
           </div>
 
           <div className="settings-danger-alert">
@@ -2815,14 +2943,19 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
             <div>
               <strong>Aksi permanen</strong>
               <p>
-                Data booking, customer, bukti pembayaran, pesan, inventory, pembukuan, gallery metadata, settings, dan notifikasi akan dihapus. Akun owner yang sedang login tetap dipertahankan agar app tidak terkunci.
+                Firestore docs sesuai dry-run akan dihapus. Owner aktif dipertahankan. Firebase Auth users dan file Cloudinary berada di luar job ini dan tidak dihapus.
               </p>
             </div>
           </div>
 
+          <div className="settings-danger-exclusions" aria-label="Data yang dipertahankan">
+            <span><ShieldCheck size={14} /> Owner aktif · {dangerTotalPreserved || 1} doc dipertahankan</span>
+            <span><ShieldCheck size={14} /> Firebase Auth users · {dangerEnvironment.externalData?.firebaseAuthUsers || 'retained'}</span>
+            <span><ShieldCheck size={14} /> File Cloudinary · {dangerEnvironment.externalData?.cloudinaryFiles || 'retained'}</span>
+          </div>
+
           <div className="settings-danger-collections" aria-label="Daftar data yang akan dihapus">
-            {dangerZoneCollections.map((item) => {
-              const progress = dangerProgress[item.key] || {};
+            {dangerCollectionRows.map((progress) => {
               const statusLabel =
                 progress.status === 'done'
                   ? 'Selesai'
@@ -2830,17 +2963,26 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                     ? 'Kosong'
                     : progress.status === 'error'
                       ? 'Gagal'
-                      : progress.status === 'deleting'
+                      : progress.status === 'running'
                         ? 'Menghapus'
-                        : 'Siap';
+                        : progress.status === 'pending'
+                          ? 'Antre'
+                          : progress.status === 'waiting'
+                            ? 'Memuat'
+                            : 'Siap';
+              const estimated = Number(progress.estimated ?? progress.count ?? 0);
 
               return (
-                <article className={'settings-danger-collection is-' + (progress.status || 'idle')} key={item.key}>
+                <article className={'settings-danger-collection is-' + (progress.status || 'idle')} key={progress.collectionId}>
                   <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.collectionName}{item.preserveCurrentOwner ? ' · owner aktif dipertahankan' : ''}</small>
+                    <strong>{progress.label}</strong>
+                    <small>
+                      {progress.collectionId}
+                      {Number(progress.preserved || 0) ? ` · ${progress.preserved} preserved` : ''}
+                      {progress.truncated ? ' · count dibatasi safety limit' : ''}
+                    </small>
                   </span>
-                  <em>{statusLabel} · {Number(progress.deleted || 0)} docs</em>
+                  <em>{statusLabel} · {Number(progress.deleted || 0)}/{estimated} docs</em>
                   {progress.error ? <p>{progress.error}</p> : null}
                 </article>
               );
@@ -2853,7 +2995,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               <strong>{DANGER_ZONE_CONFIRM_TEXT}</strong>
               <input
                 autoComplete="off"
-                disabled={dangerIsDeleting}
+                disabled={dangerIsDeleting || Boolean(dangerJob)}
                 id="danger-confirm-text"
                 placeholder={DANGER_ZONE_CONFIRM_TEXT}
                 value={dangerConfirmText}
@@ -2867,7 +3009,7 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
             <label className="settings-danger-check" htmlFor="danger-final-check">
               <input
                 checked={dangerFinalCheck}
-                disabled={dangerIsDeleting}
+                disabled={dangerIsDeleting || Boolean(dangerJob)}
                 id="danger-final-check"
                 type="checkbox"
                 onChange={(event) => {
@@ -2877,6 +3019,21 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               />
               <span>Saya paham data operasional akan dihapus permanen dari Firestore.</span>
             </label>
+
+            {accountNeedsCurrentPassword && !dangerJob ? (
+              <label htmlFor="danger-current-password">
+                <span>Verifikasi password Owner</span>
+                <input
+                  autoComplete="current-password"
+                  disabled={dangerIsDeleting}
+                  id="danger-current-password"
+                  type="password"
+                  value={sensitiveCurrentPassword}
+                  onChange={(event) => setSensitiveCurrentPassword(event.target.value)}
+                />
+                <small>Password hanya dipakai untuk Firebase reauthentication dan tidak disimpan.</small>
+              </label>
+            ) : null}
           </div>
 
           {dangerMessage ? (
@@ -2887,8 +3044,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
           ) : null}
 
           <div className="settings-danger-summary">
-            <span>Total terhapus: <strong>{getDangerZoneProgressSummary(dangerProgress).deleted}</strong></span>
-            <span>Error collection: <strong>{getDangerZoneProgressSummary(dangerProgress).errors}</strong></span>
+            <span>Estimasi dry-run: <strong>{dangerTotalEstimated}</strong></span>
+            <span>Total terhapus: <strong>{dangerTotalDeleted}</strong></span>
+            <span>Error collection: <strong>{dangerErrorCount}</strong></span>
           </div>
 
           <div className="settings-form-actions settings-danger-actions">
@@ -2896,29 +3054,40 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               className="settings-mini-button is-ghost"
               disabled={dangerIsDeleting}
               type="button"
-              onClick={() => {
-                setDangerConfirmText('');
-                setDangerFinalCheck(false);
-                setDangerMessage('');
-                setDangerProgress(createDangerZoneInitialProgress());
-              }}
+              onClick={refreshDangerZoneDryRun}
             >
-              Reset Form
+              <RefreshCcw size={15} />
+              {dangerIsLoading ? 'Menghitung...' : 'Refresh Dry-run'}
             </button>
 
-            <button
-              className="settings-mini-button is-danger"
-              disabled={
-                dangerIsDeleting ||
-                dangerConfirmText !== DANGER_ZONE_CONFIRM_TEXT ||
-                !dangerFinalCheck
-              }
-              type="button"
-              onClick={handleDangerZoneDeleteAllData}
-            >
-              <Trash2 size={15} />
-              {dangerIsDeleting ? 'Menghapus Data...' : 'Hapus Seluruh Data App'}
-            </button>
+            {dangerJob && dangerJob.status !== 'completed' ? (
+              <button
+                className="settings-mini-button is-danger"
+                disabled={dangerIsDeleting}
+                type="button"
+                onClick={() => setDangerResumeToken((current) => current + 1)}
+              >
+                <RefreshCcw size={15} />
+                {dangerIsDeleting ? 'Job Berjalan...' : 'Lanjutkan Job'}
+              </button>
+            ) : (
+              <button
+                className="settings-mini-button is-danger"
+                disabled={
+                  dangerIsDeleting ||
+                  dangerIsLoading ||
+                  !dangerDryRun?.snapshotId ||
+                  dangerConfirmText !== DANGER_ZONE_CONFIRM_TEXT ||
+                  !dangerFinalCheck ||
+                  (accountNeedsCurrentPassword && !sensitiveCurrentPassword)
+                }
+                type="button"
+                onClick={handleDangerZoneDeleteAllData}
+              >
+                <Trash2 size={15} />
+                {dangerIsDeleting ? 'Memulai Job...' : 'Hapus Seluruh Data App'}
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -4019,6 +4188,32 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
             </div>
           ) : null}
 
+          {accountNeedsCurrentPassword ? (
+            <div className="settings-sensitive-auth settings-section-divider">
+              <ShieldCheck size={17} aria-hidden="true" />
+              <label htmlFor="ownership-current-password">
+                <span>Verifikasi untuk transfer ownership</span>
+                <input
+                  autoComplete="current-password"
+                  id="ownership-current-password"
+                  placeholder="Password Owner saat ini"
+                  type="password"
+                  value={sensitiveCurrentPassword}
+                  onChange={(event) => setSensitiveCurrentPassword(event.target.value)}
+                />
+                <small>Password hanya berada di memori form, dipakai saat reauthentication, lalu langsung dibersihkan.</small>
+              </label>
+            </div>
+          ) : (
+            <div className="settings-sensitive-auth settings-section-divider">
+              <ShieldCheck size={17} aria-hidden="true" />
+              <span>
+                <strong>Fresh authentication aktif</strong>
+                <small>Transfer ownership akan membuka verifikasi Google sebelum memanggil server.</small>
+              </span>
+            </div>
+          )}
+
           {/* ── SEKSI 2: DAFTAR AKUN PORTAL TIM AKTIF ── */}
           <div className="settings-section-head settings-section-divider">
             <div>
@@ -4138,17 +4333,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                             <span className="settings-user-toggle-slider"></span>
                           </label>
 
-                          {/* Delete user button */}
-                          <button
-                            type="button"
-                            aria-label="Hapus user"
-                            title="Hapus user"
-                            onClick={() => handleDeleteUser(user.id, user.email || user.displayName)}
-                            className="settings-icon-action-btn is-delete"
-                            style={{ marginLeft: '4px' }}
-                          >
-                            <Trash2 size={12} />
-                          </button>
                         </>
                       ) : (
                         <span className="settings-owner-status-pill" title="Owner full access" aria-label="Owner full access" style={{ padding: '4px 8px', fontSize: '10px', background: 'var(--auth-accent-soft)', color: 'var(--auth-accent)', borderRadius: 'var(--studio-radius-sm)', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -4197,15 +4381,6 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                         Aktifkan
                       </button>
 
-                      <button
-                        type="button"
-                        aria-label="Hapus user"
-                        title="Hapus user"
-                        onClick={() => handleDeleteUser(user.id, user.email || user.displayName)}
-                        className="settings-icon-action-btn is-delete"
-                      >
-                        <Trash2 size={12} />
-                      </button>
                     </div>
                   </article>
                 ))}

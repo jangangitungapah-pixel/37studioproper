@@ -20,11 +20,58 @@ import { RecaptchaVerifier } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
+import { ThemeProvider } from '../theme/ThemeProvider.jsx';
 import { ACCOUNT_ROLES, PORTAL_ACCESS } from '../utils/accountRoles.js';
-import '../styles/admin-auth.css';
+import '../styles/routes/auth.css';
 import '../styles/firebase-auth.css';
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function sanitizePortalRedirect(rawRedirectTo) {
+  if (typeof rawRedirectTo !== 'string') return '';
+
+  const candidate = rawRedirectTo.trim();
+
+  if (
+    !candidate.startsWith('/') ||
+    candidate.startsWith('//') ||
+    candidate.includes('\\') ||
+    Array.from(candidate).some((character) => {
+      const codePoint = character.codePointAt(0);
+      return codePoint <= 31 || codePoint === 127;
+    })
+  ) {
+    return '';
+  }
+
+  try {
+    const baseUrl = new URL('https://studio37.invalid');
+    const parsedUrl = new URL(candidate, baseUrl);
+    const isAdminRoute =
+      parsedUrl.pathname === '/admin' ||
+      parsedUrl.pathname.startsWith('/admin/');
+    const isGuardRoute =
+      parsedUrl.pathname === '/guard' ||
+      parsedUrl.pathname.startsWith('/guard/');
+
+    if (parsedUrl.origin !== baseUrl.origin || (!isAdminRoute && !isGuardRoute)) {
+      return '';
+    }
+
+    return parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+  } catch {
+    return '';
+  }
+}
+
 export default function LoginPage() {
+  return (
+    <ThemeProvider>
+      <LoginPageContent />
+    </ThemeProvider>
+  );
+}
+
+function LoginPageContent() {
   const navigate = useNavigate();
   
   // Tab and Mode States
@@ -55,7 +102,9 @@ export default function LoginPage() {
   const recaptchaContainerRef = useRef(null);
 
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo');
+  const redirectTo = sanitizePortalRedirect(
+    searchParams.get('redirectTo'),
+  );
   const guardIntent =
     searchParams.get('portal') === 'guard' ||
     String(
@@ -105,7 +154,7 @@ export default function LoginPage() {
         }
 
         if ([PORTAL_ACCESS.ALLOWED, PORTAL_ACCESS.ADMIN_PENDING].includes(access)) {
-          const target = redirectTo ? redirectTo : '/admin/schedule';
+          const target = redirectTo || '/admin';
           navigate(target, { replace: true });
           return;
         }
@@ -931,4 +980,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

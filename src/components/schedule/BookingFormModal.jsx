@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import '../../styles/modules/booking.css';
 import {
   Dialog,
 } from 'radix-ui';
@@ -18,7 +19,7 @@ import {
   businessHours,
   durationOptions,
   paymentStatusOptions,
-} from '../../pages/admin/scheduleConfig.js';
+} from '../../constants/scheduleConfig.js';
 import {
   formatRupiah,
   getPackageOptions,

@@ -284,17 +284,17 @@ assert.equal(
   'UI-1.1 repair must not reintroduce the narrow 70px time column.',
 );
 
-const adminCssSource =
+const dashboardPageSource =
   read(
-    'src/styles/admin-auth.css',
+    'src/pages/admin/DashboardPage.jsx',
   );
 
 assert.equal(
-  adminCssSource.includes(
-    "@import './modules/dashboard.css';",
+  dashboardPageSource.includes(
+    "import '../../styles/modules/dashboard.css';",
   ),
   true,
-  'Dashboard stylesheet must remain registered in the admin CSS aggregator.',
+  'Dashboard stylesheet must remain owned by the lazy dashboard page.',
 );
 
 const selectorSource =

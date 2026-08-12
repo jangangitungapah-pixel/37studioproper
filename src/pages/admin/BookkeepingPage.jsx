@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/bookkeeping.css';
 import { Dialog } from 'radix-ui';
 import {
   AlertTriangle,
@@ -216,6 +217,16 @@ function getTransactionSourceMeta(transaction) {
     };
   }
 
+  if (source === 'booking-payment') {
+    return {
+      key: 'booking',
+      label: 'Booking',
+      description: 'Canonical payment',
+      searchText: 'booking canonical billing pembayaran',
+      reconciled: true,
+    };
+  }
+
   if (source === 'booking-refund') {
     return {
       key: 'booking-refund',
@@ -276,6 +287,8 @@ function buildExpenseTransactions(entries) {
         id: entryType + '-' + entry.id,
         entryId: entry.id,
         source: entry.source || 'manual',
+        bookingId: entry.sourceBookingId,
+        sourceEventId: entry.sourceEventId,
         type: entryType,
         title: entry.title,
         amount: toNumber(entry.amount),
@@ -1449,10 +1462,20 @@ export default function BookkeepingPage() {
   }, [toast]);
 
   const allTransactions = useMemo(
-    () => [
-      ...buildBookingTransactions(bookings),
-      ...buildExpenseTransactions(entries),
-    ],
+    () => {
+      const entryTransactions = buildExpenseTransactions(entries);
+      const canonicalKeys = new Set(
+        entryTransactions
+          .filter((transaction) => ['booking-payment', 'booking-refund'].includes(transaction.source))
+          .map((transaction) => `${transaction.source}:${transaction.bookingId}:${transaction.sourceEventId}`),
+      );
+      const legacyBookingTransactions = buildBookingTransactions(bookings).filter((transaction) => {
+        const source = transaction.source === 'booking' ? 'booking-payment' : transaction.source;
+        return !canonicalKeys.has(`${source}:${transaction.bookingId}:${transaction.sourceEventId}`);
+      });
+
+      return [...legacyBookingTransactions, ...entryTransactions];
+    },
     [bookings, entries]
   );
 

@@ -426,7 +426,7 @@ for (
     'function validGuardAttendanceOwnerRejectPatch()',
     'function validGuardAttendanceOwnerVoidPatch()',
     'function adminReviewsGuardAttendance()',
-    'adminUpdatesGuardAttendance()',
+    'adminReviewsGuardAttendance() || (',
   ]
 ) {
   assert.equal(

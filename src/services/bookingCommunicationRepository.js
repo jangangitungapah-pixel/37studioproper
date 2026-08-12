@@ -1,13 +1,20 @@
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   query,
+  runTransaction,
   where,
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import { getBookingRequestStatus } from '../domain/booking/bookingSelectors.js';
+import {
+  buildBookingDecisionKey,
+  buildBookingDecisionPatch,
+  validateBookingDecision,
+} from '../domain/booking/bookingDecision.js';
 import {
   createAdminNotificationEvent,
   createClientNotificationEvent,
@@ -47,8 +54,8 @@ function cleanText(value, maxLength = 600) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
-function makeMessagePayload({ booking, messageId, role, text, type, user }) {
-  const now = new Date().toISOString();
+function makeMessagePayload({ booking, createdAt, messageId, role, text, type, user }) {
+  const now = createdAt || new Date().toISOString();
 
   return {
     id: messageId,
@@ -138,21 +145,23 @@ async function safeCreateBookingMessageNotificationEvent({ booking, message, rol
   }
 }
 
-async function safeCreateBookingStatusNotificationEvent({ booking, message, status, user }) {
+async function safeCreateBookingStatusNotificationEvent({ booking, decisionKey, message, status, user }) {
   try {
     const isConfirmed = status === 'confirmed';
     const isRejected = status === 'rejected' || status === 'cancelled';
 
     await createClientNotificationEvent({
       bookingId: booking.id,
+      eventId: `notification-${decisionKey}`,
       message: message.text,
       metadata: {
         bookingCode: getBookingDisplayCode(booking),
+        decisionKey,
         messageId: message.id,
         status,
       },
       priority: 'high',
-      source: `booking-status-${status}`,
+      source: 'booking-request-decision',
       targetUid: booking.clientUid,
       title: isConfirmed ? 'Booking dikonfirmasi' : isRejected ? 'Booking tidak dikonfirmasi' : 'Status booking diperbarui',
       type: isConfirmed
@@ -265,6 +274,7 @@ export async function requestBookingCancellation({ booking, note, user }) {
   batch.update(doc(firestoreDb, 'bookings', booking.id), {
     ...makeBookingMessageSummary(message),
     bookingRequestStatus: 'cancellation_requested',
+    requestStatus: 'cancellation_requested',
     clientRequestNote: cleanNote,
     clientRequestUpdatedAt: message.createdAt,
   });
@@ -275,7 +285,50 @@ export async function requestBookingCancellation({ booking, note, user }) {
   return message;
 }
 
-export async function updateBookingRequestStatus({ booking, note, status, user }) {
+function throwBookingDecisionIssue(issue) {
+  const error = new Error(
+    issue?.message ||
+    'Request booking tidak dapat diproses.',
+  );
+
+  error.code = issue?.code || 'booking-decision-failed';
+  error.conflict = issue?.conflict || null;
+  throw error;
+}
+
+async function resolveDecisionBookings({
+  booking,
+  currentBookings,
+  status,
+}) {
+  if (Array.isArray(currentBookings)) {
+    return currentBookings;
+  }
+
+  if (status !== 'confirmed' || !booking?.date) {
+    return [];
+  }
+
+  const snapshot = await getDocs(
+    query(
+      collection(firestoreDb, 'bookings'),
+      where('date', '==', booking.date),
+    ),
+  );
+
+  return snapshot.docs.map((bookingDoc) => ({
+    id: bookingDoc.id,
+    ...bookingDoc.data(),
+  }));
+}
+
+export async function updateBookingRequestStatus({
+  booking,
+  currentBookings,
+  note,
+  status,
+  user,
+}) {
   requireFirestore();
 
   const statusMeta = bookingRequestStatusOptions[status];
@@ -283,40 +336,122 @@ export async function updateBookingRequestStatus({ booking, note, status, user }
     throw new Error('Status request booking tidak valid.');
   }
 
-  const cleanNote = cleanText(note || `Status booking diperbarui: ${statusMeta.label}.`);
-  const messageRef = doc(collection(firestoreDb, MESSAGE_COLLECTION));
+  const cleanNote = cleanText(
+    note ||
+    `Status booking diperbarui: ${statusMeta.label}.`,
+  );
+  const decisionBookings = await resolveDecisionBookings({
+    booking,
+    currentBookings,
+    status,
+  });
+  const initialIssue = validateBookingDecision({
+    booking,
+    currentBookings: decisionBookings,
+    reason: note,
+    status,
+  });
+
+  if (!initialIssue.ok) {
+    throwBookingDecisionIssue(initialIssue);
+  }
+
+  const decisionKey = buildBookingDecisionKey({
+    booking,
+    status,
+  });
+  const createdAt = new Date().toISOString();
+  const messageId = `request-${decisionKey}`;
+  const messageRef = doc(
+    firestoreDb,
+    MESSAGE_COLLECTION,
+    messageId,
+  );
   const message = makeMessagePayload({
     booking,
-    messageId: messageRef.id,
+    createdAt,
+    messageId,
     role: 'admin',
     text: cleanNote,
     type: 'status',
     user,
   });
-  const bookingUpdate = {
-    ...makeBookingMessageSummary(message),
-    bookingRequestStatus: status,
-    adminResponseNote: cleanNote,
-    adminResponseAt: message.createdAt,
-    updatedAt: message.createdAt,
-  };
+  const bookingRef = doc(
+    firestoreDb,
+    'bookings',
+    booking.id,
+  );
+  let alreadyApplied = false;
 
-  if (status === 'rejected' || status === 'cancelled') {
-    bookingUpdate.paymentStatus = 'cancelled';
-    bookingUpdate.status = 'cancelled';
-  } else if (status === 'confirmed' && ['cancelled', 'canceled'].includes(String(booking.status || '').toLowerCase())) {
-    bookingUpdate.paymentStatus = 'pending';
-    bookingUpdate.status = 'pending';
+  await runTransaction(
+    firestoreDb,
+    async (transaction) => {
+      const liveSnapshot =
+        await transaction.get(bookingRef);
+
+      if (!liveSnapshot.exists()) {
+        throwBookingDecisionIssue({
+          code: 'booking-not-found',
+          message: 'Booking sudah tidak tersedia.',
+        });
+      }
+
+      const liveBooking = {
+        id: liveSnapshot.id,
+        ...liveSnapshot.data(),
+      };
+
+      if (
+        liveBooking.lastRequestDecisionKey ===
+        decisionKey
+      ) {
+        alreadyApplied = true;
+        return;
+      }
+
+      const liveIssue = validateBookingDecision({
+        booking: liveBooking,
+        currentBookings: decisionBookings,
+        reason: note,
+        status,
+      });
+
+      if (!liveIssue.ok) {
+        throwBookingDecisionIssue(liveIssue);
+      }
+
+      transaction.set(messageRef, message);
+      transaction.update(bookingRef, {
+        ...makeBookingMessageSummary(message),
+        ...buildBookingDecisionPatch({
+          actor: user,
+          decisionKey,
+          note: cleanNote,
+          status,
+          timestamp: createdAt,
+        }),
+        // Compatibility alias retained while legacy readers still migrate.
+        bookingRequestStatus: status,
+      });
+    },
+  );
+
+  if (!alreadyApplied) {
+    await safeCreateBookingStatusNotificationEvent({
+      booking,
+      decisionKey,
+      message,
+      status,
+      user,
+    });
   }
 
-  const batch = writeBatch(firestoreDb);
-  batch.set(messageRef, message);
-  batch.update(doc(firestoreDb, 'bookings', booking.id), bookingUpdate);
-  await batch.commit();
-
-  await safeCreateBookingStatusNotificationEvent({ booking, message, status, user });
-
-  return { message, status };
+  return {
+    alreadyApplied,
+    decisionKey,
+    message,
+    status,
+  };
 }
 
 export const bookingCommunicationRepository = {

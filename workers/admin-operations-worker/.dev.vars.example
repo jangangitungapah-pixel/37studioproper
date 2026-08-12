@@ -1,0 +1,9 @@
+# Copy to .dev.vars for local development. Never commit the real values.
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+
+# Required for permanent deletion of Gallery items linked to Cloudinary.
+# Without them, the operation fails safely and keeps Firestore metadata.
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=

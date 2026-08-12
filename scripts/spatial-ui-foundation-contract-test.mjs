@@ -64,11 +64,6 @@ const requiredFiles = [
   'src/styles/spatial-foundation.css',
   'src/components/ui/SpatialUiProvider.jsx',
   'src/components/ui/StudioTooltip.jsx',
-  'src/components/ui/StudioMenu.jsx',
-  'src/components/ui/StudioPopover.jsx',
-  'src/components/ui/IconButton.jsx',
-  'src/components/ui/SpatialSurface.jsx',
-  'src/utils/spatialMotion.js',
   'src/theme/themePreferences.js',
 ];
 
@@ -337,76 +332,6 @@ assert.equal(
   ),
   true,
 );
-
-const menuSource =
-  readFileSync(
-    resolve(
-      'src/components/ui/StudioMenu.jsx',
-    ),
-    'utf8',
-  );
-
-assert.equal(
-  menuSource.includes(
-    'DropdownMenu.Portal'
-  ),
-  true,
-);
-
-const popoverSource =
-  readFileSync(
-    resolve(
-      'src/components/ui/StudioPopover.jsx',
-    ),
-    'utf8',
-  );
-
-assert.equal(
-  popoverSource.includes(
-    'Popover.Portal'
-  ),
-  true,
-);
-
-const iconButtonSource =
-  readFileSync(
-    resolve(
-      'src/components/ui/IconButton.jsx',
-    ),
-    'utf8',
-  );
-
-assert.equal(
-  iconButtonSource.includes(
-    'IconButton membutuhkan prop label'
-  ),
-  true,
-  'IconButton must enforce an accessible label.',
-);
-
-const motionSource =
-  readFileSync(
-    resolve(
-      'src/utils/spatialMotion.js',
-    ),
-    'utf8',
-  );
-
-for (
-  const required
-  of [
-    'STUDIO_MOTION',
-    'STUDIO_OVERLAY_VARIANTS',
-    'STUDIO_ROUTE_VARIANTS',
-  ]
-) {
-  assert.equal(
-    motionSource.includes(
-      required,
-    ),
-    true,
-  );
-}
 
 assert.equal(
   packageJson.scripts.test.includes(

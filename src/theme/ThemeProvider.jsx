@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -20,6 +21,15 @@ const ThemeContext =
   createContext(
     null,
   );
+
+const THEME_META_COLORS =
+  Object.freeze({
+    [THEME_PREFERENCES.DARK]:
+      '#100E0C',
+
+    [THEME_PREFERENCES.LIGHT]:
+      '#F2EEE7',
+  });
 
 export function ThemeProvider({
   children,
@@ -51,7 +61,7 @@ export function ThemeProvider({
       systemTheme,
     );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
       typeof document ===
       'undefined'
@@ -61,6 +71,11 @@ export function ThemeProvider({
 
     const root =
       document.documentElement;
+
+    const themeColorMeta =
+      document.querySelector(
+        'meta[name="theme-color"]',
+      );
 
     documentSnapshotRef.current = {
       adminThemeActive:
@@ -74,6 +89,11 @@ export function ThemeProvider({
       theme:
         root.dataset
           .theme,
+
+      themeColor:
+        themeColorMeta?.getAttribute(
+          'content',
+        ) || '',
     };
 
     root.dataset.adminThemeActive =
@@ -109,6 +129,16 @@ export function ThemeProvider({
       root.style.colorScheme =
         snapshot.colorScheme ||
         '';
+
+      if (
+        themeColorMeta &&
+        snapshot.themeColor
+      ) {
+        themeColorMeta.setAttribute(
+          'content',
+          snapshot.themeColor,
+        );
+      }
     };
   }, []);
 
@@ -164,7 +194,7 @@ export function ThemeProvider({
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
       typeof document !==
       'undefined'
@@ -176,8 +206,21 @@ export function ThemeProvider({
       document.documentElement
         .style.colorScheme =
         resolvedTheme;
-    }
 
+      document.querySelector(
+        'meta[name="theme-color"]',
+      )?.setAttribute(
+        'content',
+        THEME_META_COLORS[
+          resolvedTheme
+        ],
+      );
+    }
+  }, [
+    resolvedTheme,
+  ]);
+
+  useEffect(() => {
     if (
       typeof window !==
       'undefined'
@@ -193,7 +236,6 @@ export function ThemeProvider({
     }
   }, [
     preference,
-    resolvedTheme,
   ]);
 
   const value =

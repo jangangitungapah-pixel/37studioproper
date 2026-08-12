@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import '../../styles/modules/gallery.css';
 import { 
   Image as ImageIcon, 
   Plus, 
@@ -51,13 +52,56 @@ import PhotoCard from '../../components/gallery/PhotoCard.jsx';
 import { AUDIO_VISUALIZER_BAR_HEIGHTS, CATEGORIES } from '../../utils/galleryConstants.js';
 import { getDisplayedGalleryImages, getFilteredActiveImages, getGalleryTimelineGroups, getTrashedGalleryImages } from '../../utils/galleryImageFilters.js';
 import LofiAmbientSynth from '../../utils/lofiAmbientSynth.js';
+import { isOwnerAdminUser } from '../../utils/adminPermissions.js';
 
-export default function GalleryPage() {
+function isEditableShortcutTarget(target) {
+  if (!target) return false;
+  if (target.isContentEditable) return true;
+
+  return typeof target.closest === 'function' && Boolean(
+    target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="textbox"]'),
+  );
+}
+
+function summarizePermanentDeleteFailures(failures, images) {
+  const imageById = new Map(images.map((image) => [image.id, image]));
+  const labels = failures.slice(0, 3).map(({ itemId, message }) => {
+    const title = imageById.get(itemId)?.title || itemId;
+    return `${title}: ${message}`;
+  });
+  const suffix = failures.length > labels.length
+    ? ` (+${failures.length - labels.length} lainnya)`
+    : '';
+
+  return labels.join(' · ') + suffix;
+}
+
+function summarizePermanentDeleteSuccesses(successes, images) {
+  const imageById = new Map(images.map((image) => [image.id, image]));
+  const labels = successes.slice(0, 4).map(({ itemId }) => (
+    imageById.get(itemId)?.title || itemId
+  ));
+  const suffix = successes.length > labels.length
+    ? ` (+${successes.length - labels.length} lainnya)`
+    : '';
+
+  return labels.join(', ') + suffix;
+}
+
+export default function GalleryPage({ currentUser = null }) {
   const [rawImages, setRawImages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [permanentDeleteIds, setPermanentDeleteIds] = useState(() => new Set());
+  const permanentDeleteIdsRef = useRef(new Set());
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ));
+  const canPermanentlyDelete = isOwnerAdminUser(currentUser);
 
   // Gallery Navigation States
   const [activeTab, setActiveTab] = useState('photos'); // 'photos' | 'albums' | 'trash'
@@ -93,6 +137,22 @@ export default function GalleryPage() {
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.5);
   const synthRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+      if (mediaQuery.matches) {
+        setIsSlideshowPlaying(false);
+        setIsMusicPlaying(false);
+      }
+    };
+    mediaQuery.addEventListener?.('change', updatePreference);
+
+    return () => mediaQuery.removeEventListener?.('change', updatePreference);
+  }, []);
 
   // Photo Editor States
   const [isEditing, setIsEditing] = useState(false);
@@ -206,6 +266,20 @@ export default function GalleryPage() {
     }
   }, []);
 
+  const setSlideshowPlayingSafely = useCallback((nextValue) => {
+    const resolvedValue = typeof nextValue === 'function'
+      ? nextValue(isSlideshowPlaying)
+      : Boolean(nextValue);
+
+    if (resolvedValue && prefersReducedMotion) {
+      setSuccess('Slideshow otomatis dinonaktifkan karena preferensi reduced motion aktif.');
+      setIsSlideshowPlaying(false);
+      return;
+    }
+
+    setIsSlideshowPlaying(resolvedValue);
+  }, [isSlideshowPlaying, prefersReducedMotion]);
+
   const handleToggleFavorite = useCallback(async (img) => {
     if (!img?.id) return;
 
@@ -220,7 +294,7 @@ export default function GalleryPage() {
   // Keyboard Navigation in Lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activePhotoIndex === null || isEditing) return;
+      if (activePhotoIndex === null || isEditing || isEditableShortcutTarget(e.target)) return;
       if (e.key === 'ArrowRight') {
         handleNextPhoto();
       } else if (e.key === 'ArrowLeft') {
@@ -229,7 +303,7 @@ export default function GalleryPage() {
         closeLightbox();
       } else if (e.key === ' ') {
         e.preventDefault();
-        setIsSlideshowPlaying(prev => !prev);
+        setSlideshowPlayingSafely(prev => !prev);
       } else if (e.key.toLowerCase() === 'f') {
         handleToggleFavorite(displayedImages[activePhotoIndex]);
       } else if (e.key.toLowerCase() === 'i') {
@@ -240,18 +314,18 @@ export default function GalleryPage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activePhotoIndex, closeLightbox, displayedImages, handleNextPhoto, handlePrevPhoto, handleToggleFavorite, isEditing]);
+  }, [activePhotoIndex, closeLightbox, displayedImages, handleNextPhoto, handlePrevPhoto, handleToggleFavorite, isEditing, setSlideshowPlayingSafely]);
 
   // Slideshow Timer Effect
   useEffect(() => {
     let timer;
-    if (isSlideshowPlaying && activePhotoIndex !== null) {
+    if (isSlideshowPlaying && !prefersReducedMotion && activePhotoIndex !== null) {
       timer = setInterval(() => {
         handleNextPhoto();
       }, 4000);
     }
     return () => clearInterval(timer);
-  }, [isSlideshowPlaying, activePhotoIndex, handleNextPhoto]);
+  }, [isSlideshowPlaying, activePhotoIndex, handleNextPhoto, prefersReducedMotion]);
 
   // File Upload Handlers
   const handleFileChange = (e) => {
@@ -284,7 +358,7 @@ export default function GalleryPage() {
     try {
       const { secureUrl, publicId } = await uploadGalleryImageFile(selectedFile);
 
-      const currentUser = firebaseAuth?.currentUser;
+      const authUser = firebaseAuth?.currentUser;
       const docData = {
         title: uploadTitle.trim(),
         description: uploadDesc.trim(),
@@ -293,7 +367,7 @@ export default function GalleryPage() {
         category: uploadCategory,
         isFavorite: false,
         isDeleted: false,
-        uploadedBy: currentUser?.displayName || 'Admin',
+        uploadedBy: authUser?.displayName || 'Admin',
         createdAt: new Date().toISOString(),
       };
 
@@ -403,17 +477,71 @@ export default function GalleryPage() {
     }
   };
 
+  async function runPermanentDeleteBatch(itemIds) {
+    const ids = Array.from(new Set(itemIds || [])).filter(Boolean);
+
+    if (!canPermanentlyDelete) {
+      return {
+        failures: ids.map((itemId) => ({
+          itemId,
+          message: 'Hanya Owner yang dapat menghapus media secara permanen.',
+        })),
+        successes: [],
+      };
+    }
+
+    const pendingIds = ids.filter((itemId) => !permanentDeleteIdsRef.current.has(itemId));
+    if (!pendingIds.length) return { failures: [], successes: [] };
+
+    pendingIds.forEach((itemId) => permanentDeleteIdsRef.current.add(itemId));
+    setPermanentDeleteIds(new Set(permanentDeleteIdsRef.current));
+
+    try {
+      return await galleryRepository.batchPermanentlyDeleteGalleryItems(pendingIds);
+    } finally {
+      pendingIds.forEach((itemId) => permanentDeleteIdsRef.current.delete(itemId));
+      setPermanentDeleteIds(new Set(permanentDeleteIdsRef.current));
+    }
+  }
+
+  function publishPermanentDeleteResult(result, sourceImages) {
+    const successCount = result.successes.length;
+    const failureCount = result.failures.length;
+
+    if (successCount) {
+      setSuccess(
+        `${successCount} media berhasil dihapus permanen: ${summarizePermanentDeleteSuccesses(result.successes, sourceImages)}.`,
+      );
+    }
+
+    if (failureCount) {
+      setError(
+        `${failureCount} media gagal dihapus. ${summarizePermanentDeleteFailures(result.failures, sourceImages)}`,
+      );
+    }
+  }
+
   // Permanent Delete
   const handlePermanentDelete = async (imgId) => {
+    if (!canPermanentlyDelete) {
+      setError('Hanya Owner yang dapat menghapus media secara permanen.');
+      return;
+    }
+    if (permanentDeleteIdsRef.current.has(imgId)) return;
     if (!window.confirm('Apakah Anda yakin ingin menghapus foto ini secara PERMANEN? File database akan hilang selamanya.')) {
       return;
     }
+
+    setError('');
+    setSuccess('');
     try {
-      await galleryRepository.deleteGalleryItem(imgId);
-      setSuccess('Foto dihapus secara permanen.');
+      const result = await runPermanentDeleteBatch([imgId]);
+      publishPermanentDeleteResult(result, rawImages);
+
+      if (result.successes.length && activePhoto?.id === imgId) closeLightbox();
     } catch (err) {
       console.error('Permanent delete failed:', err);
-      setError('Gagal menghapus foto dari Firestore.');
+      setError(err?.message || 'Gagal menghapus foto secara permanen.');
     }
   };
 
@@ -489,18 +617,43 @@ export default function GalleryPage() {
   };
 
   const handleBatchPermanentDelete = async () => {
+    if (!canPermanentlyDelete) {
+      setError('Hanya Owner yang dapat menghapus media secara permanen.');
+      return;
+    }
     if (!window.confirm(`Apakah Anda yakin ingin menghapus PERMANEN ${selectedIds.size} foto? Tindakan ini tidak dapat dibatalkan.`)) {
       return;
     }
     setError('');
+    setSuccess('');
     try {
-      await galleryRepository.batchDeleteGalleryItems(Array.from(selectedIds));
-      setSuccess(`Berhasil menghapus permanen ${selectedIds.size} foto.`);
-      setIsSelectMode(false);
-      setSelectedIds(new Set());
+      const result = await runPermanentDeleteBatch(Array.from(selectedIds));
+      publishPermanentDeleteResult(result, displayedImages);
+      const failedIds = new Set(result.failures.map(({ itemId }) => itemId));
+      setSelectedIds(failedIds);
+      setIsSelectMode(failedIds.size > 0);
     } catch (err) {
       console.error(err);
-      setError('Gagal menghapus foto secara massal.');
+      setError(err?.message || 'Gagal menghapus foto secara massal.');
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (!canPermanentlyDelete) {
+      setError('Hanya Owner yang dapat mengosongkan Tempat Sampah.');
+      return;
+    }
+    if (!displayedImages.length || permanentDeleteIds.size) return;
+    if (!window.confirm('Kosongkan semua sampah secara permanen? Tindakan ini tidak dapat dibatalkan.')) return;
+
+    setError('');
+    setSuccess('');
+    try {
+      const result = await runPermanentDeleteBatch(displayedImages.map(({ id }) => id));
+      publishPermanentDeleteResult(result, displayedImages);
+    } catch (err) {
+      console.error('Empty trash failed:', err);
+      setError(err?.message || 'Gagal mengosongkan Tempat Sampah.');
     }
   };
 
@@ -675,7 +828,7 @@ export default function GalleryPage() {
       const file = new File([blob], `${activePhoto.title.replace(/\s+/g, '_')}_edited.jpg`, { type: 'image/jpeg' });
       const { secureUrl, publicId } = await uploadGalleryImageFile(file);
 
-      const currentUser = firebaseAuth?.currentUser;
+      const authUser = firebaseAuth?.currentUser;
       const docData = {
         title: `${activePhoto.title} (Edited)`,
         description: activePhoto.description || 'Hasil edit foto.',
@@ -684,7 +837,7 @@ export default function GalleryPage() {
         category: activePhoto.category || 'Others',
         isFavorite: false,
         isDeleted: false,
-        uploadedBy: currentUser?.displayName || 'Admin',
+        uploadedBy: authUser?.displayName || 'Admin',
         createdAt: new Date().toISOString(),
       };
 
@@ -736,7 +889,15 @@ export default function GalleryPage() {
   }, [activePhoto]);
 
   return (
-    <section className="gallery-page" data-gallery-ui="ui-11-spatial" aria-labelledby="gallery-page-title">
+    <section
+      aria-busy={permanentDeleteIds.size > 0}
+      aria-labelledby="gallery-page-title"
+      className="gallery-page"
+      data-can-permanent-delete={canPermanentlyDelete ? 'true' : 'false'}
+      data-gallery-tab={activeTab}
+      data-gallery-ui="ui-11-spatial"
+      data-reduced-motion={prefersReducedMotion ? 'true' : 'false'}
+    >
       
       {/* Floating Action Button (FAB) for mobile upload */}
       {!isSelectMode && (
@@ -922,32 +1083,28 @@ export default function GalleryPage() {
 
           {/* TAB C: TRASH BIN */}
           {activeTab === 'trash' && (
-            <GalleryTrashView
-              categories={CATEGORIES}
-              displayedImages={displayedImages}
-              EmptyGalleryState={EmptyGalleryState}
-              gridColumns={gridColumns}
-              isSelectMode={isSelectMode}
-              onEmptyTrash={async () => {
-                if (window.confirm('Kosongkan semua sampah secara permanen? Tindakan ini tidak dapat dibatalkan.')) {
-                  setError('');
-                  try {
-                    const promises = displayedImages.map(img => galleryRepository.deleteGalleryItem(img.id));
-                    await Promise.all(promises);
-                    setSuccess('Tempat sampah berhasil dikosongkan.');
-                  } catch {
-                    setError('Gagal mengosongkan tempat sampah.');
-                  }
-                }
-              }}
-              onOpenPhoto={setActivePhotoIndex}
-              onPermanentDeleteClick={handlePermanentDelete}
-              onRestoreClick={handleRestore}
-              onSelectToggle={handleSelectToggle}
-              PhotoCard={PhotoCard}
-              selectedIds={selectedIds}
-              TrashIcon={Trash2}
-            />
+            <>
+              {!canPermanentlyDelete ? (
+                <p className="gallery-owner-operation-note" role="note">
+                  Restore tetap tersedia. Hapus permanen dan Kosongkan Sampah hanya dapat dijalankan Owner.
+                </p>
+              ) : null}
+              <GalleryTrashView
+                categories={CATEGORIES}
+                displayedImages={displayedImages}
+                EmptyGalleryState={EmptyGalleryState}
+                gridColumns={gridColumns}
+                isSelectMode={isSelectMode}
+                onEmptyTrash={handleEmptyTrash}
+                onOpenPhoto={setActivePhotoIndex}
+                onPermanentDeleteClick={handlePermanentDelete}
+                onRestoreClick={handleRestore}
+                onSelectToggle={handleSelectToggle}
+                PhotoCard={PhotoCard}
+                selectedIds={selectedIds}
+                TrashIcon={Trash2}
+              />
+            </>
           )}
         </>
       )}
@@ -1045,7 +1202,7 @@ export default function GalleryPage() {
         setIsEditing={setIsEditing}
         setIsInfoPanelOpen={setIsInfoPanelOpen}
         setIsMusicPlaying={setIsMusicPlaying}
-        setIsSlideshowPlaying={setIsSlideshowPlaying}
+        setIsSlideshowPlaying={setSlideshowPlayingSafely}
         Trash={Trash}
         Trash2={Trash2}
         Type={Type}

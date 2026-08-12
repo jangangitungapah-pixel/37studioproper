@@ -1,6 +1,8 @@
 const FIRESTORE_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const FIRESTORE_DATABASE_ID = '(default)';
 const ONE_SIGNAL_API_URL = 'https://api.onesignal.com/notifications';
+const NOTIFICATION_AUDITS_COLLECTION = 'notificationEventAudits';
+const EVENT_LEASE_MS = 2 * 60 * 1000;
 
 let tokenCache = {
   accessToken: '',
@@ -11,7 +13,7 @@ function jsonResponse(payload, init = {}) {
   return new Response(JSON.stringify(payload, null, 2), {
     ...init,
     headers: {
-      'access-control-allow-headers': 'authorization,content-type,x-studio37-worker-secret',
+      'access-control-allow-headers': 'authorization,content-type',
       'access-control-allow-methods': 'GET,POST,OPTIONS',
       'access-control-allow-origin': '*',
       'content-type': 'application/json; charset=utf-8',
@@ -178,10 +180,25 @@ async function firestoreFetch(env, path, init = {}) {
   const payload = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new Error(`Firestore API failed: ${response.status} ${text}`);
+    const error = new Error(`Firestore API failed: ${response.status} ${text}`);
+    error.statusCode = response.status;
+    error.payload = payload;
+    throw error;
   }
 
   return payload;
+}
+
+function isFirestoreWriteConflict(error) {
+  const apiStatus = cleanText(error?.payload?.error?.status, 80);
+
+  return (
+    error?.statusCode === 409 ||
+    error?.statusCode === 412 ||
+    apiStatus === 'ABORTED' ||
+    apiStatus === 'ALREADY_EXISTS' ||
+    apiStatus === 'FAILED_PRECONDITION'
+  );
 }
 
 function toFirestoreValue(value) {
@@ -265,6 +282,7 @@ function parseDocument(document = {}) {
   return {
     id: nameParts[nameParts.length - 1] || '',
     path: document.name || '',
+    _updateTime: document.updateTime || '',
     ...fromFirestoreFields(document.fields || {}),
   };
 }
@@ -285,24 +303,58 @@ async function getDocument(env, collectionId, documentId) {
     const payload = await firestoreFetch(env, `/${collectionId}/${encodeURIComponent(documentId)}`);
     return parseDocument(payload);
   } catch (error) {
-    if (String(error.message || '').includes('404')) return null;
+    if (error?.statusCode === 404) return null;
     throw error;
   }
 }
 
-async function patchDocument(env, collectionId, documentId, patch) {
-  const mask = Object.keys(patch)
-    .map((fieldPath) => `updateMask.fieldPaths=${encodeURIComponent(fieldPath)}`)
-    .join('&');
+function firestoreDocumentName(env, collectionId, documentId) {
+  const projectId = requireEnv(env, 'FIREBASE_PROJECT_ID');
 
-  return firestoreFetch(env, `/${collectionId}/${encodeURIComponent(documentId)}?${mask}`, {
-    body: JSON.stringify(encodeDocument(patch)),
-    method: 'PATCH',
+  return `projects/${projectId}/databases/${FIRESTORE_DATABASE_ID}/documents/${collectionId}/${documentId}`;
+}
+
+function updateWrite(env, collectionId, documentId, patch, currentDocument = {}) {
+  return {
+    currentDocument,
+    update: {
+      ...encodeDocument(patch),
+      name: firestoreDocumentName(env, collectionId, documentId),
+    },
+    updateMask: {
+      fieldPaths: Object.keys(patch),
+    },
+  };
+}
+
+async function commitWrites(env, writes) {
+  return firestoreFetch(env, ':commit', {
+    body: JSON.stringify({ writes }),
+    method: 'POST',
   });
 }
 
 function stringValue(value) {
   return { stringValue: String(value || '') };
+}
+
+function cleanText(value, maxLength = 240) {
+  return String(value || '').trim().slice(0, maxLength);
+}
+
+function createRequestId(prefix = 'request') {
+  const safePrefix = cleanText(prefix, 40).replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+  const randomPart = typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  return `${safePrefix || 'request'}_${randomPart}`;
+}
+
+function makeAuditId(eventId, action, requestId) {
+  return `${eventId}_${action}_${requestId}`
+    .replace(/[^a-z0-9_-]/gi, '_')
+    .slice(0, 480);
 }
 
 
@@ -435,6 +487,28 @@ function buildOneSignalPayload(env, event, subscriptionIds) {
   };
 }
 
+async function makeOneSignalIdempotencyKey(eventId) {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cleanText(eventId, 240))),
+  );
+  const bytes = digest.slice(0, 16);
+
+  // OneSignal accepts a UUID idempotency key. Keep it deterministic per
+  // canonical notification event so an ambiguous provider response cannot
+  // turn an authenticated retry into a duplicate delivery.
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join('-');
+}
+
 async function sendOneSignalNotification(env, event, subscriptions) {
   const subscriptionIds = [...new Set(subscriptions.map((item) => item.subscriptionId).filter(Boolean))];
 
@@ -442,8 +516,10 @@ async function sendOneSignalNotification(env, event, subscriptions) {
     throw new Error('No eligible OneSignal subscription IDs.');
   }
 
+  const requestPayload = buildOneSignalPayload(env, event, subscriptionIds);
+  requestPayload.idempotency_key = await makeOneSignalIdempotencyKey(event.id);
   const response = await fetch(ONE_SIGNAL_API_URL, {
-    body: JSON.stringify(buildOneSignalPayload(env, event, subscriptionIds)),
+    body: JSON.stringify(requestPayload),
     headers: {
       authorization: `Key ${requireEnv(env, 'ONESIGNAL_REST_API_KEY')}`,
       'content-type': 'application/json',
@@ -464,55 +540,241 @@ async function sendOneSignalNotification(env, event, subscriptions) {
   };
 }
 
-async function markEvent(env, event, patch) {
-  const attempts = Number(event.attempts || 0);
-  const nextPatch = {
-    ...patch,
-    updatedAt: new Date().toISOString(),
+function normalizeAuditActor(actor = {}) {
+  return {
+    email: cleanText(actor.email, 254),
+    role: cleanText(actor.role || 'system', 40),
+    uid: cleanText(actor.uid || 'system', 128),
   };
+}
 
-  if ('attempts' in patch) {
-    nextPatch.attempts = patch.attempts;
-  } else if (patch.status === 'processing' || patch.status === 'failed') {
-    nextPatch.attempts = attempts + 1;
+async function commitEventOperation(
+  env,
+  event,
+  { action, actor, patch = {}, reason, requestId },
+) {
+  if (!event?.id || !event?._updateTime) {
+    const error = new Error('Notification event version is unavailable.');
+    error.statusCode = 409;
+    throw error;
   }
 
-  await patchDocument(env, 'notificationEvents', event.id, nextPatch);
+  const cleanAction = cleanText(action, 80);
+  const cleanReason = cleanText(reason, 500);
+  const cleanRequestId = cleanText(requestId, 160);
+  const timestamp = new Date().toISOString();
+  const auditActor = normalizeAuditActor(actor);
+  const nextPatch = {
+    ...patch,
+    lastAction: cleanAction,
+    lastActionAt: timestamp,
+    lastActionByEmail: auditActor.email,
+    lastActionByRole: auditActor.role,
+    lastActionByUid: auditActor.uid,
+    lastActionReason: cleanReason,
+    lastActionRequestId: cleanRequestId,
+    updatedAt: timestamp,
+  };
+  const nextStatus = cleanText(nextPatch.status || event.status, 40);
+  const auditId = makeAuditId(event.id, cleanAction, cleanRequestId);
+  const auditRecord = {
+    action: cleanAction,
+    actorEmail: auditActor.email,
+    actorRole: auditActor.role,
+    actorUid: auditActor.uid,
+    createdAt: timestamp,
+    eventId: event.id,
+    fromStatus: cleanText(event.status, 40),
+    id: auditId,
+    reason: cleanReason,
+    requestId: cleanRequestId,
+    toStatus: nextStatus,
+  };
 
-  return nextPatch;
+  try {
+    await commitWrites(env, [
+      updateWrite(env, 'notificationEvents', event.id, nextPatch, {
+        updateTime: event._updateTime,
+      }),
+      updateWrite(env, NOTIFICATION_AUDITS_COLLECTION, auditId, auditRecord, {
+        exists: false,
+      }),
+    ]);
+  } catch (error) {
+    if (isFirestoreWriteConflict(error)) {
+      const current = await getDocument(env, 'notificationEvents', event.id);
+
+      if (
+        current?.lastAction === cleanAction &&
+        current?.lastActionRequestId === cleanRequestId
+      ) {
+        return {
+          event: current,
+          idempotent: true,
+        };
+      }
+
+      const conflict = new Error('Notification event changed concurrently.');
+      conflict.cause = error;
+      conflict.statusCode = 409;
+      throw conflict;
+    }
+
+    throw error;
+  }
+
+  return {
+    event: await getDocument(env, 'notificationEvents', event.id),
+    idempotent: false,
+  };
+}
+
+async function recordDryRun(env, event, options, subscriptionCount) {
+  try {
+    const result = await commitEventOperation(env, event, {
+      action: 'dry_run',
+      actor: options.actor,
+      patch: {},
+      reason: options.reason,
+      requestId: options.requestId,
+    });
+
+    return {
+      dryRun: true,
+      eventId: event.id,
+      idempotent: result.idempotent,
+      subscriptionCount,
+    };
+  } catch (error) {
+    if (error?.statusCode === 409) {
+      return {
+        dryRun: true,
+        eventId: event.id,
+        skipped: true,
+        reason: 'claim-conflict',
+        subscriptionCount,
+      };
+    }
+
+    throw error;
+  }
+}
+
+async function claimPendingEvent(env, event, options) {
+  if (event.status !== 'pending') {
+    return {
+      event,
+      skipped: true,
+      status: event.status,
+    };
+  }
+
+  const leaseId = createRequestId('lease');
+  const leaseExpiresAt = new Date(Date.now() + EVENT_LEASE_MS).toISOString();
+
+  try {
+    const result = await commitEventOperation(env, event, {
+      action: 'claim',
+      actor: options.actor,
+      patch: {
+        attempts: Math.max(0, Number(event.attempts || 0)) + 1,
+        errorMessage: '',
+        leaseExpiresAt,
+        leaseId,
+        status: 'processing',
+      },
+      reason: options.reason,
+      requestId: options.requestId,
+    });
+
+    return {
+      event: result.event,
+      leaseId,
+      skipped: result.idempotent,
+      status: result.event?.status || 'processing',
+    };
+  } catch (error) {
+    if (error?.statusCode === 409) {
+      return {
+        event: await getDocument(env, 'notificationEvents', event.id),
+        skipped: true,
+        status: 'claim-conflict',
+      };
+    }
+
+    throw error;
+  }
+}
+
+async function finalizeClaimedEvent(env, claimedEvent, options, patch, action) {
+  const current = await getDocument(env, 'notificationEvents', claimedEvent.id);
+
+  if (
+    !current ||
+    current.status !== 'processing' ||
+    current.leaseId !== options.leaseId
+  ) {
+    const error = new Error('Notification event lease is no longer owned by this worker.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  return commitEventOperation(env, current, {
+    action,
+    actor: options.actor,
+    patch: {
+      ...patch,
+      leaseExpiresAt: '',
+      leaseId: '',
+    },
+    reason: options.reason,
+    requestId: options.requestId,
+  });
 }
 
 async function processEvent(env, event, options = {}) {
   if (!event?.id) return { ok: false, reason: 'missing-event-id' };
+  if (event.status !== 'pending') {
+    return {
+      eventId: event.id,
+      skipped: true,
+      status: event.status,
+    };
+  }
 
-  await markEvent(env, event, {
-    errorMessage: '',
-    status: 'processing',
-  });
+  if (options.dryRun) {
+    const subscriptions = await resolveSubscriptionsForEvent(env, event);
+    return recordDryRun(env, event, options, subscriptions.length);
+  }
+
+  const claim = await claimPendingEvent(env, event, options);
+
+  if (claim.skipped) {
+    return {
+      eventId: event.id,
+      skipped: true,
+      status: claim.status,
+    };
+  }
+
+  const claimedEvent = claim.event;
+  const finalizeOptions = {
+    ...options,
+    leaseId: claim.leaseId,
+  };
+  let deliveryCompleted = false;
 
   try {
-    const subscriptions = await resolveSubscriptionsForEvent(env, event);
+    const subscriptions = await resolveSubscriptionsForEvent(env, claimedEvent);
+    const result = await sendOneSignalNotification(env, claimedEvent, subscriptions);
+    deliveryCompleted = true;
 
-    if (options.dryRun) {
-      await markEvent(env, event, {
-        errorMessage: `dry-run subscriptions=${subscriptions.length}`,
-        status: 'pending',
-      });
-
-      return {
-        dryRun: true,
-        eventId: event.id,
-        subscriptionCount: subscriptions.length,
-      };
-    }
-
-    const result = await sendOneSignalNotification(env, event, subscriptions);
-
-    await markEvent(env, event, {
+    await finalizeClaimedEvent(env, claimedEvent, finalizeOptions, {
       errorMessage: '',
+      providerNotificationId: cleanText(result.payload?.id, 240),
       sentAt: new Date().toISOString(),
       status: 'sent',
-    });
+    }, 'sent');
 
     return {
       eventId: event.id,
@@ -521,13 +783,31 @@ async function processEvent(env, event, options = {}) {
       subscriptionCount: result.subscriptionCount,
     };
   } catch (error) {
-    await markEvent(env, event, {
-      errorMessage: String(error?.message || error).slice(0, 1000),
-      status: 'failed',
-    });
+    if (deliveryCompleted) {
+      return {
+        error: 'Push terkirim tetapi finalisasi status gagal; event dipertahankan dalam lease untuk mencegah resend otomatis.',
+        eventId: event.id,
+        sent: true,
+        statusPersistenceFailed: true,
+      };
+    }
+
+    try {
+      await finalizeClaimedEvent(env, claimedEvent, finalizeOptions, {
+        errorMessage: cleanText(error?.message || error, 1000),
+        status: 'failed',
+      }, 'failed');
+    } catch (finalizeError) {
+      return {
+        error: cleanText(error?.message || error, 1000),
+        eventId: event.id,
+        finalizeError: cleanText(finalizeError?.message || finalizeError, 500),
+        sent: false,
+      };
+    }
 
     return {
-      error: String(error?.message || error),
+      error: cleanText(error?.message || error, 1000),
       eventId: event.id,
       sent: false,
     };
@@ -536,14 +816,18 @@ async function processEvent(env, event, options = {}) {
 
 async function processPendingEvents(env, options = {}) {
   const limit = Math.max(1, Math.min(50, Number(options.limit || env.DEFAULT_LIMIT || 10)));
-  const events = options.eventId
-    ? [await getDocument(env, 'notificationEvents', options.eventId)].filter(Boolean)
+  const requestedEventId = cleanText(options.eventId, 240);
+  const events = requestedEventId
+    ? [await getDocument(env, 'notificationEvents', requestedEventId)].filter(Boolean)
     : await fetchPendingEvents(env, limit);
-
+  const baseRequestId = cleanText(options.requestId, 120) || createRequestId('process');
   const results = [];
 
   for (const event of events) {
-    results.push(await processEvent(env, event, options));
+    results.push(await processEvent(env, event, {
+      ...options,
+      requestId: `${baseRequestId}_${event.id}`.slice(0, 160),
+    }));
   }
 
   return {
@@ -553,20 +837,33 @@ async function processPendingEvents(env, options = {}) {
   };
 }
 
-function isAuthorized(request, env) {
-  const expected = getEnv(env, 'WORKER_SECRET');
-  const received = request.headers.get('x-studio37-worker-secret') || '';
-
-  return expected && received && expected === received;
-}
-
 async function parseJsonBody(request) {
   if (request.method === 'GET') return {};
+
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > 32768) {
+    const error = new Error('Request body is too large.');
+    error.statusCode = 413;
+    throw error;
+  }
 
   const text = await request.text();
   if (!text) return {};
 
-  return JSON.parse(text);
+  if (text.length > 32768) {
+    const error = new Error('Request body is too large.');
+    error.statusCode = 413;
+    throw error;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (cause) {
+    const error = new Error('Request body must contain valid JSON.');
+    error.cause = cause;
+    error.statusCode = 400;
+    throw error;
+  }
 }
 
 function getBearerToken(request) {
@@ -614,15 +911,83 @@ async function verifyFirebaseIdToken(env, request) {
   };
 }
 
-function canDispatchRequestedEvent(event, identity) {
-  if (!event || event.status !== 'pending') return false;
-  if (event.actorUid && event.actorUid === identity.uid) return true;
-  if (event.targetMode === 'user' && event.targetUid && event.targetUid === identity.uid) return true;
+function isActiveCallerUser(user) {
+  if (!user?.id || !user?.role) return false;
+  if (user.role === 'owner') return user.status === 'approved';
+  if (user.role === 'admin') return user.status === 'approved';
+  if (user.role === 'client') return user.status === 'active';
+  if (user.role === 'studio_guard') return user.status === 'approved';
 
   return false;
 }
 
-async function processRequestedEvent(env, eventId, identity) {
+function hasNotificationPermission(user) {
+  if (user?.role === 'owner' && user?.status === 'approved') return true;
+  if (user?.role !== 'admin' || user?.status !== 'approved') return false;
+
+  const permissions = user.permissions && typeof user.permissions === 'object'
+    ? user.permissions
+    : {};
+
+  if (typeof permissions.notifications === 'boolean') {
+    return permissions.notifications;
+  }
+
+  return permissions.settings === true;
+}
+
+async function authenticateCaller(env, request) {
+  const tokenIdentity = await verifyFirebaseIdToken(env, request);
+  const user = await getDocument(env, 'users', tokenIdentity.uid);
+
+  if (!isActiveCallerUser(user)) {
+    const error = new Error('Caller account is not active.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const tokenEmail = cleanText(tokenIdentity.email, 254).toLowerCase();
+  const userEmail = cleanText(user.email, 254).toLowerCase();
+
+  if (tokenEmail && userEmail && tokenEmail !== userEmail) {
+    const error = new Error('Caller identity does not match the user record.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return {
+    actor: {
+      email: user.email || tokenIdentity.email,
+      role: user.role,
+      uid: tokenIdentity.uid,
+    },
+    email: tokenIdentity.email,
+    uid: tokenIdentity.uid,
+    user,
+  };
+}
+
+function requireNotificationPermission(caller) {
+  if (hasNotificationPermission(caller?.user)) return;
+
+  const error = new Error('Notifications permission is required.');
+  error.statusCode = 403;
+  throw error;
+}
+
+function callerMatchesRequestedEvent(event, caller) {
+  if (!event || !caller?.uid) return false;
+  if (event.actorUid && event.actorUid === caller.uid) return true;
+  if (event.targetMode === 'user' && event.targetUid && event.targetUid === caller.uid) return true;
+
+  return false;
+}
+
+function canDispatchRequestedEvent(event, caller) {
+  return event?.status === 'pending' && callerMatchesRequestedEvent(event, caller);
+}
+
+async function processRequestedEvent(env, eventId, caller, requestId) {
   const cleanEventId = String(eventId || '').trim().slice(0, 240);
 
   if (!cleanEventId) {
@@ -644,6 +1009,15 @@ async function processRequestedEvent(env, eventId, identity) {
     };
   }
 
+  if (!callerMatchesRequestedEvent(event, caller)) {
+    return {
+      error: 'Forbidden notification event dispatch.',
+      eventId: cleanEventId,
+      ok: false,
+      statusCode: 403,
+    };
+  }
+
   if (event.status !== 'pending') {
     return {
       eventId: cleanEventId,
@@ -653,17 +1027,11 @@ async function processRequestedEvent(env, eventId, identity) {
     };
   }
 
-  if (!canDispatchRequestedEvent(event, identity)) {
-    return {
-      error: 'Forbidden notification event dispatch.',
-      eventId: cleanEventId,
-      ok: false,
-      statusCode: 403,
-    };
-  }
-
   const result = await processEvent(env, event, {
+    actor: caller.actor,
+    reason: 'Realtime dispatch requested by event actor or target.',
     realtimeDispatch: true,
+    requestId: cleanText(requestId, 160) || createRequestId('dispatch'),
   });
 
   return {
@@ -671,6 +1039,86 @@ async function processRequestedEvent(env, eventId, identity) {
     ok: !result.error,
     realtimeDispatch: true,
     statusCode: result.error ? 500 : 200,
+  };
+}
+
+async function changeEventStatus(env, body, caller, action) {
+  const eventId = cleanText(body.eventId, 240);
+  const reason = cleanText(body.reason, 500);
+  const requestId = cleanText(body.requestId, 160) || createRequestId(action);
+
+  if (!eventId) {
+    const error = new Error('Missing eventId.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (reason.length < 4) {
+    const error = new Error('Operation reason must contain at least 4 characters.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const event = await getDocument(env, 'notificationEvents', eventId);
+
+  if (!event) {
+    const error = new Error('Notification event not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (
+    event.lastAction === action &&
+    event.lastActionRequestId === requestId
+  ) {
+    return {
+      eventId,
+      idempotent: true,
+      ok: true,
+      status: event.status,
+    };
+  }
+
+  const allowedStatuses = action === 'retry'
+    ? ['failed', 'cancelled']
+    : ['pending'];
+
+  if (!allowedStatuses.includes(event.status)) {
+    const error = new Error(
+      event.status === 'sent'
+        ? 'Sent notifications cannot be replayed from the normal operations endpoint.'
+        : `Cannot ${action} notification event with status ${event.status}.`,
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const patch = action === 'retry'
+    ? {
+        errorMessage: '',
+        leaseExpiresAt: '',
+        leaseId: '',
+        status: 'pending',
+      }
+    : {
+        errorMessage: reason,
+        leaseExpiresAt: '',
+        leaseId: '',
+        status: 'cancelled',
+      };
+  const result = await commitEventOperation(env, event, {
+    action,
+    actor: caller.actor,
+    patch,
+    reason,
+    requestId,
+  });
+
+  return {
+    eventId,
+    idempotent: result.idempotent,
+    ok: true,
+    status: result.event?.status,
   };
 }
 
@@ -684,7 +1132,14 @@ async function handleRequest(request, env) {
   }
 
   if (url.pathname === '/health') {
+    const caller = await authenticateCaller(env, request);
+    requireNotificationPermission(caller);
+
     return jsonResponse({
+      configured: {
+        firebase: Boolean(getEnv(env, 'FIREBASE_CLIENT_EMAIL') && getEnv(env, 'FIREBASE_PRIVATE_KEY')),
+        oneSignal: Boolean(getEnv(env, 'ONESIGNAL_APP_ID') && getEnv(env, 'ONESIGNAL_REST_API_KEY')),
+      },
       ok: true,
       service: 'studio37-onesignal-notification-worker',
       time: new Date().toISOString(),
@@ -692,27 +1147,44 @@ async function handleRequest(request, env) {
   }
 
   if (url.pathname === '/dispatch' && request.method === 'POST') {
-    const identity = await verifyFirebaseIdToken(env, request);
+    const caller = await authenticateCaller(env, request);
     const body = await parseJsonBody(request);
-    const result = await processRequestedEvent(env, body.eventId, identity);
+    const result = await processRequestedEvent(env, body.eventId, caller, body.requestId);
     const statusCode = Number(result.statusCode || 200);
 
     return jsonResponse(result, { status: statusCode });
   }
 
   if (url.pathname === '/process' && request.method === 'POST') {
-    if (!isAuthorized(request, env)) {
-      return jsonResponse({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const caller = await authenticateCaller(env, request);
+    requireNotificationPermission(caller);
     const body = await parseJsonBody(request);
     const result = await processPendingEvents(env, {
+      actor: caller.actor,
       dryRun: Boolean(body.dryRun),
       eventId: body.eventId,
       limit: body.limit,
+      reason: cleanText(body.reason, 500) || 'Authenticated notification queue process.',
+      requestId: cleanText(body.requestId, 160) || createRequestId('process'),
     });
 
     return jsonResponse(result);
+  }
+
+  if (url.pathname === '/events/retry' && request.method === 'POST') {
+    const caller = await authenticateCaller(env, request);
+    requireNotificationPermission(caller);
+    const body = await parseJsonBody(request);
+
+    return jsonResponse(await changeEventStatus(env, body, caller, 'retry'));
+  }
+
+  if (url.pathname === '/events/cancel' && request.method === 'POST') {
+    const caller = await authenticateCaller(env, request);
+    requireNotificationPermission(caller);
+    const body = await parseJsonBody(request);
+
+    return jsonResponse(await changeEventStatus(env, body, caller, 'cancel'));
   }
 
   return jsonResponse({ error: 'Not found' }, { status: 404 });
@@ -723,16 +1195,34 @@ export default {
     try {
       return await handleRequest(request, env);
     } catch (error) {
+      const statusCode = Number(error?.statusCode || 500);
+
       return jsonResponse({
-        error: String(error?.message || error),
+        error: statusCode >= 500
+          ? 'Internal notification worker error.'
+          : cleanText(error?.message || error, 500),
         ok: false,
-      }, { status: 500 });
+      }, { status: statusCode });
     }
   },
 
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(processPendingEvents(env, {
+      actor: {
+        email: '',
+        role: 'system',
+        uid: 'cloudflare-cron',
+      },
       limit: Number(env.DEFAULT_LIMIT || 10),
+      reason: 'Scheduled notification queue process.',
+      requestId: createRequestId('scheduled'),
     }));
   },
 };
+
+export const notificationWorkerTestApi = Object.freeze({
+  canDispatchRequestedEvent,
+  hasNotificationPermission,
+  isActiveCallerUser,
+  makeOneSignalIdempotencyKey,
+});

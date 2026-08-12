@@ -1,0 +1,7 @@
+/**
+ * Route core for the standalone guard portal.
+ * Guard attendance styles stay isolated from the admin and client bundles.
+ */
+@import '../modules/base.css';
+@import '../modules/auth.css';
+@import '../modules/guard-attendance.css';

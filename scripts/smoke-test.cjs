@@ -14,7 +14,6 @@ const requiredFiles = [
   'src/App.jsx',
   'src/index.css',
   'src/theme/ThemeProvider.jsx',
-  'src/theme/ThemeContainer.jsx',
 ];
 
 for (const file of requiredFiles) {

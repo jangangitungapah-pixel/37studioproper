@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/operator-fee.css';
 import {
   AlertTriangle,
   Banknote,

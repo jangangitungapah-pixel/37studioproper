@@ -36,7 +36,7 @@ import {
   getGuardIdentityRepairMessage,
   resolveGuardIdentityLink,
 } from '../../utils/guardIdentity.js';
-import '../../styles/admin-auth.css';
+import '../../styles/routes/guard.css';
 
 function formatDateTime(value) {
   if (!value) return '-';
@@ -85,16 +85,6 @@ function getApprovalTone(status) {
   if (status === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED) return 'rejected';
 
   return 'pending';
-}
-
-function getStatusLabel(session) {
-  if (!session) return 'Belum absen';
-  if (session.status === GUARD_ATTENDANCE_STATUSES.CLOSED) return 'Selesai jaga';
-  if (session.status === GUARD_ATTENDANCE_STATUSES.ACTIVE) return 'Sedang jaga';
-  if (session.status === GUARD_ATTENDANCE_STATUSES.REJECTED) return 'Ditolak';
-  if (session.status === GUARD_ATTENDANCE_STATUSES.VOID) return 'Void';
-
-  return 'Menunggu approval';
 }
 
 function isActiveLikeSession(session) {
@@ -1236,4 +1226,3 @@ export default function GuardAttendancePage() {
     </main>
   );
 }
-

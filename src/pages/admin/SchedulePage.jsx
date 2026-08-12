@@ -1,4 +1,5 @@
 import StatusPill from '../../components/ui/StatusPill.jsx';
+import '../../styles/modules/schedule.css';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -15,7 +16,7 @@ import {
   businessHours,
   statusFilters,
   viewModes,
-} from './scheduleConfig.js';
+} from '../../constants/scheduleConfig.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
 import {

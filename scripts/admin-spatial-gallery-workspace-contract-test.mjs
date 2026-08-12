@@ -118,9 +118,14 @@ for (const required of [
   'galleryRepository.createGalleryItem(docData)',
   'galleryRepository.moveGalleryItemToTrash(imgId)',
   'galleryRepository.restoreGalleryItem(imgId)',
-  'galleryRepository.deleteGalleryItem(imgId)',
   'galleryRepository.batchUpdateGalleryItems(',
-  'galleryRepository.batchDeleteGalleryItems(',
+  'galleryRepository.batchPermanentlyDeleteGalleryItems(',
+  'isOwnerAdminUser(currentUser)',
+  "data-can-permanent-delete={canPermanentlyDelete ? 'true' : 'false'}",
+  'isEditableShortcutTarget(e.target)',
+  'prefersReducedMotion',
+  'summarizePermanentDeleteFailures',
+  'summarizePermanentDeleteSuccesses',
   'galleryRepository.updateGalleryItem(metadataPhoto.id',
   '<GalleryMetadataModal',
   'onEditMetadata={openMetadataEditor}',
@@ -248,17 +253,39 @@ for (const required of [
   'createGalleryItem',
   'updateGalleryItem',
   'deleteGalleryItem',
+  'permanentlyDeleteGalleryItem',
   'setGalleryFavorite',
   'moveGalleryItemToTrash',
   'restoreGalleryItem',
   'batchUpdateGalleryItems',
   'batchDeleteGalleryItems',
+  'batchPermanentlyDeleteGalleryItems',
+  'runProtectedPermanentDelete',
+  'Promise.allSettled(',
 ]) {
   assert.equal(
     repositorySource.includes(required),
     true,
     'UI-11 repository invariant missing: ' +
       required,
+  );
+}
+
+assert.equal(
+  repositorySource.includes('deleteDoc('),
+  false,
+  'UI-11 browser repository must not permanently delete gallery metadata directly.',
+);
+
+for (const required of [
+  ".gallery-page[data-can-permanent-delete='false']",
+  ".gallery-page[aria-busy='true'][data-gallery-tab='trash']",
+  '.gallery-owner-operation-note',
+]) {
+  assert.equal(
+    cssSource.includes(required),
+    true,
+    'UI-11 protected operation styling missing: ' + required,
   );
 }
 

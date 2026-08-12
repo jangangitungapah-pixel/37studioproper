@@ -7,6 +7,44 @@
     <meta name="theme-color" content="#050506" />
     <meta name="description" content="37 Music Studio client and admin portal." />
     <title>37 Music Studio</title>
+      <script data-admin-theme-bootstrap>
+        (() => {
+          const pathname = window.location.pathname || '/';
+          const isAdminThemeSurface =
+            pathname === '/login' ||
+            pathname === '/admin' ||
+            pathname.startsWith('/admin/');
+
+          if (!isAdminThemeSurface) return;
+
+          const storageKey = '37studioproper.theme.v1';
+          const validPreferences = ['light', 'dark', 'system'];
+          let preference = 'light';
+
+          try {
+            const storedPreference = window.localStorage.getItem(storageKey);
+
+            if (validPreferences.includes(storedPreference)) {
+              preference = storedPreference;
+            }
+          } catch {
+            // First paint still uses the safe Light default when storage is blocked.
+          }
+
+          const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+          const resolvedTheme = preference === 'system' ? systemTheme : preference;
+          const root = document.documentElement;
+
+          root.dataset.theme = resolvedTheme;
+          root.style.colorScheme = resolvedTheme;
+          document.querySelector('meta[name="theme-color"]')?.setAttribute(
+            'content',
+            resolvedTheme === 'dark' ? '#100E0C' : '#F2EEE7',
+          );
+        })();
+      </script>
       <meta name="application-name" content="37 Music Studio" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

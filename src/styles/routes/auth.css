@@ -1,0 +1,8 @@
+/**
+ * Route core for authentication and launch surfaces.
+ * Keep feature workspaces out of this entry so login never downloads admin CSS.
+ */
+@import '../modules/base.css';
+@import '../modules/shared.css';
+@import '../modules/modal.css';
+@import '../modules/auth.css';

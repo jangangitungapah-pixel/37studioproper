@@ -44,7 +44,10 @@ for (const required of [
   "status: 'inactive'",
   "type: 'inactive'",
   "adjustment.mode === 'in'",
-  'type: adjustment.mode',
+  'adjustCanonicalInventory({',
+  'adjustingItemIdsRef',
+  'Alasan adjustment wajib diisi minimal 4 karakter.',
+  "quantity: editingItem?.quantity ?? nextItem.quantity",
   'previousQuantity',
   'nextQuantity',
   'buildInventoryCsv',
@@ -92,9 +95,23 @@ for (const required of [
   'createInventoryItem',
   'updateInventoryItem',
   'createInventoryMovement',
-  'deleteInventoryItem',
+  'actorName: cleanText(source.actorName)',
+  'reason: cleanText(source.reason || source.note)',
+  'await updateDoc(docRef',
 ]) {
   assert.equal(repositorySource.includes(required), true, 'UI-9 repository contract missing: ' + required);
+}
+
+for (const forbidden of [
+  'deleteDoc(',
+  'deleteInventoryItem',
+  'quantity: cleanItem.quantity',
+]) {
+  assert.equal(
+    repositorySource.includes(forbidden),
+    false,
+    'UI-9 repository must not directly delete inventory or mutate stock metadata: ' + forbidden,
+  );
 }
 
 for (const required of [

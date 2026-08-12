@@ -262,16 +262,18 @@ const billingSource =
 
 assert.equal(
   billingSource.includes(
-    'buildBookingPaymentPatch(',
+    'recordCanonicalPayment(',
   ),
   true,
+  'Billing payment must use the protected canonical operation.',
 );
 
 assert.equal(
   billingSource.includes(
-    'buildBookingVoidPatch(',
+    'voidCanonicalInvoice(',
   ),
   true,
+  'Billing void must use the protected canonical operation.',
 );
 
 assert.equal(
@@ -307,10 +309,10 @@ const proofRepositorySource =
 
 assert.equal(
   proofRepositorySource.includes(
-    'buildBookingPaymentPatch(booking, payment)',
+    'reviewCanonicalPaymentProof(',
   ),
   true,
-  'Payment proof approval must share the same accounting core.',
+  'Payment proof approval must use the same server-side accounting core.',
 );
 
 const portalSource =

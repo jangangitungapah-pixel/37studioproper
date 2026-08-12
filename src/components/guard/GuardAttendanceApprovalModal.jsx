@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../../styles/modules/guard-attendance.css';
 import { useLocation } from 'react-router-dom';
 import { Dialog } from 'radix-ui';
 import {

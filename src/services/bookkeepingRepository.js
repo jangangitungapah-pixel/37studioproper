@@ -52,7 +52,14 @@ export function normalizeBookkeepingEntry(entry, fallbackId = '') {
     sourceAttendanceDate: cleanText(source.sourceAttendanceDate),
     sourceGuardPersonId: cleanText(source.sourceGuardPersonId),
     sourceBookingId: cleanText(source.sourceBookingId),
+    sourceEventId: cleanText(source.sourceEventId),
+    sourceAction: cleanText(source.sourceAction),
     sourceFeeEntryId: cleanText(source.sourceFeeEntryId),
+    actorName: cleanText(source.actorName),
+    actorUid: cleanText(source.actorUid),
+    idempotencyKey: cleanText(source.idempotencyKey),
+    immutable: source.immutable === true,
+    reversalOf: cleanText(source.reversalOf),
     createdAt: source.createdAt || now,
     updatedAt: source.updatedAt || now,
   };
@@ -128,7 +135,15 @@ export async function createBookkeepingEntry(entry) {
   const cleanEntry = normalizeBookkeepingEntry(
     {
       ...entry,
+      actorName: '',
+      actorUid: '',
       id: entryId,
+      idempotencyKey: '',
+      immutable: false,
+      reversalOf: '',
+      source: 'manual',
+      sourceAction: '',
+      sourceEventId: '',
       createdAt: entry.createdAt || now,
       updatedAt: now,
     },
@@ -148,10 +163,22 @@ export async function updateBookkeepingEntry(entry) {
     throw new Error('Bookkeeping entry ID tidak boleh kosong.');
   }
 
+  if (entry.immutable === true || (entry.source && entry.source !== 'manual')) {
+    throw new Error('Transaksi hasil rekonsiliasi bersifat read-only. Gunakan reversal untuk koreksi.');
+  }
+
   const docRef = doc(firestoreDb, BOOKKEEPING_COLLECTION, entry.id);
   const cleanEntry = normalizeBookkeepingEntry(
     {
       ...entry,
+      actorName: '',
+      actorUid: '',
+      idempotencyKey: '',
+      immutable: false,
+      reversalOf: '',
+      source: 'manual',
+      sourceAction: '',
+      sourceEventId: '',
       updatedAt: new Date().toISOString(),
     },
     entry.id

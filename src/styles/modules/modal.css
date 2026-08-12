@@ -97,6 +97,20 @@
   font-size: var(--studio-text-xs);
 }
 
+.studio-confirm-body .studio-confirm-error {
+  border: 1px solid color-mix(in srgb, var(--auth-danger) 30%, var(--auth-border));
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+  padding: 9px 10px;
+  font-size: var(--studio-text-xs);
+  font-weight: 680;
+}
+
+.studio-confirm-dialog[aria-busy="true"] {
+  cursor: wait;
+}
+
 .studio-confirm-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

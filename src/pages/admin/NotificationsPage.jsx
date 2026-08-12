@@ -6,8 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock3,
-  KeyRound,
   LoaderCircle,
   RadioTower,
   RefreshCcw,
@@ -19,8 +17,10 @@ import {
 } from 'lucide-react';
 import {
   cancelNotificationEvent,
+  fetchNotificationWorkerHealth,
   getNotificationEventStatusLabel,
   notificationEventStatusOptions,
+  processNotificationEvents,
   retryNotificationEvent,
   subscribeNotificationEvents,
 } from '../../services/notificationEventRepository.js';
@@ -34,11 +34,7 @@ import {
   fetchNotificationSubscription,
   isNotificationSubscriptionActive,
 } from '../../services/notificationSubscriptionRepository.js';
-import '../../styles/admin-auth.css';
-
-const DEFAULT_WORKER_URL =
-  import.meta.env.VITE_NOTIFICATION_WORKER_URL ||
-  'https://studio37-onesignal-notification-worker.studio37.workers.dev';
+import '../../styles/modules/notifications.css';
 
 const visibleStatusOptions = notificationEventStatusOptions.filter((item) =>
   ['all', 'pending', 'sent', 'failed', 'cancelled'].includes(item.key)
@@ -348,8 +344,6 @@ export default function NotificationsPage({ currentUser }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [workerUrl, setWorkerUrl] = useState(DEFAULT_WORKER_URL);
-  const [workerSecret, setWorkerSecret] = useState('');
   const [workerLimit, setWorkerLimit] = useState(3);
   const [workerDryRun, setWorkerDryRun] = useState(true);
   const [workerEventId, setWorkerEventId] = useState('');
@@ -421,17 +415,21 @@ export default function NotificationsPage({ currentUser }) {
         })),
       ]);
       let workerHealth = null;
-      if (includeWorker && workerUrl.trim()) {
-        const healthResponse = await fetch(workerUrl.trim().replace(/\/$/, '') + '/health');
-        const healthPayload = await healthResponse.json();
-        workerHealth = { checkedAt: new Date().toISOString(), message: healthPayload?.service || healthPayload?.message || 'Online', ok: healthResponse.ok && healthPayload?.ok !== false, status: healthResponse.status };
+      if (includeWorker) {
+        const healthPayload = await fetchNotificationWorkerHealth(currentUser);
+        workerHealth = {
+          checkedAt: new Date().toISOString(),
+          message: healthPayload?.service || healthPayload?.message || 'Online',
+          ok: healthPayload?.ok === true,
+          status: 200,
+        };
       }
       setReadinessState({ checkedAt: new Date().toISOString(), errorMessage: oneSignalState?.errorMessage || registry?.errorMessage || '', isChecking: false, oneSignalState, registry, workerHealth });
       if (reason !== 'auto') setWorkerResult(createWorkerResult({ tone: 'info', title: 'Health Check Selesai', text: 'Readiness panel sudah diperbarui.' }));
     } catch (error) {
       setReadinessState((current) => ({ ...current, checkedAt: new Date().toISOString(), errorMessage: error?.message || 'Health check gagal.', isChecking: false }));
     }
-  }, [currentUser?.uid, workerUrl]);
+  }, [currentUser]);
 
   useEffect(() => {
     const readinessFrameId = window.requestAnimationFrame(() => {
@@ -453,20 +451,16 @@ export default function NotificationsPage({ currentUser }) {
   }
 
   async function handleProcessWorker() {
-    const cleanUrl = workerUrl.trim().replace(/\/$/, '');
-    if (!cleanUrl) { setWorkerResult(createWorkerResult({ tone: 'warning', title: 'Worker URL Kosong', text: 'Isi Worker URL dulu.' })); return; }
-    if (!workerSecret.trim()) { setWorkerResult(createWorkerResult({ tone: 'warning', title: 'Worker Secret Kosong', text: 'Isi Worker Secret dulu.' })); return; }
     setIsProcessing(true); setWorkerResult(null);
     try {
-      const body = { dryRun: workerDryRun, limit: Math.max(1, Math.min(20, Number(workerLimit) || 1)) };
-      if (workerEventId.trim()) body.eventId = workerEventId.trim();
-      const response = await fetch(cleanUrl + '/process', {
-        body: JSON.stringify(body),
-        headers: { 'content-type': 'application/json', 'x-studio37-worker-secret': workerSecret.trim() },
-        method: 'POST',
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || 'Worker error: ' + response.status);
+      const payload = await processNotificationEvents({
+        dryRun: workerDryRun,
+        eventId: workerEventId,
+        limit: workerLimit,
+        reason: workerDryRun
+          ? 'Authenticated dry-run from notification console.'
+          : 'Authenticated manual process from notification console.',
+      }, currentUser);
       const nextWorkerResult = summarizeWorkerResult(payload);
       setWorkerResult(nextWorkerResult);
       if (!workerDryRun && nextWorkerResult?.tone === 'success') { setWorkerDryRun(true); setWorkerEventId(''); }
@@ -647,8 +641,6 @@ export default function NotificationsPage({ currentUser }) {
             {isWorkerOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
           <div className={'notif-worker-body' + (isWorkerOpen ? ' is-open' : '')}>
-            <label className="notif-field"><span>Worker URL</span><input type="url" value={workerUrl} onChange={(e) => setWorkerUrl(e.target.value)} /></label>
-            <label className="notif-field"><span className="notif-field-icon-label"><KeyRound size={11} /> Worker Secret</span><input autoComplete="off" placeholder="Tempel secret hanya saat proses manual" type="password" value={workerSecret} onChange={(e) => setWorkerSecret(e.target.value)} /></label>
             <label className="notif-field"><span>Event ID <em>(opsional)</em></span><input placeholder="Kosongkan untuk proses queue pending" type="text" value={workerEventId} onChange={(e) => setWorkerEventId(e.target.value)} /></label>
             <div className="notif-worker-quick">
               <button type="button" onClick={() => setWorkerEventId('')}>Kosongkan ID</button>
@@ -665,7 +657,7 @@ export default function NotificationsPage({ currentUser }) {
                 <strong>{workerResult.title}</strong><pre>{workerResult.text}</pre>
               </div>
             ) : (
-              <p className="notif-worker-hint">Secret tidak disimpan permanen. Gunakan untuk retry manual tanpa buka terminal.</p>
+              <p className="notif-worker-hint">Operasi menggunakan sesi Firebase aktif. Worker memverifikasi akun dan permission Notifications sebelum memproses queue.</p>
             )}
           </div>
         </aside>

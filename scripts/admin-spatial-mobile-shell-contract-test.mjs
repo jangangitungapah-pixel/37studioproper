@@ -127,6 +127,11 @@ const adminPageSource =
     'utf8',
   );
 
+const bottomNavInvocation =
+  adminPageSource.match(
+    /<AdminBottomNav[\s\S]*?\/>/,
+  )?.[0] || '';
+
 for (
   const required
   of [
@@ -139,11 +144,30 @@ for (
   ]
 ) {
   assert.equal(
-    adminPageSource.includes(
+    bottomNavInvocation.includes(
       required,
     ),
     true,
-    'UI-0D AdminPage plumbing missing: ' +
+    'UI-0D AdminBottomNav invocation plumbing missing: ' +
+      required,
+  );
+}
+
+for (
+  const required
+  of [
+    'useTheme',
+    'toggleTheme',
+    'admin-mobile-theme-toggle',
+    'aria-pressed={isDarkTheme}',
+  ]
+) {
+  assert.equal(
+    bottomNavSource.includes(
+      required,
+    ),
+    true,
+    'UI-0D mobile theme control missing: ' +
       required,
   );
 }
@@ -204,6 +228,7 @@ for (
     '.admin-mobile-sheet-handle',
     '.admin-mobile-more-scroll',
     '.admin-mobile-account',
+    '.admin-mobile-theme-toggle',
     '.admin-mobile-logout',
     'safe-area-inset-bottom',
     'safe-area-inset-top',

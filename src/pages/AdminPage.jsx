@@ -46,7 +46,7 @@ import AdminTopbar from '../components/admin/AdminTopbar.jsx';
 import AdminBottomNav from '../components/admin/AdminBottomNav.jsx';
 import SpatialUiProvider from '../components/ui/SpatialUiProvider.jsx';
 import { ThemeProvider } from '../theme/ThemeProvider.jsx';
-import '../styles/admin-auth.css';
+import '../styles/routes/admin.css';
 import '../styles/spatial-foundation.css';
 
 const SIDEBAR_STORAGE_KEY = '37musicstudio.admin.sidebar.v1';
@@ -201,12 +201,68 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'operator-fee') return <OperatorFeePage currentUser={currentUser} />;
   if (activeKey === 'guard-attendance') return <GuardAttendancePage currentUser={currentUser} />;
   if (activeKey === 'inventory') return <InventoryPage />;
-  if (activeKey === 'gallery') return <GalleryPage />;
+  if (activeKey === 'gallery') return <GalleryPage currentUser={currentUser} />;
 
   return <SchedulePage currentUser={currentUser} />;
 }
 
+function AdminQaPreview({
+  activeKey,
+  children,
+  title,
+}) {
+  return (
+    <main
+      className="theme-container admin-shell admin-shell-preview"
+      data-admin-active={activeKey}
+      data-admin-preview="true"
+      data-auth-surface="admin"
+    >
+      <section
+        aria-label={`${title} QA preview`}
+        className="admin-stage"
+      >
+        <header className="admin-topbar admin-preview-topbar">
+          <div>
+            <p>Studio 37</p>
+            <h1>{title}</h1>
+          </div>
+        </header>
+
+        <Suspense
+          fallback={
+            <div
+              aria-live="polite"
+              className="admin-route-loading"
+              role="status"
+            >
+              <LoaderCircle
+                aria-hidden="true"
+                className="auth-spin admin-route-loading-icon"
+                size={24}
+              />
+              <span>Memuat {title}</span>
+            </div>
+          }
+        >
+          {children}
+        </Suspense>
+      </section>
+    </main>
+  );
+}
+
 export default function AdminPage() {
+  return (
+    <ThemeProvider>
+      <SpatialUiProvider>
+        <AdminPageContent />
+      </SpatialUiProvider>
+    </ThemeProvider>
+  );
+}
+
+function AdminPageContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const [authState, setAuthState] = useState({ isReady: false, isAuthenticated: false, user: null });
@@ -223,7 +279,7 @@ export default function AdminPage() {
       authState.isReady &&
       authState.isAuthenticated &&
       authState.user?.isApproved &&
-      hasAdminPagePermission(authState.user, 'settings');
+      hasAdminPagePermission(authState.user, 'notifications');
 
     if (!canWatchNotifications) {
       const resetFrameId = window.requestAnimationFrame(() => {
@@ -419,7 +475,7 @@ export default function AdminPage() {
 
   const isMoreNavActive = mobileMoreNavItems.some((item) => item.key === activeItem.key);
   const notificationBadgeLabel = getNotificationBadgeLabel(notificationSummary);
-  const canOpenNotifications = hasAdminPagePermission(authState.user, 'settings');
+  const canOpenNotifications = hasAdminPagePermission(authState.user, 'notifications');
 
   useEffect(() => {
     if (!authState.isReady || !authState.isAuthenticated) return;
@@ -483,39 +539,53 @@ export default function AdminPage() {
     navigate('/login', { replace: true });
   }
 
-  if (new URLSearchParams(location.search).has('billingPreview')) {
+  const qaPreviewParams =
+    new URLSearchParams(
+      location.search,
+    );
+
+  const isBillingQaPreview =
+    import.meta.env.DEV &&
+    qaPreviewParams.has(
+      'billingPreview',
+    );
+
+  const isScheduleQaPreview =
+    import.meta.env.DEV &&
+    qaPreviewParams.has(
+      'schedulePreview',
+    );
+
+  const hasDisabledQaPreview =
+    !import.meta.env.DEV &&
+    (
+      qaPreviewParams.has(
+        'billingPreview',
+      ) ||
+      qaPreviewParams.has(
+        'schedulePreview',
+      )
+    );
+
+  if (isBillingQaPreview) {
     return (
-      <main className="theme-container admin-shell" data-auth-surface="admin" data-admin-active="billing">
-        <section className="admin-stage" aria-label="Billing preview">
-          <header className="admin-topbar">
-            <div>
-              <p>Studio 37</p>
-              <h1>Billing</h1>
-            </div>
-          </header>
-          <Suspense fallback={null}>
-            <BillingPage />
-          </Suspense>
-        </section>
-      </main>
+      <AdminQaPreview
+        activeKey="billing"
+        title="Billing"
+      >
+        <BillingPage />
+      </AdminQaPreview>
     );
   }
 
-  if (new URLSearchParams(location.search).has('schedulePreview')) {
+  if (isScheduleQaPreview) {
     return (
-      <main className="theme-container admin-shell" data-auth-surface="admin" data-admin-active="schedule">
-        <section className="admin-stage" aria-label="Schedule preview">
-          <header className="admin-topbar">
-            <div>
-              <p>Studio 37</p>
-              <h1>Schedule</h1>
-            </div>
-          </header>
-          <Suspense fallback={null}>
-            <SchedulePage />
-          </Suspense>
-        </section>
-      </main>
+      <AdminQaPreview
+        activeKey="schedule"
+        title="Schedule"
+      >
+        <SchedulePage />
+      </AdminQaPreview>
     );
   }
 
@@ -635,6 +705,31 @@ export default function AdminPage() {
     );
   }
 
+  if (hasDisabledQaPreview) {
+    qaPreviewParams.delete(
+      'billingPreview',
+    );
+    qaPreviewParams.delete(
+      'schedulePreview',
+    );
+
+    const remainingSearch =
+      qaPreviewParams.toString();
+
+    return (
+      <Navigate
+        replace
+        to={
+          location.pathname +
+          (remainingSearch
+            ? `?${remainingSearch}`
+            : '') +
+          location.hash
+        }
+      />
+    );
+  }
+
   function toggleSidebar() {
     setIsSidebarCollapsed((current) => {
       const next = !current;
@@ -663,8 +758,6 @@ export default function AdminPage() {
     .join(' ');
 
   return (
-    <ThemeProvider>
-      <SpatialUiProvider>
         <main
           className={shellClassName}
           data-auth-surface="admin"
@@ -756,12 +849,9 @@ export default function AdminPage() {
             setIsMoreMenuOpen={setIsMoreMenuOpen}
             mobileMoreNavItems={mobileMoreNavItems}
             isMoreNavActive={isMoreNavActive}
+            user={authState.user}
+            onLogout={handleLogout}
           />
         </main>
-      </SpatialUiProvider>
-    </ThemeProvider>
   );
 }
-
-
-

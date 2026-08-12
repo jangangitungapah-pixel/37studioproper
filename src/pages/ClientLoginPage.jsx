@@ -20,7 +20,7 @@ import { accountRoleRepository } from '../services/accountRoleRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
 import { PORTAL_ACCESS } from '../utils/accountRoles.js';
 import { getSafeClientNextPath } from '../utils/clientBookingHandoff.js';
-import '../styles/admin-auth.css';
+import '../styles/routes/auth.css';
 import '../styles/firebase-auth.css';
 import '../styles/client-auth.css';
 

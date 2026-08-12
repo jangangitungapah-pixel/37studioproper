@@ -549,17 +549,31 @@ function MoneyStat({
 }
 
 export default function BookingDetailDrawer({
+  activeTab: controlledActiveTab,
   booking,
   initialTab = 'overview',
   isOpen,
   onClose,
   onEdit,
   onRequestStatusChange,
+  onTabChange,
   operatorFeeVisibility = null,
   user,
 }) {
   const closeButtonRef =
     useRef(null);
+  const drawerRef =
+    useRef(null);
+  const previousFocusRef =
+    useRef(null);
+  const tabButtonRefs =
+    useRef(new Map());
+  const onCloseRef =
+    useRef(onClose);
+  const initialTabRef =
+    useRef(initialTab);
+  const isUpdatingRequestRef =
+    useRef(false);
 
   const [
     tabState,
@@ -581,6 +595,13 @@ export default function BookingDetailDrawer({
       ? initialTab
       : 'overview';
 
+  const normalizedControlledTab =
+    DETAIL_TAB_KEYS.includes(
+      controlledActiveTab,
+    )
+      ? controlledActiveTab
+      : '';
+
   const bookingKey =
     String(
       booking?.id ||
@@ -590,10 +611,13 @@ export default function BookingDetailDrawer({
     );
 
   const activeTab =
-    tabState.bookingKey ===
-    bookingKey
-      ? tabState.tab
-      : normalizedInitialTab;
+    normalizedControlledTab ||
+    (
+      tabState.bookingKey ===
+      bookingKey
+        ? tabState.tab
+        : normalizedInitialTab
+    );
 
   const requestStatus =
     getBookingRequestStatus(
@@ -672,9 +696,25 @@ export default function BookingDetailDrawer({
     'function';
 
   useEffect(() => {
-    if (!isOpen) {
+    onCloseRef.current = onClose;
+    initialTabRef.current = normalizedInitialTab;
+    isUpdatingRequestRef.current = isUpdatingRequest;
+  }, [
+    isUpdatingRequest,
+    normalizedInitialTab,
+    onClose,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      typeof document === 'undefined'
+    ) {
       return undefined;
     }
+
+    previousFocusRef.current =
+      document.activeElement;
 
     const previousOverflow =
       document.body.style
@@ -690,15 +730,75 @@ export default function BookingDetailDrawer({
         event.key ===
         'Escape'
       ) {
+        if (
+          event.defaultPrevented ||
+          event.target
+            ?.closest?.(
+              '[role="alertdialog"], [data-booking-decision-dialog="true"]',
+            ) ||
+          isUpdatingRequestRef.current
+        ) {
+          return;
+        }
+
+        event.preventDefault();
         setTabState({
           bookingKey: '',
           tab:
-            normalizedInitialTab,
+            initialTabRef.current,
         });
 
-        onClose();
+        onCloseRef.current?.();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const drawer = drawerRef.current;
+
+      if (
+        !drawer ||
+        !drawer.contains(event.target)
+      ) {
+        return;
+      }
+
+      const focusable = Array.from(
+        drawer.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(
+        (element) =>
+          element.getAttribute('aria-hidden') !== 'true',
+      );
+
+      if (!focusable.length) {
+        event.preventDefault();
+        drawer.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (
+        event.shiftKey &&
+        document.activeElement === first
+      ) {
+        event.preventDefault();
+        last.focus();
+      } else if (
+        !event.shiftKey &&
+        document.activeElement === last
+      ) {
+        event.preventDefault();
+        first.focus();
       }
     }
+
+    const frameId = window.requestAnimationFrame(
+      () => closeButtonRef.current?.focus(),
+    );
 
     document.addEventListener(
       'keydown',
@@ -706,6 +806,7 @@ export default function BookingDetailDrawer({
     );
 
     return () => {
+      window.cancelAnimationFrame(frameId);
       document.body.style
         .overflow =
         previousOverflow;
@@ -714,36 +815,8 @@ export default function BookingDetailDrawer({
         'keydown',
         handleKeyDown,
       );
-    };
-  }, [
-    isOpen,
-    normalizedInitialTab,
-    onClose,
-  ]);
 
-  useEffect(() => {
-    if (
-      !isOpen ||
-      typeof window ===
-        'undefined'
-    ) {
-      return undefined;
-    }
-
-    const frameId =
-      window.requestAnimationFrame(
-        () => {
-          closeButtonRef
-            .current
-            ?.focus();
-        },
-      );
-
-    return () => {
-      window
-        .cancelAnimationFrame(
-          frameId,
-        );
+      previousFocusRef.current?.focus?.();
     };
   }, [
     bookingKey,
@@ -770,6 +843,37 @@ export default function BookingDetailDrawer({
       bookingKey,
       tab,
     });
+
+    onTabChange?.(tab);
+  }
+
+  function handleTabKeyDown(event, tab) {
+    const currentIndex =
+      DETAIL_TAB_KEYS.indexOf(tab);
+    let nextIndex;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex =
+        (currentIndex + 1) %
+        DETAIL_TAB_KEYS.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex =
+        (currentIndex - 1 + DETAIL_TAB_KEYS.length) %
+        DETAIL_TAB_KEYS.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = DETAIL_TAB_KEYS.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = DETAIL_TAB_KEYS[nextIndex];
+    selectTab(nextTab);
+    tabButtonRefs.current
+      .get(nextTab)
+      ?.focus();
   }
 
   function closeDrawer() {
@@ -779,7 +883,7 @@ export default function BookingDetailDrawer({
         normalizedInitialTab,
     });
 
-    onClose();
+    onClose?.();
   }
 
   function handleBackdrop(
@@ -826,10 +930,12 @@ export default function BookingDetailDrawer({
       }
     >
       <aside
+        ref={drawerRef}
         aria-labelledby="booking-detail-drawer-title"
         aria-modal="true"
         className="booking-detail-drawer"
         role="dialog"
+        tabIndex={-1}
       >
         <header className="booking-detail-drawer-header">
           <div className="booking-detail-drawer-heading">
@@ -864,7 +970,7 @@ export default function BookingDetailDrawer({
               closeDrawer
             }
           >
-            <X size={19} />
+            <X aria-hidden="true" size={19} />
           </button>
         </header>
 
@@ -956,6 +1062,18 @@ export default function BookingDetailDrawer({
                     tab.key
                   }
                   key={tab.key}
+                  ref={(element) => {
+                    if (element) {
+                      tabButtonRefs.current.set(
+                        tab.key,
+                        element,
+                      );
+                    } else {
+                      tabButtonRefs.current.delete(
+                        tab.key,
+                      );
+                    }
+                  }}
                   role="tab"
                   tabIndex={
                     isActive
@@ -965,6 +1083,12 @@ export default function BookingDetailDrawer({
                   type="button"
                   onClick={() =>
                     selectTab(
+                      tab.key,
+                    )
+                  }
+                  onKeyDown={(event) =>
+                    handleTabKeyDown(
+                      event,
                       tab.key,
                     )
                   }

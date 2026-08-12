@@ -757,13 +757,16 @@
 }
 
 .billing-payment-form label,
-.billing-proof-admin-note {
+.billing-proof-admin-note,
+.billing-proof-approval-fields,
+.billing-proof-approval-fields label {
   display: grid;
   gap: 7px;
 }
 
 .billing-payment-form input,
 .billing-payment-form textarea,
+.billing-proof-approval-fields input,
 .billing-proof-admin-note textarea {
   width: 100%;
   border: 1px solid var(--auth-border);
@@ -780,6 +783,24 @@
 .billing-proof-admin-note textarea {
   min-height: 86px;
   resize: vertical;
+}
+
+.billing-proof-approval-fields {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.72fr);
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  padding: 12px;
+}
+
+.billing-proof-approval-fields > .billing-payment-error {
+  grid-column: 1 / -1;
+}
+
+.billing-proof-approval-fields small {
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  line-height: 1.45;
 }
 
 .billing-payment-error,
@@ -890,6 +911,10 @@
 }
 
 @media (max-width: 767px) {
+  .billing-proof-approval-fields {
+    grid-template-columns: 1fr;
+  }
+
   .billing-page {
     gap: 8px;
     padding-inline: 12px;
@@ -985,7 +1010,7 @@
 
   .billing-settings-button {
     grid-column: 1 / -1;
-    min-height: 34px;
+    min-height: 44px;
     padding: 0 10px;
     font-size: 10px;
   }
@@ -1044,7 +1069,7 @@
   }
 
   .billing-cash-range .studio-select-trigger {
-    min-height: 26px !important;
+    min-height: 44px !important;
     min-width: 90px !important;
     padding: 2px 8px !important;
     border-radius: var(--studio-radius-md) !important;
@@ -1166,7 +1191,7 @@
   .billing-reminder-row span button,
   .billing-row-actions a,
   .billing-row-actions button {
-    min-height: 26px;
+    min-height: 44px;
     padding: 0 8px;
     font-size: 9px;
     border-radius: var(--studio-radius-sm);
@@ -1285,7 +1310,7 @@
   .billing-invoice-actions button,
   .billing-proof-modal-actions button,
   .billing-payment-form footer button {
-    min-height: 32px;
+    min-height: 44px;
     font-size: 10px;
   }
 
@@ -2683,9 +2708,11 @@
 .billing-invoice-actions { border-color: var(--studio-edge-soft); background: var(--studio-surface-2); }
 .billing-payment-form input,
 .billing-payment-form textarea,
+.billing-proof-approval-fields input,
 .billing-proof-admin-note textarea { border-color: var(--studio-edge-soft); background: var(--studio-surface-2); color: var(--studio-text-primary); }
 .billing-payment-form input:focus,
 .billing-payment-form textarea:focus,
+.billing-proof-approval-fields input:focus,
 .billing-proof-admin-note textarea:focus { border-color: var(--studio-accent); box-shadow: 0 0 0 3px var(--studio-accent-soft); }
 .billing-proof-image-link,
 .billing-proof-info-grid article,
@@ -3167,7 +3194,16 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
   .billing-reminder-row span button,
   .billing-row-actions a,
   .billing-row-actions button {
-    min-height: 34px;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .billing-proof-command-filter .studio-select-trigger,
+  .billing-filter-select .studio-select-trigger,
+  .billing-command-reset,
+  .billing-row-main,
+  .billing-reminder-row > button {
+    min-height: 44px;
   }
 
   .billing-row {
@@ -3461,7 +3497,7 @@ html[data-admin-theme-active='true'][data-theme='dark'] .billing-ledger-surface 
 
   .billing-reminder-row a,
   .billing-reminder-row span button {
-    min-height: 32px;
+    min-height: 44px;
   }
 }
 

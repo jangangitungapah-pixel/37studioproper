@@ -4,7 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { firebaseAuth, isFirebaseConfigured } from '../lib/firebase.js';
 import { getAccountIdentity } from '../services/accountRoleRepository.js';
 import { ACCOUNT_ROLES, ACCOUNT_STATUSES } from '../utils/accountRoles.js';
-import '../styles/admin-auth.css';
+import '../styles/routes/auth.css';
 
 function getLaunchPath(identity) {
   if (!identity) return '/client';

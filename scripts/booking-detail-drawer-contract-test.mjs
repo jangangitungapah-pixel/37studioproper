@@ -166,6 +166,38 @@ assert.equal(
 
 assert.equal(
   drawerSource.includes(
+    "event.key !== 'Tab'",
+  ),
+  true,
+  'Drawer must trap keyboard focus while open.',
+);
+
+assert.equal(
+  drawerSource.includes(
+    'previousFocusRef.current?.focus?.()',
+  ),
+  true,
+  'Drawer must restore focus to the trigger on close.',
+);
+
+assert.equal(
+  drawerSource.includes(
+    "event.key === 'ArrowRight'",
+  ),
+  true,
+  'Drawer tablist must support arrow-key navigation.',
+);
+
+assert.equal(
+  drawerSource.includes(
+    'activeTab: controlledActiveTab',
+  ),
+  true,
+  'Drawer tab must be controllable by deep-link URL state.',
+);
+
+assert.equal(
+  drawerSource.includes(
     'BookingConversationPanel',
   ),
   true,
@@ -307,25 +339,6 @@ assert.equal(
   ),
   true,
   'Drawer request actions must be capability-gated by the parent.',
-);
-
-/**
- * Legacy compatibility alias remains during gradual migration.
- */
-const legacyModalSource =
-  readFileSync(
-    resolve(
-      'src/components/schedule/BookingDetailModal.jsx',
-    ),
-    'utf8',
-  );
-
-assert.equal(
-  legacyModalSource.includes(
-    "export { default } from '../booking/BookingDetailDrawer.jsx';",
-  ),
-  true,
-  'Legacy BookingDetailModal import must safely resolve to the shared drawer.',
 );
 
 /**

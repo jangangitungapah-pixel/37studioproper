@@ -22,7 +22,7 @@ import {
 } from '../../services/paymentProofRepository.js';
 import {
   durationOptions,
-} from '../../pages/admin/scheduleConfig.js';
+} from '../../constants/scheduleConfig.js';
 import '../../styles/modules/client-booking-wizard.css';
 
 function formatBookingDate(

@@ -441,7 +441,7 @@ const billingSource =
 for (
   const required
   of [
-    'buildBookingRefundPatch',
+    'recordCanonicalRefund',
     'RefundPaymentModal',
     'canRefundBookingPayment(booking)',
     "activeFilter === 'refund_activity'",

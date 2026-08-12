@@ -3,9 +3,11 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { Dialog } from 'radix-ui';
 
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Ban,
   CalendarDays,
@@ -16,10 +18,19 @@ import {
   MessageCircle,
   Phone,
   Search,
+  X,
   XCircle,
 } from 'lucide-react';
 
 import BookingDetailDrawer from '../../components/booking/BookingDetailDrawer.jsx';
+import Button from '../../components/ui/Button.jsx';
+import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import StudioTextField from '../../components/ui/StudioTextField.jsx';
+
+import {
+  requiresBookingDecisionReason,
+  validateBookingDecision,
+} from '../../domain/booking/bookingDecision.js';
 
 import {
   getBookingRequestStatus,
@@ -34,8 +45,15 @@ import {
 import {
   bookingCommunicationRepository,
 } from '../../services/bookingCommunicationRepository.js';
+import useBookingListUrlState from '../../hooks/useBookingListUrlState.js';
+import {
+  ADMIN_LIST_PAGE_SIZE,
+  clampPage,
+  getPaginationSlice,
+} from '../../utils/pagination.js';
 
 import '../../styles/modules/booking-requests.css';
+import '../../styles/modules/modal.css';
 
 const REQUEST_FILTERS =
   Object.freeze([
@@ -63,6 +81,10 @@ const REQUEST_FILTERS =
         'Pembatalan',
     },
   ]);
+
+const REQUEST_FILTER_KEYS = Object.freeze(
+  REQUEST_FILTERS.map((item) => item.key),
+);
 
 function cleanSearchText(value) {
   return String(
@@ -559,9 +581,145 @@ function BookingRequestState({
   );
 }
 
+function RequestDecisionReasonDialog({
+  decision,
+  error,
+  isSaving,
+  onCancel,
+  onConfirm,
+  onReasonChange,
+  reason,
+}) {
+  if (!decision) return null;
+
+  const isCancellation =
+    decision.status === 'cancelled';
+  const title = isCancellation
+    ? 'Setujui pembatalan booking'
+    : 'Tolak request booking';
+
+  return (
+    <Dialog.Root
+      modal
+      open
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !isSaving) {
+          onCancel();
+        }
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="studio-confirm-backdrop" />
+
+        <Dialog.Content
+          aria-describedby="booking-decision-reason-description"
+          className="studio-confirm-dialog is-warning"
+          data-booking-decision-dialog="true"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            document
+              .getElementById(
+                'booking-decision-reason',
+              )
+              ?.focus();
+          }}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              onConfirm();
+            }}
+          >
+            <header className="studio-confirm-header">
+              <span
+                aria-hidden="true"
+                className="studio-confirm-icon"
+              >
+                <AlertTriangle size={19} />
+              </span>
+
+              <Dialog.Title id="booking-decision-reason-title">
+                {title}
+              </Dialog.Title>
+
+              <Dialog.Close asChild>
+                <button
+                  aria-label="Tutup dialog alasan"
+                  className="studio-confirm-close"
+                  disabled={isSaving}
+                  type="button"
+                >
+                  <X aria-hidden="true" size={16} />
+                </button>
+              </Dialog.Close>
+            </header>
+
+            <div className="studio-confirm-body">
+              <Dialog.Description id="booking-decision-reason-description">
+                Alasan akan tersimpan pada activity dan dikirim ke conversation client.
+              </Dialog.Description>
+
+              <StudioTextField
+                disabled={isSaving}
+                error={error}
+                helper="Minimal 4 karakter"
+                id="booking-decision-reason"
+                label="Alasan keputusan"
+                required
+                value={reason}
+                onChange={(event) =>
+                  onReasonChange(
+                    event.target.value,
+                  )
+                }
+              />
+            </div>
+
+            <footer className="studio-confirm-actions">
+              <Button
+                disabled={isSaving}
+                variant="secondary"
+                onClick={onCancel}
+              >
+                Kembali
+              </Button>
+
+              <Button
+                isLoading={isSaving}
+                type="submit"
+                variant="warning"
+              >
+                {isCancellation
+                  ? 'Setujui Pembatalan'
+                  : 'Tolak Request'}
+              </Button>
+            </footer>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
 export default function BookingRequestsPage({
   currentUser,
 }) {
+  const {
+    bookingId,
+    closeDetail,
+    openDetail,
+    page,
+    query,
+    requestFilter: filter,
+    setPage,
+    setTab,
+    tab: selectedBookingTab,
+    update: updateUrlState,
+  } = useBookingListUrlState({
+    requestFilters: REQUEST_FILTER_KEYS,
+    requestParam: 'filter',
+  });
+
   const [
     bookings,
     setBookings,
@@ -583,40 +741,10 @@ export default function BookingRequestsPage({
     useState('');
 
   const [
-    filter,
-    setFilter,
-  ] =
-    useState(
-      'all',
-    );
-
-  const [
-    query,
-    setQuery,
-  ] =
-    useState('');
-
-  const [
     pendingActionKey,
     setPendingActionKey,
   ] =
     useState('');
-
-  const [
-    selectedBooking,
-    setSelectedBooking,
-  ] =
-    useState(
-      null,
-    );
-
-  const [
-    selectedBookingTab,
-    setSelectedBookingTab,
-  ] =
-    useState(
-      'overview',
-    );
 
   const [
     actionNotice,
@@ -625,6 +753,21 @@ export default function BookingRequestsPage({
     useState(
       null,
     );
+
+  const [
+    decisionDialog,
+    setDecisionDialog,
+  ] = useState(null);
+
+  const [
+    decisionReason,
+    setDecisionReason,
+  ] = useState('');
+
+  const [
+    decisionReasonError,
+    setDecisionReasonError,
+  ] = useState('');
 
   /**
    * Intentionally subscribe WITHOUT date range.
@@ -792,9 +935,75 @@ export default function BookingRequestsPage({
       ],
     );
 
-  async function updateRequestStatus(
+  const pagedRequests =
+    useMemo(
+      () =>
+        getPaginationSlice(
+          visibleRequests,
+          page,
+        ),
+      [page, visibleRequests],
+    );
+
+  const selectedBooking =
+    useMemo(
+      () =>
+        bookings.find(
+          (booking) =>
+            booking.id === bookingId,
+        ) || null,
+      [bookingId, bookings],
+    );
+
+  useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(
+        visibleRequests.length /
+        ADMIN_LIST_PAGE_SIZE,
+      ),
+    );
+    const safePage = clampPage(
+      page,
+      totalPages,
+    );
+
+    if (safePage !== page) {
+      setPage(safePage);
+    }
+  }, [page, setPage, visibleRequests.length]);
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      !bookingId ||
+      selectedBooking
+    ) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      closeDetail();
+      setActionNotice({
+        kind: 'warning',
+        message:
+          'Booking pada tautan sudah tidak tersedia. Filter daftar tetap dipertahankan.',
+        title: 'Detail booking tidak ditemukan',
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    bookingId,
+    closeDetail,
+    isLoading,
+    selectedBooking,
+  ]);
+
+  async function performRequestDecision(
     booking,
     status,
+    reason = '',
   ) {
     if (
       !booking?.id ||
@@ -810,6 +1019,30 @@ export default function BookingRequestsPage({
         message:
           'Refresh halaman lalu coba kembali.',
       });
+
+      return false;
+    }
+
+    const validation = validateBookingDecision({
+      booking,
+      currentBookings: bookings,
+      reason,
+      status,
+    });
+
+    if (!validation.ok) {
+      setActionNotice({
+        kind: 'warning',
+        message: validation.message,
+        title:
+          validation.code === 'schedule-conflict'
+            ? 'Jadwal booking bentrok'
+            : 'Booking belum dapat diproses',
+      });
+
+      if (validation.code === 'reason-required') {
+        setDecisionReasonError(validation.message);
+      }
 
       return false;
     }
@@ -837,28 +1070,12 @@ export default function BookingRequestsPage({
       await bookingCommunicationRepository
         .updateBookingRequestStatus({
           booking,
+          currentBookings: bookings,
+          note: reason || undefined,
           status,
           user:
             currentUser,
         });
-
-      setSelectedBooking(
-        (
-          current,
-        ) =>
-          current?.id ===
-          booking.id
-            ? {
-                ...current,
-
-                requestStatus:
-                  status,
-
-                bookingRequestStatus:
-                  status,
-              }
-            : current,
-      );
 
       setActionNotice({
         kind:
@@ -901,26 +1118,72 @@ export default function BookingRequestsPage({
           'Gagal memperbarui request',
 
         message:
+          error?.message ||
           'Perubahan belum tersimpan. Periksa koneksi dan coba lagi.',
       });
 
-      throw error;
+      return false;
     } finally {
       setPendingActionKey('');
     }
+  }
+
+  function updateRequestStatus(
+    booking,
+    status,
+    reason = '',
+  ) {
+    if (
+      requiresBookingDecisionReason(status) &&
+      String(reason).trim().length < 4
+    ) {
+      setDecisionDialog({
+        booking,
+        status,
+      });
+      setDecisionReason(reason);
+      setDecisionReasonError('');
+      return Promise.resolve(false);
+    }
+
+    return performRequestDecision(
+      booking,
+      status,
+      reason,
+    );
   }
 
   async function handleQuickAction(
     booking,
     status,
   ) {
-    try {
-      await updateRequestStatus(
-        booking,
-        status,
-      );
-    } catch {
-      // Feedback already surfaced.
+    await updateRequestStatus(
+      booking,
+      status,
+    );
+  }
+
+  function closeDecisionDialog() {
+    if (pendingActionKey) return;
+
+    setDecisionDialog(null);
+    setDecisionReason('');
+    setDecisionReasonError('');
+  }
+
+  async function confirmDecisionReason() {
+    if (!decisionDialog) return;
+
+    const didSave = await performRequestDecision(
+      decisionDialog.booking,
+      decisionDialog.status,
+      decisionReason,
+    );
+
+    if (didSave) {
+      setDecisionDialog(null);
+      setDecisionReason('');
+      setDecisionReasonError('');
     }
   }
 
@@ -928,23 +1191,14 @@ export default function BookingRequestsPage({
     booking,
     initialTab = 'overview',
   ) {
-    setSelectedBookingTab(
+    openDetail(
+      booking.id,
       initialTab,
-    );
-
-    setSelectedBooking(
-      booking,
     );
   }
 
   function closeRequest() {
-    setSelectedBooking(
-      null,
-    );
-
-    setSelectedBookingTab(
-      'overview',
-    );
+    closeDetail();
   }
 
   return (
@@ -1095,9 +1349,10 @@ export default function BookingRequestsPage({
                   }
                   type="button"
                   onClick={() =>
-                    setFilter(
-                      item.key,
-                    )
+                    updateUrlState({
+                      page: 1,
+                      requestFilter: item.key,
+                    })
                   }
                 >
                   <span>
@@ -1128,14 +1383,11 @@ export default function BookingRequestsPage({
             value={
               query
             }
-            onChange={(
-              event,
-            ) =>
-              setQuery(
-                event
-                  .target
-                  .value,
-              )
+            onChange={(event) =>
+              updateUrlState({
+                page: 1,
+                query: event.target.value,
+              })
             }
           />
         </label>
@@ -1218,7 +1470,7 @@ export default function BookingRequestsPage({
           </header>
 
           <div className="booking-request-queue-list">
-            {visibleRequests.map(
+            {pagedRequests.map(
               (
                 booking,
               ) => {
@@ -1508,6 +1760,13 @@ export default function BookingRequestsPage({
               },
             )}
           </div>
+
+          <PaginationControls
+            label="request"
+            page={page}
+            totalItems={visibleRequests.length}
+            onPageChange={setPage}
+          />
         </section>
       ) : (
         <BookingRequestState
@@ -1520,6 +1779,7 @@ export default function BookingRequestsPage({
       )}
 
       <BookingDetailDrawer
+        activeTab={selectedBookingTab}
         booking={
           selectedBooking
         }
@@ -1537,9 +1797,25 @@ export default function BookingRequestsPage({
         onRequestStatusChange={
           updateRequestStatus
         }
+        onTabChange={setTab}
         user={
           currentUser
         }
+      />
+
+      <RequestDecisionReasonDialog
+        decision={decisionDialog}
+        error={decisionReasonError}
+        isSaving={Boolean(pendingActionKey)}
+        reason={decisionReason}
+        onCancel={closeDecisionDialog}
+        onConfirm={confirmDecisionReason}
+        onReasonChange={(value) => {
+          setDecisionReason(value);
+          if (decisionReasonError) {
+            setDecisionReasonError('');
+          }
+        }}
       />
     </section>
   );

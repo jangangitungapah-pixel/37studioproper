@@ -4,7 +4,6 @@ import {
   onSnapshot,
   query,
   setDoc,
-  updateDoc,
   where,
 } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -14,6 +13,7 @@ export const NOTIFICATION_EVENTS_COLLECTION = 'notificationEvents';
 const DEFAULT_NOTIFICATION_WORKER_URL = 'https://studio37-onesignal-notification-worker.studio37.workers.dev';
 const notificationEnv = import.meta.env || {};
 const NOTIFICATION_WORKER_URL = notificationEnv.VITE_NOTIFICATION_WORKER_URL || DEFAULT_NOTIFICATION_WORKER_URL;
+const NOTIFICATION_WORKER_TIMEOUT_MS = 10000;
 
 export const NOTIFICATION_EVENT_TYPES = Object.freeze({
   BOOKING_CONFIRMED: 'booking_confirmed',
@@ -59,6 +59,85 @@ function createNotificationEventId(type = 'event') {
       : Math.random().toString(36).slice(2);
 
   return `notif_${safeType}_${Date.now()}_${randomPart}`;
+}
+
+function createWorkerRequestId(action = 'request') {
+  const safeAction = cleanString(action, 40).replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+  const randomPart =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  return `${safeAction || 'request'}_${randomPart}`;
+}
+
+function getNotificationWorkerUrl() {
+  return String(NOTIFICATION_WORKER_URL || '').trim().replace(/\/$/, '');
+}
+
+async function requestNotificationWorker(
+  path,
+  { body, method = 'POST', timeoutMs = NOTIFICATION_WORKER_TIMEOUT_MS, user } = {},
+) {
+  if (typeof fetch !== 'function') {
+    throw new Error('Browser tidak mendukung request ke notification worker.');
+  }
+
+  const workerUrl = getNotificationWorkerUrl();
+  if (!workerUrl) {
+    throw new Error('Notification worker belum dikonfigurasi.');
+  }
+
+  const authUser = typeof user?.getIdToken === 'function'
+    ? user
+    : firebaseAuth?.currentUser;
+  if (typeof authUser?.getIdToken !== 'function') {
+    throw new Error('Sesi Firebase diperlukan untuk mengakses notification worker.');
+  }
+
+  const token = await authUser.getIdToken();
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || NOTIFICATION_WORKER_TIMEOUT_MS))
+    : null;
+
+  try {
+    const response = await fetch(`${workerUrl}${path}`, {
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      method,
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+    const text = await response.text();
+    let payload = null;
+
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { raw: text };
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(payload?.error || `Notification worker gagal: ${response.status}`);
+    }
+
+    return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Notification worker tidak merespons dalam batas waktu.', {
+        cause: error,
+      });
+    }
+
+    throw error;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 function normalizeActorRole(role) {
@@ -190,43 +269,15 @@ export function buildNotificationEventRecord({
 }
 
 export async function dispatchNotificationEventNow(record, user) {
-  if (!record?.id || typeof fetch !== 'function') return null;
+  if (!record?.id) return null;
 
-  const workerUrl = String(NOTIFICATION_WORKER_URL || '').trim().replace(/\/$/, '');
-  if (!workerUrl) return null;
-
-  const authUser = user || firebaseAuth?.currentUser;
-  if (typeof authUser?.getIdToken !== 'function') return null;
-
-  const token = await authUser.getIdToken();
-
-  const response = await fetch(`${workerUrl}/dispatch`, {
-    body: JSON.stringify({
+  return requestNotificationWorker('/dispatch', {
+    body: {
       eventId: record.id,
-    }),
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
+      requestId: createWorkerRequestId('dispatch'),
     },
-    method: 'POST',
+    user,
   });
-
-  const text = await response.text();
-  let payload = null;
-
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { raw: text };
-    }
-  }
-
-  if (!response.ok) {
-    throw new Error(payload?.error || `Realtime dispatch gagal: ${response.status}`);
-  }
-
-  return payload;
 }
 
 
@@ -321,46 +372,52 @@ export function subscribeNotificationEvents({ status = 'all' } = {}, callback, o
   );
 }
 
-export async function retryNotificationEvent(event) {
-  if (!firestoreDb || !event?.id) return null;
-
-  const now = nowIso();
-
-  await updateDoc(doc(firestoreDb, NOTIFICATION_EVENTS_COLLECTION, event.id), {
-    attempts: 0,
-    errorMessage: '',
-    sentAt: '',
-    status: NOTIFICATION_EVENT_STATUSES.PENDING,
-    updatedAt: now,
+export function fetchNotificationWorkerHealth(user) {
+  return requestNotificationWorker('/health', {
+    method: 'GET',
+    timeoutMs: 5000,
+    user,
   });
+}
 
-  return {
-    ...normalizeNotificationEvent(event),
-    attempts: 0,
-    errorMessage: '',
-    sentAt: '',
-    status: NOTIFICATION_EVENT_STATUSES.PENDING,
-    updatedAt: now,
-  };
+export function processNotificationEvents(
+  { dryRun = true, eventId = '', limit = 3, reason = 'Manual process from notification console.' } = {},
+  user,
+) {
+  return requestNotificationWorker('/process', {
+    body: {
+      dryRun: Boolean(dryRun),
+      eventId: cleanString(eventId, 240),
+      limit: Math.max(1, Math.min(20, Number(limit) || 1)),
+      reason: cleanString(reason, 240),
+      requestId: createWorkerRequestId(dryRun ? 'dry_run' : 'process'),
+    },
+    user,
+  });
+}
+
+export async function retryNotificationEvent(event) {
+  if (!event?.id) return null;
+
+  return requestNotificationWorker('/events/retry', {
+    body: {
+      eventId: cleanString(event.id, 240),
+      reason: 'Manual retry from notification console.',
+      requestId: createWorkerRequestId('retry'),
+    },
+  });
 }
 
 export async function cancelNotificationEvent(event) {
-  if (!firestoreDb || !event?.id) return null;
+  if (!event?.id) return null;
 
-  const now = nowIso();
-
-  await updateDoc(doc(firestoreDb, NOTIFICATION_EVENTS_COLLECTION, event.id), {
-    errorMessage: 'Cancelled from admin notification console.',
-    status: NOTIFICATION_EVENT_STATUSES.CANCELLED,
-    updatedAt: now,
+  return requestNotificationWorker('/events/cancel', {
+    body: {
+      eventId: cleanString(event.id, 240),
+      reason: 'Manual cancel from notification console.',
+      requestId: createWorkerRequestId('cancel'),
+    },
   });
-
-  return {
-    ...normalizeNotificationEvent(event),
-    errorMessage: 'Cancelled from admin notification console.',
-    status: NOTIFICATION_EVENT_STATUSES.CANCELLED,
-    updatedAt: now,
-  };
 }
 
 export const notificationEventRepository = {
@@ -370,8 +427,10 @@ export const notificationEventRepository = {
   createClientNotificationEvent,
   createNotificationEvent,
   dispatchNotificationEventNow,
+  fetchNotificationWorkerHealth,
   getNotificationEventStatusLabel,
   normalizeNotificationEvent,
+  processNotificationEvents,
   retryNotificationEvent,
   subscribeNotificationEvents,
 };

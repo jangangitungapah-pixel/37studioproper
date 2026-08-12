@@ -69,7 +69,7 @@ import {
   paymentProofMethodOptions,
   paymentProofRepository,
 } from '../services/paymentProofRepository.js';
-import { businessHours, statusFilters } from './admin/scheduleConfig.js';
+import { businessHours, statusFilters } from '../constants/scheduleConfig.js';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
 import ClientDashboardTab from '../components/client/ClientDashboardTab.jsx';
 import ClientCalendarTab from '../components/client/ClientCalendarTab.jsx';
@@ -79,7 +79,7 @@ import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
 import ClientBookingsHub from '../components/client/ClientBookingsHub.jsx';
 import ClientAccountTab from '../components/client/ClientAccountTab.jsx';
 
-import '../styles/admin-auth.css';
+import '../styles/routes/client.css';
 import '../styles/client-portal.css';
 import '../styles/modules/client-portal-overhaul.css';
 

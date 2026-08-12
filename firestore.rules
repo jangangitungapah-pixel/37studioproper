@@ -1,10 +1,12 @@
 rules_version = '2';
 
 // ===============================================================
-// Communication data model
+// Assumed data model and authority boundaries
 // ===============================================================
 // bookings/{bookingId}: existing booking fields plus optional request status,
-// response notes, and immutable last-message summary fields.
+// response notes, immutable last-message summary, payment/refund histories.
+// Browser Admins may manage operational fields, but finance fields are changed
+// only by the authenticated Admin Operations Worker.
 // bookingMessages/{messageId}: id, bookingId, clientUid, senderUid,
 // senderRole, senderName, text, type, createdAt, readByAdmin, readByClient.
 // Messages are private to the owning client and approved booking admins.
@@ -13,6 +15,8 @@ rules_version = '2';
 // Client accounts always have every admin permission disabled.
 // Studio guard does not use admin-page permissions and may only access
 // its own guard attendance records through the dedicated guard rules.
+// bookkeepingEntries canonical payment/refund rows and inventoryMovements are
+// immutable server records. adminOperation* documents are server-only.
 // ===============================================================
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -36,8 +40,14 @@ service cloud.firestore {
     }
 
     function isOwner() {
-      return isBootstrapOwnerEmail() ||
-        (userDocExists() && getUserData().role == 'owner');
+      // The configured email is a bootstrap path only. Once its canonical user
+      // document exists, ownership is governed exclusively by that document so
+      // a completed ownership transfer cannot leave the bootstrap account with
+      // permanent Owner authority.
+      return (!userDocExists() && isBootstrapOwnerEmail()) ||
+        (userDocExists() &&
+          getUserData().role == 'owner' &&
+          getUserData().status == 'approved');
     }
 
     function isApproved() {
@@ -81,6 +91,22 @@ service cloud.firestore {
       );
     }
 
+    function canAccessNotifications() {
+      return isOwner() || (
+        isApprovedAdmin() &&
+        getUserData().permissions is map &&
+        (
+          (
+            getUserData().permissions.keys().hasAny(['notifications']) &&
+            getUserData().permissions.notifications == true
+          ) || (
+            !getUserData().permissions.keys().hasAny(['notifications']) &&
+            getUserData().permissions.settings == true
+          )
+        )
+      );
+    }
+
     function canManageOperatorFees() {
       return isOwner() || (
         isApprovedAdmin() &&
@@ -102,16 +128,32 @@ service cloud.firestore {
         hasPermission('billing');
     }
 
+    function canManageBookingData() {
+      return hasPermission('schedule');
+    }
+
     function canAccessCustomerData() {
       return hasPermission('dashboard') || hasPermission('customers');
+    }
+
+    function canManageCustomerData() {
+      return hasPermission('customers');
     }
 
     function canAccessBookkeepingData() {
       return hasPermission('dashboard') || hasPermission('bookkeeping');
     }
 
+    function canManageBookkeepingData() {
+      return hasPermission('bookkeeping');
+    }
+
     function canAccessInventoryData() {
       return hasPermission('dashboard') || hasPermission('inventory');
+    }
+
+    function canManageInventoryData() {
+      return hasPermission('inventory');
     }
 
     function validString(value, minSize, maxSize) {
@@ -139,12 +181,14 @@ service cloud.firestore {
       return data is map &&
         data.keys().hasOnly([
           'dashboard', 'schedule', 'customers', 'billing', 'bookkeeping',
-          'operator-fee', 'guard-attendance', 'inventory', 'gallery', 'settings'
+          'operator-fee', 'guard-attendance', 'inventory', 'gallery', 'settings',
+          'notifications'
         ]) &&
         data.dashboard is bool && data.schedule is bool &&
         data.customers is bool && data.billing is bool &&
         (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] is bool) &&
         (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] is bool) &&
+        (!data.keys().hasAny(['notifications']) || data.notifications is bool) &&
         data.bookkeeping is bool && data.inventory is bool &&
         data.gallery is bool && data.settings is bool;
     }
@@ -156,6 +200,7 @@ service cloud.firestore {
         data.bookkeeping == false &&
         (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] == false) &&
         (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] == false) &&
+        (!data.keys().hasAny(['notifications']) || data.notifications == false) &&
         data.inventory == false &&
         data.gallery == false && data.settings == false;
     }
@@ -166,14 +211,15 @@ service cloud.firestore {
 
     function validPreferences(data) {
       return data is map &&
-        data.keys().hasOnly(['accountNote', 'defaultLandingKey', 'notificationLevel', 'preferredContact']) &&
+        data.keys().hasOnly(['accountNote', 'defaultLandingKey', 'notificationLevel', 'preferredContact', 'theme']) &&
         validString(data.accountNote, 0, 240) &&
         data.defaultLandingKey in [
           'dashboard', 'schedule', 'billing', 'bookkeeping', 'operator-fee',
           'guard-attendance', 'inventory', 'settings'
         ] &&
         data.notificationLevel in ['important', 'standard', 'proactive'] &&
-        data.preferredContact in ['email', 'phone', 'none'];
+        data.preferredContact in ['email', 'phone', 'none'] &&
+        (!data.keys().hasAny(['theme']) || data.theme in ['light', 'dark', 'system']);
     }
 
     function validUser(data, userId) {
@@ -314,7 +360,7 @@ service cloud.firestore {
     match /notificationSubscriptions/{subscriptionUserId} {
       allow read: if isSignedIn() && (
         request.auth.uid == subscriptionUserId ||
-        isApprovedAdmin()
+        canAccessNotifications()
       );
 
       allow create, update: if isSignedIn() &&
@@ -329,7 +375,7 @@ service cloud.firestore {
     match /notificationSubscriptionDevices/{deviceId} {
       allow read: if isSignedIn() && (
         resource.data.uid == request.auth.uid ||
-        isApprovedAdmin()
+        canAccessNotifications()
       );
 
       allow create, update: if isSignedIn() &&
@@ -741,11 +787,6 @@ service cloud.firestore {
         adminVoidsGuardAttendance();
     }
 
-    function adminUpdatesGuardAttendance() {
-      return adminReviewsGuardAttendance() ||
-        adminPostsGuardMeal();
-    }
-
     match /guardAttendanceSessions/{attendanceId} {
       allow read: if
         canManageGuardAttendance() ||
@@ -782,14 +823,18 @@ match /users/{userId} {
         authIdentityMatches(request.resource.data) &&
         isSafeAccountSelfCreate(request.resource.data);
       allow update: if validUser(request.resource.data, userId) && (
-        isOwner() || (
+        (
+          isOwner() &&
+          request.resource.data.role == resource.data.role
+        ) || (
           isSignedIn() &&
           request.auth.uid == userId &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['displayName', 'preferences', 'updatedAt'])
         ) || isSafeAdminRequestToClientTransition(userId)
       );
-      allow delete: if isOwner();
+      // Account deletion and ownership transitions are protected server jobs.
+      allow delete: if false;
     }
 
     function isClientBookingOwner(data) {
@@ -852,6 +897,18 @@ match /users/{userId} {
         validOptionalString(data, 'refundCompletedAt', 40) &&
         validOptionalString(data, 'paymentStatusBeforeRefund', 40) &&
         (!data.keys().hasAny(['appliedDiscounts']) || (data.appliedDiscounts is list && data.appliedDiscounts.size() <= 50));
+    }
+
+    function adminBookingFinanceFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'paymentHistory', 'refundHistory', 'paymentStatus',
+          'paymentStatusCanonical', 'invoiceStatus', 'invoiceAmount',
+          'paidAmount', 'dpAmount', 'refundedAmount', 'refundStatus',
+          'lastPaymentAt', 'lastPaymentMethod', 'lastRefundAt',
+          'lastRefundMethod', 'lastRefundReason', 'refundCompletedAt',
+          'paymentStatusBeforeRefund', 'voidReason', 'voidedAt',
+          'voidedByName', 'voidedByUid'
+        ]);
     }
 
     function validClientMessageSummary(data) {
@@ -960,13 +1017,29 @@ match /users/{userId} {
     match /bookings/{bookingId} {
       allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner(resource.data);
       allow create: if (
-          isApproved() && canAccessBookingData() && validBooking(request.resource.data)
+          isApproved() && canManageBookingData() && validBooking(request.resource.data) &&
+          request.resource.data.paymentStatus == 'pending' &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.invoiceAmount == request.resource.data.total &&
+          request.resource.data.paidAmount == 0 &&
+          request.resource.data.dpAmount == 0 &&
+          request.resource.data.paymentHistory is list &&
+          request.resource.data.paymentHistory.size() == 0 &&
+          (!request.resource.data.keys().hasAny(['refundHistory']) || request.resource.data.refundHistory.size() == 0) &&
+          (!request.resource.data.keys().hasAny(['refundedAmount']) || request.resource.data.refundedAmount == 0) &&
+          !request.resource.data.keys().hasAny([
+            'paymentStatusCanonical', 'invoiceStatus', 'refundStatus',
+            'lastPaymentAt', 'lastPaymentMethod', 'lastRefundAt',
+            'lastRefundMethod', 'lastRefundReason', 'refundCompletedAt',
+            'paymentStatusBeforeRefund', 'voidReason', 'voidedAt',
+            'voidedByName', 'voidedByUid'
+          ])
         ) || (
           isSignedIn() &&
           isSafeClientBookingRequestCreate(request.resource.data, bookingId)
         );
       allow update: if validBooking(request.resource.data) && (
-        (isApproved() && canAccessBookingData()) ||
+        (isApproved() && canManageBookingData() && adminBookingFinanceFieldsUnchanged()) ||
         (
           isClientBookingOwner(resource.data) &&
           request.resource.data.clientUid == resource.data.clientUid &&
@@ -977,7 +1050,7 @@ match /users/{userId} {
           )
         )
       );
-      allow delete: if isApproved() && canAccessBookingData();
+      allow delete: if false;
     }
 
     function validPaymentProof(data, proofId) {
@@ -987,6 +1060,7 @@ match /users/{userId} {
           'status', 'proofUrl', 'proofPublicId', 'proofFileName',
           'proofMimeType', 'clientNote', 'adminNote', 'createdAt',
           'updatedAt', 'reviewedAt', 'reviewedByUid', 'reviewedByName'
+          , 'approvedAmount', 'approvedMethod'
         ]) &&
         data.id == proofId &&
         validString(data.bookingId, 1, 128) &&
@@ -1008,7 +1082,9 @@ match /users/{userId} {
         validIsoTimestampString(data.updatedAt) &&
         validOptionalString(data, 'reviewedAt', 40) &&
         validOptionalString(data, 'reviewedByUid', 128) &&
-        validOptionalString(data, 'reviewedByName', 120);
+        validOptionalString(data, 'reviewedByName', 120) &&
+        (!data.keys().hasAny(['approvedAmount']) || validNumber(data.approvedAmount, 1, 100000000)) &&
+        (!data.keys().hasAny(['approvedMethod']) || validString(data.approvedMethod, 1, 80));
     }
 
     function clientCreatesPaymentProof(data, proofId) {
@@ -1024,17 +1100,6 @@ match /users/{userId} {
         bookingData(data.bookingId).clientUid == request.auth.uid &&
         bookingData(data.bookingId).status != 'void' &&
         bookingData(data.bookingId).paymentStatus != 'void';
-    }
-
-    function adminReviewsPaymentProof() {
-      return validPaymentProof(request.resource.data, resource.id) &&
-        resource.data.status == 'pending' &&
-        request.resource.data.status in ['approved', 'rejected'] &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status', 'adminNote', 'reviewedAt', 'reviewedByUid', 'reviewedByName', 'updatedAt'
-        ]) &&
-        request.resource.data.reviewedByUid == request.auth.uid &&
-        validIsoTimestampString(request.resource.data.reviewedAt);
     }
 
     function validBookingMessage(data, messageId) {
@@ -1067,8 +1132,7 @@ match /users/{userId} {
       allow read: if (isApproved() && canAccessBookingData()) ||
         (isClientAccount() && resource.data.clientUid == request.auth.uid);
       allow create: if clientCreatesPaymentProof(request.resource.data, proofId);
-      allow update: if isApproved() && canAccessBookingData() && adminReviewsPaymentProof();
-      allow delete: if isOwner();
+      allow update, delete: if false;
     }
 
     match /bookingMessages/{messageId} {
@@ -1129,8 +1193,8 @@ match /users/{userId} {
       // Public availability mirror only contains generic occupied-slot metadata.
       // Customer identity, contact, payment proof, and private booking data stay in protected collections.
       allow read: if true;
-      allow create, update: if isApproved() && canAccessBookingData() && validCalendarSlot(request.resource.data);
-      allow delete: if isApproved() && canAccessBookingData();
+      allow create, update: if isApproved() && canManageBookingData() && validCalendarSlot(request.resource.data);
+      allow delete: if isApproved() && canManageBookingData();
     }
 
     function validCustomer(data, customerId) {
@@ -1175,7 +1239,7 @@ match /users/{userId} {
       allow read: if (isApproved() && canAccessCustomerData()) ||
         (isClientAccount() && customerId == ('auth_' + request.auth.uid));
       allow create: if validCustomer(request.resource.data, customerId) && (
-        (isApproved() && canAccessCustomerData()) ||
+        (isApproved() && canManageCustomerData()) ||
         (
           isOwnClientProfile(customerId, request.resource.data) &&
           clientProfileIdentityMatches(request.resource.data) &&
@@ -1183,7 +1247,7 @@ match /users/{userId} {
         )
       );
       allow update: if validCustomer(request.resource.data, customerId) && (
-        (isApproved() && canAccessCustomerData()) ||
+        (isApproved() && canManageCustomerData()) ||
         (
           isOwnClientProfile(customerId, request.resource.data) &&
           clientProfileIdentityMatches(request.resource.data) &&
@@ -1192,7 +1256,7 @@ match /users/{userId} {
             .hasOnly(['name', 'phone', 'phoneKey', 'email', 'updatedAt'])
         )
       );
-      allow delete: if isApproved() && canAccessCustomerData();
+      allow delete: if isApproved() && canManageCustomerData();
     }
 
     function validStudioSettings(data) {
@@ -1251,13 +1315,9 @@ match /users/{userId} {
       allow delete: if isOwner();
     }
 
-    match /settings/{settingId} {
-      allow read, write: if settingId != 'operatorFees' && isApprovedAdmin() && hasPermission('settings');
-    }
-
     // >>> STUDIO37 OPERATOR FEE RULES START
     match /settings/operatorFees {
-      allow read: if isApproved();
+      allow read: if isOwner();
       allow create, update, delete: if isOwner();
     }
 
@@ -1484,7 +1544,9 @@ match /users/{userId} {
           'paymentMethod', 'note', 'source',
           'sourceAttendanceId', 'sourceAttendanceDate',
           'sourceGuardPersonId', 'sourceBookingId',
-          'sourceFeeEntryId', 'createdAt', 'updatedAt'
+          'sourceFeeEntryId', 'sourceEventId', 'sourceAction',
+          'actorName', 'actorUid', 'idempotencyKey', 'immutable',
+          'reversalOf', 'createdAt', 'updatedAt'
         ]) &&
         data.id == entryId &&
         data.type in ['income', 'expense'] &&
@@ -1500,6 +1562,13 @@ match /users/{userId} {
         validOptionalString(data, 'sourceGuardPersonId', 160) &&
         validOptionalString(data, 'sourceBookingId', 160) &&
         validOptionalString(data, 'sourceFeeEntryId', 240) &&
+        validOptionalString(data, 'sourceEventId', 240) &&
+        validOptionalString(data, 'sourceAction', 80) &&
+        validOptionalString(data, 'actorName', 120) &&
+        validOptionalString(data, 'actorUid', 128) &&
+        validOptionalString(data, 'idempotencyKey', 240) &&
+        (!data.keys().hasAny(['immutable']) || data.immutable is bool) &&
+        validOptionalString(data, 'reversalOf', 240) &&
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt) &&
         validOperatorFeeBookkeepingSource(data) &&
@@ -1511,7 +1580,9 @@ match /users/{userId} {
     ) {
       return data.source in [
         'operatorFee',
-        'guardAttendanceMeal'
+        'guardAttendanceMeal',
+        'booking-payment',
+        'booking-refund'
       ];
     }
 
@@ -1598,13 +1669,14 @@ match /users/{userId} {
       allow create:
         if isApprovedAdmin() &&
         (
-          canAccessBookkeepingData() ||
+          canManageBookkeepingData() ||
           hasPermission('operator-fee')
         ) &&
         validBookkeepingEntry(
           request.resource.data,
           entryId
         ) &&
+        request.resource.data.source in ['', 'manual', 'operatorFee', 'guardAttendanceMeal'] &&
         reconciledBookkeepingWriteAllowed(
           request.resource.data
         );
@@ -1612,13 +1684,15 @@ match /users/{userId} {
       allow update:
         if isApprovedAdmin() &&
         (
-          canAccessBookkeepingData() ||
+          canManageBookkeepingData() ||
           hasPermission('operator-fee')
         ) &&
         validBookkeepingEntry(
           request.resource.data,
           entryId
         ) &&
+        resource.data.source in ['', 'manual'] &&
+        request.resource.data.source in ['', 'manual'] &&
         (
           (
             !isReconciledBookkeepingSource(
@@ -1639,10 +1713,11 @@ match /users/{userId} {
 
       allow delete:
         if isApprovedAdmin() &&
-        canAccessBookkeepingData() &&
+        canManageBookkeepingData() &&
         !isReconciledBookkeepingSource(
           resource.data
-        );
+        ) &&
+        resource.data.source in ['', 'manual'];
     }
 
     function validInventoryItem(data, itemId) {
@@ -1662,31 +1737,19 @@ match /users/{userId} {
         validIsoTimestampString(data.updatedAt);
     }
 
-    function validInventoryMovement(data, movementId) {
-      return data.keys().hasOnly(['id', 'itemId', 'itemName', 'type', 'quantity', 'previousQuantity', 'nextQuantity', 'unit', 'note', 'createdAt']) &&
-        data.id == movementId &&
-        validString(data.itemId, 0, 160) &&
-        validString(data.itemName, 1, 160) &&
-        validString(data.type, 1, 40) &&
-        validNumber(data.quantity, 0, 1000000) &&
-        validNumber(data.previousQuantity, 0, 1000000) &&
-        validNumber(data.nextQuantity, 0, 1000000) &&
-        validString(data.unit, 1, 40) &&
-        validString(data.note, 0, 2000) &&
-        validIsoTimestampString(data.createdAt);
-    }
-
     match /inventoryItems/{itemId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update: if isApproved() && canAccessInventoryData() && validInventoryItem(request.resource.data, itemId);
-      allow delete: if isApproved() && canAccessInventoryData();
+      allow create: if isApproved() && canManageInventoryData() && validInventoryItem(request.resource.data, itemId);
+      allow update: if isApproved() && canManageInventoryData() &&
+        validInventoryItem(request.resource.data, itemId) &&
+        request.resource.data.quantity == resource.data.quantity &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isApproved() && canManageInventoryData();
     }
 
     match /inventoryMovements/{movementId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create: if isApproved() && canAccessInventoryData() && validInventoryMovement(request.resource.data, movementId);
-      allow update: if false;
-      allow delete: if isOwner();
+      allow create, update, delete: if false;
     }
 
     function validGalleryItem(data) {
@@ -1706,7 +1769,28 @@ match /users/{userId} {
     match /gallery/{imageId} {
       allow read: if isApproved() && hasPermission('gallery');
       allow create, update: if isApproved() && hasPermission('gallery') && validGalleryItem(request.resource.data);
-      allow delete: if isApproved() && hasPermission('gallery');
+      allow delete: if false;
+    }
+
+    // Server-authoritative operation control plane. Admin SDK/REST service
+    // accounts bypass client rules after independently verifying actor access.
+    match /adminOperationKeys/{operationId} {
+      allow read, write: if false;
+    }
+
+    match /adminOperationAudit/{auditId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /adminOperationDryRuns/{snapshotId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /adminOperationJobs/{jobId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
     }
 
     function validApprovalMail(data) {
@@ -1729,7 +1813,10 @@ match /users/{userId} {
           'id', 'message', 'metadata', 'paymentProofId',
           'priority', 'provider', 'sentAt', 'source', 'status',
           'targetMode', 'targetRole', 'targetUid', 'title',
-          'type', 'updatedAt', 'url'
+          'type', 'updatedAt', 'url', 'lastAction', 'lastActionAt',
+          'lastActionByEmail', 'lastActionByRole', 'lastActionByUid',
+          'lastActionReason', 'lastActionRequestId', 'leaseExpiresAt',
+          'leaseId', 'providerNotificationId'
         ]) &&
         data.id == eventId &&
         data.actorRole in ['admin', 'client', 'guard', 'system'] &&
@@ -1763,7 +1850,17 @@ match /users/{userId} {
           'payment_proof_submitted'
         ] &&
         validIsoTimestampString(data.updatedAt) &&
-        validString(data.url, 0, 700);
+        validString(data.url, 0, 700) &&
+        validOptionalString(data, 'lastAction', 80) &&
+        validOptionalString(data, 'lastActionAt', 40) &&
+        validOptionalString(data, 'lastActionByEmail', 254) &&
+        validOptionalString(data, 'lastActionByRole', 40) &&
+        validOptionalString(data, 'lastActionByUid', 128) &&
+        validOptionalString(data, 'lastActionReason', 500) &&
+        validOptionalString(data, 'lastActionRequestId', 160) &&
+        validOptionalString(data, 'leaseExpiresAt', 40) &&
+        validOptionalString(data, 'leaseId', 160) &&
+        validOptionalString(data, 'providerNotificationId', 240);
     }
 
     function notificationEventActorMatches(data) {
@@ -1779,28 +1876,37 @@ match /users/{userId} {
       return data.status == 'pending' &&
         data.attempts == 0 &&
         data.errorMessage == '' &&
-        data.sentAt == '';
+        data.sentAt == '' &&
+        !data.keys().hasAny([
+          'lastAction', 'lastActionAt', 'lastActionByEmail',
+          'lastActionByRole', 'lastActionByUid', 'lastActionReason',
+          'lastActionRequestId', 'leaseExpiresAt', 'leaseId',
+          'providerNotificationId'
+        ]);
     }
 
     function notificationEventTargetIsSafe(data) {
       return (
           data.targetMode == 'role' &&
           data.targetRole == 'admin' &&
-          data.targetUid == ''
+          data.targetUid == '' &&
+          data.actorRole in ['admin', 'client', 'guard']
         ) || (
           data.targetMode == 'user' &&
           data.targetRole == 'client' &&
-          data.targetUid.size() > 0
+          data.targetUid.size() > 0 &&
+          data.actorRole == 'admin'
         ) || (
           data.targetMode == 'user' &&
           data.targetRole == 'admin' &&
-          data.targetUid.size() > 0
+          data.targetUid.size() > 0 &&
+          data.actorRole == 'admin'
         );
     }
 
     match /notificationEvents/{eventId} {
       allow read: if isSignedIn() && (
-        isApprovedAdmin() ||
+        canAccessNotifications() ||
         resource.data.actorUid == request.auth.uid ||
         resource.data.targetUid == request.auth.uid
       );
@@ -1811,13 +1917,15 @@ match /users/{userId} {
         notificationEventCreateIsPending(request.resource.data) &&
         notificationEventTargetIsSafe(request.resource.data);
 
-      allow update: if isApprovedAdmin() &&
-        validNotificationEvent(request.resource.data, eventId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'attempts', 'errorMessage', 'sentAt', 'status', 'updatedAt'
-        ]);
+      // Status operations are server-authoritative. The notification worker
+      // verifies the Firebase token, loads users/{uid}, checks permission,
+      // and records an immutable audit document before changing this record.
+      allow update, delete: if false;
+    }
 
-      allow delete: if isOwner();
+    match /notificationEventAudits/{auditId} {
+      allow read: if canAccessNotifications();
+      allow create, update, delete: if false;
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 

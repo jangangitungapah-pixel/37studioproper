@@ -1,4 +1,5 @@
 import StatusPill from '../../components/ui/StatusPill.jsx';
+import '../../styles/modules/dashboard.css';
 
 import {
   useEffect,
