@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Mail, MonitorSmartphone, Phone, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, X } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Landmark, Mail, MapPin, MessageCircle, MonitorSmartphone, Phone, QrCode, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, X } from 'lucide-react';
 import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { firestoreDb } from '../../lib/firebase.js';
 import { OWNER_EMAIL } from '../../constants/appConstants.js';
@@ -35,6 +35,7 @@ import {
 } from '../../settings/invoiceSettings.js';
 import {
   defaultStudioSettings,
+  formatBankAccountNumber,
   normalizeStudioSettings,
   saveStudioSettings,
   useStudioSettings,
@@ -61,6 +62,17 @@ import {
 
 const DANGER_ZONE_CONFIRM_TEXT = 'HAPUS DATA 37 STUDIO';
 const DANGER_ZONE_DELETE_BATCH_SIZE = 450;
+const STUDIO_PAYMENT_TERM_LIMIT = 12;
+const STUDIO_DRAFT_FIELDS = [
+  'studioName',
+  'studioAddress',
+  'studioPhone',
+  'bankName',
+  'bankAccountNumber',
+  'bankAccountHolder',
+  'qrisLabel',
+  'qrisNote',
+];
 
 const dangerZoneCollections = [
   {
@@ -288,6 +300,82 @@ function accountPreferencesMatch(left, right) {
   );
 }
 
+function getStudioDraftSnapshot(settings) {
+  const source = settings && typeof settings === 'object' ? settings : {};
+  const snapshot = STUDIO_DRAFT_FIELDS.reduce((result, field) => ({
+    ...result,
+    [field]: String(source[field] || '').trim(),
+  }), {});
+
+  snapshot.paymentTerms = (Array.isArray(source.paymentTerms) ? source.paymentTerms : [])
+    .map((term) => String(term || '').trim());
+
+  return snapshot;
+}
+
+function studioDraftsMatch(left, right) {
+  return JSON.stringify(getStudioDraftSnapshot(left)) === JSON.stringify(getStudioDraftSnapshot(right));
+}
+
+function getStudioValidationErrors(settings) {
+  const source = getStudioDraftSnapshot(settings);
+  const errors = {};
+  const phoneDigits = source.studioPhone.replace(/\D/g, '');
+  const bankDigits = source.bankAccountNumber.replace(/\D/g, '');
+
+  if (!source.studioName) errors.studioName = 'Nama studio wajib diisi.';
+  if (source.studioPhone && (phoneDigits.length < 9 || phoneDigits.length > 15)) {
+    errors.studioPhone = 'Gunakan 9–15 digit nomor WhatsApp atau telepon.';
+  }
+  if (!source.bankName) errors.bankName = 'Nama bank wajib diisi.';
+  if (bankDigits.length < 6) errors.bankAccountNumber = 'Nomor rekening minimal 6 digit.';
+  if (!source.bankAccountHolder) errors.bankAccountHolder = 'Nama pemilik rekening wajib diisi.';
+  if (!source.qrisLabel) errors.qrisLabel = 'Label QRIS wajib diisi.';
+  if (!source.paymentTerms.some(Boolean)) errors.paymentTerms = 'Tambahkan minimal satu ketentuan pembayaran.';
+
+  return errors;
+}
+
+function getStudioSetupProgress(settings) {
+  const source = getStudioDraftSnapshot(settings);
+  const bankDigits = source.bankAccountNumber.replace(/\D/g, '');
+  const checks = [
+    {
+      complete: Boolean(source.studioName),
+      key: 'identity',
+      label: 'Identitas studio',
+    },
+    {
+      complete: Boolean(source.studioPhone || source.studioAddress),
+      key: 'contact',
+      label: 'Kontak publik',
+    },
+    {
+      complete: Boolean(source.bankName && bankDigits.length >= 6 && source.bankAccountHolder),
+      key: 'transfer',
+      label: 'Rekening transfer',
+    },
+    {
+      complete: Boolean(source.qrisLabel),
+      key: 'qris',
+      label: 'Informasi QRIS',
+    },
+    {
+      complete: source.paymentTerms.some(Boolean),
+      key: 'terms',
+      label: 'Aturan pembayaran',
+    },
+  ];
+  const completed = checks.filter((item) => item.complete).length;
+
+  return {
+    checks,
+    completed,
+    percent: Math.round((completed / checks.length) * 100),
+    total: checks.length,
+  };
+}
+
 function getAccountPasswordStrength(password) {
   const value = String(password || '');
   const checks = [
@@ -451,7 +539,11 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
   const [invoiceSettingsMessage, setInvoiceSettingsMessage] = useState('');
   const remoteStudioSettings = useStudioSettings();
   const [studioSettings, setStudioSettings] = useState(() => remoteStudioSettings);
+  const [savedStudioSettings, setSavedStudioSettings] = useState(() => remoteStudioSettings);
   const [studioSettingsMessage, setStudioSettingsMessage] = useState('');
+  const [studioSettingsMessageTone, setStudioSettingsMessageTone] = useState('info');
+  const [studioSettingsIsSaving, setStudioSettingsIsSaving] = useState(false);
+  const [studioValidationErrors, setStudioValidationErrors] = useState({});
   const [accountPreferences, setAccountPreferences] = useState(() => resolveAccountPreferences(currentUser));
   const [savedAccountPreferences, setSavedAccountPreferences] = useState(() => resolveAccountPreferences(currentUser));
   const [accountSettingsMessage, setAccountSettingsMessage] = useState('');
@@ -510,7 +602,13 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
 
   useEffect(() => {
     const studioFrameId = window.requestAnimationFrame(() => {
-      setStudioSettings(remoteStudioSettings);
+      const nextStudioSettings = normalizeStudioSettings(remoteStudioSettings);
+
+      setStudioSettings(nextStudioSettings);
+      setSavedStudioSettings(nextStudioSettings);
+      setStudioSettingsMessage('');
+      setStudioSettingsMessageTone('info');
+      setStudioValidationErrors({});
     });
 
     return () => {
@@ -1530,16 +1628,30 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     }
   }
 
+  function clearStudioFieldFeedback(field) {
+    setStudioValidationErrors((current) => {
+      if (!current[field]) return current;
+
+      const nextErrors = { ...current };
+      delete nextErrors[field];
+      return nextErrors;
+    });
+    setStudioSettingsMessage('');
+    setStudioSettingsMessageTone('info');
+  }
+
   function updateStudioSetting(field) {
     return (event) => {
-      const value = event.target.value;
+      const rawValue = event.target.value;
+      const value = field === 'bankAccountNumber'
+        ? rawValue.replace(/\D/g, '').slice(0, 24)
+        : rawValue;
 
-      setStudioSettings((current) => normalizeStudioSettings({
+      setStudioSettings((current) => ({
         ...current,
         [field]: value,
       }));
-
-      if (studioSettingsMessage) setStudioSettingsMessage('');
+      clearStudioFieldFeedback(field);
     };
   }
 
@@ -1547,69 +1659,107 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     return (event) => {
       const value = event.target.value;
 
-      setStudioSettings((current) => normalizeStudioSettings({
-        ...current,
-        paymentTerms: (current.paymentTerms || defaultStudioSettings.paymentTerms).map((term, termIndex) =>
-          termIndex === index ? value : term
-        ),
-      }));
+      setStudioSettings((current) => {
+        const currentTerms = Array.isArray(current.paymentTerms) && current.paymentTerms.length
+          ? current.paymentTerms
+          : [''];
 
-      if (studioSettingsMessage) setStudioSettingsMessage('');
+        return {
+          ...current,
+          paymentTerms: currentTerms.map((term, termIndex) =>
+            termIndex === index ? value : term
+          ),
+        };
+      });
+      clearStudioFieldFeedback('paymentTerms');
     };
   }
 
   function addStudioPaymentTerm() {
-    setStudioSettings((current) => normalizeStudioSettings({
-      ...current,
-      paymentTerms: [...(current.paymentTerms || defaultStudioSettings.paymentTerms), ''],
-    }));
+    if (studioPaymentTerms.length >= STUDIO_PAYMENT_TERM_LIMIT) {
+      setStudioSettingsMessage('Maksimal 12 ketentuan pembayaran.');
+      setStudioSettingsMessageTone('warning');
+      return;
+    }
 
-    if (studioSettingsMessage) setStudioSettingsMessage('');
+    setStudioSettings((current) => {
+      const currentTerms = Array.isArray(current.paymentTerms) && current.paymentTerms.length
+        ? current.paymentTerms
+        : [''];
+
+      return {
+        ...current,
+        paymentTerms: [...currentTerms, ''],
+      };
+    });
+    clearStudioFieldFeedback('paymentTerms');
   }
 
   function removeStudioPaymentTerm(index) {
     setStudioSettings((current) => {
-      const nextTerms = (current.paymentTerms || defaultStudioSettings.paymentTerms).filter((_term, termIndex) => termIndex !== index);
+      const currentTerms = Array.isArray(current.paymentTerms) && current.paymentTerms.length
+        ? current.paymentTerms
+        : [''];
 
-      return normalizeStudioSettings({
+      if (currentTerms.length <= 1) return current;
+
+      return {
         ...current,
-        paymentTerms: nextTerms.length ? nextTerms : defaultStudioSettings.paymentTerms,
-      });
+        paymentTerms: currentTerms.filter((_term, termIndex) => termIndex !== index),
+      };
     });
-
-    if (studioSettingsMessage) setStudioSettingsMessage('');
+    clearStudioFieldFeedback('paymentTerms');
   }
 
   async function saveStudioSettingsPage(event) {
     event.preventDefault();
+    if (studioSettingsIsSaving) return;
+
+    const validationErrors = getStudioValidationErrors(studioSettings);
+
+    if (Object.keys(validationErrors).length) {
+      setStudioValidationErrors(validationErrors);
+      setStudioSettingsMessage('Periksa kembali field yang ditandai sebelum menyimpan.');
+      setStudioSettingsMessageTone('danger');
+      return;
+    }
+
+    setStudioSettingsIsSaving(true);
+    setStudioSettingsMessage('');
+    setStudioSettingsMessageTone('info');
 
     try {
       const nextSettings = await saveStudioSettings({
-        ...studioSettings,
+        ...normalizeStudioSettings(studioSettings),
         updatedAt: new Date().toISOString(),
       });
 
       setStudioSettings(nextSettings);
+      setSavedStudioSettings(nextSettings);
+      setStudioValidationErrors({});
       setStudioSettingsMessage('Studio settings berhasil disimpan.');
+      setStudioSettingsMessageTone('success');
     } catch (err) {
       console.error('Failed to save studio settings:', err);
-      setStudioSettingsMessage('Gagal menyimpan studio settings ke Firestore.');
+      setStudioSettingsMessage('Gagal menyimpan studio settings ke Firestore. Coba lagi.');
+      setStudioSettingsMessageTone('danger');
+    } finally {
+      setStudioSettingsIsSaving(false);
     }
   }
 
-  async function resetStudioSettingsPage() {
-    try {
-      const nextSettings = await saveStudioSettings({
-        ...defaultStudioSettings,
-        updatedAt: new Date().toISOString(),
-      });
+  function resetStudioSettingsPage() {
+    setStudioSettings(normalizeStudioSettings(defaultStudioSettings));
+    setStudioValidationErrors({});
+    setStudioSettingsMessage('Default dimuat sebagai draft. Tekan Simpan untuk menerapkannya.');
+    setStudioSettingsMessageTone('warning');
+  }
 
-      setStudioSettings(nextSettings);
-      setStudioSettingsMessage('Studio settings dikembalikan ke default.');
-    } catch (err) {
-      console.error('Failed to reset studio settings:', err);
-      setStudioSettingsMessage('Gagal reset studio settings.');
-    }
+  function restoreSavedStudioSettingsPage() {
+    setStudioSettings(savedStudioSettings);
+    setStudioValidationErrors({});
+    setStudioSettingsMessage('Perubahan draft dibatalkan.');
+    setStudioSettingsMessageTone('info');
   }
 
   async function saveInvoiceSettingsPage(event) {
@@ -1978,6 +2128,21 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     return subpages.find((page) => page.key === resolvedActiveSubpage) || subpages[0];
   }, [subpages, resolvedActiveSubpage]);
 
+  const studioPaymentTerms = Array.isArray(studioSettings.paymentTerms) && studioSettings.paymentTerms.length
+    ? studioSettings.paymentTerms
+    : [''];
+  const studioSettingsIsDirty = !studioDraftsMatch(studioSettings, savedStudioSettings);
+  const studioDefaultIsLoaded = studioDraftsMatch(studioSettings, defaultStudioSettings);
+  const studioSetupProgress = getStudioSetupProgress(studioSettings);
+  const studioNamePreview = String(studioSettings.studioName || '').trim() || 'Nama studio belum diisi';
+  const studioPhonePreview = String(studioSettings.studioPhone || '').trim() || 'Nomor kontak belum diisi';
+  const studioAddressPreview = String(studioSettings.studioAddress || '').trim() || 'Alamat studio belum diisi';
+  const studioBankNamePreview = String(studioSettings.bankName || '').trim() || 'Bank belum diisi';
+  const studioBankHolderPreview = String(studioSettings.bankAccountHolder || '').trim() || 'Pemilik belum diisi';
+  const studioBankAccountPreview = formatBankAccountNumber(studioSettings.bankAccountNumber);
+  const studioQrisLabelPreview = String(studioSettings.qrisLabel || '').trim() || 'Label QRIS belum diisi';
+  const studioQrisNotePreview = String(studioSettings.qrisNote || '').trim() || 'Catatan QRIS belum diisi';
+
   const accountProviderView = {
     ...currentUser,
     providerIds: accountSecurityProviderIds,
@@ -2091,7 +2256,9 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
               ? 'settings-page is-danger-settings'
               : resolvedActiveSubpage === 'fee-settings'
                 ? 'settings-page is-fee-settings'
-                : 'settings-page'
+                : resolvedActiveSubpage === 'studio'
+                  ? 'settings-page is-studio-settings'
+                  : 'settings-page'
       }
       data-settings-ui="ui-12-spatial"
       aria-labelledby="settings-current-page-title"
@@ -2757,149 +2924,392 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
       )}
 
       {resolvedActiveSubpage === 'studio' && (
-        <section className="settings-section" aria-label="Studio settings">
-
-          {/* ── STUDIO IDENTITY ─────────────────────────────── */}
-          <h3 className="settings-section-title">Studio Identity</h3>
-
-          <form className="settings-studio-form" onSubmit={saveStudioSettingsPage}>
-            <div className="settings-studio-grid">
-              <StudioTextField
-                id="studio-setting-name"
-                label="Nama Studio"
-                placeholder="37 Music Studio"
-                value={studioSettings.studioName}
-                onChange={updateStudioSetting('studioName')}
-              />
-
-              <StudioTextField
-                id="studio-setting-phone"
-                inputMode="tel"
-                label="WhatsApp / Telepon"
-                placeholder="08xxxxxxxxxx"
-                value={studioSettings.studioPhone}
-                onChange={updateStudioSetting('studioPhone')}
-              />
+        <section
+          aria-labelledby="settings-studio-control-title"
+          className="settings-studio-control-center"
+          data-studio-settings-ui="ui-12b-studio-control-center"
+        >
+          <section className="settings-section settings-studio-command-strip">
+            <div className="settings-studio-command-icon" aria-hidden="true">
+              <Building2 size={19} />
             </div>
 
-            <label className="settings-textarea-field" htmlFor="studio-setting-address">
-              <span>Alamat Studio</span>
-              <textarea
-                id="studio-setting-address"
-                placeholder="Jl. Studio No. 37, Tangerang"
-                value={studioSettings.studioAddress}
-                onChange={updateStudioSetting('studioAddress')}
-              />
-            </label>
-
-            {/* Preview strip */}
-            <div className="settings-studio-preview-strip" aria-label="Preview studio identity">
-              <strong>{studioSettings.studioName || defaultStudioSettings.studioName}</strong>
-              {studioSettings.studioPhone ? <span>· {studioSettings.studioPhone}</span> : null}
-              {studioSettings.studioAddress ? <span>· {studioSettings.studioAddress}</span> : null}
+            <div className="settings-studio-command-copy">
+              <p>Studio workspace</p>
+              <h3 id="settings-studio-control-title">{studioNamePreview}</h3>
+              <span>Identitas operasional, kanal pembayaran, dan aturan booking dalam satu workspace.</span>
             </div>
 
-            {/* ── TRANSFER & QRIS ──────────────────────────── */}
-            <h3 className="settings-section-title settings-section-divider">Transfer &amp; QRIS</h3>
-
-            <div className="settings-studio-grid settings-studio-grid-3">
-              <StudioTextField
-                id="studio-setting-bank-name"
-                label="Nama Bank"
-                placeholder="Bank BCA"
-                value={studioSettings.bankName}
-                onChange={updateStudioSetting('bankName')}
-              />
-
-              <StudioTextField
-                id="studio-setting-bank-account"
-                inputMode="numeric"
-                label="Nomor Rekening"
-                placeholder="3728902822"
-                value={studioSettings.bankAccountNumber}
-                onChange={updateStudioSetting('bankAccountNumber')}
-              />
-
-              <StudioTextField
-                id="studio-setting-bank-holder"
-                label="Nama Pemilik"
-                placeholder="37 MUSIC STUDIO"
-                value={studioSettings.bankAccountHolder}
-                onChange={updateStudioSetting('bankAccountHolder')}
-              />
-
-              <StudioTextField
-                id="studio-setting-qris-label"
-                label="Label QRIS"
-                placeholder="Scan di kasir studio"
-                value={studioSettings.qrisLabel}
-                onChange={updateStudioSetting('qrisLabel')}
-              />
-
-              <StudioTextField
-                id="studio-setting-qris-note"
-                label="Catatan QRIS"
-                placeholder="Mendukung GoPay, OVO, ShopeePay"
-                value={studioSettings.qrisNote}
-                onChange={updateStudioSetting('qrisNote')}
-              />
+            <div className="settings-studio-command-badges" aria-label="Status Studio Settings">
+              <span className="settings-studio-command-badge is-readiness">
+                <CheckCircle2 size={12} />
+                {studioSetupProgress.percent}% siap
+              </span>
+              <span className={'settings-studio-command-badge ' + (studioSettingsIsDirty ? 'is-dirty' : 'is-saved')}>
+                {studioSettingsIsDirty ? <AlertTriangle size={12} /> : <ShieldCheck size={12} />}
+                {studioSettingsIsDirty ? 'Draft berubah' : 'Tersimpan'}
+              </span>
             </div>
 
-            {/* Payment preview strip */}
-            <div className="settings-studio-preview-strip" aria-label="Preview rekening studio">
-              <strong>{studioSettings.bankName || defaultStudioSettings.bankName}</strong>
-              <span>· {studioSettings.bankAccountNumber || defaultStudioSettings.bankAccountNumber}</span>
-              <span>· A/N: {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</span>
-              <span>· {studioSettings.qrisLabel || defaultStudioSettings.qrisLabel}</span>
+            <div className="settings-studio-command-health" aria-label={'Kelengkapan ' + studioSetupProgress.percent + '%'}>
+              <div>
+                <span>Setup readiness</span>
+                <strong>{studioSetupProgress.completed}/{studioSetupProgress.total} area lengkap</strong>
+              </div>
+              <span className="settings-studio-health-track" aria-hidden="true">
+                <span style={{ width: studioSetupProgress.percent + '%' }} />
+              </span>
+            </div>
+          </section>
+
+          <form className="settings-studio-form" noValidate onSubmit={saveStudioSettingsPage}>
+            <div className="settings-studio-layout">
+              <div className="settings-studio-editor">
+                <section className="settings-section settings-studio-panel" aria-labelledby="settings-studio-identity-title">
+                  <div className="settings-studio-panel-heading">
+                    <span className="settings-studio-panel-icon" aria-hidden="true">
+                      <Building2 size={16} />
+                    </span>
+                    <span>
+                      <small>Identity</small>
+                      <h3 id="settings-studio-identity-title">Identitas Studio</h3>
+                      <p>Informasi utama yang muncul di invoice dan kanal komunikasi pelanggan.</p>
+                    </span>
+                  </div>
+
+                  <div className="settings-studio-grid">
+                    <StudioTextField
+                      autoComplete="organization"
+                      className="settings-studio-field"
+                      error={studioValidationErrors.studioName}
+                      helper="Wajib"
+                      id="studio-setting-name"
+                      label="Nama Studio"
+                      placeholder="37 Music Studio"
+                      required
+                      value={studioSettings.studioName}
+                      onChange={updateStudioSetting('studioName')}
+                    />
+
+                    <StudioTextField
+                      autoComplete="tel"
+                      className="settings-studio-field"
+                      error={studioValidationErrors.studioPhone}
+                      helper="Opsional"
+                      id="studio-setting-phone"
+                      inputMode="tel"
+                      label="WhatsApp / Telepon"
+                      placeholder="08xxxxxxxxxx"
+                      value={studioSettings.studioPhone}
+                      onChange={updateStudioSetting('studioPhone')}
+                    />
+                  </div>
+
+                  <label className="settings-studio-textarea-field" htmlFor="studio-setting-address">
+                    <span className="settings-studio-field-head">
+                      <span>Alamat Studio</span>
+                      <small>Opsional · tampil di invoice</small>
+                    </span>
+                    <textarea
+                      id="studio-setting-address"
+                      maxLength={180}
+                      placeholder="Jl. Studio No. 37, Tangerang"
+                      rows={3}
+                      value={studioSettings.studioAddress}
+                      onChange={updateStudioSetting('studioAddress')}
+                    />
+                  </label>
+                </section>
+
+                <section className="settings-section settings-studio-panel" aria-labelledby="settings-studio-payment-title">
+                  <div className="settings-studio-panel-heading">
+                    <span className="settings-studio-panel-icon" aria-hidden="true">
+                      <Landmark size={16} />
+                    </span>
+                    <span>
+                      <small>Payments</small>
+                      <h3 id="settings-studio-payment-title">Transfer &amp; QRIS</h3>
+                      <p>Rekening tujuan dan instruksi pembayaran yang dibaca pelanggan.</p>
+                    </span>
+                  </div>
+
+                  <div className="settings-studio-grid settings-studio-grid-3">
+                    <StudioTextField
+                      className="settings-studio-field"
+                      error={studioValidationErrors.bankName}
+                      helper="Wajib"
+                      id="studio-setting-bank-name"
+                      label="Nama Bank"
+                      placeholder="Bank BCA"
+                      required
+                      value={studioSettings.bankName}
+                      onChange={updateStudioSetting('bankName')}
+                    />
+
+                    <StudioTextField
+                      className="settings-studio-field"
+                      error={studioValidationErrors.bankAccountNumber}
+                      helper="Wajib"
+                      id="studio-setting-bank-account"
+                      inputMode="numeric"
+                      label="Nomor Rekening"
+                      placeholder="3728902822"
+                      required
+                      value={studioSettings.bankAccountNumber}
+                      onChange={updateStudioSetting('bankAccountNumber')}
+                    />
+
+                    <StudioTextField
+                      autoComplete="name"
+                      className="settings-studio-field"
+                      error={studioValidationErrors.bankAccountHolder}
+                      helper="Wajib"
+                      id="studio-setting-bank-holder"
+                      label="Nama Pemilik"
+                      placeholder="37 MUSIC STUDIO"
+                      required
+                      value={studioSettings.bankAccountHolder}
+                      onChange={updateStudioSetting('bankAccountHolder')}
+                    />
+                  </div>
+
+                  <div className="settings-studio-qris-grid">
+                    <StudioTextField
+                      className="settings-studio-field"
+                      error={studioValidationErrors.qrisLabel}
+                      helper="Wajib"
+                      id="studio-setting-qris-label"
+                      label="Label QRIS"
+                      placeholder="Scan di kasir studio"
+                      required
+                      value={studioSettings.qrisLabel}
+                      onChange={updateStudioSetting('qrisLabel')}
+                    />
+
+                    <StudioTextField
+                      className="settings-studio-field"
+                      helper="Opsional"
+                      id="studio-setting-qris-note"
+                      label="Catatan QRIS"
+                      placeholder="Mendukung GoPay, OVO, ShopeePay"
+                      value={studioSettings.qrisNote}
+                      onChange={updateStudioSetting('qrisNote')}
+                    />
+                  </div>
+                </section>
+
+                <section className="settings-section settings-studio-panel settings-studio-terms-panel" aria-labelledby="settings-studio-terms-title">
+                  <div className="settings-studio-terms-heading">
+                    <div className="settings-studio-panel-heading">
+                      <span className="settings-studio-panel-icon" aria-hidden="true">
+                        <WalletCards size={16} />
+                      </span>
+                      <span>
+                        <small>Booking rules</small>
+                        <h3 id="settings-studio-terms-title">Ketentuan Pembayaran</h3>
+                        <p>Susun informasi DP, pelunasan, dan pembatalan sesuai urutan baca.</p>
+                      </span>
+                    </div>
+
+                    <div className="settings-studio-terms-tools">
+                      <span>{studioPaymentTerms.length}/{STUDIO_PAYMENT_TERM_LIMIT}</span>
+                      <button
+                        className="settings-mini-button is-ghost"
+                        disabled={studioPaymentTerms.length >= STUDIO_PAYMENT_TERM_LIMIT || studioSettingsIsSaving}
+                        type="button"
+                        onClick={addStudioPaymentTerm}
+                      >
+                        + Tambah aturan
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="settings-payment-terms-list">
+                    {studioPaymentTerms.map((term, index) => (
+                      <div className="settings-payment-term-row" key={'studio-payment-term-' + index}>
+                        <span className="settings-payment-term-index" aria-hidden="true">
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <textarea
+                          aria-label={'Ketentuan pembayaran ' + (index + 1)}
+                          id={'studio-setting-payment-term-' + index}
+                          className="settings-payment-term-input"
+                          maxLength={220}
+                          placeholder="Tulis ketentuan pembayaran..."
+                          rows={2}
+                          value={term}
+                          onChange={updateStudioTerm(index)}
+                        />
+                        <button
+                          aria-label={'Hapus ketentuan ' + (index + 1)}
+                          className="settings-term-delete-btn"
+                          disabled={studioPaymentTerms.length <= 1 || studioSettingsIsSaving}
+                          title={studioPaymentTerms.length <= 1 ? 'Minimal satu ketentuan' : 'Hapus ketentuan'}
+                          type="button"
+                          onClick={() => removeStudioPaymentTerm(index)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {studioValidationErrors.paymentTerms ? (
+                    <p className="settings-studio-field-error" role="alert">{studioValidationErrors.paymentTerms}</p>
+                  ) : null}
+
+                  <p className="settings-studio-panel-note">
+                    Urutan aturan di atas dipertahankan saat ditampilkan pada alur booking dan invoice.
+                  </p>
+                </section>
+              </div>
+
+              <aside className="settings-studio-sidebar" aria-label="Preview dan readiness Studio Settings">
+                <section className="settings-section settings-studio-preview-card" aria-labelledby="settings-studio-preview-title">
+                  <div className="settings-studio-panel-heading">
+                    <span className="settings-studio-panel-icon" aria-hidden="true">
+                      <MonitorSmartphone size={16} />
+                    </span>
+                    <span>
+                      <small>Live preview</small>
+                      <h3 id="settings-studio-preview-title">Tampilan Operasional</h3>
+                      <p>Ringkasan data yang akan dibaca pelanggan dan admin.</p>
+                    </span>
+                  </div>
+
+                  <div className="settings-studio-preview-identity">
+                    <span className="settings-studio-preview-logo" aria-hidden="true">
+                      <Building2 size={19} />
+                    </span>
+                    <span>
+                      <small>Studio</small>
+                      <strong>{studioNamePreview}</strong>
+                    </span>
+                  </div>
+
+                  <div className="settings-studio-preview-contact">
+                    <span>
+                      <MessageCircle size={13} aria-hidden="true" />
+                      {studioPhonePreview}
+                    </span>
+                    <span>
+                      <MapPin size={13} aria-hidden="true" />
+                      {studioAddressPreview}
+                    </span>
+                  </div>
+
+                  <div className="settings-studio-preview-payment">
+                    <div>
+                      <span className="settings-studio-preview-payment-icon" aria-hidden="true">
+                        <Landmark size={16} />
+                      </span>
+                      <span>
+                        <small>{studioBankNamePreview}</small>
+                        <strong>{studioBankAccountPreview}</strong>
+                        <em>A/N {studioBankHolderPreview}</em>
+                      </span>
+                    </div>
+                    <div>
+                      <span className="settings-studio-preview-payment-icon" aria-hidden="true">
+                        <QrCode size={16} />
+                      </span>
+                      <span>
+                        <small>QRIS</small>
+                        <strong>{studioQrisLabelPreview}</strong>
+                        <em>{studioQrisNotePreview}</em>
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="settings-studio-preview-note">
+                    Preview mengikuti draft secara langsung. Data publik baru berubah setelah disimpan.
+                  </p>
+                </section>
+
+                <section className="settings-section settings-studio-readiness-card" aria-labelledby="settings-studio-readiness-title">
+                  <div className="settings-studio-readiness-head">
+                    <span>
+                      <small>Configuration health</small>
+                      <h3 id="settings-studio-readiness-title">Kesiapan Studio</h3>
+                    </span>
+                    <strong>{studioSetupProgress.percent}%</strong>
+                  </div>
+
+                  <div className="settings-studio-readiness-list">
+                    {studioSetupProgress.checks.map((item) => (
+                      <span className={item.complete ? 'is-complete' : 'is-incomplete'} key={item.key}>
+                        {item.complete ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <span className="settings-studio-health-track" aria-hidden="true">
+                    <span style={{ width: studioSetupProgress.percent + '%' }} />
+                  </span>
+                </section>
+              </aside>
             </div>
 
-            {/* ── KETENTUAN PEMBAYARAN ─────────────────────── */}
-            <div className="settings-section-head-row settings-section-divider">
-              <h3 className="settings-section-title">Ketentuan Pembayaran</h3>
-              <button className="settings-mini-button is-ghost" type="button" onClick={addStudioPaymentTerm}>
-                + Tambah
-              </button>
-            </div>
+            <div
+              className={
+                'settings-studio-action-bar is-' +
+                studioSettingsMessageTone +
+                (studioSettingsIsDirty ? ' is-dirty' : ' is-saved')
+              }
+            >
+              <div className="settings-studio-save-state" aria-live="polite" role="status">
+                {studioSettingsMessageTone === 'danger' || studioSettingsMessageTone === 'warning'
+                  ? <AlertTriangle size={16} />
+                  : studioSettingsIsDirty
+                    ? <RefreshCcw size={16} />
+                    : <CheckCircle2 size={16} />}
+                <span>
+                  <strong>
+                    {studioSettingsMessage || (studioSettingsIsDirty
+                      ? 'Ada perubahan yang belum disimpan.'
+                      : 'Semua perubahan sudah tersimpan.')}
+                  </strong>
+                  <small>
+                    {studioSettingsIsSaving
+                      ? 'Menyinkronkan data lokal dan Firestore...'
+                      : studioSettingsIsDirty
+                        ? 'Periksa live preview, lalu simpan saat sudah siap.'
+                        : 'Draft lokal dan konfigurasi aktif sudah sinkron.'}
+                  </small>
+                </span>
+              </div>
 
-            <div className="settings-payment-terms-list">
-              {(studioSettings.paymentTerms || defaultStudioSettings.paymentTerms).map((term, index) => (
-                <div className="settings-payment-term-row" key={'studio-payment-term-' + index}>
-                  <textarea
-                    id={'studio-setting-payment-term-' + index}
-                    className="settings-payment-term-input"
-                    placeholder="Tulis ketentuan pembayaran..."
-                    rows={2}
-                    value={term}
-                    onChange={updateStudioTerm(index)}
-                  />
+              <div className="settings-studio-actions">
+                {studioSettingsIsDirty ? (
                   <button
-                    aria-label={'Hapus ketentuan ' + (index + 1)}
-                    className="settings-term-delete-btn"
+                    className="settings-mini-button is-ghost"
+                    disabled={studioSettingsIsSaving}
                     type="button"
-                    onClick={() => removeStudioPaymentTerm(index)}
+                    onClick={restoreSavedStudioSettingsPage}
                   >
-                    <Trash2 size={13} />
+                    Batalkan
                   </button>
-                </div>
-              ))}
-            </div>
-
-            {/* ── ACTIONS ──────────────────────────────────── */}
-            {studioSettingsMessage ? (
-              <p className="settings-invoice-message" role="status">{studioSettingsMessage}</p>
-            ) : null}
-
-            <div className="settings-studio-actions">
-              <button className="settings-mini-button is-ghost" type="button" onClick={resetStudioSettingsPage}>
-                Reset Default
-              </button>
-              <button className="settings-mini-button is-primary" type="submit">
-                <Save size={14} />
-                Simpan Studio Settings
-              </button>
+                ) : null}
+                <button
+                  className="settings-mini-button is-ghost"
+                  disabled={studioDefaultIsLoaded || studioSettingsIsSaving}
+                  type="button"
+                  onClick={resetStudioSettingsPage}
+                >
+                  Muat Default
+                </button>
+                <button
+                  className="settings-mini-button is-primary"
+                  disabled={!studioSettingsIsDirty || studioSettingsIsSaving}
+                  type="submit"
+                >
+                  <Save size={14} />
+                  {studioSettingsIsSaving ? 'Menyimpan...' : 'Simpan Studio Settings'}
+                </button>
+              </div>
             </div>
           </form>
-
         </section>
       )}
 

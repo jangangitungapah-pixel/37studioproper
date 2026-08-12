@@ -157,6 +157,79 @@ for (const forbidden of [
   assert.equal(pageSource.includes(forbidden), false, 'UI-12A.2 obsolete lint trigger remains: ' + forbidden);
 }
 
+for (const required of [
+  'data-studio-settings-ui="ui-12b-studio-control-center"',
+  'settings-studio-command-strip',
+  'settings-studio-layout',
+  'settings-studio-editor',
+  'settings-studio-sidebar',
+  'settings-studio-preview-card',
+  'settings-studio-readiness-card',
+  'settings-studio-action-bar',
+  'settings-payment-term-index',
+  'savedStudioSettings',
+  'studioSettingsIsDirty',
+  'studioSettingsIsSaving',
+  'studioValidationErrors',
+  'getStudioValidationErrors',
+  'getStudioSetupProgress',
+  'STUDIO_PAYMENT_TERM_LIMIT',
+  "field === 'bankAccountNumber'",
+  'formatBankAccountNumber',
+  'Default dimuat sebagai draft. Tekan Simpan untuk menerapkannya.',
+]) {
+  assert.equal(pageSource.includes(required), true, 'UI-12B Studio Settings contract missing: ' + required);
+}
+
+assert.match(
+  pageSource,
+  /function updateStudioSetting\(field\)[\s\S]*?setStudioSettings\(\(current\) => \(\{[\s\S]*?\[field\]: value,[\s\S]*?\}\)\)/,
+  'UI-12B Studio Settings must preserve raw draft input while the user is typing.',
+);
+
+assert.doesNotMatch(
+  pageSource,
+  /function resetStudioSettingsPage\(\)[\s\S]*?await saveStudioSettings/,
+  'UI-12B reset must be draft-safe and must not write to Firestore before explicit save.',
+);
+
+assert.match(
+  pageSource,
+  /disabled=\{!studioSettingsIsDirty \|\| studioSettingsIsSaving\}/,
+  'UI-12B save action must expose dirty and saving state.',
+);
+
+for (const required of [
+  'UI-12B — Mobile-First Studio Settings Control Center',
+  "[data-studio-settings-ui='ui-12b-studio-control-center']",
+  '.settings-studio-command-strip',
+  '.settings-studio-layout',
+  '.settings-studio-preview-card',
+  '.settings-studio-readiness-list',
+  '.settings-studio-action-bar',
+  '.settings-payment-term-index',
+]) {
+  assert.equal(cssSource.includes(required), true, 'UI-12B Studio Settings CSS contract missing: ' + required);
+}
+
+assert.match(
+  cssSource,
+  /\.settings-studio-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1\.34fr\)\s*minmax\(260px,\s*0\.66fr\)/,
+  'UI-12B desktop must use an editor + operational preview composition.',
+);
+
+assert.match(
+  cssSource,
+  /@media \(max-width: 767px\)[\s\S]*?\.settings-studio-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+  'UI-12B Studio Settings must collapse to a single mobile-first column.',
+);
+
+assert.match(
+  cssSource,
+  /@media \(max-width: 767px\)[\s\S]*?\.settings-studio-action-bar\s*\{[\s\S]*?bottom:\s*calc\(82px \+ env\(safe-area-inset-bottom\)\)/,
+  'UI-12B mobile action bar must clear the persistent bottom navigation.',
+);
+
 assert.match(
   cssSource,
   /\.settings-workspace-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(228px,\s*0\.34fr\)\s*minmax\(0,\s*1fr\)/,
