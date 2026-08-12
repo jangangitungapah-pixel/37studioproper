@@ -246,12 +246,20 @@ assert.match(
 /*
  * Settings UI is Owner-only and creates only Admin / Guard accounts.
  */
-assert.equal(
-  settingsSource.includes(
-    "{activeSubpage === 'user-settings' && isOwnerAdminUser(currentUser) && ("
-  ),
-  true,
-  'User & Access Settings must remain Owner-only.',
+assert.match(
+  settingsSource,
+
+  /if \(isOwnerAdminUser\(currentUser\)\) \{[\s\S]*?pages\.push\(\{[\s\S]*?key: 'user-settings'/,
+
+  'User & Access Settings navigation must remain Owner-only.',
+);
+
+assert.match(
+  settingsSource,
+
+  /\{\s*(?:resolvedActiveSubpage|activeSubpage)\s*===\s*['"]user-settings['"]\s*&&\s*isOwnerAdminUser\(currentUser\)\s*&&\s*\(/,
+
+  'User & Access Settings content must remain Owner-only.',
 );
 
 for (
