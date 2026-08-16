@@ -33,6 +33,21 @@ const portalSource =
     'src/pages/ClientPortalPage.jsx',
   );
 
+const appSource =
+  read(
+    'src/App.jsx',
+  );
+
+const clientSpatialRouteSource =
+  read(
+    'src/components/client/ClientSpatialRoute.jsx',
+  );
+
+const loginSource =
+  read(
+    'src/pages/ClientLoginPage.jsx',
+  );
+
 const dashboardSource =
   read(
     'src/components/client/ClientDashboardTab.jsx',
@@ -53,9 +68,29 @@ const accountSource =
     'src/components/client/ClientAccountTab.jsx',
   );
 
+const historySource =
+  read(
+    'src/components/client/ClientHistoryTab.jsx',
+  );
+
+const billingSource =
+  read(
+    'src/components/client/ClientBillingTab.jsx',
+  );
+
 const cssSource =
   read(
     'src/styles/modules/client-portal-overhaul.css',
+  );
+
+const clientRouteCssSource =
+  read(
+    'src/styles/routes/client.css',
+  );
+
+const loginCssSource =
+  read(
+    'src/styles/client-auth.css',
   );
 
 assert.equal(
@@ -63,6 +98,114 @@ assert.equal(
     "import '../styles/modules/client-portal-overhaul.css';",
   ),
   true,
+);
+
+for (const clientRouteContract of [
+  '<ClientSpatialRoute>',
+  '<ClientLoginPage />',
+  '<ClientPortalPage />',
+]) {
+  assert.equal(
+    appSource.includes(clientRouteContract),
+    true,
+    'Client routes must use their isolated spatial boundary: ' + clientRouteContract,
+  );
+}
+
+for (const sharedFoundationContract of [
+  '<ThemeProvider>',
+  '<SpatialUiProvider>',
+]) {
+  assert.equal(
+    clientSpatialRouteSource.includes(sharedFoundationContract),
+    true,
+    'Client route boundary must consume the Admin Portal spatial/theme foundation: ' + sharedFoundationContract,
+  );
+}
+
+assert.equal(
+  clientRouteCssSource.includes(
+    "@import '../spatial-foundation.css';",
+  ),
+  true,
+  'Client routes must load the same spatial token foundation as the Admin portal.',
+);
+
+for (const sharedTokenContract of [
+  'var(--studio-env)',
+  'var(--studio-canvas)',
+  'var(--studio-radius-large)',
+  'var(--studio-shadow-surface)',
+]) {
+  assert.equal(
+    cssSource.includes(sharedTokenContract),
+    true,
+    'Client workspace must use the Admin Portal spatial token: ' + sharedTokenContract,
+  );
+}
+
+for (const gatewayContract of [
+  'grid-template-columns: minmax(0,1.12fr) minmax(390px,.88fr)',
+  'var(--studio-shadow-floating)',
+  '@media (max-width:900px)',
+]) {
+  assert.equal(
+    loginCssSource.includes(gatewayContract),
+    true,
+    'Client login must stay aligned with the Admin access gateway: ' + gatewayContract,
+  );
+}
+
+for (const clientLoginContract of [
+  'client-auth-frame',
+  'client-auth-story-status',
+  'client-auth-story-points',
+  'client-auth-footer',
+]) {
+  assert.equal(
+    loginSource.includes(clientLoginContract),
+    true,
+    'Client login is missing the shared spatial gateway experience: ' + clientLoginContract,
+  );
+}
+
+assert.equal(
+  loginSource.includes('client-auth-story-image'),
+  false,
+  'Client login must use the admin spatial composition instead of a competing photo treatment.',
+);
+
+for (const portalShellContract of [
+  'client-header-profile',
+  'client-portal-mobile-heading',
+  'client-view-stage',
+  'client-detail-invoice',
+  'client-detail-modal-actions',
+  'client-proof-file-field',
+]) {
+  assert.equal(
+    portalSource.includes(portalShellContract),
+    true,
+    'Client portal is missing the v3 workspace contract: ' + portalShellContract,
+  );
+}
+
+assert.equal(
+  portalSource.includes('className="p-5 rounded-xl'),
+  false,
+  'Client detail invoice must not depend on unowned utility classes.',
+);
+
+assert.equal(
+  historySource.includes('style={{'),
+  false,
+  'Booking history must use the shared client design system instead of inline style objects.',
+);
+
+assert.equal(
+  billingSource.includes('style={{'),
+  false,
+  'Client billing must use the shared client design system instead of inline style objects.',
 );
 
 assert.equal(
@@ -204,11 +347,26 @@ assert.equal(
 
 assert.equal(
   cssSource.includes(
-    '--client-shell-width: 1360px',
+    '--client-shell-width: 1540px',
   ),
   true,
-  'Desktop shell must use available screen width.',
+  'Desktop shell must be capped to a readable workspace width.',
 );
+
+for (const cssContract of [
+  '--client-rail-width: 228px',
+  '.client-portal-mobile-heading',
+  '.client-detail-invoice',
+  '.client-payment-layout',
+  '@media (max-width: 899px)',
+  '@media (prefers-reduced-motion: reduce)',
+]) {
+  assert.equal(
+    cssSource.includes(cssContract),
+    true,
+    'Missing Client Portal v3 CSS contract: ' + cssContract,
+  );
+}
 
 assert.equal(
   cssSource.includes(
@@ -219,9 +377,37 @@ assert.equal(
 
 assert.equal(
   cssSource.includes(
-    '.client-booking-board-grid',
+    'grid-template-columns: 68px repeat(var(--client-book-days), minmax(112px, 1fr))',
   ),
   true,
+  'Desktop booking board must render a time column plus every visible day.',
+);
+
+assert.equal(
+  cssSource.includes(
+    '.client-booking-board-scroll { max-height: min(62svh, 570px)',
+  ),
+  true,
+  'Mobile calendar must keep one spatial week board inside a bounded viewport.',
+);
+
+for (const calendarSpatialContract of [
+  'client-booking-calendar-shell',
+  'client-calendar-booking-block',
+  'getBookingBlockPlacement',
+  'client-booking-mobile-context',
+]) {
+  assert.equal(
+    calendarSource.includes(calendarSpatialContract) || cssSource.includes(calendarSpatialContract),
+    true,
+    'Missing spatial calendar contract: ' + calendarSpatialContract,
+  );
+}
+
+assert.equal(
+  calendarSource.includes('client-booking-mobile-slots'),
+  false,
+  'Mobile must not flatten the week calendar into an excessively long slot-card list.',
 );
 
 assert.equal(

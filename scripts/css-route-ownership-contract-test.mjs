@@ -78,7 +78,6 @@ assertImports('src/pages/ClientLandingPage.jsx', [
 ]);
 assertImports('src/pages/ClientPortalPage.jsx', [
   '../styles/routes/client.css',
-  '../styles/client-portal.css',
   '../styles/modules/client-portal-overhaul.css',
 ]);
 assertImports('src/pages/guard/GuardAttendancePage.jsx', ['../../styles/routes/guard.css']);

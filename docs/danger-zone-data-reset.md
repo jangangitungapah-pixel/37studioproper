@@ -25,8 +25,6 @@ inventoryItems
 inventoryMovements
 gallery
 notificationEvents
-notificationSubscriptions
-notificationSubscriptionDevices
 settings
 users, kecuali akun owner yang sedang login
 ```
@@ -36,7 +34,6 @@ Yang tidak dihapus:
 ```txt
 Firebase Auth users
 File eksternal Cloudinary
-Data eksternal OneSignal dashboard
 Akun owner aktif yang sedang login
 ```
 

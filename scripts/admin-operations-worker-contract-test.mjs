@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { transferOwnership } from '../workers/admin-operations-worker/src/domain/accounts.js';
+import { createManualBooking } from '../workers/admin-operations-worker/src/domain/bookings.js';
 import {
   recordPayment,
   recordRefund,
@@ -8,6 +9,7 @@ import {
 } from '../workers/admin-operations-worker/src/domain/finance.js';
 import { permanentlyDeleteGalleryItem } from '../workers/admin-operations-worker/src/domain/gallery.js';
 import { adjustInventory } from '../workers/admin-operations-worker/src/domain/inventory.js';
+import { readJson } from '../workers/admin-operations-worker/src/lib/http.js';
 
 function clone(value) {
   return structuredClone(value);
@@ -95,6 +97,71 @@ const actor = {
 };
 
 {
+  const parsed = await readJson(new Request('https://operations.test/body', {
+    body: JSON.stringify({ ok: true }),
+    method: 'POST',
+  }));
+  assert.deepEqual(parsed, { ok: true });
+  await assert.rejects(
+    readJson(new Request('https://operations.test/body', {
+      body: JSON.stringify({ payload: 'x'.repeat(70_000) }),
+      method: 'POST',
+    })),
+    (error) => error?.code === 'payload_too_large',
+  );
+}
+
+{
+  const firestore = new FakeFirestore();
+  const body = {
+    customer: 'Band Canonical',
+    date: '2026-08-20',
+    durationHours: 2,
+    id: 'booking-created-server-side',
+    invoiceNumber: 'INV-SERVER-1',
+    paymentHistory: [{ amount: 250_000, method: 'transfer' }],
+    pricingMode: 'session',
+    sessionLabel: 'Recording',
+    startHour: 10,
+    subtotal: 500_000,
+    total: 500_000,
+  };
+  const first = await createManualBooking({
+    actor,
+    body,
+    firestore,
+    request: requestWithKey('manual-booking-one'),
+  });
+  const retry = await createManualBooking({
+    actor,
+    body,
+    firestore,
+    request: requestWithKey('manual-booking-one'),
+  });
+  assert.equal(first.booking.paymentStatusCanonical, 'partial');
+  assert.equal(first.booking.paymentHistory.length, 1);
+  assert.equal(retry.duplicate, true);
+  assert.equal(firestore.collection('bookkeepingEntries').size, 1);
+  assert.equal(firestore.collection('clientCalendarSlots').size, 1);
+  assert.equal(firestore.collection('bookingScheduleDays').size, 1);
+  assert.equal(
+    JSON.stringify(firestore.collection('adminOperationKeys').values().next().value.data).includes('Band Canonical'),
+    false,
+    'Idempotency receipts must not duplicate booking/customer PII.',
+  );
+
+  await assert.rejects(
+    createManualBooking({
+      actor,
+      body: { ...body, id: 'booking-conflict' },
+      firestore,
+      request: requestWithKey('manual-booking-conflict'),
+    }),
+    (error) => error?.code === 'booking_conflict',
+  );
+}
+
+{
   const firestore = new FakeFirestore({
     bookings: {
       'booking-1': {
@@ -170,6 +237,29 @@ const actor = {
 {
   const firestore = new FakeFirestore({
     bookings: {
+      'booking-zero': {
+        paymentHistory: [],
+        paymentStatus: 'pending',
+        refundHistory: [],
+        subtotal: 500_000,
+        total: 0,
+      },
+    },
+  });
+  await assert.rejects(
+    recordPayment({
+      actor,
+      body: { amount: 1, bookingId: 'booking-zero', method: 'cash' },
+      firestore,
+      request: requestWithKey('zero-total-payment'),
+    }),
+    (error) => error?.code === 'amount_exceeds_outstanding',
+  );
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
       'booking-proof': { paymentHistory: [], paymentStatus: 'pending', refundHistory: [], total: 500 },
     },
     paymentProofs: {
@@ -189,6 +279,28 @@ const actor = {
   assert.equal(first.proof.status, 'approved');
   assert.equal(retry.duplicate, true);
   assert.equal((await firestore.getDocument('bookings', 'booking-proof')).data.paymentHistory.length, 1);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'booking-proof-explicit': { paymentHistory: [], paymentStatus: 'pending', refundHistory: [], total: 500 },
+    },
+    paymentProofs: {
+      'proof-explicit': { amount: 500, bookingId: 'booking-proof-explicit', method: 'qris', status: 'pending' },
+    },
+  });
+  await assert.rejects(
+    reviewPaymentProof({
+      actor,
+      body: { method: 'qris' },
+      decision: 'approve',
+      firestore,
+      proofId: 'proof-explicit',
+      request: requestWithKey('proof-missing-amount'),
+    }),
+    (error) => error?.code === 'amount_confirmation_required',
+  );
 }
 
 {
@@ -269,7 +381,7 @@ const actor = {
 {
   const firestore = new FakeFirestore({
     gallery: {
-      'photo-1': { isDeleted: true, publicId: 'cloud/photo-1', title: 'Photo' },
+      'photo-1': { isDeleted: true, publicId: 'studio37/gallery/photo-1', title: 'Photo' },
     },
   });
   await assert.rejects(
@@ -282,7 +394,9 @@ const actor = {
     }),
     (error) => error?.code === 'cloudinary_not_configured',
   );
-  assert.notEqual(await firestore.getDocument('gallery', 'photo-1'), null);
+  const retained = await firestore.getDocument('gallery', 'photo-1');
+  assert.notEqual(retained, null);
+  assert.equal(retained.data.permanentDeleteStatus, undefined);
 }
 
 {

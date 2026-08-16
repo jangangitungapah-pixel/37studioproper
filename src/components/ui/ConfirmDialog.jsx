@@ -43,6 +43,7 @@ export default function ConfirmDialog({ config, onClose }) {
     error: '',
     pending: false,
   });
+  const [verificationState, setVerificationState] = useState({ config: null, value: '' });
 
   const isOpen = Boolean(config);
   const isPending = operationState.config === config && operationState.pending;
@@ -116,6 +117,8 @@ export default function ConfirmDialog({ config, onClose }) {
     confirmLabel = 'Ya, Lanjutkan',
     cancelLabel = 'Batal',
     onConfirm,
+    verificationExpected = '',
+    verificationLabel = '',
   } = config;
   const Icon = VARIANT_ICONS[variant] || AlertTriangle;
   const titleId = `${dialogId}-title`;
@@ -125,13 +128,17 @@ export default function ConfirmDialog({ config, onClose }) {
   const describedBy = [messageId, detail ? detailId : null, operationError ? errorId : null]
     .filter(Boolean)
     .join(' ');
+  const verificationInput = verificationState.config === config ? verificationState.value : '';
+  const normalizedVerification = verificationInput.trim().toLocaleLowerCase('id-ID');
+  const normalizedExpected = String(verificationExpected).trim().toLocaleLowerCase('id-ID');
+  const verificationMatches = !normalizedExpected || normalizedVerification === normalizedExpected;
 
   function requestClose() {
     if (!isPending) onCloseRef.current?.();
   }
 
   async function handleConfirm() {
-    if (isPending) return;
+    if (isPending || !verificationMatches) return;
 
     const submittedConfig = config;
     setOperationState({ config: submittedConfig, error: '', pending: true });
@@ -212,6 +219,19 @@ export default function ConfirmDialog({ config, onClose }) {
         <div className="studio-confirm-body">
           <p id={messageId}>{message}</p>
           {detail ? <p className="studio-confirm-detail" id={detailId}>{detail}</p> : null}
+          {normalizedExpected ? (
+            <label className="studio-confirm-verification">
+              <span>{verificationLabel || `Ketik ${verificationExpected} untuk melanjutkan`}</span>
+              <input
+                autoComplete="off"
+                disabled={isPending}
+                spellCheck="false"
+                type="text"
+                value={verificationInput}
+                onChange={(event) => setVerificationState({ config, value: event.target.value })}
+              />
+            </label>
+          ) : null}
           {operationError ? (
             <p className="studio-confirm-error" id={errorId} role="alert">
               {operationError}
@@ -229,6 +249,7 @@ export default function ConfirmDialog({ config, onClose }) {
             {cancelLabel}
           </Button>
           <Button
+            disabled={!verificationMatches}
             isLoading={isPending}
             variant={variant === 'danger' ? 'danger' : variant === 'warning' ? 'warning' : 'primary'}
             onClick={handleConfirm}

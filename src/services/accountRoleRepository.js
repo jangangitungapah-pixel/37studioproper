@@ -79,12 +79,24 @@ export async function ensureAccountIdentity(user, intent = 'client') {
   if (!user?.uid) throw new Error('User Firebase belum tersedia.');
 
   const userRef = doc(firestoreDb, 'users', user.uid);
+  const ownershipRef = doc(firestoreDb, 'adminControl', 'ownership');
 
   return runTransaction(firestoreDb, async (transaction) => {
     const snapshot = await transaction.get(userRef);
 
     if (snapshot.exists()) {
       const data = snapshot.data();
+      if (data.role === ACCOUNT_ROLES.OWNER && data.status === ACCOUNT_STATUSES.APPROVED) {
+        const ownershipSnapshot = await transaction.get(ownershipRef);
+        if (!ownershipSnapshot.exists()) {
+          const now = new Date().toISOString();
+          transaction.set(ownershipRef, {
+            currentOwnerUid: user.uid,
+            initializedAt: now,
+            updatedAt: now,
+          });
+        }
+      }
       return {
         created: false,
         identity: { id: snapshot.id, ...data },
@@ -92,7 +104,20 @@ export async function ensureAccountIdentity(user, intent = 'client') {
     }
 
     const identity = buildIdentityDocument(user, intent);
+    if (identity.role === ACCOUNT_ROLES.OWNER) {
+      const ownershipSnapshot = await transaction.get(ownershipRef);
+      if (ownershipSnapshot.exists()) {
+        throw new Error('Owner bootstrap sudah pernah diinisialisasi. Hubungi Owner aktif.');
+      }
+    }
     transaction.set(userRef, identity);
+    if (identity.role === ACCOUNT_ROLES.OWNER) {
+      transaction.set(ownershipRef, {
+        currentOwnerUid: user.uid,
+        initializedAt: identity.createdAt,
+        updatedAt: identity.updatedAt,
+      });
+    }
     return {
       created: true,
       identity: { id: user.uid, ...identity },

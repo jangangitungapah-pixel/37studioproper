@@ -457,7 +457,7 @@ export async function rejectPaymentProof(proof, reviewer, adminNote = '') {
     { reason: cleanText(adminNote) },
     `payment-proof:reject:${cleanProof.id}`,
   );
-  const rejectedProof = normalizePaymentProof(result.proof);
+  const rejectedProof = normalizePaymentProof({ ...cleanProof, ...result.proof });
 
   await safeCreatePaymentProofReviewEvent({
     booking: null,
@@ -488,18 +488,24 @@ export async function approvePaymentProofAndRecordPayment({
   if (cleanProof.status !== 'pending') {
     throw new Error('Bukti pembayaran sudah pernah direview.');
   }
+  if (!(Number(amount) > 0)) {
+    throw new Error('Konfirmasi nominal pembayaran wajib diisi.');
+  }
+  if (!['cash', 'transfer', 'qris', 'other'].includes(cleanText(method).toLowerCase())) {
+    throw new Error('Konfirmasi metode pembayaran wajib dipilih.');
+  }
 
   const result = await reviewCanonicalPaymentProof(
     cleanProof.id,
     'approve',
     {
-      amount: Number(amount || cleanProof.amount),
-      method: cleanText(method || cleanProof.method),
+      amount: Number(amount),
+      method: cleanText(method).toLowerCase(),
       note: cleanText(adminNote),
     },
     `payment-proof:approve:${cleanProof.id}`,
   );
-  const approvedProof = normalizePaymentProof(result.proof);
+  const approvedProof = normalizePaymentProof({ ...cleanProof, ...result.proof });
 
   await safeCreatePaymentProofReviewEvent({
     booking,

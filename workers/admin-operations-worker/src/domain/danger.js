@@ -12,6 +12,7 @@ export const DANGER_COLLECTIONS = Object.freeze([
   ['paymentProofs', 'Bukti pembayaran'],
   ['bookingMessages', 'Pesan booking'],
   ['clientCalendarSlots', 'Slot kalender client'],
+  ['bookingScheduleDays', 'Booking schedule concurrency guards'],
   ['customers', 'Customer profile'],
   ['bookkeepingEntries', 'Pembukuan'],
   ['operatorFeeEntries', 'Operator fee'],
@@ -20,9 +21,6 @@ export const DANGER_COLLECTIONS = Object.freeze([
   ['inventoryMovements', 'Inventory movements'],
   ['gallery', 'Gallery metadata'],
   ['notificationEvents', 'Notification events'],
-  ['notificationEventAudits', 'Notification audit'],
-  ['notificationSubscriptions', 'Notification subscriptions legacy'],
-  ['notificationSubscriptionDevices', 'Notification subscription devices'],
   ['mail', 'Mail queue'],
   ['settings', 'Remote app settings'],
   ['users', 'Admin/client account docs'],
@@ -35,7 +33,7 @@ function environmentInfo(env, firestore) {
   };
 }
 
-async function countCollection(firestore, collectionId, ownerUid) {
+async function countCollection(firestore, collectionId) {
   let count = 0;
   let pageToken = '';
   let preserved = 0;
@@ -43,10 +41,8 @@ async function countCollection(firestore, collectionId, ownerUid) {
 
   do {
     const page = await firestore.listDocuments(collectionId, { pageSize: 500, pageToken });
-    for (const document of page.documents) {
-      if (collectionId === 'users') preserved += 1;
-      else count += 1;
-    }
+    if (collectionId === 'users') preserved += page.documents.length;
+    else count += page.documents.length;
     pageToken = page.nextPageToken;
     if (count + preserved >= COUNT_SAFETY_LIMIT) {
       truncated = Boolean(pageToken);
@@ -64,7 +60,7 @@ export async function createDangerDryRun({ actor, body, env, firestore, request 
 
   const collectionRows = [];
   for (const [collectionId, label] of DANGER_COLLECTIONS) {
-    const estimate = await countCollection(firestore, collectionId, actor.uid);
+    const estimate = await countCollection(firestore, collectionId);
     collectionRows.push({ collectionId, label, ...estimate });
   }
 
@@ -196,9 +192,7 @@ export async function runDangerJobStep({ actor, body, firestore, jobId, request 
   if (activeIndex >= 0) {
     const row = rows[activeIndex];
     const page = await firestore.listDocuments(row.collectionId, { pageSize: DELETE_BATCH_SIZE });
-    const deletable = page.documents.filter((document) => !(
-      row.collectionId === 'users'
-    ));
+    const deletable = row.collectionId === 'users' ? [] : page.documents;
 
     if (deletable.length) {
       for (const document of deletable) {

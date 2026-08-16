@@ -22,7 +22,7 @@ export default function ClientBookingsHub({
       <header className="client-bookings-overview">
         <div className="client-navigation-page-heading">
           <span>
-            Your Studio Activity
+            Aktivitas studio
           </span>
 
           <h2 id="client-bookings-title">
@@ -30,7 +30,7 @@ export default function ClientBookingsHub({
           </h2>
 
           <p>
-            Request, jadwal, percakapan admin, dan pembayaran tersusun dalam satu workspace.
+            Pantau request, jadwal, pesan admin, dan pembayaran tanpa kehilangan konteks.
           </p>
         </div>
 

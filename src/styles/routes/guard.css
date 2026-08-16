@@ -3,5 +3,7 @@
  * Guard attendance styles stay isolated from the admin and client bundles.
  */
 @import '../modules/base.css';
+@import '../modules/shared.css';
+@import '../modules/modal.css';
 @import '../modules/auth.css';
-@import '../modules/guard-attendance.css';
+@import '../modules/guard-portal.css';

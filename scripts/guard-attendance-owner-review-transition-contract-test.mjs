@@ -78,6 +78,26 @@ assert.notEqual(
 const adminVoidRulesBlock =
   rulesSource.slice(adminVoidStart, adminVoidEnd);
 
+const adminReviewStart = rulesSource.indexOf(
+  'function adminReviewsGuardAttendance() {'
+);
+const adminReviewEnd = rulesSource.indexOf(
+  'match /guardAttendanceSessions/{attendanceId} {',
+  adminReviewStart,
+);
+const adminReviewRulesBlock = rulesSource.slice(
+  adminReviewStart,
+  adminReviewEnd,
+);
+
+assert.ok(
+  adminReviewRulesBlock.indexOf('adminVoidsGuardAttendance()') <
+    adminReviewRulesBlock.indexOf('adminRejectsGuardAttendance()') &&
+    adminReviewRulesBlock.indexOf('adminRejectsGuardAttendance()') <
+      adminReviewRulesBlock.indexOf('adminApprovesGuardAttendance()'),
+  'Void must be evaluated before Reject and Approve to stay below the Firestore expression limit.',
+);
+
 for (const required of [
   'function validGuardAttendanceOwnerReviewAuditFields()',
   'function validGuardAttendanceOwnerApprovePatch()',

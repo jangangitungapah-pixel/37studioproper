@@ -1,4 +1,8 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from 'firebase/app-check';
 import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from 'firebase/firestore';
 
@@ -10,6 +14,7 @@ const requiredEnvKeys = [
 ];
 
 const firebaseEnv = import.meta.env || {};
+const studio37AppCheckSiteKey = '6Lc6p4YtAAAAAIXjhTPLhhz7O3qJKEVhvatCALZu';
 
 export const firebaseConfig = {
   apiKey: firebaseEnv.VITE_FIREBASE_API_KEY || '',
@@ -30,6 +35,42 @@ export const firebaseApp = isFirebaseConfigured
   : null;
 
 export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null;
+
+const appCheckSiteKey = String(
+  firebaseEnv.VITE_FIREBASE_APPCHECK_SITE_KEY || studio37AppCheckSiteKey,
+).trim();
+const appCheckDebugToken = String(
+  firebaseEnv.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN || '',
+).trim();
+
+export const isFirebaseAppCheckConfigured = Boolean(
+  firebaseApp
+    && appCheckSiteKey
+    && (import.meta.env.PROD || appCheckDebugToken),
+);
+
+let appCheck = null;
+
+if (isFirebaseAppCheckConfigured) {
+  try {
+    if (import.meta.env.DEV && appCheckDebugToken) {
+      globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN =
+        appCheckDebugToken === 'true'
+          ? true
+          : appCheckDebugToken;
+    }
+
+    appCheck = initializeAppCheck(firebaseApp, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (error) {
+    console.warn('[firebase-app-check] Inisialisasi App Check gagal:', error);
+  }
+}
+
+export const firebaseAppCheck = appCheck;
+
 let db = null;
 if (firebaseApp) {
   try {
@@ -44,5 +85,3 @@ if (firebaseApp) {
   }
 }
 export const firestoreDb = db;
-
-

@@ -23,12 +23,7 @@ import {
   NOTIFICATION_EVENT_STATUSES,
   subscribeNotificationEvents,
 } from '../services/notificationEventRepository.js';
-import {
-  identifyOneSignalUser,
-  isOneSignalBrowserSupported,
-  logoutOneSignalUser,
-} from '../services/oneSignalService.js';
-import { syncNotificationSubscription } from '../services/notificationSubscriptionRepository.js';
+import { loadAdminAiContext } from '../services/roleAiContextService.js';
 import { getAccountDefaultLandingPath } from '../utils/accountSettings.js';
 import { hasAdminPagePermission, isOwnerAdminUser } from '../utils/adminPermissions.js';
 import {
@@ -67,6 +62,7 @@ const GalleryPage = lazy(() => import('./admin/GalleryPage.jsx'));
 const NotificationsPage = lazy(() => import('./admin/NotificationsPage.jsx'));
 const OperatorFeePage = lazy(() => import('./admin/OperatorFeePage.jsx'));
 const GuardAttendancePage = lazy(() => import('./admin/GuardAttendancePage.jsx'));
+const RoleAiAssistant = lazy(() => import('../components/ai/RoleAiAssistant.jsx'));
 
 const adminNavIcons = Object.freeze({
   dashboard: Home,
@@ -306,33 +302,6 @@ function AdminPageContent() {
     );
 
     return unsubscribe;
-  }, [authState.isReady, authState.isAuthenticated, authState.user]);
-
-  // OneSignal: init eagerly and identify admin user as soon as auth is ready
-  useEffect(() => {
-    if (!isOneSignalBrowserSupported()) return;
-
-    if (!authState.isReady || !authState.isAuthenticated || !authState.user?.isApproved) {
-      // On logout: unlink OneSignal identity
-      if (authState.isReady && !authState.isAuthenticated) {
-        logoutOneSignalUser().catch(() => {});
-      }
-      return;
-    }
-
-    const user = authState.user;
-    identifyOneSignalUser(user, 'admin')
-      .then((state) => {
-        return syncNotificationSubscription({
-          reason: 'admin-login',
-          role: 'admin',
-          state,
-          user,
-        });
-      })
-      .catch((error) => {
-        console.warn('[onesignal] Admin identify/sync failed:', error);
-      });
   }, [authState.isReady, authState.isAuthenticated, authState.user]);
 
   useEffect(() => {
@@ -852,6 +821,19 @@ function AdminPageContent() {
             user={authState.user}
             onLogout={handleLogout}
           />
+
+          <Suspense fallback={null}>
+            <RoleAiAssistant
+              loadContext={() => loadAdminAiContext({
+                notificationSummary,
+                surface: activeItem.key,
+                user: authState.user,
+              })}
+              role={isOwnerAdminUser(authState.user) ? 'owner' : 'admin'}
+              surface={activeItem.key}
+              user={authState.user}
+            />
+          </Suspense>
         </main>
   );
 }

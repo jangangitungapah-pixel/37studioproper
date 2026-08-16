@@ -68,9 +68,14 @@ export async function adjustInventory({ actor, body, firestore, request }) {
   const result = { item: nextItem, movement };
   const committed = await commitIdempotentOperation({
     actor,
+    documentRefs: {
+      item: { collectionId: 'inventoryItems', documentId: itemId },
+      movement: { collectionId: 'inventoryMovements', documentId: movementId },
+    },
     firestore,
     key,
     result,
+    receipt: {},
     targetId: itemId,
     type: 'inventory-adjust',
     writes: [

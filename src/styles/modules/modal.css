@@ -107,6 +107,32 @@
   font-weight: 680;
 }
 
+.studio-confirm-verification {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  font-weight: 680;
+}
+
+.studio-confirm-verification input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-control);
+  color: var(--auth-text-strong);
+  padding: 9px 11px;
+  font: inherit;
+}
+
+.studio-confirm-verification input:focus-visible {
+  border-color: var(--auth-focus);
+  outline: 3px solid color-mix(in srgb, var(--auth-focus) 24%, transparent);
+  outline-offset: 1px;
+}
+
 .studio-confirm-dialog[aria-busy="true"] {
   cursor: wait;
 }

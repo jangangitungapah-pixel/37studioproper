@@ -1,0 +1,1303 @@
+/* Standalone Guard Portal — shares the Admin Spatial design language without loading Admin Review CSS. */
+.guard-portal,
+.guard-portal * {
+  box-sizing: border-box;
+}
+
+.guard-portal {
+  min-height: 100svh;
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--studio-accent) 8%, transparent), transparent 30rem),
+    var(--studio-env);
+  color: var(--studio-text-primary);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.guard-portal a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.guard-portal button,
+.guard-portal textarea {
+  font: inherit;
+}
+
+.guard-portal button {
+  cursor: pointer;
+}
+
+.guard-portal button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.guard-portal-topbar {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 12px max(22px, calc((100vw - 1180px) / 2));
+  border-bottom: 1px solid var(--studio-edge-soft);
+  background: color-mix(in srgb, var(--studio-surface-floating) 90%, transparent);
+  box-shadow: var(--studio-shadow-contact);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+.guard-portal-brand,
+.guard-portal-brand-copy,
+.guard-portal-topbar-context,
+.guard-portal-topbar-actions,
+.guard-portal-connectivity,
+.guard-portal-date,
+.guard-portal-topbar-link,
+.guard-portal-primary-action,
+.guard-portal-secondary-action,
+.guard-portal-danger-action {
+  display: flex;
+  align-items: center;
+}
+
+.guard-portal-brand {
+  min-width: 0;
+  gap: 11px;
+}
+
+.guard-portal-brand-mark {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--studio-text-primary);
+  color: var(--studio-canvas);
+  font-size: 0.78rem;
+  font-weight: 820;
+  letter-spacing: -0.04em;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-portal-brand-copy {
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.guard-portal-brand-copy strong {
+  overflow: hidden;
+  max-width: 190px;
+  font-size: 0.82rem;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-portal-brand-copy small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.67rem;
+  font-weight: 560;
+}
+
+.guard-portal-topbar-context {
+  justify-content: center;
+  gap: 8px;
+}
+
+.guard-portal-connectivity,
+.guard-portal-date {
+  min-height: 32px;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 999px;
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 650;
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.guard-portal-connectivity.is-online {
+  color: var(--studio-success);
+}
+
+.guard-portal-connectivity.is-offline {
+  color: var(--studio-danger);
+}
+
+.guard-portal-topbar-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.guard-portal-topbar-link,
+.guard-portal-icon-button {
+  min-height: 42px;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+  transition:
+    border-color var(--studio-duration-fast) var(--studio-ease-standard),
+    color var(--studio-duration-fast) var(--studio-ease-standard),
+    transform var(--studio-duration-fast) var(--studio-ease-out);
+}
+
+.guard-portal-topbar-link {
+  gap: 7px;
+  padding: 0 12px;
+  font-size: 0.71rem;
+  font-weight: 680;
+}
+
+.guard-portal-icon-button {
+  width: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.guard-portal-topbar-link:hover,
+.guard-portal-icon-button:hover:not(:disabled) {
+  border-color: var(--studio-edge-strong);
+  color: var(--studio-text-primary);
+  transform: translateY(-1px);
+}
+
+.guard-portal-topbar-link:focus-visible,
+.guard-portal-icon-button:focus-visible,
+.guard-portal-primary-action:focus-visible,
+.guard-portal-secondary-action:focus-visible,
+.guard-portal-danger-action:focus-visible,
+.guard-portal-note-field textarea:focus-visible,
+.guard-portal-feedback button:focus-visible,
+.guard-portal-dialog-close:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 3px;
+}
+
+.guard-portal-canvas {
+  width: min(100%, 1180px);
+  min-height: calc(100svh - 72px);
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 52px) 22px 56px;
+}
+
+.guard-portal-workspace {
+  display: grid;
+  gap: 22px;
+  animation: guard-portal-enter 320ms var(--studio-ease-spatial) both;
+}
+
+.guard-portal-command-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 2px 18px;
+  border-bottom: 1px solid var(--studio-edge-normal);
+}
+
+.guard-portal-command-header > div {
+  min-width: 0;
+}
+
+.guard-portal-eyebrow,
+.guard-portal-surface-heading small,
+.guard-portal-active-shift small,
+.guard-portal-history header small,
+.guard-portal-person small,
+.guard-portal-access-copy > small,
+.guard-portal-context-copy > small {
+  color: var(--studio-accent);
+  font-size: 0.64rem;
+  font-weight: 760;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.guard-portal-command-header h1,
+.guard-portal-access-copy h1,
+.guard-portal-context-copy h1 {
+  margin: 7px 0 0;
+  color: var(--studio-text-primary);
+  font-size: clamp(1.55rem, 3vw, 2.45rem);
+  font-weight: 760;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.guard-portal-command-header p,
+.guard-portal-access-copy p,
+.guard-portal-context-copy p {
+  max-width: 680px;
+  margin: 9px 0 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.81rem;
+  line-height: 1.55;
+}
+
+.guard-portal-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.72fr);
+  align-items: stretch;
+  gap: 18px;
+}
+
+.guard-portal-shift-surface,
+.guard-portal-side-context,
+.guard-portal-history,
+.guard-portal-context-panel,
+.guard-portal-access-state {
+  border: 1px solid var(--studio-edge-normal);
+  background: var(--studio-canvas);
+  box-shadow: var(--studio-shadow-surface);
+}
+
+.guard-portal-shift-surface {
+  min-height: 480px;
+  overflow: hidden;
+  border-radius: var(--studio-radius-large);
+}
+
+.guard-portal-shift-surface.is-active {
+  border-color: color-mix(in srgb, var(--studio-success) 26%, var(--studio-edge-normal));
+}
+
+.guard-portal-start-shift,
+.guard-portal-active-shift {
+  min-height: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: clamp(22px, 4vw, 38px);
+}
+
+.guard-portal-surface-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guard-portal-surface-heading > span,
+.guard-portal-history-icon,
+.guard-portal-context-icon {
+  display: grid;
+  place-items: center;
+  color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+}
+
+.guard-portal-surface-heading > span {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+}
+
+.guard-portal-surface-heading h2,
+.guard-portal-history h2,
+.guard-portal-person h2 {
+  margin: 2px 0 0;
+  color: var(--studio-text-primary);
+  font-size: 1rem;
+  font-weight: 730;
+  letter-spacing: -0.025em;
+}
+
+.guard-portal-identity-row,
+.guard-portal-person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.guard-portal-identity-row {
+  padding: 14px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-1);
+}
+
+.guard-portal-identity-row > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.guard-portal-identity-row small,
+.guard-portal-identity-row em {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.67rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-portal-identity-row strong {
+  overflow: hidden;
+  color: var(--studio-text-primary);
+  font-size: 0.78rem;
+  font-weight: 710;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-portal-identity-row > svg {
+  color: var(--studio-success);
+}
+
+.guard-portal-avatar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: var(--studio-text-primary);
+  color: var(--studio-canvas);
+  font-size: 0.7rem;
+  font-weight: 780;
+}
+
+.guard-portal-avatar.is-large {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  font-size: 0.78rem;
+}
+
+.guard-portal-note-field {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.guard-portal-note-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guard-portal-note-field > span strong {
+  color: var(--studio-text-secondary);
+  font-size: 0.68rem;
+  font-weight: 720;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.guard-portal-note-field > span small,
+.guard-portal-character-count {
+  color: var(--studio-text-tertiary);
+  font-size: 0.64rem;
+  font-weight: 570;
+}
+
+.guard-portal-note-field textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 13px 14px 28px;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-control);
+  outline: 0;
+  background: var(--studio-surface-1);
+  color: var(--studio-text-primary);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  resize: vertical;
+  transition: border-color var(--studio-duration-fast), box-shadow var(--studio-duration-fast), background var(--studio-duration-fast);
+}
+
+.guard-portal-note-field textarea:hover {
+  border-color: var(--studio-edge-strong);
+  background: var(--studio-canvas);
+}
+
+.guard-portal-note-field textarea:focus {
+  border-color: var(--studio-accent);
+  background: var(--studio-canvas);
+  box-shadow: 0 0 0 4px var(--studio-accent-soft);
+}
+
+.guard-portal-character-count {
+  position: absolute;
+  right: 12px;
+  bottom: 9px;
+}
+
+.guard-portal-primary-action,
+.guard-portal-secondary-action,
+.guard-portal-danger-action {
+  min-height: 46px;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: var(--studio-radius-control);
+  font-size: 0.75rem;
+  font-weight: 720;
+  transition: transform var(--studio-duration-fast) var(--studio-ease-out), box-shadow var(--studio-duration-fast), background var(--studio-duration-fast);
+}
+
+.guard-portal-primary-action {
+  border: 1px solid transparent;
+  background: var(--studio-accent);
+  color: #fffaf3;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--studio-accent) 22%, transparent);
+}
+
+.guard-portal-primary-action:hover:not(:disabled) {
+  background: var(--studio-accent-hover);
+  transform: translateY(-1px);
+}
+
+.guard-portal-secondary-action {
+  border: 1px solid var(--studio-edge-normal);
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+}
+
+.guard-portal-secondary-action:hover:not(:disabled) {
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+}
+
+.guard-portal-danger-action {
+  border: 1px solid color-mix(in srgb, var(--studio-danger) 28%, var(--studio-edge-normal));
+  background: color-mix(in srgb, var(--studio-danger) 11%, var(--studio-surface-1));
+  color: var(--studio-danger);
+}
+
+.guard-portal-danger-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--studio-danger) 16%, var(--studio-surface-1));
+  transform: translateY(-1px);
+}
+
+.guard-portal-primary-action.is-full,
+.guard-portal-danger-action.is-full {
+  width: 100%;
+  margin-top: auto;
+}
+
+.guard-portal-active-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.guard-portal-live-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--studio-success);
+  font-size: 0.67rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guard-portal-live-label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--studio-success);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--studio-success) 13%, transparent);
+  animation: guard-portal-pulse 1.8s ease-in-out infinite;
+}
+
+.guard-portal-timer {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 28px 16px;
+  border-block: 1px solid var(--studio-edge-soft);
+  text-align: center;
+}
+
+.guard-portal-timer strong {
+  color: var(--studio-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.8rem, 8vw, 5.6rem);
+  font-weight: 690;
+  letter-spacing: -0.075em;
+  line-height: 1;
+}
+
+.guard-portal-timer span {
+  color: var(--studio-text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 590;
+}
+
+.guard-portal-shift-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+}
+
+.guard-portal-shift-facts > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 0 14px;
+  border-right: 1px solid var(--studio-edge-soft);
+}
+
+.guard-portal-shift-facts > div:first-child {
+  padding-left: 0;
+}
+
+.guard-portal-shift-facts > div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.guard-portal-shift-facts dt {
+  color: var(--studio-text-tertiary);
+  font-size: 0.62rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.guard-portal-shift-facts dd {
+  overflow: hidden;
+  margin: 0;
+  color: var(--studio-text-primary);
+  font-size: 0.73rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-portal-shift-note {
+  padding: 12px 14px;
+  border-left: 3px solid var(--studio-accent);
+  border-radius: 0 var(--studio-radius-control) var(--studio-radius-control) 0;
+  background: var(--studio-surface-1);
+}
+
+.guard-portal-shift-note p {
+  margin: 4px 0 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
+.guard-portal-side-context {
+  align-content: start;
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  border-radius: var(--studio-radius-large);
+}
+
+.guard-portal-person {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+}
+
+.guard-portal-person > div {
+  min-width: 0;
+}
+
+.guard-portal-person h2,
+.guard-portal-person p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-portal-person p {
+  margin: 3px 0 0;
+  color: var(--studio-text-tertiary);
+  font-size: 0.66rem;
+}
+
+.guard-portal-metrics {
+  display: grid;
+}
+
+.guard-portal-metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--studio-edge-soft);
+}
+
+.guard-portal-metric:first-child {
+  padding-top: 0;
+}
+
+.guard-portal-metric:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.guard-portal-metric span {
+  color: var(--studio-text-secondary);
+  font-size: 0.69rem;
+  font-weight: 650;
+}
+
+.guard-portal-metric strong {
+  grid-row: span 2;
+  color: var(--studio-text-primary);
+  font-size: 1.32rem;
+  font-weight: 740;
+  letter-spacing: -0.04em;
+}
+
+.guard-portal-metric small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.61rem;
+}
+
+.guard-portal-process-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 12px;
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-tertiary);
+}
+
+.guard-portal-process-note svg {
+  color: var(--studio-accent);
+}
+
+.guard-portal-process-note p {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
+.guard-portal-process-note strong {
+  color: var(--studio-text-secondary);
+}
+
+.guard-portal-history {
+  overflow: hidden;
+  border-radius: var(--studio-radius-surface);
+}
+
+.guard-portal-history > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  background: var(--studio-surface-1);
+}
+
+.guard-portal-history > header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.guard-portal-history > header > span {
+  color: var(--studio-text-tertiary);
+  font-size: 0.65rem;
+  font-weight: 620;
+}
+
+.guard-portal-history-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.guard-portal-history-list {
+  display: grid;
+}
+
+.guard-portal-history-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4px minmax(130px, 0.9fr) minmax(160px, 1fr) minmax(210px, 1.1fr);
+  align-items: center;
+  gap: 18px;
+  min-height: 72px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard);
+}
+
+.guard-portal-history-row:last-child {
+  border-bottom: 0;
+}
+
+.guard-portal-history-row:hover {
+  background: var(--studio-surface-1);
+}
+
+.guard-portal-history-marker {
+  width: 4px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--studio-text-tertiary);
+}
+
+.guard-portal-history-marker.is-success { background: var(--studio-success); }
+.guard-portal-history-marker.is-warning { background: var(--studio-warning); }
+.guard-portal-history-marker.is-danger { background: var(--studio-danger); }
+
+.guard-portal-history-date,
+.guard-portal-history-time,
+.guard-portal-history-meta {
+  min-width: 0;
+}
+
+.guard-portal-history-date {
+  display: grid;
+  gap: 3px;
+}
+
+.guard-portal-history-date strong {
+  color: var(--studio-text-primary);
+  font-size: 0.73rem;
+  font-weight: 690;
+}
+
+.guard-portal-history-date small,
+.guard-portal-history-meta small {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guard-portal-history-time,
+.guard-portal-history-meta {
+  display: flex;
+  align-items: center;
+}
+
+.guard-portal-history-time {
+  gap: 7px;
+  color: var(--studio-text-secondary);
+  font-size: 0.69rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+}
+
+.guard-portal-history-time svg {
+  color: var(--studio-text-tertiary);
+}
+
+.guard-portal-history-meta {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.guard-portal-empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 28px;
+  color: var(--studio-text-tertiary);
+  text-align: center;
+}
+
+.guard-portal-empty-state strong {
+  color: var(--studio-text-secondary);
+  font-size: 0.78rem;
+}
+
+.guard-portal-empty-state p {
+  max-width: 360px;
+  margin: 0;
+  font-size: 0.69rem;
+  line-height: 1.5;
+}
+
+.guard-portal-access-state,
+.guard-portal-context-panel {
+  width: min(100%, 760px);
+  margin: clamp(50px, 10vh, 110px) auto 0;
+  border-radius: var(--studio-radius-large);
+  animation: guard-portal-enter 300ms var(--studio-ease-spatial) both;
+}
+
+.guard-portal-access-state {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: clamp(28px, 6vw, 52px);
+  text-align: center;
+}
+
+.guard-portal-access-icon,
+.guard-portal-context-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent);
+}
+
+.guard-portal-access-state.is-warning .guard-portal-access-icon {
+  background: color-mix(in srgb, var(--studio-warning) 12%, transparent);
+  color: var(--studio-warning);
+}
+
+.guard-portal-access-state.is-danger .guard-portal-access-icon {
+  background: color-mix(in srgb, var(--studio-danger) 12%, transparent);
+  color: var(--studio-danger);
+}
+
+.guard-portal-access-copy {
+  display: grid;
+  justify-items: center;
+}
+
+.guard-portal-access-actions,
+.guard-portal-context-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.guard-portal-context-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  padding: clamp(24px, 5vw, 40px);
+}
+
+.guard-portal-context-copy {
+  min-width: 0;
+}
+
+.guard-portal-context-copy h1 {
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.guard-portal-context-copy > small {
+  display: block;
+  margin-top: 12px;
+  color: var(--studio-text-tertiary);
+  font-weight: 580;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.guard-portal-context-actions {
+  grid-column: 2;
+}
+
+.guard-portal-inline-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 13px 15px;
+  border: 1px solid color-mix(in srgb, var(--studio-warning) 24%, var(--studio-edge-normal));
+  border-radius: var(--studio-radius-control);
+  background: color-mix(in srgb, var(--studio-warning) 8%, var(--studio-surface-1));
+  color: var(--studio-warning);
+}
+
+.guard-portal-inline-alert strong {
+  color: var(--studio-text-primary);
+  font-size: 0.73rem;
+}
+
+.guard-portal-inline-alert p {
+  margin: 3px 0 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.guard-portal-feedback {
+  position: fixed;
+  z-index: 60;
+  right: 20px;
+  bottom: 20px;
+  width: min(420px, calc(100vw - 40px));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-object);
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-secondary);
+  box-shadow: var(--studio-shadow-floating);
+  backdrop-filter: blur(18px);
+  animation: guard-portal-toast 240ms var(--studio-ease-spatial) both;
+}
+
+.guard-portal-feedback.is-success > svg { color: var(--studio-success); }
+.guard-portal-feedback.is-error > svg { color: var(--studio-danger); }
+
+.guard-portal-feedback span {
+  font-size: 0.72rem;
+  font-weight: 620;
+  line-height: 1.45;
+}
+
+.guard-portal-feedback button,
+.guard-portal-dialog-close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--studio-text-tertiary);
+}
+
+.guard-portal-dialog-overlay {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  background: rgba(16, 14, 12, 0.56);
+  backdrop-filter: blur(8px);
+  animation: guard-portal-fade 180ms ease both;
+}
+
+.guard-portal-dialog-content {
+  position: fixed;
+  z-index: 91;
+  top: 50%;
+  left: 50%;
+  width: min(440px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+  padding: 26px;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-surface);
+  outline: 0;
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-primary);
+  box-shadow: var(--studio-shadow-floating);
+  transform: translate(-50%, -50%);
+  animation: guard-portal-dialog 220ms var(--studio-ease-spatial) both;
+}
+
+.guard-portal-dialog-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--studio-danger) 11%, transparent);
+  color: var(--studio-danger);
+}
+
+.guard-portal-dialog-content h2 {
+  margin: 3px 0 0;
+  font-size: 1.18rem;
+  font-weight: 740;
+  letter-spacing: -0.035em;
+}
+
+.guard-portal-dialog-content > p {
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.guard-portal-dialog-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-control);
+  background: var(--studio-edge-soft);
+}
+
+.guard-portal-dialog-summary > span {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  background: var(--studio-surface-1);
+}
+
+.guard-portal-dialog-summary small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.61rem;
+  text-transform: uppercase;
+}
+
+.guard-portal-dialog-summary strong {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.guard-portal-dialog-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 6px;
+}
+
+.guard-portal-dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+@keyframes guard-portal-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes guard-portal-toast {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes guard-portal-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(0.86); }
+}
+
+@keyframes guard-portal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes guard-portal-dialog {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(0.98); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@media (max-width: 900px) {
+  .guard-portal-topbar {
+    min-height: 64px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 14px;
+  }
+
+  .guard-portal-topbar-context {
+    display: none;
+  }
+
+  .guard-portal-topbar-link span {
+    display: none;
+  }
+
+  .guard-portal-topbar-link {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .guard-portal-canvas {
+    min-height: calc(100svh - 64px);
+    padding: 24px 14px 40px;
+  }
+
+  .guard-portal-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-portal-side-context {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  }
+
+  .guard-portal-person {
+    grid-column: 1 / -1;
+  }
+
+  .guard-portal-history-row {
+    grid-template-columns: 4px minmax(120px, 0.8fr) minmax(150px, 1fr) minmax(180px, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .guard-portal-brand-copy small,
+  .guard-portal-topbar-link,
+  .guard-portal-history > header > span {
+    display: none;
+  }
+
+  .guard-portal-command-header {
+    align-items: flex-start;
+  }
+
+  .guard-portal-command-header h1 {
+    font-size: 1.62rem;
+  }
+
+  .guard-portal-command-header p {
+    font-size: 0.75rem;
+  }
+
+  .guard-portal-shift-surface {
+    min-height: 0;
+    border-radius: var(--studio-radius-surface);
+  }
+
+  .guard-portal-start-shift,
+  .guard-portal-active-shift {
+    min-height: 470px;
+    padding: 20px;
+  }
+
+  .guard-portal-note-field > span {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .guard-portal-timer {
+    padding: 24px 8px;
+  }
+
+  .guard-portal-timer strong {
+    font-size: clamp(2.7rem, 15vw, 4.2rem);
+  }
+
+  .guard-portal-shift-facts {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .guard-portal-shift-facts > div,
+  .guard-portal-shift-facts > div:first-child,
+  .guard-portal-shift-facts > div:last-child {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 9px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-edge-soft);
+  }
+
+  .guard-portal-shift-facts > div:last-child {
+    border-bottom: 0;
+  }
+
+  .guard-portal-side-context {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .guard-portal-person {
+    grid-column: auto;
+  }
+
+  .guard-portal-history {
+    border-radius: var(--studio-radius-object);
+  }
+
+  .guard-portal-history > header {
+    padding: 14px;
+  }
+
+  .guard-portal-history-row {
+    grid-template-columns: 4px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .guard-portal-history-time {
+    grid-column: 2;
+  }
+
+  .guard-portal-history-meta {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
+
+  .guard-portal-history-meta small {
+    max-width: 112px;
+  }
+
+  .guard-portal-access-state,
+  .guard-portal-context-panel {
+    margin-top: 30px;
+  }
+
+  .guard-portal-context-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .guard-portal-context-actions {
+    grid-column: 1;
+  }
+
+  .guard-portal-access-actions,
+  .guard-portal-context-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .guard-portal-access-actions > *,
+  .guard-portal-context-actions > * {
+    width: 100%;
+  }
+
+  .guard-portal-feedback {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+
+  .guard-portal-dialog-content {
+    padding: 22px;
+  }
+
+  .guard-portal-dialog-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guard-portal-workspace,
+  .guard-portal-access-state,
+  .guard-portal-context-panel,
+  .guard-portal-feedback,
+  .guard-portal-dialog-overlay,
+  .guard-portal-dialog-content,
+  .guard-portal-live-label i {
+    animation: none;
+  }
+
+  .guard-portal *,
+  .guard-portal *::before,
+  .guard-portal *::after {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .guard-portal-shift-surface,
+  .guard-portal-side-context,
+  .guard-portal-history,
+  .guard-portal-context-panel,
+  .guard-portal-access-state,
+  .guard-portal-note-field textarea {
+    border: 1px solid CanvasText;
+  }
+}

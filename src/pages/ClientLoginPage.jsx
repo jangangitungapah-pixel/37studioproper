@@ -2,8 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
+  ArrowUpRight,
+  CalendarCheck2,
+  CreditCard,
   Eye,
   EyeOff,
+  Headphones,
   LoaderCircle,
   LockKeyhole,
   Mail,
@@ -363,23 +367,58 @@ export default function ClientLoginPage() {
 
   return (
     <main className="client-auth-page theme-container">
-      <div className="client-auth-bg-glow is-primary" aria-hidden="true" />
-      <div className="client-auth-bg-glow is-secondary" aria-hidden="true" />
+      <div className="client-auth-frame">
+        <aside className="client-auth-story" aria-label="37 Music Studio">
+        <div className="client-auth-story-shade" aria-hidden="true" />
+
+        <div className="client-auth-story-brand">
+          <span className="client-auth-story-mark">37</span>
+          <span>
+            <strong>37 Music Studio</strong>
+            <small>Client workspace</small>
+          </span>
+        </div>
+
+        <div className="client-auth-story-copy">
+          <p>PORTAL CLIENT 37</p>
+          <h2>Semua sesi studio Anda, tersusun rapi.</h2>
+          <span>Pilih jadwal, pantau request, dan selesaikan pembayaran dari satu workspace.</span>
+
+          <div className="client-auth-story-points" aria-label="Fitur portal client">
+            <span><CalendarCheck2 size={17} /><b>Jadwal</b><small>Ketersediaan studio</small></span>
+            <span><CreditCard size={17} /><b>Pembayaran</b><small>Status dan bukti transfer</small></span>
+            <span><Headphones size={17} /><b>Booking</b><small>Request dan riwayat sesi</small></span>
+          </div>
+        </div>
+
+        <div className="client-auth-story-status">
+          <span aria-hidden="true" />
+          <div><strong>Portal siap digunakan</strong><small>Akses aman dengan Firebase Authentication</small></div>
+        </div>
+      </aside>
 
       <section className="client-auth-shell" aria-labelledby="client-login-title">
         <header className="client-auth-header">
           <div className="client-auth-brand-pill">
             <Volume2 size={14} aria-hidden="true" />
-            <span>37 Studio Client Access</span>
+            <span>37 Music Studio · Client access</span>
           </div>
-          <h1 id="client-login-title" className="client-auth-title">Client Portal</h1>
-          <p className="client-auth-subtitle">Masuk untuk mengakses jadwal, booking sesi, dan data musik Anda.</p>
+          <h1 id="client-login-title" className="client-auth-title">
+            {authMode === 'signIn' ? 'Selamat datang kembali.' : 'Buat akses studio Anda.'}
+          </h1>
+          <p className="client-auth-subtitle">
+            {authMode === 'signIn'
+              ? 'Masuk untuk melanjutkan sesi, booking, dan pembayaran Anda.'
+              : 'Satu akun untuk seluruh aktivitas Anda di 37 Music Studio.'}
+          </p>
         </header>
 
         <div className="client-auth-card">
           <div className="client-auth-tabs" role="tablist" aria-label="Metode login client">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'email'}
               className={'client-auth-tab ' + (activeTab === 'email' ? 'is-active' : '')}
               onClick={() => {
                 setActiveTab('email');
@@ -392,6 +431,8 @@ export default function ClientLoginPage() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'phone'}
               className={'client-auth-tab ' + (activeTab === 'phone' ? 'is-active' : '')}
               onClick={() => {
                 setActiveTab('phone');
@@ -428,6 +469,7 @@ export default function ClientLoginPage() {
                   <Mail className="client-auth-input-icon" size={17} aria-hidden="true" />
                   <input
                     type="email"
+                    autoComplete="email"
                     placeholder="nama@email.com"
                     className="client-auth-input"
                     value={email}
@@ -444,6 +486,7 @@ export default function ClientLoginPage() {
                   <LockKeyhole className="client-auth-input-icon" size={17} aria-hidden="true" />
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete={authMode === 'signIn' ? 'current-password' : 'new-password'}
                     placeholder="Password Anda"
                     className="client-auth-input"
                     value={password}
@@ -469,6 +512,7 @@ export default function ClientLoginPage() {
                     <LockKeyhole className="client-auth-input-icon" size={17} aria-hidden="true" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       placeholder="Ulangi Password"
                       className="client-auth-input"
                       value={confirmPassword}
@@ -495,6 +539,7 @@ export default function ClientLoginPage() {
                   <ShieldCheck size={18} />
                 )}
                 <span>{isSubmitting ? 'Memproses...' : authMode === 'signIn' ? 'Masuk Portal' : 'Daftar Portal'}</span>
+                {!isSubmitting ? <ArrowUpRight size={17} aria-hidden="true" /> : null}
               </button>
 
               <div className="client-auth-mode-toggle">
@@ -525,6 +570,7 @@ export default function ClientLoginPage() {
                       <Phone className="client-auth-input-icon" size={17} aria-hidden="true" />
                       <input
                         type="tel"
+                        autoComplete="tel"
                         placeholder="Contoh: 08123456789"
                         className="client-auth-input"
                         value={phoneNumber}
@@ -542,6 +588,7 @@ export default function ClientLoginPage() {
                       <ShieldCheck size={18} />
                     )}
                     <span>{isSubmitting ? 'Mengirim...' : 'Kirim OTP ke WhatsApp'}</span>
+                    {!isSubmitting ? <ArrowUpRight size={17} aria-hidden="true" /> : null}
                   </button>
                 </form>
               ) : (
@@ -552,6 +599,7 @@ export default function ClientLoginPage() {
                       <KeyRound className="client-auth-input-icon" size={17} aria-hidden="true" />
                       <input
                         type="text"
+                        autoComplete="one-time-code"
                         placeholder="6 Digit OTP"
                         maxLength={6}
                         className="client-auth-input is-centered"
@@ -582,6 +630,7 @@ export default function ClientLoginPage() {
                       <ShieldCheck size={18} />
                     )}
                     <span>{isSubmitting ? 'Memverifikasi...' : 'Verifikasi OTP'}</span>
+                    {!isSubmitting ? <ArrowUpRight size={17} aria-hidden="true" /> : null}
                   </button>
 
                   <button
@@ -622,14 +671,18 @@ export default function ClientLoginPage() {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/login')}
-          className="client-auth-back-link"
-        >
-          Masuk sebagai Admin Portal
-        </button>
+        <footer className="client-auth-footer">
+          <span>37 Music Studio · Client Portal</span>
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="client-auth-back-link"
+          >
+            Admin Portal <ArrowUpRight size={14} aria-hidden="true" />
+          </button>
+        </footer>
       </section>
+      </div>
 
       <AccountRoleDecisionDialog
         badge={requiresAdminRequestDecision ? 'Request admin terdeteksi' : 'Role admin terdeteksi'}

@@ -9,16 +9,24 @@ export async function readOperationResult(firestore, type, key) {
   const id = await operationDocumentId(type, key);
   const existing = await firestore.getDocument('adminOperationKeys', id);
 
-  return existing
-    ? { id, result: existing.data.result || null }
-    : { id, result: null };
+  if (!existing) return { id, result: null };
+
+  const result = { ...(existing.data.result || {}) };
+  const documentRefs = existing.data.documentRefs || {};
+  await Promise.all(Object.entries(documentRefs).map(async ([resultKey, reference]) => {
+    const document = await firestore.getDocument(reference.collectionId, reference.documentId);
+    if (document) result[resultKey] = { id: document.id, ...document.data };
+  }));
+  return { id, result };
 }
 
 export async function commitIdempotentOperation({
   actor,
+  documentRefs = {},
   firestore,
   key,
   result,
+  receipt = null,
   targetId = '',
   type,
   writes,
@@ -31,9 +39,11 @@ export async function commitIdempotentOperation({
     actorName: actor.displayName,
     actorUid: actor.uid,
     createdAt: now,
+    documentRefs,
+    expiresAt: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
     id: operation.id,
     key,
-    result,
+    result: receipt ?? result,
     targetId: String(targetId || ''),
     type,
   };

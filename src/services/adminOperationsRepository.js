@@ -126,6 +126,13 @@ export function recordCanonicalPayment(input, idempotencyKey = '') {
   });
 }
 
+export function createCanonicalManualBooking(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/manual', {
+    body: input,
+    idempotencyKey: idempotencyKey || `manual-booking:${String(input?.id || '').replace(/[^a-z0-9_-]/gi, '_').slice(0, 120)}`,
+  });
+}
+
 export function recordCanonicalRefund(input, idempotencyKey = '') {
   return requestOperation('/v1/finance/refunds', {
     body: input,
@@ -157,7 +164,7 @@ export function adjustCanonicalInventory(input, idempotencyKey = '') {
 export function permanentlyDeleteGalleryItem(input, idempotencyKey = '') {
   return requestOperation('/v1/gallery/permanent-delete', {
     body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('gallery-delete', input?.itemId),
+    idempotencyKey: idempotencyKey || `gallery-delete:${String(input?.itemId || '').replace(/[^a-z0-9_-]/gi, '_').slice(0, 120)}`,
   });
 }
 
@@ -200,6 +207,7 @@ export function getDangerZoneJob(jobId) {
 
 export const adminOperationsRepository = {
   adjustInventory: adjustCanonicalInventory,
+  createManualBooking: createCanonicalManualBooking,
   createDangerZoneDryRun,
   getDangerZoneJob,
   permanentlyDeleteGalleryItem,

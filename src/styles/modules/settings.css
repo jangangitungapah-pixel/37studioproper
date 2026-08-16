@@ -3468,26 +3468,32 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
 
 .settings-page[data-settings-ui='ui-12-spatial']
   [data-studio-settings-ui='ui-12b-studio-control-center']
-  .studio-native-input,
-.settings-studio-textarea-field textarea {
-  min-height: 46px;
-  border: 0;
-  border-radius: 13px;
-  outline: 0;
-  background: var(--settings-surface-soft);
-  color: var(--settings-text-secondary);
-  box-shadow: inset 0 0 0 1px var(--settings-edge-soft);
+  .studio-native-input {
   font-size: 0.72rem;
   font-weight: 520;
 }
 
-.settings-page[data-settings-ui='ui-12-spatial']
-  [data-studio-settings-ui='ui-12b-studio-control-center']
-  .studio-native-input:focus,
+.settings-studio-textarea-field textarea {
+  min-height: 46px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  outline: 0;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  font-size: 0.72rem;
+  font-weight: 520;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.settings-studio-textarea-field textarea:hover {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-bg-card);
+}
+
 .settings-studio-textarea-field textarea:focus {
-  box-shadow:
-    inset 0 0 0 1px var(--settings-accent),
-    0 0 0 3px color-mix(in srgb, var(--settings-accent) 12%, transparent);
+  border-color: var(--auth-accent);
+  background: var(--auth-bg-card);
+  box-shadow: 0 0 0 4px var(--auth-accent-soft);
 }
 
 .settings-studio-textarea-field {
@@ -3514,11 +3520,9 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
 
 .settings-page[data-settings-ui='ui-12-spatial']
   [data-studio-settings-ui='ui-12b-studio-control-center']
-  .studio-field.has-error .studio-native-input,
-.settings-page[data-settings-ui='ui-12-spatial']
-  [data-studio-settings-ui='ui-12b-studio-control-center']
   .studio-field.has-error .studio-input-wrap {
-  box-shadow: inset 0 0 0 1px var(--settings-danger);
+  border-color: color-mix(in srgb, var(--auth-danger) 42%, var(--auth-border));
+  box-shadow: 0 0 0 4px var(--auth-danger-soft);
 }
 
 .settings-page[data-settings-ui='ui-12-spatial']

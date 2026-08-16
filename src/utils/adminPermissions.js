@@ -3,6 +3,7 @@ import { assertValidGuardIdentityLink } from './guardIdentity.js';
 export { OWNER_EMAIL };
 export const STUDIO_GUARD_ROLE = 'studio_guard';
 export const NOTIFICATIONS_PERMISSION_KEY = 'notifications';
+export const GUARD_ATTENDANCE_PERMISSION_KEY = 'guard-attendance';
 export const guardPortalPermissionKeys = [];
 
 export const adminPermissionPages = [
@@ -86,6 +87,14 @@ export function normalizeAdminPermissions(permissions, fallbackValue = true) {
               ? source.settings
               : fallbackValue
         )
+      : page.key === GUARD_ATTENDANCE_PERMISSION_KEY
+        ? (
+            typeof source[GUARD_ATTENDANCE_PERMISSION_KEY] === 'boolean'
+              ? source[GUARD_ATTENDANCE_PERMISSION_KEY]
+              : typeof source['operator-fee'] === 'boolean'
+                ? source['operator-fee']
+                : fallbackValue
+          )
       : typeof source[page.key] === 'boolean'
         ? source[page.key]
         : fallbackValue,
@@ -193,7 +202,8 @@ export function isOwnerEmail(email) {
 
 export function isOwnerAdminUser(user) {
   if (!user) return false;
-  if (user.role === 'owner' || user.isOwner) return true;
+  if (user.role === 'owner') return user.isOwner !== false;
+  if (user.isOwner) return true;
   if (user.role) return false;
 
   return isOwnerEmail(user.email);

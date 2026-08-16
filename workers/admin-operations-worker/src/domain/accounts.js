@@ -26,9 +26,10 @@ export async function transferOwnership({ actor, body, firestore, request }) {
     throw new HttpError(400, 'invalid_target', 'Pilih Admin lain sebagai Owner baru.');
   }
 
-  const [sourceDocument, targetDocument, owners] = await Promise.all([
+  const [sourceDocument, targetDocument, ownershipDocument, owners] = await Promise.all([
     firestore.getDocument('users', actor.uid),
     firestore.getDocument('users', targetUid),
+    firestore.getDocument('adminControl', 'ownership'),
     firestore.runQuery({
       from: [{ collectionId: 'users' }],
       limit: 3,
@@ -38,6 +39,9 @@ export async function transferOwnership({ actor, body, firestore, request }) {
 
   if (!sourceDocument || sourceDocument.data.role !== 'owner') {
     throw new HttpError(409, 'owner_changed', 'Owner aktif sudah berubah. Muat ulang halaman.');
+  }
+  if (ownershipDocument && ownershipDocument.data.currentOwnerUid !== actor.uid) {
+    throw new HttpError(409, 'owner_control_changed', 'Owner control sudah berubah. Muat ulang halaman.');
   }
   if (owners.length !== 1 || owners[0].id !== actor.uid) {
     throw new HttpError(409, 'owner_invariant', 'Transfer dihentikan karena invariant satu Owner tidak terpenuhi.');
@@ -75,6 +79,11 @@ export async function transferOwnership({ actor, body, firestore, request }) {
     writes: [
       firestore.setWrite('users', actor.uid, nextSource, { updateTime: sourceDocument.updateTime }),
       firestore.setWrite('users', targetUid, nextTarget, { updateTime: targetDocument.updateTime }),
+      firestore.setWrite('adminControl', 'ownership', {
+        currentOwnerUid: targetUid,
+        initializedAt: ownershipDocument?.data?.initializedAt || now,
+        updatedAt: now,
+      }, ownershipDocument ? { updateTime: ownershipDocument.updateTime } : { exists: false }),
     ],
   });
 

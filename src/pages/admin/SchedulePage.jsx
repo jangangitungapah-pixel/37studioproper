@@ -33,7 +33,6 @@ import {
   isBookingCancelled,
 } from '../../domain/booking/bookingSelectors.js';
 
-const BOOKINGS_STORAGE_KEY = '37musicstudio.schedule.bookings.v1';
 const SCHEDULE_QA_PREVIEW_BOOKINGS = [
   { id: 'qa-1', customer: 'Budi Santoso', sessionLabel: 'Recording', date: '2026-06-25', startHour: 10, durationHours: 2, paymentStatus: 'dp', total: 600000, bookingRequestStatus: 'confirmed' },
   { id: 'qa-2', customer: 'Andi Pratama', sessionLabel: 'Latihan Band', date: '2026-06-25', startHour: 13, durationHours: 1, paymentStatus: 'pending', total: 150000, bookingRequestStatus: 'submitted', lastMessageSenderRole: 'client', lastMessageReadByAdmin: false },
@@ -154,17 +153,6 @@ function getScheduleScrollBehavior() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
     ? 'auto'
     : 'smooth';
-}
-
-function readStoredBookings() {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 function normalizeBookingCustomerPhone(value) {
@@ -1261,17 +1249,6 @@ export default function SchedulePage({
       'operator-fee',
     );
 
-  // One-time local storage migration to Firestore
-  useEffect(() => {
-    if (isScheduleQaPreview) return undefined;
-
-    const local = readStoredBookings();
-    if (local && local.length > 0) {
-      adminBookingRepository.migrateLocalBookingsToFirestore(local)
-        .catch((err) => console.error('Gagal melakukan migrasi data lokal:', err));
-    }
-  }, []);
-
   const dateRange = useMemo(() => {
     let start, end;
     if (viewMode === 'day') {
@@ -1495,7 +1472,7 @@ export default function SchedulePage({
       setScheduleToast({
         kind: 'warning',
         title: 'Gagal Menyimpan',
-        message: 'Koneksi ke Firestore bermasalah.'
+        message: err?.message || 'Booking belum berhasil disimpan.'
       });
       return false;
     }

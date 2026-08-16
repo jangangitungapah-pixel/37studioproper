@@ -39,15 +39,25 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function ownershipControlExists() {
+      return exists(/databases/$(database)/documents/adminControl/ownership);
+    }
+
+    function ownershipControlMatches() {
+      return ownershipControlExists() &&
+        get(/databases/$(database)/documents/adminControl/ownership).data.currentOwnerUid == request.auth.uid;
+    }
+
     function isOwner() {
       // The configured email is a bootstrap path only. Once its canonical user
       // document exists, ownership is governed exclusively by that document so
       // a completed ownership transfer cannot leave the bootstrap account with
       // permanent Owner authority.
-      return (!userDocExists() && isBootstrapOwnerEmail()) ||
+      return (!ownershipControlExists() && !userDocExists() && isBootstrapOwnerEmail()) ||
         (userDocExists() &&
           getUserData().role == 'owner' &&
-          getUserData().status == 'approved');
+          getUserData().status == 'approved' &&
+          (!ownershipControlExists() || ownershipControlMatches()));
     }
 
     function isApproved() {
@@ -117,7 +127,16 @@ service cloud.firestore {
     function canManageGuardAttendance() {
       return isOwner() || (
         isApprovedAdmin() &&
-        hasPermission('guard-attendance')
+        getUserData().permissions is map &&
+        (
+          (
+            getUserData().permissions.keys().hasAny(['guard-attendance']) &&
+            getUserData().permissions['guard-attendance'] == true
+          ) || (
+            !getUserData().permissions.keys().hasAny(['guard-attendance']) &&
+            getUserData().permissions['operator-fee'] == true
+          )
+        )
       );
     }
 
@@ -293,104 +312,6 @@ service cloud.firestore {
           'role', 'status', 'permissions', 'adminRequestCancelledAt', 'updatedAt'
         ]);
     }
-    // >>> STUDIO37 NOTIFICATION SUBSCRIPTION RULES START
-    function validNotificationSubscription(data, subscriptionUserId) {
-      return data.keys().hasOnly([
-          'uid', 'role', 'email', 'platform', 'permission', 'optedIn',
-          'oneSignalId', 'subscriptionId', 'userAgent', 'source',
-          'lastSyncReason', 'createdAt', 'updatedAt'
-        ]) &&
-        data.uid == subscriptionUserId &&
-        validString(data.uid, 1, 128) &&
-        data.role in ['admin', 'client', 'studio_guard'] &&
-        validString(data.email, 0, 254) &&
-        data.platform == 'web' &&
-        data.permission in ['default', 'granted', 'denied', 'unsupported', 'unknown'] &&
-        data.optedIn is bool &&
-        validString(data.oneSignalId, 0, 160) &&
-        validString(data.subscriptionId, 0, 160) &&
-        validString(data.userAgent, 0, 600) &&
-        data.source == 'onesignal-web' &&
-        validString(data.lastSyncReason, 0, 80) &&
-        validIsoTimestampString(data.createdAt) &&
-        validIsoTimestampString(data.updatedAt);
-    }
-
-    function validNotificationSubscriptionDevice(data, deviceId) {
-      return data.keys().hasOnly([
-          'id', 'deviceId', 'uid', 'role', 'email', 'platform', 'permission',
-          'optedIn', 'oneSignalId', 'subscriptionId', 'userAgent', 'source',
-          'lastSyncReason', 'createdAt', 'updatedAt', 'lastSeenAt', 'isActive'
-        ]) &&
-        data.id == deviceId &&
-        data.deviceId == deviceId &&
-        validString(data.id, 1, 260) &&
-        validString(data.deviceId, 1, 260) &&
-        data.uid == request.auth.uid &&
-        validString(data.uid, 1, 128) &&
-        data.role in ['admin', 'client'] &&
-        validString(data.email, 0, 254) &&
-        data.platform == 'web' &&
-        data.permission in ['default', 'granted', 'denied', 'unsupported', 'unknown'] &&
-        data.optedIn is bool &&
-        data.isActive is bool &&
-        validString(data.oneSignalId, 0, 160) &&
-        validString(data.subscriptionId, 1, 160) &&
-        validString(data.userAgent, 0, 600) &&
-        data.source == 'onesignal-web' &&
-        validString(data.lastSyncReason, 0, 80) &&
-        validIsoTimestampString(data.createdAt) &&
-        validIsoTimestampString(data.updatedAt) &&
-        validIsoTimestampString(data.lastSeenAt);
-    }
-
-    function notificationSubscriptionIdentityMatches(data) {
-      return data.email == '' || (
-        request.auth.token.email is string &&
-        data.email.lower() == request.auth.token.email.lower()
-      );
-    }
-
-    function notificationSubscriptionRoleMatches(data) {
-      return (data.role == 'client' && isClientAccount()) ||
-        (data.role == 'admin' && isApprovedAdmin()) ||
-        (data.role == 'studio_guard' && isStudioGuardAccount());
-    }
-
-    match /notificationSubscriptions/{subscriptionUserId} {
-      allow read: if isSignedIn() && (
-        request.auth.uid == subscriptionUserId ||
-        canAccessNotifications()
-      );
-
-      allow create, update: if isSignedIn() &&
-        request.auth.uid == subscriptionUserId &&
-        validNotificationSubscription(request.resource.data, subscriptionUserId) &&
-        notificationSubscriptionIdentityMatches(request.resource.data) &&
-        notificationSubscriptionRoleMatches(request.resource.data);
-
-      allow delete: if isOwner() || (isSignedIn() && request.auth.uid == subscriptionUserId);
-    }
-
-    match /notificationSubscriptionDevices/{deviceId} {
-      allow read: if isSignedIn() && (
-        resource.data.uid == request.auth.uid ||
-        canAccessNotifications()
-      );
-
-      allow create, update: if isSignedIn() &&
-        validNotificationSubscriptionDevice(request.resource.data, deviceId) &&
-        notificationSubscriptionIdentityMatches(request.resource.data) &&
-        notificationSubscriptionRoleMatches(request.resource.data);
-
-      allow delete: if isOwner() || (
-        isSignedIn() &&
-        resource.data.uid == request.auth.uid
-      );
-    }
-    // <<< STUDIO37 NOTIFICATION SUBSCRIPTION RULES END
-
-
     // >>> STUDIO37 GUARD ATTENDANCE RULES START
     function validGuardAttendanceSession(data, attendanceId) {
       return data.keys().hasOnly([
@@ -782,9 +703,13 @@ service cloud.firestore {
     }
 
     function adminReviewsGuardAttendance() {
-      return adminApprovesGuardAttendance() ||
+      // Put the terminal Void transition first. Each review validator is
+      // intentionally strict and expensive; evaluating Approve + Reject before
+      // Void can exceed Firestore's 1,000-expression request limit and surface
+      // as a misleading missing-permission error.
+      return adminVoidsGuardAttendance() ||
         adminRejectsGuardAttendance() ||
-        adminVoidsGuardAttendance();
+        adminApprovesGuardAttendance();
     }
 
     match /guardAttendanceSessions/{attendanceId} {
@@ -835,6 +760,23 @@ match /users/{userId} {
       );
       // Account deletion and ownership transitions are protected server jobs.
       allow delete: if false;
+    }
+
+    match /adminControl/ownership {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        !ownershipControlExists() &&
+        request.resource.data.keys().hasOnly(['currentOwnerUid', 'initializedAt', 'updatedAt']) &&
+        request.resource.data.currentOwnerUid == request.auth.uid &&
+        validIsoTimestampString(request.resource.data.initializedAt) &&
+        validIsoTimestampString(request.resource.data.updatedAt) &&
+        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'owner' &&
+        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved' &&
+        (
+          isBootstrapOwnerEmail() ||
+          (userDocExists() && getUserData().role == 'owner' && getUserData().status == 'approved')
+        );
+      allow update, delete: if false;
     }
 
     function isClientBookingOwner(data) {
@@ -901,13 +843,15 @@ match /users/{userId} {
 
     function adminBookingFinanceFieldsUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'paymentHistory', 'refundHistory', 'paymentStatus',
+          'paymentHistory', 'refundHistory', 'paymentStatus', 'status',
           'paymentStatusCanonical', 'invoiceStatus', 'invoiceAmount',
           'paidAmount', 'dpAmount', 'refundedAmount', 'refundStatus',
           'lastPaymentAt', 'lastPaymentMethod', 'lastRefundAt',
           'lastRefundMethod', 'lastRefundReason', 'refundCompletedAt',
           'paymentStatusBeforeRefund', 'voidReason', 'voidedAt',
-          'voidedByName', 'voidedByUid'
+          'voidedByName', 'voidedByUid', 'paymentMethod', 'total',
+          'subtotal', 'discountAmount', 'appliedDiscounts',
+          'bookingCode', 'bookingId', 'invoiceNumber'
         ]);
     }
 
@@ -978,7 +922,18 @@ match /users/{userId} {
     }
 
     function isSafeClientBookingRequestCreate(data, documentId) {
-      return data.id == documentId &&
+      return data.keys().hasOnly([
+          'id', 'customer', 'phone', 'customerPhoneKey', 'email', 'clientUid',
+          'customerId', 'source', 'bookingRequestStatus', 'clientRequestUpdatedAt',
+          'packageId', 'packageLabel', 'pricingMode', 'sessionType', 'sessionLabel',
+          'recordingTypeId', 'recordingTypeLabel', 'title', 'date', 'startHour',
+          'startTimeLabel', 'durationHours', 'paymentMethod', 'paymentHistory',
+          'paidAmount', 'lastPaymentAt', 'lastPaymentMethod', 'paymentStatus',
+          'status', 'subtotal', 'discountAmount', 'appliedDiscounts', 'total',
+          'dpAmount', 'invoiceAmount', 'createdAt', 'updatedAt', 'bookingCode',
+          'bookingId', 'invoiceNumber'
+        ]) &&
+        data.id == documentId &&
         clientCreateIdentityMatches(data) &&
         data.source == 'clientPortal' &&
         data.bookingRequestStatus == 'submitted' &&
@@ -1195,6 +1150,10 @@ match /users/{userId} {
       allow read: if true;
       allow create, update: if isApproved() && canManageBookingData() && validCalendarSlot(request.resource.data);
       allow delete: if isApproved() && canManageBookingData();
+    }
+
+    match /bookingScheduleDays/{dateId} {
+      allow read, create, update, delete: if false;
     }
 
     function validCustomer(data, customerId) {
@@ -1753,11 +1712,16 @@ match /users/{userId} {
     }
 
     function validGalleryItem(data) {
-      return data.keys().hasOnly(['title', 'description', 'url', 'publicId', 'category', 'isFavorite', 'isDeleted', 'uploadedBy', 'createdAt', 'deletedAt']) &&
+      return data.keys().hasOnly([
+          'title', 'description', 'url', 'publicId', 'category', 'isFavorite',
+          'isDeleted', 'uploadedBy', 'createdAt', 'deletedAt',
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]) &&
         validString(data.title, 1, 180) &&
         validString(data.description, 0, 2000) &&
         validString(data.url, 8, 2000) &&
         validString(data.publicId, 1, 500) &&
+        data.publicId.matches('^studio37/gallery/[A-Za-z0-9_./-]+$') &&
         validString(data.category, 1, 80) &&
         data.isFavorite is bool &&
         data.isDeleted is bool &&
@@ -1768,7 +1732,22 @@ match /users/{userId} {
 
     match /gallery/{imageId} {
       allow read: if isApproved() && hasPermission('gallery');
-      allow create, update: if isApproved() && hasPermission('gallery') && validGalleryItem(request.resource.data);
+      allow create: if isApproved() && hasPermission('gallery') &&
+        validGalleryItem(request.resource.data) &&
+        !request.resource.data.keys().hasAny([
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]);
+      allow update: if isApproved() && hasPermission('gallery') &&
+        (!resource.data.keys().hasAny(['permanentDeleteStatus']) ||
+          resource.data.permanentDeleteStatus != 'deleting') &&
+        validGalleryItem(request.resource.data) &&
+        request.resource.data.publicId == resource.data.publicId &&
+        request.resource.data.url == resource.data.url &&
+        request.resource.data.uploadedBy == resource.data.uploadedBy &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        !request.resource.data.keys().hasAny([
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]);
       allow delete: if false;
     }
 
@@ -1824,14 +1803,14 @@ match /users/{userId} {
         validString(data.actorEmail, 0, 254) &&
         validNumber(data.attempts, 0, 20) &&
         validString(data.bookingId, 0, 160) &&
-        data.channel == 'push' &&
+        data.channel == 'in_app' &&
         validIsoTimestampString(data.createdAt) &&
         validString(data.errorMessage, 0, 1000) &&
         validString(data.message, 1, 600) &&
         data.metadata is map &&
         validString(data.paymentProofId, 0, 160) &&
         data.priority in ['low', 'normal', 'high'] &&
-        data.provider == 'onesignal' &&
+        data.provider == 'firestore' &&
         validOptionalString(data, 'sentAt', 40) &&
         validString(data.source, 1, 80) &&
         data.status in ['pending', 'processing', 'sent', 'failed', 'cancelled'] &&
@@ -1872,11 +1851,11 @@ match /users/{userId} {
         );
     }
 
-    function notificationEventCreateIsPending(data) {
-      return data.status == 'pending' &&
+    function notificationEventCreateIsRecorded(data) {
+      return data.status == 'sent' &&
         data.attempts == 0 &&
         data.errorMessage == '' &&
-        data.sentAt == '' &&
+        validIsoTimestampString(data.sentAt) &&
         !data.keys().hasAny([
           'lastAction', 'lastActionAt', 'lastActionByEmail',
           'lastActionByRole', 'lastActionByUid', 'lastActionReason',
@@ -1914,18 +1893,11 @@ match /users/{userId} {
       allow create: if isSignedIn() &&
         validNotificationEvent(request.resource.data, eventId) &&
         notificationEventActorMatches(request.resource.data) &&
-        notificationEventCreateIsPending(request.resource.data) &&
+        notificationEventCreateIsRecorded(request.resource.data) &&
         notificationEventTargetIsSafe(request.resource.data);
 
-      // Status operations are server-authoritative. The notification worker
-      // verifies the Firebase token, loads users/{uid}, checks permission,
-      // and records an immutable audit document before changing this record.
+      // Activity events are immutable after creation.
       allow update, delete: if false;
-    }
-
-    match /notificationEventAudits/{auditId} {
-      allow read: if canAccessNotifications();
-      allow create, update, delete: if false;
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 

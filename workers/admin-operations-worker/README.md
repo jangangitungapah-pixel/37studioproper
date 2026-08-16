@@ -23,6 +23,7 @@ Run `npm install`, `npm run types`, then `npm run dev` inside this directory. Th
 
 - `SITE_ORIGIN` limits browser CORS; every protected route still requires Firebase authorization.
 - Financial writes and stock adjustments are idempotent and use Firestore update-time preconditions.
-- Gallery deletion removes Cloudinary first and keeps metadata when external deletion fails.
+- Idempotency records retain only document references/minimal receipts, carry a seven-day TTL field, and never duplicate booking/customer/proof payloads.
+- Gallery deletion first claims trashed metadata, accepts only the configured `studio37/gallery/` asset prefix, blocks restore races, and restores metadata when external deletion fails.
 - Danger Zone requires Owner, a recent login for job creation, a server dry-run, the exact phrase, a final checkbox, and resumable 200-document steps. Canonical account documents, Firebase Auth identities, and Cloudinary files are explicitly outside the reset job so ownership/bootstrap history cannot reactivate or lock out the Owner.
 - `adminOperationKeys`, `adminOperationAudit`, `adminOperationDryRuns`, and `adminOperationJobs` are server-only collections and remain outside the reset scope.

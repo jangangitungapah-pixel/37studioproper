@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -12,6 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { createCanonicalManualBooking } from './adminOperationsRepository.js';
 import {
   getBookingRequestStatus,
   getLegacyBookingPaymentStatus,
@@ -412,35 +414,8 @@ export function subscribeManualBookings(options, callback, onError) {
 }
 
 export async function createManualBooking(booking) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  const bookingId = booking.id || doc(collection(firestoreDb, 'bookings')).id;
-  const docRef = doc(firestoreDb, 'bookings', bookingId);
-  const now = new Date().toISOString();
-
-  const cleanBooking = normalizeBookingBillingIdentity(
-    {
-      ...booking,
-      id: bookingId,
-      createdAt: booking.createdAt || now,
-      updatedAt: now,
-    },
-    bookingId
-  );
-
-  const batch = writeBatch(firestoreDb);
-  const publicSlot = buildClientCalendarSlot(cleanBooking);
-
-  batch.set(docRef, cleanBooking);
-
-  if (publicSlot) {
-    batch.set(getClientCalendarSlotRef(bookingId), publicSlot, { merge: true });
-  }
-
-  await batch.commit();
-  return cleanBooking;
+  const result = await createCanonicalManualBooking(booking);
+  return result.booking;
 }
 
 export async function createClientBookingRequest(user, booking) {
@@ -512,10 +487,32 @@ export async function updateManualBooking(booking) {
   }
 
   const docRef = doc(firestoreDb, 'bookings', booking.id);
+  const currentSnapshot = await getDoc(docRef);
+  if (!currentSnapshot.exists()) throw new Error('Booking tidak ditemukan.');
+
+  const protectedFields = new Set([
+    'appliedDiscounts', 'bookingCode', 'bookingId', 'discountAmount', 'dpAmount',
+    'invoiceAmount', 'invoiceNumber', 'invoiceStatus', 'lastPaymentAt',
+    'lastPaymentMethod', 'lastRefundAt', 'lastRefundMethod', 'lastRefundReason',
+    'paidAmount', 'paymentHistory', 'paymentMethod', 'paymentStatus',
+    'paymentStatusBeforeRefund', 'paymentStatusCanonical', 'refundCompletedAt',
+    'refundHistory', 'refundedAmount', 'refundStatus', 'status', 'subtotal',
+    'total', 'voidReason', 'voidedAt', 'voidedByName', 'voidedByUid',
+  ]);
+  const safePatch = Object.fromEntries(
+    Object.entries(booking).filter(([key]) => !protectedFields.has(key)),
+  );
+  const updatedAt = new Date().toISOString();
+  const currentBooking = normalizeBookingBillingIdentity(
+    { id: currentSnapshot.id, ...currentSnapshot.data() },
+    booking.id,
+  );
   const cleanBooking = normalizeBookingBillingIdentity(
     {
-      ...booking,
-      updatedAt: new Date().toISOString(),
+      ...currentBooking,
+      ...safePatch,
+      id: booking.id,
+      updatedAt,
     },
     booking.id
   );
@@ -523,7 +520,7 @@ export async function updateManualBooking(booking) {
   const batch = writeBatch(firestoreDb);
   const publicSlot = buildClientCalendarSlot(cleanBooking);
 
-  batch.set(docRef, cleanBooking, { merge: true });
+  batch.set(docRef, { ...safePatch, id: booking.id, updatedAt }, { merge: true });
 
   if (publicSlot) {
     batch.set(getClientCalendarSlotRef(booking.id), publicSlot, { merge: true });
@@ -549,71 +546,12 @@ export async function deleteManualBooking(bookingId) {
   await batch.commit();
 }
 
-export async function migrateLocalBookingsToFirestore(localBookings) {
-  if (!isFirebaseConfigured || !firestoreDb || !Array.isArray(localBookings) || localBookings.length === 0) {
-    return;
-  }
-
-  try {
-    const bookingsRef = collection(firestoreDb, 'bookings');
-    const snapshot = await getDocs(bookingsRef);
-    const existingIds = new Set();
-    snapshot.forEach((docSnap) => {
-      existingIds.add(docSnap.id);
-    });
-
-    const unsyncedBookings = localBookings.filter((booking) => {
-      const bookingId = booking.id || booking.bookingCode;
-      return bookingId && !existingIds.has(bookingId);
-    });
-
-    if (unsyncedBookings.length > 0) {
-      const BATCH_LIMIT = 400;
-      for (let i = 0; i < unsyncedBookings.length; i += BATCH_LIMIT) {
-        const batch = writeBatch(firestoreDb);
-        const chunk = unsyncedBookings.slice(i, i + BATCH_LIMIT);
-
-        chunk.forEach((booking) => {
-          const bookingId = booking.id || doc(bookingsRef).id;
-          const docRef = doc(firestoreDb, 'bookings', bookingId);
-          const cleanBooking = normalizeBookingBillingIdentity(
-            {
-              ...booking,
-              id: bookingId,
-              createdAt: booking.createdAt || new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            bookingId
-          );
-
-          batch.set(docRef, cleanBooking);
-
-        const publicSlot = buildClientCalendarSlot(cleanBooking);
-        if (publicSlot) {
-          batch.set(getClientCalendarSlotRef(bookingId), publicSlot, { merge: true });
-        }
-        });
-
-        await batch.commit();
-      }
-      console.log('Successfully migrated ' + unsyncedBookings.length + ' local bookings to Firestore.');
-    }
-
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('37musicstudio.schedule.bookings.v1');
-    }
-  } catch (error) {
-    console.error('Error during local bookings migration:', error);
-  }
-}
-
 export const adminBookingRepository = {
   subscribeManualBookings,
   createManualBooking,
   createClientBookingRequest,
   updateManualBooking,
   deleteManualBooking,
-  migrateLocalBookingsToFirestore,
   subscribeClientBookingsForUser,
   subscribeClientCalendarSlots,
   syncClientCalendarSlotsFromBookings,

@@ -71,6 +71,7 @@ function formatBookingDate(
 }
 
 export default function ClientDashboardTab({
+  clientName,
   upcomingBooking,
   stats,
   recentBookings,
@@ -87,16 +88,16 @@ export default function ClientDashboardTab({
       <header className="client-home-heading">
         <div>
           <span>
-            Studio Overview
+            Hari ini di studio
           </span>
 
           <h2>
-            Semua yang Anda butuhkan,
-            dalam satu dashboard.
+            Halo, {clientName}.
           </h2>
 
           <p>
-            Booking studio, pantau jadwal, cek pembayaran, dan hubungi admin tanpa berpindah aplikasi.
+            Siap untuk sesi berikutnya? Lihat jadwal terdekat, status request,
+            dan sisa pembayaran Anda.
           </p>
         </div>
 
@@ -112,7 +113,7 @@ export default function ClientDashboardTab({
           />
 
           <span>
-            Book Studio
+            Cari Slot
           </span>
 
           <ChevronRight

@@ -2,6 +2,7 @@
  * Route core for client-facing application surfaces.
  * Client pages add their own landing, portal, and wizard styles separately.
  */
+@import '../spatial-foundation.css';
 @import '../modules/base.css';
 @import '../modules/shared.css';
 @import '../modules/modal.css';

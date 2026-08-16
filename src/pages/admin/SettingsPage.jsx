@@ -106,6 +106,12 @@ const dangerZoneCollections = [
     preserveCurrentOwner: false,
   },
   {
+    key: 'bookingScheduleDays',
+    label: 'Booking schedule concurrency guards',
+    collectionName: 'bookingScheduleDays',
+    preserveCurrentOwner: false,
+  },
+  {
     key: 'customers',
     label: 'Customer profile',
     collectionName: 'customers',
@@ -151,24 +157,6 @@ const dangerZoneCollections = [
     key: 'notificationEvents',
     label: 'Notification events',
     collectionName: 'notificationEvents',
-    preserveCurrentOwner: false,
-  },
-  {
-    key: 'notificationEventAudits',
-    label: 'Notification audit',
-    collectionName: 'notificationEventAudits',
-    preserveCurrentOwner: false,
-  },
-  {
-    key: 'notificationSubscriptions',
-    label: 'Notification subscriptions legacy',
-    collectionName: 'notificationSubscriptions',
-    preserveCurrentOwner: false,
-  },
-  {
-    key: 'notificationSubscriptionDevices',
-    label: 'Notification subscription devices',
-    collectionName: 'notificationSubscriptionDevices',
     preserveCurrentOwner: false,
   },
   {
@@ -1423,11 +1411,15 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
     }
 
     const targetLabel = user.displayName || user.email || user.phoneNumber || 'user ini';
+    const targetIdentity = user.email || user.displayName || user.phoneNumber || user.id;
     
     setConfirmConfig({
       title: 'Transfer Ownership?',
       message: `Transfer ownership ke ${targetLabel}? Akun owner saat ini akan berubah menjadi admin biasa.`,
+      detail: `Sesudah transfer, ${targetLabel} menjadi satu-satunya Owner. Akun Anda tetap aktif sebagai Admin biasa.`,
       confirmLabel: 'Ya, Transfer',
+      verificationExpected: targetIdentity,
+      verificationLabel: `Ketik tepat “${targetIdentity}” untuk mengonfirmasi target`,
       onConfirm: async () => {
         try {
           setApprovalSettingsMessage('Memverifikasi ulang sesi Owner...');

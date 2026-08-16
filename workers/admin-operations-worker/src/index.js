@@ -1,4 +1,5 @@
 import { transferOwnership } from './domain/accounts.js';
+import { createManualBooking } from './domain/bookings.js';
 import {
   createDangerDryRun,
   readDangerJob,
@@ -22,11 +23,10 @@ function pathMatch(pathname, pattern) {
   return match ? match.slice(1).map((value) => decodeURIComponent(value)) : null;
 }
 
-async function requirePost(request) {
+function requirePost(request) {
   if (request.method !== 'POST') {
     throw new HttpError(405, 'method_not_allowed', 'Gunakan POST untuk operasi ini.');
   }
-  return readJson(request);
 }
 
 async function handleRequest(request, env) {
@@ -50,21 +50,30 @@ async function handleRequest(request, env) {
   let result;
   let params;
 
-  if (pathname === '/v1/finance/payments') {
-    body = await requirePost(request);
+  if (pathname === '/v1/bookings/manual') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'schedule' });
+    body = await readJson(request);
+    result = await createManualBooking({ actor, body, firestore, request });
+  } else if (pathname === '/v1/finance/payments') {
+    requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'billing' });
+    body = await readJson(request);
     result = await recordPayment({ actor, body, firestore, request });
   } else if (pathname === '/v1/finance/refunds') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'billing' });
+    body = await readJson(request);
     result = await recordRefund({ actor, body, firestore, request });
   } else if (pathname === '/v1/finance/voids') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'billing' });
+    body = await readJson(request);
     result = await voidInvoice({ actor, body, firestore, request });
   } else if ((params = pathMatch(pathname, /^\/v1\/finance\/payment-proofs\/([^/]+)\/(approve|reject)$/))) {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'billing' });
+    body = await readJson(request);
     result = await reviewPaymentProof({
       actor,
       body,
@@ -74,28 +83,34 @@ async function handleRequest(request, env) {
       request,
     });
   } else if (pathname === '/v1/inventory/adjustments') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'inventory' });
+    body = await readJson(request);
     result = await adjustInventory({ actor, body, firestore, request });
   } else if (pathname === '/v1/gallery/permanent-delete') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'gallery' });
+    body = await readJson(request);
     result = await permanentlyDeleteGalleryItem({ actor, body, env, firestore, request });
   } else if (pathname === '/v1/accounts/transfer-ownership') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true, requireFreshAuth: true });
+    body = await readJson(request);
     result = await transferOwnership({ actor, body, firestore, request });
   } else if (pathname === '/v1/danger-zone/dry-run') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true });
+    body = await readJson(request);
     result = await createDangerDryRun({ actor, body, env, firestore, request });
   } else if (pathname === '/v1/danger-zone/jobs') {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true, requireFreshAuth: true });
+    body = await readJson(request);
     result = await startDangerJob({ actor, body, env, firestore, request });
   } else if ((params = pathMatch(pathname, /^\/v1\/danger-zone\/jobs\/([^/]+)\/step$/))) {
-    body = await requirePost(request);
+    requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true });
+    body = await readJson(request);
     result = await runDangerJobStep({ actor, body, firestore, jobId: params[0], request });
   } else if ((params = pathMatch(pathname, /^\/v1\/danger-zone\/jobs\/([^/]+)$/))) {
     if (request.method !== 'GET') {

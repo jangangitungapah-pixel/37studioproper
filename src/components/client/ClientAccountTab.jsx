@@ -5,7 +5,9 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  Moon,
   Phone,
+  Sun,
   UserRound,
 } from 'lucide-react';
 import {
@@ -25,8 +27,10 @@ function getAccountName(
 
 export default function ClientAccountTab({
   currentUser,
+  isDark,
   onLogout,
   onOpenPayments,
+  onToggleTheme,
   stats,
   studioMapsUrl,
   whatsappPhone,
@@ -43,7 +47,7 @@ export default function ClientAccountTab({
     >
       <header className="client-navigation-page-heading">
         <span>
-          Personal Space
+          Profil client
         </span>
 
         <h2 id="client-account-title">
@@ -51,7 +55,7 @@ export default function ClientAccountTab({
         </h2>
 
         <p>
-          Profil client, ringkasan penggunaan studio, pembayaran, dan bantuan.
+          Identitas akun, ringkasan penggunaan studio, serta akses cepat ke bantuan.
         </p>
       </header>
 
@@ -66,7 +70,7 @@ export default function ClientAccountTab({
 
             <div>
               <span>
-                37 Music Studio Client
+                Member 37 Music Studio
               </span>
 
               <strong>
@@ -177,6 +181,20 @@ export default function ClientAccountTab({
           </header>
 
           <div className="client-account-actions">
+            <button
+              type="button"
+              onClick={onToggleTheme}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+
+              <span>
+                <strong>Tampilan</strong>
+                <small>{isDark ? 'Gunakan tema terang' : 'Gunakan tema gelap'}</small>
+              </span>
+
+              <ChevronRight size={16} />
+            </button>
+
             <button
               type="button"
               onClick={

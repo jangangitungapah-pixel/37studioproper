@@ -51,7 +51,7 @@ PRD ini mencakup:
 5. **Theme engine belum memiliki switcher yang terlihat.** Kode sudah mendukung `light`, `dark`, dan `system`, tetapi user belum memiliki kontrol global yang konsisten.
 6. **Mobile belum selalu thumb-first.** Tabel, filter, modal, calendar, dan action bar membutuhkan aturan baku agar tidak tertutup bottom navigation atau memaksa jangkauan ke sudut atas.
 7. **Status lintas domain mudah tercampur.** Request status, payment status, dan session status harus dipisah secara visual dan logis.
-8. **Beberapa operasi sensitif terlalu dekat dengan UI biasa.** Posting pembukuan, review proof, ownership transfer, permanent delete, notification worker, dan Danger Zone membutuhkan guardrail yang lebih jelas.
+8. **Beberapa operasi sensitif terlalu dekat dengan UI biasa.** Posting pembukuan, review proof, ownership transfer, permanent delete, dan Danger Zone membutuhkan guardrail yang lebih jelas.
 9. **Filter dan detail belum selalu dapat dipulihkan.** Refresh/back navigation harus mempertahankan konteks pencarian, filter, selected record, dan Settings area melalui URL atau state yang stabil.
 
 ### 2.2 Peluang
@@ -100,7 +100,7 @@ PRD ini tidak bertujuan untuk:
 
 - mengubah Client Portal secara menyeluruh;
 - mengubah Guard Portal selain handoff, owner shortcut, dan kontrak attendance yang dikonsumsi Admin Portal;
-- mengganti Firebase, Firestore, Cloudinary, OneSignal, atau deployment platform;
+- mengganti Firebase, Firestore, Cloudinary, atau deployment platform;
 - membuat payment gateway otomatis baru;
 - membuat sistem payroll penuh;
 - menghapus dukungan data booking legacy tanpa migration plan;
@@ -169,7 +169,7 @@ PRD ini tidak bertujuan untuk:
 
 | Role | Tujuan | Akses |
 | --- | --- | --- |
-| Owner | Mengawasi dan mengendalikan seluruh operasi studio | Full access; satu-satunya role untuk Fee Settings, User & Access, ownership transfer, notification worker control, permanent gallery delete, dan Danger Zone |
+| Owner | Mengawasi dan mengendalikan seluruh operasi studio | Full access; satu-satunya role untuk Fee Settings, User & Access, ownership transfer, permanent gallery delete, dan Danger Zone |
 | Admin | Menjalankan operasi harian | Hanya page yang diaktifkan Owner; tidak dapat membuka area Owner-only |
 | Studio Guard | Melakukan attendance | Tidak memiliki menu Admin Portal; selalu diarahkan ke `/guard/attendance` |
 | Client | Mengelola aktivitas client | Ditolak dari Admin Portal dan diarahkan ke Client Portal |
@@ -182,7 +182,7 @@ PRD ini tidak bertujuan untuk:
 2. Permission `schedule` tetap menjadi compatibility owner untuk Requests, Calendar, dan All Bookings.
 3. Permission `settings` memberi akses ke Account, Studio, Pricing, dan Invoice Settings; subpage Owner-only tetap tidak pernah dirender untuk Admin.
 4. Permission `notifications` baru boleh ditambahkan untuk memisahkan Notification Console dari Settings. Migration awal mengambil nilai dari permission `settings` agar akses existing tidak hilang.
-5. Notification worker process, worker retry massal, dan secret/backend configuration tetap Owner-only walaupun Admin boleh membaca queue.
+5. Activity feed notifikasi bersifat in-app, immutable, dan mengikuti permission Notifications.
 6. Guard tidak menerima permission Admin Page. `guardPortalPermissionKeys` tetap kosong dan role Guard selalu diisolasi ke Guard Portal.
 7. Jika permission page aktif dicabut secara realtime, user diarahkan ke page pertama yang masih diizinkan dan mendapat pesan yang jelas.
 8. Owner-only subpage tidak hanya disembunyikan; data query, mutation, route resolution, dan Firestore rule juga harus menolak non-Owner.
@@ -1378,7 +1378,7 @@ Memantau readiness, queue, failure, processing, dan destination notification tan
 ### 24.2 Desktop layout
 
 - Operational summary strip: failed, pending, processing, high priority.
-- Readiness panel compact: browser support, OneSignal device, Firestore registry, worker health, queue health.
+- Ringkasan activity feed: total, booking, pembayaran, dan aktivitas prioritas.
 - Command shelf: status filter, search bila dataset mendukung, refresh health.
 - Queue ledger: event type, message summary, target, created/updated time, status, attention, destination, action.
 
@@ -1975,7 +1975,7 @@ Target minimum: **WCAG 2.2 Level AA**.
 7. Owner-only query tidak dijalankan untuk non-Owner.
 8. Audit UI reviewed/posted state read-only.
 9. Deep link divalidasi terhadap permission sebelum data dirender.
-10. Notification worker dan Danger Zone memakai protected server action.
+10. Danger Zone memakai protected server action.
 11. Error UI tidak membocorkan stack trace, document path sensitif, atau configuration secret.
 12. Console logging production tidak memuat PII/credential/payment proof URL.
 

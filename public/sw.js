@@ -110,8 +110,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/__/') ||
     url.pathname.includes('firestore') ||
     url.pathname.includes('firebase') ||
-    url.pathname.includes('cloudinary') ||
-    url.pathname.includes('onesignal')
+    url.pathname.includes('cloudinary')
   ) {
     return;
   }

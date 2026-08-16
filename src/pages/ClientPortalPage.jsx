@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { lazy, Suspense, useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -11,7 +11,9 @@ import {
   Copy,
   Check,
   MessageCircle,
+  Moon,
   UploadCloud,
+  Sun,
   Image,
   X
 } from 'lucide-react';
@@ -40,12 +42,6 @@ import {
   bookingCommunicationRepository,
   getBookingRequestStatusMeta,
 } from '../services/bookingCommunicationRepository.js';
-import {
-  identifyOneSignalUser,
-  isOneSignalBrowserSupported,
-  logoutOneSignalUser,
-} from '../services/oneSignalService.js';
-import { syncNotificationSubscription } from '../services/notificationSubscriptionRepository.js';
 import {
   usePricingSettings,
   formatRupiah,
@@ -78,10 +74,15 @@ import ClientBookingWizard from '../components/client/ClientBookingWizard.jsx';
 import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
 import ClientBookingsHub from '../components/client/ClientBookingsHub.jsx';
 import ClientAccountTab from '../components/client/ClientAccountTab.jsx';
+import {
+  createClientAiContext,
+} from '../utils/roleAiContext.js';
+import { useTheme } from '../theme/ThemeProvider.jsx';
 
 import '../styles/routes/client.css';
-import '../styles/client-portal.css';
 import '../styles/modules/client-portal-overhaul.css';
+
+const RoleAiAssistant = lazy(() => import('../components/ai/RoleAiAssistant.jsx'));
 
 // Simple Calendar Helper Functions (aligned with admin SchedulePage)
 const monthNames = [
@@ -155,11 +156,6 @@ function shiftDate(date, viewMode, direction) {
   if (viewMode === 'week') return addDays(date, direction * 7);
   return addMonths(date, direction);
 }
-function getGridTemplate(viewMode, visibleDayCount) {
-  if (viewMode === 'day') return '62px minmax(200px, 1fr)';
-  if (viewMode === 'week') return '62px repeat(' + visibleDayCount + ', minmax(86px, 1fr))';
-  return '62px repeat(' + visibleDayCount + ', minmax(60px, 1fr))';
-}
 function getSlotSpanRows(booking, startIndex) {
   const duration = Math.max(1, Math.ceil(Number(booking.durationHours) || 1));
   const availableRows = businessHours.length - startIndex;
@@ -176,18 +172,6 @@ function getBookingStatus(booking) {
 function getStatusLabel(status) {
   return statusFilters.find((item) => item.key === status)?.label || status;
 }
-function formatShortCurrency(value) {
-  const safeValue = Math.max(0, Number(value) || 0);
-  if (safeValue >= 1000000) {
-    const millionValue = safeValue / 1000000;
-    return 'Rp ' + millionValue.toFixed(millionValue % 1 === 0 ? 0 : 1).replace('.', ',') + 'jt';
-  }
-  if (safeValue >= 1000) {
-    return 'Rp ' + Math.round(safeValue / 1000) + 'rb';
-  }
-  return 'Rp ' + safeValue;
-}
-
 // Block lane solver (identical to admin layout logic)
 function getVisibleBookingBlocks(bookings, visibleDays) {
   const visibleDayKeys = visibleDays.map(toIsoDate);
@@ -264,58 +248,10 @@ function getVisibleBookingBlocks(bookings, visibleDays) {
   return rawBlocks;
 }
 
-function getBookingBlockStyle(block) {
-  const style = {
-    gridColumn: String(block.dayIndex + 2),
-    gridRow: String(block.rowStart) + ' / span ' + String(block.spanRows),
-  };
-  if (block.laneCount > 1) {
-    const laneWidth = 100 / block.laneCount;
-    style.width = 'calc(' + laneWidth.toFixed(4) + '% - 6px)';
-    style.marginLeft = 'calc(' + (laneWidth * block.laneIndex).toFixed(4) + '% + 4px)';
-    style.marginRight = '2px';
-  }
-  return style;
-}
-
-// Calendar Booking Block for Client Portal
-function ClientCalendarBookingBlock({ block, onBookingClick, isOwn }) {
-  const booking = block.booking;
-  const title = isOwn ? (booking.title || booking.sessionLabel || 'Sesi Latihan') : 'Terisi';
-  const customerName = isOwn ? (booking.customer || 'Saya') : 'Terjadwal';
-  const statusLabel = isOwn ? getStatusLabel(block.status) : '';
-  const startHourNum = Number(booking.startHour);
-  const durationNum = Number(booking.durationHours) || block.spanRows;
-  const startLabel = String(startHourNum).padStart(2, '0') + '.00';
-  const durationLabel = durationNum + 'j';
-  const priceLabel = isOwn ? formatShortCurrency(booking.total || booking.subtotal || 0) : '';
-
-  return (
-    <button
-      aria-label={isOwn ? `Booking ${customerName} ${startLabel} ${durationLabel}` : 'Slot Terisi'}
-      className={`schedule-booking-block ${isOwn ? 'is-' + block.status : 'is-occupied-other'}`}
-      style={getBookingBlockStyle(block)}
-      type="button"
-      onClick={isOwn ? () => onBookingClick(booking) : undefined}
-      disabled={!isOwn}
-    >
-      <span className="schedule-booking-glow" aria-hidden="true" />
-      <span className="schedule-booking-topline">
-        <strong>{customerName}</strong>
-        {isOwn && <em>{statusLabel}</em>}
-      </span>
-      <span className="schedule-booking-title">{title}</span>
-      <span className="schedule-booking-meta">
-        <span>{startLabel} • {durationLabel}</span>
-        {isOwn && <b>{priceLabel}</b>}
-      </span>
-    </button>
-  );
-}
-
 export default function ClientPortalPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDark, toggleTheme } = useTheme();
   const pricingSettings = usePricingSettings();
   const invoiceSettings = useInvoiceSettings();
   const studioSettings = useStudioSettings();
@@ -422,29 +358,6 @@ export default function ClientPortalPage() {
       (err) => console.error('Gagal mengambil booking client:', err)
     );
     return unsubscribe;
-  }, [currentUser]);
-
-  // OneSignal: identify client user for per-user push targeting
-  useEffect(() => {
-    if (!isOneSignalBrowserSupported()) return;
-
-    if (!currentUser) {
-      logoutOneSignalUser().catch(() => {});
-      return;
-    }
-
-    identifyOneSignalUser(currentUser, 'client')
-      .then((state) => {
-        return syncNotificationSubscription({
-          reason: 'client-login',
-          role: 'client',
-          state,
-          user: currentUser,
-        });
-      })
-      .catch((error) => {
-        console.warn('[onesignal] Client identify/sync failed:', error);
-      });
   }, [currentUser]);
 
   // Load public-safe occupied slots mirrored from admin schedule
@@ -723,6 +636,17 @@ export default function ClientPortalPage() {
   const pendingPaymentProofs = useMemo(
     () => paymentProofs.filter((proof) => proof.status === 'pending'),
     [paymentProofs]
+  );
+
+  const clientAiContext = useMemo(
+    () => createClientAiContext({
+      activeTab,
+      bookings: userBookings,
+      pendingPaymentProofs: pendingPaymentProofs.length,
+      stats,
+      upcomingBooking,
+    }),
+    [activeTab, pendingPaymentProofs.length, stats, upcomingBooking, userBookings],
   );
 
   const filteredHistoryBookings = useMemo(() => {
@@ -1186,7 +1110,6 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   // Calendar rendering parameters
   const visibleDays = useMemo(() => getVisibleDays(calendarSelectedDate, calendarViewMode), [calendarSelectedDate, calendarViewMode]);
   const bookingBlocks = useMemo(() => getVisibleBookingBlocks(calendarBookings, visibleDays), [calendarBookings, visibleDays]);
-  const gridTemplateColumns = getGridTemplate(calendarViewMode, visibleDays.length);
 
   const handleSlotClick = (slot) => {
     setSimulatorDate(slot.date);
@@ -1232,11 +1155,11 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#050506] flex items-center justify-center font-sans">
-        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#ff8a2a]/10 to-transparent pointer-events-none blur-[120px]" />
-        <div className="flex flex-col items-center gap-4 z-10">
-          <LoaderCircleWrapper className="animate-spin text-[#ff8a2a]" size={36} />
-          <p className="text-sm text-[#f7f3ec]/60 tracking-wider">Membuka portal client...</p>
+      <div className="client-portal-loading theme-container" role="status" aria-live="polite">
+        <span className="client-portal-loading-mark">37</span>
+        <div>
+          <LoaderCircleWrapper className="client-portal-loading-spinner" size={20} />
+          <p>Membuka workspace Anda</p>
         </div>
       </div>
     );
@@ -1255,13 +1178,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </div>
 
           <div className="client-header-copy">
-            <p>
-              37 Music Studio
-            </p>
-
-            <h1>
-              Halo, {currentUser?.displayName?.split(' ')[0] || 'Client'}
-            </h1>
+            <h1>37 Music Studio</h1>
+            <p>Client workspace</p>
           </div>
         </div>
 
@@ -1269,6 +1187,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           className="client-desktop-nav"
           aria-label="Navigasi client desktop"
         >
+          <span className="client-desktop-nav-label">Workspace</span>
           <button
             className={activeTab === 'home' ? 'is-active' : ''}
             type="button"
@@ -1316,9 +1235,23 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         </nav>
 
         <div className="client-header-actions">
-          <span className="client-header-role">
-            Client Portal
-          </span>
+          <div className="client-header-profile">
+            <span>{(currentUser?.displayName || currentUser?.email || 'C').slice(0, 1).toUpperCase()}</span>
+            <div>
+              <strong>{currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Client'}</strong>
+              <small>Client aktif</small>
+            </div>
+          </div>
+
+          <button
+            className="client-theme-toggle"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? 'Gunakan tema terang' : 'Gunakan tema gelap'}
+            aria-pressed={isDark}
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
 
           <button
             onClick={handleLogout}
@@ -1332,9 +1265,27 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       </header>
 
       {/* Client Navigation V2 content */}
-      <main className="client-portal-main">
+      <main className="client-portal-main" data-view={activeTab}>
+        <header className="client-portal-mobile-heading">
+          <span className="client-header-mark">37</span>
+          <div>
+            <small>37 Music Studio</small>
+            <strong>Halo, {currentUser?.displayName?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'Client'}</strong>
+          </div>
+          <div className="client-portal-mobile-actions">
+            <button type="button" onClick={toggleTheme} aria-label={isDark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} aria-pressed={isDark}>
+              {isDark ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <button type="button" onClick={handleLogout} aria-label="Keluar dari portal">
+              <LogOut size={17} />
+            </button>
+          </div>
+        </header>
+
+        <div className="client-view-stage" key={activeTab}>
         {activeTab === 'home' && (
           <ClientDashboardTab
+            clientName={currentUser?.displayName?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'Client'}
             upcomingBooking={upcomingBooking}
             stats={stats}
             recentBookings={recentBookings}
@@ -1360,14 +1311,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             calendarViewMode={calendarViewMode}
             setCalendarSelectedDate={setCalendarSelectedDate}
             setCalendarViewMode={setCalendarViewMode}
-            gridTemplateColumns={gridTemplateColumns}
             visibleDays={visibleDays}
             businessHours={businessHours}
             handleSlotClick={handleSlotClick}
             bookingBlocks={bookingBlocks}
             handleBookingBlockClick={handleBookingBlockClick}
             getStatusLabel={getStatusLabel}
-            ClientCalendarBookingBlock={ClientCalendarBookingBlock}
             shiftDate={shiftDate}
             startOfDay={startOfDay}
             formatRangeLabel={formatRangeLabel}
@@ -1419,16 +1368,19 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         {activeTab === 'account' && (
           <ClientAccountTab
             currentUser={currentUser}
+            isDark={isDark}
             stats={stats}
             whatsappPhone={whatsappPhone}
             studioMapsUrl={studioMapsUrl}
             onLogout={handleLogout}
+            onToggleTheme={toggleTheme}
             onOpenPayments={() => {
               setBookingsSection('payments');
               setActiveTab('bookings');
             }}
           />
         )}
+        </div>
       </main>
 
       {/* Client Navigation V2 bottom bar */}
@@ -1552,75 +1504,72 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </section>
             ) : null}
 
-            {/* Visual Invoice Sheet */}
-            <div className="p-5 rounded-xl bg-white/[0.01] border border-white/5 space-y-4 text-xs font-sans">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-white text-sm">{studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName}</h4>
-                  <p className="text-[10px] text-[var(--ui-text-muted)] leading-relaxed max-w-[180px]">{invoiceSettings.address || 'Alamat Studio'}</p>
+            <section className="client-detail-invoice" aria-label="Rincian invoice">
+              <header className="client-detail-invoice-header">
+                <div>
+                  <h4>{studioSettings.studioName || invoiceSettings.studioName || defaultStudioSettings.studioName}</h4>
+                  <p>{invoiceSettings.address || 'Alamat Studio'}</p>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-[var(--ui-text-muted)] block">Invoice No:</span>
-                  <strong className="text-white text-xs tracking-wide">{selectedBookingDetail.invoiceNumber || 'INV-00000'}</strong>
+                <div>
+                  <span>Invoice</span>
+                  <strong>{selectedBookingDetail.invoiceNumber || 'INV-00000'}</strong>
                   <button className="client-copy-code" type="button" onClick={() => copyText(selectedBookingDetail.bookingCode || selectedBookingDetail.id, 'Kode booking disalin.')}>
                     <Copy size={11} /> Salin kode
                   </button>
                 </div>
-              </div>
+              </header>
 
-              <div className="border-t border-white/5 pt-3 space-y-2">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[var(--ui-text-muted)]">Tanggal Sesi:</span>
-                  <span className="text-white font-semibold">{selectedBookingDetail.date}</span>
+              <div className="client-detail-invoice-meta">
+                <div>
+                  <span>Tanggal sesi</span>
+                  <strong>{selectedBookingDetail.date}</strong>
                 </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[var(--ui-text-muted)]">Jam Latihan:</span>
-                  <span className="text-white font-semibold">
+                <div>
+                  <span>Jam studio</span>
+                  <strong>
                     {String(selectedBookingDetail.startHour).padStart(2, '0')}.00 WIB ({selectedBookingDetail.durationHours} Jam)
-                  </span>
+                  </strong>
                 </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-[var(--ui-text-muted)]">Layanan Sesi:</span>
-                  <span className="text-white font-semibold">
+                <div>
+                  <span>Layanan</span>
+                  <strong>
                     {selectedBookingDetail.sessionLabel || selectedBookingDetail.packageLabel || selectedBookingDetail.title || 'Studio Rehearsal'}
-                  </span>
+                  </strong>
                 </div>
               </div>
 
-              {/* Receipt Totals */}
-              <div className="border-t border-white/5 pt-3 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-[var(--ui-text-muted)]">Subtotal:</span>
-                  <span className="text-white font-semibold">{formatRupiah(selectedBookingDetail.subtotal || selectedBookingDetail.total)}</span>
+              <div className="client-detail-invoice-totals">
+                <div>
+                  <span>Subtotal</span>
+                  <strong>{formatRupiah(selectedBookingDetail.subtotal || selectedBookingDetail.total)}</strong>
                 </div>
                 {selectedBookingDetail.discountAmount > 0 && (
-                  <div className="flex justify-between text-green-400">
-                    <span>Potongan Promo:</span>
-                    <span>-{formatRupiah(selectedBookingDetail.discountAmount)}</span>
+                  <div className="is-discount">
+                    <span>Potongan promo</span>
+                    <strong>-{formatRupiah(selectedBookingDetail.discountAmount)}</strong>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-bold text-white border-t border-white/5 pt-2">
-                  <span>Total Harga:</span>
-                  <span className="text-[#ff8a2a]">{formatRupiah(selectedBookingDetail.total)}</span>
+                <div className="is-total">
+                  <span>Total harga</span>
+                  <strong>{formatRupiah(selectedBookingDetail.total)}</strong>
                 </div>
 
-                {/* DP / Balance Details */}
-                <div className="bg-white/5 p-2.5 rounded-lg space-y-1 text-[11px] mt-2">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--ui-text-muted)]">Uang Muka (DP):</span>
-                    <span className="text-white font-semibold">{formatRupiah(selectedBookingDetail.dpAmount || 0)}</span>
+                <div className="client-detail-payment-balance">
+                  <div>
+                    <span>Uang muka (DP)</span>
+                    <strong>{formatRupiah(selectedBookingDetail.dpAmount || 0)}</strong>
                   </div>
-                  <div className="flex justify-between border-t border-white/5 pt-1 mt-1 text-white font-bold">
-                    <span>Sisa Tagihan:</span>
-                    <span className={getBookingStatus(selectedBookingDetail) === 'lunas' ? 'text-green-400' : 'text-orange-400'}>
+                  <div>
+                    <span>Sisa tagihan</span>
+                    <strong className={getBookingStatus(selectedBookingDetail) === 'lunas' ? 'is-paid' : 'is-open'}>
                       {getBookingStatus(selectedBookingDetail) === 'lunas'
                         ? 'Lunas / Selesai'
                         : formatRupiah(Math.max(0, (selectedBookingDetail.total || 0) - (selectedBookingDetail.dpAmount || 0)))}
-                    </span>
+                    </strong>
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
             {selectedBookingDetail.clientUid ? (
               <BookingConversationPanel
@@ -1638,13 +1587,13 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               ) : null}
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="client-detail-modal-actions">
               <button
                 type="button"
                 onClick={() => setSelectedBookingDetail(null)}
-                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-colors"
+                className="is-secondary"
               >
-                Tutup Invoice
+                Tutup
               </button>
 
               {getBookingStatus(selectedBookingDetail) !== 'lunas' && !['cancelled', 'canceled', 'void', 'deleted'].includes(getBookingStatus(selectedBookingDetail).toLowerCase()) && (
@@ -1654,10 +1603,10 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                     openPaymentProofModal(selectedBookingDetail);
                     setSelectedBookingDetail(null);
                   }}
-                  className="flex-1 py-3 rounded-xl bg-[#2ecc71] hover:bg-[#27ae60] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xl transition-all"
+                  className="is-primary"
                 >
                   <UploadCloud size={12} />
-                  <span>Upload Bukti</span>
+                  <span>Kirim Bukti</span>
                 </button>
               )}
             </div>
@@ -1720,37 +1669,20 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 />
               </label>
 
-              {/* Premium Styled File Uploader */}
-              <div className="client-proof-file-field" style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '10px', color: 'var(--auth-text-muted)', fontWeight: '700' }}>File Bukti</span>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  minHeight: '44px',
-                  border: '1px dashed var(--auth-border)',
-                  borderRadius: 'var(--studio-radius-md)',
-                  background: 'var(--auth-bg-control)',
-                  color: 'var(--auth-text-main)',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  padding: '0 12px',
-                  transition: 'border-color 120ms'
-                }} className="hover:border-[#ff8a2a]">
-                  <UploadCloud size={14} className="text-[#ff8a2a]" />
-                  <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div className="client-proof-file-field">
+                <span>File bukti</span>
+                <label>
+                  <UploadCloud size={15} />
+                  <span>
                     {proofFile ? proofFile.name : 'Pilih Foto Bukti Transfer'}
                   </span>
                   <input
                     accept="image/*"
                     type="file"
-                    style={{ display: 'none' }}
                     onChange={(event) => setProofFile(event.target.files?.[0] || null)}
                   />
                 </label>
-                <small style={{ fontSize: '9px', color: 'var(--auth-text-muted)' }}>JPG, PNG, WEBP maks 8 MB</small>
+                <small>JPG, PNG, WEBP maks 8 MB</small>
               </div>
 
               <label className="client-proof-note-field">
@@ -1779,6 +1711,17 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         <div className="client-action-feedback" role="status" aria-live="polite">
           <Check size={15} />{actionFeedback}
         </div>
+      ) : null}
+
+      {currentUser ? (
+        <Suspense fallback={null}>
+          <RoleAiAssistant
+            context={clientAiContext}
+            role="client"
+            surface={activeTab}
+            user={currentUser}
+          />
+        </Suspense>
       ) : null}
     </div>
   );

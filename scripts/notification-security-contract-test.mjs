@@ -1,140 +1,67 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  buildNotificationEventRecord,
+  NOTIFICATION_EVENT_STATUSES,
+} from '../src/services/notificationEventRepository.js';
 import {
   NOTIFICATIONS_PERMISSION_KEY,
   normalizeAdminPermissions,
 } from '../src/utils/adminPermissions.js';
-import { migrateNotificationPermissions } from './migrate-notification-permissions.mjs';
-import { notificationWorkerTestApi } from '../workers/onesignal-notification-worker/src/index.js';
 
-const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
-const readRepositoryFile = (path) => readFileSync(resolve(repositoryRoot, path), 'utf8');
-const pageSource = readRepositoryFile('src/pages/admin/NotificationsPage.jsx');
-const repositorySource = readRepositoryFile('src/services/notificationEventRepository.js');
-const navigationSource = readRepositoryFile('src/config/adminNavigation.js');
-const workerSource = readRepositoryFile('workers/onesignal-notification-worker/src/index.js');
-const rulesSource = readRepositoryFile('firestore.rules');
+const read = (path) => readFileSync(resolve(path), 'utf8');
+const appSource = read('src/App.jsx');
+const adminSource = read('src/pages/AdminPage.jsx');
+const clientSource = read('src/pages/ClientPortalPage.jsx');
+const pageSource = read('src/pages/admin/NotificationsPage.jsx');
+const repositorySource = read('src/services/notificationEventRepository.js');
+const cleanupSource = read('src/utils/retiredPushCleanup.js');
+const rulesSource = read('firestore.rules');
 
 assert.equal(NOTIFICATIONS_PERMISSION_KEY, 'notifications');
 assert.equal(normalizeAdminPermissions({ settings: true }).notifications, true);
-assert.equal(normalizeAdminPermissions({ settings: false }).notifications, false);
-assert.equal(
-  normalizeAdminPermissions({ notifications: false, settings: true }).notifications,
-  false,
-  'Explicit Notifications permission must override the legacy Settings fallback.',
-);
+assert.equal(normalizeAdminPermissions({ notifications: false, settings: true }).notifications, false);
 
-assert.match(
-  navigationSource,
-  /key:\s*'notifications'[\s\S]*?permissionKey:\s*'notifications'/,
-);
+const record = buildNotificationEventRecord({
+  actorRole: 'client',
+  message: 'Booking baru diterima.',
+  title: 'Booking baru',
+  type: 'booking_request_created',
+  user: { email: 'client@example.test', uid: 'client-1' },
+});
 
-for (const forbidden of [
-  'workerSecret',
-  'Worker Secret',
-  'x-studio37-worker-secret',
-  'type="url"',
-]) {
-  assert.equal(pageSource.includes(forbidden), false, `Browser UI still exposes ${forbidden}.`);
+assert.equal(record.channel, 'in_app');
+assert.equal(record.provider, 'firestore');
+assert.equal(record.status, NOTIFICATION_EVENT_STATUSES.SENT);
+assert.equal(record.attempts, 0);
+assert.equal(record.sentAt, record.createdAt);
+
+for (const source of [appSource, adminSource, clientSource, pageSource, repositorySource]) {
+  assert.doesNotMatch(source, /onesignal|notificationSubscription|push permission|push-delivery/i);
 }
 
-for (const required of [
-  'fetchNotificationWorkerHealth',
-  'processNotificationEvents',
-  "requestNotificationWorker('/events/retry'",
-  "requestNotificationWorker('/events/cancel'",
-  'authorization: `Bearer ${token}`',
-]) {
-  assert.equal(repositorySource.includes(required), true, `Repository missing ${required}.`);
-}
-
-assert.equal(repositorySource.includes('updateDoc('), false);
-assert.equal(workerSource.includes('WORKER_SECRET'), false);
-assert.equal(workerSource.includes('x-studio37-worker-secret'), false);
+assert.match(appSource, /cleanupRetiredPushWorkers/);
+assert.match(cleanupSource, /navigator\.serviceWorker\.getRegistrations\(\)/);
+assert.match(cleanupSource, /registration\.unregister\(\)/);
 
 for (const required of [
-  "getDocument(env, 'users', tokenIdentity.uid)",
-  'hasNotificationPermission(caller?.user)',
-  'commitEventOperation(',
-  'updateTime: event._updateTime',
-  'requestPayload.idempotency_key',
-  "NOTIFICATION_AUDITS_COLLECTION = 'notificationEventAudits'",
-  'Sent notifications cannot be replayed',
-]) {
-  assert.equal(workerSource.includes(required), true, `Worker hardening missing ${required}.`);
-}
-
-assert.equal(
-  notificationWorkerTestApi.hasNotificationPermission({
-    permissions: { settings: true },
-    role: 'admin',
-    status: 'approved',
-  }),
-  true,
-);
-assert.equal(
-  notificationWorkerTestApi.canDispatchRequestedEvent(
-    { actorUid: 'actor-1', status: 'pending' },
-    { uid: 'actor-1' },
-  ),
-  true,
-);
-assert.equal(
-  notificationWorkerTestApi.canDispatchRequestedEvent(
-    { actorUid: 'actor-1', status: 'sent' },
-    { uid: 'actor-1' },
-  ),
-  false,
-);
-const providerKey = await notificationWorkerTestApi.makeOneSignalIdempotencyKey('event-1');
-assert.match(providerKey, /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
-assert.equal(
-  providerKey,
-  await notificationWorkerTestApi.makeOneSignalIdempotencyKey('event-1'),
-);
-assert.notEqual(
-  providerKey,
-  await notificationWorkerTestApi.makeOneSignalIdempotencyKey('event-2'),
-);
-assert.equal(
-  notificationWorkerTestApi.hasNotificationPermission({
-    permissions: { notifications: false, settings: true },
-    role: 'admin',
-    status: 'approved',
-  }),
-  false,
-);
-assert.equal(
-  notificationWorkerTestApi.hasNotificationPermission({
-    permissions: {},
-    role: 'owner',
-    status: 'approved',
-  }),
-  true,
-);
-
-for (const required of [
-  'function canAccessNotifications()',
-  "permissions.keys().hasAny(['notifications'])",
+  "data.channel == 'in_app'",
+  "data.provider == 'firestore'",
+  "data.status == 'sent'",
+  'notificationEventCreateIsRecorded',
   'allow update, delete: if false;',
-  'match /notificationEventAudits/{auditId}',
 ]) {
-  assert.equal(rulesSource.includes(required), true, `Rules hardening missing ${required}.`);
+  assert.equal(rulesSource.includes(required), true, `In-app activity rule missing ${required}.`);
 }
 
-const firstMigration = migrateNotificationPermissions([
-  { uid: 'legacy-allow', permissions: { settings: true } },
-  { uid: 'legacy-deny', permissions: { settings: false } },
-  { uid: 'explicit-deny', permissions: { notifications: false, settings: true } },
-]);
-assert.equal(firstMigration.summary.changed, 2);
-assert.equal(firstMigration.users[0].permissions.notifications, true);
-assert.equal(firstMigration.users[1].permissions.notifications, false);
-assert.equal(firstMigration.users[2].permissions.notifications, false);
-
-const secondMigration = migrateNotificationPermissions(firstMigration.users);
-assert.equal(secondMigration.summary.changed, 0, 'Migration must be idempotent.');
+for (const removed of [
+  'notificationSubscriptions',
+  'notificationSubscriptionDevices',
+  'notificationEventAudits',
+  "data.provider == 'onesignal'",
+]) {
+  assert.equal(rulesSource.includes(removed), false, `Retired push rule remains: ${removed}.`);
+}
 
 console.log('notification-security-contract-test: PASS');

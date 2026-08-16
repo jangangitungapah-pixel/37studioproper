@@ -30,5 +30,7 @@ assert.match(confirmSource, /await onConfirm\?\.\(\)/);
 assert.match(confirmSource, /isLoading=\{isPending\}/);
 assert.match(confirmSource, /role="alert"/);
 assert.match(confirmSource, /startedOnBackdrop && event\.target === event\.currentTarget/);
+assert.match(confirmSource, /verificationExpected/);
+assert.match(confirmSource, /disabled=\{!verificationMatches\}/);
 
 console.log('shared-ui-accessibility-contract-test: ok');

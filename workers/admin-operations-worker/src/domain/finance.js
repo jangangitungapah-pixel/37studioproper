@@ -3,8 +3,12 @@ import { commitIdempotentOperation, readOperationResult } from '../lib/operation
 import { stableDocumentId } from '../lib/firestore.js';
 
 function bookingTotal(booking, paymentHistory) {
-  const explicitTotal = cleanMoney(booking.total || booking.subtotal || 0);
-  if (explicitTotal) return explicitTotal;
+  if (Object.prototype.hasOwnProperty.call(booking, 'total') && Number.isFinite(Number(booking.total))) {
+    return cleanMoney(booking.total);
+  }
+  if (Object.prototype.hasOwnProperty.call(booking, 'subtotal') && Number.isFinite(Number(booking.subtotal))) {
+    return cleanMoney(booking.subtotal);
+  }
 
   // Legacy documents stored only the remaining invoice amount. Reconstruct the
   // immutable total before projecting another payment so a partial payment does
@@ -19,7 +23,7 @@ function payments(booking) {
 
   if (history.length) return history;
 
-  const explicitTotal = cleanMoney(booking.total || booking.subtotal || 0);
+  const explicitTotal = bookingTotal(booking, []);
   const status = cleanText(booking.paymentStatusCanonical || booking.paymentStatus, 40).toLowerCase();
   const legacyAmount = Math.max(
     cleanMoney(booking.paidAmount),
@@ -157,11 +161,9 @@ async function ledgerWrite({ actor, booking, event, firestore, type }) {
 
 function paymentEvent({ actor, body, key, source }) {
   const amount = cleanMoney(body.amount);
-  const method = cleanText(body.method || 'other', 80);
+  const method = cleanPaymentMethod(body.method);
   const now = new Date().toISOString();
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || ''))
-    ? String(body.date)
-    : now.slice(0, 10);
+  const date = cleanOperationDate(body.date, now);
 
   if (!amount) throw new HttpError(400, 'amount_required', 'Nominal pembayaran wajib lebih dari 0.');
 
@@ -176,6 +178,33 @@ function paymentEvent({ actor, body, key, source }) {
     note: cleanText(body.note, 600),
     source,
   };
+}
+
+const VALID_PAYMENT_METHODS = new Set(['cash', 'transfer', 'qris', 'other']);
+
+function cleanPaymentMethod(value) {
+  const method = cleanText(value, 20).toLowerCase();
+  if (!VALID_PAYMENT_METHODS.has(method)) {
+    throw new HttpError(400, 'invalid_payment_method', 'Metode wajib cash, transfer, qris, atau other.');
+  }
+  return method;
+}
+
+function cleanOperationDate(value, now = new Date().toISOString()) {
+  if (value === undefined || value === null || value === '') return now.slice(0, 10);
+  const date = String(value);
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) throw new HttpError(400, 'invalid_date', 'Tanggal operasi tidak valid.');
+  const year = Number(match[1]);
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (
+    year < 2000 || year > 2100 ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== date
+  ) {
+    throw new HttpError(400, 'invalid_date', 'Tanggal operasi tidak valid.');
+  }
+  return date;
 }
 
 export async function recordPayment({ actor, body, firestore, request }) {
@@ -219,9 +248,11 @@ export async function recordPayment({ actor, body, firestore, request }) {
   ];
   const committed = await commitIdempotentOperation({
     actor,
+    documentRefs: { booking: { collectionId: 'bookings', documentId: booking.id } },
     firestore,
     key,
     result,
+    receipt: { ledgerEventId: result.ledgerEventId },
     targetId: booking.id,
     type: 'payment',
     writes,
@@ -254,10 +285,10 @@ export async function recordRefund({ actor, body, firestore, request }) {
     ...actorFields(actor),
     amount,
     createdAt: now,
-    date: /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? String(body.date) : now.slice(0, 10),
+    date: cleanOperationDate(body.date, now),
     id: `refund_${key.slice(0, 80)}`,
     idempotencyKey: key,
-    method: cleanText(body.method || 'other', 80),
+    method: cleanPaymentMethod(body.method),
     reason,
     source: cleanText(body.source || 'admin-refund', 80),
   };
@@ -283,9 +314,11 @@ export async function recordRefund({ actor, body, firestore, request }) {
   };
   const committed = await commitIdempotentOperation({
     actor,
+    documentRefs: { booking: { collectionId: 'bookings', documentId: booking.id } },
     firestore,
     key,
     result,
+    receipt: { ledgerEventId: result.ledgerEventId },
     targetId: booking.id,
     type: 'refund',
     writes: [
@@ -333,9 +366,11 @@ export async function voidInvoice({ actor, body, firestore, request }) {
   const result = { booking: nextBooking, reason, status: 'void' };
   const committed = await commitIdempotentOperation({
     actor,
+    documentRefs: { booking: { collectionId: 'bookings', documentId: booking.id } },
     firestore,
     key,
     result,
+    receipt: { reason, status: 'void' },
     targetId: booking.id,
     type: 'invoice-void',
     writes: [
@@ -373,9 +408,11 @@ export async function reviewPaymentProof({ actor, body, firestore, proofId, requ
     const result = { proof: nextProof };
     const committed = await commitIdempotentOperation({
       actor,
+      documentRefs: { proof: { collectionId: 'paymentProofs', documentId: proof.id } },
       firestore,
       key,
       result,
+      receipt: {},
       targetId: proof.id,
       type,
       writes: [
@@ -389,12 +426,18 @@ export async function reviewPaymentProof({ actor, body, firestore, proofId, requ
   const booking = { id: bookingDocument.id, ...bookingDocument.data };
   const before = financeSnapshot(booking);
   assertBookingOpen(before);
+  if (!Object.prototype.hasOwnProperty.call(body, 'amount')) {
+    throw new HttpError(400, 'amount_confirmation_required', 'Konfirmasi nominal pembayaran wajib diisi.');
+  }
+  if (!Object.prototype.hasOwnProperty.call(body, 'method')) {
+    throw new HttpError(400, 'method_confirmation_required', 'Konfirmasi metode pembayaran wajib diisi.');
+  }
   const event = paymentEvent({
     actor,
     body: {
       ...body,
-      amount: body.amount || proof.amount,
-      method: body.method || proof.method,
+      amount: body.amount,
+      method: body.method,
       note: note || proof.clientNote || 'Bukti pembayaran disetujui',
     },
     key,
@@ -429,9 +472,14 @@ export async function reviewPaymentProof({ actor, body, firestore, proofId, requ
   const result = { booking: nextBooking, payment: event, proof: nextProof, snapshot: after };
   const committed = await commitIdempotentOperation({
     actor,
+    documentRefs: {
+      booking: { collectionId: 'bookings', documentId: booking.id },
+      proof: { collectionId: 'paymentProofs', documentId: proof.id },
+    },
     firestore,
     key,
     result,
+    receipt: {},
     targetId: proof.id,
     type,
     writes: [

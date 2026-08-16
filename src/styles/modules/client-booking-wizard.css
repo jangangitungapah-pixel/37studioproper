@@ -17,7 +17,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-xl);
+  border-radius: 20px;
   background: var(--auth-bg-card);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
   color: var(--auth-text-main);
@@ -161,9 +161,9 @@
 .client-booking-wizard textarea {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: 48px;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-md);
+  border-radius: 11px;
   outline: 0;
   background: var(--auth-bg-control);
   color: var(--auth-text-main);

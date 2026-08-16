@@ -42,16 +42,40 @@ export function json(request, env, payload, init = {}) {
 }
 
 export async function readJson(request) {
-  const declaredLength = Number(request.headers.get('content-length') || 0);
+  const lengthHeader = request.headers.get('content-length');
+  const declaredLength = lengthHeader === null ? 0 : Number(lengthHeader);
+
+  if (!Number.isFinite(declaredLength) || declaredLength < 0) {
+    throw new HttpError(400, 'invalid_content_length', 'Content-Length tidak valid.');
+  }
 
   if (declaredLength > MAX_JSON_BYTES) {
     throw new HttpError(413, 'payload_too_large', 'Payload operasi terlalu besar.');
   }
 
-  const text = await request.text();
+  if (!request.body) return {};
 
-  if (new TextEncoder().encode(text).byteLength > MAX_JSON_BYTES) {
-    throw new HttpError(413, 'payload_too_large', 'Payload operasi terlalu besar.');
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let receivedBytes = 0;
+  let text = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      receivedBytes += value.byteLength;
+
+      if (receivedBytes > MAX_JSON_BYTES) {
+        await reader.cancel('payload_too_large');
+        throw new HttpError(413, 'payload_too_large', 'Payload operasi terlalu besar.');
+      }
+
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+  } finally {
+    reader.releaseLock();
   }
 
   if (!text) return {};

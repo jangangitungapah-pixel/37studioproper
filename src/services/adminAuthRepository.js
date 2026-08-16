@@ -24,7 +24,6 @@ import { sendNewUserNotificationEmail } from './emailService.js';
 import {
   defaultAdminPermissions,
   normalizeAdminPermissionsForRole,
-  isOwnerEmail,
 } from '../utils/adminPermissions.js';
 import { ACCOUNT_SETTINGS_STORAGE_KEY } from '../utils/accountSettings.js';
 import {
@@ -68,10 +67,17 @@ function serializeFirebaseUser(user) {
   };
 }
 
-function checkIsOwnerEmail(user) {
-  if (!user) return false;
-  const email = user.email || user.providerData?.find(p => p.email)?.email || '';
-  return user.emailVerified === true && isOwnerEmail(email);
+export function isCanonicalOwnerIdentity({
+  currentOwnerUid = '',
+  ownershipExists = false,
+  uid = '',
+  userData,
+} = {}) {
+  if (userData?.role !== ACCOUNT_ROLES.OWNER || userData?.status !== 'approved') {
+    return false;
+  }
+
+  return !ownershipExists || Boolean(uid && currentOwnerUid === uid);
 }
 
 const GOOGLE_REDIRECT_PENDING_KEY = '37musicstudio.auth.googleRedirectPending.v1';
@@ -274,6 +280,7 @@ export function subscribeAdminAuth(callback) {
   }
 
   let userDocUnsubscribe = null;
+  let ownershipDocUnsubscribe = null;
 
   const authUnsubscribe = onAuthStateChanged(
     firebaseAuth,
@@ -282,6 +289,10 @@ export function subscribeAdminAuth(callback) {
       if (userDocUnsubscribe) {
         userDocUnsubscribe();
         userDocUnsubscribe = null;
+      }
+      if (ownershipDocUnsubscribe) {
+        ownershipDocUnsubscribe();
+        ownershipDocUnsubscribe = null;
       }
 
       if (!user) {
@@ -296,7 +307,7 @@ export function subscribeAdminAuth(callback) {
 
       const uid = user.uid;
       const userDocRef = doc(firestoreDb, 'users', uid);
-      const isOwnerEmail = checkIsOwnerEmail(user);
+      const ownershipDocRef = doc(firestoreDb, 'adminControl', 'ownership');
 
       try {
         await ensureAdminAccount(user);
@@ -322,59 +333,107 @@ export function subscribeAdminAuth(callback) {
         return;
       }
 
-      // Listen to real-time status updates in user's Firestore document
+      let latestUserData = null;
+      let userSnapshotReady = false;
+      let ownershipSnapshotReady = false;
+      let ownershipExists = false;
+      let currentOwnerUid = '';
+
+      const publishCanonicalAuthState = () => {
+        if (!userSnapshotReady || !ownershipSnapshotReady) return;
+
+        const userData = latestUserData;
+        const hasOwnerRole = userData?.role === ACCOUNT_ROLES.OWNER;
+        const isOwner = isCanonicalOwnerIdentity({
+          currentOwnerUid,
+          ownershipExists,
+          uid,
+          userData,
+        });
+        const isAdminPortalRole =
+          userData?.role === ACCOUNT_ROLES.ADMIN ||
+          userData?.role === ACCOUNT_ROLES.STUDIO_GUARD;
+        const isApproved = isOwner || (
+          isAdminPortalRole &&
+          userData?.status === 'approved'
+        );
+        const access = hasOwnerRole && !isOwner
+          ? PORTAL_ACCESS.INVALID_ACCOUNT
+          : getPortalAccess(userData, 'admin');
+
+        if (userData?.preferences && typeof window !== 'undefined') {
+          try {
+            const storageKey = ACCOUNT_SETTINGS_STORAGE_KEY + '.' + uid;
+            window.localStorage.setItem(storageKey, JSON.stringify(userData.preferences));
+          } catch (e) {
+            console.warn('Gagal menyimpan preferensi dari Firestore ke local storage:', e);
+          }
+        }
+
+        callback({
+          errorMessage: hasOwnerRole && !isOwner
+            ? 'Role Owner akun tidak cocok dengan ownership aktif.'
+            : '',
+          isAuthenticated: true,
+          isReady: true,
+          user: {
+            ...serializeFirebaseUser(user),
+            status: userData?.status || 'pending',
+            role: userData?.role || 'admin',
+            isOwner,
+            permissions: normalizeAdminPermissionsForRole(userData?.permissions, userData?.role),
+            isApproved,
+            access,
+            guardId: userData?.guardId || null,
+          }
+        });
+      };
+
+      const publishSyncFailure = (message, error) => {
+        console.error(message, error);
+        callback({
+          errorMessage: 'Gagal memverifikasi role dan ownership dari Firestore.',
+          isAuthenticated: true,
+          isReady: true,
+          user: {
+            ...serializeFirebaseUser(user),
+            status: 'pending',
+            role: 'admin',
+            permissions: defaultAdminPermissions,
+            isApproved: false,
+            isOwner: false,
+            access: PORTAL_ACCESS.INVALID_ACCOUNT,
+          }
+        });
+      };
+
+      // User role and canonical ownership must both be known before the shell
+      // starts any privileged listeners.
       userDocUnsubscribe = onSnapshot(
         userDocRef,
         (docSnap) => {
-          const userData = docSnap.exists() ? docSnap.data() : null;
-          const isOwner = userData?.role === 'owner';
-          const isAdminPortalRole = isOwner ||
-            userData?.role === ACCOUNT_ROLES.ADMIN ||
-            userData?.role === ACCOUNT_ROLES.STUDIO_GUARD;
-          const isApproved = isOwner || (isAdminPortalRole && userData?.status === 'approved');
-          const access = getPortalAccess(userData, 'admin');
-
-          if (userData?.preferences && typeof window !== 'undefined') {
-            try {
-              const storageKey = ACCOUNT_SETTINGS_STORAGE_KEY + '.' + uid;
-              window.localStorage.setItem(storageKey, JSON.stringify(userData.preferences));
-            } catch (e) {
-              console.warn('Gagal menyimpan preferensi dari Firestore ke local storage:', e);
-            }
-          }
-
-          callback({
-            errorMessage: '',
-            isAuthenticated: true,
-            isReady: true,
-            user: {
-              ...serializeFirebaseUser(user),
-              status: userData?.status || 'pending',
-              role: userData?.role || 'admin',
-              isOwner,
-              permissions: normalizeAdminPermissionsForRole(userData?.permissions, userData?.role),
-              isApproved,
-              access,
-              guardId: userData?.guardId || null,
-            }
-          });
+          latestUserData = docSnap.exists() ? docSnap.data() : null;
+          userSnapshotReady = true;
+          publishCanonicalAuthState();
         },
         (err) => {
-          console.error('Error listening to user document:', err);
-          callback({
-            errorMessage: 'Gagal menyinkronkan status persetujuan dari Firestore.',
-            isAuthenticated: true,
-            isReady: true,
-            user: {
-              ...serializeFirebaseUser(user),
-              status: 'pending',
-                role: 'admin',
-                permissions: defaultAdminPermissions,
-                isApproved: false,
-                access: PORTAL_ACCESS.INVALID_ACCOUNT,
-            }
-          });
+          publishSyncFailure('Error listening to user document:', err);
         }
+      );
+
+      ownershipDocUnsubscribe = onSnapshot(
+        ownershipDocRef,
+        (docSnap) => {
+          ownershipExists = docSnap.exists();
+          currentOwnerUid = docSnap.exists()
+            ? String(docSnap.data()?.currentOwnerUid || '')
+            : '';
+          ownershipSnapshotReady = true;
+          publishCanonicalAuthState();
+        },
+        (err) => {
+          publishSyncFailure('Error listening to canonical ownership:', err);
+        },
       );
     },
     (error) => {
@@ -386,6 +445,9 @@ export function subscribeAdminAuth(callback) {
     authUnsubscribe();
     if (userDocUnsubscribe) {
       userDocUnsubscribe();
+    }
+    if (ownershipDocUnsubscribe) {
+      ownershipDocUnsubscribe();
     }
   };
 }
