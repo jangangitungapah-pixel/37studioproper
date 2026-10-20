@@ -11,15 +11,29 @@ function isIsoDate(value) {
 }
 
 function isValidStartHour(value) {
-  const numericValue =
-    Number(value);
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return false;
+  }
+
+  const numericValue = Number(value);
 
   return (
-    Number.isFinite(
-      numericValue,
-    ) &&
+    Number.isInteger(numericValue) &&
     numericValue >= 0 &&
     numericValue <= 23
+  );
+}
+
+function isValidCalendarDate(value) {
+  if (!isIsoDate(value)) return false;
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
   );
 }
 
@@ -33,7 +47,7 @@ export function buildClientBookingResumePath({
     ).trim();
 
   if (
-    !isIsoDate(
+    !isValidCalendarDate(
       cleanDate,
     ) ||
     !isValidStartHour(
@@ -92,7 +106,7 @@ export function parseClientBookingResume(
     );
 
   if (
-    !isIsoDate(date) ||
+    !isValidCalendarDate(date) ||
     !isValidStartHour(
       startHour,
     )
@@ -171,7 +185,7 @@ export function isBookingStartOccupied(
     );
 
   if (
-    !isIsoDate(date) ||
+    !isValidCalendarDate(date) ||
     !isValidStartHour(
       targetStart,
     )
