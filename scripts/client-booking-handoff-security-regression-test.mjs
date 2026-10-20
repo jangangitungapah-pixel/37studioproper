@@ -23,9 +23,21 @@ assert.deepEqual(
 );
 
 assert.equal(
-  parseClientBookingResume('?bookDate=2026-02-31&bookStart=10')?.date,
-  '2026-02-31',
-  'Current parser checks ISO-shaped dates only; this assertion documents the current behavior pending a dedicated date-validation decision.',
+  parseClientBookingResume('?bookDate=2026-02-31&bookStart=10'),
+  null,
+  'Impossible calendar dates must not be accepted as a booking resume date.',
+);
+
+assert.equal(
+  parseClientBookingResume('?bookDate=2026-02-28&bookStart=10.5'),
+  null,
+  'Start hours must be whole hour slots.',
+);
+
+assert.equal(
+  parseClientBookingResume('?bookDate=2026-02-28&bookStart='),
+  null,
+  'Missing start hour must not be coerced to hour zero.',
 );
 
 assert.equal(
