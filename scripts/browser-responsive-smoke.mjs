@@ -129,6 +129,35 @@ try {
         animations: 'disabled',
       });
 
+      if (route.name === 'landing') {
+        const dateInput = page.locator('.client-landing-planner-form input[type="date"]');
+        const targetDate = await dateInput.evaluate((input) => {
+          const date = new Date();
+          date.setDate(date.getDate() + 7);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return year + '-' + month + '-' + day;
+        });
+        await dateInput.fill(targetDate);
+
+        const startHourSelect = page.getByRole('combobox', { name: 'Jam mulai' });
+        await startHourSelect.click();
+        await page.getByRole('option', { name: /14\.00-15\.00/ }).click();
+        await page.getByRole('button', { name: /PILIH SLOT TERSEDIA/ }).click();
+
+        await page.waitForURL((nextUrl) => nextUrl.pathname === '/book', { timeout: 10_000 });
+        const handoffUrl = new URL(page.url());
+        assert.equal(handoffUrl.searchParams.get('date'), targetDate);
+        assert.equal(handoffUrl.searchParams.get('startHour'), '14');
+
+        await page.getByRole('heading', { level: 1 }).waitFor({ state: 'visible', timeout: 15_000 });
+        console.log(
+          '[browser-smoke] planner handoff PASS / ' + viewport.name +
+          ' — date=' + targetDate + ', startHour=14',
+        );
+      }
+
       if (pageErrors.length) {
         failures.push(
           route.name + ' at ' + viewport.name + ' produced uncaught page errors: ' +
