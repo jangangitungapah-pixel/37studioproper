@@ -22,11 +22,10 @@ const routes = [
 await mkdir(screenshotDir, { recursive: true });
 
 const preview = spawn(
-  'npm',
+  process.execPath,
   [
-    'run',
+    resolve('node_modules/vite/bin/vite.js'),
     'preview',
-    '--',
     '--host',
     '127.0.0.1',
     '--port',
@@ -83,6 +82,7 @@ try {
       });
 
       const url = new URL(route.path, baseUrl).toString();
+      console.log('[browser-smoke] loading ' + route.name + ' / ' + viewport.name);
       const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
         timeout: 30_000,
@@ -122,6 +122,7 @@ try {
         screenshotDir,
         route.name + '-' + viewport.name + '.png',
       );
+      console.log('[browser-smoke] capturing ' + screenshotPath);
       await page.screenshot({
         path: screenshotPath,
         fullPage: true,
@@ -149,7 +150,18 @@ try {
   }
 } finally {
   if (browser) await browser.close();
-  preview.kill('SIGTERM');
+
+  if (preview.exitCode === null && preview.signalCode === null) {
+    const previewClosed = new Promise((resolveClose) => {
+      preview.once('close', resolveClose);
+    });
+    preview.kill('SIGTERM');
+    await Promise.race([previewClosed, delay(3000)]);
+
+    if (preview.exitCode === null && preview.signalCode === null) {
+      preview.kill('SIGKILL');
+    }
+  }
 }
 
 if (failures.length) {
