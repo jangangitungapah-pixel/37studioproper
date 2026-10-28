@@ -5,7 +5,7 @@ const PUBLIC_BOOKING_PATH =
   '/book';
 
 function isIsoDate(value) {
-  return /^\\d{4}-\\d{2}-\\d{2}$/.test(
+  return /^\d{4}-\d{2}-\d{2}$/.test(
     String(value || ''),
   );
 }
