@@ -119,6 +119,21 @@ async function requestOperation(path, {
   throw lastError;
 }
 
+
+export function decideCanonicalBookingRequest(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/requests/decision', {
+    body: input,
+    idempotencyKey: idempotencyKey || input?.decisionKey || createAdminOperationKey('booking-decision', input?.bookingId),
+  });
+}
+
+export function updateCanonicalManualBooking(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/manual/update', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('booking-update', input?.id),
+  });
+}
+
 export function recordCanonicalPayment(input, idempotencyKey = '') {
   return requestOperation('/v1/finance/payments', {
     body: input,
