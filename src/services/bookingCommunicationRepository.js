@@ -348,17 +348,18 @@ export async function updateBookingRequestStatus({
     // This is a fast UX check only. The Worker repeats conflict validation
     // against server state under the shared date coordination precondition.
     currentBookings: decisionBookings,
-    reason: cleanNote,
+    reason: cleanText(note),
     status,
   });
 
   if (!initialIssue.ok) throwBookingDecisionIssue(initialIssue);
 
   const decisionKey = buildBookingDecisionKey({ booking, status });
+  const decisionNote = status === 'confirmed' ? cleanNote : cleanText(note);
   const result = await decideCanonicalBookingRequest({
     bookingId: booking.id,
     decisionKey,
-    note: cleanNote,
+    note: decisionNote,
     status,
   }, decisionKey);
   const message = result.message;
