@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { transferOwnership } from '../workers/admin-operations-worker/src/domain/accounts.js';
-import { createManualBooking } from '../workers/admin-operations-worker/src/domain/bookings.js';
+import { createManualBooking, decideBookingRequest, updateManualBooking } from '../workers/admin-operations-worker/src/domain/bookings.js';
 import {
   recordPayment,
   recordRefund,
@@ -158,6 +158,209 @@ const actor = {
       request: requestWithKey('manual-booking-conflict'),
     }),
     (error) => error?.code === 'booking_conflict',
+  );
+}
+
+
+function pendingClientRequest(id, startHour, durationHours = 2) {
+  return {
+    bookingRequestStatus: 'submitted',
+    clientUid: `client-${id}`,
+    customer: `Customer ${id}`,
+    date: '2026-08-20',
+    durationHours,
+    id,
+    paymentStatus: 'pending',
+    paymentStatusCanonical: 'unpaid',
+    requestStatus: 'submitted',
+    sessionLabel: 'Recording',
+    sessionStatus: 'scheduled',
+    source: 'clientPortal',
+    startHour,
+    status: 'pending',
+    updatedAt: '2026-08-19T10:00:00.000Z',
+  };
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'request-race-a': pendingClientRequest('race-a', 10, 2),
+      'request-race-b': pendingClientRequest('race-b', 10, 2),
+    },
+  });
+  const makeDecision = (bookingId, key) => decideBookingRequest({
+    actor,
+    body: { bookingId, decisionKey: key, note: 'Disetujui admin', status: 'confirmed' },
+    firestore,
+    request: requestWithKey(key),
+  });
+  const outcomes = await Promise.allSettled([
+    makeDecision('request-race-a', 'race-decision-a'),
+    makeDecision('request-race-b', 'race-decision-b'),
+  ]);
+  const successful = outcomes.filter((result) => result.status === 'fulfilled');
+  const rejected = outcomes.filter((result) => result.status === 'rejected');
+
+  assert.equal(successful.length, 1, 'Only one overlapping request may be confirmed concurrently.');
+  assert.equal(rejected.length, 1, 'The overlapping decision must be rejected after the date lock is refreshed.');
+  assert.equal(rejected[0].reason?.code, 'booking_conflict');
+  assert.equal(firestore.collection('clientCalendarSlots').size, 1);
+  assert.equal(firestore.collection('bookingMessages').size, 1);
+  assert.equal(firestore.collection('bookingScheduleDays').get('2026-08-20').data.revision, 1);
+
+  const confirmed = [...firestore.collection('bookings').values()].filter((entry) => entry.data.requestStatus === 'confirmed');
+  assert.equal(confirmed.length, 1);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'request-edge-a': pendingClientRequest('edge-a', 10, 2),
+      'request-edge-b': pendingClientRequest('edge-b', 12, 1),
+    },
+  });
+  const outcomes = await Promise.all([
+    decideBookingRequest({
+      actor,
+      body: { bookingId: 'request-edge-a', decisionKey: 'edge-decision-a', note: 'Disetujui admin', status: 'confirmed' },
+      firestore,
+      request: requestWithKey('edge-decision-a'),
+    }),
+    decideBookingRequest({
+      actor,
+      body: { bookingId: 'request-edge-b', decisionKey: 'edge-decision-b', note: 'Disetujui admin', status: 'confirmed' },
+      firestore,
+      request: requestWithKey('edge-decision-b'),
+    }),
+  ]);
+  assert.equal(outcomes.length, 2, 'A session starting exactly at the previous end time remains available.');
+  assert.equal(firestore.collection('clientCalendarSlots').size, 2);
+  assert.equal(firestore.collection('bookingScheduleDays').get('2026-08-20').data.revision, 2);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'request-vs-manual': pendingClientRequest('request-vs-manual', 10, 2),
+    },
+  });
+  const manualBody = {
+    customer: 'Manual race',
+    date: '2026-08-20',
+    durationHours: 2,
+    id: 'manual-vs-request',
+    pricingMode: 'session',
+    sessionLabel: 'Recording',
+    startHour: 10,
+    total: 100_000,
+    subtotal: 100_000,
+  };
+  const outcomes = await Promise.allSettled([
+    decideBookingRequest({
+      actor,
+      body: { bookingId: 'request-vs-manual', decisionKey: 'request-vs-manual-decision', note: 'Disetujui admin', status: 'confirmed' },
+      firestore,
+      request: requestWithKey('request-vs-manual-decision'),
+    }),
+    createManualBooking({
+      actor,
+      body: manualBody,
+      firestore,
+      request: requestWithKey('manual-vs-request-create'),
+    }),
+  ]);
+  assert.equal(
+    outcomes.filter((result) => result.status === 'fulfilled').length,
+    1,
+    'The shared schedule-day precondition must serialize confirmation against manual creation.',
+  );
+  assert.equal(firestore.collection('clientCalendarSlots').size, 1);
+  assert.equal(firestore.collection('bookingScheduleDays').get('2026-08-20').data.revision, 1);
+}
+
+{
+  const current = {
+    bookingRequestStatus: 'confirmed',
+    customer: 'Existing customer',
+    date: '2026-08-20',
+    durationHours: 2,
+    id: 'manual-reschedule',
+    sessionLabel: 'Rehearsal',
+    sessionStatus: 'scheduled',
+    source: 'admin',
+    startHour: 10,
+    status: 'pending',
+    updatedAt: '2026-08-19T10:00:00.000Z',
+  };
+  const firestore = new FakeFirestore({
+    bookings: {
+      'manual-reschedule': current,
+      'existing-conflict': {
+        ...current,
+        date: '2026-08-21',
+        id: 'existing-conflict',
+        startHour: 12,
+      },
+    },
+  });
+  await assert.rejects(
+    updateManualBooking({
+      actor,
+      body: {
+        expectedUpdatedAt: current.updatedAt,
+        id: current.id,
+        patch: { date: '2026-08-21', durationHours: 2, startHour: 11 },
+      },
+      firestore,
+      request: requestWithKey('manual-reschedule-conflict'),
+    }),
+    (error) => error?.code === 'booking_conflict',
+  );
+
+  const saved = await updateManualBooking({
+    actor,
+    body: {
+      expectedUpdatedAt: current.updatedAt,
+      id: current.id,
+      patch: { date: '2026-08-22', durationHours: 2, startHour: 11 },
+    },
+    firestore,
+    request: requestWithKey('manual-reschedule-success'),
+  });
+  assert.equal(saved.booking.date, '2026-08-22');
+  assert.equal(saved.booking.startHour, 11);
+  assert.equal(firestore.collection('bookingScheduleDays').has('2026-08-20'), true);
+  assert.equal(firestore.collection('bookingScheduleDays').has('2026-08-22'), true);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'invalid-update': {
+        bookingRequestStatus: 'confirmed',
+        customer: 'Invalid test',
+        date: '2026-08-20',
+        durationHours: 2,
+        id: 'invalid-update',
+        sessionLabel: 'Recording',
+        startHour: 10,
+        updatedAt: '2026-08-19T10:00:00.000Z',
+      },
+    },
+  });
+  await assert.rejects(
+    updateManualBooking({
+      actor,
+      body: {
+        expectedUpdatedAt: '2026-08-19T10:00:00.000Z',
+        id: 'invalid-update',
+        patch: { startHour: 10.5 },
+      },
+      firestore,
+      request: requestWithKey('invalid-update-hour'),
+    }),
+    (error) => error?.code === 'invalid_start_hour',
   );
 }
 
