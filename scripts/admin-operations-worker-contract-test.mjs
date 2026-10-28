@@ -439,12 +439,26 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
     bookings: {
       'booking-1': {
         bookingCode: 'BKG-1',
+        bookingRequestStatus: 'confirmed',
         customer: 'Hazel',
+        date: '2026-08-20',
+        durationHours: 2,
         invoiceNumber: 'INV-1',
         paymentHistory: [],
         paymentStatus: 'pending',
         refundHistory: [],
+        sessionStatus: 'scheduled',
+        startHour: 10,
         total: 1000,
+      },
+    },
+    clientCalendarSlots: {
+      'booking-1': {
+        bookingId: 'booking-1',
+        date: '2026-08-20',
+        durationHours: 2,
+        startHour: 10,
+        title: 'Terisi',
       },
     },
   });
@@ -505,6 +519,8 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
     request: requestWithKey('void-final'),
   });
   assert.equal(voided.booking.paymentStatusCanonical, 'void');
+  assert.equal(firestore.collection('clientCalendarSlots').has('booking-1'), false);
+  assert.equal(firestore.collection('bookingScheduleDays').get('2026-08-20').data.revision, 1);
 }
 
 {
