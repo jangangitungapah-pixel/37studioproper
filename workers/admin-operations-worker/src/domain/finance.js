@@ -190,6 +190,15 @@ function cleanPaymentMethod(value) {
   return method;
 }
 
+function validScheduleDate(value) {
+  const date = cleanText(value, 10);
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return '';
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date
+    ? date
+    : '';
+}
+
 function cleanOperationDate(value, now = new Date().toISOString()) {
   if (value === undefined || value === null || value === '') return now.slice(0, 10);
   const date = String(value);
@@ -363,6 +372,33 @@ export async function voidInvoice({ actor, body, firestore, request }) {
     voidedByName: actor.displayName,
     voidedByUid: actor.uid,
   };
+  // Voiding makes a booking non-blocking in the canonical schedule selector.
+  // Participate in the same per-date revision protocol as create/confirm/reschedule,
+  // and remove its public calendar mirror in the same atomic commit.
+  const date = validScheduleDate(booking.date);
+  const scheduleDay = date
+    ? await firestore.getDocument('bookingScheduleDays', date)
+    : null;
+  const publicSlot = await firestore.getDocument('clientCalendarSlots', booking.id);
+  const writes = [
+    firestore.setWrite('bookings', booking.id, nextBooking, { updateTime: bookingDocument.updateTime }),
+  ];
+
+  if (date) {
+    writes.push(firestore.setWrite('bookingScheduleDays', date, {
+      date,
+      lastBookingId: booking.id,
+      revision: Number(scheduleDay?.data?.revision || 0) + 1,
+      updatedAt: now,
+    }, scheduleDay ? { updateTime: scheduleDay.updateTime } : { exists: false }));
+  }
+
+  if (publicSlot) {
+    writes.push(firestore.deleteWrite('clientCalendarSlots', booking.id, {
+      updateTime: publicSlot.updateTime,
+    }));
+  }
+
   const result = { booking: nextBooking, reason, status: 'void' };
   const committed = await commitIdempotentOperation({
     actor,
@@ -373,9 +409,7 @@ export async function voidInvoice({ actor, body, firestore, request }) {
     receipt: { reason, status: 'void' },
     targetId: booking.id,
     type: 'invoice-void',
-    writes: [
-      firestore.setWrite('bookings', booking.id, nextBooking, { updateTime: bookingDocument.updateTime }),
-    ],
+    writes,
   });
 
   return { ...committed.result, duplicate: committed.duplicate };
