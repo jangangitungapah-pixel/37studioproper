@@ -12,6 +12,10 @@ import {
   isBookingStartOccupied,
   parseClientBookingResume,
 } from '../src/utils/clientBookingHandoff.js';
+import {
+  getLocalDateKey,
+  parsePublicBookingSelection,
+} from '../src/utils/publicBookingSelection.js';
 
 const resumePath =
   buildClientBookingResumePath({
@@ -42,6 +46,36 @@ assert.equal(
   parseClientBookingResume(
     '?bookDate=invalid&bookStart=14',
   ),
+  null,
+);
+
+assert.equal(
+  getLocalDateKey(new Date(2026, 9, 29, 12)),
+  '2026-10-29',
+  'Date-only defaults must use local calendar time instead of UTC.',
+);
+assert.deepEqual(
+  parsePublicBookingSelection('?date=2026-11-02&startHour=10', '2026-10-29'),
+  { date: '2026-11-02', startHour: 10, dateWindowOffset: 0 },
+);
+assert.deepEqual(
+  parsePublicBookingSelection('?date=2026-11-19&startHour=22', '2026-10-29'),
+  { date: '2026-11-19', startHour: 22, dateWindowOffset: 3 },
+);
+assert.deepEqual(
+  parsePublicBookingSelection('?date=2026-02-31&startHour=10', '2026-10-29'),
+  { date: '2026-10-29', startHour: null, dateWindowOffset: 0 },
+);
+assert.deepEqual(
+  parsePublicBookingSelection('?date=2026-10-28&startHour=10', '2026-10-29'),
+  { date: '2026-10-29', startHour: null, dateWindowOffset: 0 },
+);
+assert.equal(
+  parsePublicBookingSelection('?date=2026-11-02&startHour=10.5', '2026-10-29').startHour,
+  null,
+);
+assert.equal(
+  parsePublicBookingSelection('?date=2026-11-02&startHour=', '2026-10-29').startHour,
   null,
 );
 
@@ -279,6 +313,22 @@ assert.equal(
     '<a href="/book" className="client-landing-button is-primary">',
   ),
   true,
+);
+
+assert.equal(
+  landingSource.includes("navigate('/book?' + params.toString());"),
+  true,
+  'Planner selection must be passed to the public booking calendar.',
+);
+assert.equal(
+  landingSource.includes("new Date().toISOString().split('T')[0]"),
+  false,
+  'Landing date defaults must not rely on UTC date conversion.',
+);
+assert.equal(
+  publicPageSource.includes('parsePublicBookingSelection(location.search, todayKey)'),
+  true,
+  'Public booking must initialize calendar from planner query parameters.',
 );
 
 const rulesSource =
