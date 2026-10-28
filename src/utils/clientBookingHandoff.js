@@ -11,7 +11,10 @@ function isIsoDate(value) {
 }
 
 function isValidStartHour(value) {
-  if (value === null || value === undefined || String(value).trim() === '') {
+  if (
+    (typeof value !== 'number' && typeof value !== 'string') ||
+    (typeof value === 'string' && !/^\d+$/.test(value.trim()))
+  ) {
     return false;
   }
 
