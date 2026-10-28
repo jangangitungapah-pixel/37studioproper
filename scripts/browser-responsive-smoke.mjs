@@ -160,7 +160,7 @@ try {
 
         const startHourSelect = page.getByRole('combobox', { name: 'Jam mulai' });
         await startHourSelect.click();
-        await page.getByRole('option', { name: /14\\.00-15\\.00/ }).click();
+        await page.getByRole('option', { name: /14\.00-15\.00/ }).click();
         await page.getByRole('button', { name: /PILIH SLOT TERSEDIA/ }).click();
 
         await page.waitForURL((nextUrl) => nextUrl.pathname === '/book', { timeout: 10_000 });
