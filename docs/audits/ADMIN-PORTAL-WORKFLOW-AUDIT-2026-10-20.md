@@ -6,9 +6,9 @@ Related specification: `PRD_37Studio_Admin_Portal_UI_UX_Complete_v3.0.md`
 
 ## Scope and verification status
 
-Latest verified code head: `33d7c63ed0ae47c3528d88560d42d9d160d980c5`.
+Latest verified code head: `93a24ddaf7647c756bf2b49319ac3d0ff6c0132e`.
 
-GitHub Actions run [#59](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40767735630) passed all gates on this head: `npm ci`, production build, lint, the full `npm test` regression chain, and `npm run test:prd` including Worker/security contracts and Firestore rules behavior. This confirms repository checks, not browser/mobile rendering or live staging behavior. Those acceptance checks remain open.
+GitHub Actions run [#63](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40768647291) passed all gates on this head: `npm ci`, production build, lint, the full `npm test` regression chain, and `npm run test:prd` including Worker/security contracts, Admin shell contracts, and Firestore Rules behavior. This confirms repository checks, not browser/mobile rendering or live staging behavior. Those acceptance checks remain open.
 
 
 ## Admin workflow map
@@ -75,6 +75,14 @@ Direct client deletion remains forbidden by Firestore Rules. Any future booking-
 The Worker now checks `adminControl/ownership.currentOwnerUid` against the authenticated UID when the user document declares `role: owner`. This aligns Worker authorization with the canonical owner rule and prevents a stale Owner role from retaining privileged server operations after an ownership transfer. Security contract coverage checks active owner, former owner, legacy no-control state, and ordinary approved admin behavior. This is verified in the same latest CI run.
 
 
+## Admin shell responsive alignment
+
+The Admin shell CSS had drifted from PRD v3.0: the spatial navigation rail used 258 px expanded / 78 px collapsed, and desktop shell rules activated from 768 px. The PRD design calls for a 224–240 px expanded rail, a 72 px collapsed rail, and a mobile shell for tablet-portrait widths.
+
+The branch now sets the rail to **240 px expanded / 72 px collapsed**, moves desktop shell media queries to **900 px and wider**, and extends the mobile-shell rules through **899 px**. The desktop, navigation rail, workspace, mobile-shell, and shell-hardening source contracts were updated to enforce the same numbers and breakpoints.
+
+**Status: source-level alignment implemented and all automated gates passed in CI run #63.** Screenshot-based desktop/tablet/mobile verification is still pending.
+
 ## Other source-level observations
 
 1. Admin navigation routes are canonicalized and legacy aliases exist. Preserve them unless route migration is deliberate and tested.
@@ -108,9 +116,10 @@ The Worker now checks `adminControl/ownership.currentOwnerUid` against the authe
 
 - [x] Source route and navigation contracts reviewed.
 - [x] Admin workspace and sensitive operations identified.
-- [x] `npm ci`, production build, lint, full `npm test`, and `npm run test:prd` passed on code head `33d7c63ed0ae47c3528d88560d42d9d160d980c5` (Actions run #59).
+- [x] `npm ci`, production build, lint, full `npm test`, and `npm run test:prd` passed on code head `93a24ddaf7647c756bf2b49319ac3d0ff6c0132e` (Actions run #63).
 - [x] Shared date-revision coordination implemented and race tests passed for confirm/confirm, confirm/manual create, and confirm/reschedule.
 - [x] Invoice void updates the date revision and removes the public calendar mirror atomically.
 - [x] Worker Owner authorization checks the canonical ownership UID and is covered by the security contracts.
-- [ ] Browser/mobile and live staging data-flow QA executed.
+- [x] Admin shell rail dimensions and 900 px desktop / 899 px mobile breakpoint alignment passed shell contracts.
+- [ ] Screenshot-based browser/mobile and live staging data-flow QA executed.
 - [ ] UI/workflow acceptance verified against PRD v3.0.

@@ -20,7 +20,7 @@ The branch now validates raw query/hour values before numeric conversion, valida
 ## Verification status
 
 - [x] Targeted handoff regression script passed as part of the complete repository `npm test` suite.
-- [x] Latest code head `33d7c63ed0ae47c3528d88560d42d9d160d980c5` passed `npm ci`, `npm run build`, `npm run lint`, `npm test`, and `npm run test:prd` in [GitHub Actions run #59](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40767735630).
+- [x] Latest code head `93a24ddaf7647c756bf2b49319ac3d0ff6c0132e` passed `npm ci`, `npm run build`, `npm run lint`, `npm test`, and `npm run test:prd` in [GitHub Actions run #63](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40768647291).
 - [x] Worker race contracts passed for concurrent overlapping confirmations, confirmation vs. manual creation, confirmation vs. reschedule, exact boundary adjacency, required rejection reason, cancellation-request slot occupancy, and void mirror cleanup.
 - [ ] Completed browser/mobile QA and live Firebase staging data-flow tests.
 
