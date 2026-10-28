@@ -162,7 +162,7 @@ assert.equal(
   'Impossible calendar dates must not be confirmed.',
 );
 
-for (const invalidStartHour of ['', null, undefined, 10.5, 24, -1]) {
+for (const invalidStartHour of ['', null, undefined, false, true, '1e1', '10.5', 10.5, 24, -1]) {
   assert.equal(
     validateBookingDecision({
       booking: { ...submittedRequest, startHour: invalidStartHour },
