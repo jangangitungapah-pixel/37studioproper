@@ -100,7 +100,7 @@ Use disposable invoice amounts and an agreed test payment reference only. Do not
 
 ### F. Responsive UI and error states — P1/P2
 
-Run authenticated walkthroughs at 390 px, 768 px and 1440 px. Existing Playwright CI only covers the public landing and booking pages; it does **not** close this authenticated Admin check.
+Run authenticated walkthroughs at 390 px, 768 px and 1440 px. Automated Playwright CI covers the public landing and booking pages plus a signed-out direct Admin-route redirect at the three tested viewport sizes; it does **not** close authenticated Admin workflows or live staging checks.
 
 - [ ] Visit dashboard, Requests, Calendar, All Bookings, Customers, Billing, Bookkeeping, Operator Fee, Guard Attendance, Inventory, Gallery, Settings and Notifications as the appropriate test role.
 - [ ] Check loading, empty, success, permission-denied, validation-error, network-error and stale-conflict states.
