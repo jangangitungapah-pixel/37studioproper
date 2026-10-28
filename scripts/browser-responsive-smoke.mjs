@@ -131,7 +131,7 @@ try {
 
       if (route.name === 'landing') {
         const dateInput = page.locator('.client-landing-planner-form input[type="date"]');
-        const targetDate = await dateInput.evaluate((input) => {
+        const targetDate = await dateInput.evaluate(() => {
           const date = new Date();
           date.setDate(date.getDate() + 7);
           const year = date.getFullYear();
