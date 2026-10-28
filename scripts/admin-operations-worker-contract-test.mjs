@@ -161,6 +161,31 @@ const actor = {
   );
 }
 
+for (const invalidStartHour of ['', null, true, false, '1e1', '10.5', 10.5, 24, -1]) {
+  const firestore = new FakeFirestore();
+  await assert.rejects(
+    createManualBooking({
+      actor,
+      body: {
+        customer: 'Invalid hour',
+        date: '2026-08-20',
+        durationHours: 1,
+        id: 'invalid-hour-booking',
+        pricingMode: 'session',
+        sessionLabel: 'Recording',
+        startHour: invalidStartHour,
+        total: 100_000,
+        subtotal: 100_000,
+      },
+      firestore,
+      request: requestWithKey('invalid-hour-' + String(invalidStartHour)),
+    }),
+    (error) => error?.code === 'invalid_start_hour',
+    'Manual booking creation must reject invalid start hour: ' + String(invalidStartHour),
+  );
+  assert.equal(firestore.collection('bookings').size, 0);
+}
+
 
 function pendingClientRequest(id, startHour, durationHours = 2) {
   return {
