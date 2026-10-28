@@ -210,6 +210,51 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
 {
   const firestore = new FakeFirestore({
     bookings: {
+      'request-reason-required': pendingClientRequest('request-reason-required', 10),
+    },
+  });
+
+  await assert.rejects(
+    decideBookingRequest({
+      actor,
+      body: { bookingId: 'request-reason-required', status: 'rejected', note: '' },
+      firestore,
+      request: requestWithKey('reject-without-reason'),
+    }),
+    (error) => error?.code === 'booking_reason_required',
+    'The server must enforce a reason for rejected booking requests.',
+  );
+  assert.equal(firestore.collection('bookings').get('request-reason-required').data.requestStatus, 'submitted');
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'cancel-request-active': {
+        ...pendingClientRequest('cancel-request-active', 10, 2),
+        bookingRequestStatus: 'cancellation_requested',
+        requestStatus: 'cancellation_requested',
+      },
+      'new-overlapping-request': pendingClientRequest('new-overlapping-request', 10, 2),
+    },
+  });
+  await assert.rejects(
+    decideBookingRequest({
+      actor,
+      body: { bookingId: 'new-overlapping-request', status: 'confirmed', note: 'Disetujui admin' },
+      firestore,
+      request: requestWithKey('confirm-overlaps-cancellation-request'),
+    }),
+    (error) => error?.code === 'booking_conflict',
+    'A cancellation request must keep occupying its slot until cancellation is approved.',
+  );
+  assert.equal(firestore.collection('bookings').get('cancel-request-active').data.requestStatus, 'cancellation_requested');
+  assert.equal(firestore.collection('clientCalendarSlots').size, 0);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
       'request-race-a': pendingClientRequest('request-race-a', 10, 2),
       'request-race-b': pendingClientRequest('request-race-b', 10, 2),
     },
