@@ -91,7 +91,7 @@ assert.equal(
   'A start time at the end boundary should not be treated as overlapping.',
 );
 
-for (const invalidStartHour of ['', null, undefined, 10.5, 24]) {
+for (const invalidStartHour of ['', null, undefined, false, true, '1e1', '10.5', 10.5, 24]) {
   assert.equal(
     isBookingStartOccupied(
       overlappingSlots,
