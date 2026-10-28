@@ -5,7 +5,7 @@ const PUBLIC_BOOKING_PATH =
   '/book';
 
 function isIsoDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(
+  return /^\\d{4}-\\d{2}-\\d{2}$/.test(
     String(value || ''),
   );
 }
@@ -98,25 +98,18 @@ export function parseClientBookingResume(
       ) || '',
     ).trim();
 
-  const startHour =
-    Number(
-      params.get(
-        'bookStart',
-      ),
-    );
+  const rawStartHour = params.get('bookStart');
 
   if (
     !isValidCalendarDate(date) ||
-    !isValidStartHour(
-      startHour,
-    )
+    !isValidStartHour(rawStartHour)
   ) {
     return null;
   }
 
   return {
     date,
-    startHour,
+    startHour: Number(rawStartHour),
   };
 }
 
@@ -179,33 +172,26 @@ export function isBookingStartOccupied(
       ? slots
       : [];
 
-  const targetStart =
-    Number(
-      startHour,
-    );
-
   if (
     !isValidCalendarDate(date) ||
-    !isValidStartHour(
-      targetStart,
-    )
+    !isValidStartHour(startHour)
   ) {
     return false;
   }
+
+  const targetStart = Number(startHour);
 
   return safeSlots.some(
     (slot) => {
       if (
         slot?.date !==
-        date
+        date ||
+        !isValidStartHour(slot?.startHour)
       ) {
         return false;
       }
 
-      const slotStart =
-        Number(
-          slot?.startHour,
-        );
+      const slotStart = Number(slot.startHour);
 
       const duration =
         Math.max(
@@ -215,14 +201,6 @@ export function isBookingStartOccupied(
           ) ||
             1,
         );
-
-      if (
-        !Number.isFinite(
-          slotStart,
-        )
-      ) {
-        return false;
-      }
 
       return (
         targetStart >=
