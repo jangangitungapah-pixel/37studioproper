@@ -17,6 +17,11 @@ const viewports = [
 const routes = [
   { path: '/', name: 'landing' },
   { path: '/book', name: 'public-booking' },
+  {
+    path: '/admin/finance/invoices',
+    name: 'admin-unauthenticated',
+    expectedRedirectPath: '/admin/finance/invoices',
+  },
 ];
 
 await mkdir(screenshotDir, { recursive: true });
@@ -94,6 +99,18 @@ try {
         route.name + ' returned HTTP ' + response.status() + ' at ' + viewport.name,
       );
 
+      if (route.expectedRedirectPath) {
+        await page.waitForURL((nextUrl) => (
+          nextUrl.pathname === '/login' &&
+          nextUrl.searchParams.get('redirectTo') === route.expectedRedirectPath
+        ), { timeout: 15_000 });
+
+        console.log(
+          '[browser-smoke] signed-out Admin route redirect PASS / ' + viewport.name +
+          ' — returnTo=' + route.expectedRedirectPath,
+        );
+      }
+
       const heading = page.locator('h1').first();
       await heading.waitFor({ state: 'visible', timeout: 20_000 });
       const headingText = (await heading.innerText()).trim();
@@ -143,7 +160,7 @@ try {
 
         const startHourSelect = page.getByRole('combobox', { name: 'Jam mulai' });
         await startHourSelect.click();
-        await page.getByRole('option', { name: /14\.00-15\.00/ }).click();
+        await page.getByRole('option', { name: /14\\.00-15\\.00/ }).click();
         await page.getByRole('button', { name: /PILIH SLOT TERSEDIA/ }).click();
 
         await page.waitForURL((nextUrl) => nextUrl.pathname === '/book', { timeout: 10_000 });
