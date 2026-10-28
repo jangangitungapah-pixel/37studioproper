@@ -659,6 +659,66 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   assert.equal(firestore.collection('adminOperationAudit').size, 1);
 }
 
+// Proof approval and a manual payment also compete for the same invoice balance.
+// The proof must remain pending when the manual payment wins, and neither path may
+// create two payment-history or ledger entries from the same stale invoice snapshot.
+{
+  const firestore = new BarrierReadFirestore({
+    bookings: {
+      'booking-proof-race': {
+        paymentHistory: [],
+        paymentStatus: 'pending',
+        paymentStatusCanonical: 'unpaid',
+        refundHistory: [],
+        total: 1000,
+      },
+    },
+    paymentProofs: {
+      'proof-race': {
+        amount: 700,
+        bookingId: 'booking-proof-race',
+        method: 'qris',
+        status: 'pending',
+      },
+    },
+  }, 'bookings', 'booking-proof-race');
+
+  const attempts = await Promise.allSettled([
+    recordPayment({
+      actor,
+      body: { amount: 700, bookingId: 'booking-proof-race', method: 'transfer' },
+      firestore,
+      request: requestWithKey('proof-race-manual'),
+    }),
+    reviewPaymentProof({
+      actor,
+      body: { amount: 700, method: 'qris', note: 'Dana cocok' },
+      decision: 'approve',
+      firestore,
+      proofId: 'proof-race',
+      request: requestWithKey('proof-race-approval'),
+    }),
+  ]);
+
+  assert.equal(attempts.filter((attempt) => attempt.status === 'fulfilled').length, 1);
+  const rejected = attempts.find((attempt) => attempt.status === 'rejected');
+  assert.equal(rejected.reason.code, 'operation_conflict');
+
+  const booking = (await firestore.getDocument('bookings', 'booking-proof-race')).data;
+  const proof = (await firestore.getDocument('paymentProofs', 'proof-race')).data;
+  assert.equal(booking.paymentHistory.length, 1);
+  assert.equal(booking.paidAmount, 700);
+  assert.equal(booking.invoiceAmount, 300);
+  assert.equal(firestore.collection('bookkeepingEntries').size, 1);
+  assert.equal(firestore.collection('adminOperationKeys').size, 1);
+  assert.equal(firestore.collection('adminOperationAudit').size, 1);
+  assert.equal(
+    proof.status,
+    attempts[1].status === 'fulfilled' ? 'approved' : 'pending',
+    'A failed proof-approval race must leave the proof pending for a safe retry.',
+  );
+}
+
 // Two stale refund calculations must never refund more than the original receipt total.
 {
   const firestore = new BarrierReadFirestore({
