@@ -98,7 +98,7 @@ function scheduleWindow(booking) {
   return { end: start + duration, start };
 }
 
-async function assertSlotAvailable(firestore, booking) {
+async function assertSlotAvailable(firestore, booking, ignoreBookingId = '') {
   if (booking.durationHours === 0) return;
   const rows = await firestore.runQuery({
     from: [{ collectionId: 'bookings' }],
@@ -113,7 +113,7 @@ async function assertSlotAvailable(firestore, booking) {
   const start = booking.startHour;
   const end = start + booking.durationHours;
   const conflict = rows.find((row) => {
-    if (!isScheduleBlockingBooking(row.data)) return false;
+    if (row.id === ignoreBookingId || !isScheduleBlockingBooking(row.data)) return false;
     const window = scheduleWindow(row.data);
     if (!window) return false;
     return start < window.end && end > window.start;
@@ -291,6 +291,175 @@ export async function createManualBooking({ actor, body, firestore, request }) {
     writes,
   });
   return { ...committed.result, duplicate: committed.duplicate };
+}
+
+
+const EDITABLE_BOOKING_FIELDS = new Set([
+  'bandName',
+  'clientUid',
+  'customer',
+  'customerId',
+  'customerIdentityMode',
+  'customerPhoneKey',
+  'date',
+  'duration',
+  'durationHours',
+  'email',
+  'internalNotes',
+  'notes',
+  'packageId',
+  'packageLabel',
+  'pricingMode',
+  'recordingTypeId',
+  'recordingTypeLabel',
+  'sessionLabel',
+  'sessionStatus',
+  'sessionType',
+  'startHour',
+  'startTimeLabel',
+  'title',
+]);
+
+const FINANCE_PROTECTED_BOOKING_FIELDS = new Set([
+  'appliedDiscounts', 'bookingCode', 'bookingId', 'discountAmount', 'dpAmount',
+  'invoiceAmount', 'invoiceNumber', 'invoiceStatus', 'lastPaymentAt',
+  'lastPaymentMethod', 'lastRefundAt', 'lastRefundMethod', 'lastRefundReason',
+  'paidAmount', 'paymentHistory', 'paymentMethod', 'paymentStatus',
+  'paymentStatusBeforeRefund', 'paymentStatusCanonical', 'refundCompletedAt',
+  'refundHistory', 'refundedAmount', 'refundStatus', 'status', 'subtotal',
+  'total', 'voidReason', 'voidedAt', 'voidedByName', 'voidedByUid',
+]);
+
+function cleanBookingUpdatePatch(body, currentBooking) {
+  const supplied = body.patch && typeof body.patch === 'object'
+    ? body.patch
+    : body.booking && typeof body.booking === 'object'
+      ? body.booking
+      : body;
+  const patch = Object.fromEntries(
+    Object.entries(supplied).filter(([field]) => EDITABLE_BOOKING_FIELDS.has(field)),
+  );
+
+  for (const field of ['requestStatus', 'bookingRequestStatus']) {
+    if (
+      supplied[field] !== undefined &&
+      normalizeStatus(supplied[field]) !== requestStatus(currentBooking)
+    ) {
+      throw new HttpError(400, 'booking_status_requires_decision', 'Perubahan status request harus melalui alur keputusan booking.');
+    }
+  }
+
+  if (patch.date !== undefined) patch.date = cleanDate(patch.date);
+  if (patch.startHour !== undefined) {
+    if (!isValidStartHour(patch.startHour)) {
+      throw new HttpError(400, 'invalid_start_hour', 'Jam mulai booking harus berupa jam bulat antara 00 dan 23.');
+    }
+    patch.startHour = Number(patch.startHour);
+  }
+  if (patch.durationHours !== undefined || patch.duration !== undefined) {
+    const duration = Number(patch.durationHours ?? patch.duration);
+    if (!Number.isFinite(duration) || duration < 0 || duration > 24) {
+      throw new HttpError(400, 'invalid_duration', 'Durasi booking tidak valid.');
+    }
+    patch.durationHours = duration;
+    delete patch.duration;
+  }
+
+  const candidate = { ...currentBooking, ...patch };
+  candidate.date = patch.date ?? currentBooking.date;
+  candidate.startHour = patch.startHour ?? currentBooking.startHour;
+  candidate.durationHours = patch.durationHours ?? patch.duration ?? currentBooking.durationHours ?? currentBooking.duration;
+
+  if (!cleanText(candidate.customer, 120)) {
+    throw new HttpError(400, 'customer_required', 'Nama customer wajib diisi.');
+  }
+  if (candidate.date) candidate.date = cleanDate(candidate.date);
+  if (!isNoDurationPackage(candidate) && !scheduleWindow(candidate)) {
+    throw new HttpError(400, 'invalid_booking_window', 'Tanggal, jam mulai, atau durasi booking tidak valid.');
+  }
+  if (scheduleWindow(candidate) && scheduleWindow(candidate).end > 24) {
+    throw new HttpError(400, 'booking_outside_day', 'Waktu selesai booking melewati batas hari.');
+  }
+
+  return { candidate, patch };
+}
+
+export async function updateManualBooking({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existing = await readOperationResult(firestore, 'manual-booking-update', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+
+  const bookingId = cleanText(body.id || body.bookingId, 160);
+  if (!bookingId) throw new HttpError(400, 'booking_id_required', 'Booking ID wajib tersedia.');
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const current = await firestore.getDocument('bookings', bookingId);
+    if (!current) throw new HttpError(404, 'booking_not_found', 'Booking tidak ditemukan.');
+    const currentBooking = { id: current.id, ...current.data };
+
+    if (body.expectedUpdatedAt && body.expectedUpdatedAt !== currentBooking.updatedAt) {
+      throw new HttpError(409, 'booking_changed', 'Booking berubah sejak terakhir dibuka. Muat ulang data sebelum menyimpan perubahan jadwal.');
+    }
+
+    const { candidate, patch } = cleanBookingUpdatePatch(body, currentBooking);
+    const now = new Date().toISOString();
+    candidate.updatedAt = now;
+    const dates = [...new Set([currentBooking.date, candidate.date]
+      .map((value) => cleanText(value, 10))
+      .filter((value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value)))].sort();
+    const scheduleDays = new Map();
+    for (const date of dates) {
+      scheduleDays.set(date, await firestore.getDocument('bookingScheduleDays', date));
+    }
+
+    if (isScheduleBlockingBooking(candidate) && scheduleWindow(candidate)) {
+      await assertSlotAvailable(firestore, candidate, bookingId);
+    }
+
+    const updatedBooking = { ...currentBooking, ...patch, id: bookingId, updatedAt: now };
+    const writes = [
+      firestore.setWrite('bookings', bookingId, updatedBooking, { updateTime: current.updateTime }),
+    ];
+
+    for (const date of dates) {
+      const scheduleDay = scheduleDays.get(date);
+      writes.push(firestore.setWrite('bookingScheduleDays', date, {
+        date,
+        lastBookingId: bookingId,
+        revision: Number(scheduleDay?.data?.revision || 0) + 1,
+        updatedAt: now,
+      }, scheduleDay ? { updateTime: scheduleDay.updateTime } : { exists: false }));
+    }
+
+    const publicSlot = clientCalendarSlot(updatedBooking, now);
+    const oldSlot = await firestore.getDocument('clientCalendarSlots', bookingId);
+    if (publicSlot) {
+      writes.push(firestore.setWrite('clientCalendarSlots', bookingId, publicSlot,
+        oldSlot ? { updateTime: oldSlot.updateTime } : { exists: false }));
+    } else if (oldSlot) {
+      writes.push(firestore.deleteWrite('clientCalendarSlots', bookingId, { updateTime: oldSlot.updateTime }));
+    }
+
+    try {
+      const committed = await commitIdempotentOperation({
+        actor,
+        documentRefs: { booking: { collectionId: 'bookings', documentId: bookingId } },
+        firestore,
+        key,
+        receipt: {},
+        result: { booking: updatedBooking },
+        targetId: bookingId,
+        type: 'manual-booking-update',
+        writes,
+      });
+      return { ...committed.result, duplicate: committed.duplicate };
+    } catch (error) {
+      if (error?.status === 409 && error?.code === 'operation_conflict' && attempt < 3) continue;
+      throw error;
+    }
+  }
+
+  throw new HttpError(409, 'booking_conflict', 'Jadwal berubah saat penyimpanan. Muat ulang data dan coba kembali.');
 }
 
 function requestDecisionIssue(booking, status, reason) {
