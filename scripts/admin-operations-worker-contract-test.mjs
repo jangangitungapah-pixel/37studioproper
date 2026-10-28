@@ -185,8 +185,8 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
 {
   const firestore = new FakeFirestore({
     bookings: {
-      'request-race-a': pendingClientRequest('race-a', 10, 2),
-      'request-race-b': pendingClientRequest('race-b', 10, 2),
+      'request-race-a': pendingClientRequest('request-race-a', 10, 2),
+      'request-race-b': pendingClientRequest('request-race-b', 10, 2),
     },
   });
   const makeDecision = (bookingId, key) => decideBookingRequest({
@@ -216,8 +216,8 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
 {
   const firestore = new FakeFirestore({
     bookings: {
-      'request-edge-a': pendingClientRequest('edge-a', 10, 2),
-      'request-edge-b': pendingClientRequest('edge-b', 12, 1),
+      'request-edge-a': pendingClientRequest('request-edge-a', 10, 2),
+      'request-edge-b': pendingClientRequest('request-edge-b', 12, 1),
     },
   });
   const outcomes = await Promise.all([
