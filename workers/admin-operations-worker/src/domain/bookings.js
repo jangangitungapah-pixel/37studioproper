@@ -36,7 +36,7 @@ function paymentMethod(value) {
 }
 
 function normalizeStatus(value) {
-  return cleanText(value, 40).toLowerCase().replace(/[-\\s]+/g, '_');
+  return cleanText(value, 40).toLowerCase().replace(/[-\s]+/g, '_');
 }
 
 function requestStatus(booking) {
@@ -67,15 +67,10 @@ function isScheduleBlockingBooking(booking) {
 function isValidStartHour(value) {
   if (
     (typeof value !== 'number' && typeof value !== 'string') ||
-    (typeof value === 'string' && !/^\\d+$/.test(value.trim()))
+    (typeof value === 'string' && !/^\d+$/.test(value.trim()))
   ) return false;
   const number = Number(value);
   return Number.isInteger(number) && number >= 0 && number < 24;
-}
-
-function isValidDuration(value) {
-  const duration = Number(value);
-  return Number.isFinite(duration) && duration >= 0 && duration <= 24;
 }
 
 function isNoDurationPackage(booking) {
@@ -320,15 +315,7 @@ const EDITABLE_BOOKING_FIELDS = new Set([
   'title',
 ]);
 
-const FINANCE_PROTECTED_BOOKING_FIELDS = new Set([
-  'appliedDiscounts', 'bookingCode', 'bookingId', 'discountAmount', 'dpAmount',
-  'invoiceAmount', 'invoiceNumber', 'invoiceStatus', 'lastPaymentAt',
-  'lastPaymentMethod', 'lastRefundAt', 'lastRefundMethod', 'lastRefundReason',
-  'paidAmount', 'paymentHistory', 'paymentMethod', 'paymentStatus',
-  'paymentStatusBeforeRefund', 'paymentStatusCanonical', 'refundCompletedAt',
-  'refundHistory', 'refundedAmount', 'refundStatus', 'status', 'subtotal',
-  'total', 'voidReason', 'voidedAt', 'voidedByName', 'voidedByUid',
-]);
+
 
 function cleanBookingUpdatePatch(body, currentBooking) {
   const supplied = body.patch && typeof body.patch === 'object'
@@ -406,7 +393,7 @@ export async function updateManualBooking({ actor, body, firestore, request }) {
     candidate.updatedAt = now;
     const dates = [...new Set([currentBooking.date, candidate.date]
       .map((value) => cleanText(value, 10))
-      .filter((value) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value)))].sort();
+      .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value)))].sort();
     const scheduleDays = new Map();
     for (const date of dates) {
       scheduleDays.set(date, await firestore.getDocument('bookingScheduleDays', date));
@@ -606,7 +593,7 @@ export async function decideBookingRequest({ actor, body, firestore, request }) 
     const booking = { id: current.id, ...current.data };
     requestDecisionIssue(booking, status, note);
 
-    const dateIsValid = /^\\d{4}-\\d{2}-\\d{2}$/.test(cleanText(booking.date, 10))
+    const dateIsValid = /^\d{4}-\d{2}-\d{2}$/.test(cleanText(booking.date, 10))
       && !Number.isNaN(new Date(`${cleanText(booking.date, 10)}T00:00:00.000Z`).getTime())
       && new Date(`${cleanText(booking.date, 10)}T00:00:00.000Z`).toISOString().slice(0, 10) === cleanText(booking.date, 10);
     const date = dateIsValid ? cleanText(booking.date, 10) : '';
