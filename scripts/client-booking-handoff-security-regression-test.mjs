@@ -41,6 +41,12 @@ assert.equal(
 );
 
 assert.equal(
+  parseClientBookingResume('?bookDate=2026-02-28'),
+  null,
+  'A missing start-hour parameter must not be coerced to hour zero.',
+);
+
+assert.equal(
   getSafeClientNextPath('?next=%2Fclient%2Fportal%3Ftab%3Dbook'),
   '/client/portal?tab=book',
   'Allowed client portal path and query should be preserved.',
@@ -61,9 +67,13 @@ for (const next of [
   );
 }
 
+const overlappingSlots = [
+  { date: '2026-11-02', startHour: 10, durationHours: 2 },
+];
+
 assert.equal(
   isBookingStartOccupied(
-    [{ date: '2026-11-02', startHour: 10, durationHours: 2 }],
+    overlappingSlots,
     '2026-11-02',
     11,
   ),
@@ -73,12 +83,34 @@ assert.equal(
 
 assert.equal(
   isBookingStartOccupied(
-    [{ date: '2026-11-02', startHour: 10, durationHours: 2 }],
+    overlappingSlots,
     '2026-11-02',
     12,
   ),
   false,
   'A start time at the end boundary should not be treated as overlapping.',
+);
+
+for (const invalidStartHour of ['', null, undefined, 10.5, 24]) {
+  assert.equal(
+    isBookingStartOccupied(
+      overlappingSlots,
+      '2026-11-02',
+      invalidStartHour,
+    ),
+    false,
+    'An invalid target start hour must not be treated as a valid booking slot: ' + String(invalidStartHour),
+  );
+}
+
+assert.equal(
+  isBookingStartOccupied(
+    [{ date: '2026-11-02', startHour: '', durationHours: 2 }],
+    '2026-11-02',
+    10,
+  ),
+  false,
+  'An existing slot without a valid start hour must not create a false conflict.',
 );
 
 console.log('client booking handoff security regression: PASS');
