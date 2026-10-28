@@ -954,4 +954,56 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   assert.equal((await firestore.getDocument('users', 'owner-1')).data.role, 'admin');
 }
 
+// Two Owner transfers that read the same ownership revision must not promote
+// two admins or leave adminControl/ownership pointing at a former owner.
+{
+  const permissions = { dashboard: true };
+  const firestore = new BarrierReadFirestore({
+    users: {
+      'admin-2': { permissions, role: 'admin', status: 'approved' },
+      'admin-3': { permissions, role: 'admin', status: 'approved' },
+      'owner-1': { permissions, role: 'owner', status: 'approved' },
+    },
+    adminControl: {
+      ownership: {
+        currentOwnerUid: 'owner-1',
+        initializedAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    },
+  }, 'users', 'owner-1');
+
+  const attempts = await Promise.allSettled([
+    transferOwnership({
+      actor,
+      body: { targetUid: 'admin-2' },
+      firestore,
+      request: requestWithKey('owner-race-admin-2'),
+    }),
+    transferOwnership({
+      actor,
+      body: { targetUid: 'admin-3' },
+      firestore,
+      request: requestWithKey('owner-race-admin-3'),
+    }),
+  ]);
+
+  assert.equal(attempts.filter((attempt) => attempt.status === 'fulfilled').length, 1);
+  const rejected = attempts.find((attempt) => attempt.status === 'rejected');
+  assert.equal(rejected.reason.code, 'operation_conflict');
+
+  const users = ['owner-1', 'admin-2', 'admin-3'];
+  const owners = [];
+  for (const uid of users) {
+    const user = await firestore.getDocument('users', uid);
+    if (user.data.role === 'owner') owners.push(uid);
+  }
+  const ownership = (await firestore.getDocument('adminControl', 'ownership')).data;
+  assert.equal(owners.length, 1);
+  assert.equal(ownership.currentOwnerUid, owners[0]);
+  assert.equal((await firestore.getDocument('users', 'owner-1')).data.role, 'admin');
+  assert.equal(firestore.collection('adminOperationKeys').size, 1);
+  assert.equal(firestore.collection('adminOperationAudit').size, 1);
+}
+
 console.log('Admin operations Worker contract passed.');
