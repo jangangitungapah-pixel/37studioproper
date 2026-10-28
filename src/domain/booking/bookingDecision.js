@@ -64,22 +64,42 @@ export function isNoDurationPackageBooking(booking) {
   );
 }
 
+function isValidCalendarDate(value) {
+  const date = cleanText(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+
+  const parsed = new Date(\`${date}T00:00:00.000Z\`);
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === date
+  );
+}
+
+function getValidStartHour(value) {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return null;
+  }
+
+  const start = Number(value);
+  return Number.isInteger(start) && start >= 0 && start < 24
+    ? start
+    : null;
+}
+
 export function getBookingDecisionWindow(booking) {
   if (isNoDurationPackageBooking(booking)) {
     return null;
   }
 
-  const start = Number(booking?.startHour);
+  const start = getValidStartHour(booking?.startHour);
   const duration = Number(
     booking?.durationHours ??
     booking?.duration,
   );
 
   if (
-    !Number.isFinite(start) ||
+    start === null ||
     !Number.isFinite(duration) ||
-    start < 0 ||
-    start >= 24 ||
     duration <= 0
   ) {
     return null;
@@ -99,9 +119,13 @@ export function doBookingDecisionWindowsOverlap(
   firstBooking,
   secondBooking,
 ) {
+  const firstDate = cleanText(firstBooking?.date);
+  const secondDate = cleanText(secondBooking?.date);
+
   if (
-    cleanText(firstBooking?.date) !==
-    cleanText(secondBooking?.date)
+    !isValidCalendarDate(firstDate) ||
+    !isValidCalendarDate(secondDate) ||
+    firstDate !== secondDate
   ) {
     return false;
   }
@@ -167,11 +191,11 @@ function getCompletenessIssue(booking) {
     return 'Customer wajib tersedia sebelum booking dikonfirmasi.';
   }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanText(booking?.date))) {
+  if (!isValidCalendarDate(booking?.date)) {
     return 'Tanggal booking belum valid.';
   }
 
-  if (!Number.isFinite(Number(booking?.startHour))) {
+  if (getValidStartHour(booking?.startHour) === null) {
     return 'Jam mulai booking belum valid.';
   }
 
