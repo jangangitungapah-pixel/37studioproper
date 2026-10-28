@@ -83,6 +83,35 @@ class FakeFirestore {
   }
 }
 
+class BarrierReadFirestore extends FakeFirestore {
+  constructor(seed, targetCollection, targetId, requiredReads = 2) {
+    super(seed);
+    this.targetCollection = targetCollection;
+    this.targetId = targetId;
+    this.requiredReads = requiredReads;
+    this.targetReadCount = 0;
+    this.readBarrier = new Promise((resolveBarrier) => {
+      this.releaseReadBarrier = resolveBarrier;
+    });
+  }
+
+  async getDocument(collectionId, id) {
+    const snapshot = await super.getDocument(collectionId, id);
+
+    if (
+      collectionId === this.targetCollection &&
+      id === this.targetId &&
+      this.targetReadCount < this.requiredReads
+    ) {
+      this.targetReadCount += 1;
+      if (this.targetReadCount === this.requiredReads) this.releaseReadBarrier();
+      await this.readBarrier;
+    }
+
+    return snapshot;
+  }
+}
+
 function requestWithKey(key) {
   return new Request('https://operations.test/action', {
     headers: { 'x-idempotency-key': key },
@@ -585,6 +614,100 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   assert.equal(voided.booking.paymentStatusCanonical, 'void');
   assert.equal(firestore.collection('clientCalendarSlots').has('booking-1'), false);
   assert.equal(firestore.collection('bookingScheduleDays').get('2026-08-20').data.revision, 1);
+}
+
+// Force two finance requests to read the same booking revision before either commits.
+// This models the race that sequential retry tests cannot expose.
+{
+  const firestore = new BarrierReadFirestore({
+    bookings: {
+      'booking-payment-race': {
+        paymentHistory: [],
+        paymentStatus: 'pending',
+        paymentStatusCanonical: 'unpaid',
+        refundHistory: [],
+        total: 1000,
+      },
+    },
+  }, 'bookings', 'booking-payment-race');
+
+  const attempts = await Promise.allSettled([
+    recordPayment({
+      actor,
+      body: { amount: 700, bookingId: 'booking-payment-race', method: 'transfer' },
+      firestore,
+      request: requestWithKey('payment-race-a'),
+    }),
+    recordPayment({
+      actor,
+      body: { amount: 700, bookingId: 'booking-payment-race', method: 'qris' },
+      firestore,
+      request: requestWithKey('payment-race-b'),
+    }),
+  ]);
+
+  assert.equal(attempts.filter((attempt) => attempt.status === 'fulfilled').length, 1);
+  const rejected = attempts.find((attempt) => attempt.status === 'rejected');
+  assert.equal(rejected.reason.code, 'operation_conflict');
+
+  const booking = (await firestore.getDocument('bookings', 'booking-payment-race')).data;
+  assert.equal(booking.paymentHistory.length, 1);
+  assert.equal(booking.paidAmount, 700);
+  assert.equal(booking.invoiceAmount, 300);
+  assert.equal(firestore.collection('bookkeepingEntries').size, 1);
+  assert.equal(firestore.collection('adminOperationKeys').size, 1);
+  assert.equal(firestore.collection('adminOperationAudit').size, 1);
+}
+
+// Two stale refund calculations must never refund more than the original receipt total.
+{
+  const firestore = new BarrierReadFirestore({
+    bookings: {
+      'booking-refund-race': {
+        paymentHistory: [{
+          amount: 1000,
+          createdAt: '2026-08-20T10:00:00.000Z',
+          date: '2026-08-20',
+          id: 'payment-seed',
+          idempotencyKey: 'payment-seed',
+          method: 'transfer',
+          source: 'admin-payment',
+        }],
+        paymentStatus: 'lunas',
+        paymentStatusCanonical: 'paid',
+        refundHistory: [],
+        total: 1000,
+      },
+    },
+  }, 'bookings', 'booking-refund-race');
+
+  const attempts = await Promise.allSettled([
+    recordRefund({
+      actor,
+      body: { amount: 700, bookingId: 'booking-refund-race', method: 'transfer', reason: 'Refund pertama' },
+      firestore,
+      request: requestWithKey('refund-race-a'),
+    }),
+    recordRefund({
+      actor,
+      body: { amount: 700, bookingId: 'booking-refund-race', method: 'qris', reason: 'Refund kedua' },
+      firestore,
+      request: requestWithKey('refund-race-b'),
+    }),
+  ]);
+
+  assert.equal(attempts.filter((attempt) => attempt.status === 'fulfilled').length, 1);
+  const rejected = attempts.find((attempt) => attempt.status === 'rejected');
+  assert.equal(rejected.reason.code, 'operation_conflict');
+
+  const booking = (await firestore.getDocument('bookings', 'booking-refund-race')).data;
+  assert.equal(booking.refundHistory.length, 1);
+  assert.equal(booking.refundedAmount, 700);
+  assert.equal(booking.paidAmount, 300);
+  assert.equal(booking.invoiceAmount, 700);
+  assert.equal(firestore.collection('bookkeepingEntries').size, 1);
+  assert.equal(firestore.collection('adminOperationKeys').size, 1);
+  assert.equal(firestore.collection('adminOperationAudit').size, 1);
 }
 
 {
