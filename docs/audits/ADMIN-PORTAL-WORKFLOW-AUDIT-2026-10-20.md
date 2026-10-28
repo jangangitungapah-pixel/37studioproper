@@ -6,7 +6,10 @@ Related specification: `PRD_37Studio_Admin_Portal_UI_UX_Complete_v3.0.md`
 
 ## Scope and verification status
 
-This source-level workflow review was followed by a successful GitHub Actions run (`40763949770`) on branch head `88ba4991cf710d57a72dffcafb3508795ea76cef`. `npm ci`, production build, lint, the full `npm test` regression chain, and `npm run test:prd` all passed. This verifies the checked code contracts and Firestore rules suite, but not browser/mobile UI behavior or a live staging data-flow. Booking occupancy concurrency remains a separate P0 source-level finding and is not covered by a concurrent-request regression test.
+Latest verified code head: `33d7c63ed0ae47c3528d88560d42d9d160d980c5`.
+
+GitHub Actions run [#59](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40767735630) passed all gates on this head: `npm ci`, production build, lint, the full `npm test` regression chain, and `npm run test:prd` including Worker/security contracts and Firestore rules behavior. This confirms repository checks, not browser/mobile rendering or live staging behavior. Those acceptance checks remain open.
+
 
 ## Admin workflow map
 
@@ -39,27 +42,38 @@ Routing and permissions are centralized across `src/config/adminNavigation.js`, 
 | P1 | Inventory / gallery | Permission enforcement, adjustments/deletions, idempotency, external asset failures and retry behavior |
 | P2 | Shell UI | All viewport sizes, dropdown/modal stacking, keyboard focus, forced-colors, reduced-motion, empty/error/loading states |
 
-## Confirmed source-level finding: booking confirmation can validate against a stale occupancy snapshot
+## P0 booking occupancy race: remediation implemented and CI-covered
 
-Affected paths:
-- `src/services/bookingCommunicationRepository.js`: `resolveDecisionBookings()` queries bookings for the selected date before `runTransaction()`. Inside the transaction, the code reads the target booking document and validates against the previously fetched `decisionBookings` array.
-- `src/pages/admin/BookingRequestsPage.jsx`: the Request Inbox calls `bookingCommunicationRepository.updateBookingRequestStatus()` when confirming a request.
-- `workers/admin-operations-worker/src/domain/bookings.js`: server-side manual creation runs `assertSlotAvailable()` and writes `bookingScheduleDays/{date}` with an update-time precondition to coordinate concurrent manual creations.
-- `src/services/adminBookingRepository.js`: `updateManualBooking()` updates the booking and client calendar mirror in a batch after reading the current booking, without using the same date coordination document or a cross-record overlap check.
+The stale-snapshot race was identified in Request Inbox decisions and tracked as P0. The active booking mutation paths have now been routed through a shared date-coordination protocol using `bookingScheduleDays/{date}` with Firestore update-time / existence preconditions and atomic writes.
 
-The Request Inbox transaction does not read/write the same `bookingScheduleDays/{date}` coordination record used by server-side manual creation. Its pre-transaction query also does not make other booking documents part of the transaction's read set. Two concurrent confirmations can therefore check overlapping occupancy against stale snapshots and both attempt to confirm. The manual creation coordination mechanism does not by itself serialize this confirmation path or direct rescheduling path.
+### Implemented paths
 
-**Status: identified, not fixed. Do not claim concurrent slot integrity is guaranteed.**
+- **Manual create** — `createManualBooking()` checks server-side occupancy, then writes the booking and the date revision under a precondition.
+- **Request decision** — `decideBookingRequest()` in `workers/admin-operations-worker/src/domain/bookings.js` now handles confirm, reject, and approved cancellation. Confirmation re-queries current bookings and writes the booking, status aliases, message, calendar mirror, and date revision atomically. A lost date-revision precondition is retried and revalidated.
+- **Manual schedule edit/reschedule** — `updateManualBooking()` checks occupancy on the server and coordinates both the old and new date revisions, along with the booking/calendar mirror. Expected update timestamps reject stale form snapshots.
+- **Invoice void** — the finance Worker increments the affected date revision and removes the public client calendar mirror in the same idempotent commit, because a void invoice makes the booking non-blocking under the canonical selector.
+- **Metadata-only edits** — client code avoids echoing stale schedule/status fields back into Firestore when no schedule mutation was requested.
 
-### Required remediation design
+### Regression coverage and status
 
-1. Establish one canonical booking mutation boundary for confirm, cancel, manual create, manual edit/reschedule, and deletion. All occupancy-changing paths must participate in the same coordination protocol.
-2. Use a per-date revision/lock or canonical slot-occupancy record inside the atomic write protocol; refresh and evaluate conflicting intervals after acquiring coordination, and fail with a conflict response when another booking has claimed the interval.
-3. Migrate/reconcile legacy bookings before treating a new occupancy manifest as authoritative. Preserve the rule that `cancellation_requested` continues to occupy the slot until cancellation is approved.
-4. Add deterministic tests for two simultaneous confirmations of overlapping requests, confirmation racing with manual creation, manual reschedule racing with confirmation, same-day non-overlapping bookings, and the exact end-time boundary.
-5. Route all relevant writers through the canonical protocol. Fixing only Request Inbox would leave a bypass and would be incomplete.
+The Worker contract suite now verifies:
+- Two overlapping Request Inbox confirmations cannot both succeed.
+- Confirmation racing with manual booking creation cannot double-claim a slot.
+- Confirmation racing with manual reschedule to the same slot permits only one mutation.
+- Adjacent sessions meeting exactly at the previous end time remain valid.
+- A reschedule into an occupied interval fails and a reschedule to a free date succeeds.
+- Invalid/missing/coerced start hours are rejected before writing.
+- A `cancellation_requested` booking continues to occupy its slot until its cancellation is approved.
+- Rejection requires a reason; invoice void removes the public slot and increments the date revision.
 
-A partial client-side lock or cosmetic warning is not an acceptable remediation for this finding.
+**Status: implemented across the active create, request-decision, schedule-edit/reschedule, and void paths; full build, lint, regression, PRD, and Firestore Rules checks passed in CI run #59.** This is not a claim that live staging behavior has been browser-tested.
+
+Direct client deletion remains forbidden by Firestore Rules. Any future booking-deletion UI must use the same server mutation boundary and date-coordination protocol before it is enabled; it must not introduce a direct-write bypass.
+
+## Additional P0 access consistency fix
+
+The Worker now checks `adminControl/ownership.currentOwnerUid` against the authenticated UID when the user document declares `role: owner`. This aligns Worker authorization with the canonical owner rule and prevents a stale Owner role from retaining privileged server operations after an ownership transfer. Security contract coverage checks active owner, former owner, legacy no-control state, and ordinary approved admin behavior. This is verified in the same latest CI run.
+
 
 ## Other source-level observations
 
@@ -70,9 +84,8 @@ A partial client-side lock or cosmetic warning is not an acceptable remediation 
 
 ## Required runtime acceptance sequence
 
-1. Pass `npm ci`, `npm run build`, `npm run lint`, `npm test`, and `npm run test:prd` in GitHub Actions.
-2. Test the client booking handoff regression script on the latest branch head.
-3. In staging/emulator, test:
+1. The automated gates are green on code head `33d7c63ed0ae47c3528d88560d42d9d160d980c5`; rerun them after any further code changes.
+2. In a staging/emulator environment, verify the actual client/admin data flow and:
    - Client booking request → admin inbox → approve/reject → client state refresh.
    - Two overlapping pending requests confirmed concurrently.
    - Confirmation racing with manual booking creation and manual reschedule.
@@ -86,19 +99,18 @@ A partial client-side lock or cosmetic warning is not an acceptable remediation 
 
 ## Next implementation order
 
-1. Resolve any failures reported by the latest automated validation.
-2. Address P0 booking occupancy concurrency at the shared mutation boundary before further booking UI polish.
-3. Verify Admin/Owner access and sensitive payment/ledger invariants.
-4. Align the Admin shell and first workflows (Requests, Calendar, All Bookings, Billing) to PRD v3.0, retaining current business rules.
-5. Proceed to remaining workspaces, Client Portal, login pages, then landing/public booking.
+1. Complete browser/mobile and Firebase staging/emulator acceptance for booking confirm/reject/cancel, booking reschedule, invoice void, and the Owner-transfer access matrix.
+2. Validate payment proof → payment posting → ledger, partial/full refund, guard attendance → operator fee, and inventory adjustment with real test records and audit trails.
+3. Compare the Admin shell and primary workflows (Requests, Calendar, All Bookings, Billing) against PRD v3.0 on desktop and 360–430 px mobile. Capture screenshots, keyboard/focus behavior, reduced-motion behavior, and console errors.
+4. Continue through Client Portal, authentication entry points, then landing/public booking in the order defined by the PRD.
 
 ## Status
 
 - [x] Source route and navigation contracts reviewed.
 - [x] Admin workspace and sensitive operations identified.
-- [x] Build and lint passed on the latest verified branch head `88ba4991cf710d57a72dffcafb3508795ea76cef`.
-- [x] Targeted booking handoff and full regression suite passed on that branch head.
-- [x] PRD / Firestore rules contract suite passed on that branch head.
-- [ ] Booking occupancy concurrency remediated across all write paths.
-- [ ] Browser and staging data-flow QA executed.
-- [ ] UI/workflow changes verified against PRD.
+- [x] `npm ci`, production build, lint, full `npm test`, and `npm run test:prd` passed on code head `33d7c63ed0ae47c3528d88560d42d9d160d980c5` (Actions run #59).
+- [x] Shared date-revision coordination implemented and race tests passed for confirm/confirm, confirm/manual create, and confirm/reschedule.
+- [x] Invoice void updates the date revision and removes the public calendar mirror atomically.
+- [x] Worker Owner authorization checks the canonical ownership UID and is covered by the security contracts.
+- [ ] Browser/mobile and live staging data-flow QA executed.
+- [ ] UI/workflow acceptance verified against PRD v3.0.

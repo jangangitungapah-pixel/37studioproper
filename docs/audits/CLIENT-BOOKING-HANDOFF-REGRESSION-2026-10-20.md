@@ -19,12 +19,12 @@ The branch now validates raw query/hour values before numeric conversion, valida
 
 ## Verification status
 
-- [x] Targeted handoff regression script executed as part of the full repository `npm test` suite.
-- [x] `npm test`, `npm run lint`, and `npm run build` passed in GitHub Actions run `40763949770` on commit `88ba4991cf710d57a72dffcafb3508795ea76cef`.
-- [x] `npm run test:prd` passed, including the repository's Firestore rules contract suite.
-- [ ] Completed browser/mobile QA and live staging data-flow tests.
+- [x] Targeted handoff regression script passed as part of the complete repository `npm test` suite.
+- [x] Latest code head `33d7c63ed0ae47c3528d88560d42d9d160d980c5` passed `npm ci`, `npm run build`, `npm run lint`, `npm test`, and `npm run test:prd` in [GitHub Actions run #59](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40767735630).
+- [x] Worker race contracts passed for concurrent overlapping confirmations, confirmation vs. manual creation, confirmation vs. reschedule, exact boundary adjacency, required rejection reason, cancellation-request slot occupancy, and void mirror cleanup.
+- [ ] Completed browser/mobile QA and live Firebase staging data-flow tests.
 
-The CI result verifies repository tests and build/lint contracts. It does not establish that browser layouts, live Firebase integrations, or concurrent booking decisions are safe.
+CI verifies repository tests, Worker contracts, build/lint, and Firestore Rules behavior. It does not replace real browser acceptance or a live staging data-flow test.
 
 ## Run from the repository root
 
