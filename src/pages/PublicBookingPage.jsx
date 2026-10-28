@@ -22,6 +22,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import {
+  useLocation,
   useNavigate,
 } from 'react-router-dom';
 import {
@@ -37,6 +38,7 @@ import {
   buildClientBookingResumePath,
   isBookingStartOccupied,
 } from '../utils/clientBookingHandoff.js';
+import { parsePublicBookingSelection } from '../utils/publicBookingSelection.js';
 import '../styles/routes/public.css';
 import '../styles/public-booking.css';
 
@@ -177,15 +179,27 @@ function SlotGroup({
 }
 
 export default function PublicBookingPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const todayKey = useMemo(() => getLocalDateKey(new Date()), []);
-  const [selectedDate, setSelectedDate] = useState(todayKey);
-  const [selectedStartHour, setSelectedStartHour] = useState(null);
-  const [dateWindowOffset, setDateWindowOffset] = useState(0);
+  const initialSelection = useMemo(
+    () => parsePublicBookingSelection(location.search, todayKey),
+    [location.search, todayKey],
+  );
+  const [selectedDate, setSelectedDate] = useState(initialSelection.date);
+  const [selectedStartHour, setSelectedStartHour] = useState(initialSelection.startHour);
+  const [dateWindowOffset, setDateWindowOffset] = useState(initialSelection.dateWindowOffset);
   const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [subscriptionVersion, setSubscriptionVersion] = useState(0);
+
+  useEffect(() => {
+    const selection = parsePublicBookingSelection(location.search, todayKey);
+    setSelectedDate(selection.date);
+    setSelectedStartHour(selection.startHour);
+    setDateWindowOffset(selection.dateWindowOffset);
+  }, [location.search, todayKey]);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
@@ -225,6 +239,13 @@ export default function PublicBookingPage() {
     }),
     [selectedDate, slots],
   );
+
+  useEffect(() => {
+    if (isLoading || selectedStartHour == null) return;
+
+    const selected = availability.find((item) => item.startHour === selectedStartHour);
+    if (!selected?.available) setSelectedStartHour(null);
+  }, [availability, isLoading, selectedStartHour]);
 
   const availableCount = availability.filter((item) => item.available).length;
   const afternoonSlots = availability.filter((item) => item.startHour < 16);
