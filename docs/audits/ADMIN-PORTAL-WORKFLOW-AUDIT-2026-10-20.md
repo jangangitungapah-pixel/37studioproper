@@ -6,7 +6,7 @@ Related specification: `PRD_37Studio_Admin_Portal_UI_UX_Complete_v3.0.md`
 
 ## Scope and verification status
 
-This is a source-level workflow review plus initial GitHub Actions verification. Build and lint passed on commit `d51fcb9adadb284d26ea3b4d5c338761eb2fab85`; its regression step failed because the booking-date regex on that commit had incorrectly escaped digit tokens. The regex was corrected in commit `4c208c0a09f2ab04f1bcc560dac211b01bc611a2`, and the latest Actions run is pending/in progress at the time of this update. Do not infer that the full regression suite or PRD/Firestore suite passed from the earlier run. Browser and staging/emulator QA remain incomplete.
+This source-level workflow review was followed by a successful GitHub Actions run (`40763949770`) on branch head `88ba4991cf710d57a72dffcafb3508795ea76cef`. `npm ci`, production build, lint, the full `npm test` regression chain, and `npm run test:prd` all passed. This verifies the checked code contracts and Firestore rules suite, but not browser/mobile UI behavior or a live staging data-flow. Booking occupancy concurrency remains a separate P0 source-level finding and is not covered by a concurrent-request regression test.
 
 ## Admin workflow map
 
@@ -96,9 +96,9 @@ A partial client-side lock or cosmetic warning is not an acceptable remediation 
 
 - [x] Source route and navigation contracts reviewed.
 - [x] Admin workspace and sensitive operations identified.
-- [x] Build and lint passed on the earlier branch commit.
-- [ ] Latest targeted regression and full regression suite passed.
-- [ ] PRD / Firestore emulator suite passed.
+- [x] Build and lint passed on the latest verified branch head `88ba4991cf710d57a72dffcafb3508795ea76cef`.
+- [x] Targeted booking handoff and full regression suite passed on that branch head.
+- [x] PRD / Firestore rules contract suite passed on that branch head.
 - [ ] Booking occupancy concurrency remediated across all write paths.
 - [ ] Browser and staging data-flow QA executed.
 - [ ] UI/workflow changes verified against PRD.

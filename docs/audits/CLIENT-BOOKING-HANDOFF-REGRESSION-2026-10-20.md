@@ -15,16 +15,16 @@ It covers:
 
 The first source review tightened calendar-date and integer-hour validation, but the parser still converted `params.get('bookStart')` to a number before validation. JavaScript turns an empty string or missing query value into `0`, bypassing the intended missing-hour rejection. The occupied-slot helper had the same coercion issue for an empty target hour and also treated an existing slot with an empty start hour as midnight.
 
-The branch now validates raw query/hour values before numeric conversion, and validates existing slot start hours before comparing overlap. Regression assertions cover the missing query parameter, empty value, null/undefined/fractional/out-of-range target hours, and malformed existing slots.
+The branch now validates raw query/hour values before numeric conversion, validates real calendar dates, and checks existing slot start hours before overlap comparison. Admin decision validation also rejects impossible dates and missing, fractional, out-of-range, or coerced hour values. Regression assertions cover absent/empty query parameters, invalid types, unsafe redirect destinations, and booking overlap boundaries.
 
 ## Verification status
 
-- [x] Ran the targeted regression logic in an isolated Node.js workspace using a local reproduction of the branch utility and test script: `client booking handoff security regression: PASS`.
-- [ ] Executed the script from a complete repository checkout.
-- [ ] Ran `npm test`, `npm run lint`, and `npm run build`.
-- [ ] Completed browser / Firebase emulator testing.
+- [x] Targeted handoff regression script executed as part of the full repository `npm test` suite.
+- [x] `npm test`, `npm run lint`, and `npm run build` passed in GitHub Actions run `40763949770` on commit `88ba4991cf710d57a72dffcafb3508795ea76cef`.
+- [x] `npm run test:prd` passed, including the repository's Firestore rules contract suite.
+- [ ] Completed browser/mobile QA and live staging data-flow tests.
 
-The isolated run verifies the targeted logic only. It is not a claim that the full repository test suite, build, lint, or runtime workflows pass.
+The CI result verifies repository tests and build/lint contracts. It does not establish that browser layouts, live Firebase integrations, or concurrent booking decisions are safe.
 
 ## Run from the repository root
 
