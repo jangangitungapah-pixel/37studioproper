@@ -127,7 +127,10 @@ function buildBooking(body, actor, key) {
   const customer = cleanText(body.customer, 120);
   if (!customer) throw new HttpError(400, 'customer_required', 'Nama customer wajib diisi.');
   const date = cleanDate(body.date);
-  const startHour = cleanNumber(body.startHour, 0, 23, 'invalid_start_hour', 'Jam mulai booking tidak valid.');
+  if (!isValidStartHour(body.startHour)) {
+    throw new HttpError(400, 'invalid_start_hour', 'Jam mulai booking harus berupa jam bulat antara 00 dan 23.');
+  }
+  const startHour = Number(body.startHour);
   const durationHours = cleanNumber(body.durationHours, 0, 24, 'invalid_duration', 'Durasi booking tidak valid.');
   const pricingMode = cleanText(body.pricingMode || 'session', 40);
   if (durationHours === 0 && pricingMode !== 'package') {
