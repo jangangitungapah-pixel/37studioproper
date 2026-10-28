@@ -232,7 +232,7 @@ for (
     '.admin-mobile-logout',
     'safe-area-inset-bottom',
     'safe-area-inset-top',
-    'max-width: 767px',
+    'max-width: 899px',
     'max-width: 359px',
     'prefers-reduced-motion: reduce',
     '--studio-surface-floating',

@@ -399,15 +399,15 @@
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .admin-shell {
     display: grid;
-    grid-template-columns: 244px minmax(0, 1fr);
+    grid-template-columns: 240px minmax(0, 1fr);
     padding-bottom: 0;
     transition: grid-template-columns 180ms ease;
   }
 
-  .admin-shell.is-sidebar-collapsed { grid-template-columns: 76px minmax(0, 1fr); }
+  .admin-shell.is-sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
 
   .admin-sidebar {
     position: sticky;
@@ -679,10 +679,10 @@
 
 .admin-shell {
   --admin-sidebar-expanded:
-    264px;
+    240px;
 
   --admin-sidebar-collapsed:
-    78px;
+    72px;
 
   --admin-shell-desktop-gutter:
     24px;
@@ -728,7 +728,7 @@
     none;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .admin-shell {
     grid-template-columns:
       var(--admin-sidebar-expanded)
@@ -1874,7 +1874,7 @@
     100dvh;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .admin-shell[
     data-admin-spatial-root='true'
   ] {
@@ -2147,9 +2147,7 @@
   }
 }
 
-@media (
-  min-width: 768px
-)
+@media (min-width: 900px)
 and (
   max-height: 720px
 ) {
@@ -2170,15 +2168,15 @@ and (
 
 /* UI-0B v2 — Spatial Desktop Navigation Rail */
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .admin-shell[
     data-admin-spatial-root='true'
   ] {
     --admin-sidebar-expanded:
-      258px;
+      240px;
 
     --admin-sidebar-collapsed:
-      78px;
+      72px;
   }
 
   .admin-navigation-zone {
@@ -3827,9 +3825,7 @@ and (
   }
 }
 
-@media (
-  min-width: 768px
-)
+@media (min-width: 900px)
 and (
   max-height: 690px
 ) {
@@ -3911,7 +3907,7 @@ and (
     nowrap;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .admin-workspace-canvas
   .admin-topbar[
     data-admin-spatial-header='ui-0c'
@@ -4759,9 +4755,7 @@ and (
   }
 }
 
-@media (
-  min-width: 768px
-)
+@media (min-width: 900px)
 and (
   max-width: 980px
 ) {
@@ -4850,7 +4844,7 @@ and (
 
 /* UI-0D v2 — Spatial Mobile Shell */
 
-@media (max-width: 767px) {
+@media (max-width: 899px) {
   .admin-shell[
     data-admin-spatial-root='true'
   ] {
@@ -6673,7 +6667,7 @@ and (
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .admin-mobile-more-overlay,
   .admin-mobile-more-sheet {
     display:
@@ -6786,7 +6780,7 @@ and (
 /*
  * Mobile shell must remain within viewport width.
  */
-@media (max-width: 767px) {
+@media (max-width: 899px) {
   .admin-workspace,
   .admin-workspace-canvas,
   .admin-stage,

@@ -162,9 +162,9 @@ for (
   of [
     'UI-0A/B — Admin Shell Foundation + Desktop Overhaul',
     '--admin-sidebar-expanded:',
-    '264px',
+    '240px',
     '--admin-sidebar-collapsed:',
-    '78px',
+    '72px',
     '.admin-sidebar-account',
     '.admin-account-avatar',
     '.admin-route-loading',
