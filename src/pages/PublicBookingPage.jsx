@@ -195,13 +195,6 @@ export default function PublicBookingPage() {
   const [subscriptionVersion, setSubscriptionVersion] = useState(0);
 
   useEffect(() => {
-    const selection = parsePublicBookingSelection(location.search, todayKey);
-    setSelectedDate(selection.date);
-    setSelectedStartHour(selection.startHour);
-    setDateWindowOffset(selection.dateWindowOffset);
-  }, [location.search, todayKey]);
-
-  useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
       (data) => {
         setSlots(data);
@@ -239,13 +232,6 @@ export default function PublicBookingPage() {
     }),
     [selectedDate, slots],
   );
-
-  useEffect(() => {
-    if (isLoading || selectedStartHour == null) return;
-
-    const selected = availability.find((item) => item.startHour === selectedStartHour);
-    if (!selected?.available) setSelectedStartHour(null);
-  }, [availability, isLoading, selectedStartHour]);
 
   const availableCount = availability.filter((item) => item.available).length;
   const afternoonSlots = availability.filter((item) => item.startHour < 16);
@@ -466,13 +452,13 @@ export default function PublicBookingPage() {
               <SlotGroup
                 items={afternoonSlots}
                 label="Siang"
-                selectedStartHour={selectedStartHour}
+                selectedStartHour={selectedSlot?.startHour ?? null}
                 onSelect={setSelectedStartHour}
               />
               <SlotGroup
                 items={eveningSlots}
                 label="Malam"
-                selectedStartHour={selectedStartHour}
+                selectedStartHour={selectedSlot?.startHour ?? null}
                 onSelect={setSelectedStartHour}
               />
             </div>
