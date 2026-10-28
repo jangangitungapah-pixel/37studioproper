@@ -350,6 +350,70 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
 }
 
 {
+  const currentManual = {
+    bookingRequestStatus: 'confirmed',
+    customer: 'Manual race',
+    date: '2026-08-21',
+    durationHours: 2,
+    id: 'manual-race-reschedule',
+    requestStatus: 'confirmed',
+    sessionLabel: 'Rehearsal',
+    sessionStatus: 'scheduled',
+    source: 'admin',
+    startHour: 14,
+    status: 'pending',
+    updatedAt: '2026-08-19T10:00:00.000Z',
+  };
+  const firestore = new FakeFirestore({
+    bookings: {
+      'request-vs-reschedule': pendingClientRequest('request-vs-reschedule', 10, 2),
+      'manual-race-reschedule': currentManual,
+    },
+  });
+  const outcomes = await Promise.allSettled([
+    decideBookingRequest({
+      actor,
+      body: {
+        bookingId: 'request-vs-reschedule',
+        decisionKey: 'request-vs-reschedule-decision',
+        note: 'Disetujui admin',
+        status: 'confirmed',
+      },
+      firestore,
+      request: requestWithKey('request-vs-reschedule-decision'),
+    }),
+    updateManualBooking({
+      actor,
+      body: {
+        expectedUpdatedAt: currentManual.updatedAt,
+        id: currentManual.id,
+        patch: { date: '2026-08-20', durationHours: 2, startHour: 10 },
+      },
+      firestore,
+      request: requestWithKey('manual-reschedule-vs-confirmation'),
+    }),
+  ]);
+
+  assert.equal(
+    outcomes.filter((result) => result.status === 'fulfilled').length,
+    1,
+    'Only one of an overlapping confirmation and reschedule may claim the same slot.',
+  );
+  assert.equal(
+    outcomes.filter((result) => result.status === 'rejected').length,
+    1,
+    'The concurrent mutation that loses the schedule-day revision must be revalidated.',
+  );
+
+  const activeOverlaps = [...firestore.collection('bookings').values()].filter(({ data }) => (
+    data.date === '2026-08-20' &&
+    (data.requestStatus === 'confirmed' || data.source === 'admin')
+  ));
+  assert.equal(activeOverlaps.length, 1);
+  assert.equal(firestore.collection('bookingScheduleDays').has('2026-08-20'), true);
+}
+
+{
   const current = {
     bookingRequestStatus: 'confirmed',
     customer: 'Existing customer',
