@@ -708,7 +708,7 @@ function GuardAttendancePageContent() {
                 <ArrowRight size={15} aria-hidden="true" />
               </Link>
             )}
-            description="Email/password, Google, dan OTP nomor HP tersedia dari satu session Firebase yang sama."
+            description="Email/password dan Google tersedia dari satu session Firebase yang sama."
             eyebrow="Attendance workspace"
             icon={ShieldCheck}
             title="Masuk untuk mulai shift"

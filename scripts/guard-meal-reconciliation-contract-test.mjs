@@ -440,6 +440,23 @@ assert.equal(
   true,
 );
 
+const guardMealLookupSource =
+  repositorySource.match(
+    /async function hasApprovedGuardMealForDay\([\s\S]*?(?=\nfunction createGuardAttendanceSubmittedNotification)/,
+  )?.[0] || '';
+
+assert.match(
+  guardMealLookupSource,
+  /if \(!record\?\.guardUid \|\| !record\?\.date\) return false;/,
+  'Guard meal lookup must not issue a broad read when the guard/date scope is missing.',
+);
+
+assert.match(
+  guardMealLookupSource,
+  /where\(\s*'date',\s*'==',\s*record\.date,\s*\),/s,
+  'Guard meal lookup must filter by the attendance date in Firestore, not after reading all history.',
+);
+
 process.stdout.write(
   '✅ Guard Meal Reconciliation contract passed.\n',
 );

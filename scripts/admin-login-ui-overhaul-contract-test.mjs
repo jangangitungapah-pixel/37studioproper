@@ -50,12 +50,10 @@ for (const required of [
   'Satu pintu masuk untuk seluruh operasi studio.',
   'admin-login-capability-grid',
   'Role-based secure workspace',
-  'admin-login-method-tabs',
   'admin-login-primary-action',
   'admin-login-google',
   'admin-login-form-footer',
-  'aria-selected={activeTab === \'email\'}',
-  'aria-selected={activeTab === \'phone\'}',
+  'onSubmit={handleEmailAuth}',
 ]) {
   assert.equal(
     loginSource.includes(
@@ -75,11 +73,10 @@ for (const required of [
   "startsWith('/guard')",
   'adminAuthRepository.subscribeAdminAuth',
   'adminAuthRepository.signInAdmin',
-  'adminAuthRepository.sendPhoneOTP',
+  'adminAuthRepository.signInAdmin',
   'adminAuthRepository.signInWithGoogle',
-  'adminAuthRepository.ensureCurrentAdminAccess',
   'adminAuthRepository.signOutAdmin',
-  'RecaptchaVerifier',
+  'sanitizePortalRedirect',
   'AccountRoleDecisionDialog',
   '!guardIntent && authMode',
   "? 'Guard Portal'",
@@ -204,6 +201,9 @@ assert.equal(
   true,
   'Admin Login UI overhaul contract must be registered in npm test.',
 );
+
+assert.doesNotMatch(loginSource, /activeTab|sendPhoneOTP|signInWithPhoneNumber|RecaptchaVerifier|handleSendOTP|handleVerifyOTP/, 'Admin Login must not expose Firebase phone OTP on Spark.');
+assert.doesNotMatch(clientLoginSource, /activeTab|signInWithPhoneNumber|RecaptchaVerifier|handleSendOTP|handleVerifyOTP/, 'Client Login must not expose Firebase phone OTP on Spark.');
 
 console.log(
   'admin-login-ui-overhaul-contract-test: PASS',

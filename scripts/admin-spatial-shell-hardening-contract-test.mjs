@@ -474,9 +474,9 @@ for (
     '@media (forced-colors: active)',
     '@media (prefers-reduced-motion: reduce)',
     'touch-action:',
-    'max-width: 767px',
+    'max-width: 899px',
     'max-width: 359px',
-    'min-width: 768px',
+    'min-width: 900px',
     'min-width: 1280px',
   ]
 ) {

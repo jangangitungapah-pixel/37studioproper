@@ -93,11 +93,15 @@ assert.equal(
 );
 
 assert.equal(
-  landingSource.includes(
-    "navigate('/book');",
-  ),
+  landingSource.includes("navigate('/book?' + params.toString());"),
   true,
-  'Landing booking CTA must enter public availability.',
+  'Landing booking CTA must enter public availability with its selected date and start hour.',
+);
+assert.equal(
+  landingSource.includes("params.set('date', date);") &&
+    landingSource.includes("params.set('startHour', startHour);"),
+  true,
+  'Planner date and time must be carried into the public booking calendar.',
 );
 
 assert.equal(

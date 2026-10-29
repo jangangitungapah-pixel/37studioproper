@@ -424,7 +424,7 @@ for (const required of [
   "startsWith('/guard')",
   'const guardRedirectTarget =',
   'if (guardIntent) {',
-  'adminAuthRepository.sendPhoneOTP',
+  'adminAuthRepository.signInAdmin',
   '!guardIntent && authMode',
   'Masuk Guard Portal',
 ]) {
@@ -665,6 +665,8 @@ for (const required of [
       required,
   );
 }
+
+assert.doesNotMatch(loginSource, /sendPhoneOTP|signInWithPhoneNumber|RecaptchaVerifier/, 'Shared Guard login must not expose Firebase phone OTP on Spark.');
 
 console.log(
   'guard-portal-final-regression-contract-test: PASS',

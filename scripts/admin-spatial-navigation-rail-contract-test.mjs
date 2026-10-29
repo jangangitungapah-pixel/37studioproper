@@ -96,9 +96,9 @@ for (
   of [
     'UI-0B v2 — Spatial Desktop Navigation Rail',
     '--admin-sidebar-expanded:',
-    '258px',
+    '240px',
     '--admin-sidebar-collapsed:',
-    '78px',
+    '72px',
     "data-admin-spatial-rail='ui-0b'",
     '.admin-sidebar-logo-halo',
     '.admin-nav-section-items',

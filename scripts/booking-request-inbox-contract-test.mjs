@@ -155,6 +155,52 @@ assert.equal(
 
 assert.equal(
   validateBookingDecision({
+    booking: { ...submittedRequest, date: '2026-02-31' },
+    status: 'confirmed',
+  }).code,
+  'incomplete-booking',
+  'Impossible calendar dates must not be confirmed.',
+);
+
+for (const invalidStartHour of ['', null, undefined, false, true, '1e1', '10.5', 10.5, 24, -1]) {
+  assert.equal(
+    validateBookingDecision({
+      booking: { ...submittedRequest, startHour: invalidStartHour },
+      status: 'confirmed',
+    }).code,
+    'incomplete-booking',
+    'Invalid start hour must not be confirmed: ' + String(invalidStartHour),
+  );
+
+  assert.equal(
+    doBookingDecisionWindowsOverlap(
+      submittedRequest,
+      {
+        date: submittedRequest.date,
+        durationHours: 1,
+        startHour: invalidStartHour,
+      },
+    ),
+    false,
+    'Invalid start hour must not be interpreted as a blocking interval: ' + String(invalidStartHour),
+  );
+}
+
+assert.equal(
+  doBookingDecisionWindowsOverlap(
+    submittedRequest,
+    {
+      date: '2026-02-31',
+      durationHours: 1,
+      startHour: 10,
+    },
+  ),
+  false,
+  'Impossible dates must not enter the booking overlap comparison.',
+);
+
+assert.equal(
+  validateBookingDecision({
     booking: { ...submittedRequest, customer: '' },
     status: 'confirmed',
   }).code,

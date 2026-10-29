@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
-import { createCanonicalManualBooking } from './adminOperationsRepository.js';
+import { createCanonicalManualBooking, updateCanonicalManualBooking } from './adminOperationsRepository.js';
 import {
   getBookingRequestStatus,
   getLegacyBookingPaymentStatus,
@@ -498,6 +498,7 @@ export async function updateManualBooking(booking) {
     'paymentStatusBeforeRefund', 'paymentStatusCanonical', 'refundCompletedAt',
     'refundHistory', 'refundedAmount', 'refundStatus', 'status', 'subtotal',
     'total', 'voidReason', 'voidedAt', 'voidedByName', 'voidedByUid',
+    'bookingRequestStatus', 'requestStatus', 'source',
   ]);
   const safePatch = Object.fromEntries(
     Object.entries(booking).filter(([key]) => !protectedFields.has(key)),
@@ -517,10 +518,41 @@ export async function updateManualBooking(booking) {
     booking.id
   );
 
+  const scheduleFields = ['date', 'startHour', 'durationHours', 'duration', 'sessionStatus'];
+  const currentDuration = Number(currentBooking.durationHours ?? currentBooking.duration ?? 0);
+  const nextDuration = Number(booking.durationHours ?? booking.duration ?? currentDuration);
+  const scheduleChanged =
+    String(booking.date ?? currentBooking.date ?? '') !== String(currentBooking.date ?? '') ||
+    Number(booking.startHour ?? currentBooking.startHour) !== Number(currentBooking.startHour) ||
+    nextDuration !== currentDuration ||
+    String(booking.sessionStatus ?? currentBooking.sessionStatus ?? '') !== String(currentBooking.sessionStatus ?? '');
+
+  if (scheduleChanged) {
+    const result = await updateCanonicalManualBooking({
+      expectedUpdatedAt: booking.updatedAt || currentBooking.updatedAt || '',
+      id: booking.id,
+      patch: safePatch,
+    });
+    return result.booking
+      ? normalizeBookingBillingIdentity(result.booking, booking.id)
+      : normalizeBookingBillingIdentity(
+        { ...currentBooking, ...safePatch, id: booking.id, updatedAt: new Date().toISOString() },
+        booking.id,
+      );
+  }
+
+  // Metadata-only edits must not echo old date/time/lifecycle values back to
+  // Firestore. Otherwise an old form snapshot could undo a concurrent schedule decision.
+  const metadataPatch = { ...safePatch };
+  for (const field of scheduleFields) delete metadataPatch[field];
+  delete metadataPatch.bookingRequestStatus;
+  delete metadataPatch.requestStatus;
+  delete metadataPatch.source;
+
   const batch = writeBatch(firestoreDb);
   const publicSlot = buildClientCalendarSlot(cleanBooking);
 
-  batch.set(docRef, { ...safePatch, id: booking.id, updatedAt }, { merge: true });
+  batch.set(docRef, { ...metadataPatch, id: booking.id, updatedAt }, { merge: true });
 
   if (publicSlot) {
     batch.set(getClientCalendarSlotRef(booking.id), publicSlot, { merge: true });

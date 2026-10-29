@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assertOwnerControlMatches } from '../workers/admin-operations-worker/src/lib/auth.js';
+
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const read = (path) => readFileSync(resolve(repositoryRoot, path), 'utf8');
 const rules = read('firestore.rules');
@@ -17,6 +19,7 @@ const bookingWorker = read('workers/admin-operations-worker/src/domain/bookings.
 const galleryWorker = read('workers/admin-operations-worker/src/domain/gallery.js');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
+const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
 
 assert.match(
   rules,
@@ -25,6 +28,33 @@ assert.match(
 );
 assert.equal(rules.includes('match /adminControl/ownership'), true);
 assert.equal(rules.includes('ownershipControlMatches()'), true);
+assert.doesNotThrow(() => assertOwnerControlMatches(
+  { role: 'owner', status: 'approved' },
+  'uid-current',
+  { data: { currentOwnerUid: 'uid-current' } },
+));
+assert.doesNotThrow(() => assertOwnerControlMatches(
+  { role: 'owner', status: 'approved' },
+  'uid-legacy',
+  null,
+), 'A legacy owner remains compatible until ownership control is initialized.');
+assert.throws(
+  () => assertOwnerControlMatches(
+    { role: 'owner', status: 'approved' },
+    'uid-former-owner',
+    { data: { currentOwnerUid: 'uid-current' } },
+  ),
+  (error) => error?.code === 'owner_identity_mismatch' && error?.status === 403,
+  'A stale owner role must not bypass canonical ownership after a transfer.',
+);
+assert.doesNotThrow(() => assertOwnerControlMatches(
+  { role: 'admin', status: 'approved' },
+  'uid-admin',
+  { data: { currentOwnerUid: 'uid-current' } },
+), 'The canonical owner control must not block ordinary approved admins.');
+assert.equal(workerAuth.includes("firestore.getDocument('adminControl', 'ownership')"), true);
+assert.equal(workerAuth.includes('assertOwnerControlMatches(user, identity.uid, ownershipControlDocument)'), true);
+
 assert.equal(accountRoleRepository.includes("doc(firestoreDb, 'adminControl', 'ownership')"), true);
 assert.doesNotMatch(
   rules,
