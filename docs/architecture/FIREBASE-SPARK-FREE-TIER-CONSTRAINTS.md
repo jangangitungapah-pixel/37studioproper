@@ -63,9 +63,9 @@ When a no-billing quota is exhausted, fail safely and show an actionable error. 
 
 Run **npm run test:spark** or **npm test**. The **Quality Gates** GitHub Actions workflow executes **npm test**, so this policy is part of CI.
 
-The scanner checks for newly introduced SMS OTP, Firebase mail-Extension fallback, Cloud Functions, Firebase Storage, Firebase Extension installation, Vertex/Agent Platform AI, excessive App Check Enterprise provider instances, unguarded Firebase deployment workflows, and unsafe AI model overrides.
+The scanner checks for newly introduced SMS OTP, Firebase mail-Extension fallback, Cloud Functions, Firebase Storage, Firebase Extension installation, Vertex/Agent Platform AI, excessive App Check Enterprise provider instances, prohibited dependencies in root/Worker package manifests, disallowed Firebase products in firebase.json, unsafe Firebase/Cloudflare deploy workflows, and unsafe AI model overrides.
 
-Any SMS Phone Auth or Firebase mail-Extension fallback occurrence now fails CI, regardless of path. Cloud Functions, Firebase Storage, Firebase Extensions, and Vertex/Agent Platform usage are also disallowed. The existing App Check Enterprise provider has a narrow count bound because it is Spark-eligible but quota-limited. This static scanner is not a complete semantic billing analyzer: reviewers must still inspect official pricing/plan documentation when a dependency or configuration changes.
+Any SMS Phone Auth or Firebase mail-Extension fallback occurrence now fails CI, regardless of path. Cloud Functions, Firebase Storage, Firebase Extensions, and Vertex/Agent Platform usage are also disallowed. The gate additionally rejects known billing-incompatible Google/Firebase package dependencies, Firebase config keys for Functions/Storage/Extensions/App Hosting/Data Connect, and any deployment action/command in routine workflows until environment isolation and explicit approval guards exist. The existing App Check Enterprise provider has a narrow count bound because it is Spark-eligible but quota-limited. This static scanner is not a complete semantic billing analyzer: reviewers must still inspect official pricing/plan documentation when a dependency or configuration changes.
 
 ## Official references
 
