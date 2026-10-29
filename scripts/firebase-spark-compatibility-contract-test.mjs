@@ -131,14 +131,64 @@ if (/VertexAIBackend|vertexai\.googleapis\.com|aiplatform\.googleapis\.com/i.tes
   failures.push('Firebase AI service must remain on the Gemini Developer API backend, not Vertex/Agent Platform.');
 }
 
+// Check dependency manifests as well as runtime imports. A prohibited SDK can be
+// added to the project before its first import, so source scanning alone is not enough.
+const prohibitedPackages = new Map([
+  ['firebase-functions', 'Firebase Cloud Functions are not available for this Spark-only architecture.'],
+  ['firebase-functions-test', 'Do not add tests that depend on the disallowed Firebase Cloud Functions runtime.'],
+  ['@google-cloud/functions', 'Google Cloud Functions is not permitted in the no-billing architecture.'],
+  ['@google-cloud/functions-framework', 'Google Cloud Functions Framework is not permitted in the no-billing architecture.'],
+  ['@google-cloud/storage', 'Google Cloud Storage APIs may require billing and must not bypass the Firebase Spark Storage restriction.'],
+  ['@google-cloud/aiplatform', 'Vertex AI / Agent Platform client dependencies are not permitted in this architecture.'],
+  ['@google-cloud/vertexai', 'Vertex AI client dependencies are not permitted in this architecture.'],
+]);
+const manifestPaths = [
+  resolve(root, 'package.json'),
+  ...walk(resolve(root, 'workers')).filter((file) => file.endsWith(sep + 'package.json')),
+];
+for (const manifestPath of manifestPaths) {
+  if (!existsSync(manifestPath)) continue;
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch {
+    failures.push(relativePath(manifestPath) + ' is not valid JSON and its dependency policy cannot be checked.');
+    continue;
+  }
+
+  for (const section of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+    for (const packageName of Object.keys(manifest[section] || {})) {
+      const reason = prohibitedPackages.get(packageName);
+      if (reason) failures.push(relativePath(manifestPath) + ' includes prohibited package ' + packageName + ': ' + reason);
+    }
+  }
+}
+
+// Keep Firebase project configuration limited to Spark-compatible products.
+// Firebase Hosting and Firestore are allowed; adding a paid/Blaze-only product
+// must require an explicit architecture review rather than slipping into firebase.json.
+const firebaseConfigPath = resolve(root, 'firebase.json');
+if (existsSync(firebaseConfigPath)) {
+  try {
+    const firebaseConfig = JSON.parse(readFileSync(firebaseConfigPath, 'utf8'));
+    for (const forbiddenKey of ['functions', 'storage', 'extensions', 'apphosting', 'dataconnect']) {
+      if (Object.hasOwn(firebaseConfig, forbiddenKey)) {
+        failures.push('firebase.json declares the disallowed Spark dependency "' + forbiddenKey + '".');
+      }
+    }
+  } catch {
+    failures.push('firebase.json is not valid JSON and its Spark product configuration cannot be checked.');
+  }
+}
+
 // Routine CI may not deploy Firebase, install Extensions, or invoke the
 // Firebase Hosting deploy action until staging isolation and approval guards exist.
 const workflowRoot = resolve(root, '.github/workflows');
 if (existsSync(workflowRoot)) {
   for (const workflow of readdirSync(workflowRoot).filter((name) => /\.(?:yml|yaml)$/i.test(name))) {
     const source = readFileSync(join(workflowRoot, workflow), 'utf8');
-    if (/\bfirebase\s+(?:deploy|ext:install|ext:configure)\b|FirebaseExtended\/action-hosting-deploy/i.test(source)) {
-      failures.push('.github/workflows/' + workflow + ' contains a Firebase deployment/Extension action before staging isolation is approved.');
+    if (/\bfirebase\s+(?:deploy|ext:install|ext:configure)\b|FirebaseExtended\/action-hosting-deploy|(?:npx\s+)?wrangler\s+deploy|cloudflare\/wrangler-action/i.test(source)) {
+      failures.push('.github/workflows/' + workflow + ' contains a cloud deployment/Extension action before staging isolation and explicit approval are established.');
     }
   }
 }
