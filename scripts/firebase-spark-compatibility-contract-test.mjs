@@ -29,27 +29,20 @@ function countMatches(source, pattern) {
   return Array.from(source.matchAll(matcher)).length;
 }
 
-// These path-specific ceilings represent already-present compatibility debt.
-// Removing findings is always allowed. New files, new call sites, or counts above
-// these ceilings fail CI and require explicit architecture review.
+// Spark-incompatible auth and email-Extension dependencies have been removed. Any remaining occurrence fails CI.
+// The existing App Check Enterprise provider is separately bounded because it is Spark-eligible with a finite no-billing quota.
 const rules = [
   {
     id: 'firebase-sms-phone-auth',
     description: 'Firebase phone/SMS OTP is not available on Spark',
     pattern: /\b(?:signInWithPhoneNumber|RecaptchaVerifier|PhoneAuthProvider|verifyPhoneNumber|linkWithPhoneNumber|reauthenticateWithPhoneNumber)\b/g,
-    maxByPath: {
-      'src/pages/LoginPage.jsx': 3,
-      'src/pages/ClientLoginPage.jsx': 5,
-      'src/services/adminAuthRepository.js': 2,
-    },
+    maxByPath: {},
   },
   {
     id: 'firebase-trigger-email-extension-fallback',
     description: 'Firestore mail collection fallback depends on Firebase Trigger Email Extension',
     pattern: /\b(?:collection|doc)\s*\(\s*(?:firestoreDb|db)\s*,\s*['"]mail['"]\s*\)/g,
-    maxByPath: {
-      'src/services/emailService.js': 1,
-    },
+    maxByPath: {},
   },
   {
     id: 'firebase-cloud-functions',
@@ -151,7 +144,7 @@ if (existsSync(workflowRoot)) {
 }
 
 if (reportedLegacy.length) {
-  console.warn('Known Spark compatibility debt (bounded; resolve in follow-up work):');
+  console.warn('Spark-compatible policy exceptions (bounded; review on provider/config changes):');
   for (const finding of reportedLegacy) console.warn('  - ' + finding);
 }
 

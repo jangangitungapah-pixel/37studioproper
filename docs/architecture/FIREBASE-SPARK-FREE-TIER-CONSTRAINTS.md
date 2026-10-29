@@ -33,15 +33,14 @@ Official plan reference: https://firebase.google.com/docs/projects/billing/fireb
 
 This list is a gate, not a complete list of every paid Google Cloud service. Any new SDK, API, model, Firebase product, external provider, or CI workflow must be checked against official plan and pricing documentation before merge.
 
-## Current compatibility debt to resolve
+## Compatibility debt and current resolution status
 
-The gate explicitly caps the already-present occurrences below to prevent them growing while follow-up work removes them:
+- [x] **Firebase SMS OTP removed from both login entry points and the shared auth repository.** Email/password and Google remain supported. Phone numbers may still be stored as account profile data; there is no Firebase Phone Auth send/verify flow.
+- [x] **Firebase Trigger Email Extension fallback removed.** Admin signup only attempts EmailJS when all three EmailJS settings are configured. Missing configuration or provider failure returns an explicit unsent result and logs a visible warning; the account/request remains saved in the normal `users/{uid}` identity record and can be reviewed in the Admin Portal. No `mail` queue write is attempted.
+- [ ] **reCAPTCHA Enterprise App Check quota remains an operational risk.** **src/lib/firebase.js** initializes the existing provider. It does not itself require attaching billing, but its free allowance is finite. On Essentials projects without billing, the published 10,000 monthly organization-wide assessment allowance applies; beyond it, requests return a quota error instead of being billed. Monitor the shared quota and verify fail-safe behavior.
+- [x] **AI model selection is constrained.** Remote Config can only select from the reviewed Gemini Developer API model allowlist; it can no longer switch to an arbitrary `gemini-*` identifier.
 
-1. SMS OTP remains referenced in **src/pages/LoginPage.jsx**, **src/pages/ClientLoginPage.jsx**, and **src/services/adminAuthRepository.js**. Replace/remove Firebase SMS flow while retaining email/password and Google login.
-2. **src/services/emailService.js** falls back to writing the Firestore **mail** collection for Firebase Trigger Email Extension. Remove that fallback. Email failure must be observable, and the app must not tell the user an email was sent when delivery has not been confirmed.
-3. **src/lib/firebase.js** initializes one ReCaptcha Enterprise App Check provider. This does not itself require attaching billing, but its free allowance is finite. On Essentials projects without billing, the documented 10,000 monthly organization-wide assessment allowance is enforced; requests beyond it return a quota error instead of being billed. Monitor shared quota and choose fail-safe behavior.
-
-The AI model-selection risk is addressed by enforcing a reviewed model allowlist rather than accepting any string that happens to begin with **gemini-**.
+The Spark gate now rejects any remaining SMS Phone Auth or Firebase mail-Extension fallback reference in application/Worker source. All other new paid dependencies remain blocked by the corresponding rules.
 
 ## Spark quotas and operational behavior
 
@@ -66,7 +65,7 @@ Run **npm run test:spark** or **npm test**. The **Quality Gates** GitHub Actions
 
 The scanner checks for newly introduced SMS OTP, Firebase mail-Extension fallback, Cloud Functions, Firebase Storage, Firebase Extension installation, Vertex/Agent Platform AI, excessive App Check Enterprise provider instances, unguarded Firebase deployment workflows, and unsafe AI model overrides.
 
-Existing known exceptions are path- and count-bounded. Reducing/removing them is allowed; adding occurrences or moving usage into a new file fails the gate. This static scanner is not a complete semantic billing analyzer: reviewers must still inspect official pricing/plan documentation when a dependency or configuration changes.
+Any SMS Phone Auth or Firebase mail-Extension fallback occurrence now fails CI, regardless of path. Cloud Functions, Firebase Storage, Firebase Extensions, and Vertex/Agent Platform usage are also disallowed. The existing App Check Enterprise provider has a narrow count bound because it is Spark-eligible but quota-limited. This static scanner is not a complete semantic billing analyzer: reviewers must still inspect official pricing/plan documentation when a dependency or configuration changes.
 
 ## Official references
 
