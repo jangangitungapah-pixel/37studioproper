@@ -185,7 +185,6 @@ for (const required of [
   'const guardRedirectTarget =',
   'if (guardIntent) {',
   'adminAuthRepository.signInAdmin',
-  'if (!guardIntent) {',
   "? 'Guard Portal'",
   "? 'Masuk Guard Portal'",
   '!guardIntent && authMode',
