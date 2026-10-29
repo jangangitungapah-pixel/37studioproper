@@ -36,11 +36,11 @@ This list is a gate, not a complete list of every paid Google Cloud service. Any
 ## Compatibility debt and current resolution status
 
 - [x] **Firebase SMS OTP removed from both login entry points and the shared auth repository.** Email/password and Google remain supported. Phone numbers may still be stored as account profile data; there is no Firebase Phone Auth send/verify flow.
-- [x] **Firebase Trigger Email Extension fallback removed.** Admin signup only attempts EmailJS when all three EmailJS settings are configured. Missing configuration or provider failure returns an explicit unsent result and logs a visible warning; the account/request remains saved in the normal `users/{uid}` identity record and can be reviewed in the Admin Portal. No `mail` queue write is attempted.
+- [x] **Firebase Trigger Email Extension fallback and legacy Firestore queue permission removed.** Admin signup only attempts EmailJS when all three EmailJS settings are configured. Missing configuration or provider failure returns an explicit unsent result and logs a visible warning; the account/request remains saved in the normal `users/{uid}` identity record and can be reviewed in the Admin Portal. No `mail` queue write is attempted, and `firestore.rules` no longer permits pending Admin accounts to create legacy `/mail` queue documents. CI fails if that rule is reintroduced.
 - [ ] **reCAPTCHA Enterprise App Check quota remains an operational risk.** **src/lib/firebase.js** initializes the existing provider. It does not itself require attaching billing, but its free allowance is finite. On Essentials projects without billing, the published 10,000 monthly organization-wide assessment allowance applies; beyond it, requests return a quota error instead of being billed. Monitor the shared quota and verify fail-safe behavior.
 - [x] **AI model selection is constrained.** Remote Config can only select from the reviewed Gemini Developer API model allowlist; it can no longer switch to an arbitrary `gemini-*` identifier.
 
-The Spark gate now rejects any remaining SMS Phone Auth or Firebase mail-Extension fallback reference in application/Worker source. All other new paid dependencies remain blocked by the corresponding rules.
+The Spark gate now rejects any remaining SMS Phone Auth or Firebase mail-Extension fallback reference in application/Worker source, a reintroduced `/mail` queue permission in `firestore.rules`, and the prohibited product/deployment configurations described above. All other new paid dependencies remain blocked by the corresponding rules.
 
 ## Spark quotas and operational behavior
 
