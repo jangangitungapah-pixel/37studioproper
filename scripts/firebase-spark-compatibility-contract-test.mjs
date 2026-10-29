@@ -186,7 +186,7 @@ if (existsSync(firebaseConfigPath)) {
 const firestoreRulesPath = resolve(root, 'firestore.rules');
 if (existsSync(firestoreRulesPath)) {
   const rulesSource = readFileSync(firestoreRulesPath, 'utf8');
-  if (/match\\s+\\/mail\\s*\\{|validApprovalMail\\s*\\(/.test(rulesSource)) {
+  if (/match\s+\/mail\s*\{|validApprovalMail\s*\(/.test(rulesSource)) {
     failures.push('firestore.rules still permits the legacy Firebase mail Extension queue.');
   }
 }
