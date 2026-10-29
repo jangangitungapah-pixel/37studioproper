@@ -1772,18 +1772,6 @@ match /users/{userId} {
       allow create, update, delete: if false;
     }
 
-    function validApprovalMail(data) {
-      return data.keys().hasOnly(['createdBy', 'type', 'createdAt', 'to', 'message']) &&
-        data.createdBy == request.auth.uid &&
-        data.type == 'adminApprovalRequest' &&
-        data.to == 'marsicprod@gmail.com' &&
-        validIsoTimestampString(data.createdAt) &&
-        data.message is map &&
-        data.message.keys().hasOnly(['subject', 'html']) &&
-        validString(data.message.subject, 1, 240) &&
-        validString(data.message.html, 1, 20000);
-    }
-
     // >>> STUDIO37 NOTIFICATION EVENT RULES START
     function validNotificationEvent(data, eventId) {
       return data.keys().hasOnly([
@@ -1900,15 +1888,6 @@ match /users/{userId} {
       allow update, delete: if false;
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
-
-    match /mail/{mailId} {
-      allow create: if isSignedIn() &&
-        userDocExists() &&
-        getUserData().role == 'admin' &&
-        getUserData().status == 'pending' &&
-        validApprovalMail(request.resource.data);
-      allow read, update, delete: if false;
-    }
 
     match /{document=**} {
       allow read, write: if false;
