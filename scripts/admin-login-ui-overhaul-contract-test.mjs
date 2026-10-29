@@ -75,7 +75,6 @@ for (const required of [
   'adminAuthRepository.signInAdmin',
   'adminAuthRepository.signInAdmin',
   'adminAuthRepository.signInWithGoogle',
-  'adminAuthRepository.ensureCurrentAdminAccess',
   'adminAuthRepository.signOutAdmin',
   'sanitizePortalRedirect',
   'AccountRoleDecisionDialog',
