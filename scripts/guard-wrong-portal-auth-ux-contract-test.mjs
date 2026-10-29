@@ -167,7 +167,7 @@ for (const forbidden of [
 
 for (const required of [
   '/login?portal=guard&redirectTo=%2Fguard%2Fattendance',
-  'Email/password, Google, dan OTP nomor HP',
+  'Email/password dan Google',
 ]) {
   assert.equal(
     guardSource.includes(
@@ -184,7 +184,7 @@ for (const required of [
   "startsWith('/guard')",
   'const guardRedirectTarget =',
   'if (guardIntent) {',
-  'adminAuthRepository.sendPhoneOTP',
+  'adminAuthRepository.signInAdmin',
   'if (!guardIntent) {',
   "? 'Guard Portal'",
   "? 'Masuk Guard Portal'",
@@ -229,6 +229,8 @@ assert.equal(
   true,
   'GP7 wrong-portal/auth UX contract must be registered in npm test.',
 );
+
+assert.doesNotMatch(loginSource, /sendPhoneOTP|signInWithPhoneNumber|RecaptchaVerifier/, 'Shared Guard login must not rely on Firebase phone OTP on Spark.');
 
 console.log(
   'guard-wrong-portal-auth-ux-contract-test: PASS',
