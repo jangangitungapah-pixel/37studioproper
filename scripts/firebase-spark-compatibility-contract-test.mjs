@@ -181,6 +181,16 @@ if (existsSync(firebaseConfigPath)) {
   }
 }
 
+// The legacy /mail rule must stay removed as well as the client-side fallback;
+// otherwise pending Admin accounts could recreate the Trigger Email queue surface.
+const firestoreRulesPath = resolve(root, 'firestore.rules');
+if (existsSync(firestoreRulesPath)) {
+  const rulesSource = readFileSync(firestoreRulesPath, 'utf8');
+  if (/match\\s+\\/mail\\s*\\{|validApprovalMail\\s*\\(/.test(rulesSource)) {
+    failures.push('firestore.rules still permits the legacy Firebase mail Extension queue.');
+  }
+}
+
 // Routine CI may not deploy Firebase, install Extensions, or invoke the
 // Firebase Hosting deploy action until staging isolation and approval guards exist.
 const workflowRoot = resolve(root, '.github/workflows');
