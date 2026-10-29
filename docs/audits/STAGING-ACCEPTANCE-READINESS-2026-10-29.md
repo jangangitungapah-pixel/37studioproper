@@ -2,8 +2,8 @@
 
 ## Current status
 
-- Code head reviewed: `2c8f6451e59a8c6ac36a6c7a49b7f82e5d348819`.
-- Automated CI on that head: [run #94](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40777923883) passed build, lint, repository regression contracts, PRD/security contracts, Firestore Rules emulator checks, and Playwright responsive smoke.
+- Baseline CI: [run #112](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/40865975491) passed on baseline commit `0de394be51b89c6cb961b3db17fe6f7ad0e30cbf`, before the latest Spark dependency/config gate and Guard attendance query optimization were added.
+- The branch includes later commits after that baseline. Verify the newest Quality Gates run before treating the latest changes as CI-verified.
 - Authenticated Admin walkthrough: **not executed**.
 - Live Firebase staging acceptance: **blocked pending a separately configured staging environment and staging test accounts**.
 - No deployment or test mutation was sent to the production Firebase project.
@@ -24,7 +24,8 @@ These settings are treated as production-facing. Do not use the current default 
 
 Complete these before running live acceptance:
 
-- [ ] Create or identify a dedicated Firebase project used only for non-production acceptance. Record its exact project ID here: `<STAGING_FIREBASE_PROJECT_ID>`.
+- [ ] Create or identify a dedicated Firebase project used only for non-production acceptance. It must remain on Spark with no Cloud Billing account linked and no Blaze upgrade. Record its exact project ID here: `<STAGING_FIREBASE_PROJECT_ID>`.
+- [ ] Verify the staged features are limited to Spark-compatible products and quota-bound usage. Do not enable SMS Phone Auth, Cloud Functions, Firebase Extensions, Firebase Storage, Firebase App Hosting, or Vertex/Agent Platform to make acceptance pass.
 - [ ] Create a separate Hosting site/origin for the staging build. Record the URL here: `<STAGING_SITE_ORIGIN>`.
 - [ ] Configure a separate Admin Operations Worker environment with `APP_ENVIRONMENT=staging`, the staging Firebase project ID, and the staging `SITE_ORIGIN`. Do not reuse the production service-account key or Worker secret set by default.
 - [ ] Store Worker service-account and any Cloudinary credentials as staging-only secrets. Apply least privilege and use a disposable staging Cloudinary folder/prefix.
@@ -32,6 +33,7 @@ Complete these before running live acceptance:
 - [ ] Deploy the branch's reviewed Firestore Rules and required indexes to the staging Firebase project. Verify the deployed project ID before deployment and again before testing.
 - [ ] Seed only synthetic test records. Avoid production client records, real payment data, live booking customers, and production media.
 - [ ] Create dedicated test identities: Owner, approved Admin with restricted permissions, pending/rejected Admin, Client, Guard, and a signed-out browser context.
+- [ ] Verify authentication uses email/password and Google only. SMS OTP is intentionally not supported on Spark. Verify missing/failed EmailJS configuration reports email as unsent while the account request remains visible in the Admin Portal; no Firebase mail-Extension queue is configured.
 - [ ] Record the staging build commit, Hosting URL, Firebase project ID, Worker deployment/version, and rules deployment time in the acceptance evidence.
 - [ ] Confirm backups/cleanup plan and identify the person authorized to approve the staging sign-off.
 
