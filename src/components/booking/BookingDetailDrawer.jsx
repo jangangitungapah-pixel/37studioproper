@@ -566,7 +566,18 @@ function MoneyStat({
   );
 }
 
-export default function BookingDetailDrawer({
+export default function BookingDetailDrawer(props) {
+  const bookingKey = String(
+    props.booking?.id ||
+    props.booking?.bookingCode ||
+    props.booking?.bookingId ||
+    'booking',
+  );
+
+  return <BookingDetailDrawerContent key={bookingKey} {...props} />;
+}
+
+function BookingDetailDrawerContent({
   activeTab: controlledActiveTab,
   booking,
   initialTab = 'overview',
@@ -610,7 +621,6 @@ export default function BookingDetailDrawer({
 
   const [isUpdatingSession, setIsUpdatingSession] = useState(false);
   const [sessionUiState, setSessionUiState] = useState({
-    bookingKey: '',
     error: '',
     feedback: '',
     snapshot: null,
@@ -649,12 +659,13 @@ export default function BookingDetailDrawer({
         : normalizedInitialTab
     );
 
-  const currentSessionUi = sessionUiState.bookingKey === bookingKey ? sessionUiState : null;
-  const sessionActionError = currentSessionUi?.error || '';
-  const sessionActionFeedback = currentSessionUi?.feedback || '';
-  const sessionBookingSnapshot = currentSessionUi?.snapshot || null;
-  const isNoShowReasonOpen = Boolean(currentSessionUi?.isNoShowReasonOpen);
-  const noShowReason = currentSessionUi?.noShowReason || '';
+  const {
+    error: sessionActionError,
+    feedback: sessionActionFeedback,
+    snapshot: sessionBookingSnapshot,
+    isNoShowReasonOpen,
+    noShowReason,
+  } = sessionUiState;
   const sessionSnapshotTime = Date.parse(sessionBookingSnapshot?.booking?.updatedAt || '');
   const currentBookingTime = Date.parse(booking?.updatedAt || '');
   const useSessionSnapshot = sessionBookingSnapshot?.bookingId === booking?.id &&
@@ -666,11 +677,7 @@ export default function BookingDetailDrawer({
   );
 
   function updateSessionUi(patch) {
-    setSessionUiState((current) => ({
-      ...(current.bookingKey === bookingKey ? current : { bookingKey }),
-      ...patch,
-      bookingKey,
-    }));
+    setSessionUiState((current) => ({ ...current, ...patch }));
   }
   const sessionTimingStatus = getScheduleTimingStatus(sessionBooking || {});
   const isNoShowEligible = isBookingNoShowEligible(sessionBooking || {});
