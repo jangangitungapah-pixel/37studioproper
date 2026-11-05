@@ -83,6 +83,11 @@ class FakeFirestore {
   }
 }
 
+const date = '2026-11-05';
+const nowBeforeCutoff = '2026-11-05T08:55:00.000Z';
+const actor = { displayName: 'Admin Test', role: 'admin', uid: 'admin-1' };
+const owner = { displayName: 'Owner Test', role: 'owner', uid: 'owner-1' };
+
 await assert.rejects(
   () => previewDailyClosing({
     actor,
@@ -109,10 +114,6 @@ await assert.rejects(
   (error) => error?.code === 'future_business_date',
 );
 
-const date = '2026-11-05';
-const nowBeforeCutoff = '2026-11-05T08:55:00.000Z';
-const actor = { displayName: 'Admin Test', role: 'admin', uid: 'admin-1' };
-const owner = { displayName: 'Owner Test', role: 'owner', uid: 'owner-1' };
 
 const firestore = new FakeFirestore({
   bookkeepingEntries: {
