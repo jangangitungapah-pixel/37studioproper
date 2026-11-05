@@ -23,6 +23,8 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+import { firebaseAuth } from '../../lib/firebase.js';
+import { accountRoleRepository } from '../../services/accountRoleRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
 import { createCanonicalBookkeepingEntry, updateCanonicalBookkeepingEntry, deleteCanonicalBookkeepingEntry, createCanonicalDailyClosing, getCanonicalDailyClosing, reopenCanonicalDailyClosing } from '../../services/adminOperationsRepository.js';
 import {
@@ -1421,6 +1423,39 @@ export default function BookkeepingPage() {
   const [isClosingSaving, setIsClosingSaving] = useState(false);
   const [closingError, setClosingError] = useState('');
   const [currentRole, setCurrentRole] = useState('');
+  const [ledgerPreview, setLedgerPreview] = useState(null);
+
+  useEffect(() => {
+    const currentUser = firebaseAuth?.currentUser;
+    if (!currentUser) {
+      setCurrentRole('');
+      return undefined;
+    }
+    return accountRoleRepository.subscribeAccountIdentity(
+      currentUser,
+      (identity) => setCurrentRole(identity?.role || ''),
+      (error) => {
+        console.error('Gagal membaca role closing:', error);
+        setCurrentRole('');
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadPreview = async () => {
+      try {
+        const response = await getCanonicalDailyClosing(closingDate, 'main', true);
+        if (!active) return;
+        setDailyClosing(response?.closing || null);
+        setLedgerPreview(response?.preview || null);
+      } catch {
+        if (active) setLedgerPreview(null);
+      }
+    };
+    loadPreview();
+    return () => { active = false; };
+  }, [closingDate]);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
@@ -1753,6 +1788,16 @@ export default function BookkeepingPage() {
             <label><span>Lainnya</span><input inputMode="numeric" value={countedOther} onChange={(event) => setCountedOther(event.target.value)} /></label>
             <label className="bookkeeping-closing-reason"><span>Alasan selisih (bila ada)</span><input value={varianceReason} onChange={(event) => setVarianceReason(event.target.value)} placeholder="Wajib diisi jika kas tidak seimbang" /></label>
             <button type="button" disabled={isClosingSaving || isClosingLoading} onClick={handleDailyClose}>{isClosingSaving ? 'Menyimpan...' : 'Tutup Register Hari Ini'}</button>
+            {ledgerPreview ? (
+              <div className="bookkeeping-closing-preview" aria-live="polite">
+                <strong>Expected dari ledger</strong>
+                <span>Cash: {formatCurrency(ledgerPreview.totals?.cash || 0)}</span>
+                <span>Transfer: {formatCurrency(ledgerPreview.totals?.transfer || 0)}</span>
+                <span>QRIS: {formatCurrency(ledgerPreview.totals?.qris || 0)}</span>
+                <span>Lainnya: {formatCurrency(ledgerPreview.totals?.other || 0)}</span>
+                <span>Jumlah entry: {ledgerPreview.entryCount || 0}</span>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
