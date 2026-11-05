@@ -78,7 +78,7 @@ for (const required of [
 }
 
 assert.equal(
-  pageSource.includes('archiveCanonicalInventoryItem({ itemId: item.id, reason: \'Item dinonaktifkan\' }),
+  pageSource.includes("archiveCanonicalInventoryItem({ itemId: item.id, reason: 'Item dinonaktifkan' })"),
   true,
   'Inventory UI must archive items through the canonical Worker wrapper.',
 );
