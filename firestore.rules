@@ -1626,6 +1626,12 @@ match /users/{userId} {
         );
     }
 
+    function bookkeepingBusinessDateOpen(data) {
+      let closingId = data.date + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return !exists(closingPath) || get(closingPath).data.status != 'closed';
+    }
+
     match /bookkeepingEntries/{entryId} {
       allow read:
         if isApproved() &&
@@ -1641,6 +1647,7 @@ match /users/{userId} {
           request.resource.data,
           entryId
         ) &&
+        bookkeepingBusinessDateOpen(request.resource.data) &&
         request.resource.data.source in ['', 'manual', 'operatorFee', 'guardAttendanceMeal'] &&
         reconciledBookkeepingWriteAllowed(
           request.resource.data
@@ -1656,6 +1663,8 @@ match /users/{userId} {
           request.resource.data,
           entryId
         ) &&
+        bookkeepingBusinessDateOpen(resource.data) &&
+        bookkeepingBusinessDateOpen(request.resource.data) &&
         resource.data.source in ['', 'manual'] &&
         request.resource.data.source in ['', 'manual'] &&
         (
@@ -1679,10 +1688,24 @@ match /users/{userId} {
       allow delete:
         if isApprovedAdmin() &&
         canManageBookkeepingData() &&
+        bookkeepingBusinessDateOpen(resource.data) &&
         !isReconciledBookkeepingSource(
           resource.data
         ) &&
         resource.data.source in ['', 'manual'];
+    }
+
+
+    match /cashClosingSessions/{closingId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      // Closing snapshots are written only by the Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
+    match /cashClosingEvents/{eventId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      // Audit events are append-only server records.
+      allow create, update, delete: if false;
     }
 
     function validInventoryItem(data, itemId) {
