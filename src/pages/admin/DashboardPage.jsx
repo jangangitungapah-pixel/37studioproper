@@ -1792,8 +1792,14 @@ function DashboardChart({
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (value) => formatCurrency(value),
-      labelFormatter: (label) => 'Periode ' + label,
+      formatter: (items) => {
+        const rows = Array.isArray(items) ? items : [items];
+        const label = rows[0]?.axisValueLabel || rows[0]?.name || '';
+        const values = rows.map((item) => (
+          item.marker + item.seriesName + ': ' + formatCurrency(item.value)
+        ));
+        return ['Periode ' + label, ...values].join('<br/>');
+      },
     },
     xAxis: {
       type: 'category',
