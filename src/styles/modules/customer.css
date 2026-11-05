@@ -33,6 +33,8 @@ html[data-admin-theme-active='true'] {
   justify-content: space-between;
   gap: 24px;
   padding: 4px 2px 2px;
+
+  animation: customer-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
 }
 
 .customer-editorial-copy {
@@ -117,6 +119,8 @@ html[data-admin-theme-active='true'] {
   display: grid;
   grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.6fr);
   gap: 12px;
+
+  animation: customer-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 55ms both;
 }
 
 .customer-overview-primary,
@@ -243,6 +247,8 @@ html[data-admin-theme-active='true'] {
   border-radius: var(--studio-radius-surface);
   background: var(--studio-surface-floating);
   box-shadow: var(--studio-shadow-surface);
+
+  animation: customer-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 105ms both;
 }
 
 .customer-command-context {
@@ -356,6 +362,8 @@ html[data-admin-theme-active='true'] {
   border-radius: var(--studio-radius-surface);
   background: var(--studio-surface-1);
   box-shadow: var(--studio-shadow-contact);
+
+  animation: customer-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 155ms both;
 }
 
 .customer-followup-trigger {
@@ -542,6 +550,8 @@ html[data-admin-theme-active='true'] {
   border-radius: var(--studio-radius-surface);
   background: var(--studio-surface-1);
   box-shadow: var(--studio-shadow-contact);
+
+  animation: customer-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 205ms both;
 }
 
 .customer-directory-head {
@@ -586,6 +596,8 @@ html[data-admin-theme-active='true'] {
   transition:
     background var(--studio-duration-fast) var(--studio-ease-standard),
     transform var(--studio-duration-fast) var(--studio-ease-standard);
+
+  border-radius: var(--studio-radius-object);
 }
 
 .customer-directory-row:first-child {
@@ -3044,4 +3056,22 @@ strong {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.customer-directory-row:focus-within {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px
+}
+
+@keyframes customer-phase4-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-editorial-header { animation: none; }
+  .customer-overview { animation: none; }
+  .customer-command-shelf { animation: none; }
+  .customer-followup-surface { animation: none; }
+  .customer-directory-surface { animation: none; }
 }

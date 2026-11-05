@@ -6,6 +6,8 @@
   justify-content: flex-end;
   background: rgba(12, 10, 8, 0.62);
   backdrop-filter: blur(6px);
+
+  animation: booking-detail-backdrop-in 180ms ease-out both;
 }
 
 .booking-detail-drawer {
@@ -19,6 +21,8 @@
   color: var(--auth-text-main);
   box-shadow: var(--studio-shadow-float);
   overflow: hidden;
+
+  animation: booking-detail-panel-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .booking-detail-drawer-header {
@@ -87,6 +91,8 @@
   background: var(--auth-bg-card);
   color: var(--auth-text-main);
   cursor: pointer;
+
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard), border-color var(--studio-duration-fast) var(--studio-ease-standard), color var(--studio-duration-fast) var(--studio-ease-standard), transform var(--studio-duration-fast) var(--studio-ease-out);
 }
 
 .booking-detail-drawer-close:hover {
@@ -239,6 +245,8 @@
   font-size: var(--studio-text-xs);
   font-weight: 690;
   cursor: pointer;
+
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard), color var(--studio-duration-fast) var(--studio-ease-standard), transform var(--studio-duration-fast) var(--studio-ease-out);
 }
 
 .booking-detail-drawer-tabs button:hover {
@@ -778,6 +786,8 @@
   font-size: var(--studio-text-xs);
   font-weight: 720;
   cursor: pointer;
+
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard), border-color var(--studio-duration-fast) var(--studio-ease-standard), color var(--studio-duration-fast) var(--studio-ease-standard), transform var(--studio-duration-fast) var(--studio-ease-out);
 }
 
 .booking-detail-drawer-actions button:hover {
@@ -1163,4 +1173,31 @@
   .booking-detail-session-no-show-form textarea {
     border: 1px solid ButtonText;
   }
+}
+
+.booking-detail-drawer-close:active {
+  transform: scale(0.94)
+}
+
+.booking-detail-drawer-actions button:hover:not(:disabled) {
+  transform: translateY(-1px)
+}
+
+@keyframes booking-detail-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes booking-detail-panel-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (max-width: 767px) {
+  @keyframes booking-detail-panel-in {
+    from { opacity: 0; transform: translateY(22px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .booking-detail-drawer-backdrop, .booking-detail-drawer { animation: none; }
+  .booking-detail-drawer-close, .booking-detail-drawer-tabs button, .booking-detail-drawer-actions button { transition: none; transform: none; }
 }

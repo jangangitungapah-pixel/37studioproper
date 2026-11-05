@@ -62,6 +62,8 @@
     4px
     2px
     2px;
+
+  animation: all-bookings-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
 }
 
 .all-bookings-heading {
@@ -336,6 +338,8 @@ em {
     var(
       --studio-shadow-contact
     );
+
+  animation: all-bookings-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 55ms both;
 }
 
 .all-bookings-metric {
@@ -654,6 +658,8 @@ em {
     var(
       --studio-shadow-surface
     );
+
+  animation: all-bookings-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 105ms both;
 }
 
 .all-bookings-search {
@@ -1035,6 +1041,8 @@ strong {
     var(
       --studio-shadow-surface
     );
+
+  animation: all-bookings-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 155ms both;
 }
 
 .all-bookings-data-head {
@@ -1227,14 +1235,12 @@ th {
       --studio-text-tertiary
     );
 
-  font-size:
-    0.55rem;
+  font-size: 0.66rem;
 
   font-weight:
     720;
 
-  letter-spacing:
-    0.055em;
+  letter-spacing: 0.045em;
 
   text-transform:
     uppercase;
@@ -1344,8 +1350,7 @@ strong {
       --studio-text-primary
     );
 
-  font-size:
-    0.7rem;
+  font-size: 0.78rem;
 
   font-weight:
     710;
@@ -1370,8 +1375,7 @@ small {
       --studio-text-tertiary
     );
 
-  font-size:
-    0.54rem;
+  font-size: 0.62rem;
 
   font-weight:
     560;
@@ -1393,8 +1397,7 @@ span {
       --studio-text-secondary
     );
 
-  font-size:
-    0.59rem;
+  font-size: 0.65rem;
 
   font-weight:
     560;
@@ -1424,8 +1427,7 @@ strong {
       --studio-text-secondary
     );
 
-  font-size:
-    0.61rem;
+  font-size: 0.69rem;
 
   font-weight:
     650;
@@ -1441,8 +1443,7 @@ small {
       --studio-text-tertiary
     );
 
-  font-size:
-    0.55rem;
+  font-size: 0.63rem;
 
   white-space:
     nowrap;
@@ -1454,8 +1455,7 @@ small {
       --studio-text-primary
     );
 
-  font-size:
-    0.62rem;
+  font-size: 0.72rem;
 
   font-weight:
     720;
@@ -1509,12 +1509,9 @@ small {
       --studio-text-secondary
     );
 
-  padding:
-    4px
-    7px;
+  padding: 5px 8px;
 
-  font-size:
-    0.54rem;
+  font-size: 0.61rem;
 
   font-weight:
     680;
@@ -1834,6 +1831,8 @@ button:focus-visible {
   padding:
     11px
     12px;
+
+  transition: border-color var(--studio-duration-fast) var(--studio-ease-standard), background var(--studio-duration-fast) var(--studio-ease-standard), transform var(--studio-duration-fast) var(--studio-ease-out);
 }
 
 .all-bookings-mobile-row:last-child {
@@ -3058,4 +3057,25 @@ html[
     transition:
       none !important;
   }
+}
+
+.all-bookings-mobile-row:hover {
+  transform: translateY(-1px);
+  border-color: var(--studio-edge-normal)
+}
+
+.all-bookings-mobile-row:active {
+  transform: scale(0.995)
+}
+
+@keyframes all-bookings-phase4-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .all-bookings-editorial-header { animation: none; }
+  .all-bookings-metric-strip { animation: none; }
+  .all-bookings-command-shelf { animation: none; }
+  .all-bookings-data-surface { animation: none; }
 }
