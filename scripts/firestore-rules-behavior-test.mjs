@@ -226,7 +226,7 @@ try {
       phoneKey: '6281',
       updatedAt: now,
     });
-    await setDoc(doc(db, 'inventoryItems', 'item-1'), {
+    await assertFails(setDoc(doc(db, 'inventoryItems', 'item-1'), {
       category: 'Cable',
       condition: 'good',
       createdAt: now,
@@ -240,7 +240,7 @@ try {
       type: 'equipment',
       unit: 'pcs',
       updatedAt: now,
-    });
+    }));
     await setDoc(doc(db, 'bookkeepingEntries', 'manual-1'), {
       source: 'manual',
       title: 'Manual',
