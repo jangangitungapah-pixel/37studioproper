@@ -25,8 +25,10 @@ function currentSessionStatus(booking) {
 function getScheduledStartTimestamp(booking) {
   const date = cleanText(booking.date, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const utcDateCheck = new Date(`${date}T00:00:00.000Z`);
+  if (Number.isNaN(utcDateCheck.getTime()) || utcDateCheck.toISOString().slice(0, 10) !== date) return null;
   const parsedDate = new Date(`${date}T00:00:00+07:00`);
-  if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) return null;
+  if (Number.isNaN(parsedDate.getTime())) return null;
   let startMinute;
   const startHour = Number(booking.startHour);
   if (Number.isFinite(startHour) && Number.isInteger(startHour) && startHour >= 0 && startHour < 24) {
