@@ -6,6 +6,8 @@ import {
   normalizePaymentStatus,
   normalizeRequestStatus,
   normalizeSessionStatus,
+  getScheduleTimingStatus,
+  isBookingNoShowEligible,
 } from '../src/domain/booking/normalizeBooking.js';
 
 /**
@@ -151,32 +153,9 @@ assert.equal(
 /**
  * Session status is derived independently from payment.
  */
-const todayMorning = new Date(
-  2026,
-  7,
-  8,
-  9,
-  0,
-  0,
-);
-
-const todayDuringSession = new Date(
-  2026,
-  7,
-  8,
-  11,
-  0,
-  0,
-);
-
-const todayAfterSession = new Date(
-  2026,
-  7,
-  8,
-  14,
-  0,
-  0,
-);
+const todayMorning = new Date('2026-08-08T02:00:00.000Z'); // 09:00 WIB
+const todayDuringSession = new Date('2026-08-08T04:00:00.000Z'); // 11:00 WIB
+const todayAfterSession = new Date('2026-08-08T07:00:00.000Z'); // 14:00 WIB
 
 const scheduledBooking = {
   date: '2026-08-08',
@@ -197,7 +176,7 @@ assert.equal(
     scheduledBooking,
     { now: todayDuringSession },
   ),
-  'in_progress',
+  'upcoming',
 );
 
 assert.equal(
@@ -205,7 +184,7 @@ assert.equal(
     scheduledBooking,
     { now: todayAfterSession },
   ),
-  'completed',
+  'upcoming',
 );
 
 /**
@@ -232,11 +211,17 @@ assert.equal(
     },
     { now: todayMorning },
   ),
-  'completed',
+  'upcoming',
 );
 
+assert.equal(getScheduleTimingStatus(scheduledBooking, { now: todayMorning }), 'before_start');
+assert.equal(getScheduleTimingStatus(scheduledBooking, { now: todayDuringSession }), 'scheduled_window');
+assert.equal(getScheduleTimingStatus(scheduledBooking, { now: todayAfterSession }), 'past_due');
+assert.equal(isBookingNoShowEligible(scheduledBooking, { now: new Date('2026-08-08T03:14:59.999Z') }), false);
+assert.equal(isBookingNoShowEligible(scheduledBooking, { now: new Date('2026-08-08T03:15:00.000Z') }), true);
+
 /**
- * Explicit session values beat schedule inference.
+ * Explicit session values beat schedule timing.
  */
 assert.equal(
   normalizeSessionStatus(
@@ -480,7 +465,7 @@ assert.equal(
       ),
     },
   ),
-  'in_progress',
+  'upcoming',
 );
 
 process.stdout.write(

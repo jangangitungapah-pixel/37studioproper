@@ -1132,6 +1132,12 @@ match /users/{userId} {
       allow delete: if isOwner();
     }
 
+    match /bookingSessionEvents/{eventId} {
+      allow read: if isApproved() && hasPermission('schedule');
+      // Session events are append-only server records created atomically by the Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
     function validCalendarSlot(data) {
       return data.keys().hasOnly(['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt']) &&
         validString(data.bookingId, 1, 160) &&

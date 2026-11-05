@@ -82,6 +82,11 @@ const guardAttendanceRecord = (id) => ({
 
 try {
   await environment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'bookingSessionEvents', 'session-event-1'), {
+      action: 'check_in', actorName: 'Owner', actorUid: 'owner-1', bookingId: 'booking-1',
+      createdAt: now, fromStatus: 'upcoming', id: 'session-event-1', reason: '',
+      toStatus: 'upcoming', type: 'booking-session-event',
+    });
     await setDoc(doc(context.firestore(), 'inventoryItems', 'item-1'), {
       category: 'Cable', condition: 'good', createdAt: now, id: 'item-1', location: 'Studio',
       minStock: 1, name: 'Cable', note: '', quantity: 4, status: 'active', type: 'equipment',
@@ -311,7 +316,20 @@ try {
   await assertFails(updateDoc(doc(dashboard, 'inventoryItems', 'item-1'), { note: 'Forged' }));
   await assertFails(deleteDoc(doc(dashboard, 'bookkeepingEntries', 'manual-1')));
 
+  await assertFails(getDoc(doc(dashboard, 'bookingSessionEvents', 'session-event-1')));
+  await assertFails(setDoc(doc(dashboard, 'bookingSessionEvents', 'session-event-forged'), {
+    action: 'completed', actorName: 'Dashboard', actorUid: 'dashboard-only', bookingId: 'booking-1',
+    createdAt: now, fromStatus: 'in_progress', id: 'session-event-forged', reason: '',
+    toStatus: 'completed', type: 'booking-session-event',
+  }));
+
   const schedule = context('schedule-admin', 'schedule@example.com');
+  await assertSucceeds(getDoc(doc(schedule, 'bookingSessionEvents', 'session-event-1')));
+  await assertFails(setDoc(doc(schedule, 'bookingSessionEvents', 'session-event-client-write'), {
+    action: 'start', actorName: 'Schedule Admin', actorUid: 'schedule-admin', bookingId: 'booking-1',
+    createdAt: now, fromStatus: 'upcoming', id: 'session-event-client-write', reason: '',
+    toStatus: 'in_progress', type: 'booking-session-event',
+  }));
   await assertSucceeds(setDoc(doc(schedule, 'bookings', 'safe-unpaid'), {
     customer: 'Safe',
     date: '2026-08-22',

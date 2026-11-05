@@ -127,6 +127,16 @@ export function decideCanonicalBookingRequest(input, idempotencyKey = '') {
   });
 }
 
+export function recordCanonicalBookingSessionAction(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/sessions/action', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey(
+      `session-${input?.action || 'action'}`,
+      input?.bookingId || input?.id,
+    ),
+  });
+}
+
 export function updateCanonicalManualBooking(input, idempotencyKey = '') {
   return requestOperation('/v1/bookings/manual/update', {
     body: input,
@@ -242,6 +252,7 @@ export const adminOperationsRepository = {
   saveInventoryItem: saveCanonicalInventoryItem,
   archiveInventoryItem: archiveCanonicalInventoryItem,
   createManualBooking: createCanonicalManualBooking,
+  recordBookingSessionAction: recordCanonicalBookingSessionAction,
   createDangerZoneDryRun,
   getDangerZoneJob,
   permanentlyDeleteGalleryItem,

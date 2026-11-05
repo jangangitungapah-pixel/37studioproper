@@ -311,7 +311,6 @@ const EDITABLE_BOOKING_FIELDS = new Set([
   'recordingTypeId',
   'recordingTypeLabel',
   'sessionLabel',
-  'sessionStatus',
   'sessionType',
   'startHour',
   'startTimeLabel',
@@ -326,6 +325,12 @@ function cleanBookingUpdatePatch(body, currentBooking) {
     : body.booking && typeof body.booking === 'object'
       ? body.booking
       : body;
+  for (const field of ['sessionStatus', 'checkedInAt', 'actualStartAt', 'actualEndAt', 'actualDurationMinutes']) {
+    if (supplied[field] !== undefined && supplied[field] !== currentBooking[field]) {
+      throw new HttpError(400, 'session_action_required', 'Status dan waktu aktual sesi harus diubah melalui operasi Session Operations.');
+    }
+  }
+
   const patch = Object.fromEntries(
     Object.entries(supplied).filter(([field]) => EDITABLE_BOOKING_FIELDS.has(field)),
   );
@@ -450,6 +455,18 @@ export async function updateManualBooking({ actor, body, firestore, request }) {
   }
 
   throw new HttpError(409, 'booking_conflict', 'Jadwal berubah saat penyimpanan. Muat ulang data dan coba kembali.');
+}
+
+function currentBookingSessionStatus(booking) {
+  const explicitValue = normalizeStatus(booking?.sessionStatus || booking?.sessionState);
+  const legacyValue = normalizeStatus(booking?.status);
+  const value = ['upcoming', 'scheduled', 'in_progress', 'active', 'completed', 'no_show', 'cancelled', 'canceled'].includes(explicitValue)
+    ? explicitValue
+    : legacyValue;
+  if (['upcoming', 'scheduled', 'in_progress', 'active', 'completed', 'no_show', 'cancelled', 'canceled'].includes(value)) {
+    return value === 'scheduled' ? 'upcoming' : value;
+  }
+  return requestStatus(booking) === 'cancelled' || requestStatus(booking) === 'rejected' ? 'cancelled' : 'upcoming';
 }
 
 function requestDecisionIssue(booking, status, reason) {
@@ -595,6 +612,9 @@ export async function decideBookingRequest({ actor, body, firestore, request }) 
     if (!current) throw new HttpError(404, 'booking_not_found', 'Booking sudah tidak tersedia.');
     const booking = { id: current.id, ...current.data };
     requestDecisionIssue(booking, status, note);
+    if (status === 'cancelled' && currentBookingSessionStatus(booking) !== 'upcoming') {
+      throw new HttpError(409, 'session_not_cancellable', 'Booking tidak dapat dibatalkan setelah sesi dimulai atau mencapai status akhir.');
+    }
 
     const dateIsValid = /^\d{4}-\d{2}-\d{2}$/.test(cleanText(booking.date, 10))
       && !Number.isNaN(new Date(`${cleanText(booking.date, 10)}T00:00:00.000Z`).getTime())
@@ -615,6 +635,27 @@ export async function decideBookingRequest({ actor, body, firestore, request }) 
       firestore.setWrite('bookings', bookingId, updatedBooking, { updateTime: current.updateTime }),
       firestore.setWrite('bookingMessages', message.id, message, { exists: false }),
     ];
+    let sessionEvent = null;
+    if (status === 'cancelled') {
+      const sessionEventId = await stableDocumentId('booking-session-event', bookingId + ':cancel:' + decisionKey);
+      sessionEvent = {
+        action: 'cancelled',
+        actorName: cleanText(actor.displayName || 'Admin Studio', 120),
+        actorUid: cleanText(actor.uid, 128),
+        bookingId,
+        createdAt: timestamp,
+        fromStatus: currentBookingSessionStatus(booking),
+        id: sessionEventId,
+        reason: note,
+        toStatus: 'cancelled',
+        type: 'booking-session-event',
+      };
+      updatedBooking.lastSessionEventAt = timestamp;
+      updatedBooking.lastSessionEventType = 'cancelled';
+      updatedBooking.lastSessionEventId = sessionEventId;
+      writes[0] = firestore.setWrite('bookings', bookingId, updatedBooking, { updateTime: current.updateTime });
+      writes.push(firestore.setWrite('bookingSessionEvents', sessionEventId, sessionEvent, { exists: false }));
+    }
 
     if (date) {
       writes.push(firestore.setWrite('bookingScheduleDays', date, {
@@ -640,6 +681,7 @@ export async function decideBookingRequest({ actor, body, firestore, request }) 
         documentRefs: {
           booking: { collectionId: 'bookings', documentId: bookingId },
           message: { collectionId: 'bookingMessages', documentId: message.id },
+          ...(sessionEvent ? { sessionEvent: { collectionId: 'bookingSessionEvents', documentId: sessionEvent.id } } : {}),
         },
         firestore,
         key,

@@ -29,6 +29,7 @@ import {
   isBookingPaymentOpen,
   isBookingRequestActionable,
 } from '../../domain/booking/bookingSelectors.js';
+import { getScheduleTimingStatus } from '../../domain/booking/normalizeBooking.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import useBookingListUrlState from '../../hooks/useBookingListUrlState.js';
 import {
@@ -60,11 +61,10 @@ const PAYMENT_FILTERS = Object.freeze(
   ),
 );
 
-const SESSION_FILTERS = Object.freeze(
-  buildFilterOptions(
-    BOOKING_SESSION_STATUS_META,
-  ),
-);
+const SESSION_FILTERS = Object.freeze([
+  ...buildFilterOptions(BOOKING_SESSION_STATUS_META),
+  { key: 'needs_review', label: 'Perlu Review' },
+]);
 
 const REQUEST_FILTER_KEYS = Object.freeze([
   FILTER_ALL,
@@ -533,11 +533,17 @@ export default function AllBookingsPage() {
                 return false;
               }
 
+              const needsSessionReview = sessionStatus === 'upcoming' &&
+                getScheduleTimingStatus(booking) === 'past_due';
+
+              if (sessionFilter === 'needs_review' && !needsSessionReview) {
+                return false;
+              }
+
               if (
-                sessionFilter !==
-                  FILTER_ALL &&
-                sessionStatus !==
-                  sessionFilter
+                sessionFilter !== FILTER_ALL &&
+                sessionFilter !== 'needs_review' &&
+                sessionStatus !== sessionFilter
               ) {
                 return false;
               }
