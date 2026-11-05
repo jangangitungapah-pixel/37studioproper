@@ -311,7 +311,6 @@ const EDITABLE_BOOKING_FIELDS = new Set([
   'recordingTypeId',
   'recordingTypeLabel',
   'sessionLabel',
-  'sessionStatus',
   'sessionType',
   'startHour',
   'startTimeLabel',
@@ -708,7 +707,6 @@ function sessionTransitionPatch(action, currentBooking, actor, body, now) {
   }
   if (action === 'correct') {
     if (reason.length < 8) throw new HttpError(400, 'correction_reason_required', 'Alasan koreksi minimal 8 karakter.');
-    if (body.ownerApproval !== true) throw new HttpError(403, 'owner_approval_required', 'Koreksi status terminal membutuhkan persetujuan Owner.');
     if (!['completed', 'no_show', 'cancelled', 'upcoming', 'in_progress'].includes(status)) {
       throw new HttpError(400, 'invalid_session_status', 'Status koreksi tidak valid.');
     }
@@ -717,13 +715,15 @@ function sessionTransitionPatch(action, currentBooking, actor, body, now) {
   }
 
   if (action === 'no_show') {
+    if (currentBooking.checkedInAt || currentStatus === 'in_progress') {
+      throw new HttpError(409, 'no_show_not_allowed', 'Sesi yang telah check-in atau dimulai tidak dapat ditandai no-show.');
+    }
     const date = isoBusinessDate(currentBooking.date);
-    const currentDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(now));
     const startHour = Number(currentBooking.startHour);
     const duration = Number(currentBooking.durationHours ?? currentBooking.duration ?? 1);
     const scheduledEnd = new Date(`${date}T00:00:00.000+07:00`).getTime() + ((startHour + duration) * 60 * 60 * 1000);
     const graceMinutes = 30;
-    if (currentDate <= date || Date.now() < scheduledEnd + graceMinutes * 60 * 1000) {
+    if (new Date(now).getTime() < scheduledEnd + graceMinutes * 60 * 1000) {
       throw new HttpError(409, 'no_show_too_early', 'No-show hanya dapat dicatat setelah sesi berakhir dan melewati toleransi 30 menit.');
     }
     if (reason.length < 4) throw new HttpError(400, 'no_show_reason_required', 'Alasan no-show minimal 4 karakter.');
@@ -749,7 +749,10 @@ function sessionTransitionPatch(action, currentBooking, actor, body, now) {
     reason,
     toStatus: status,
   };
-  if (action === 'check_in') patch.checkedInAt = currentBooking.checkedInAt || now;
+  if (action === 'check_in') {
+    if (currentBooking.checkedInAt) throw new HttpError(409, 'already_checked_in', 'Customer sudah tercatat check-in.');
+    patch.checkedInAt = now;
+  }
   if (action === 'start' || action === 'correct' && status === 'in_progress') {
     patch.actualStartAt = currentBooking.actualStartAt || now;
   }
