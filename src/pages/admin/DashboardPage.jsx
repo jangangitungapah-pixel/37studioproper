@@ -1815,8 +1815,8 @@ function DashboardChart({
         type: 'bar',
         data: chartData.map((item) => item.pemasukan),
         itemStyle: {
-          color: 'var(--dashboard-income-soft)',
-          borderColor: 'var(--dashboard-income)',
+          color: 'var(--studio-chart-3)',
+          borderColor: 'var(--studio-chart-3)',
           borderWidth: 1,
           borderRadius: [7, 7, 2, 2],
         },
@@ -1826,8 +1826,8 @@ function DashboardChart({
         type: 'bar',
         data: chartData.map((item) => item.pengeluaran),
         itemStyle: {
-          color: 'var(--dashboard-expense-soft)',
-          borderColor: 'var(--dashboard-expense)',
+          color: 'var(--studio-chart-4)',
+          borderColor: 'var(--studio-chart-4)',
           borderWidth: 1,
           borderRadius: [7, 7, 2, 2],
         },
@@ -1838,7 +1838,7 @@ function DashboardChart({
         data: chartData.map((item) => item.saldo),
         smooth: 0.25,
         showSymbol: false,
-        lineStyle: { color: 'var(--dashboard-net)', width: 2 },
+        lineStyle: { color: 'var(--studio-chart-1)', width: 2 },
       },
     ],
   };
