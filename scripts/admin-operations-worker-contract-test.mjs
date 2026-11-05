@@ -1227,4 +1227,27 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   }), (error) => error?.code === 'session_action_required');
 }
 
+
+{
+  const firestore = new BarrierReadFirestore({
+    bookings: {
+      'session-race': { id: 'session-race', customer: 'Band Race', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'upcoming' },
+    },
+  }, 'bookings', 'session-race');
+  const actions = await Promise.allSettled([
+    recordBookingSessionAction({
+      actor, body: { action: 'check_in', bookingId: 'session-race' }, firestore,
+      request: requestWithKey('session-race-check-in'), now: new Date('2026-08-20T03:00:00.000Z'),
+    }),
+    recordBookingSessionAction({
+      actor, body: { action: 'start', bookingId: 'session-race' }, firestore,
+      request: requestWithKey('session-race-start'), now: new Date('2026-08-20T03:01:00.000Z'),
+    }),
+  ]);
+  assert.equal(actions.filter((action) => action.status === 'fulfilled').length, 1);
+  assert.equal(firestore.collection('bookingSessionEvents').size, 1, 'Concurrent session actions must not create competing events.');
+  const booking = (await firestore.getDocument('bookings', 'session-race')).data;
+  assert.ok(booking.checkedInAt || booking.actualStartAt);
+}
+
 console.log('Admin operations Worker contract passed.');
