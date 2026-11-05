@@ -219,8 +219,8 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
         </>
       ) : null}
 
-      {action === 'waiting_parts' || action === 'cancel' ? (
-        <label><span>Alasan</span><textarea required value={form.reason} onChange={(event) => setField('reason', event.target.value)} placeholder={action === 'cancel' ? 'Alasan pembatalan...' : 'Spare part apa yang ditunggu dan mengapa...'} /></label>
+      {action === 'waiting_parts' || action === 'cancel' || action === 'reopen' ? (
+        <label><span>Alasan</span><textarea required value={form.reason} onChange={(event) => setField('reason', event.target.value)} placeholder={action === 'cancel' ? 'Alasan pembatalan...' : action === 'reopen' ? 'Alasan work order dibuka kembali...' : 'Spare part apa yang ditunggu dan mengapa...'} /></label>
       ) : null}
 
       {action === 'reopen' ? (
