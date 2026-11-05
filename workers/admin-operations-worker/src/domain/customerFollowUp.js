@@ -1,4 +1,4 @@
-import { HttpError, cleanText, getIdempotencyKey } from '../lib/http.js';
+import { HttpError, getIdempotencyKey } from '../lib/http.js';
 import { commitIdempotentOperation, readOperationResult } from '../lib/operation.js';
 import { stableDocumentId } from '../lib/firestore.js';
 
