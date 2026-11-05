@@ -76,14 +76,6 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
-function formatDateTimeInput(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
-}
-
 function parseAttachmentRefs(value) {
   return String(value || '')
     .split('\n')
