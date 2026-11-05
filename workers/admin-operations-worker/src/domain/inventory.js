@@ -171,7 +171,11 @@ export async function transitionMaintenanceWorkOrder({ actor, body, firestore, r
     verified: [],
     cancelled: [],
   };
-  if (!allowed[order.status]?.includes(targetStatus)) throw new HttpError(409, 'invalid_maintenance_transition', 'Perubahan status maintenance tidak diizinkan.');
+  if (targetStatus === order.status && ['reported', 'triaged', 'assigned', 'in_progress', 'waiting_parts'].includes(order.status)) {
+    // Details may be saved without changing the workflow state.
+  } else if (!allowed[order.status]?.includes(targetStatus)) {
+    throw new HttpError(409, 'invalid_maintenance_transition', 'Perubahan status maintenance tidak diizinkan.');
+  }
   if (targetStatus === 'verified' && !['owner', 'admin'].includes(actor.role)) {
     throw new HttpError(403, 'maintenance_verification_forbidden', 'Verifikasi harus dilakukan Admin atau Owner.');
   }
