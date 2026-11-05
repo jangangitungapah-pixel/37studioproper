@@ -296,7 +296,7 @@ export default function ClientLandingPage() {
         >
           <a href="#services" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Studio</a>
           <a href="#pricelist" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Harga</a>
-          <a href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>
+          <a href="/book" className="client-landing-nav-link">Booking Slot</a>
           <a href="#location" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Lokasi</a>
         </nav>
 

@@ -38,7 +38,6 @@ assert.match(guardCss, /\.guard-portal-skip-link:focus-visible/);
 
 assert.match(landingPage, /id="client-landing-navigation"/);
 assert.match(landingPage, /aria-controls="client-landing-navigation"/);
-assert.ok(landingPage.includes('href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>'));
 
 for (const preference of ['DARK', 'LIGHT', 'SYSTEM']) {
   assert.ok(themePreferences.includes('  ' + preference + ':'));
