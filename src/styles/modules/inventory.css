@@ -1652,3 +1652,490 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
     background: currentColor;
   }
 }
+
+
+/* PHASE 3 — Equipment Maintenance workspace */
+.inventory-workspace-tabs {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.18));
+  border-radius: 13px;
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.07));
+  backdrop-filter: blur(16px);
+}
+.inventory-workspace-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--studio-text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.inventory-workspace-tabs button.is-active {
+  color: var(--studio-text-primary);
+  background: var(--studio-surface-elevated, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--studio-border-subtle, rgba(148, 163, 184, 0.18));
+}
+.inventory-maintenance-workspace {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  color: var(--studio-text-primary);
+}
+.maintenance-editorial-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 5px 4px 2px;
+}
+.maintenance-editorial-header > div { display: grid; gap: 4px; min-width: 0; }
+.maintenance-kicker,
+.maintenance-report-panel header small,
+.maintenance-action-form header small,
+.maintenance-cost-form header small,
+.maintenance-timeline > header small {
+  color: var(--studio-accent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+.maintenance-editorial-header h2 {
+  margin: 0;
+  color: var(--studio-text-primary);
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  font-weight: 790;
+  letter-spacing: -0.04em;
+}
+.maintenance-editorial-header p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+.maintenance-primary-button,
+.maintenance-detail-actions button,
+.maintenance-report-panel footer button,
+.maintenance-action-form footer button,
+.maintenance-cost-form > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.2));
+  border-radius: 10px;
+  color: var(--studio-text-primary);
+  background: var(--studio-surface-elevated, rgba(148, 163, 184, 0.10));
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 760;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+.maintenance-primary-button,
+.maintenance-detail-actions button.is-primary,
+.maintenance-report-panel footer button.is-primary,
+.maintenance-action-form footer button.is-primary,
+.maintenance-cost-form > button.is-primary {
+  color: var(--studio-on-accent, #fff);
+  border-color: transparent;
+  background: var(--studio-accent);
+}
+.maintenance-primary-button:hover,
+.maintenance-detail-actions button:hover,
+.maintenance-report-panel footer button:hover,
+.maintenance-action-form footer button:hover,
+.maintenance-cost-form > button:hover { transform: translateY(-1px); }
+.maintenance-primary-button:disabled,
+.maintenance-detail-actions button:disabled,
+.maintenance-report-panel button:disabled,
+.maintenance-action-form button:disabled,
+.maintenance-cost-form button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.maintenance-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.maintenance-metric {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 3px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.16));
+  border-radius: 14px;
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.07));
+  backdrop-filter: blur(16px);
+}
+.maintenance-metric > span {
+  display: grid;
+  grid-row: span 2;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--studio-accent);
+  background: rgba(99, 102, 241, 0.10);
+}
+.maintenance-metric small {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.maintenance-metric strong { font-size: 1.18rem; line-height: 1.1; font-weight: 800; }
+.maintenance-metric.is-warning > span { color: #d99b32; background: rgba(217, 155, 50, 0.12); }
+.maintenance-metric.is-danger > span { color: #e36e70; background: rgba(227, 110, 112, 0.12); }
+.maintenance-metric.is-info > span { color: #5ba9d6; background: rgba(91, 169, 214, 0.12); }
+.maintenance-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.18));
+  border-radius: 11px;
+  color: var(--studio-text-primary);
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.08));
+  font-size: 0.72rem;
+}
+.maintenance-notice.is-error { border-color: rgba(220, 80, 80, 0.34); }
+.maintenance-notice.is-success { border-color: rgba(60, 170, 120, 0.34); }
+.maintenance-notice button,
+.maintenance-report-panel header button,
+.maintenance-action-form header button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: var(--studio-text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+.maintenance-report-panel,
+.maintenance-detail-panel,
+.maintenance-cost-form,
+.maintenance-action-form {
+  min-width: 0;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.18));
+  border-radius: 16px;
+  background: var(--studio-surface-elevated, rgba(148, 163, 184, 0.07));
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.07);
+  backdrop-filter: blur(18px);
+}
+.maintenance-report-panel,
+.maintenance-action-form,
+.maintenance-cost-form { display: grid; gap: 12px; padding: 15px; }
+.maintenance-report-panel > header,
+.maintenance-action-form > header,
+.maintenance-cost-form > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.maintenance-report-panel header > div,
+.maintenance-action-form header > div,
+.maintenance-cost-form header > div { display: grid; gap: 3px; }
+.maintenance-report-panel header strong,
+.maintenance-action-form header strong,
+.maintenance-cost-form header strong { font-size: 0.86rem; font-weight: 790; }
+.maintenance-report-panel label,
+.maintenance-action-form label,
+.maintenance-cost-form label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+.maintenance-report-panel label > span,
+.maintenance-action-form label > span,
+.maintenance-cost-form label > span {
+  color: var(--studio-text-secondary);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+.maintenance-report-panel input,
+.maintenance-report-panel textarea,
+.maintenance-report-panel select,
+.maintenance-action-form input,
+.maintenance-action-form textarea,
+.maintenance-action-form select,
+.maintenance-cost-form input,
+.maintenance-cost-form textarea,
+.maintenance-cost-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.22));
+  border-radius: 9px;
+  outline: 0;
+  color: var(--studio-text-primary);
+  background: var(--studio-input-bg, rgba(148, 163, 184, 0.07));
+  font: inherit;
+  font-size: 0.73rem;
+}
+.maintenance-report-panel textarea,
+.maintenance-action-form textarea,
+.maintenance-cost-form textarea { min-height: 76px; resize: vertical; }
+.maintenance-report-panel input:focus,
+.maintenance-report-panel textarea:focus,
+.maintenance-report-panel select:focus,
+.maintenance-action-form input:focus,
+.maintenance-action-form textarea:focus,
+.maintenance-action-form select:focus,
+.maintenance-cost-form input:focus,
+.maintenance-cost-form textarea:focus,
+.maintenance-cost-form select:focus { border-color: var(--studio-accent); }
+.maintenance-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.maintenance-form-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.maintenance-report-panel > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 3px;
+}
+.maintenance-report-panel > footer > span { color: var(--studio-text-tertiary); font-size: 0.65rem; }
+.maintenance-queue-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 3px 0 5px;
+  scrollbar-width: thin;
+}
+.maintenance-queue-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 33px;
+  flex: 0 0 auto;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--studio-text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+.maintenance-queue-tabs button strong {
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 7px;
+  color: var(--studio-text-tertiary);
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.1));
+  font-size: 0.6rem;
+}
+.maintenance-queue-tabs button.is-active {
+  color: var(--studio-text-primary);
+  border-color: var(--studio-border-subtle, rgba(148, 163, 184, 0.2));
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.08));
+}
+.maintenance-queue-tabs button.is-active strong { color: var(--studio-on-accent, #fff); background: var(--studio-accent); }
+.maintenance-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.35fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+}
+.maintenance-work-order-list { display: grid; gap: 8px; min-width: 0; }
+.maintenance-work-order-card {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.16));
+  border-radius: 13px;
+  color: var(--studio-text-primary);
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.06));
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.maintenance-work-order-card:hover { transform: translateY(-1px); border-color: var(--studio-border-strong, rgba(148, 163, 184, 0.34)); }
+.maintenance-work-order-card.is-selected {
+  border-color: var(--studio-accent);
+  background: var(--studio-surface-elevated, rgba(99, 102, 241, 0.08));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--studio-accent) 28%, transparent);
+}
+.maintenance-work-order-card > div,
+.maintenance-work-order-card > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+.maintenance-work-order-card > div > span {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.61rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.maintenance-work-order-card > strong { font-size: 0.78rem; font-weight: 780; line-height: 1.35; }
+.maintenance-work-order-card > p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.maintenance-work-order-card > footer { align-items: flex-start; }
+.maintenance-work-order-card > footer small { color: var(--studio-text-tertiary); font-size: 0.58rem; line-height: 1.4; }
+.maintenance-status-pill {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 21px;
+  padding: 0 8px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.18));
+  border-radius: 7px;
+  color: var(--studio-text-secondary);
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.08));
+  font-size: 0.55rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+.maintenance-status-pill.is-reported,
+.maintenance-status-pill.is-triaged { color: #d69b35; background: rgba(214, 155, 53, 0.10); }
+.maintenance-status-pill.is-completed { color: #579fca; background: rgba(87, 159, 202, 0.11); }
+.maintenance-status-pill.is-verified { color: #42a77d; background: rgba(66, 167, 125, 0.11); }
+.maintenance-status-pill.is-cancelled { color: var(--studio-text-tertiary); }
+.maintenance-status-pill.is-in_progress,
+.maintenance-status-pill.is-assigned,
+.maintenance-status-pill.is-approved { color: var(--studio-accent); }
+.maintenance-status-pill.is-waiting_parts { color: #c28b48; }
+.maintenance-detail-panel {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  min-width: 0;
+}
+.maintenance-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.maintenance-detail-header > div { display: grid; min-width: 0; gap: 4px; }
+.maintenance-detail-header small { color: var(--studio-text-tertiary); font-size: 0.59rem; font-weight: 750; letter-spacing: 0.07em; text-transform: uppercase; }
+.maintenance-detail-header h3 { margin: 0; font-size: 1rem; line-height: 1.35; letter-spacing: -0.025em; }
+.maintenance-detail-header > div > span { color: var(--studio-text-secondary); font-size: 0.69rem; }
+.maintenance-detail-description { margin: 0; color: var(--studio-text-secondary); font-size: 0.72rem; line-height: 1.6; }
+.maintenance-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.maintenance-detail-facts > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.13));
+  border-radius: 10px;
+  background: var(--studio-surface-soft, rgba(148, 163, 184, 0.05));
+}
+.maintenance-detail-facts small { color: var(--studio-text-tertiary); font-size: 0.56rem; }
+.maintenance-detail-facts strong { overflow-wrap: anywhere; font-size: 0.67rem; font-weight: 760; }
+.maintenance-detail-note { display: grid; gap: 4px; }
+.maintenance-detail-note small { color: var(--studio-text-tertiary); font-size: 0.6rem; font-weight: 760; text-transform: uppercase; letter-spacing: 0.06em; }
+.maintenance-detail-note p { margin: 0; color: var(--studio-text-secondary); font-size: 0.69rem; line-height: 1.55; white-space: pre-wrap; }
+.maintenance-detail-note a { color: var(--studio-accent); font-size: 0.68rem; overflow-wrap: anywhere; }
+.maintenance-detail-actions { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 3px; }
+.maintenance-detail-actions button { min-height: 32px; padding: 0 10px; font-size: 0.65rem; }
+.maintenance-detail-actions button.is-subtle-danger { color: #dc7777; border-color: rgba(220, 119, 119, 0.28); background: rgba(220, 119, 119, 0.08); }
+.maintenance-action-form { margin-top: 3px; padding: 12px; }
+.maintenance-action-form footer { display: flex; justify-content: flex-end; gap: 7px; }
+.maintenance-action-form footer button,
+.maintenance-cost-form > button { min-height: 34px; font-size: 0.66rem; }
+.maintenance-cost-form { gap: 10px; padding: 12px; }
+.maintenance-cost-posted {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(66, 167, 125, 0.28);
+  border-radius: 9px;
+  color: #42a77d;
+  background: rgba(66, 167, 125, 0.08);
+  font-size: 0.65rem;
+  overflow-wrap: anywhere;
+}
+.maintenance-timeline { display: grid; gap: 11px; padding-top: 10px; border-top: 1px solid var(--studio-border-subtle, rgba(148, 163, 184, 0.15)); }
+.maintenance-timeline > header { display: grid; gap: 3px; }
+.maintenance-timeline > header strong { font-size: 0.77rem; font-weight: 780; }
+.maintenance-timeline > article { position: relative; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 8px; }
+.maintenance-timeline-dot { width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--studio-accent); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.10); }
+.maintenance-timeline > article > div { display: grid; gap: 3px; }
+.maintenance-timeline > article strong { font-size: 0.68rem; }
+.maintenance-timeline > article small { color: var(--studio-text-tertiary); font-size: 0.59rem; }
+.maintenance-timeline > article p { margin: 0; color: var(--studio-text-secondary); font-size: 0.64rem; line-height: 1.45; }
+.maintenance-muted { color: var(--studio-text-tertiary); font-size: 0.66rem; }
+.maintenance-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-height: 145px;
+  align-content: center;
+  padding: 20px;
+  border: 1px dashed var(--studio-border-subtle, rgba(148, 163, 184, 0.25));
+  border-radius: 14px;
+  color: var(--studio-text-tertiary);
+  text-align: center;
+  font-size: 0.69rem;
+}
+.maintenance-empty-state strong { color: var(--studio-text-primary); font-size: 0.78rem; }
+.maintenance-empty-state span { max-width: 360px; line-height: 1.5; }
+.maintenance-empty-state.is-error { color: #d87979; }
+.maintenance-error { margin: 0; color: #d87979; font-size: 0.66rem; }
+@media (max-width: 980px) {
+  .maintenance-workspace-grid { grid-template-columns: minmax(230px, 0.8fr) minmax(0, 1.2fr); }
+  .maintenance-detail-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .inventory-workspace-tabs { width: 100%; }
+  .inventory-workspace-tabs button { flex: 1; }
+  .maintenance-editorial-header { align-items: flex-start; flex-direction: column; }
+  .maintenance-primary-button { width: 100%; }
+  .maintenance-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .maintenance-workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  .maintenance-work-order-list { order: 2; }
+  .maintenance-detail-panel { order: 1; padding: 13px; }
+  .maintenance-form-grid,
+  .maintenance-form-grid-three { grid-template-columns: minmax(0, 1fr); }
+  .maintenance-report-panel > footer { align-items: stretch; flex-direction: column; }
+  .maintenance-report-panel > footer button { width: 100%; }
+  .maintenance-detail-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .maintenance-work-order-card > footer { flex-direction: column; }
+}
