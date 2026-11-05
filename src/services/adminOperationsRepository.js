@@ -169,6 +169,20 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
+export function createCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-create', input?.inventoryItemId),
+  });
+}
+
+export function transitionCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/transition', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-transition', input?.workOrderId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
