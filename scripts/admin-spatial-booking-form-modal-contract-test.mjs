@@ -35,6 +35,10 @@ for (
     'Dialog.Description',
     'Dialog.Close',
     'data-booking-modal-ui="ui-3c-mobile-first"',
+    'data-booking-flow-ux="spatial-v2"',
+    'Isi customer, pilih layanan dan slot, lalu atur pembayaran.',
+    'LIVE PREVIEW',
+    'Ringkasan booking',
     'bookingFormLayoutRef',
     'bookingStepItems',
     'nextBookingStepKey',
@@ -172,6 +176,17 @@ for (
 }
 
 assert.equal(
+  modalSource.includes("if (!editingBooking && form.date < getTodayIsoDate()) {"),
+  true,
+  'New bookings must reject dates before today.',
+);
+assert.equal(
+  modalSource.includes('min={!editingBooking ? getTodayIsoDate() : undefined}'),
+  true,
+  'New booking date picker must prevent selecting past dates.',
+);
+
+assert.equal(
   modalSource.includes(
     'disabled={!isBookingReady || isSaving}'
   ),
@@ -269,7 +284,8 @@ for (
     'bottom: auto;',
     'translate: -50% -50%;',
     "grid-template-areas: 'fields summary';",
-    'position: sticky;',
+    'overflow-y: auto;',
+    'scrollbar-gutter: stable;',
     '@media (min-width: 1024px)',
     '@media (max-width: 340px)',
     '@media (forced-colors: active)',
@@ -343,8 +359,18 @@ assert.match(
 
 assert.match(
   modalCss,
-  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-summary\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
-  'UI-3C desktop live summary must remain sticky.',
+  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-layout\s*\{[\s\S]*?overflow:\s*hidden;/,
+  'UI-3C desktop layout must keep scroll boundaries inside its two panes.',
+);
+assert.match(
+  modalCss,
+  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-fields\s*\{[\s\S]*?overflow-y:\s*auto;/,
+  'UI-3C desktop form fields must scroll independently.',
+);
+assert.match(
+  modalCss,
+  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-summary\s*\{[\s\S]*?position:\s*static;[\s\S]*?overflow-y:\s*auto;/,
+  'UI-3C desktop summary must remain independently readable without sticky overflow coupling.',
 );
 
 assert.equal(
@@ -354,6 +380,25 @@ assert.equal(
   false,
   'UI-3C CSS must use Spatial semantic tokens.',
 );
+assert.match(
+  modalCss,
+  /\.booking-modal-panel\[data-booking-flow-ux='spatial-v2'\] \.booking-form-section\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-bottom:\s*1px solid var\(--studio-edge-soft\);[\s\S]*?box-shadow:\s*none;/,
+  'UI-4A must render the booking stages as one continuous flow, not separate cards.',
+);
+
+for (const redesignInvariant of [
+  '/* UI-4A — Spatial Booking Flow',
+  'grid-template-areas: \'fields summary\';',
+  'grid-template-columns: minmax(0, 1fr) minmax(290px, 330px);',
+  'border-bottom: 1px solid var(--studio-edge-soft);',
+  'LIVE PREVIEW',
+]) {
+  assert.equal(
+    (modalSource + modalCss).includes(redesignInvariant),
+    true,
+    'UI-4A booking flow redesign invariant missing: ' + redesignInvariant,
+  );
+}
 
 const rawHexMatches =
   modalCss.match(

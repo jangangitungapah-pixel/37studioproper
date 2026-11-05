@@ -370,6 +370,12 @@ export default function BookingFormModal({
       return;
     }
 
+    if (!editingBooking && form.date < getTodayIsoDate()) {
+      setError('Tanggal booking baru tidak boleh sebelum hari ini.');
+      navigateToBookingStep('slot');
+      return;
+    }
+
     if (isRecordingSessionSelected && !recordingTypeOptions.length) {
       setError('Recording Type belum tersedia. Tambahkan harga Recording Type di Settings terlebih dahulu.');
       return;
@@ -671,6 +677,7 @@ export default function BookingFormModal({
         <Dialog.Content
           className="booking-modal-panel"
           data-booking-modal-ui="ui-3c-mobile-first"
+          data-booking-flow-ux="spatial-v2"
         >
           <header className="booking-modal-head">
             <div className="booking-modal-heading">
@@ -694,8 +701,8 @@ export default function BookingFormModal({
                 asChild
               >
                 <p className="booking-modal-description">
-                  Lengkapi data inti dalam empat langkah.
-                  Ringkasan dan tagihan diperbarui otomatis.
+                  Isi customer, pilih layanan dan slot, lalu atur pembayaran.
+                  Ringkasan mengikuti perubahan secara otomatis.
                 </p>
               </Dialog.Description>
 
@@ -830,6 +837,13 @@ export default function BookingFormModal({
                 aria-label="Ringkasan booking"
                 className="booking-form-summary"
               >
+                <header className="booking-summary-heading">
+                  <div>
+                    <span>LIVE PREVIEW</span>
+                    <strong>Ringkasan booking</strong>
+                  </div>
+                  <small>Otomatis</small>
+                </header>
                 <section
                   className={
                     'booking-summary-readiness ' +
@@ -1271,6 +1285,7 @@ export default function BookingFormModal({
                       icon={CalendarDays}
                       id="booking-date"
                       label="Tanggal"
+                      min={!editingBooking ? getTodayIsoDate() : undefined}
                       required
                       type="date"
                       value={form.date}
