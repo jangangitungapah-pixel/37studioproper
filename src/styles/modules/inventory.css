@@ -1652,3 +1652,94 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
     background: currentColor;
   }
 }
+
+.inventory-workspace-tabs {
+  display: flex;
+  gap: .5rem;
+  padding: .35rem;
+  margin: 0 0 1rem;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: .9rem;
+  background: var(--studio-surface-1);
+}
+.inventory-workspace-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 2.5rem;
+  padding: .55rem .9rem;
+  border: 0;
+  border-radius: .65rem;
+  background: transparent;
+  color: var(--studio-text-secondary);
+  font: inherit;
+  font-weight: 650;
+}
+.inventory-workspace-tabs button.is-active {
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+  box-shadow: var(--studio-shadow-surface);
+}
+.inventory-workspace-tabs button span {
+  padding: .1rem .42rem;
+  border-radius: 2rem;
+  background: var(--studio-accent);
+  color: white;
+  font-size: .7rem;
+}
+.inventory-maintenance-workspace {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.inventory-maintenance-header h2 { margin: .25rem 0; color: var(--studio-text-primary); font-size: 1.2rem; }
+.inventory-maintenance-header p { margin: 0; color: var(--studio-text-secondary); }
+.inventory-maintenance-report {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: .8rem;
+  padding: 1rem;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 1rem;
+  background: var(--studio-surface-1);
+}
+.inventory-maintenance-report label,
+.inventory-maintenance-cost { display: grid; gap: .35rem; color: var(--studio-text-secondary); font-size: .78rem; }
+.inventory-maintenance-report input,
+.inventory-maintenance-report select,
+.inventory-maintenance-report textarea,
+.inventory-maintenance-cost input {
+  width: 100%; min-height: 2.45rem; padding: .55rem .7rem;
+  border: 1px solid var(--studio-edge-soft); border-radius: .65rem;
+  background: var(--studio-surface-2); color: var(--studio-text-primary); font: inherit;
+}
+.inventory-maintenance-description { grid-column: span 2; }
+.inventory-maintenance-report button,
+.inventory-maintenance-actions button {
+  align-self: end; min-height: 2.4rem; padding: .55rem .8rem;
+  border: 1px solid var(--studio-accent); border-radius: .65rem;
+  background: var(--studio-accent); color: white; font: inherit; font-weight: 700;
+}
+.inventory-maintenance-report button:disabled,
+.inventory-maintenance-actions button:disabled { opacity: .5; cursor: wait; }
+.inventory-maintenance-list { display: grid; gap: .75rem; }
+.inventory-maintenance-card {
+  display: grid; gap: .75rem; padding: 1rem;
+  border: 1px solid var(--studio-edge-soft); border-radius: 1rem;
+  background: var(--studio-surface-1); min-width: 0;
+}
+.inventory-maintenance-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
+.inventory-maintenance-card-head > div { display: grid; gap: .2rem; }
+.inventory-maintenance-card-head strong { color: var(--studio-text-primary); }
+.inventory-maintenance-card-head span,
+.inventory-maintenance-meta { color: var(--studio-text-secondary); font-size: .78rem; }
+.inventory-maintenance-status { white-space: nowrap; padding: .25rem .55rem; border-radius: 99px; background: var(--studio-surface-2); }
+.inventory-maintenance-meta { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.inventory-maintenance-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.inventory-maintenance-cost { max-width: 260px; }
+.inventory-maintenance-error { color: #b33d4a; }
+@media (max-width: 620px) {
+  .inventory-maintenance-description { grid-column: 1; }
+  .inventory-maintenance-card-head { display: grid; }
+  .inventory-workspace-tabs { display: grid; grid-template-columns: 1fr; }
+}
