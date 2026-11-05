@@ -83,6 +83,32 @@ class FakeFirestore {
   }
 }
 
+await assert.rejects(
+  () => previewDailyClosing({
+    actor,
+    body: { businessDate: '2026-11-05', registerId: 'secondary' },
+    firestore: new FakeFirestore(),
+  }),
+  (error) => error?.code === 'register_not_supported',
+);
+
+await assert.rejects(
+  () => closeDailyClosing({
+    actor,
+    body: {
+      businessDate: '2026-11-06',
+      registerId: 'main',
+      openingCash: 0,
+      countedCash: 0,
+      digitalCounts: { transfer: 0, qris: 0, other: 0 },
+    },
+    firestore: new FakeFirestore(),
+    request: new Request('https://worker.test/close', { headers: { 'x-idempotency-key': 'close-future-date' }, method: 'POST' }),
+    now: new Date('2026-11-05T09:00:00.000Z'),
+  }),
+  (error) => error?.code === 'future_business_date',
+);
+
 const date = '2026-11-05';
 const nowBeforeCutoff = '2026-11-05T08:55:00.000Z';
 const actor = { displayName: 'Admin Test', role: 'admin', uid: 'admin-1' };
