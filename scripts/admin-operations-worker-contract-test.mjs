@@ -1070,4 +1070,45 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   assert.equal(firestore.collection('inventoryMovements').size, 3);
 }
 
+
+{
+  const firestore = new FakeFirestore({ inventoryItems: { 'item-1': { name: 'Cable', quantity: 4, unit: 'pcs', status: 'active' } } });
+  const options = {
+    actor,
+    body: { action: 'create', category: 'cable', condition: 'good', location: 'Rak A', minStock: 2, name: 'XLR Cable', note: 'Kabel baru', quantity: 5, reason: 'Item baru ditambahkan', status: 'active', type: 'asset', unit: 'pcs' },
+    firestore, request: requestWithKey('inventory-create-one'),
+  };
+  const created = await saveInventoryItem(options);
+  assert.equal(created.item.quantity, 5);
+  assert.equal(created.movement.type, 'create');
+  assert.equal(firestore.collection('inventoryItems').size, 2);
+  assert.equal(firestore.collection('inventoryMovements').size, 1);
+  const retry = await saveInventoryItem(options);
+  assert.equal(retry.duplicate, true);
+  assert.equal(firestore.collection('inventoryMovements').size, 1);
+
+  const updated = await saveInventoryItem({
+    actor,
+    body: { action: 'update', category: 'cable', condition: 'fair', itemId: created.item.id, location: 'Rak B', minStock: 3, name: 'XLR Premium', note: 'Metadata updated', reason: 'Update metadata', status: 'active', type: 'asset', unit: 'pcs' },
+    firestore, request: requestWithKey('inventory-update-one'),
+  });
+  assert.equal(updated.item.quantity, 5);
+  assert.equal(updated.movement.type, 'edit');
+  assert.equal(firestore.collection('inventoryMovements').size, 2);
+
+  await assert.rejects(saveInventoryItem({
+    actor,
+    body: { action: 'update', itemId: created.item.id, category: 'cable', condition: 'good', location: '', minStock: 3, name: 'XLR Premium', note: '', quantity: 20, status: 'active', type: 'asset', unit: 'pcs' },
+    firestore, request: requestWithKey('inventory-write-quantity'),
+  }), (error) => error?.code === 'stock_write_forbidden');
+
+  const archiveOptions = { actor, body: { itemId: created.item.id, reason: 'Item dinonaktifkan' }, firestore, request: requestWithKey('inventory-archive-one') };
+  const archived = await archiveInventoryItem(archiveOptions);
+  assert.equal(archived.item.status, 'inactive');
+  assert.equal(archived.movement.type, 'inactive');
+  const archiveRetry = await archiveInventoryItem(archiveOptions);
+  assert.equal(archiveRetry.duplicate, true);
+  assert.equal(firestore.collection('inventoryMovements').size, 3);
+}
+
 console.log('Admin operations Worker contract passed.');
