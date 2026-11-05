@@ -260,6 +260,14 @@ export async function reportMaintenanceWorkOrder({ actor, body, firestore, reque
 
 export async function actOnMaintenanceWorkOrder({ actor, body, firestore, request, now = new Date() }) {
   const action = cleanText(body.action, 40).toLowerCase();
+
+  // Authorize Owner-only operations before idempotency replay or lifecycle checks.
+  // This keeps unauthorized callers from learning work-order state or replaying
+  // a previously completed Owner operation through a reused idempotency key.
+  if (action === 'reopen' && actor.role !== 'owner') {
+    throw new HttpError(403, 'owner_required', 'Reopen work order hanya dapat dilakukan Owner.');
+  }
+
   const key = getIdempotencyKey(request, body);
   const type = 'maintenance-work-order-' + action;
   const existingOperation = await readOperationResult(firestore, type, key);
@@ -271,9 +279,6 @@ export async function actOnMaintenanceWorkOrder({ actor, body, firestore, reques
   const policy = getMaintenanceTransition(action);
   if (!policy || !policy.from.includes(current.status)) {
     throw new HttpError(409, 'maintenance_transition_invalid', 'Aksi ' + action + ' tidak tersedia untuk status ' + current.status + '.');
-  }
-  if (action === 'reopen' && actor.role !== 'owner') {
-    throw new HttpError(403, 'owner_required', 'Reopen work order hanya dapat dilakukan Owner.');
   }
 
   const itemDocument = await loadItem(firestore, current.inventoryItemId);
