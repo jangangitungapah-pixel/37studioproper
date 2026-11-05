@@ -22,6 +22,7 @@ assert.match(worker, /purchaseOrders/);
 assert.match(worker, /procurementPayments/);
 assert.match(worker, /commitIdempotentOperation/);
 assert.match(worker, /goods_receipt_quantity_invalid/);
+assert.match(worker, /po_duplicate_inventory_item/);
 assert.match(worker, /procurement_payment_exceeds_balance/);
 assert.match(router, /\/v1\/procurement\/goods-receipts/);
 assert.match(operations, /\/v1\/procurement\/goods-receipts/);
