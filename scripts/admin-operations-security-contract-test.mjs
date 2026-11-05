@@ -18,6 +18,8 @@ const dangerWorker = read('workers/admin-operations-worker/src/domain/danger.js'
 const bookingWorker = read('workers/admin-operations-worker/src/domain/bookings.js');
 const galleryWorker = read('workers/admin-operations-worker/src/domain/gallery.js');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
+const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
+const adminBookingRepository = read('src/services/adminBookingRepository.js');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
 const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
 
@@ -96,6 +98,14 @@ assert.match(
 assert.equal(galleryWorker.includes("studio37/gallery/"), true);
 assert.equal(galleryWorker.includes("permanentDeleteStatus: 'deleting'"), true);
 assert.equal(bookingWorker.includes("type: 'manual-booking-create'"), true);
+assert.equal(bookingSessionsWorker.includes('commitIdempotentOperation'), true);
+assert.equal(bookingSessionsWorker.includes("'bookingSessionEvents'"), true);
+assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'"), true);
+assert.match(workerIndex, /pathname === '\/v1\/bookings\/sessions\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'schedule' \}\);[\s\S]*?body = await readJson\(request\);/);
+assert.match(rules, /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && hasPermission\('schedule'\);[\s\S]*?allow create, update, delete: if false;/);
+assert.equal(adminBookingRepository.includes("'sessionStatus', 'sessionState', 'checkedInAt'"), true);
+assert.equal(bookingWorker.includes("'sessionStatus',\n  'sessionType'"), false, 'Generic booking updates must not accept sessionStatus.');
+
 assert.equal(bookingWorker.includes("'bookkeepingEntries'"), true);
 assert.match(
   rules,
