@@ -101,12 +101,15 @@ function normalizePurchaseOrderItems(input) {
   if (!Array.isArray(input) || !input.length || input.length > 100) {
     throw new HttpError(400, 'po_items_required', 'Purchase order harus memiliki minimal satu item.');
   }
+  const seenInventoryIds = new Set();
   return input.map((raw) => {
     const inventoryItemId = cleanText(raw.inventoryItemId, 160);
     const name = cleanText(raw.name, 160);
     const quantity = finiteQuantity(raw.quantity, 'Jumlah pesanan');
     const unitPrice = procurementAmount(raw.unitPrice, 'Harga satuan');
     if ((!inventoryItemId && name.length < 2) || quantity <= 0) throw new HttpError(400, 'po_item_invalid', 'Item PO atau jumlah pesanan tidak valid.');
+    if (inventoryItemId && seenInventoryIds.has(inventoryItemId)) throw new HttpError(400, 'po_duplicate_inventory_item', 'Setiap item inventory hanya boleh memiliki satu baris dalam PO.');
+    if (inventoryItemId) seenInventoryIds.add(inventoryItemId);
     return {
       lineId: cleanText(raw.lineId, 80) || crypto.randomUUID(),
       inventoryItemId, name, quantity, receivedQuantity: 0,
