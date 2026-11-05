@@ -422,8 +422,13 @@ try {
   await assertFails(deleteDoc(doc(dashboard, 'bookkeepingEntries', 'manual-1')));
 
   await assertFails(getDoc(doc(dashboard, 'bookingSessionEvents', 'session-event-1')));
-  await assertFails(getDoc(doc(dashboard, 'cashClosingSessions', '2026-08-14__main')));
-  await assertFails(getDoc(doc(dashboard, 'cashClosingEvents', 'closing-event-1')));
+  // Dashboard access intentionally includes read-only bookkeeping context.
+  // The canonical rules expose these snapshots/events through canAccessBookkeepingData().
+  await assertSucceeds(getDoc(doc(dashboard, 'cashClosingSessions', '2026-08-14__main')));
+  await assertSucceeds(getDoc(doc(dashboard, 'cashClosingEvents', 'closing-event-1')));
+  const settingsAdmin = context('settings-admin', 'settings@example.com');
+  await assertFails(getDoc(doc(settingsAdmin, 'cashClosingSessions', '2026-08-14__main')));
+  await assertFails(getDoc(doc(settingsAdmin, 'cashClosingEvents', 'closing-event-1')));
   await assertFails(setDoc(doc(dashboard, 'bookingSessionEvents', 'session-event-forged'), {
     action: 'completed', actorName: 'Dashboard', actorUid: 'dashboard-only', bookingId: 'booking-1',
     createdAt: now, fromStatus: 'in_progress', id: 'session-event-forged', reason: '',
