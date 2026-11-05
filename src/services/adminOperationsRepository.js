@@ -169,6 +169,27 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
+export function createCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
+  return requestOperation('/v1/customers/follow-ups', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-create', input?.customerId),
+  });
+}
+
+export function updateCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
+  return requestOperation('/v1/customers/follow-ups/update', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-update', input?.taskId),
+  });
+}
+
+export function cancelCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
+  return requestOperation('/v1/customers/follow-ups/cancel', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-cancel', input?.taskId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
