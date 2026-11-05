@@ -232,7 +232,7 @@ assert.equal(
     },
     { now: todayMorning },
   ),
-  'completed',
+  'needs_review',
 );
 
 /**
