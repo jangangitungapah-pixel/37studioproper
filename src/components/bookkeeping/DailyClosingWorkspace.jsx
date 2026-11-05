@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ClipboardCheck, FileClock, LockKeyhole, RefreshCw, ShieldCheck, Wallet, XCircle } from 'lucide-react';
 import { adminOperationsRepository } from '../../services/adminOperationsRepository.js';
+import { adminAuthRepository } from '../../services/adminAuthRepository.js';
 import '../../styles/modules/bookkeeping-daily-closing.css';
 
 const DENOMINATIONS = [
@@ -172,6 +173,14 @@ export default function DailyClosingWorkspace() {
     setIsSubmitting(true);
     setFeedback(null);
     try {
+      try {
+        await adminAuthRepository.reauthenticateCurrentAdmin();
+      } catch (reauthError) {
+        if (reauthError?.code !== 'account-password/current-password-required') throw reauthError;
+        const password = window.prompt('Masukkan password akun Owner untuk verifikasi ulang:');
+        if (password === null) return;
+        await adminAuthRepository.reauthenticateCurrentAdmin({ password });
+      }
       await adminOperationsRepository.reopenDailyClosing({
         businessDate,
         registerId,
