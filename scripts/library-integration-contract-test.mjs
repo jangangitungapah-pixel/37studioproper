@@ -76,5 +76,12 @@ const shell = read('src/pages/AdminPage.jsx');
 assert.match(shell, /<StudioToaster\s*\/>/);
 const chart = read('src/components/ui/StudioChart.jsx');
 assert.match(chart, /echarts-for-react|EChartsRenderer/);
+const chartRenderer = read('src/components/ui/EChartsRenderer.jsx');
+assert.match(chartRenderer, /echarts-for-react\\/lib\\/core/);
+assert.match(chartRenderer, /from 'echarts\\/core'/);
+assert.match(chartRenderer, /BarChart/);
+assert.match(chartRenderer, /LineChart/);
+assert.match(chartRenderer, /CanvasRenderer/);
+assert.match(chartRenderer, /echarts\\.use/);
 
 console.log('library-integration-contract-test: PASS');
