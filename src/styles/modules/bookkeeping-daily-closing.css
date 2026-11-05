@@ -1,0 +1,662 @@
+.daily-closing-workspace {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  color: var(--studio-text-primary);
+}
+
+.daily-closing-header,
+.daily-closing-panel-title,
+.daily-closing-section-heading,
+.daily-closing-action-row,
+.daily-closing-counted-total,
+.daily-closing-foot-meta,
+.daily-closing-late-postings > div,
+.daily-closing-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.daily-closing-header {
+  padding: 4px 2px 2px;
+}
+
+.daily-closing-header h3 {
+  margin: 4px 0 3px;
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  font-weight: 790;
+  letter-spacing: -0.045em;
+}
+
+.daily-closing-header p,
+.daily-closing-panel-note,
+.daily-closing-empty span,
+.daily-closing-late-postings p {
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.69rem;
+  line-height: 1.55;
+}
+
+.daily-closing-eyebrow,
+.daily-closing-panel-title > div > span,
+.daily-closing-section-heading > div > span {
+  color: var(--studio-accent-strong);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.daily-closing-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  font-size: 0.62rem;
+  font-weight: 760;
+}
+
+.daily-closing-status.is-closed {
+  border-color: color-mix(in srgb, var(--studio-success) 30%, var(--studio-edge-soft));
+  background: var(--studio-success-soft);
+  color: var(--studio-success);
+}
+
+.daily-closing-status.is-reopened {
+  border-color: color-mix(in srgb, var(--studio-warning) 30%, var(--studio-edge-soft));
+  background: var(--studio-warning-soft);
+  color: var(--studio-warning);
+}
+
+.daily-closing-filter-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.8fr) auto;
+  align-items: end;
+  gap: 10px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  padding: 12px;
+  background: var(--studio-surface-2);
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.daily-closing-filter-row label,
+.daily-closing-field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.daily-closing-filter-row label > span,
+.daily-closing-field > span,
+.daily-closing-denominations label > span {
+  color: var(--studio-text-secondary);
+  font-size: 0.62rem;
+  font-weight: 720;
+}
+
+.daily-closing-filter-row input,
+.daily-closing-input-prefix,
+.daily-closing-denominations input,
+.daily-closing-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 37px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 10px;
+  background: var(--studio-surface-1);
+  color: var(--studio-text-primary);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.daily-closing-filter-row input,
+.daily-closing-denominations input,
+.daily-closing-field textarea {
+  padding: 8px 10px;
+}
+
+.daily-closing-filter-row input:focus-visible,
+.daily-closing-input-prefix:focus-within,
+.daily-closing-denominations input:focus-visible,
+.daily-closing-field textarea:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+
+.daily-closing-preview-button,
+.daily-closing-close-button,
+.daily-closing-reopen-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 760;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
+}
+
+.daily-closing-preview-button,
+.daily-closing-close-button {
+  background: var(--studio-accent);
+  color: var(--studio-on-accent, #171717);
+}
+
+.daily-closing-reopen-button {
+  border-color: var(--studio-edge-soft);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+}
+
+.daily-closing-preview-button:hover:not(:disabled),
+.daily-closing-close-button:hover:not(:disabled),
+.daily-closing-reopen-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.daily-closing-preview-button:disabled,
+.daily-closing-close-button:disabled,
+.daily-closing-reopen-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.daily-closing-work-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.daily-closing-panel,
+.daily-closing-results,
+.daily-closing-late-postings,
+.daily-closing-reference-list,
+.daily-closing-empty {
+  min-width: 0;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-2);
+  box-shadow: var(--studio-shadow-contact);
+}
+
+.daily-closing-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 13px;
+}
+
+.daily-closing-panel-title > div,
+.daily-closing-section-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.daily-closing-panel-title h4,
+.daily-closing-section-heading h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 780;
+  letter-spacing: -0.025em;
+}
+
+.daily-closing-panel-title > svg {
+  color: var(--studio-accent-strong);
+}
+
+.daily-closing-input-prefix {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.daily-closing-input-prefix b {
+  padding-left: 10px;
+  color: var(--studio-text-tertiary);
+  font-size: 0.66rem;
+}
+
+.daily-closing-input-prefix input {
+  width: 100%;
+  min-width: 0;
+  min-height: 35px;
+  border: 0;
+  outline: 0;
+  padding: 7px 9px 7px 6px;
+  background: transparent;
+  color: var(--studio-text-primary);
+  font: inherit;
+  font-size: 0.73rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-closing-subheading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.daily-closing-subheading strong {
+  font-size: 0.67rem;
+}
+
+.daily-closing-subheading small,
+.daily-closing-panel-footnote {
+  color: var(--studio-text-tertiary);
+  font-size: 0.58rem;
+}
+
+.daily-closing-denominations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.daily-closing-denominations label {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 9px;
+  padding: 5px 7px;
+  background: var(--studio-surface-1);
+}
+
+.daily-closing-denominations label > span {
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+.daily-closing-denominations input {
+  min-height: 29px;
+  border-radius: 7px;
+  padding: 4px 6px;
+  text-align: right;
+  font-size: 0.67rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-closing-counted-total {
+  border-top: 1px solid var(--studio-edge-soft);
+  padding-top: 10px;
+}
+
+.daily-closing-counted-total span {
+  color: var(--studio-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 690;
+}
+
+.daily-closing-counted-total strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-closing-panel-note {
+  margin-top: -4px;
+}
+
+.daily-closing-panel-footnote {
+  border-left: 2px solid var(--studio-info);
+  padding: 2px 0 2px 9px;
+  line-height: 1.5;
+}
+
+.daily-closing-results {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.daily-closing-section-heading {
+  align-items: flex-end;
+}
+
+.daily-closing-section-heading > small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.59rem;
+  text-align: right;
+}
+
+.daily-closing-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.daily-closing-metric {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--studio-surface-1);
+}
+
+.daily-closing-metric > span {
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.daily-closing-metric strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(0.73rem, 1.3vw, 0.94rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-closing-metric small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.53rem;
+  line-height: 1.35;
+}
+
+.daily-closing-metric.is-balanced strong,
+.daily-closing-method-row .is-balanced {
+  color: var(--studio-success);
+}
+
+.daily-closing-metric.is-variance strong,
+.daily-closing-method-row .is-variance {
+  color: var(--studio-warning);
+}
+
+.daily-closing-method-table {
+  display: grid;
+  overflow: auto hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 11px;
+}
+
+.daily-closing-method-row {
+  min-width: 660px;
+  display: grid;
+  grid-template-columns: 0.7fr repeat(5, minmax(92px, 1fr));
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--studio-edge-soft);
+  padding: 9px 10px;
+  font-size: 0.61rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-closing-method-row:last-child {
+  border-bottom: 0;
+}
+
+.daily-closing-method-row strong {
+  font-weight: 780;
+}
+
+.daily-closing-method-row > span {
+  color: var(--studio-text-secondary);
+  white-space: nowrap;
+}
+
+.daily-closing-method-row.is-heading {
+  background: var(--studio-surface-3, var(--studio-surface-1));
+  color: var(--studio-text-tertiary);
+  font-size: 0.53rem;
+  font-weight: 780;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.daily-closing-reason textarea {
+  resize: vertical;
+  min-height: 54px;
+}
+
+.daily-closing-reason b {
+  color: var(--studio-warning);
+  font-size: 0.54rem;
+  text-transform: uppercase;
+}
+
+.daily-closing-foot-meta {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  color: var(--studio-text-tertiary);
+  font-size: 0.56rem;
+}
+
+.daily-closing-foot-meta code {
+  border-radius: 5px;
+  padding: 2px 4px;
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+  font-size: 0.55rem;
+}
+
+.daily-closing-late-postings {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-color: color-mix(in srgb, var(--studio-warning) 40%, var(--studio-edge-soft));
+}
+
+.daily-closing-late-postings > div {
+  justify-content: flex-start;
+  color: var(--studio-warning);
+  font-size: 0.7rem;
+}
+
+.daily-closing-late-postings article,
+.daily-closing-reference-table article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  border-top: 1px solid var(--studio-edge-soft);
+  padding: 8px 0 2px;
+}
+
+.daily-closing-late-postings article > span,
+.daily-closing-reference-table article > span {
+  overflow: hidden;
+  color: var(--studio-text-secondary);
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-closing-late-postings article strong,
+.daily-closing-reference-table article strong {
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-closing-late-postings article small,
+.daily-closing-reference-table article small {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+  color: var(--studio-text-tertiary);
+  font-size: 0.53rem;
+}
+
+.daily-closing-reference-list {
+  overflow: hidden;
+  padding: 11px 12px;
+}
+
+.daily-closing-reference-list summary {
+  cursor: pointer;
+  color: var(--studio-text-secondary);
+  font-size: 0.66rem;
+  font-weight: 740;
+}
+
+.daily-closing-reference-table {
+  display: grid;
+  margin-top: 8px;
+}
+
+.daily-closing-reference-table article .is-income {
+  color: var(--studio-success);
+}
+
+.daily-closing-reference-table article .is-expense {
+  color: var(--studio-warning);
+}
+
+.daily-closing-reference-table > p {
+  margin: 8px 0 0;
+  color: var(--studio-text-tertiary);
+  font-size: 0.58rem;
+}
+
+.daily-closing-action-row {
+  flex-wrap: wrap;
+}
+
+.daily-closing-locked-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--studio-success);
+  font-size: 0.63rem;
+  font-weight: 680;
+}
+
+.daily-closing-empty {
+  min-height: 145px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 20px;
+  text-align: center;
+}
+
+.daily-closing-empty > svg {
+  color: var(--studio-accent-strong);
+}
+
+.daily-closing-empty strong {
+  font-size: 0.75rem;
+}
+
+.daily-closing-empty span {
+  max-width: 480px;
+}
+
+.daily-closing-feedback {
+  justify-content: flex-start;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.65rem;
+}
+
+.daily-closing-feedback.is-success {
+  border-color: color-mix(in srgb, var(--studio-success) 35%, var(--studio-edge-soft));
+  background: var(--studio-success-soft);
+  color: var(--studio-success);
+}
+
+.daily-closing-feedback.is-error {
+  border-color: color-mix(in srgb, var(--studio-warning) 35%, var(--studio-edge-soft));
+  background: var(--studio-warning-soft);
+  color: var(--studio-warning);
+}
+
+@media (max-width: 900px) {
+  .daily-closing-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .daily-closing-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .daily-closing-preview-button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .daily-closing-header,
+  .daily-closing-section-heading {
+    align-items: flex-start;
+  }
+
+  .daily-closing-header {
+    flex-wrap: wrap;
+  }
+
+  .daily-closing-work-grid,
+  .daily-closing-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .daily-closing-preview-button {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .daily-closing-panel,
+  .daily-closing-results {
+    padding: 11px;
+  }
+
+  .daily-closing-method-row {
+    min-width: 620px;
+  }
+
+  .daily-closing-action-row {
+    align-items: stretch;
+  }
+
+  .daily-closing-close-button,
+  .daily-closing-reopen-button {
+    flex: 1 1 100%;
+  }
+
+  .daily-closing-locked-note {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daily-closing-preview-button,
+  .daily-closing-close-button,
+  .daily-closing-reopen-button {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .daily-closing-status,
+  .daily-closing-filter-row,
+  .daily-closing-panel,
+  .daily-closing-results,
+  .daily-closing-late-postings,
+  .daily-closing-reference-list,
+  .daily-closing-empty,
+  .daily-closing-metric {
+    border: 1px solid CanvasText;
+  }
+}
