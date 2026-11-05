@@ -1698,12 +1698,9 @@ match /users/{userId} {
 
     match /inventoryItems/{itemId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create: if isApproved() && canManageInventoryData() && validInventoryItem(request.resource.data, itemId);
-      allow update: if isApproved() && canManageInventoryData() &&
-        validInventoryItem(request.resource.data, itemId) &&
-        request.resource.data.quantity == resource.data.quantity &&
-        request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if isApproved() && canManageInventoryData();
+      // Canonical inventory writes run through Admin Operations Worker so item
+      // metadata, stock movements, idempotency keys, and audit records commit atomically.
+      allow create, update, delete: if false;
     }
 
     match /inventoryMovements/{movementId} {
