@@ -134,6 +134,46 @@ export function updateCanonicalManualBooking(input, idempotencyKey = '') {
   });
 }
 
+export function createCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing', input?.businessDate),
+  });
+}
+
+export function getCanonicalDailyClosing(businessDate, registerId = 'main') {
+  const params = new URLSearchParams({ businessDate, registerId });
+  return requestOperation(`/v1/finance/daily-closings?${params.toString()}`, { method: 'GET', retryCount: 0 });
+}
+
+export function reopenCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/reopen', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-reopen', input?.businessDate),
+  });
+}
+
+export function createCanonicalBookkeepingEntry(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/bookkeeping-entries', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('bookkeeping-entry', input?.id),
+  });
+}
+
+export function updateCanonicalBookkeepingEntry(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/bookkeeping-entries/update', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('bookkeeping-update', input?.id),
+  });
+}
+
+export function deleteCanonicalBookkeepingEntry(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/bookkeeping-entries/delete', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('bookkeeping-delete', input?.id),
+  });
+}
+
 export function recordCanonicalPayment(input, idempotencyKey = '') {
   return requestOperation('/v1/finance/payments', {
     body: input,
