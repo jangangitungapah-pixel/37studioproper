@@ -562,8 +562,20 @@ export async function receivePurchaseOrder({ actor, body, firestore, request }) 
   }
 
   const receivedLines = Array.isArray(body.items) ? body.items : [];
-  if (!receivedLines.length || receivedLines.length > po.items.length) {
+  if (!receivedLines.length) {
     throw new HttpError(400, 'goods_receipt_items_required', 'Pilih setidaknya satu item yang diterima.');
+  }
+
+  const requestedLineIds = new Set();
+  for (const line of receivedLines) {
+    const lineId = cleanText(line?.lineId, 80);
+    if (!lineId || requestedLineIds.has(lineId)) {
+      throw new HttpError(400, 'goods_receipt_line_duplicate', 'Baris penerimaan wajib unik.');
+    }
+    requestedLineIds.add(lineId);
+  }
+  if (receivedLines.length > po.items.length) {
+    throw new HttpError(400, 'goods_receipt_items_required', 'Jumlah baris penerimaan melebihi detail PO.');
   }
 
   const now = new Date().toISOString();
