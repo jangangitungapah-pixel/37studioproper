@@ -31,6 +31,7 @@ import {
 } from '../../domain/booking/bookingSelectors.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { updateCanonicalBookingSession } from '../../services/adminOperationsRepository.js';
+import { updateCanonicalBookingSession } from '../../services/adminOperationsRepository.js';
 import useBookingListUrlState from '../../hooks/useBookingListUrlState.js';
 import {
   ADMIN_LIST_PAGE_SIZE,
@@ -1467,6 +1468,7 @@ export default function AllBookingsPage() {
           closeBooking
         }
         onTabChange={setTab}
+        onSessionAction={updateCanonicalBookingSession}
         onSessionAction={updateCanonicalBookingSession}
       />
     </section>
