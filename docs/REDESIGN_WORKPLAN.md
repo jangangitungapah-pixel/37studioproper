@@ -21,6 +21,13 @@ Status: AUDIT CAPTURED; BASELINE REGRESSION BLOCKER OPEN.
 Acceptance: no undocumented P0/P1 blocker; current baseline commands recorded; inventory source-grounded.
 
 ## Phase 1 — Design system foundation
+Status: IMPLEMENTED IN SOURCE; GITHUB QUALITY GATES PENDING.
+- Integrated shadcn configuration with Base UI, Tailwind CSS v4 Vite plugin, Motion, Magic UI NumberTicker, Lucide React, Sonner, TanStack Table, Apache ECharts, React Hook Form and Zod.
+- Preserved legacy Radix components during selective migration; new menu primitive uses Base UI.
+- Migrated the Dashboard cashflow chart from Recharts to Apache ECharts.
+- Added semantic typography, spacing, control geometry, content widths, focus, motion, elevation, overlays and chart palette tokens for Light/Dark.
+- Refreshed source-owned shared primitives and added styles for new data/menu/chart/notification/ticker components.
+- Added foundation and library integration tests.
 - Extend semantic CSS custom properties only after verifying existing tokens and consumer compatibility.
 - Define palette, semantic status roles, typography scale, numeric typography, spacing, radius, elevation, focus ring, control heights, content widths, breakpoints, z-index and motion tokens.
 - Preserve Light/Dark/System and existing preference key/default.
