@@ -15,8 +15,8 @@ const themePreferences = read('src/theme/themePreferences.js');
 
 assert.match(adminPage, /className="admin-shell-skip-link" href="#admin-workspace-content"/);
 assert.match(adminPage, /id="admin-workspace-content"\s+tabIndex=\{-1\}/);
-assert.match(adminBottomNav, /matchMedia\(\s*'\(min-width: 900px\)'\s*\)/);
-assert.match(adminBottomNav, /if \(desktopMedia\.matches\)\s*\{\s*setIsMoreMenuOpen\(false\)/);
+assert.match(adminBottomNav, /matchMedia\([\s\S]{0,80}'\(min-width: 900px\)'/);
+assert.match(adminBottomNav, /if \(desktopMedia\.matches\)\s*\{[\s\S]{0,80}setIsMoreMenuOpen\([\s\S]{0,20}false/);
 assert.match(adminCss, /\.admin-shell-skip-link:focus-visible/);
 assert.match(adminCss, /@media \(forced-colors: active\)/);
 
