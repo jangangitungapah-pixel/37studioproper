@@ -169,6 +169,23 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
+export function saveCanonicalInventoryItem(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/items', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey(
+      input?.action === 'create' ? 'inventory-create' : 'inventory-update',
+      input?.itemId,
+    ),
+  });
+}
+
+export function archiveCanonicalInventoryItem(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/items/archive', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('inventory-archive', input?.itemId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
@@ -222,6 +239,8 @@ export function getDangerZoneJob(jobId) {
 
 export const adminOperationsRepository = {
   adjustInventory: adjustCanonicalInventory,
+  saveInventoryItem: saveCanonicalInventoryItem,
+  archiveInventoryItem: archiveCanonicalInventoryItem,
   createManualBooking: createCanonicalManualBooking,
   createDangerZoneDryRun,
   getDangerZoneJob,
