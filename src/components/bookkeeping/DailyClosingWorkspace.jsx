@@ -344,6 +344,26 @@ export default function DailyClosingWorkspace() {
             </section>
           ) : null}
 
+          {preview.events?.length ? (
+            <details className="daily-closing-event-history">
+              <summary>Riwayat audit closing ({preview.events.length})</summary>
+              <div className="daily-closing-event-timeline">
+                {preview.events.map((event) => (
+                  <article key={event.id}>
+                    <span className={'daily-closing-event-marker is-' + event.action} />
+                    <div>
+                      <strong>{event.action === 'closed' ? 'Closing dikunci' : 'Closing dibuka kembali'} · Revision {event.revision}</strong>
+                      <small>{formatTimestamp(event.createdAt)} • {event.actorName || event.actorUid}</small>
+                      {event.reason ? <p>{event.reason}</p> : null}
+                      {event.snapshot?.reviewNote ? <p>{event.snapshot.reviewNote}</p> : null}
+                      {event.snapshot ? <small>{event.snapshot.transactionCount} transaksi • {event.snapshot.sourceFingerprint?.slice(0, 18)}</small> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </details>
+          ) : null}
+
           {references.length ? (
             <details className="daily-closing-reference-list">
               <summary>Transaksi dalam snapshot ({references.length})</summary>
