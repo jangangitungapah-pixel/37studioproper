@@ -1250,15 +1250,6 @@ function CustomerFollowUpCenter({
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
 
   useEffect(() => {
-    if (!newTask.assignedToUid && assignees.length) {
-      setNewTask((current) => ({
-        ...current,
-        assignedToUid: assignees[0].uid,
-      }));
-    }
-  }, [assignees, newTask.assignedToUid]);
-
-  useEffect(() => {
     if (!expandedTaskId) return undefined;
     setTaskHistoryLoading((current) => ({ ...current, [expandedTaskId]: true }));
     setTaskHistoryErrors((current) => ({ ...current, [expandedTaskId]: '' }));
@@ -1300,17 +1291,18 @@ function CustomerFollowUpCenter({
 
   async function submitNewTask(event) {
     event.preventDefault();
+    const assignedToUid = newTask.assignedToUid || assignees[0]?.uid || '';
     if (
       !newTask.customerId ||
       !newTask.dueAt ||
-      !newTask.assignedToUid ||
+      !assignedToUid ||
       newTask.title.trim().length < 3
     ) return;
 
     setSavingTask('create');
     setTaskActionError('');
     try {
-      await onCreateTask({ ...newTask, templateKey: activeTemplate });
+      await onCreateTask({ ...newTask, assignedToUid, templateKey: activeTemplate });
       setNewTask((current) => ({
         ...current,
         customerId: '',
@@ -1439,7 +1431,7 @@ function CustomerFollowUpCenter({
               <span>PIC</span>
               <select
                 required
-                value={newTask.assignedToUid}
+                value={newTask.assignedToUid || assignees[0]?.uid || ''}
                 disabled={assigneesLoading || !assignees.length}
                 onChange={(event) => setNewTask((current) => ({ ...current, assignedToUid: event.target.value }))}
               >
@@ -1534,7 +1526,14 @@ function CustomerFollowUpCenter({
                           type="button"
                           className="customer-followup-history-toggle"
                           aria-expanded={expandedTaskId === task.id}
-                          onClick={() => setExpandedTaskId((current) => current === task.id ? '' : task.id)}
+                          onClick={() => {
+                            const nextTaskId = expandedTaskId === task.id ? '' : task.id;
+                            if (nextTaskId) {
+                              setTaskHistoryLoading((current) => ({ ...current, [nextTaskId]: true }));
+                              setTaskHistoryErrors((current) => ({ ...current, [nextTaskId]: '' }));
+                            }
+                            setExpandedTaskId(nextTaskId);
+                          }}
                         >
                           {expandedTaskId === task.id ? 'Tutup histori' : 'Lihat histori'}
                         </button>
@@ -1543,7 +1542,16 @@ function CustomerFollowUpCenter({
                             {taskHistoryErrors[task.id] ? (
                               <li role="alert">
                                 {taskHistoryErrors[task.id]}{' '}
-                                <button type="button" onClick={() => setTaskHistoryRetry((current) => current + 1)}>Coba lagi</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTaskHistoryLoading((current) => ({ ...current, [task.id]: true }));
+                                    setTaskHistoryErrors((current) => ({ ...current, [task.id]: '' }));
+                                    setTaskHistoryRetry((current) => current + 1);
+                                  }}
+                                >
+                                  Coba lagi
+                                </button>
                               </li>
                             ) : taskHistoryLoading[task.id] ? (
                               <li role="status">Memuat histori...</li>
@@ -2157,10 +2165,7 @@ export default function CustomerPage() {
     }
   }, []);
 
-  useEffect(() => {
-    setFollowUpTasksLoading(true);
-    setFollowUpTasksError('');
-    return subscribeCustomerFollowUpTasks((tasks) => {
+  useEffect(() => subscribeCustomerFollowUpTasks((tasks) => {
       setFollowUpTasks(tasks);
       setFollowUpTasksLoading(false);
       setFollowUpTasksError('');
@@ -2168,13 +2173,10 @@ export default function CustomerPage() {
       setFollowUpTasksLoading(false);
       setFollowUpTasksError(error?.message || 'Subscription Firestore gagal.');
       console.error('Gagal memuat follow-up tasks:', error);
-    });
-  }, [followUpTaskRetry]);
+    }), [followUpTaskRetry]);
 
   useEffect(() => {
     let active = true;
-    setFollowUpAssigneesLoading(true);
-    setFollowUpAssigneesError('');
     getCanonicalCustomerFollowUpAssignees()
       .then((response) => {
         if (!active) return;
@@ -2459,11 +2461,19 @@ export default function CustomerPage() {
             tasks={followUpTasks}
             loading={followUpTasksLoading}
             loadError={followUpTasksError}
-            onRetry={() => setFollowUpTaskRetry((current) => current + 1)}
+            onRetry={() => {
+              setFollowUpTasksLoading(true);
+              setFollowUpTasksError('');
+              setFollowUpTaskRetry((current) => current + 1);
+            }}
             assignees={followUpAssignees}
             assigneesLoading={followUpAssigneesLoading}
             assigneesError={followUpAssigneesError}
-            onRetryAssignees={() => setFollowUpAssigneeRetry((current) => current + 1)}
+            onRetryAssignees={() => {
+              setFollowUpAssigneesLoading(true);
+              setFollowUpAssigneesError('');
+              setFollowUpAssigneeRetry((current) => current + 1);
+            }}
             onCreateTask={createFollowUpTask}
             onUpdateTask={updateFollowUpTask}
             onFilterChange={setFollowUpFilter}
