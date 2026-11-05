@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const page = readFileSync('src/pages/admin/BookkeepingPage.jsx', 'utf8');
+const repository = readFileSync('src/services/bookkeepingRepository.js', 'utf8');
+const operations = readFileSync('src/services/adminOperationsRepository.js', 'utf8');
+const finance = readFileSync('workers/admin-operations-worker/src/domain/finance.js', 'utf8');
+const router = readFileSync('workers/admin-operations-worker/src/index.js', 'utf8');
+const rules = readFileSync('firestore.rules', 'utf8');
+
+assert.match(page, /Daily Closing/);
+assert.match(page, /createCanonicalDailyClosing/);
+assert.match(page, /getCanonicalDailyClosing/);
+assert.match(page, /reopenCanonicalDailyClosing/);
+assert.match(page, /accountRoleRepository\.subscribeAccountIdentity/);
+assert.match(page, /bookkeeping-closing-preview/);
+assert.doesNotMatch(page, /bookkeepingRepository\.(?:create|update|delete)BookkeepingEntry/);
+assert.doesNotMatch(repository, /setDoc\(|deleteDoc\(/);
+assert.match(operations, /\/v1\/finance\/bookkeeping-entries/);
+assert.match(finance, /export async function closeDailyRegister/);
+assert.match(finance, /export async function readDailyClosing/);
+assert.match(finance, /export async function reopenDailyRegister/);
+assert.match(finance, /export async function createManualBookkeepingEntry/);
+assert.match(finance, /export async function updateManualBookkeepingEntry/);
+assert.match(finance, /export async function deleteManualBookkeepingEntry/);
+assert.match(finance, /expectedCash/);
+assert.match(finance, /countedCash/);
+assert.match(finance, /cashVariance/);
+assert.match(finance, /dailyClosingEvents/);
+assert.match(finance, /commitIdempotentOperation/);
+assert.match(finance, /Asia\\/Jakarta/);
+assert.match(router, /\/v1\/finance\/daily-closings/);
+assert.match(router, /\/v1\/finance\/bookkeeping-entries/);
+assert.match(rules, /match \/dailyClosings\/{closingId}[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/dailyClosingEvents\/{eventId}[\s\S]*?allow create, update, delete: if false;/);
+process.stdout.write('✅ Daily closing and reconciliation contract passed.\n');

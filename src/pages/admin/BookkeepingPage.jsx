@@ -23,7 +23,10 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
+import { firebaseAuth } from '../../lib/firebase.js';
+import { accountRoleRepository } from '../../services/accountRoleRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
+import { createCanonicalBookkeepingEntry, updateCanonicalBookkeepingEntry, deleteCanonicalBookkeepingEntry, createCanonicalDailyClosing, getCanonicalDailyClosing, reopenCanonicalDailyClosing } from '../../services/adminOperationsRepository.js';
 import {
   buildBookingFinanceTransactions,
   getBookingBillingTotal,
@@ -107,12 +110,12 @@ function toNumber(value) {
 }
 
 function getTodayIsoDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-
-  return year + '-' + month + '-' + day;
+  return new Intl.DateTimeFormat('en-CA', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+  }).format(new Date());
 }
 
 function formatCurrency(value) {
@@ -1408,6 +1411,51 @@ export default function BookkeepingPage() {
   const [bookingLoadError, setBookingLoadError] = useState('');
   const [entriesLoadError, setEntriesLoadError] = useState('');
   const [toast, setToast] = useState(null);
+  const [closingDate, setClosingDate] = useState(getTodayIsoDate());
+  const [openingFloat, setOpeningFloat] = useState('0');
+  const [countedCash, setCountedCash] = useState('0');
+  const [countedTransfer, setCountedTransfer] = useState('0');
+  const [countedQris, setCountedQris] = useState('0');
+  const [countedOther, setCountedOther] = useState('0');
+  const [varianceReason, setVarianceReason] = useState('');
+  const [dailyClosing, setDailyClosing] = useState(null);
+  const [isClosingLoading, setIsClosingLoading] = useState(false);
+  const [isClosingSaving, setIsClosingSaving] = useState(false);
+  const [closingError, setClosingError] = useState('');
+  const [currentRole, setCurrentRole] = useState('');
+  const [ledgerPreview, setLedgerPreview] = useState(null);
+
+  useEffect(() => {
+    const currentUser = firebaseAuth?.currentUser;
+    if (!currentUser) {
+      setCurrentRole('');
+      return undefined;
+    }
+    return accountRoleRepository.subscribeAccountIdentity(
+      currentUser,
+      (identity) => setCurrentRole(identity?.role || ''),
+      (error) => {
+        console.error('Gagal membaca role closing:', error);
+        setCurrentRole('');
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadPreview = async () => {
+      try {
+        const response = await getCanonicalDailyClosing(closingDate, 'main', true);
+        if (!active) return;
+        setDailyClosing(response?.closing || null);
+        setLedgerPreview(response?.preview || null);
+      } catch {
+        if (active) setLedgerPreview(null);
+      }
+    };
+    loadPreview();
+    return () => { active = false; };
+  }, [closingDate]);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
@@ -1531,6 +1579,48 @@ export default function BookkeepingPage() {
   const isLedgerLoading = isBookingsLoading || isEntriesLoading;
   const ledgerLoadError = [bookingLoadError, entriesLoadError].filter(Boolean).join(' ');
 
+  async function handleDailyClose() {
+    setIsClosingSaving(true);
+    setClosingError('');
+    try {
+      const response = await createCanonicalDailyClosing({
+        businessDate: closingDate,
+        registerId: 'main',
+        openingFloat: Number(openingFloat || 0),
+        counted: {
+          cash: Number(countedCash || 0),
+          transfer: Number(countedTransfer || 0),
+          qris: Number(countedQris || 0),
+          other: Number(countedOther || 0),
+        },
+        varianceReason,
+      });
+      setDailyClosing(response?.closing || null);
+      setToast({ title: 'Closing berhasil', message: 'Snapshot kas dan ledger untuk ' + closingDate + ' telah dikunci.' });
+    } catch (error) {
+      setClosingError(error?.message || 'Daily closing belum berhasil disimpan.');
+    } finally {
+      setIsClosingSaving(false);
+    }
+  }
+
+  async function handleReopenDailyClose() {
+    const reason = typeof window !== 'undefined'
+      ? window.prompt('Alasan membuka kembali closing (minimal 8 karakter):')
+      : '';
+    if (!reason) return;
+    setIsClosingSaving(true);
+    try {
+      const result = await reopenCanonicalDailyClosing({ businessDate: closingDate, registerId: 'main', reason });
+      setDailyClosing(result?.closing || null);
+      setToast({ title: 'Closing dibuka kembali', message: 'Perubahan lanjutan harus dicatat sebagai transaksi baru.' });
+    } catch (error) {
+      setClosingError(error?.message || 'Closing tidak dapat dibuka kembali.');
+    } finally {
+      setIsClosingSaving(false);
+    }
+  }
+
   function handlePeriodChange(nextPeriod) {
     setPeriod(nextPeriod);
     setTransactionPage(1);
@@ -1615,8 +1705,8 @@ export default function BookkeepingPage() {
     try {
       const isEditing = Boolean(entry.id);
       const savedEntry = isEditing
-        ? await bookkeepingRepository.updateBookkeepingEntry(entry)
-        : await bookkeepingRepository.createBookkeepingEntry(entry);
+        ? await updateCanonicalBookkeepingEntry(entry)
+        : await createCanonicalBookkeepingEntry(entry);
       const typeLabel = getEntryTypeLabel(savedEntry.type);
 
       closeExpenseForm();
@@ -1643,7 +1733,7 @@ export default function BookkeepingPage() {
 
       if (!confirmed) return;
 
-      await bookkeepingRepository.deleteBookkeepingEntry(transaction.entryId);
+      await deleteCanonicalBookkeepingEntry({ id: transaction.entryId });
 
       setToast({
         title: getEntryTypeLabel(transaction.type) + ' dihapus',
@@ -1664,6 +1754,54 @@ export default function BookkeepingPage() {
       data-bookkeeping-ui="ui-7-spatial"
       aria-labelledby="bookkeeping-page-title"
     >
+      <section className="bookkeeping-daily-closing" aria-labelledby="daily-closing-title">
+        <header className="bookkeeping-daily-closing-header">
+          <div>
+            <span className="bookkeeping-eyebrow">Register control</span>
+            <h2 id="daily-closing-title">Daily Closing &amp; Reconciliation</h2>
+            <p>Rekonsiliasi berdasarkan ledger server untuk zona waktu Asia/Jakarta.</p>
+          </div>
+          <label>
+            <span>Tanggal bisnis</span>
+            <input type="date" value={closingDate} onChange={(event) => setClosingDate(event.target.value)} />
+          </label>
+        </header>
+        {isClosingLoading ? <p role="status">Memuat status closing...</p> : null}
+        {closingError ? <p role="alert" className="bookkeeping-closing-error">{closingError}</p> : null}
+        {dailyClosing?.status === 'closed' ? (
+          <div className="bookkeeping-closing-locked">
+            <strong>Closing terkunci</strong>
+            <span>Ditutup {dailyClosing.closedAt ? new Date(dailyClosing.closedAt).toLocaleString('id-ID') : ''} oleh {dailyClosing.closedByName || 'Admin'}</span>
+            <div className="bookkeeping-closing-totals">
+              <span>Expected cash <b>{formatCurrency(dailyClosing.expectedCash)}</b></span>
+              <span>Counted cash <b>{formatCurrency(dailyClosing.countedCash)}</b></span>
+              <span>Variance <b>{formatCurrency(dailyClosing.cashVariance)}</b></span>
+            </div>
+            {currentRole === 'owner' ? <button type="button" disabled={isClosingSaving} onClick={handleReopenDailyClose}>Buka kembali (Owner)</button> : null}
+          </div>
+        ) : (
+          <div className="bookkeeping-closing-form">
+            <label><span>Saldo awal kas</span><input inputMode="numeric" value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value)} /></label>
+            <label><span>Hitung kas fisik</span><input inputMode="numeric" value={countedCash} onChange={(event) => setCountedCash(event.target.value)} /></label>
+            <label><span>Transfer</span><input inputMode="numeric" value={countedTransfer} onChange={(event) => setCountedTransfer(event.target.value)} /></label>
+            <label><span>QRIS</span><input inputMode="numeric" value={countedQris} onChange={(event) => setCountedQris(event.target.value)} /></label>
+            <label><span>Lainnya</span><input inputMode="numeric" value={countedOther} onChange={(event) => setCountedOther(event.target.value)} /></label>
+            <label className="bookkeeping-closing-reason"><span>Alasan selisih (bila ada)</span><input value={varianceReason} onChange={(event) => setVarianceReason(event.target.value)} placeholder="Wajib diisi jika kas tidak seimbang" /></label>
+            <button type="button" disabled={isClosingSaving || isClosingLoading} onClick={handleDailyClose}>{isClosingSaving ? 'Menyimpan...' : 'Tutup Register Hari Ini'}</button>
+            {ledgerPreview ? (
+              <div className="bookkeeping-closing-preview" aria-live="polite">
+                <strong>Expected dari ledger</strong>
+                <span>Cash: {formatCurrency(ledgerPreview.totals?.cash || 0)}</span>
+                <span>Transfer: {formatCurrency(ledgerPreview.totals?.transfer || 0)}</span>
+                <span>QRIS: {formatCurrency(ledgerPreview.totals?.qris || 0)}</span>
+                <span>Lainnya: {formatCurrency(ledgerPreview.totals?.other || 0)}</span>
+                <span>Jumlah entry: {ledgerPreview.entryCount || 0}</span>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </section>
+
       <BookkeepingEditorialHeader
         manualCount={visibleSourceCounts.manual}
         period={period}
