@@ -253,6 +253,7 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
 
 export default function InventoryMaintenanceWorkspace() {
   const [items, setItems] = useState([]);
+  const [adminSession, setAdminSession] = useState(null);
   const [workOrders, setWorkOrders] = useState([]);
   const [events, setEvents] = useState([]);
   const [selectedId, setSelectedId] = useState('');
@@ -275,6 +276,10 @@ export default function InventoryMaintenanceWorkspace() {
     estimatedCost: '',
     attachmentsText: '',
   });
+
+  useEffect(() => adminAuthRepository.subscribeAdminAuth((state) => {
+    setAdminSession(state?.user || null);
+  }), []);
 
   useEffect(() => {
     const stopOrders = maintenanceRepository.subscribeMaintenanceWorkOrders(
@@ -529,7 +534,7 @@ export default function InventoryMaintenanceWorkspace() {
                 {selectedOrder.attachments?.length ? <div className="maintenance-detail-note"><small>Lampiran</small>{selectedOrder.attachments.map((attachment) => <a href={attachment.url} key={attachment.url} rel="noreferrer" target="_blank">{attachment.label || attachment.url}</a>)}</div> : null}
 
                 <div className="maintenance-detail-actions">
-                  {getAvailableActions(selectedOrder).map((action) => (
+                  {getAvailableActions(selectedOrder).filter((action) => action !== 'reopen' || adminSession?.isOwner === true).map((action) => (
                     <button className={action === 'cancel' ? 'is-subtle-danger' : action === 'verify' ? 'is-primary' : ''} key={action} type="button" onClick={() => setPendingAction(action)}>{ACTION_LABELS[action]}</button>
                   ))}
                 </div>
@@ -538,7 +543,7 @@ export default function InventoryMaintenanceWorkspace() {
                   <MaintenanceActionForm action={pendingAction} busy={busy} onCancel={() => setPendingAction('')} onSubmit={submitAction} />
                 ) : null}
 
-                {['completed', 'verified'].includes(selectedOrder.status) && !selectedOrder.costEntryId ? (
+                {['completed', 'verified'].includes(selectedOrder.status) && !selectedOrder.costEntryId && (adminSession?.isOwner === true || adminSession?.permissions?.bookkeeping === true) ? (
                   <form className="maintenance-cost-form" onSubmit={submitCost}>
                     <header><div><small>Finance integration</small><strong>Catat Biaya Maintenance</strong></div></header>
                     <label><span>Nominal aktual (Rp)</span><input required min="1" step="1000" type="number" value={costForm.amount} onChange={(event) => setCostForm((current) => ({ ...current, amount: event.target.value }))} /></label>
