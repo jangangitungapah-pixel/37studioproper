@@ -566,7 +566,18 @@ function MoneyStat({
   );
 }
 
-export default function BookingDetailDrawer({
+export default function BookingDetailDrawer(props) {
+  const bookingKey = String(
+    props.booking?.id ||
+    props.booking?.bookingCode ||
+    props.booking?.bookingId ||
+    'booking',
+  );
+
+  return <BookingDetailDrawerContent key={bookingKey} {...props} />;
+}
+
+function BookingDetailDrawerContent({
   activeTab: controlledActiveTab,
   booking,
   initialTab = 'overview',
@@ -609,11 +620,13 @@ export default function BookingDetailDrawer({
   ] = useState(false);
 
   const [isUpdatingSession, setIsUpdatingSession] = useState(false);
-  const [sessionActionError, setSessionActionError] = useState('');
-  const [sessionActionFeedback, setSessionActionFeedback] = useState('');
-  const [sessionBookingSnapshot, setSessionBookingSnapshot] = useState(null);
-  const [isNoShowReasonOpen, setIsNoShowReasonOpen] = useState(false);
-  const [noShowReason, setNoShowReason] = useState('');
+  const [sessionUiState, setSessionUiState] = useState({
+    error: '',
+    feedback: '',
+    snapshot: null,
+    isNoShowReasonOpen: false,
+    noShowReason: '',
+  });
 
   const normalizedInitialTab =
     DETAIL_TAB_KEYS.includes(
@@ -646,14 +659,26 @@ export default function BookingDetailDrawer({
         : normalizedInitialTab
     );
 
+  const {
+    error: sessionActionError,
+    feedback: sessionActionFeedback,
+    snapshot: sessionBookingSnapshot,
+    isNoShowReasonOpen,
+    noShowReason,
+  } = sessionUiState;
   const sessionSnapshotTime = Date.parse(sessionBookingSnapshot?.booking?.updatedAt || '');
   const currentBookingTime = Date.parse(booking?.updatedAt || '');
   const useSessionSnapshot = sessionBookingSnapshot?.bookingId === booking?.id &&
     Number.isFinite(sessionSnapshotTime) &&
     (!Number.isFinite(currentBookingTime) || sessionSnapshotTime >= currentBookingTime);
-  const sessionBooking = useSessionSnapshot
-    ? { ...booking, ...sessionBookingSnapshot.booking }
-    : booking;
+  const sessionBooking = useMemo(
+    () => useSessionSnapshot ? { ...booking, ...sessionBookingSnapshot.booking } : booking,
+    [booking, sessionBookingSnapshot, useSessionSnapshot],
+  );
+
+  function updateSessionUi(patch) {
+    setSessionUiState((current) => ({ ...current, ...patch }));
+  }
   const sessionTimingStatus = getScheduleTimingStatus(sessionBooking || {});
   const isNoShowEligible = isBookingNoShowEligible(sessionBooking || {});
 
@@ -745,14 +770,6 @@ export default function BookingDetailDrawer({
     normalizedInitialTab,
     onClose,
   ]);
-
-  useEffect(() => {
-    setSessionBookingSnapshot(null);
-    setSessionActionError('');
-    setSessionActionFeedback('');
-    setIsNoShowReasonOpen(false);
-    setNoShowReason('');
-  }, [bookingKey]);
 
   useEffect(() => {
     if (
@@ -974,12 +991,11 @@ export default function BookingDetailDrawer({
   async function performSessionAction(action, reason = '') {
     if (!booking?.id || isUpdatingSession) return;
     if (action === 'no_show' && String(reason || '').trim().length < 4) {
-      setSessionActionError('Alasan no-show wajib diisi minimal 4 karakter.');
+      updateSessionUi({ error: 'Alasan no-show wajib diisi minimal 4 karakter.' });
       return;
     }
     setIsUpdatingSession(true);
-    setSessionActionError('');
-    setSessionActionFeedback('');
+    updateSessionUi({ error: '', feedback: '' });
     try {
       const result = await recordCanonicalBookingSessionAction({
         action,
@@ -987,17 +1003,19 @@ export default function BookingDetailDrawer({
         ...(reason ? { reason } : {}),
       });
       if (!result?.booking?.id) throw new Error('Worker tidak mengembalikan status sesi yang tersimpan.');
-      setSessionBookingSnapshot({ bookingId: booking.id, booking: result.booking });
-      setSessionActionFeedback({
-        check_in: 'Check-in berhasil dicatat.',
-        start: 'Sesi berhasil dimulai.',
-        complete: 'Sesi berhasil diselesaikan.',
-        no_show: 'No-show berhasil dicatat.',
-      }[action] || 'Operasi sesi tersimpan.');
-      setIsNoShowReasonOpen(false);
-      setNoShowReason('');
+      updateSessionUi({
+        snapshot: { bookingId: booking.id, booking: result.booking },
+        feedback: {
+          check_in: 'Check-in berhasil dicatat.',
+          start: 'Sesi berhasil dimulai.',
+          complete: 'Sesi berhasil diselesaikan.',
+          no_show: 'No-show berhasil dicatat.',
+        }[action] || 'Operasi sesi tersimpan.',
+        isNoShowReasonOpen: false,
+        noShowReason: '',
+      });
     } catch (error) {
-      setSessionActionError(error?.message || 'Operasi sesi belum berhasil disimpan.');
+      updateSessionUi({ error: error?.message || 'Operasi sesi belum berhasil disimpan.' });
     } finally {
       setIsUpdatingSession(false);
     }
@@ -1337,7 +1355,7 @@ export default function BookingDetailDrawer({
                   <div className="booking-detail-session-actions">
                     {!sessionBooking?.checkedInAt ? <button type="button" disabled={isUpdatingSession} onClick={() => performSessionAction('check_in')}>Catat Check-in</button> : <span className="booking-detail-session-confirmed">Check-in sudah tercatat</span>}
                     <button className="is-primary" type="button" disabled={isUpdatingSession} onClick={() => performSessionAction('start')}>{isUpdatingSession ? 'Memproses...' : 'Mulai Sesi'}</button>
-                    {isNoShowEligible ? <button className="is-danger" type="button" disabled={isUpdatingSession} onClick={() => setIsNoShowReasonOpen(true)}>Tandai No-show</button> : null}
+                    {isNoShowEligible ? <button className="is-danger" type="button" disabled={isUpdatingSession} onClick={() => updateSessionUi({ isNoShowReasonOpen: true })}>Tandai No-show</button> : null}
                   </div>
                 ) : null}
                 {sessionStatus === 'in_progress' ? (
@@ -1348,9 +1366,9 @@ export default function BookingDetailDrawer({
                 {isNoShowReasonOpen ? (
                   <div className="booking-detail-session-no-show-form">
                     <label htmlFor="booking-session-no-show-reason">Alasan tidak hadir</label>
-                    <textarea id="booking-session-no-show-reason" value={noShowReason} maxLength={600} onChange={(event) => setNoShowReason(event.target.value)} placeholder="Contoh: customer tidak datang dan tidak merespons konfirmasi..." />
+                    <textarea id="booking-session-no-show-reason" value={noShowReason} maxLength={600} onChange={(event) => updateSessionUi({ noShowReason: event.target.value })} placeholder="Contoh: customer tidak datang dan tidak merespons konfirmasi..." />
                     <div>
-                      <button type="button" disabled={isUpdatingSession} onClick={() => { setIsNoShowReasonOpen(false); setNoShowReason(''); }}>Batal</button>
+                      <button type="button" disabled={isUpdatingSession} onClick={() => updateSessionUi({ isNoShowReasonOpen: false, noShowReason: '' })}>Batal</button>
                       <button className="is-danger" type="button" disabled={isUpdatingSession || noShowReason.trim().length < 4} onClick={() => performSessionAction('no_show', noShowReason)}>{isUpdatingSession ? 'Menyimpan...' : 'Konfirmasi No-show'}</button>
                     </div>
                   </div>

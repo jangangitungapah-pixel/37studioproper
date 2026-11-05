@@ -27,7 +27,9 @@ import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
-import { adminCustomerRepository } from '../../services/adminCustomerRepository.js';
+import { adminCustomerRepository, subscribeCustomerFollowUpTasks, subscribeCustomerFollowUpEvents } from '../../services/adminCustomerRepository.js';
+import { createCanonicalCustomerFollowUpTask, getCanonicalCustomerFollowUpAssignees, updateCanonicalCustomerFollowUpTask } from '../../services/adminOperationsRepository.js';
+import { getCustomerFollowUpBuckets } from '../../domain/customerFollowUp.js';
 
 const MANUAL_CUSTOMERS_STORAGE_KEY = '37musicstudio.customers.manual.v1';
 
@@ -1197,22 +1199,127 @@ function CustomerFollowUpCenter({
   activeFilter,
   activeTemplate,
   customers,
+  tasks,
+  loading,
+  loadError,
+  onRetry,
+  assignees,
+  assigneesLoading,
+  assigneesError,
+  onRetryAssignees,
+  onCreateTask,
+  onUpdateTask,
   onFilterChange,
   onTemplateChange,
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [newTask, setNewTask] = useState({
+    customerId: '',
+    bookingId: '',
+    title: '',
+    description: '',
+    dueAt: '',
+    dueTime: '',
+    assignedToUid: '',
+    templateKey: 'payment',
+  });
+  const [taskOutcome, setTaskOutcome] = useState({});
+  const [taskNotes, setTaskNotes] = useState({});
+  const [taskDueDates, setTaskDueDates] = useState({});
+  const [taskDueTimes, setTaskDueTimes] = useState({});
+  const [taskAssigneeIds, setTaskAssigneeIds] = useState({});
+  const [savingTask, setSavingTask] = useState('');
+  const [expandedTaskId, setExpandedTaskId] = useState('');
+  const [taskEvents, setTaskEvents] = useState({});
+  const [taskHistoryLoading, setTaskHistoryLoading] = useState({});
+  const [taskHistoryErrors, setTaskHistoryErrors] = useState({});
+  const [taskHistoryRetry, setTaskHistoryRetry] = useState(0);
+  const [taskActionError, setTaskActionError] = useState('');
   const candidates = getCustomerFollowUpCandidates(customers, activeFilter);
   const totalOutstanding = getFollowUpOutstandingTotal(candidates);
-  const unpaidCount = candidates.filter(
-    (customer) => customer.hasOpenPayment
-  ).length;
+  const unpaidCount = candidates.filter((customer) => customer.hasOpenPayment).length;
   const previewCandidates = candidates.slice(0, 4);
+  const queueNow = new Date();
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(queueNow);
+  const { dueToday, overdue, upcoming, completed } = getCustomerFollowUpBuckets(tasks, queueNow);
+  const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+
+  useEffect(() => {
+    if (!expandedTaskId) return undefined;
+    return subscribeCustomerFollowUpEvents(
+      expandedTaskId,
+      (events) => {
+        setTaskEvents((current) => ({ ...current, [expandedTaskId]: events }));
+        setTaskHistoryLoading((current) => ({ ...current, [expandedTaskId]: false }));
+      },
+      (error) => {
+        setTaskHistoryErrors((current) => ({
+          ...current,
+          [expandedTaskId]: error?.message || 'Histori follow-up gagal dimuat.',
+        }));
+        setTaskHistoryLoading((current) => ({ ...current, [expandedTaskId]: false }));
+      },
+    );
+  }, [expandedTaskId, taskHistoryRetry]);
+
+  function getSourceBooking(customer) {
+    return [...(customer?.bookings || [])].sort((first, second) => {
+      const firstDate = String(first.date || first.createdAt || '');
+      const secondDate = String(second.date || second.createdAt || '');
+      return secondDate.localeCompare(firstDate);
+    })[0] || null;
+  }
+
+  async function saveTaskUpdate(task, patch) {
+    setSavingTask(task.id);
+    setTaskActionError('');
+    try {
+      await onUpdateTask(task, patch);
+    } catch (error) {
+      setTaskActionError(error?.message || 'Perubahan task belum berhasil disimpan.');
+    } finally {
+      setSavingTask('');
+    }
+  }
+
+  async function submitNewTask(event) {
+    event.preventDefault();
+    const assignedToUid = newTask.assignedToUid || assignees[0]?.uid || '';
+    if (
+      !newTask.customerId ||
+      !newTask.dueAt ||
+      !assignedToUid ||
+      newTask.title.trim().length < 3
+    ) return;
+
+    setSavingTask('create');
+    setTaskActionError('');
+    try {
+      await onCreateTask({ ...newTask, assignedToUid, templateKey: activeTemplate });
+      setNewTask((current) => ({
+        ...current,
+        customerId: '',
+        bookingId: '',
+        title: '',
+        description: '',
+        dueAt: '',
+        dueTime: '',
+        templateKey: activeTemplate,
+      }));
+    } catch (error) {
+      setTaskActionError(error?.message || 'Task belum berhasil dibuat.');
+    } finally {
+      setSavingTask('');
+    }
+  }
 
   return (
-    <section
-      className="customer-followup-surface"
-      aria-label="Follow-up center"
-    >
+    <section className="customer-followup-surface" aria-label="Follow-up center">
       <button
         aria-expanded={isExpanded}
         className="customer-followup-trigger"
@@ -1222,24 +1329,14 @@ function CustomerFollowUpCenter({
         <span className="customer-followup-orb" aria-hidden="true">
           <PhoneCall size={15} />
         </span>
-
         <span className="customer-followup-title">
           <small>Follow-up Center</small>
           <strong>Prioritas hubungan yang perlu disentuh</strong>
         </span>
-
         <span className="customer-followup-brief">
-          <span>
-            <strong>{candidates.length}</strong>
-            <small>target</small>
-          </span>
-          <em>
-            {totalOutstanding
-              ? formatMoney(totalOutstanding)
-              : 'Outstanding clear'}
-          </em>
+          <span><strong>{candidates.length}</strong><small>target</small></span>
+          <em>{totalOutstanding ? formatMoney(totalOutstanding) : 'Outstanding clear'}</em>
         </span>
-
         <span className="customer-followup-chevron" aria-hidden="true">
           {isExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
         </span>
@@ -1256,7 +1353,6 @@ function CustomerFollowUpCenter({
                 onChange={onFilterChange}
               />
             </div>
-
             <div className="customer-followup-select">
               <StudioSelect
                 label="Template"
@@ -1268,80 +1364,399 @@ function CustomerFollowUpCenter({
           </div>
 
           <div className="customer-followup-metrics">
-            <article>
-              <small>Outstanding</small>
-              <strong>{formatMoney(totalOutstanding)}</strong>
-            </article>
-
-            <article>
-              <small>Pending / DP</small>
-              <strong>{unpaidCount}</strong>
-            </article>
-
+            <article><small>Outstanding</small><strong>{formatMoney(totalOutstanding)}</strong></article>
+            <article><small>Pending / DP</small><strong>{unpaidCount}</strong></article>
             <article>
               <small>Template aktif</small>
-              <strong>
-                {followUpTemplateOptions.find(
-                  (item) => item.key === activeTemplate
-                )?.label || 'Tagihan'}
-              </strong>
+              <strong>{followUpTemplateOptions.find((item) => item.key === activeTemplate)?.label || 'Tagihan'}</strong>
             </article>
           </div>
+
+          <form className="customer-followup-task-form" onSubmit={submitNewTask}>
+            <strong>Customer Follow-up Tasks</strong>
+            <label>
+              <span>Customer</span>
+              <StudioSelect
+                options={[
+                  { key: '', label: 'Pilih customer', description: 'Customer tujuan follow-up' },
+                  ...customers.map((customer) => ({
+                    key: customer.id,
+                    label: customer.name,
+                    description: customer.phone || 'Nomor belum tersedia',
+                  })),
+                ]}
+                selectedKey={newTask.customerId}
+                onChange={(value) => {
+                  const customer = customers.find((item) => item.id === value);
+                  const sourceBooking = getSourceBooking(customer);
+                  setNewTask((current) => ({
+                    ...current,
+                    customerId: value,
+                    bookingId: sourceBooking?.id || '',
+                    title: current.title || (customer?.hasOpenPayment ? 'Follow-up pembayaran' : 'Follow-up customer'),
+                  }));
+                }}
+              />
+            </label>
+            <label>
+              <span>Judul task</span>
+              <input
+                maxLength={160}
+                minLength={3}
+                required
+                value={newTask.title}
+                onChange={(event) => setNewTask((current) => ({ ...current, title: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Due date (WIB)</span>
+              <input
+                type="date"
+                required
+                value={newTask.dueAt}
+                onChange={(event) => setNewTask((current) => ({ ...current, dueAt: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Jam follow-up (WIB)</span>
+              <input
+                type="time"
+                value={newTask.dueTime}
+                onChange={(event) => setNewTask((current) => ({ ...current, dueTime: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>PIC</span>
+              <select
+                required
+                value={newTask.assignedToUid || assignees[0]?.uid || ''}
+                disabled={assigneesLoading || !assignees.length}
+                onChange={(event) => setNewTask((current) => ({ ...current, assignedToUid: event.target.value }))}
+              >
+                <option value="">Pilih PIC</option>
+                {assignees.map((person) => (
+                  <option key={person.uid} value={person.uid}>{person.displayName}</option>
+                ))}
+              </select>
+            </label>
+            <label className="customer-followup-task-form-wide">
+              <span>Deskripsi</span>
+              <textarea
+                rows={2}
+                maxLength={1200}
+                value={newTask.description}
+                onChange={(event) => setNewTask((current) => ({ ...current, description: event.target.value }))}
+              />
+            </label>
+            {assigneesLoading ? <small role="status">Memuat daftar PIC...</small> : null}
+            {assigneesError ? (
+              <p className="customer-followup-task-error" role="alert">
+                {assigneesError} <button type="button" onClick={onRetryAssignees}>Coba lagi</button>
+              </p>
+            ) : !assigneesLoading && !assignees.length ? (
+              <p className="customer-followup-task-error" role="status">
+                Belum ada akun Owner/Admin aktif dengan akses Customer untuk dijadikan PIC.
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={
+                savingTask === 'create' ||
+                !newTask.customerId ||
+                !newTask.dueAt ||
+                !newTask.assignedToUid ||
+                newTask.title.trim().length < 3
+              }
+            >
+              {savingTask === 'create' ? 'Menyimpan...' : 'Buat task'}
+            </button>
+          </form>
+
+          {taskActionError ? <p className="customer-followup-task-error" role="alert">{taskActionError}</p> : null}
+
+          <div className="customer-followup-task-summary">
+            <span>Due Today <strong>{dueToday.length}</strong></span>
+            <span>Overdue <strong>{overdue.length}</strong></span>
+            <span>Upcoming <strong>{upcoming.length}</strong></span>
+            <span>Completed <strong>{completed.length}</strong></span>
+          </div>
+
+          {loadError ? (
+            <div className="customer-followup-task-error" role="alert">
+              <span>Task follow-up gagal dimuat: {loadError}</span>
+              <button type="button" onClick={onRetry}>Coba muat ulang</button>
+            </div>
+          ) : loading ? (
+            <p role="status">Memuat task follow-up...</p>
+          ) : (
+            <div className="customer-followup-task-queues">
+              {[
+                { title: 'Overdue', items: overdue },
+                { title: 'Due Today', items: dueToday },
+                { title: 'Upcoming', items: upcoming },
+                { title: 'Completed', items: completed },
+              ].map((group) => (
+                <section key={group.title}>
+                  <h3>{group.title}</h3>
+                  {group.items.map((task) => {
+                    const customer = customerById.get(task.customerId) || {
+                      id: task.customerId,
+                      name: task.customerName,
+                      phone: task.customerPhone,
+                    };
+                    const whatsappHref = getCustomerFollowUpWhatsappHref(customer, task.templateKey || activeTemplate);
+                    const selectedAssignee = taskAssigneeIds[task.id] || task.assignedToUid || '';
+                    return (
+                      <article className="customer-followup-task" key={task.id}>
+                        <div className="customer-followup-task-head">
+                          <span>
+                            <strong>{task.title}</strong>
+                            <small>{task.customerName} · PIC {task.assignedToName || 'Belum ditentukan'}</small>
+                          </span>
+                          <em className={'is-' + task.status}>{task.status.replaceAll('_', ' ')}</em>
+                        </div>
+                        {task.description ? <p>{task.description}</p> : null}
+                        <div className="customer-followup-task-meta">
+                          <span>Due: {task.dueAt}{task.dueTime ? ' · ' + task.dueTime + ' WIB' : ''}</span>
+                          <span>Hasil: {task.outcome || 'Belum dicatat'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="customer-followup-history-toggle"
+                          aria-expanded={expandedTaskId === task.id}
+                          onClick={() => {
+                            const nextTaskId = expandedTaskId === task.id ? '' : task.id;
+                            if (nextTaskId) {
+                              setTaskHistoryLoading((current) => ({ ...current, [nextTaskId]: true }));
+                              setTaskHistoryErrors((current) => ({ ...current, [nextTaskId]: '' }));
+                            }
+                            setExpandedTaskId(nextTaskId);
+                          }}
+                        >
+                          {expandedTaskId === task.id ? 'Tutup histori' : 'Lihat histori'}
+                        </button>
+                        {expandedTaskId === task.id ? (
+                          <ol className="customer-followup-history">
+                            {taskHistoryErrors[task.id] ? (
+                              <li role="alert">
+                                {taskHistoryErrors[task.id]}{' '}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTaskHistoryLoading((current) => ({ ...current, [task.id]: true }));
+                                    setTaskHistoryErrors((current) => ({ ...current, [task.id]: '' }));
+                                    setTaskHistoryRetry((current) => current + 1);
+                                  }}
+                                >
+                                  Coba lagi
+                                </button>
+                              </li>
+                            ) : taskHistoryLoading[task.id] ? (
+                              <li role="status">Memuat histori...</li>
+                            ) : !(taskEvents[task.id] || []).length ? (
+                              <li>Belum ada histori tambahan.</li>
+                            ) : (
+                              (taskEvents[task.id] || []).map((event) => (
+                                <li key={event.id}>
+                                  <strong>{event.action}</strong>
+                                  <span>
+                                    {event.actorName || 'Operator'} · {event.createdAt
+                                      ? new Intl.DateTimeFormat('id-ID', {
+                                          timeZone: 'Asia/Jakarta',
+                                          dateStyle: 'medium',
+                                          timeStyle: 'short',
+                                        }).format(new Date(event.createdAt))
+                                      : ''}
+                                  </span>
+                                  {event.note || event.reason ? <p>{event.note || event.reason}</p> : null}
+                                  {event.outcome ? <small>Hasil: {event.outcome}</small> : null}
+                                  {event.changes?.dueAt ? <small>Due date: {event.changes.dueAt.before || '-'} → {event.changes.dueAt.after || '-'}</small> : null}
+                                  {event.changes?.dueTime ? <small>Jam: {event.changes.dueTime.before || '-'} → {event.changes.dueTime.after || '-'} WIB</small> : null}
+                                  {event.changes?.assignedToName ? <small>PIC: {event.changes.assignedToName.before || '-'} → {event.changes.assignedToName.after || '-'}</small> : null}
+                                </li>
+                              ))
+                            )}
+                          </ol>
+                        ) : null}
+
+                        {task.status !== 'completed' ? (
+                          <>
+                            {whatsappHref
+                              ? <a className="customer-followup-task-wa" href={whatsappHref} rel="noreferrer" target="_blank"><WhatsAppIcon size={14} /> Buka draft WhatsApp</a>
+                              : <small>Nomor WhatsApp tidak tersedia</small>}
+                            <div className="customer-followup-task-actions">
+                              <label>
+                                <span>Jadwalkan ulang</span>
+                                <input
+                                  type="date"
+                                  value={taskDueDates[task.id] || String(task.dueAt).slice(0, 10)}
+                                  onChange={(event) => setTaskDueDates((current) => ({ ...current, [task.id]: event.target.value }))}
+                                />
+                                <input
+                                  type="time"
+                                  aria-label="Jam follow-up WIB"
+                                  value={taskDueTimes[task.id] ?? task.dueTime ?? ''}
+                                  onChange={(event) => setTaskDueTimes((current) => ({ ...current, [task.id]: event.target.value }))}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                disabled={savingTask === task.id}
+                                onClick={() => saveTaskUpdate(task, {
+                                  dueAt: taskDueDates[task.id] || task.dueAt,
+                                  dueTime: taskDueTimes[task.id] ?? task.dueTime ?? '',
+                                  status: 'snoozed',
+                                })}
+                              >
+                                {savingTask === task.id ? 'Menyimpan...' : 'Snooze'}
+                              </button>
+                              <label>
+                                <span>Alihkan PIC</span>
+                                <select
+                                  value={selectedAssignee}
+                                  disabled={assigneesLoading || savingTask === task.id}
+                                  onChange={(event) => setTaskAssigneeIds((current) => ({ ...current, [task.id]: event.target.value }))}
+                                >
+                                  <option value="">Pilih PIC</option>
+                                  {assignees.map((person) => <option key={person.uid} value={person.uid}>{person.displayName}</option>)}
+                                </select>
+                              </label>
+                              <button
+                                type="button"
+                                disabled={savingTask === task.id || !selectedAssignee || selectedAssignee === task.assignedToUid}
+                                onClick={() => saveTaskUpdate(task, { assignedToUid: selectedAssignee })}
+                              >
+                                Simpan PIC
+                              </button>
+                              <label>
+                                <span>Outcome</span>
+                                <select
+                                  value={taskOutcome[task.id] || task.outcome || ''}
+                                  onChange={(event) => setTaskOutcome((current) => ({ ...current, [task.id]: event.target.value }))}
+                                >
+                                  <option value="">Pilih hasil...</option>
+                                  <option value="connected">Connected</option>
+                                  <option value="no_answer">No answer</option>
+                                  <option value="rescheduled">Rescheduled</option>
+                                  <option value="not_interested">Not interested</option>
+                                  <option value="paid">Paid</option>
+                                  <option value="booked">Booked</option>
+                                  <option value="other">Other</option>
+                                </select>
+                              </label>
+                              <label>
+                                <span>Catatan</span>
+                                <input
+                                  maxLength={1200}
+                                  value={taskNotes[task.id] || ''}
+                                  onChange={(event) => setTaskNotes((current) => ({ ...current, [task.id]: event.target.value }))}
+                                  placeholder="Ringkasan hasil komunikasi"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                disabled={savingTask === task.id || !(taskOutcome[task.id] || task.outcome)}
+                                onClick={() => saveTaskUpdate(task, {
+                                  status: task.status,
+                                  outcome: taskOutcome[task.id] || task.outcome,
+                                  contacted: true,
+                                  note: taskNotes[task.id] || '',
+                                })}
+                              >
+                                {savingTask === task.id ? 'Menyimpan...' : 'Catat hasil komunikasi'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={savingTask === task.id || !(taskOutcome[task.id] || task.outcome)}
+                                onClick={() => {
+                                  if (!window.confirm('Selesaikan follow-up "' + task.title + '" untuk ' + task.customerName + '?')) return;
+                                  saveTaskUpdate(task, {
+                                    status: 'completed',
+                                    outcome: taskOutcome[task.id] || task.outcome,
+                                    contacted: true,
+                                    note: taskNotes[task.id] || '',
+                                  });
+                                }}
+                              >
+                                {savingTask === task.id ? 'Menyimpan...' : 'Catat hasil &amp; selesai'}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="customer-followup-task-actions">
+                            <label>
+                              <span>Alasan buka kembali</span>
+                              <input
+                                maxLength={600}
+                                value={taskNotes[task.id] || ''}
+                                onChange={(event) => setTaskNotes((current) => ({ ...current, [task.id]: event.target.value }))}
+                                placeholder="Jelaskan kenapa task dibuka kembali"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              disabled={savingTask === task.id || (taskNotes[task.id] || '').trim().length < 4}
+                              onClick={() => saveTaskUpdate(task, {
+                                action: 'reopen',
+                                note: taskNotes[task.id],
+                              })}
+                            >
+                              Buka kembali
+                            </button>
+                            <small>Diselesaikan {task.completedAt ? formatDate(task.completedAt) : ''} · {task.outcome}</small>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                  {!group.items.length ? <small>Belum ada task di bagian ini.</small> : null}
+                </section>
+              ))}
+            </div>
+          )}
 
           {previewCandidates.length ? (
             <div className="customer-followup-queue">
               {previewCandidates.map((customer) => {
-                const whatsappHref = getCustomerFollowUpWhatsappHref(
-                  customer,
-                  activeTemplate
-                );
-
+                const whatsappHref = getCustomerFollowUpWhatsappHref(customer, activeTemplate);
+                const sourceBooking = getSourceBooking(customer);
                 return (
                   <article key={customer.id}>
                     <span>
                       <strong>{customer.name}</strong>
-                      <small>
-                        {customer.hasOpenPayment
-                          ? formatMoney(customer.openInvoiceAmount) +
-                            ' outstanding'
-                          : isCustomerIdle(customer)
-                            ? 'Lama tidak booking'
-                            : getFollowUpLabel(customer.followUpStatus)}
-                      </small>
+                      <small>{customer.hasOpenPayment ? formatMoney(customer.openInvoiceAmount) + ' outstanding' : isCustomerIdle(customer) ? 'Lama tidak booking' : getFollowUpLabel(customer.followUpStatus)}</small>
                     </span>
-
-                    {whatsappHref ? (
-                      <a
-                        href={whatsappHref}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        <WhatsAppIcon size={14} />
-                        Kirim WA
-                      </a>
-                    ) : (
-                      <em>Nomor belum ada</em>
-                    )}
+                    <button
+                      type="button"
+                      className="customer-followup-create-from-candidate"
+                      onClick={() => setNewTask({
+                        customerId: customer.id,
+                        bookingId: sourceBooking?.id || '',
+                        title: customer.hasOpenPayment ? 'Follow-up pembayaran' : 'Follow-up customer',
+                        description: '',
+                        dueAt: today,
+                        dueTime: '',
+                        assignedToUid: newTask.assignedToUid || assignees[0]?.uid || '',
+                        templateKey: activeTemplate,
+                      })}
+                    >
+                      Buat task
+                    </button>
+                    {whatsappHref ? <a href={whatsappHref} rel="noreferrer" target="_blank"><WhatsAppIcon size={14} /> Draft WA</a> : <em>Nomor belum ada</em>}
                   </article>
                 );
               })}
             </div>
-          ) : (
-            <p className="customer-followup-hint">
-              Tidak ada customer yang cocok dengan filter follow-up ini.
-            </p>
-          )}
+          ) : <p className="customer-followup-hint">Tidak ada customer yang cocok dengan filter follow-up ini.</p>}
 
           <p className="customer-followup-hint">
-            Quick action WhatsApp di directory memakai template yang dipilih
-            di sini.
+            Membuka draft WhatsApp tidak mencatat outcome. Operator harus mencatat hasil komunikasi secara manual.
           </p>
         </div>
       ) : null}
     </section>
   );
 }
-
 function CustomerWorkspaceLoading({ detail = false }) {
   return (
     <section
@@ -1721,6 +2136,14 @@ export default function CustomerPage() {
   const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [manualCustomers, setManualCustomers] = useState([]);
+  const [followUpTasks, setFollowUpTasks] = useState([]);
+  const [followUpTasksLoading, setFollowUpTasksLoading] = useState(true);
+  const [followUpTasksError, setFollowUpTasksError] = useState('');
+  const [followUpTaskRetry, setFollowUpTaskRetry] = useState(0);
+  const [followUpAssignees, setFollowUpAssignees] = useState([]);
+  const [followUpAssigneesLoading, setFollowUpAssigneesLoading] = useState(true);
+  const [followUpAssigneesError, setFollowUpAssigneesError] = useState('');
+  const [followUpAssigneeRetry, setFollowUpAssigneeRetry] = useState(0);
   const [isBookingsLoading, setIsBookingsLoading] = useState(true);
   const [isCustomersLoading, setIsCustomersLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -1739,6 +2162,34 @@ export default function CustomerPage() {
         .catch((err) => console.error('Gagal migrasi customer lokal:', err));
     }
   }, []);
+
+  useEffect(() => subscribeCustomerFollowUpTasks((tasks) => {
+      setFollowUpTasks(tasks);
+      setFollowUpTasksLoading(false);
+      setFollowUpTasksError('');
+    }, (error) => {
+      setFollowUpTasksLoading(false);
+      setFollowUpTasksError(error?.message || 'Subscription Firestore gagal.');
+      console.error('Gagal memuat follow-up tasks:', error);
+    }), [followUpTaskRetry]);
+
+  useEffect(() => {
+    let active = true;
+    getCanonicalCustomerFollowUpAssignees()
+      .then((response) => {
+        if (!active) return;
+        setFollowUpAssignees(Array.isArray(response?.assignees) ? response.assignees : []);
+        setFollowUpAssigneesLoading(false);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setFollowUpAssigneesLoading(false);
+        setFollowUpAssigneesError(error?.message || 'Daftar PIC gagal dimuat.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [followUpAssigneeRetry]);
 
   useEffect(() => {
     const unsubscribe = adminCustomerRepository.subscribeManualCustomers(
@@ -1827,6 +2278,37 @@ export default function CustomerPage() {
 
   const detailId = getCustomerRouteId(location.pathname);
   const selectedCustomer = detailId ? customers.find((customer) => customer.id === detailId) : null;
+
+  async function createFollowUpTask(input) {
+    try {
+      const result = await createCanonicalCustomerFollowUpTask(input);
+      setFollowUpTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
+      setToast({ title: 'Task follow-up dibuat', message: result.task.customerName + ' masuk ke queue follow-up.' });
+      return result;
+    } catch (error) {
+      setToast({ title: 'Task belum tersimpan', message: error?.message || 'Periksa data task dan coba lagi.' });
+      throw error;
+    }
+  }
+
+  async function updateFollowUpTask(task, patch) {
+    try {
+      const result = await updateCanonicalCustomerFollowUpTask({
+        taskId: task.id,
+        expectedUpdatedAt: task.updatedAt,
+        ...patch,
+      });
+      setFollowUpTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
+      setToast({
+        title: 'Follow-up diperbarui',
+        message: patch.contacted ? 'Hasil komunikasi dicatat oleh operator.' : 'Task follow-up berhasil diperbarui.',
+      });
+      return result;
+    } catch (error) {
+      setToast({ title: 'Follow-up belum tersimpan', message: error?.message || 'Perubahan task gagal disimpan.' });
+      throw error;
+    }
+  }
 
   function handleCustomerFilterChange(nextFilter) {
     setActiveFilter(nextFilter);
@@ -1974,6 +2456,24 @@ export default function CustomerPage() {
             activeFilter={followUpFilter}
             activeTemplate={followUpTemplate}
             customers={customers}
+            tasks={followUpTasks}
+            loading={followUpTasksLoading}
+            loadError={followUpTasksError}
+            onRetry={() => {
+              setFollowUpTasksLoading(true);
+              setFollowUpTasksError('');
+              setFollowUpTaskRetry((current) => current + 1);
+            }}
+            assignees={followUpAssignees}
+            assigneesLoading={followUpAssigneesLoading}
+            assigneesError={followUpAssigneesError}
+            onRetryAssignees={() => {
+              setFollowUpAssigneesLoading(true);
+              setFollowUpAssigneesError('');
+              setFollowUpAssigneeRetry((current) => current + 1);
+            }}
+            onCreateTask={createFollowUpTask}
+            onUpdateTask={updateFollowUpTask}
             onFilterChange={setFollowUpFilter}
             onTemplateChange={setFollowUpTemplate}
           />

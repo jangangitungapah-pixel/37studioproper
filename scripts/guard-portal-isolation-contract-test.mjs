@@ -96,13 +96,12 @@ assert.equal(
   'Direct /admin access must redirect studio_guard to guard portal.',
 );
 
-const loginSource =
-  readFileSync(
-    resolve(
-      'src/pages/LoginPage.jsx',
-    ),
-    'utf8',
-  );
+const loginSource = readFileSync(
+  resolve(
+    'src/pages/LoginPage.jsx',
+  ),
+  'utf8',
+).replace(/\r\n?/g, '\n');
 
 assert.equal(
   loginSource.includes(
@@ -170,13 +169,12 @@ for (
   );
 }
 
-const rulesSource =
-  readFileSync(
-    resolve(
-      'firestore.rules',
-    ),
-    'utf8',
-  );
+const rulesSource = readFileSync(
+  resolve(
+    'firestore.rules',
+  ),
+  'utf8',
+).replace(/\r\n?/g, '\n');
 
 assert.equal(
   rulesSource.includes(

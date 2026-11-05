@@ -105,13 +105,12 @@ assert.equal(
 /**
  * Drawer architecture.
  */
-const drawerSource =
-  readFileSync(
-    resolve(
-      'src/components/booking/BookingDetailDrawer.jsx',
-    ),
-    'utf8',
-  );
+const drawerSource = readFileSync(
+  resolve(
+    'src/components/booking/BookingDetailDrawer.jsx',
+  ),
+  'utf8',
+).replace(/\r\n?/g, '\n');
 
 for (
   const tab

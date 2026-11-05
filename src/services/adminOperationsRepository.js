@@ -217,6 +217,35 @@ export function archiveCanonicalInventoryItem(input, idempotencyKey = '') {
   });
 }
 
+
+export function getCanonicalCustomerFollowUpAssignees() {
+  return requestOperation('/v1/customers/follow-ups/assignees', {
+    method: 'GET',
+    retryCount: 1,
+  });
+}
+
+export function createCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
+  return requestOperation('/v1/customers/follow-ups', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-create', input?.customerId),
+  });
+}
+
+export function updateCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
+  return requestOperation('/v1/customers/follow-ups/update', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-update', input?.taskId),
+  });
+}
+
+export function cancelCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
+  return requestOperation('/v1/customers/follow-ups/cancel', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-cancel', input?.taskId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
@@ -297,6 +326,10 @@ export function getDangerZoneJob(jobId) {
 }
 
 export const adminOperationsRepository = {
+  getCustomerFollowUpAssignees: getCanonicalCustomerFollowUpAssignees,
+  createCustomerFollowUpTask: createCanonicalCustomerFollowUpTask,
+  updateCustomerFollowUpTask: updateCanonicalCustomerFollowUpTask,
+  cancelCustomerFollowUpTask: cancelCanonicalCustomerFollowUpTask,
   adjustInventory: adjustCanonicalInventory,
   reportMaintenanceWorkOrder: reportCanonicalMaintenanceWorkOrder,
   actOnMaintenanceWorkOrder: actOnCanonicalMaintenanceWorkOrder,
