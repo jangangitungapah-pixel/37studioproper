@@ -156,6 +156,7 @@ for (const testFile of [
   'guard-meal-reconciliation-contract-test.mjs',
   'operator-fee-posting-reconciliation-contract-test.mjs',
   'admin-spatial-bookkeeping-ledger-contract-test.mjs',
+  'daily-closing-worker-contract-test.mjs',
 ]) {
   assert.equal(packageJson.scripts.test.includes(testFile), true, 'UI-7 npm test registration missing: ' + testFile);
 }
