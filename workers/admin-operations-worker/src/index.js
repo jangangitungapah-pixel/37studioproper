@@ -1,5 +1,6 @@
 import { transferOwnership } from './domain/accounts.js';
 import { createManualBooking, decideBookingRequest, updateManualBooking } from './domain/bookings.js';
+import { recordBookingSessionAction } from './domain/bookingSessions.js';
 import {
   createDangerDryRun,
   readDangerJob,
@@ -60,6 +61,11 @@ async function handleRequest(request, env) {
     actor = await authorize(env, request, firestore, { permission: 'schedule' });
     body = await readJson(request);
     result = await decideBookingRequest({ actor, body, firestore, request });
+  } else if (pathname === '/v1/bookings/sessions/action') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'schedule' });
+    body = await readJson(request);
+    result = await recordBookingSessionAction({ actor, body, firestore, request });
   } else if (pathname === '/v1/bookings/manual/update') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'schedule' });
