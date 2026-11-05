@@ -1247,7 +1247,7 @@ export default function InventoryPage() {
 
   return (
     <section
-      aria-labelledby="inventory-title"
+      aria-label="Inventory and equipment maintenance workspace"
       className="inventory-page"
       data-inventory-ui="ui-9-spatial"
     >
