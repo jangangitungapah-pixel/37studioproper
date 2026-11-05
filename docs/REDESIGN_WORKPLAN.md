@@ -54,21 +54,21 @@ Status: COMPLETE WITH DOCUMENTED AUTHENTICATED-VISUAL-QA LIMITATION.
 Acceptance: shell navigation contracts, build/lint/regression/PRD-security contracts, and available responsive smoke pass. Remaining authenticated visual evidence is tracked explicitly for Phase 9.
 
 ## Phase 3 — Authentication & public experience
-Status: IMPLEMENTED; automated quality gates pending on the implementation commit.
-- Admin/Guard shared login: theme-aware visual surface, visible offline feedback, and explicit form busy state.
-- Client login: theme-aware visual surface, visible offline feedback, and explicit form busy state.
-- Landing planner handoff clarity: date and start hour continue to route into /book; service and duration are disclosed as selections made after Client sign-in.
-- Public booking: live/offline connectivity status and a stale-availability warning when the browser reports offline.
-- Preserve role resolution, redirect sanitization, provider flows, safe booking resume, canonical slot subscriptions, and occupancy checks.
-- Responsive CSS retains mobile breakpoints and reduced-motion / forced-colors support.
+Status: COMPLETE — UI scope and required automated/browser quality gates passed. Live Firebase availability and authenticated-session integration QA limitations are documented below.
+- Admin/Guard shared login: replaced route-local forced-light overrides with shared Light/Dark/System semantic theme tokens; added accessible offline feedback and form busy state.
+- Client login: aligned its root surface to global Light/Dark/System tokens; added semantic offline feedback and form busy state.
+- Landing planner: explains the existing handoff precisely; date and start hour transfer to /book, while service and duration are chosen after Client sign-in.
+- Public booking: displays truthful online/offline status and warns that visible availability may be stale when the browser reports offline.
+- Preserved role resolution, redirect sanitization, provider flows, safe booking resume, canonical slot subscriptions, occupancy checks, and validation contracts.
+- Added Phase 3 source regression contract and Playwright coverage for Admin, Guard, Client login, landing, public booking, and signed-out Admin route.
+- Playwright offline/online state transitions pass for all three login routes and the public booking route at 390/768/1440 px.
+- Responsive smoke run #207 on commit 8f6fc45f2dd67785a65985a28cd28780da2793bc passed build, lint, regression, PRD/Firestore security, Chromium browser smoke, and screenshot upload.
+- Screenshot artifact: browser-responsive-smoke, artifact ID 13455167952. All 18 route/viewport cases returned HTTP 200; measured document width equaled viewport width in every case; landing planner date/startHour handoff passed at all three widths.
+- Visual inspection performed on the captured screenshots for all six routes at mobile 390 px, tablet 768 px, and desktop 1440 px.
+- QA limitation: the CI preview could not load live calendar availability and displayed the existing “Jadwal belum dapat dimuat” state. Real Firebase slot data, successful slot selection/request creation, and authenticated Admin/Guard/Client account sessions still require a safe staging environment and test identities. Do not claim those integrations were exercised in CI.
+- Phase 2 authenticated workspace and full navigation visual limitations remain tracked for Phase 9; Phase 2 global navigation visual overhaul is not implied complete by this phase.
 
-- Admin/Guard login and state UX.
-- Client login.
-- Pending, denied, invalid account, session, offline, and error states.
-- Landing page and public booking flow.
-- Preserve booking canonical availability and validation contracts.
-
-Acceptance: auth and public booking contracts pass; no protected-content flash; responsive smoke passes.
+Acceptance: Admin/Guard/Client auth surfaces, public landing and public booking UI contracts pass; signed-out Admin redirect passes at all tested viewports; responsive smoke and offline/online feedback pass. Live availability and authenticated account integration remain explicit staging QA items.
 
 ## Phase 4 — Admin core operations
 - Dashboard, Booking Requests, Calendar, All Bookings, Customers.
