@@ -45,6 +45,16 @@ function optionalMoney(value, label) {
   return cleanMoney(amount);
 }
 
+function normalizeAttachments(value) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw new HttpError(400, 'invalid_attachments', 'Lampiran harus berupa daftar referensi.');
+  return value.slice(0, 10).map((entry) => {
+    const url = cleanText(entry?.url, 2000);
+    if (!/^https:\/\//i.test(url)) throw new HttpError(400, 'invalid_attachment_url', 'Referensi lampiran harus menggunakan URL HTTPS.');
+    return { label: cleanText(entry?.label, 100) || 'Lampiran', url };
+  });
+}
+
 function normalizePriority(value, fallback = 'normal') {
   const priority = cleanText(value, 20).toLowerCase() || fallback;
   if (!PRIORITIES.has(priority)) {
@@ -197,7 +207,7 @@ export async function reportMaintenanceWorkOrder({ actor, body, firestore, reque
     estimatedCost: optionalMoney(body.estimatedCost, 'Estimasi biaya'),
     actualCost: 0,
     costEntryId: '',
-    attachments: [],
+    attachments: normalizeAttachments(body.attachments),
     priorItemStatus: cleanText(item.status, 40) || 'active',
     priorItemCondition: cleanText(item.condition, 40) || 'good',
     revision: 1,
@@ -250,7 +260,6 @@ export async function reportMaintenanceWorkOrder({ actor, body, firestore, reque
 
 export async function actOnMaintenanceWorkOrder({ actor, body, firestore, request, now = new Date() }) {
   const action = cleanText(body.action, 40).toLowerCase();
-  const transition = getMaintenanceTransition(cleanText(body.expectedStatus || body.status, 40), action);
   const key = getIdempotencyKey(request, body);
   const type = 'maintenance-work-order-' + action;
   const existingOperation = await readOperationResult(firestore, type, key);
