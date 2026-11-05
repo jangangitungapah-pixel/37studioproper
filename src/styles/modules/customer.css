@@ -2991,8 +2991,10 @@ strong {
 
 .customer-followup-task-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.65rem;padding:.9rem;border:1px solid var(--studio-edge-soft);border-radius:.85rem;background:var(--studio-surface-1)}
 .customer-followup-task-form>strong{grid-column:1/-1;color:var(--studio-text-primary)}
-.customer-followup-task-form label,.customer-followup-task-actions label{display:grid;gap:.3rem;color:var(--studio-text-secondary);font-size:.72rem}
-.customer-followup-task-form input,.customer-followup-task-form textarea,.customer-followup-task-actions input,.customer-followup-task-actions select{width:100%;min-height:2.3rem;padding:.5rem .65rem;border:1px solid var(--studio-edge-soft);border-radius:.6rem;background:var(--studio-surface-2);color:var(--studio-text-primary);font:inherit}
+.customer-followup-task-form label,.customer-followup-task-actions label,.customer-followup-task-form-select,.customer-followup-task-select{display:grid;gap:.3rem;color:var(--studio-text-secondary);font-size:.72rem}
+.customer-followup-task-form input,.customer-followup-task-form textarea,.customer-followup-task-actions input{width:100%;min-height:2.3rem;padding:.5rem .65rem;border:1px solid var(--studio-edge-soft);border-radius:.6rem;background:var(--studio-surface-2);color:var(--studio-text-primary);font:inherit}
+.customer-followup-task-form-select .studio-select-trigger,.customer-followup-task-select .studio-select-trigger{width:100%;min-height:2.3rem;border-radius:.6rem}
+.customer-followup-task-form-select .studio-select-label,.customer-followup-task-select .studio-select-label{color:var(--studio-text-secondary);font-size:.72rem}
 .customer-followup-task-form-wide{grid-column:span 2}
 .customer-followup-task-form button,.customer-followup-task-actions button,.customer-followup-create-from-candidate{min-height:2.3rem;padding:.45rem .7rem;border:1px solid var(--studio-accent);border-radius:.6rem;background:var(--studio-accent);color:#fff;font:inherit;font-weight:700}
 .customer-followup-task-form button:disabled,.customer-followup-task-actions button:disabled{opacity:.5}
