@@ -6,6 +6,7 @@ const router = readFileSync('workers/admin-operations-worker/src/index.js', 'utf
 const operations = readFileSync('src/services/adminOperationsRepository.js', 'utf8');
 const normalizer = readFileSync('src/domain/booking/normalizeBooking.js', 'utf8');
 const rules = readFileSync('firestore.rules', 'utf8');
+const drawer = readFileSync('src/components/booking/BookingDetailDrawer.jsx', 'utf8');
 
 assert.match(worker, /export async function updateBookingSession/);
 assert.match(worker, /bookingSessionEvents/);
@@ -19,5 +20,6 @@ assert.match(worker, /already_checked_in/);
 assert.match(router, /\/v1\/bookings\/sessions\/action/);
 assert.match(operations, /\/v1\/bookings\/sessions\/action/);
 assert.match(normalizer, /return 'needs_review'/);
+assert.match(drawer, /Session Operations/);
 assert.match(rules, /match \/bookingSessionEvents\/{eventId}[\s\S]*?allow create, update, delete: if false;/);
 process.stdout.write('✅ Session lifecycle transitions are Worker-only and audited.\\n');
