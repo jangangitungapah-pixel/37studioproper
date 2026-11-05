@@ -1548,7 +1548,8 @@ match /users/{userId} {
         'operatorFee',
         'guardAttendanceMeal',
         'booking-payment',
-        'booking-refund'
+        'booking-refund',
+        'procurement-payment'
       ];
     }
 
