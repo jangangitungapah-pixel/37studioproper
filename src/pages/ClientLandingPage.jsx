@@ -289,10 +289,14 @@ export default function ClientLandingPage() {
           </span>
         </a>
 
-        <nav className={`client-landing-nav ${isMenuOpen ? 'is-open' : ''}`} aria-label="Navigasi utama">
+        <nav
+          aria-label="Navigasi utama"
+          className={`client-landing-nav ${isMenuOpen ? 'is-open' : ''}`}
+          id="client-landing-navigation"
+        >
           <a href="#services" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Studio</a>
           <a href="#pricelist" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Harga</a>
-          <a href="/book" className="client-landing-nav-link">Booking Slot</a>
+          <a href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>
           <a href="#location" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Lokasi</a>
         </nav>
 
@@ -319,6 +323,7 @@ export default function ClientLandingPage() {
           )}
 
           <button
+            aria-controls="client-landing-navigation"
             aria-expanded={isMenuOpen}
             aria-label={isMenuOpen ? 'Tutup navigasi' : 'Buka navigasi'}
             className="client-landing-menu-button"

@@ -833,3 +833,42 @@ button.client-booking-slot { cursor: pointer; }
   .client-home-book-button,
   .client-bookings-hub-tabs button::after { transition: none; }
 }
+
+
+/* Phase 2 — keyboard entry point above the responsive client navigation. */
+.client-portal-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  z-index: calc(var(--z-menu) + 40);
+  transform: translateY(calc(-100% - 16px));
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: 11px;
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-primary);
+  padding: 10px 14px;
+  box-shadow: var(--studio-shadow-surface);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 150ms ease;
+}
+
+.client-portal-skip-link:focus,
+.client-portal-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 3px;
+}
+
+#client-portal-main { scroll-margin-top: 16px; }
+#client-portal-main:focus { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .client-portal-skip-link { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .client-portal-skip-link { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .client-portal-skip-link:focus-visible { outline: 2px solid Highlight; }
+}

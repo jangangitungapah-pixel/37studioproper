@@ -735,6 +735,9 @@ function AdminPageContent() {
           data-admin-active={activeItem.key}
           data-admin-spatial-root="true"
         >
+      <a className="admin-shell-skip-link" href="#admin-workspace-content">
+        Lewati navigasi admin
+      </a>
       {isOwnerAdminUser(authState.user) && (
         <GuardAttendanceApprovalModal
           currentUser={authState.user}
@@ -768,6 +771,8 @@ function AdminPageContent() {
             <section
               className="admin-stage"
               aria-labelledby="admin-title"
+              id="admin-workspace-content"
+              tabIndex={-1}
             >
               <AdminTopbar
                 activeItem={activeItem}

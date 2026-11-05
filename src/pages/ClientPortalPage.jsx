@@ -1167,6 +1167,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   return (
     <div className="client-portal-page theme-container">
+      <a className="client-portal-skip-link" href="#client-portal-main">
+        Lewati navigasi client
+      </a>
       {/* Background Radial Glow */}
       <div className="client-portal-bg-glow" aria-hidden="true" />
       
@@ -1189,6 +1192,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         >
           <span className="client-desktop-nav-label">Workspace</span>
           <button
+            aria-current={activeTab === 'home' ? 'page' : undefined}
             className={activeTab === 'home' ? 'is-active' : ''}
             type="button"
             onClick={() => setActiveTab('home')}
@@ -1198,6 +1202,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </button>
 
           <button
+            aria-current={activeTab === 'book' ? 'page' : undefined}
             className={activeTab === 'book' ? 'is-active' : ''}
             type="button"
             onClick={() => setActiveTab('book')}
@@ -1207,6 +1212,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </button>
 
           <button
+            aria-current={activeTab === 'bookings' ? 'page' : undefined}
             className={activeTab === 'bookings' ? 'is-active' : ''}
             type="button"
             onClick={() => {
@@ -1225,6 +1231,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </button>
 
           <button
+            aria-current={activeTab === 'account' ? 'page' : undefined}
             className={activeTab === 'account' ? 'is-active' : ''}
             type="button"
             onClick={() => setActiveTab('account')}
@@ -1265,7 +1272,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       </header>
 
       {/* Client Navigation V2 content */}
-      <main className="client-portal-main" data-view={activeTab}>
+      <main
+        className="client-portal-main"
+        data-view={activeTab}
+        id="client-portal-main"
+        tabIndex={-1}
+      >
         <header className="client-portal-mobile-heading">
           <span className="client-header-mark">37</span>
           <div>
@@ -1411,7 +1423,6 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             }}
             className={'client-bottom-item ' + (activeTab === 'bookings' ? 'is-active' : '')}
             aria-current={activeTab === 'bookings' ? 'page' : undefined}
-            style={{ position: 'relative' }}
           >
             <ClipboardList size={18} />
             <span>Bookings</span>
