@@ -227,6 +227,8 @@ assert.equal(
 );
 
 for (const required of [
+  'bookingSessionEvents',
+  'append-only',
   'Session Operations',
   'Lifecycle Sesi',
   'Catat Check-in',
