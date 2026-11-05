@@ -1889,7 +1889,12 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
-    match /{document=**} {
+        match /bookingSessionEvents/{eventId} {
+      allow read: if isApproved() && canAccessBookingData();
+      allow create, update, delete: if false;
+    }
+
+match /{document=**} {
       allow read, write: if false;
     }
   }
