@@ -185,6 +185,7 @@ async function collectBusinessTransactions({ businessDate, firestore, registerId
   entries.forEach((document) => {
     const row = document.data || {};
     if (normalizeRegisterId(row.registerId || 'main') !== registerId) return;
+    if (!['income', 'expense'].includes(row.type)) return;
     const source = cleanText(row.source || 'manual', 80);
     const bookingId = cleanText(row.sourceBookingId, 160);
     const eventId = cleanText(row.sourceEventId, 180);
@@ -312,27 +313,42 @@ function summarizeLatePostings(snapshot, currentReferences) {
 }
 
 function buildPreviewResult({ actor, businessDate, collected, counts, existing, registerId }) {
-  const reconciliation = calculateReconciliation(collected.totals, counts);
-  const latePostingExceptions = existing?.status === 'closed'
+  const isClosed = existing?.status === 'closed';
+  const snapshotCounts = isClosed ? {
+    openingCash: existing.openingCash,
+    countedCash: existing.countedCash,
+    digitalCounts: existing.digitalCounts || {},
+  } : counts;
+  const snapshotTotals = isClosed ? existing.totalsByMethod : collected.totals;
+  const reconciliation = calculateReconciliation(snapshotTotals, snapshotCounts);
+  const latePostingExceptions = existing?.cutoffAt
     ? summarizeLatePostings(existing, collected.references)
     : [];
   return {
     businessDate,
     canReopen: actor.role === 'owner',
-    counts,
+    counts: snapshotCounts,
+    cutoffAt: existing?.cutoffAt || '',
     digitalReconciliation: reconciliation.digital,
-    expectedCash: reconciliation.expectedCash,
+    expectedCash: isClosed ? existing.expectedCash : reconciliation.expectedCash,
     existingSession: existing ? { ...existing } : null,
-    isClosed: existing?.status === 'closed',
+    isClosed,
     latePostingExceptions,
     latePostingCount: latePostingExceptions.length,
-    reconciliation,
+    reconciliation: isClosed ? {
+      ...reconciliation,
+      cashVariance: existing.cashVariance,
+      digital: existing.digitalReconciliation || reconciliation.digital,
+      expectedCash: existing.expectedCash,
+      hasVariance: Number(existing.cashVariance || 0) !== 0 || Object.values(existing.digitalReconciliation || {}).some((row) => Number(row.variance || 0) !== 0),
+    } : reconciliation,
     registerId,
-    sourceFingerprint: collected.sourceFingerprint,
-    sourceWatermark: collected.sourceWatermark,
+    sourceFingerprint: isClosed ? existing.sourceFingerprint : collected.sourceFingerprint,
+    sourceWatermark: isClosed ? existing.sourceWatermark : collected.sourceWatermark,
     status: existing?.status || 'not_opened',
-    totalsByMethod: collected.totals,
-    transactionCount: collected.references.length,
+    totalsByMethod: snapshotTotals,
+    transactionCount: isClosed ? existing.transactionCount : collected.references.length,
+    transactionReferences: isClosed ? (existing.transactionReferences || []) : collected.references,
   };
 }
 
@@ -375,7 +391,6 @@ export async function closeDailyClosing({ actor, body, firestore, request, now =
   const eventId = await stableDocumentId('cash-closing-event', sessionId + ':' + key);
   const session = {
     businessDate,
-    canReopen: undefined,
     cashVariance: reconciliation.cashVariance,
     closedAt: timestamp,
     closedByName: actor.displayName,
