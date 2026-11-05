@@ -92,6 +92,21 @@ async function handleRequest(request, env) {
       proofId: params[0],
       request,
     });
+  } else if (pathname === '/v1/finance/daily-closings') {
+    if (request.method === 'GET') {
+      actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+      result = await readDailyClosing({ firestore, businessDate: url.searchParams.get('businessDate'), registerId: url.searchParams.get('registerId') || 'main' });
+    } else {
+      requirePost(request);
+      actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+      body = await readJson(request);
+      result = await closeDailyRegister({ actor, body, firestore, request });
+    }
+  } else if (pathname === '/v1/finance/daily-closings/reopen') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await reopenDailyRegister({ actor, body, firestore, request });
   } else if (pathname === '/v1/inventory/adjustments') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'inventory' });
