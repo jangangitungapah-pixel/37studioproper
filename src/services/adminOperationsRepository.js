@@ -238,6 +238,13 @@ export function actOnCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
   });
 }
 
+export function reopenCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/reopen', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-reopen', input?.workOrderId),
+  });
+}
+
 export function recordCanonicalMaintenanceCost(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/maintenance/work-orders/cost', {
     body: input,
@@ -294,6 +301,7 @@ export const adminOperationsRepository = {
   reportMaintenanceWorkOrder: reportCanonicalMaintenanceWorkOrder,
   actOnMaintenanceWorkOrder: actOnCanonicalMaintenanceWorkOrder,
   recordMaintenanceCost: recordCanonicalMaintenanceCost,
+  reopenMaintenanceWorkOrder: reopenCanonicalMaintenanceWorkOrder,
   saveInventoryItem: saveCanonicalInventoryItem,
   archiveInventoryItem: archiveCanonicalInventoryItem,
   createManualBooking: createCanonicalManualBooking,
