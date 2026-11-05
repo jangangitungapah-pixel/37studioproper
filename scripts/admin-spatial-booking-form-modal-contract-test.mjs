@@ -35,6 +35,10 @@ for (
     'Dialog.Description',
     'Dialog.Close',
     'data-booking-modal-ui="ui-3c-mobile-first"',
+    'data-booking-flow-ux="spatial-v2"',
+    'Isi customer, pilih layanan dan slot, lalu atur pembayaran.',
+    'LIVE PREVIEW',
+    'Ringkasan booking',
     'bookingFormLayoutRef',
     'bookingStepItems',
     'nextBookingStepKey',
@@ -376,6 +380,25 @@ assert.equal(
   false,
   'UI-3C CSS must use Spatial semantic tokens.',
 );
+assert.match(
+  modalCss,
+  /\.booking-modal-panel\[data-booking-flow-ux='spatial-v2'\] \.booking-form-section\s*\{[\s\S]*?border:\s*0;[\s\S]*?border-bottom:\s*1px solid var\(--studio-edge-soft\);[\s\S]*?box-shadow:\s*none;/,
+  'UI-4A must render the booking stages as one continuous flow, not separate cards.',
+);
+
+for (const redesignInvariant of [
+  '/* UI-4A — Spatial Booking Flow',
+  'grid-template-areas: \'fields summary\';',
+  'grid-template-columns: minmax(0, 1fr) minmax(290px, 330px);',
+  'border-bottom: 1px solid var(--studio-edge-soft);',
+  'LIVE PREVIEW',
+]) {
+  assert.equal(
+    (modalSource + modalCss).includes(redesignInvariant),
+    true,
+    'UI-4A booking flow redesign invariant missing: ' + redesignInvariant,
+  );
+}
 
 const rawHexMatches =
   modalCss.match(
