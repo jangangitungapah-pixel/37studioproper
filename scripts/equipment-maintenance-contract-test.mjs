@@ -16,6 +16,8 @@ assert.match(worker, /maintenanceWorkOrders/);
 assert.match(worker, /maintenanceEvents/);
 assert.match(worker, /commitIdempotentOperation/);
 assert.match(worker, /maintenance_expense_exists/);
+assert.match(page, /Simpan detail/);
+assert.match(page, /Menunggu Spare Part/);
 assert.match(worker, /source: 'maintenance'/);
 assert.match(router, /\/v1\/inventory\/maintenance/);
 assert.match(operations, /\/v1\/inventory\/maintenance/);
