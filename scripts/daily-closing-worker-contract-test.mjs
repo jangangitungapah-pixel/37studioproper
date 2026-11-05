@@ -115,6 +115,37 @@ await assert.rejects(
 );
 
 
+await assert.rejects(
+  () => previewDailyClosing({
+    actor,
+    body: {
+      businessDate: '2026-11-05',
+      registerId: 'main',
+      countedCash: 10000,
+      cashDenominations: { 100000: 0, 50000: 0, 20000: 0, 10000: 0, 5000: 0, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 },
+    },
+    firestore: new FakeFirestore(),
+  }),
+  (error) => error?.code === 'cash_count_mismatch',
+);
+
+await assert.rejects(
+  () => closeDailyClosing({
+    actor,
+    body: {
+      businessDate: '2026-11-05',
+      registerId: 'main',
+      openingCash: 0,
+      countedCash: 0,
+      digitalCounts: { transfer: 0, qris: 0, other: 0 },
+    },
+    firestore: new FakeFirestore(),
+    request: new Request('https://worker.test/close', { headers: { 'x-idempotency-key': 'close-no-denominations' }, method: 'POST' }),
+    now: new Date('2026-11-05T09:00:00.000Z'),
+  }),
+  (error) => error?.code === 'cash_denominations_required',
+);
+
 const firestore = new FakeFirestore({
   bookkeepingEntries: {
     'canonical-payment-1': {
