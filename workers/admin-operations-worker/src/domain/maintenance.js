@@ -125,7 +125,7 @@ async function loadItem(firestore, itemId) {
 async function findWorkOrdersForItem(firestore, itemId) {
   const rows = await firestore.runQuery({
     from: [{ collectionId: 'maintenanceWorkOrders' }],
-    limit: 100,
+    limit: 500,
     where: {
       fieldFilter: {
         field: { fieldPath: 'inventoryItemId' },
