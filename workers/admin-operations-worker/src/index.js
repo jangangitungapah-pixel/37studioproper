@@ -13,6 +13,7 @@ import {
   voidInvoice,
 } from './domain/finance.js';
 import { permanentlyDeleteGalleryItem } from './domain/gallery.js';
+import { cancelCustomerFollowUpTask, createCustomerFollowUpTask, updateCustomerFollowUpTask } from './domain/customerFollowUp.js';
 import { adjustInventory } from './domain/inventory.js';
 import { authorize } from './lib/auth.js';
 import { createFirestoreClient } from './lib/firestore.js';
@@ -97,6 +98,21 @@ async function handleRequest(request, env) {
     actor = await authorize(env, request, firestore, { permission: 'inventory' });
     body = await readJson(request);
     result = await adjustInventory({ actor, body, firestore, request });
+  } else if (pathname === '/v1/customers/follow-ups') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    body = await readJson(request);
+    result = await createCustomerFollowUpTask({ actor, body, firestore, request });
+  } else if (pathname === '/v1/customers/follow-ups/update') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    body = await readJson(request);
+    result = await updateCustomerFollowUpTask({ actor, body, firestore, request });
+  } else if (pathname === '/v1/customers/follow-ups/cancel') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    body = await readJson(request);
+    result = await cancelCustomerFollowUpTask({ actor, body, firestore, request });
   } else if (pathname === '/v1/gallery/permanent-delete') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'gallery' });
