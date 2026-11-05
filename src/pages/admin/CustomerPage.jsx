@@ -1251,8 +1251,6 @@ function CustomerFollowUpCenter({
 
   useEffect(() => {
     if (!expandedTaskId) return undefined;
-    setTaskHistoryLoading((current) => ({ ...current, [expandedTaskId]: true }));
-    setTaskHistoryErrors((current) => ({ ...current, [expandedTaskId]: '' }));
     return subscribeCustomerFollowUpEvents(
       expandedTaskId,
       (events) => {
