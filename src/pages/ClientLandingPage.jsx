@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring } from 'motion/react';
 import {
   ArrowRight,
   CalendarDays,
@@ -33,6 +34,7 @@ import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions } from '../constants/scheduleConfig.js';
 import { getLocalDateKey } from '../utils/publicBookingSelection.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
+import { NumberTicker } from '../components/magicui/number-ticker.jsx';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
@@ -48,6 +50,7 @@ const SERVICE_STORIES = [
     icon: Music2,
     index: '01',
     label: 'Rehearsal',
+    sessionKey: 'rehearsal',
     title: 'Latihan tanpa kehilangan momentum.',
   },
   {
@@ -55,6 +58,7 @@ const SERVICE_STORIES = [
     icon: Mic2,
     index: '02',
     label: 'Recording',
+    sessionKey: 'recording',
     title: 'Tangkap performa terbaik Anda.',
   },
   {
@@ -62,9 +66,12 @@ const SERVICE_STORIES = [
     icon: SlidersHorizontal,
     index: '03',
     label: 'Post production',
+    sessionKey: 'mixing',
     title: 'Buat karya terasa selesai.',
   },
 ];
+
+const formatTickerRupiah = (value) => formatRupiah(Math.round(value));
 
 function formatPublicDate(value) {
   if (!value) return 'Tanggal menyusul';
@@ -90,6 +97,20 @@ function getBookingStatus(booking) {
 
 export default function ClientLandingPage() {
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll();
+  const scrollProgress = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
+  const sectionRevealProps = shouldReduceMotion ? { initial: false } : {
+    initial: { opacity: 0, y: 26 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, amount: 0.16 },
+    transition: { duration: 0.58, ease: [0.16, 1, 0.3, 1] },
+  };
+  const interactionMotionProps = shouldReduceMotion ? {} : {
+    whileHover: { y: -2 },
+    whileTap: { scale: 0.985 },
+    transition: { type: 'spring', stiffness: 440, damping: 26 },
+  };
   const pricingSettings = usePricingSettings();
   const invoiceSettings = useInvoiceSettings();
 
@@ -97,6 +118,8 @@ export default function ClientLandingPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const [bookingSelectionError, setBookingSelectionError] = useState('');
   const [plannerMode, setPlannerMode] = useState('regular');
   const [sessionType, setSessionType] = useState('rehearsal');
   const [recordingTypeId, setRecordingTypeId] = useState('none');
@@ -115,6 +138,8 @@ export default function ClientLandingPage() {
 
     return onAuthStateChanged(firebaseAuth, async (user) => {
       const currentSequence = ++checkSequence;
+      setAuthLoading(true);
+      setUserBookings([]);
 
       if (!user) {
         setCurrentUser(null);
@@ -148,6 +173,13 @@ export default function ClientLandingPage() {
   }, []);
 
   useEffect(() => {
+    const updateHeaderState = () => setIsHeaderScrolled(window.scrollY > 24);
+    updateHeaderState();
+    window.addEventListener('scroll', updateHeaderState, { passive: true });
+    return () => window.removeEventListener('scroll', updateHeaderState);
+  }, []);
+
+  useEffect(() => {
     if (!currentUser) return undefined;
 
     return adminBookingRepository.subscribeClientBookingsForUser(
@@ -160,12 +192,16 @@ export default function ClientLandingPage() {
   useEffect(() => {
     if (!isMenuOpen) return undefined;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') setIsMenuOpen(false);
     };
-
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isMenuOpen]);
 
   const sessionOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
@@ -177,6 +213,10 @@ export default function ClientLandingPage() {
     key: hour.key,
     label: hour.rangeLabel,
   })), []);
+  const minBookableDate = getLocalDateKey(new Date());
+  const hasPackages = packageOptions.length > 0;
+  const selectedStartHour = startHourOptions.find((option) => String(option.key) === String(startHour));
+  const isCustomDurationValid = duration !== 'custom' || (customDuration.trim() !== '' && Number.isInteger(Number(customDuration)) && Number(customDuration) >= 1);
 
   const displayedSessionOptions = useMemo(() => {
     const options = [];
@@ -204,13 +244,24 @@ export default function ClientLandingPage() {
       const selectedPackage = pricingSettings.packages?.find((item) => item.id === packageId);
       return Math.max(0, Number(selectedPackage?.durationHours) || 0);
     }
-
-    if (duration === 'custom') return Math.max(1, Number(customDuration) || 1);
+    if (sessionType === 'recording' && recordingTypeId !== 'none') {
+      const selectedRecordingType = recordingTypeOptions.find((item) => item.key === recordingTypeId);
+      return Math.max(0, Number(selectedRecordingType?.durationHours) || 0);
+    }
+    if (duration === 'custom') {
+      const parsedDuration = Number(customDuration);
+      return Number.isInteger(parsedDuration) && parsedDuration >= 1 ? parsedDuration : 0;
+    }
     return Number(duration) || 2;
-  }, [customDuration, duration, packageId, plannerMode, pricingSettings.packages]);
+  }, [customDuration, duration, packageId, plannerMode, pricingSettings.packages, recordingTypeId, recordingTypeOptions, sessionType]);
+  const isPriceEstimateReady = plannerMode === 'package'
+    ? hasPackages && packageId !== 'none'
+    : sessionType === 'recording'
+      ? recordingTypeId !== 'none' && recordingTypeOptions.some((item) => item.key === recordingTypeId)
+      : isCustomDurationValid;
 
   const pricingBreakdown = useMemo(() => resolveBookingPricing({
-    customDurationHours: duration === 'custom' ? Number(customDuration) : 0,
+    customDurationHours: duration === 'custom' && isCustomDurationValid ? Number(customDuration) : 0,
     dpAmount: 0,
     durationHours: Number(duration) || 0,
     packageId: plannerMode === 'package' ? packageId : 'none',
@@ -235,6 +286,7 @@ export default function ClientLandingPage() {
 
   function handleServiceChange(value) {
     const selected = displayedSessionOptions.find((option) => option.key === value);
+    setBookingSelectionError('');
 
     if (selected?.isRecordingType) {
       setSessionType('recording');
@@ -246,7 +298,24 @@ export default function ClientLandingPage() {
     setRecordingTypeId('none');
   }
 
+  function handleServiceShortcut(sessionKey) {
+    setPlannerMode('regular');
+    setBookingSelectionError('');
+    if (sessionKey === 'recording') {
+      setSessionType('recording');
+      setRecordingTypeId(recordingTypeOptions[0]?.key || 'none');
+    } else {
+      const matchingSession = sessionOptions.find((option) => option.key === sessionKey);
+      if (!matchingSession) return;
+      setSessionType(matchingSession.key);
+      setRecordingTypeId('none');
+    }
+    document.getElementById('pricelist')?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+
   function handlePlannerMode(mode) {
+    if (mode === 'package' && !hasPackages) return;
+    setBookingSelectionError('');
     setPlannerMode(mode);
 
     if (mode === 'regular') setPackageId('none');
@@ -257,7 +326,18 @@ export default function ClientLandingPage() {
 
   function handleBookingAction(event) {
     event.preventDefault();
-
+    const selectedDate = new Date(date + 'T00:00:00');
+    const isValidDate = !Number.isNaN(selectedDate.getTime()) && getLocalDateKey(selectedDate) === date && date >= minBookableDate;
+    const isValidHour = businessHours.some((hour) => String(hour.key) === String(startHour));
+    if (!isValidDate) {
+      setBookingSelectionError('Pilih tanggal yang valid mulai hari ini.');
+      return;
+    }
+    if (!isValidHour) {
+      setBookingSelectionError('Pilih jam mulai yang tersedia.');
+      return;
+    }
+    setBookingSelectionError('');
     const params = new URLSearchParams();
     params.set('date', date);
     params.set('startHour', startHour);
@@ -277,10 +357,11 @@ export default function ClientLandingPage() {
   }
 
   return (
-    <div className="client-landing-page">
+    <motion.div className="client-landing-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.28 }}>
+      <motion.div aria-hidden="true" className="client-landing-scroll-progress" style={{ scaleX: shouldReduceMotion ? 0 : scrollProgress }} />
       <a className="client-landing-skip-link" href="#main-content">Lewati ke konten</a>
 
-      <header className="client-landing-header">
+      <motion.header className={'client-landing-header' + (isHeaderScrolled ? ' is-scrolled' : '')}>
         <a className="client-landing-brand" href="#top" aria-label="37 Music Studio, kembali ke atas">
           <span className="client-landing-brand-mark">37</span>
           <span className="client-landing-brand-lockup">
@@ -322,21 +403,25 @@ export default function ClientLandingPage() {
             </button>
           )}
 
-          <button
+          <motion.button
             aria-controls="client-landing-navigation"
             aria-expanded={isMenuOpen}
             aria-label={isMenuOpen ? 'Tutup navigasi' : 'Buka navigasi'}
             className="client-landing-menu-button"
             type="button"
             onClick={() => setIsMenuOpen((value) => !value)}
+            {...interactionMotionProps}
           >
             {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          </motion.button>
         </div>
-      </header>
+      </motion.header>
+      <AnimatePresence>
+        {isMenuOpen ? <motion.button aria-label="Tutup navigasi" className="client-landing-menu-backdrop" type="button" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMenuOpen(false)} /> : null}
+      </AnimatePresence>
 
       <main id="main-content">
-        <section className="client-landing-hero" id="top">
+        <motion.section className="client-landing-hero" id="top" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}>
           <img
             alt="Control room 37 Music Studio dengan console, monitor, dan instrumen"
             className="client-landing-hero-image"
@@ -368,9 +453,9 @@ export default function ClientLandingPage() {
             <span><Headphones size={16} /> Rehearsal & recording</span>
             <span><ShieldCheck size={16} /> Booking terverifikasi</span>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="client-landing-intro" aria-labelledby="client-intro-title">
+        <motion.section className="client-landing-intro" {...sectionRevealProps} aria-labelledby="client-intro-title">
           <div className="client-landing-section-index">The studio</div>
           <div>
             <h2 id="client-intro-title">Datang membawa ide.<br />Pulang membawa progres.</h2>
@@ -378,17 +463,17 @@ export default function ClientLandingPage() {
           <p>
             Dari latihan pertama sampai final master, setiap sesi dibuat sederhana: pilih kebutuhan, temukan slot, lalu fokus bermusik.
           </p>
-        </section>
+        </motion.section>
 
-        <section className="client-landing-services" id="services" aria-labelledby="client-services-title">
+        <motion.section className="client-landing-services" {...sectionRevealProps} id="services" aria-labelledby="client-services-title">
           <header className="client-landing-section-heading">
             <span>01 / Services</span>
             <h2 id="client-services-title">Satu ruang.<br />Tiga cara berkarya.</h2>
           </header>
 
           <div className="client-landing-service-list">
-            {SERVICE_STORIES.map(({ description, icon: Icon, index, label, title }) => (
-              <article className="client-landing-service" key={label}>
+            {SERVICE_STORIES.map(({ description, icon: Icon, index, label, sessionKey, title }) => (
+              <motion.article className="client-landing-service" key={label} whileHover={shouldReduceMotion ? undefined : { x: 5 }} transition={{ duration: 0.2 }}>
                 <span className="client-landing-service-number">{index}</span>
                 <span className="client-landing-service-icon"><Icon size={22} /></span>
                 <div>
@@ -396,15 +481,15 @@ export default function ClientLandingPage() {
                   <h3>{title}</h3>
                   <p>{description}</p>
                 </div>
-                <a href="#pricelist" aria-label={`Lihat estimasi harga ${label}`}>
+                <motion.button aria-label={'Pilih ' + label + ' dan lihat estimasi harga'} className="client-landing-service-action" type="button" onClick={() => handleServiceShortcut(sessionKey)} {...interactionMotionProps}>
                   <ArrowRight size={19} aria-hidden="true" />
-                </a>
-              </article>
+                </motion.button>
+              </motion.article>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="client-landing-planner" id="pricelist" aria-labelledby="client-planner-title">
+        <motion.section className="client-landing-planner" {...sectionRevealProps} id="pricelist" aria-labelledby="client-planner-title">
           <div className="client-landing-planner-story">
             <span>02 / Plan your session</span>
             <h2 id="client-planner-title">Harga transparan sebelum Anda datang.</h2>
@@ -423,9 +508,10 @@ export default function ClientLandingPage() {
             </ul>
           </div>
 
-          <form className="client-landing-planner-form" onSubmit={handleBookingAction}>
+          <motion.form className="client-landing-planner-form" onSubmit={handleBookingAction} {...(shouldReduceMotion ? {} : { whileHover: { y: -2 }, transition: { duration: 0.2 } })}>
             <div className="client-landing-segmented" aria-label="Mode harga">
               <button
+                aria-pressed={plannerMode === 'regular'}
                 className={plannerMode === 'regular' ? 'is-active' : ''}
                 type="button"
                 onClick={() => handlePlannerMode('regular')}
@@ -433,13 +519,17 @@ export default function ClientLandingPage() {
                 Sewa reguler
               </button>
               <button
+                aria-pressed={plannerMode === 'package'}
                 className={plannerMode === 'package' ? 'is-active' : ''}
+                disabled={!hasPackages}
+                title={hasPackages ? undefined : 'Paket belum tersedia'}
                 type="button"
                 onClick={() => handlePlannerMode('package')}
               >
                 Pilih paket
               </button>
             </div>
+            {!hasPackages ? <p className="client-landing-mode-note">Paket sesi belum tersedia saat ini. Anda tetap bisa melihat estimasi sewa reguler.</p> : null}
 
             <div className="client-landing-form-grid">
               {plannerMode === 'regular' ? (
@@ -464,7 +554,7 @@ export default function ClientLandingPage() {
 
               <label className="client-landing-field">
                 <span>Tanggal</span>
-                <input min={getLocalDateKey(new Date())} type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+                <input min={minBookableDate} type="date" value={date} onChange={(event) => { setDate(event.target.value); setBookingSelectionError(''); }} />
               </label>
 
               <div className="client-landing-field">
@@ -472,7 +562,7 @@ export default function ClientLandingPage() {
                   label="Jam mulai"
                   options={startHourOptions}
                   selectedKey={startHour}
-                  onChange={setStartHour}
+                  onChange={(value) => { setStartHour(value); setBookingSelectionError(''); }}
                 />
               </div>
 
@@ -490,7 +580,8 @@ export default function ClientLandingPage() {
               {plannerMode === 'regular' && duration === 'custom' ? (
                 <label className="client-landing-field is-wide">
                   <span>Durasi khusus</span>
-                  <input min="1" step="1" type="number" value={customDuration} onChange={(event) => setCustomDuration(event.target.value)} />
+                  <input aria-invalid={!isCustomDurationValid} min="1" step="1" type="number" value={customDuration} onChange={(event) => { setCustomDuration(event.target.value); setBookingSelectionError(''); }} />
+                  {!isCustomDurationValid ? <small className="client-landing-field-error">Masukkan durasi minimal 1 jam.</small> : null}
                 </label>
               ) : null}
             </div>
@@ -498,7 +589,9 @@ export default function ClientLandingPage() {
             <div className="client-landing-estimate">
               <div>
                 <small>Estimasi {actualDuration ? `· ${actualDuration} jam` : ''}</small>
-                <strong>{formatRupiah(pricingBreakdown.total)}</strong>
+                {isPriceEstimateReady
+                  ? <strong><NumberTicker value={pricingBreakdown.total} formatter={formatTickerRupiah} duration={shouldReduceMotion ? 0 : 0.48} /></strong>
+                  : <strong className="client-landing-estimate-pending">{sessionType === 'recording' ? 'Pilih tipe recording' : 'Masukkan durasi'}</strong>}
               </div>
               {pricingBreakdown.discountAmount > 0 ? (
                 <span>Hemat {formatRupiah(pricingBreakdown.discountAmount)}</span>
@@ -507,17 +600,28 @@ export default function ClientLandingPage() {
               )}
             </div>
 
-            <button className="client-landing-planner-submit" type="submit">
+            <motion.div className="client-landing-handoff-preview">
+              <CalendarDays size={18} aria-hidden="true" />
+              <div>
+                <small>Jadwal yang akan diteruskan</small>
+                <strong>{formatPublicDate(date)} · {selectedStartHour?.label || 'Pilih jam mulai'}</strong>
+                <p>Layanan dan durasi dipilih setelah Anda masuk, supaya detail request tercatat di akun yang benar.</p>
+              </div>
+            </motion.div>
+            <AnimatePresence initial={false}>
+              {bookingSelectionError ? <motion.p className="client-landing-selection-error" role="alert" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>{bookingSelectionError}</motion.p> : null}
+            </AnimatePresence>
+            <motion.button className="client-landing-planner-submit" type="submit" {...interactionMotionProps}>
               PILIH SLOT TERSEDIA
               <ArrowRight size={18} aria-hidden="true" />
-            </button>
+            </motion.button>
             <p className="client-landing-planner-note">
               Tanggal dan jam diteruskan ke kalender publik. Layanan dan durasi dipilih setelah masuk ke akun client.
             </p>
-          </form>
-        </section>
+          </motion.form>
+        </motion.section>
 
-        <section className="client-landing-process" aria-labelledby="client-process-title">
+        <motion.section className="client-landing-process" {...sectionRevealProps} aria-labelledby="client-process-title">
           <header className="client-landing-section-heading is-light">
             <span>03 / How it works</span>
             <h2 id="client-process-title">Dari ide ke sesi<br />dalam tiga langkah.</h2>
@@ -528,9 +632,9 @@ export default function ClientLandingPage() {
             <li><span>02</span><strong>Kirim request</strong><p>Masuk atau buat akun untuk mengunci detail permintaan booking.</p></li>
             <li><span>03</span><strong>Datang & berkarya</strong><p>Pantau konfirmasi, pembayaran, dan detail sesi dari Portal Client.</p></li>
           </ol>
-        </section>
+        </motion.section>
 
-        <section className="client-landing-client-space" id="history" aria-labelledby="client-space-title">
+        <motion.section className="client-landing-client-space" {...sectionRevealProps} id="history" aria-labelledby="client-space-title">
           <div>
             <span>04 / Your sessions</span>
             <h2 id="client-space-title">Semua sesi Anda, tetap mudah ditemukan.</h2>
@@ -565,7 +669,7 @@ export default function ClientLandingPage() {
           </div>
         </section>
 
-        <section className="client-landing-location" id="location" aria-labelledby="client-location-title">
+        <motion.section className="client-landing-location" {...sectionRevealProps} id="location" aria-labelledby="client-location-title">
           <div className="client-landing-location-heading">
             <span>05 / Visit</span>
             <h2 id="client-location-title">Temukan ruang<br />untuk sesi berikutnya.</h2>
@@ -576,9 +680,9 @@ export default function ClientLandingPage() {
             <div><MessageCircle size={19} /><span><small>Kontak</small><strong>{studioPhone}</strong></span></div>
             <div><Clock3 size={19} /><span><small>Jam operasional</small><strong>Setiap hari · 10.00—23.00 WIB</strong></span></div>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="client-landing-final-cta" aria-labelledby="client-final-title">
+        <motion.section className="client-landing-final-cta" {...sectionRevealProps} aria-labelledby="client-final-title">
           <Volume2 size={28} aria-hidden="true" />
           <p>{studioName}</p>
           <h2 id="client-final-title">Sesi yang bagus dimulai<br />dari slot yang tepat.</h2>
@@ -586,7 +690,7 @@ export default function ClientLandingPage() {
             Mulai booking
             <ArrowRight size={20} aria-hidden="true" />
           </a>
-        </section>
+        </motion.section>
       </main>
 
       <footer className="client-landing-footer">
@@ -597,6 +701,10 @@ export default function ClientLandingPage() {
         <p>© {new Date().getFullYear()} {studioName}. All rights reserved.</p>
         <a href="#top">Kembali ke atas <ArrowRight size={15} /></a>
       </footer>
-    </div>
+      <motion.div className="client-landing-mobile-cta">
+        <div><small>Mulai dari</small><strong><NumberTicker value={startingPrice} formatter={formatTickerRupiah} duration={shouldReduceMotion ? 0 : 0.5} /></strong></div>
+        <motion.a href="#pricelist" {...interactionMotionProps}>Atur jadwal <ArrowRight size={16} aria-hidden="true" /></motion.a>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -1343,3 +1343,342 @@
     border: 1px solid CanvasText;
   }
 }
+
+
+/* Landing conversion UX refinement, powered by the Phase 1 Motion layer. */
+.client-landing-page {
+  --client-motion-fast: 150ms;
+  --client-motion-standard: 220ms;
+  --client-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  scroll-behavior: smooth;
+}
+
+.client-landing-scroll-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1100;
+  height: 3px;
+  background: linear-gradient(90deg, var(--client-accent), var(--client-accent-bright));
+  box-shadow: 0 0 18px rgb(242 163 60 / 42%);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.client-landing-header {
+  position: fixed;
+  transition: background var(--client-motion-standard) var(--client-ease),
+    border-color var(--client-motion-standard) var(--client-ease),
+    box-shadow var(--client-motion-standard) var(--client-ease),
+    backdrop-filter var(--client-motion-standard) var(--client-ease);
+}
+
+.client-landing-header.is-scrolled {
+  background: rgb(13 11 9 / 86%);
+  border-bottom-color: rgb(255 255 255 / 12%);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.client-landing-page :where(section[id]) {
+  scroll-margin-top: 104px;
+}
+
+.client-landing-page :where(a, button, input, .studio-select-trigger) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.client-landing-page :where(button, a) {
+  transition: color var(--client-motion-fast) var(--client-ease),
+    background var(--client-motion-fast) var(--client-ease),
+    border-color var(--client-motion-fast) var(--client-ease),
+    box-shadow var(--client-motion-fast) var(--client-ease),
+    transform var(--client-motion-fast) var(--client-ease);
+}
+
+.client-landing-page :where(button, a):active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.client-landing-page :where(input, .studio-select-trigger):focus-visible {
+  box-shadow: 0 0 0 4px rgb(242 163 60 / 18%);
+}
+
+.client-landing-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  width: 100%;
+  height: 100svh;
+  border: 0;
+  background: rgb(5 4 3 / 62%);
+  backdrop-filter: blur(5px);
+  cursor: pointer;
+}
+
+.client-landing-header {
+  z-index: 40;
+}
+
+.client-landing-service-action {
+  align-items: center;
+  border: 1px solid var(--client-line-dark);
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  display: flex;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+  cursor: pointer;
+}
+
+.client-landing-service:hover .client-landing-service-action {
+  border-color: var(--client-accent-bright);
+  background: var(--client-accent-bright);
+  color: var(--client-ink);
+}
+
+.client-landing-segmented {
+  position: relative;
+}
+
+.client-landing-segmented > button {
+  transition: color var(--client-motion-standard) var(--client-ease), opacity var(--client-motion-standard) var(--client-ease);
+}
+
+.client-landing-segmented > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.client-landing-mode-note {
+  margin: 10px 4px 0;
+  color: var(--client-muted-dark);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.client-landing-planner-form .client-landing-field input,
+.client-landing-planner-form .studio-select-trigger {
+  min-height: 52px;
+  transition: border-color var(--client-motion-fast) var(--client-ease),
+    background var(--client-motion-fast) var(--client-ease),
+    box-shadow var(--client-motion-fast) var(--client-ease);
+}
+
+.client-landing-planner-form .client-landing-field input:focus,
+.client-landing-planner-form .studio-select-trigger[aria-expanded="true"] {
+  border-color: var(--client-accent-bright);
+  background: rgb(255 255 255 / 10%);
+  box-shadow: 0 0 0 4px rgb(242 163 60 / 13%);
+}
+
+.client-landing-handoff-preview {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 15px 16px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.client-landing-handoff-preview > svg {
+  margin-top: 2px;
+  color: var(--client-accent-bright);
+}
+
+.client-landing-handoff-preview > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.client-landing-handoff-preview small {
+  color: var(--client-muted-dark);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.client-landing-handoff-preview strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.client-landing-handoff-preview p {
+  margin: 0;
+  color: var(--client-muted-dark);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.client-landing-selection-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgb(245 129 129 / 40%);
+  border-radius: 11px;
+  background: rgb(245 95 95 / 10%);
+  color: #ffb9b9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.client-landing-field-error {
+  color: #ffb9b9;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.client-landing-estimate-pending {
+  color: #ffd39d !important;
+  font-size: clamp(19px, 2.4vw, 28px) !important;
+  letter-spacing: -0.03em !important;
+}
+
+.client-landing-mobile-cta {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .client-landing-header {
+    position: fixed;
+  }
+
+  .client-landing-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    inset: 84px 0 auto;
+    max-height: calc(100svh - 84px);
+    overflow-y: auto;
+    padding: 12px 24px 20px;
+    position: fixed;
+    z-index: 45;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity var(--client-motion-standard) var(--client-ease),
+      transform var(--client-motion-standard) var(--client-ease),
+      visibility var(--client-motion-standard) var(--client-ease);
+  }
+
+  .client-landing-nav.is-open {
+    display: grid;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .client-landing-menu-backdrop {
+    z-index: 35;
+  }
+}
+
+@media (min-width: 981px) {
+  .client-landing-nav {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .client-landing-page {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .client-landing-header.is-scrolled {
+    background: rgb(13 11 9 / 92%);
+  }
+
+  .client-landing-nav {
+    inset: 72px 0 auto;
+    max-height: calc(100svh - 72px);
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .client-landing-mobile-cta {
+    position: fixed;
+    z-index: 32;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 11px 10px 16px;
+    border: 1px solid rgb(255 255 255 / 13%);
+    border-radius: 18px;
+    background: rgb(22 18 14 / 88%);
+    box-shadow: 0 18px 55px rgb(0 0 0 / 34%);
+    backdrop-filter: blur(22px) saturate(135%);
+  }
+
+  .client-landing-mobile-cta > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .client-landing-mobile-cta small {
+    color: var(--client-muted-dark);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .client-landing-mobile-cta strong {
+    color: var(--client-accent-bright);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .client-landing-mobile-cta > a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    border-radius: 13px;
+    background: var(--client-accent-bright);
+    color: var(--client-ink);
+    padding: 0 14px;
+    font-size: 11px;
+    font-weight: 850;
+    text-decoration: none;
+  }
+
+  .client-landing-handoff-preview {
+    padding: 13px;
+  }
+
+  .client-landing-planner-submit {
+    min-height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-landing-page,
+  .client-landing-page *,
+  .client-landing-page *::before,
+  .client-landing-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -17,7 +17,7 @@ COMPLETE. Source integration is committed to the dedicated redesign branch. GitH
 | Forms | React Hook Form + Zod resolver hook for schema-backed forms |
 
 ## Compatibility decisions
-- Existing Radix-based dialogs, selects and other feature interactions are not mechanically rewritten. New menu surfaces use Base UI; future migrations are individually scoped and regression-tested.
+- Phase 1 initially retained existing Radix-based feature interactions to avoid a blind bulk migration. On 2026-11-06 the user explicitly authorized more assertive modernization across all pages: legacy primitives may be migrated to shadcn/ui + Base UI and obsolete packages may be removed when an import/consumer inventory proves retirement is safe. Preserve domain workflows, security boundaries, accessibility and regression contracts; do not keep legacy UI solely for compatibility by default.
 - The old Dashboard Recharts chart has been migrated to ECharts. Recharts is removed from dependencies after its only identified consumer was migrated.
 - Tailwind v4 is enabled with the Vite plugin. The old Tailwind JS configuration is explicitly loaded using @config so existing content/theme configuration remains available while the CSS runtime is upgraded.
 - Lucide React and Motion are reused; no duplicate icon or animation engines are introduced.

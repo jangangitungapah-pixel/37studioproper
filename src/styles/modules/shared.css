@@ -982,3 +982,29 @@
   .studio-button-spinner,
   .studio-loading-spinner { animation: none; }
 }
+
+
+/* Small interaction polish for the existing accessible StudioSelect primitive. */
+.studio-select-list[data-ready="true"] {
+  animation: studio-select-pop 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top center;
+}
+
+.studio-select-option {
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.studio-select-option:hover:not(.is-disabled),
+.studio-select-option.is-active:not(.is-disabled) {
+  transform: translateX(2px);
+}
+
+@keyframes studio-select-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-select-list[data-ready="true"] { animation: none; }
+  .studio-select-option { transition: none; transform: none; }
+}

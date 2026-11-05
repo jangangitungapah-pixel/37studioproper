@@ -70,6 +70,20 @@ Status: COMPLETE — UI scope and required automated/browser quality gates passe
 
 Acceptance: Admin/Guard/Client auth surfaces, public landing and public booking UI contracts pass; signed-out Admin redirect passes at all tested viewports; responsive smoke and offline/online feedback pass. Live availability and authenticated account integration remain explicit staging QA items.
 
+## Phase 3A — Client landing conversion UX hardening (pre-Phase 4)
+Status: IMPLEMENTED — source changes and automated regression contract added; CI/browser screenshot verification pending.
+- Refined the client landing page with the existing Motion engine and Magic UI NumberTicker: section reveals, hero entrance, card/button feedback, scroll progress, animated estimate, and mobile navigation/CTA interactions.
+- Service story actions now select the matching estimator service and guide the visitor to the planner.
+- Package mode is unavailable when the configured package list is empty; recording estimates use the selected Recording Type duration; invalid custom durations no longer produce a misleading price.
+- Date and hour are validated before the calendar handoff. A visible preview explains the calendar values that will be carried to the public booking page.
+- Preserved the Phase 3 trust boundary: only date and startHour are forwarded to /book; service/duration remain selected after client sign-in.
+- Booking history is cleared when auth state changes to prevent a previous client's information flashing on a new session. Mobile menu locks background scrolling and closes with Escape or backdrop interaction.
+- Shared StudioSelect gets reduced-motion-aware open/option micro-interactions. This is a scoped primitive enhancement, not a global library migration.
+- Added scripts/client-landing-experience-contract-test.mjs to npm test.
+- Confirm responsive browser screenshots after the Quality Gates run before claiming visual QA complete.
+
+Acceptance: landing selection and pricing states are deterministic, empty package state is safe, booking handoff remains date/startHour only, previous user booking state is cleared on auth changes, reduced-motion is respected, and mobile CTA/menu remain usable.
+
 ## Phase 4 — Admin core operations
 - Dashboard, Booking Requests, Calendar, All Bookings, Customers.
 - Shared booking detail drawer, booking form/modal, filters and data-grid families.
@@ -137,7 +151,7 @@ Acceptance: documented route/viewport/theme matrix, no unexplained P0/P1 UX or a
 8. Charts: Apache ECharts
 9. Forms: React Hook Form + Zod
 
-Use each layer selectively according to component needs. Preserve compatibility with existing Radix consumers; do not perform mass migrations. Keep semantic CSS tokens as the styling source of truth. Reuse installed dependencies and project adapters; do not duplicate or remove libraries without verified consumer inventory. Use reduced-motion support and consider bundle size/lazy loading for visual and chart layers.
+Use each layer selectively according to component needs. The user explicitly authorizes assertive modernization across all pages: migrate legacy primitives toward shadcn/ui + Base UI and remove outdated packages when a full import/consumer inventory proves retirement safe. Do not preserve a legacy UI component only out of habit; keep business logic, role boundaries, accessibility, API/Worker contracts and regression behavior intact. Keep semantic CSS tokens as source of truth, avoid duplicate engines, honor reduced-motion, and consider bundle size/lazy loading.
 
 ## Progress tracking
 Each phase must track scope, owning files, acceptance criteria, changes, tests, visual QA status, known issues, and handoff notes.
