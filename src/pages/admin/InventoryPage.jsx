@@ -1133,7 +1133,7 @@ export default function InventoryPage() {
       ...(draft.partsRequired ? { partsRequired: draft.partsRequired } : {}),
       ...(status === 'completed' && cost !== undefined && cost !== '' ? { cost: Number(cost), paymentMethod: 'cash' } : {}),
       ...(status === 'cancelled' ? { reason: window.prompt('Alasan pembatalan work order:') || '' } : {}),
-      ...(status === 'verified' ? { reason: 'Pemeriksaan akhir selesai' } : {}),
+      ...(status === 'verified' ? { reason: 'Pemeriksaan akhir selesai', verifiedCondition: 'good' } : {}),
     };
     if (status === 'cancelled' && body.reason.length < 4) return;
     setMaintenanceActionId(order.id);
