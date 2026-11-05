@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, Clock3, Plus, RefreshCw, Wrench, X } from 'lucide-react';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
 import { maintenanceRepository } from '../../services/maintenanceRepository.js';
+import { adminAuthRepository } from '../../services/adminAuthRepository.js';
 import {
   actOnCanonicalMaintenanceWorkOrder,
   recordCanonicalMaintenanceCost,
+  reopenCanonicalMaintenanceWorkOrder,
   reportCanonicalMaintenanceWorkOrder,
 } from '../../services/adminOperationsRepository.js';
 
@@ -37,6 +39,7 @@ const ACTION_LABELS = {
   complete: 'Tandai Selesai',
   verify: 'Verifikasi Equipment',
   cancel: 'Batalkan Work Order',
+  reopen: 'Reopen Work Order (Owner)',
 };
 
 function cleanText(value) {
@@ -108,6 +111,7 @@ function getAvailableActions(workOrder) {
     in_progress: ['waiting_parts', 'complete', 'cancel'],
     waiting_parts: ['resume', 'cancel'],
     completed: ['verify'],
+    verified: ['reopen'],
   };
   return actions[workOrder.status] || [];
 }
@@ -139,6 +143,7 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
     repairNotes: '',
     verificationCondition: 'good',
     verificationNote: '',
+    password: '',
   });
   const [error, setError] = useState('');
 
@@ -164,9 +169,9 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
         plannedAt: form.plannedAt ? new Date(form.plannedAt).toISOString() : '',
         dueAt: form.dueAt ? new Date(form.dueAt).toISOString() : '',
       };
-    } else if (action === 'waiting_parts' || action === 'cancel') {
+    } else if (action === 'waiting_parts' || action === 'cancel' || action === 'reopen') {
       if (cleanText(form.reason).length < 4) return setError('Alasan minimal 4 karakter.');
-      payload = { reason: form.reason };
+      payload = { reason: form.reason, ...(action === 'reopen' ? { password: form.password } : {}) };
     } else if (action === 'complete') {
       if (cleanText(form.repairNotes).length < 4) return setError('Catatan perbaikan minimal 4 karakter.');
       payload = { repairNotes: form.repairNotes };
@@ -216,6 +221,10 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
 
       {action === 'waiting_parts' || action === 'cancel' ? (
         <label><span>Alasan</span><textarea required value={form.reason} onChange={(event) => setField('reason', event.target.value)} placeholder={action === 'cancel' ? 'Alasan pembatalan...' : 'Spare part apa yang ditunggu dan mengapa...'} /></label>
+      ) : null}
+
+      {action === 'reopen' ? (
+        <label><span>Password saat ini (akun Google dapat memakai popup)</span><input autoComplete="current-password" type="password" value={form.password} onChange={(event) => setField('password', event.target.value)} placeholder="Kosongkan untuk verifikasi Google bila tersedia" /></label>
       ) : null}
 
       {action === 'complete' ? (
@@ -364,13 +373,23 @@ export default function InventoryMaintenanceWorkspace() {
     if (!selectedOrder || busy) return { error: 'Work order belum dipilih.' };
     setBusy(true);
     try {
-      const result = await actOnCanonicalMaintenanceWorkOrder({
-        ...payload,
-        action: pendingAction,
-        expectedRevision: selectedOrder.revision,
-        expectedStatus: selectedOrder.status,
-        workOrderId: selectedOrder.id,
-      });
+      let result;
+      if (pendingAction === 'reopen') {
+        await adminAuthRepository.reauthenticateCurrentAdmin({ password: payload.password || '' });
+        result = await reopenCanonicalMaintenanceWorkOrder({
+          expectedRevision: selectedOrder.revision,
+          reason: payload.reason,
+          workOrderId: selectedOrder.id,
+        });
+      } else {
+        result = await actOnCanonicalMaintenanceWorkOrder({
+          ...payload,
+          action: pendingAction,
+          expectedRevision: selectedOrder.revision,
+          expectedStatus: selectedOrder.status,
+          workOrderId: selectedOrder.id,
+        });
+      }
       setSelectedId(result.workOrder?.id || selectedOrder.id);
       setPendingAction('');
       setNotice({ type: 'success', message: 'Status work order diperbarui: ' + (STATUS_LABELS[result.workOrder?.status] || 'berhasil') + '.' });
