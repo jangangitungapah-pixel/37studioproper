@@ -8,7 +8,7 @@ import {
   voidInvoice,
 } from '../workers/admin-operations-worker/src/domain/finance.js';
 import { permanentlyDeleteGalleryItem } from '../workers/admin-operations-worker/src/domain/gallery.js';
-import { adjustInventory } from '../workers/admin-operations-worker/src/domain/inventory.js';
+import { adjustInventory, archiveInventoryItem, saveInventoryItem } from '../workers/admin-operations-worker/src/domain/inventory.js';
 import { readJson } from '../workers/admin-operations-worker/src/lib/http.js';
 
 function clone(value) {
@@ -1004,6 +1004,70 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   assert.equal((await firestore.getDocument('users', 'owner-1')).data.role, 'admin');
   assert.equal(firestore.collection('adminOperationKeys').size, 1);
   assert.equal(firestore.collection('adminOperationAudit').size, 1);
+}
+
+
+{
+  const firestore = new FakeFirestore();
+  const createOptions = {
+    actor,
+    body: {
+      action: 'create', category: 'cable', condition: 'good', location: 'Rak A',
+      minStock: 2, name: 'XLR Cable', note: 'Kabel baru', quantity: 5,
+      reason: 'Item baru ditambahkan', status: 'active', type: 'asset', unit: 'pcs',
+    },
+    firestore,
+    request: requestWithKey('inventory-create-one'),
+  };
+  const created = await saveInventoryItem(createOptions);
+  assert.equal(created.item.quantity, 5);
+  assert.equal(created.movement.type, 'create');
+  assert.equal(firestore.collection('inventoryItems').size, 1);
+  assert.equal(firestore.collection('inventoryMovements').size, 1);
+  const createRetry = await saveInventoryItem(createOptions);
+  assert.equal(createRetry.duplicate, true);
+  assert.equal(firestore.collection('inventoryItems').size, 1);
+  assert.equal(firestore.collection('inventoryMovements').size, 1);
+
+  const updateOptions = {
+    actor,
+    body: {
+      action: 'update', category: 'cable', condition: 'fair', itemId: created.item.id,
+      location: 'Rak B', minStock: 3, name: 'XLR Cable Premium', note: 'Metadata updated',
+      reason: 'Update metadata', status: 'active', type: 'asset', unit: 'pcs',
+    },
+    firestore,
+    request: requestWithKey('inventory-update-one'),
+  };
+  const updated = await saveInventoryItem(updateOptions);
+  assert.equal(updated.item.quantity, 5, 'Metadata update must preserve stock quantity.');
+  assert.equal(updated.item.name, 'XLR Cable Premium');
+  assert.equal(updated.movement.type, 'edit');
+  assert.equal(firestore.collection('inventoryMovements').size, 2);
+
+  await assert.rejects(
+    saveInventoryItem({
+      ...updateOptions,
+      body: { ...updateOptions.body, quantity: 99 },
+      request: requestWithKey('inventory-update-stock-write'),
+    }),
+    (error) => error?.code === 'stock_write_forbidden',
+  );
+  assert.equal((await firestore.getDocument('inventoryItems', created.item.id)).data.quantity, 5);
+
+  const archiveOptions = {
+    actor,
+    body: { itemId: created.item.id, reason: 'Item dinonaktifkan' },
+    firestore,
+    request: requestWithKey('inventory-archive-one'),
+  };
+  const archived = await archiveInventoryItem(archiveOptions);
+  assert.equal(archived.item.status, 'inactive');
+  assert.equal(archived.movement.type, 'inactive');
+  assert.equal(firestore.collection('inventoryMovements').size, 3);
+  const archiveRetry = await archiveInventoryItem(archiveOptions);
+  assert.equal(archiveRetry.duplicate, true);
+  assert.equal(firestore.collection('inventoryMovements').size, 3);
 }
 
 console.log('Admin operations Worker contract passed.');
