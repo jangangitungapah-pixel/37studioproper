@@ -1889,6 +1889,16 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
+    match /dailyClosings/{closingId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create, update, delete: if false;
+    }
+
+    match /dailyClosingEvents/{eventId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
