@@ -4,7 +4,7 @@ import { LoaderCircle } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
 import '../../styles/modules/shared.css';
 
-export const studioButtonVariants = cva(
+const studioButtonVariants = cva(
   'studio-button',
   {
     variants: {
