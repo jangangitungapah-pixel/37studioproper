@@ -26,7 +26,7 @@ function optionalDateTime(value, label) {
 
 function requiredDate(value, label) {
   const date = cleanText(value, 20);
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new HttpError(400, 'invalid_date', label + ' wajib menggunakan format YYYY-MM-DD.');
   }
   const parsed = new Date(date + 'T00:00:00.000Z');
