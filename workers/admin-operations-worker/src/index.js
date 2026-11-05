@@ -110,7 +110,7 @@ async function handleRequest(request, env) {
   } else if (pathname === '/v1/finance/daily-closings') {
     if (request.method === 'GET') {
       actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
-      result = await readDailyClosing({ firestore, businessDate: url.searchParams.get('businessDate'), registerId: url.searchParams.get('registerId') || 'main' });
+      result = await readDailyClosing({ firestore, businessDate: url.searchParams.get('businessDate'), registerId: url.searchParams.get('registerId') || 'main', preview: url.searchParams.get('preview') === 'true' });
     } else {
       requirePost(request);
       actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
