@@ -169,6 +169,41 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
+export function createCanonicalSupplier(input, idempotencyKey = '') {
+  return requestOperation('/v1/procurement/suppliers', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('supplier-create', input?.name),
+  });
+}
+
+export function createCanonicalPurchaseOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/procurement/purchase-orders', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('purchase-order-create', input?.supplierId),
+  });
+}
+
+export function transitionCanonicalPurchaseOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/procurement/purchase-orders/transition', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('purchase-order-transition', input?.purchaseOrderId),
+  });
+}
+
+export function receiveCanonicalPurchaseOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/procurement/goods-receipts', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('goods-receipt', input?.purchaseOrderId),
+  });
+}
+
+export function recordCanonicalProcurementPayment(input, idempotencyKey = '') {
+  return requestOperation('/v1/procurement/payments', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('procurement-payment', input?.purchaseOrderId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
