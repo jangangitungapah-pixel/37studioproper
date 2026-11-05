@@ -125,6 +125,14 @@ try {
         status: 'approved',
         uid: 'dashboard-only',
       },
+      'customers-admin': {
+        displayName: 'Customer Admin',
+        email: 'customer-admin@example.com',
+        permissions: permissions({ customers: true }),
+        role: 'admin',
+        status: 'approved',
+        uid: 'customers-admin',
+      },
       'bookkeeping-admin': {
         displayName: 'Bookkeeping Admin',
         email: 'bookkeeping@example.com',
@@ -259,6 +267,27 @@ try {
       phoneKey: '6281',
       updatedAt: now,
     });
+    await setDoc(doc(db, 'customerFollowUpTasks', 'follow-up-rules-task'), {
+      assignedToName: 'Customer Admin',
+      assignedToUid: 'customers-admin',
+      createdAt: now,
+      customerId: 'customer-1',
+      customerName: 'Customer',
+      dueAt: '2026-11-05',
+      id: 'follow-up-rules-task',
+      revision: 1,
+      status: 'open',
+      updatedAt: now,
+    });
+    await setDoc(doc(db, 'customerFollowUpEvents', 'follow-up-rules-event'), {
+      action: 'created',
+      actorName: 'Owner',
+      actorUid: 'new-owner',
+      createdAt: now,
+      customerId: 'customer-1',
+      id: 'follow-up-rules-event',
+      taskId: 'follow-up-rules-task',
+    });
     await assertFails(setDoc(doc(db, 'inventoryItems', 'item-1'), {
       category: 'Cable',
       condition: 'good',
@@ -347,6 +376,42 @@ try {
     createdAt: now, fromStatus: 'in_progress', id: 'session-event-forged', reason: '',
     toStatus: 'completed', type: 'booking-session-event',
   }));
+
+  await assertFails(getDoc(doc(dashboard, 'customerFollowUpTasks', 'follow-up-rules-task')));
+  await assertFails(getDoc(doc(dashboard, 'customerFollowUpEvents', 'follow-up-rules-event')));
+
+  const customersAdmin = context('customers-admin', 'customer-admin@example.com');
+  await assertSucceeds(getDoc(doc(customersAdmin, 'customerFollowUpTasks', 'follow-up-rules-task')));
+  await assertSucceeds(getDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
+  await assertFails(setDoc(doc(customersAdmin, 'customerFollowUpTasks', 'forged-follow-up-task'), {
+    assignedToName: 'Forged',
+    assignedToUid: 'customers-admin',
+    createdAt: now,
+    customerId: 'customer-1',
+    customerName: 'Customer',
+    dueAt: '2026-11-05',
+    id: 'forged-follow-up-task',
+    revision: 1,
+    status: 'open',
+    updatedAt: now,
+  }));
+  await assertFails(updateDoc(doc(customersAdmin, 'customerFollowUpTasks', 'follow-up-rules-task'), {
+    status: 'completed',
+  }));
+  await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpTasks', 'follow-up-rules-task')));
+  await assertFails(setDoc(doc(customersAdmin, 'customerFollowUpEvents', 'forged-follow-up-event'), {
+    action: 'created',
+    actorName: 'Forged',
+    actorUid: 'customers-admin',
+    createdAt: now,
+    customerId: 'customer-1',
+    id: 'forged-follow-up-event',
+    taskId: 'follow-up-rules-task',
+  }));
+  await assertFails(updateDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event'), {
+    note: 'Mutated history',
+  }));
+  await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
 
   const bookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
   await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingSessions', '2026-08-14__main')));
