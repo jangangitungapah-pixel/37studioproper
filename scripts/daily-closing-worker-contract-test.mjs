@@ -214,6 +214,10 @@ assert.equal(firestore.collection('cashClosingSessions').size, 1);
 assert.equal(firestore.collection('cashClosingEvents').size, 1);
 assert.equal(firestore.collection('adminOperationKeys').size, 1);
 assert.equal(firestore.collection('adminOperationAudit').size, 1);
+const firstCloseEvent = Array.from(firestore.collection('cashClosingEvents').values())[0].data;
+assert.equal(firstCloseEvent.snapshot.revision, 1);
+assert.equal(firstCloseEvent.snapshot.transactionCount, 7);
+assert.equal(firstCloseEvent.snapshot.transactionReferences.length, 7);
 
 const duplicate = await closeDailyClosing({
   actor,
@@ -284,6 +288,8 @@ assert.equal(latePreview.status, 'reopened');
 assert.equal(latePreview.latePostingCount, 1);
 assert.equal(latePreview.latePostingExceptions[0].id, 'late-cash-income');
 assert.equal(latePreview.transactionCount, 8);
+assert.equal(latePreview.events.length, 2);
+assert.equal(latePreview.events.some((event) => event.action === 'reopened'), true);
 assert.equal(latePreview.existingSession.transactionCount, 7, 'The previous closed snapshot must remain unchanged while reopened.');
 
 const secondClose = await closeDailyClosing({
@@ -301,6 +307,9 @@ assert.equal(secondClose.session.status, 'closed');
 assert.equal(secondClose.session.revision, 2);
 assert.equal(secondClose.session.transactionCount, 8);
 assert.equal(secondClose.session.expectedCash, 215000);
+const closeEvents = Array.from(firestore.collection('cashClosingEvents').values()).map((entry) => entry.data);
+assert.equal(closeEvents.find((event) => event.revision === 1 && event.action === 'closed').snapshot.transactionCount, 7);
+assert.equal(closeEvents.find((event) => event.revision === 2 && event.action === 'closed').snapshot.transactionCount, 8);
 assert.equal(firestore.collection('cashClosingEvents').size, 3);
 
 const closedPreview = await previewDailyClosing({
@@ -313,6 +322,7 @@ assert.equal(closedPreview.isClosed, true);
 assert.equal(closedPreview.expectedCash, 215000, 'Closed snapshot values must not be replaced by later UI input.');
 assert.equal(closedPreview.transactionCount, 8);
 assert.equal(closedPreview.transactionReferences.length, 8);
+assert.equal(closedPreview.events.length, 3);
 assert.equal(closedPreview.canReopen, false);
 
 await assert.rejects(
