@@ -26,6 +26,9 @@ assert.match(workspace, /recordCanonicalProcurementPayment/);
 assert.match(workspace, /subscribeSuppliers/);
 assert.match(workspace, /subscribePurchaseOrders/);
 assert.match(workspace, /subscribeGoodsReceipts/);
+assert.match(workspace, /subscribeProcurementPayments/);
+assert.match(workspace, /if \(canRecordPayments\) \{[\s\S]*?subscribeProcurementPayments/);
+assert.match(workspace, /procurement-payment-list/);
 assert.match(workspace, /Stok belum berubah sampai barang diterima/);
 assert.match(workspace, /Pencatatan pembayaran memerlukan izin Pembukuan/);
 assert.match(inventoryCss, /\.procurement-workspace\s*\{/);
@@ -42,6 +45,8 @@ for (const required of [
   'procurement_payment_exceeds_balance',
   'purchase_order_has_payment',
   'purchase_order_changed',
+  'business_date_closed',
+  'cashClosingSessions',
   'commitIdempotentOperation',
   "firestore.setWrite('inventoryItems', inventoryItem.id, nextItem",
   "firestore.setWrite('inventoryMovements', movementId, movement",
@@ -98,12 +103,19 @@ assert.match(
 );
 assert.match(
   rules,
+  /function isReconciledBookkeepingSource\([\s\S]*?'procurement-payment'/,
+  'Supplier payment ledger rows must be treated as immutable reconciled sources.',
+);
+assert.match(
+  rules,
   /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/,
   'Procurement must preserve Worker-only inventory stock writes.',
 );
 assert.equal(inventoryRepository.includes('subscribeSuppliers'), true);
 assert.equal(inventoryRepository.includes('subscribePurchaseOrders'), true);
 assert.equal(inventoryRepository.includes('subscribeGoodsReceipts'), true);
+assert.equal(inventoryRepository.includes('subscribeProcurementPayments'), true);
+assert.match(read('scripts/procurement-worker-regression-test.mjs'), /business_date_closed/);
 assert.match(packageJson.scripts.test, /procurement-worker-regression-test\.mjs/);
 assert.match(packageJson.scripts['test:prd'], /procurement-workflow-contract-test\.mjs/);
 
