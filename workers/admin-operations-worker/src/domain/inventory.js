@@ -227,7 +227,8 @@ function procurementDate(value, label, { optional = false } = {}) {
     throw new HttpError(400, 'procurement_date_invalid', label + ' harus menggunakan format YYYY-MM-DD.');
   }
   const parsed = new Date(date + 'T00:00:00.000Z');
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+  const year = Number(date.slice(0, 4));
+  if (year < 2000 || year > 2100 || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
     throw new HttpError(400, 'procurement_date_invalid', label + ' bukan tanggal kalender yang valid.');
   }
   return date;
@@ -735,6 +736,10 @@ export async function recordPurchaseOrderPayment({ actor, body, firestore, reque
     throw new HttpError(400, 'procurement_payment_method_invalid', 'Metode pembayaran tidak didukung.');
   }
   const paymentDate = procurementDate(body.date || new Date().toISOString().slice(0, 10), 'Tanggal pembayaran');
+  const closingDocument = await firestore.getDocument('cashClosingSessions', paymentDate + '__main');
+  if (closingDocument?.data?.status === 'closed') {
+    throw new HttpError(409, 'business_date_closed', 'Tanggal pembayaran sudah ditutup oleh Daily Closing. Buka kembali tanggal tersebut melalui alur Owner sebelum mencatat pembayaran.');
+  }
   const now = new Date().toISOString();
   const paymentId = await stableDocumentId('procurement-payment', key);
   const payment = {
