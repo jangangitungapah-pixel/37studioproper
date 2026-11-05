@@ -358,3 +358,112 @@ export async function recordPurchaseOrderPayment({ actor, body, firestore, reque
   });
   return { ...committed.result, duplicate: committed.duplicate };
 }
+
+function normalizeCanonicalInventoryMetadata(body, previous = null) {
+  const name = cleanText(body.name, 160);
+  if (name.length < 2) throw new HttpError(400, 'item_name_required', 'Nama item minimal 2 karakter.');
+  const quantity = finiteQuantity(body.quantity ?? previous?.quantity ?? 0, 'Jumlah stok');
+  const minStock = finiteQuantity(body.minStock ?? previous?.minStock ?? 0, 'Minimal stok');
+  if (quantity < 0 || quantity > 1_000_000 || minStock < 0 || minStock > 1_000_000) {
+    throw new HttpError(400, 'invalid_stock_value', 'Jumlah stok di luar batas operasional.');
+  }
+  const type = cleanText(body.type || previous?.type || 'asset', 40);
+  const condition = cleanText(body.condition || previous?.condition || 'good', 40);
+  const status = cleanText(body.status || previous?.status || 'active', 40);
+  if (!['asset', 'consumable'].includes(type)) throw new HttpError(400, 'invalid_item_type', 'Tipe item tidak valid.');
+  if (!['good', 'fair', 'maintenance', 'broken'].includes(condition)) throw new HttpError(400, 'invalid_condition', 'Kondisi item tidak valid.');
+  if (!['active', 'maintenance', 'broken', 'lost', 'low_stock', 'inactive'].includes(status)) throw new HttpError(400, 'invalid_item_status', 'Status item tidak valid.');
+  const now = new Date().toISOString();
+  return {
+    id: previous?.id || cleanText(body.id, 160),
+    name,
+    category: cleanText(body.category || previous?.category || 'other', 60),
+    type,
+    quantity,
+    unit: cleanText(body.unit || previous?.unit || 'pcs', 40),
+    minStock,
+    condition,
+    status,
+    location: cleanText(body.location || previous?.location, 160),
+    note: cleanText(body.note || previous?.note, 1000),
+    createdAt: previous?.createdAt || cleanText(body.createdAt, 80) || now,
+    updatedAt: now,
+  };
+}
+
+export async function saveInventoryItemMetadata({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existing = await readOperationResult(firestore, 'inventory-metadata-save', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+  const id = cleanText(body.id, 160);
+  const current = id ? await firestore.getDocument('inventoryItems', id) : null;
+  if (id && !current) throw new HttpError(404, 'item_not_found', 'Inventory item tidak ditemukan.');
+  if (current && body.expectedUpdatedAt && body.expectedUpdatedAt !== current.data.updatedAt) {
+    throw new HttpError(409, 'item_changed', 'Inventory berubah. Muat ulang sebelum menyimpan.');
+  }
+  const previous = current ? { id: current.id, ...current.data } : null;
+  const item = normalizeCanonicalInventoryMetadata(body, previous);
+  const movementId = await stableDocumentId('movement', `metadata:${item.id}:${key}`);
+  const movement = {
+    id: movementId, itemId: item.id, itemName: item.name,
+    type: previous ? 'edit' : 'create',
+    quantity: item.quantity,
+    previousQuantity: previous?.quantity ?? item.quantity,
+    nextQuantity: item.quantity,
+    unit: item.unit,
+    note: previous ? 'Update data inventory' : 'Item baru ditambahkan',
+    reason: previous ? 'Inventory metadata updated' : 'Inventory item created',
+    actorUid: actor.uid, actorName: actor.displayName, createdAt: item.updatedAt,
+  };
+  const result = { item, movement };
+  const committed = await commitIdempotentOperation({
+    actor,
+    documentRefs: {
+      item: { collectionId: 'inventoryItems', documentId: item.id },
+      movement: { collectionId: 'inventoryMovements', documentId: movementId },
+    },
+    firestore, key, receipt: {}, result, targetId: item.id, type: 'inventory-metadata-save',
+    writes: [
+      firestore.setWrite('inventoryItems', item.id, item, current ? { updateTime: current.updateTime } : { exists: false }),
+      firestore.setWrite('inventoryMovements', movementId, movement, { exists: false }),
+    ],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
+
+export async function archiveInventoryItem({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existing = await readOperationResult(firestore, 'inventory-archive', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+  const id = cleanText(body.itemId, 160);
+  const current = await firestore.getDocument('inventoryItems', id);
+  if (!current) throw new HttpError(404, 'item_not_found', 'Inventory item tidak ditemukan.');
+  if (body.expectedUpdatedAt && body.expectedUpdatedAt !== current.data.updatedAt) {
+    throw new HttpError(409, 'item_changed', 'Inventory berubah. Muat ulang sebelum mengarsipkan.');
+  }
+  const previous = { id: current.id, ...current.data };
+  const now = new Date().toISOString();
+  const item = { ...previous, status: 'inactive', updatedAt: now };
+  const movementId = await stableDocumentId('movement', `archive:${id}:${key}`);
+  const movement = {
+    id: movementId, itemId: id, itemName: item.name, type: 'inactive',
+    quantity: item.quantity, previousQuantity: item.quantity, nextQuantity: item.quantity,
+    unit: item.unit, note: 'Item dinonaktifkan',
+    reason: cleanText(body.reason || 'Item dinonaktifkan', 500),
+    actorUid: actor.uid, actorName: actor.displayName, createdAt: now,
+  };
+  const result = { item, movement };
+  const committed = await commitIdempotentOperation({
+    actor,
+    documentRefs: {
+      item: { collectionId: 'inventoryItems', documentId: id },
+      movement: { collectionId: 'inventoryMovements', documentId: movementId },
+    },
+    firestore, key, receipt: {}, result, targetId: id, type: 'inventory-archive',
+    writes: [
+      firestore.setWrite('inventoryItems', id, item, { updateTime: current.updateTime }),
+      firestore.setWrite('inventoryMovements', movementId, movement, { exists: false }),
+    ],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
