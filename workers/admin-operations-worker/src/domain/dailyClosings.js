@@ -393,6 +393,9 @@ export async function closeDailyClosing({ actor, body, firestore, request, now =
   const businessDate = validBusinessDate(body.businessDate);
   if (!businessDate) throw new HttpError(400, 'invalid_business_date', 'Tanggal bisnis wajib valid (YYYY-MM-DD).');
   const registerId = normalizeRegisterId(body.registerId);
+  if (businessDate > businessDateOf(now.toISOString())) {
+    throw new HttpError(400, 'future_business_date', 'Tanggal bisnis di masa depan belum dapat ditutup.');
+  }
   const counts = normalizeCounts(body, true);
   const key = getIdempotencyKey(request, body);
   const type = 'daily-closing-close';
