@@ -511,6 +511,9 @@ export default function ClientLandingPage() {
               PILIH SLOT TERSEDIA
               <ArrowRight size={18} aria-hidden="true" />
             </button>
+            <p className="client-landing-planner-note">
+              Tanggal dan jam diteruskan ke kalender publik. Layanan dan durasi dipilih setelah masuk ke akun client.
+            </p>
           </form>
         </section>
 

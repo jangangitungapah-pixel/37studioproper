@@ -12,7 +12,8 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
-  Volume2
+  Volume2,
+  WifiOff
 } from 'lucide-react';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, browserLocalPersistence, setPersistence, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
@@ -45,7 +46,22 @@ export default function ClientLoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' || navigator.onLine
+  ));
   const [roleDecision, setRoleDecision] = useState(null);
+
+  // Reflect the browser's connectivity state without changing auth behavior.
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Resolve the authoritative role before allowing client access.
   useEffect(() => {
@@ -311,7 +327,14 @@ export default function ClientLoginPage() {
             </div>
           ) : null}
 
-          <form onSubmit={handleEmailAuth} className="client-auth-form" noValidate>
+          {!isOnline ? (
+            <div className="client-auth-alert is-warning" role="status" data-auth-network-state="offline">
+              <WifiOff size={16} aria-hidden="true" />
+              <span>Koneksi perangkat sedang offline. Periksa jaringan lalu coba lagi setelah tersambung.</span>
+            </div>
+          ) : null}
+
+          <form onSubmit={handleEmailAuth} className="client-auth-form" aria-busy={isSubmitting} noValidate>
               <label className="client-auth-field">
                 <span>Email Client</span>
                 <div className="client-auth-input-wrap">

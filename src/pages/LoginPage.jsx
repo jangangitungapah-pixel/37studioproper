@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Sparkles,
   Settings2,
-  UsersRound
+  UsersRound,
+  WifiOff
 } from 'lucide-react';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
@@ -85,6 +86,9 @@ function LoginPageContent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' || navigator.onLine
+  ));
   const [roleDecision, setRoleDecision] = useState(null);
   
   const [searchParams] = useSearchParams();
@@ -105,6 +109,18 @@ function LoginPageContent() {
     ).startsWith('/guard')
       ? redirectTo
       : '/guard/attendance';
+
+  // Reflect the browser's connectivity state without changing auth behavior.
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Subscribe to Auth State
   useEffect(() => {
@@ -502,8 +518,16 @@ function LoginPageContent() {
             </div>
           ) : null}
 
+          {!isOnline ? (
+            <div className="auth-alert is-warning admin-login-alert" role="status" data-auth-network-state="offline">
+              <WifiOff size={15} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <span>Koneksi perangkat sedang offline. Periksa jaringan lalu coba lagi setelah tersambung.</span>
+            </div>
+          ) : null}
+
           <form
               className="auth-form admin-login-form"
+              aria-busy={isSubmitting}
               onSubmit={handleEmailAuth}
               noValidate
             >

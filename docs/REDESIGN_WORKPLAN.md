@@ -54,6 +54,14 @@ Status: COMPLETE WITH DOCUMENTED AUTHENTICATED-VISUAL-QA LIMITATION.
 Acceptance: shell navigation contracts, build/lint/regression/PRD-security contracts, and available responsive smoke pass. Remaining authenticated visual evidence is tracked explicitly for Phase 9.
 
 ## Phase 3 — Authentication & public experience
+Status: IMPLEMENTED; automated quality gates pending on the implementation commit.
+- Admin/Guard shared login: theme-aware visual surface, visible offline feedback, and explicit form busy state.
+- Client login: theme-aware visual surface, visible offline feedback, and explicit form busy state.
+- Landing planner handoff clarity: date and start hour continue to route into /book; service and duration are disclosed as selections made after Client sign-in.
+- Public booking: live/offline connectivity status and a stale-availability warning when the browser reports offline.
+- Preserve role resolution, redirect sanitization, provider flows, safe booking resume, canonical slot subscriptions, and occupancy checks.
+- Responsive CSS retains mobile breakpoints and reduced-motion / forced-colors support.
+
 - Admin/Guard login and state UX.
 - Client login.
 - Pending, denied, invalid account, session, offline, and error states.

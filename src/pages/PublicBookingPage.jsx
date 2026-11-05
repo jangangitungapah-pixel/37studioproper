@@ -20,6 +20,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Wifi,
+  WifiOff,
 } from 'lucide-react';
 import {
   useLocation,
@@ -192,7 +193,21 @@ export default function PublicBookingPage() {
   const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' || navigator.onLine
+  ));
   const [subscriptionVersion, setSubscriptionVersion] = useState(0);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
@@ -315,12 +330,19 @@ export default function PublicBookingPage() {
           </span>
         </button>
 
-        <div className="public-booking-live" role="status">
+        <div className={`public-booking-live ${isOnline ? '' : 'is-offline'}`} role="status" aria-live="polite">
           <span aria-hidden="true" />
-          <Wifi size={14} />
-          Jadwal realtime
+          {isOnline ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}
+          {isOnline ? 'Jadwal realtime' : 'Perangkat offline'}
         </div>
       </header>
+
+      {!isOnline ? (
+        <div className="public-booking-offline-notice" role="status">
+          <WifiOff size={16} aria-hidden="true" />
+          <span>Koneksi perangkat terputus. Jadwal yang tampil mungkin belum mencerminkan availability terbaru.</span>
+        </div>
+      ) : null}
 
       <section className="public-booking-intro" aria-labelledby="public-booking-title">
         <div>

@@ -13,6 +13,8 @@
   --public-line: rgba(255, 248, 235, 0.12);
   --public-paper-line: rgba(25, 20, 15, 0.14);
   --public-success: #7fc18a;
+  --public-danger: #e35d6a;
+  --public-danger-soft: rgba(227, 93, 106, 0.12);
   position: relative;
   width: 100%;
   min-height: 100svh;
@@ -156,6 +158,35 @@
   border-radius: 50%;
   background: var(--public-success);
   box-shadow: 0 0 0 5px rgba(127, 193, 138, 0.11);
+}
+
+.public-booking-live.is-offline {
+  border-color: color-mix(in srgb, var(--public-danger) 42%, var(--public-line));
+  color: #f2b0b7;
+}
+
+.public-booking-live.is-offline > span {
+  background: var(--public-danger);
+  box-shadow: 0 0 0 5px var(--public-danger-soft);
+}
+
+.public-booking-offline-notice {
+  max-width: 1280px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px auto 0;
+  border: 1px solid color-mix(in srgb, var(--public-danger) 36%, var(--public-line));
+  border-radius: 14px;
+  background: var(--public-danger-soft);
+  color: #f2b0b7;
+  padding: 12px 16px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.public-booking-offline-notice svg {
+  flex: 0 0 auto;
 }
 
 .public-booking-live svg {
@@ -922,6 +953,12 @@
 }
 
 @media (max-width: 620px) {
+  .public-booking-offline-notice {
+    margin: 12px 16px 0;
+    align-items: flex-start;
+    padding: 11px 12px;
+  }
+
   .public-booking-header {
     min-height: 68px;
     gap: 10px;

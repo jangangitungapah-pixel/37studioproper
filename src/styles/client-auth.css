@@ -1,46 +1,9 @@
 /* Client login — uses the same spatial gateway contract as Admin Login. */
 .client-auth-page {
-  color-scheme: light;
-  --studio-bg-app: #f3eee5;
-  --studio-bg-page: #f7f1e8;
-  --studio-bg-shell: #efe5d7;
-  --studio-surface-1: #fffaf2;
-  --studio-surface-2: #f5ecdf;
-  --studio-surface-3: #eadcc9;
-  --studio-text-strong: #201812;
-  --studio-text-main: #382c22;
-  --studio-text-muted: #756657;
-  --studio-text-subtle: #968675;
-  --studio-text-inverse: #fff8ed;
-  --studio-border-soft: rgba(48,35,24,.08);
-  --studio-border: rgba(48,35,24,.14);
-  --studio-border-strong: rgba(164,95,24,.28);
-  --studio-accent: #b66b19;
-  --studio-accent-strong: #934f10;
-  --studio-accent-soft: rgba(182,107,25,.13);
-  --studio-success: #16805c;
-  --studio-success-soft: #e5f7ee;
-  --studio-danger: #c33b4a;
-  --studio-danger-soft: #fff0f1;
-  --studio-shadow-contact: 0 1px 2px rgba(61,43,27,.08);
-  --studio-shadow-floating: 0 28px 70px rgba(61,43,27,.14),0 4px 14px rgba(61,43,27,.07);
-  --auth-bg-page: var(--studio-bg-page);
-  --auth-bg-card: var(--studio-surface-1);
-  --auth-bg-soft: var(--studio-surface-2);
-  --auth-bg-control: var(--studio-surface-1);
-  --auth-text-main: var(--studio-text-main);
-  --auth-text-strong: var(--studio-text-strong);
-  --auth-text-muted: var(--studio-text-muted);
+  /* Reuse global semantic tokens so Light / Dark / System stay consistent. */
+  --studio-shadow-contact: var(--studio-shadow-card-subtle);
+  --studio-shadow-floating: var(--studio-shadow-float);
   --auth-text-subtle: var(--studio-text-subtle);
-  --auth-border: var(--studio-border);
-  --auth-border-strong: var(--studio-border-strong);
-  --auth-accent: var(--studio-accent);
-  --auth-accent-strong: var(--studio-accent-strong);
-  --auth-accent-soft: var(--studio-accent-soft);
-  --auth-success: var(--studio-success);
-  --auth-success-soft: var(--studio-success-soft);
-  --auth-danger: var(--studio-danger);
-  --auth-danger-soft: var(--studio-danger-soft);
   position: relative;
   isolation: isolate;
   min-height: 100dvh;
@@ -49,9 +12,9 @@
   overflow: hidden;
   padding: clamp(18px,3vw,36px);
   background:
-    radial-gradient(circle at 10% 18%, color-mix(in srgb,var(--studio-accent) 14%,transparent), transparent 34%),
-    radial-gradient(circle at 88% 82%, rgba(45,99,215,.1), transparent 30%),
-    var(--studio-bg-page);
+    radial-gradient(circle at 10% 18%, color-mix(in srgb,var(--auth-accent) 14%,transparent), transparent 34%),
+    radial-gradient(circle at 88% 82%, color-mix(in srgb,var(--studio-info) 10%,transparent), transparent 30%),
+    var(--auth-bg-page);
   color: var(--auth-text-main);
   font-family: var(--ui-font-sans);
 }
@@ -155,6 +118,7 @@
 .client-auth-alert { display: flex; align-items: flex-start; gap: 9px; border: 1px solid var(--auth-border); border-radius: 12px; padding: 10px 12px; font-size: 11px; line-height: 1.45; }
 .client-auth-alert.is-error { border-color: color-mix(in srgb,var(--auth-danger) 34%,var(--auth-border)); background: var(--auth-danger-soft); color: var(--auth-danger); }
 .client-auth-alert.is-success { border-color: color-mix(in srgb,var(--auth-success) 34%,var(--auth-border)); background: var(--auth-success-soft); color: var(--auth-success); }
+.client-auth-alert.is-warning { border-color: color-mix(in srgb,var(--auth-warning) 34%,var(--auth-border)); background: var(--auth-warning-soft); color: var(--auth-warning); }
 .client-auth-form { display: grid; gap: 14px; }
 .client-auth-field { display: grid; gap: 7px; }
 .client-auth-field > span { color: var(--auth-text-main); font-size: 10px; font-weight: 720; letter-spacing: .06em; text-transform: uppercase; }

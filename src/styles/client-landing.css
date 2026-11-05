@@ -707,6 +707,14 @@
   transform: translateY(-2px);
 }
 
+.client-landing-planner-note {
+  margin: 14px 0 0;
+  color: var(--client-muted-dark);
+  font-size: 10px;
+  line-height: 1.6;
+  text-align: center;
+}
+
 .client-landing-process {
   background: var(--client-accent);
   color: var(--client-ink);
