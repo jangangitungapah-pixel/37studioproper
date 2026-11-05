@@ -95,6 +95,9 @@ export default function DailyClosingWorkspace() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [pendingReopenReason, setPendingReopenReason] = useState('');
 
   const countedCash = useMemo(
     () => DENOMINATIONS.reduce((total, item) => total + item.value * safeNumber(denominations[String(item.value)]), 0),
@@ -120,9 +123,9 @@ export default function DailyClosingWorkspace() {
     setFeedback(null);
   }
 
-  async function loadPreview() {
+  async function loadPreview({ preserveFeedback = false } = {}) {
     setIsLoading(true);
-    setFeedback(null);
+    if (!preserveFeedback) setFeedback(null);
     try {
       const result = await adminOperationsRepository.previewDailyClosing({
         businessDate,
@@ -151,9 +154,36 @@ export default function DailyClosingWorkspace() {
           ? 'Request sebelumnya sudah tercatat. Tidak ada closing ganda.'
           : 'Closing tersimpan dan snapshot transaksi berhasil dikunci.',
       });
-      await loadPreview();
+      await loadPreview({ preserveFeedback: true });
     } catch (error) {
       setFeedback({ type: 'error', message: error?.message || 'Closing belum berhasil disimpan.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function performReopen(reason, password = '') {
+    setIsSubmitting(true);
+    setFeedback(null);
+    try {
+      await adminAuthRepository.reauthenticateCurrentAdmin(password ? { password } : {});
+      await adminOperationsRepository.reopenDailyClosing({
+        businessDate,
+        registerId,
+        reason,
+      });
+      setIsPasswordPromptOpen(false);
+      setReauthPassword('');
+      setPendingReopenReason('');
+      setFeedback({ type: 'success', message: 'Closing dibuka kembali oleh Owner. Snapshot sebelumnya tetap tersimpan di histori.' });
+      await loadPreview({ preserveFeedback: true });
+    } catch (error) {
+      if (error?.code === 'account-password/current-password-required' && !password) {
+        setPendingReopenReason(reason);
+        setIsPasswordPromptOpen(true);
+      } else {
+        setFeedback({ type: 'error', message: error?.message || 'Reopen belum berhasil.' });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -169,30 +199,13 @@ export default function DailyClosingWorkspace() {
     }
     const confirmed = window.confirm('Snapshot closing akan dibuka kembali. Histori close tetap disimpan. Lanjutkan?');
     if (!confirmed) return;
+    await performReopen(reason.trim());
+  }
 
-    setIsSubmitting(true);
-    setFeedback(null);
-    try {
-      try {
-        await adminAuthRepository.reauthenticateCurrentAdmin();
-      } catch (reauthError) {
-        if (reauthError?.code !== 'account-password/current-password-required') throw reauthError;
-        const password = window.prompt('Masukkan password akun Owner untuk verifikasi ulang:');
-        if (password === null) return;
-        await adminAuthRepository.reauthenticateCurrentAdmin({ password });
-      }
-      await adminOperationsRepository.reopenDailyClosing({
-        businessDate,
-        registerId,
-        reason: reason.trim(),
-      });
-      setFeedback({ type: 'success', message: 'Closing dibuka kembali oleh Owner. Snapshot sebelumnya tetap tersimpan di histori.' });
-      await loadPreview();
-    } catch (error) {
-      setFeedback({ type: 'error', message: error?.message || 'Reopen belum berhasil.' });
-    } finally {
-      setIsSubmitting(false);
-    }
+  async function submitPasswordReauthentication(event) {
+    event.preventDefault();
+    if (!pendingReopenReason || !reauthPassword) return;
+    await performReopen(pendingReopenReason, reauthPassword);
   }
 
   const reconciliation = preview?.reconciliation;
@@ -273,7 +286,7 @@ export default function DailyClosingWorkspace() {
           <section className="daily-closing-results">
             <div className="daily-closing-section-heading">
               <div><span>03 / SYSTEM CALCULATION</span><h4>Hasil rekonsiliasi</h4></div>
-              <small>{preview.transactionCount || 0} transaksi • cutoff {formatTimestamp(preview.generatedAt || session?.cutoffAt)}</small>
+              <small>{preview.transactionCount || 0} transaksi • cutoff {formatTimestamp(session?.cutoffAt || preview.cutoffAt || preview.generatedAt)}</small>
             </div>
             <div className="daily-closing-metrics-grid">
               <Metric label="Opening cash" value={preview.counts?.openingCash ?? session?.openingCash} />
@@ -369,6 +382,24 @@ export default function DailyClosingWorkspace() {
           <span>Pilih tanggal bisnis, isi opening float dan hasil hitung kas, lalu hitung preview untuk melihat semua transaksi yang masuk.</span>
         </div>
       )}
+
+      {isPasswordPromptOpen ? (
+        <div className="daily-closing-password-backdrop">
+          <form className="daily-closing-password-dialog" role="dialog" aria-modal="true" aria-labelledby="daily-closing-password-title" onSubmit={submitPasswordReauthentication}>
+            <span className="daily-closing-eyebrow">OWNER SECURITY CHECK</span>
+            <h4 id="daily-closing-password-title">Verifikasi ulang akun</h4>
+            <p>Sesi akun memerlukan password saat ini sebelum snapshot dibuka kembali.</p>
+            <label className="daily-closing-field">
+              <span>Password Owner</span>
+              <input type="password" autoComplete="current-password" required value={reauthPassword} onChange={(event) => setReauthPassword(event.target.value)} />
+            </label>
+            <div className="daily-closing-action-row">
+              <button type="button" className="daily-closing-reopen-button" disabled={isSubmitting} onClick={() => { setIsPasswordPromptOpen(false); setPendingReopenReason(''); setReauthPassword(''); }}>Batal</button>
+              <button type="submit" className="daily-closing-close-button" disabled={isSubmitting || !reauthPassword}>{isSubmitting ? 'Memverifikasi...' : 'Verifikasi & Reopen'}</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       {feedback ? (
         <div className={'daily-closing-feedback ' + (feedback.type === 'success' ? 'is-success' : 'is-error')} role="status">
