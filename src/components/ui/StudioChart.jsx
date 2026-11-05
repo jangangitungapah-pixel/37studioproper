@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense } from 'react';
 import { useTheme } from '../../theme/ThemeProvider.jsx';
 
 const EChartsRenderer = lazy(() => import('./EChartsRenderer.jsx'));
@@ -48,40 +48,37 @@ export default function StudioChart({
   height = 240,
   option,
 }) {
-  const { resolvedTheme } = useTheme();
+  useTheme();
 
-  const resolvedOption = useMemo(() => {
-    const theme = {
-      color: [
-        readThemeToken('--studio-chart-1'),
-        readThemeToken('--studio-chart-2'),
-        readThemeToken('--studio-chart-3'),
-        readThemeToken('--studio-chart-4'),
-        readThemeToken('--studio-chart-5'),
-        readThemeToken('--studio-chart-6'),
-      ],
-      backgroundColor: 'transparent',
-      textStyle: {
-        color: readThemeToken('--studio-text-secondary'),
-        fontFamily: readThemeToken('--ui-font-sans'),
-      },
-      tooltip: {
-        backgroundColor: readThemeToken('--studio-surface-floating'),
-        borderColor: readThemeToken('--studio-edge-normal'),
-        borderWidth: 1,
-        textStyle: { color: readThemeToken('--studio-text-primary') },
-        extraCssText: 'box-shadow: ' + readThemeToken('--studio-shadow-floating') + '; border-radius: 12px;',
-      },
-    };
-    const supplied = resolveCssVariables(option || {});
-
-    return {
-      ...theme,
-      ...supplied,
-      textStyle: { ...theme.textStyle, ...supplied.textStyle },
-      tooltip: { ...theme.tooltip, ...supplied.tooltip },
-    };
-  }, [option, resolvedTheme]);
+  const theme = {
+    color: [
+      readThemeToken('--studio-chart-1'),
+      readThemeToken('--studio-chart-2'),
+      readThemeToken('--studio-chart-3'),
+      readThemeToken('--studio-chart-4'),
+      readThemeToken('--studio-chart-5'),
+      readThemeToken('--studio-chart-6'),
+    ],
+    backgroundColor: 'transparent',
+    textStyle: {
+      color: readThemeToken('--studio-text-secondary'),
+      fontFamily: readThemeToken('--ui-font-sans'),
+    },
+    tooltip: {
+      backgroundColor: readThemeToken('--studio-surface-floating'),
+      borderColor: readThemeToken('--studio-edge-normal'),
+      borderWidth: 1,
+      textStyle: { color: readThemeToken('--studio-text-primary') },
+      extraCssText: 'box-shadow: ' + readThemeToken('--studio-shadow-floating') + '; border-radius: 12px;',
+    },
+  };
+  const supplied = resolveCssVariables(option || {});
+  const resolvedOption = {
+    ...theme,
+    ...supplied,
+    textStyle: { ...theme.textStyle, ...supplied.textStyle },
+    tooltip: { ...theme.tooltip, ...supplied.tooltip },
+  };
 
   return (
     <div aria-label={ariaLabel} className={['studio-chart', className].filter(Boolean).join(' ')} role="img">
