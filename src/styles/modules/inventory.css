@@ -1728,6 +1728,43 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
   border: 1px solid var(--studio-edge-soft); border-radius: 1rem;
   background: var(--studio-surface-1); min-width: 0;
 }
+.inventory-maintenance-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+}
+.inventory-maintenance-edit-grid label {
+  display: grid;
+  gap: .35rem;
+  min-width: 0;
+  color: var(--studio-text-secondary);
+  font-size: .78rem;
+}
+.inventory-maintenance-edit-grid input,
+.inventory-maintenance-edit-grid select,
+.inventory-maintenance-edit-grid textarea {
+  width: 100%;
+  min-height: 2.45rem;
+  padding: .55rem .7rem;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: .65rem;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+  font: inherit;
+}
+.inventory-maintenance-edit-grid textarea { min-height: 4.8rem; resize: vertical; }
+.inventory-maintenance-edit-grid button {
+  align-self: end;
+  min-height: 2.4rem;
+  padding: .55rem .8rem;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: .65rem;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+  font: inherit;
+  font-weight: 700;
+}
+.inventory-maintenance-edit-grid button:hover { border-color: var(--studio-accent); }
 .inventory-maintenance-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
 .inventory-maintenance-card-head > div { display: grid; gap: .2rem; }
 .inventory-maintenance-card-head strong { color: var(--studio-text-primary); }
@@ -1741,5 +1778,6 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
 @media (max-width: 620px) {
   .inventory-maintenance-description { grid-column: 1; }
   .inventory-maintenance-card-head { display: grid; }
+  .inventory-maintenance-edit-grid { grid-template-columns: minmax(0, 1fr); }
   .inventory-workspace-tabs { display: grid; grid-template-columns: 1fr; }
 }
