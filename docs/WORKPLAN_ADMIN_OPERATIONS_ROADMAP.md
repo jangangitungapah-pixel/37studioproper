@@ -135,7 +135,8 @@ Acceptance criteria:
 Perbaikan yang tercatat pada branch saat dokumen ini dibuat:
 - `d06fb95`: listener realtime, penugasan dan state transition UI, biaya/verifikasi/pembatalan, CSS, contract/domain test.
 - `5873794`: guard biaya kosong dan perluasan behavior test untuk PIC, revision, waiting parts, dan penyelesaian.
-- Quality Gates run #135 pada commit `5873794` telah terpicu; production build berhasil, lint dan test stages masih perlu menuntaskan seluruh pemeriksaan.
+- `b6c767c`: gunakan semantic token `--studio-danger` pada error state agar sesuai kontrak UI-9.
+- Quality Gates run [#136](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42015241271) pada commit `b6c767c` sukses penuh: production build, ESLint, `npm test`, `npm run test:prd` termasuk Firestore Rules emulator, responsive browser smoke, dan upload screenshot artifact `browser-responsive-smoke`.
 
 ## 8. Phase 4 — Persistent Customer Follow-up
 
