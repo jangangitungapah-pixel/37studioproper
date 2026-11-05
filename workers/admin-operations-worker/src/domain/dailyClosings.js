@@ -7,7 +7,7 @@ const METHODS = Object.freeze(['cash', 'transfer', 'qris', 'other']);
 const CASH_DENOMINATIONS = Object.freeze([100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100]);
 const MAX_QUERY_ROWS = 10_000;
 const MAX_BOOKING_PAGES = 50;
-const MAX_TRANSACTION_REFERENCES = 3_000;
+const MAX_TRANSACTION_REFERENCES = 1_000;
 
 function validBusinessDate(value) {
   const date = cleanText(value, 10);
