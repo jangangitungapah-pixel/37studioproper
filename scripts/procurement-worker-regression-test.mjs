@@ -215,8 +215,18 @@ await transitionPurchaseOrder({
   request: requestWithKey('procurement-po-submit-1'),
 });
 currentPO = (await firestore.getDocument('purchaseOrders', poId)).data;
+await assert.rejects(
+  transitionPurchaseOrder({
+    actor: { ...actor, role: 'operator' },
+    body: { purchaseOrderId: poId, status: 'approved', expectedUpdatedAt: currentPO.updatedAt },
+    firestore,
+    request: requestWithKey('procurement-po-approval-forbidden'),
+  }),
+  (error) => error?.code === 'purchase_order_approval_forbidden',
+  'Approval must be rejected for actors outside Owner/Admin.',
+);
 await transitionPurchaseOrder({
-  actor,
+  actor: { ...actor, role: 'admin' },
   body: { purchaseOrderId: poId, status: 'approved', expectedUpdatedAt: currentPO.updatedAt },
   firestore,
   request: requestWithKey('procurement-po-approve-1'),
@@ -499,5 +509,201 @@ if (raceSession.data.status === 'closed') {
   assert.equal(raceFirestore.collection('cashClosingEvents').size, 0,
     'A losing closing operation must not leave a closing event.');
 }
+
+
+// Concurrent partial receipts on different lines of one PO must not overwrite
+// the PO revision or leave stock/movements partially applied.
+const receiptRaceSupplier = {
+  ...supplierResult.supplier,
+  id: supplierResult.supplier.id,
+};
+const receiptRaceFirestore = new FakeFirestore({
+  suppliers: { [receiptRaceSupplier.id]: receiptRaceSupplier },
+  inventoryItems: {
+    'receipt-race-item-a': {
+      id: 'receipt-race-item-a', name: 'Mic Cable A', category: 'cable',
+      type: 'consumable', quantity: 2, unit: 'pcs', minStock: 0,
+      condition: 'good', status: 'active', location: 'Store Room',
+      note: '', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-11-05T00:00:00.000Z',
+    },
+    'receipt-race-item-b': {
+      id: 'receipt-race-item-b', name: 'Mic Cable B', category: 'cable',
+      type: 'consumable', quantity: 4, unit: 'pcs', minStock: 0,
+      condition: 'good', status: 'active', location: 'Store Room',
+      note: '', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-11-05T00:00:00.000Z',
+    },
+  },
+});
+const receiptRacePOResult = await createPurchaseOrder({
+  actor,
+  body: {
+    supplierId: receiptRaceSupplier.id,
+    orderDate: '2026-11-05',
+    expectedAt: '2026-11-09',
+    notes: 'Concurrency receipt test',
+    items: [
+      { inventoryItemId: 'receipt-race-item-a', quantity: 2, unitPrice: 10000 },
+      { inventoryItemId: 'receipt-race-item-b', quantity: 2, unitPrice: 12000 },
+    ],
+  },
+  firestore: receiptRaceFirestore,
+  request: requestWithKey('procurement-receipt-race-po-create'),
+});
+let receiptRacePO = receiptRacePOResult.purchaseOrder;
+for (const [status, key] of [
+  ['submitted', 'procurement-receipt-race-submit'],
+  ['approved', 'procurement-receipt-race-approve'],
+  ['ordered', 'procurement-receipt-race-order'],
+]) {
+  const transitioned = await transitionPurchaseOrder({
+    actor,
+    body: {
+      purchaseOrderId: receiptRacePO.id,
+      status,
+      expectedUpdatedAt: receiptRacePO.updatedAt,
+    },
+    firestore: receiptRaceFirestore,
+    request: requestWithKey(key),
+  });
+  receiptRacePO = transitioned.purchaseOrder;
+}
+const receiptRaceOriginalPO = (await receiptRaceFirestore.getDocument('purchaseOrders', receiptRacePO.id)).data;
+const receiptRaceOriginalItemA = (await receiptRaceFirestore.getDocument('inventoryItems', 'receipt-race-item-a')).data.quantity;
+const receiptRaceOriginalItemB = (await receiptRaceFirestore.getDocument('inventoryItems', 'receipt-race-item-b')).data.quantity;
+const originalReceiptRaceCommit = receiptRaceFirestore.commit.bind(receiptRaceFirestore);
+let receiptRaceCommitArrivals = 0;
+let releaseReceiptRaceCommits;
+const receiptRaceBarrier = new Promise((resolve) => { releaseReceiptRaceCommits = resolve; });
+receiptRaceFirestore.commit = async (writes) => {
+  if (writes.some((write) =>
+    write.collectionId === 'purchaseOrders' && write.id === receiptRacePO.id)) {
+    receiptRaceCommitArrivals += 1;
+    if (receiptRaceCommitArrivals === 2) releaseReceiptRaceCommits();
+    await receiptRaceBarrier;
+  }
+  return originalReceiptRaceCommit(writes);
+};
+const receiptRaceResults = await Promise.allSettled([
+  receivePurchaseOrder({
+    actor,
+    body: {
+      purchaseOrderId: receiptRacePO.id,
+      expectedUpdatedAt: receiptRaceOriginalPO.updatedAt,
+      items: [{ lineId: receiptRaceOriginalPO.items[0].lineId, quantity: 1 }],
+      note: 'First concurrent line',
+    },
+    firestore: receiptRaceFirestore,
+    request: requestWithKey('procurement-receipt-race-line-a'),
+  }),
+  receivePurchaseOrder({
+    actor,
+    body: {
+      purchaseOrderId: receiptRacePO.id,
+      expectedUpdatedAt: receiptRaceOriginalPO.updatedAt,
+      items: [{ lineId: receiptRaceOriginalPO.items[1].lineId, quantity: 1 }],
+      note: 'Second concurrent line',
+    },
+    firestore: receiptRaceFirestore,
+    request: requestWithKey('procurement-receipt-race-line-b'),
+  }),
+]);
+assert.equal(receiptRaceCommitArrivals, 2);
+assert.equal(receiptRaceResults.filter((result) => result.status === 'fulfilled').length, 1,
+  'Only one concurrent receipt may commit against the same PO revision.');
+const receiptRacePOAfter = (await receiptRaceFirestore.getDocument('purchaseOrders', receiptRacePO.id)).data;
+const receiptRaceItemAAfter = (await receiptRaceFirestore.getDocument('inventoryItems', 'receipt-race-item-a')).data.quantity;
+const receiptRaceItemBAfter = (await receiptRaceFirestore.getDocument('inventoryItems', 'receipt-race-item-b')).data.quantity;
+assert.equal(receiptRacePOAfter.items.reduce((sum, item) => sum + item.receivedQuantity, 0), 1);
+assert.equal(receiptRaceItemAAfter + receiptRaceItemBAfter, receiptRaceOriginalItemA + receiptRaceOriginalItemB + 1);
+assert.equal(receiptRaceFirestore.collection('goodsReceipts').size, 1);
+assert.equal(receiptRaceFirestore.collection('inventoryMovements').size, 1);
+assert.equal(receiptRaceFirestore.collection('procurementEvents').size, 4,
+  'Create, transitions and the single winning receipt must each leave one audit event.');
+
+// Two different POs can still contend for one canonical Inventory item. The
+// inventory updateTime precondition must prevent the losing receipt overwriting stock.
+const sharedItemFirestore = new FakeFirestore({
+  suppliers: { [receiptRaceSupplier.id]: receiptRaceSupplier },
+  inventoryItems: {
+    'shared-stock-item': {
+      id: 'shared-stock-item', name: 'Shared XLR Cable', category: 'cable',
+      type: 'consumable', quantity: 10, unit: 'pcs', minStock: 0,
+      condition: 'good', status: 'active', location: 'Store Room',
+      note: '', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-11-05T00:00:00.000Z',
+    },
+  },
+});
+async function createOrderedSharedItemPO(suffix) {
+  let result = await createPurchaseOrder({
+    actor,
+    body: {
+      supplierId: receiptRaceSupplier.id,
+      orderDate: '2026-11-05',
+      expectedAt: '2026-11-09',
+      notes: 'Shared stock contention ' + suffix,
+      items: [{ inventoryItemId: 'shared-stock-item', quantity: 2, unitPrice: 5000 }],
+    },
+    firestore: sharedItemFirestore,
+    request: requestWithKey('procurement-shared-item-po-' + suffix),
+  });
+  let order = result.purchaseOrder;
+  for (const [status, key] of [
+    ['submitted', 'submit'],
+    ['approved', 'approve'],
+    ['ordered', 'order'],
+  ]) {
+    order = (await transitionPurchaseOrder({
+      actor,
+      body: { purchaseOrderId: order.id, status, expectedUpdatedAt: order.updatedAt },
+      firestore: sharedItemFirestore,
+      request: requestWithKey('procurement-shared-item-' + suffix + '-' + key),
+    })).purchaseOrder;
+  }
+  return order;
+}
+const sharedPOA = await createOrderedSharedItemPO('a');
+const sharedPOB = await createOrderedSharedItemPO('b');
+const sharedItemInitial = await sharedItemFirestore.getDocument('inventoryItems', 'shared-stock-item');
+const sharedStockBefore = sharedItemInitial.data.quantity;
+const sharedItemRevision = sharedItemInitial.updateTime;
+const originalSharedCommit = sharedItemFirestore.commit.bind(sharedItemFirestore);
+let sharedItemCommitArrivals = 0;
+let releaseSharedItemCommits;
+const sharedItemBarrier = new Promise((resolve) => { releaseSharedItemCommits = resolve; });
+sharedItemFirestore.commit = async (writes) => {
+  if (writes.some((write) =>
+    write.collectionId === 'inventoryItems' && write.id === 'shared-stock-item')) {
+    sharedItemCommitArrivals += 1;
+    if (sharedItemCommitArrivals === 2) releaseSharedItemCommits();
+    await sharedItemBarrier;
+  }
+  return originalSharedCommit(writes);
+};
+const sharedStockRaceResults = await Promise.allSettled(
+  [sharedPOA, sharedPOB].map((order, index) => receivePurchaseOrder({
+    actor,
+    body: {
+      purchaseOrderId: order.id,
+      expectedUpdatedAt: order.updatedAt,
+      items: [{ lineId: order.items[0].lineId, quantity: 1 }],
+      note: 'Concurrent shared stock receipt',
+    },
+    firestore: sharedItemFirestore,
+    request: requestWithKey('procurement-shared-stock-receipt-' + index),
+  })),
+);
+assert.equal(sharedItemCommitArrivals, 2);
+assert.equal(sharedStockRaceResults.filter((result) => result.status === 'fulfilled').length, 1,
+  'Only one PO receipt may update a shared inventory item revision.');
+const sharedItemAfter = await sharedItemFirestore.getDocument('inventoryItems', 'shared-stock-item');
+assert.equal(sharedItemAfter.data.quantity, sharedStockBefore + 1);
+assert.equal(sharedPOA.items[0].receivedQuantity + sharedPOB.items[0].receivedQuantity, 0,
+  'The in-memory PO snapshots remain unchanged; canonical revisions are asserted below.');
+const sharedPOAAfter = (await sharedItemFirestore.getDocument('purchaseOrders', sharedPOA.id)).data;
+const sharedPOBAfter = (await sharedItemFirestore.getDocument('purchaseOrders', sharedPOB.id)).data;
+assert.equal(sharedPOAAfter.items[0].receivedQuantity + sharedPOBAfter.items[0].receivedQuantity, 1);
+assert.equal(sharedItemAfter.updateTime === sharedItemRevision, false);
+assert.equal(sharedItemFirestore.collection('goodsReceipts').size, 1);
+assert.equal(sharedItemFirestore.collection('inventoryMovements').size, 1);
 
 console.log('procurement-worker-regression-test: PASS');
