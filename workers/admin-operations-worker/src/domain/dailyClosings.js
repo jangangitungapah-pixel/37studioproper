@@ -6,7 +6,7 @@ const BUSINESS_TIME_ZONE = 'Asia/Jakarta';
 const METHODS = Object.freeze(['cash', 'transfer', 'qris', 'other']);
 const MAX_QUERY_ROWS = 10_000;
 const MAX_BOOKING_PAGES = 50;
-const MAX_TRANSACTION_REFERENCES = 5_000;
+const MAX_TRANSACTION_REFERENCES = 3_000;
 
 function validBusinessDate(value) {
   const date = cleanText(value, 10);
@@ -312,7 +312,24 @@ function summarizeLatePostings(snapshot, currentReferences) {
   return currentReferences.filter((row) => !previous.has(row.id));
 }
 
-function buildPreviewResult({ actor, businessDate, collected, counts, existing, registerId }) {
+async function loadClosingEvents(firestore, sessionId) {
+  const rows = await firestore.runQuery({
+    from: [{ collectionId: 'cashClosingEvents' }],
+    limit: 100,
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'closingId' },
+        op: 'EQUAL',
+        value: { stringValue: sessionId },
+      },
+    },
+  });
+  return rows
+    .map((row) => ({ id: row.id, ...(row.data || {}) }))
+    .sort((first, second) => String(second.createdAt || '').localeCompare(String(first.createdAt || '')));
+}
+
+function buildPreviewResult({ actor, businessDate, collected, counts, events, existing, registerId }) {
   const isClosed = existing?.status === 'closed';
   const snapshotCounts = isClosed ? {
     openingCash: existing.openingCash,
@@ -331,6 +348,7 @@ function buildPreviewResult({ actor, businessDate, collected, counts, existing, 
     cutoffAt: existing?.cutoffAt || '',
     digitalReconciliation: reconciliation.digital,
     expectedCash: isClosed ? existing.expectedCash : reconciliation.expectedCash,
+    events: events || [],
     existingSession: existing ? { ...existing } : null,
     isClosed,
     latePostingExceptions,
@@ -362,7 +380,9 @@ export async function previewDailyClosing({ actor, body, firestore, now = new Da
     sessionDocumentId(businessDate, registerId),
   );
   const collected = await collectBusinessTransactions({ businessDate, firestore, registerId });
-  const preview = buildPreviewResult({ actor, businessDate, collected, counts, existing: existing?.data || null, registerId });
+  const existingData = existing?.data || null;
+  const events = existingData ? await loadClosingEvents(firestore, existing.id) : [];
+  const preview = buildPreviewResult({ actor, businessDate, collected, counts, events, existing: existingData, registerId });
   return { ...preview, generatedAt: now.toISOString(), ok: true };
 }
 
@@ -406,7 +426,7 @@ export async function closeDailyClosing({ actor, body, firestore, request, now =
     lastEventId: eventId,
     lastEventType: 'closed',
     openingCash: counts.openingCash,
-    reason: cleanText(body.reviewNote, 1000),
+    reviewNote: cleanText(body.reviewNote, 1000),
     registerId,
     revision,
     sourceFingerprint: collected.sourceFingerprint,
@@ -430,6 +450,25 @@ export async function closeDailyClosing({ actor, body, firestore, request, now =
     registerId,
     revision,
     sourceFingerprint: collected.sourceFingerprint,
+    snapshot: {
+      businessDate,
+      cashVariance: reconciliation.cashVariance,
+      countedCash: counts.countedCash,
+      cutoffAt: timestamp,
+      digitalCounts: counts.digitalCounts,
+      digitalReconciliation: reconciliation.digital,
+      expectedCash: reconciliation.expectedCash,
+      openingCash: counts.openingCash,
+      registerId,
+      reviewNote: cleanText(body.reviewNote, 1000),
+      revision,
+      sourceFingerprint: collected.sourceFingerprint,
+      sourceWatermark: collected.sourceWatermark,
+      totalsByMethod: collected.totals,
+      transactionCount: collected.references.length,
+      transactionReferences: collected.references,
+      varianceReason: reason,
+    },
     summary: {
       cashVariance: reconciliation.cashVariance,
       expectedCash: reconciliation.expectedCash,
