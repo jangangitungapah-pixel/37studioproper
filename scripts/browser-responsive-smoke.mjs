@@ -17,6 +17,12 @@ const viewports = [
 const routes = [
   { path: '/', name: 'landing' },
   { path: '/book', name: 'public-booking' },
+  { path: '/login', name: 'admin-login' },
+  {
+    path: '/login?portal=guard&redirectTo=%2Fguard%2Fattendance',
+    name: 'guard-login',
+  },
+  { path: '/client/login', name: 'client-login' },
   {
     path: '/admin/finance/invoices',
     name: 'admin-unauthenticated',
