@@ -92,6 +92,21 @@ async function handleRequest(request, env) {
       proofId: params[0],
       request,
     });
+  } else if (pathname === '/v1/finance/bookkeeping-entries') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await createManualBookkeepingEntry({ actor, body, firestore, request });
+  } else if (pathname === '/v1/finance/bookkeeping-entries/update') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await updateManualBookkeepingEntry({ actor, body, firestore, request });
+  } else if (pathname === '/v1/finance/bookkeeping-entries/delete') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await deleteManualBookkeepingEntry({ actor, body, firestore, request });
   } else if (pathname === '/v1/finance/daily-closings') {
     if (request.method === 'GET') {
       actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
