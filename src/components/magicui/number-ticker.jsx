@@ -1,6 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { animate, useReducedMotion } from 'motion/react';
 import { cn } from '../../lib/utils.js';
+
+function formatTickerValue(value, formatter, decimalPlaces) {
+  if (!Number.isFinite(value)) return '0';
+  if (formatter) return formatter(value);
+
+  return new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: decimalPlaces,
+    minimumFractionDigits: decimalPlaces,
+  }).format(value);
+}
 
 /**
  * Lightweight Magic UI Number Ticker pattern, implemented as source-owned
@@ -17,54 +27,50 @@ export function NumberTicker({
   value = 0,
 }) {
   const reduceMotion = useReducedMotion();
+  const valueNodeRef = useRef(null);
   const numericValue = Number(value);
   const numericStart = Number(
     startValue ?? (direction === 'down' ? numericValue * 1.25 : 0),
   );
-  const [displayValue, setDisplayValue] = useState(numericStart);
+  const initialValue = reduceMotion ? numericValue : numericStart;
+  const accessibleValue = formatTickerValue(numericValue, formatter, decimalPlaces);
 
   useEffect(() => {
+    const node = valueNodeRef.current;
+    if (!node) return undefined;
+
+    const updateText = (nextValue) => {
+      node.textContent = formatTickerValue(nextValue, formatter, decimalPlaces);
+    };
+
     if (!Number.isFinite(numericValue) || !Number.isFinite(numericStart)) {
-      setDisplayValue(0);
+      updateText(0);
       return undefined;
     }
 
     if (reduceMotion) {
-      setDisplayValue(numericValue);
+      updateText(numericValue);
       return undefined;
     }
 
-    setDisplayValue(numericStart);
+    updateText(numericStart);
     const controls = animate(numericStart, numericValue, {
       duration: Math.max(0.15, duration),
       delay: Math.max(0, delay),
       ease: [0.16, 1, 0.3, 1],
-      onUpdate: setDisplayValue,
+      onUpdate: updateText,
     });
 
     return () => controls.stop();
-  }, [delay, duration, numericStart, numericValue, reduceMotion]);
-
-  const formatted = formatter
-    ? formatter(displayValue)
-    : new Intl.NumberFormat('id-ID', {
-        maximumFractionDigits: decimalPlaces,
-        minimumFractionDigits: decimalPlaces,
-      }).format(displayValue);
-
-  const accessibleValue = formatter
-    ? formatter(numericValue)
-    : new Intl.NumberFormat('id-ID', {
-        maximumFractionDigits: decimalPlaces,
-        minimumFractionDigits: decimalPlaces,
-      }).format(numericValue);
+  }, [decimalPlaces, delay, duration, formatter, numericStart, numericValue, reduceMotion]);
 
   return (
     <span
       aria-label={accessibleValue}
       className={cn('magicui-number-ticker', className)}
+      ref={valueNodeRef}
     >
-      {formatted}
+      {formatTickerValue(initialValue, formatter, decimalPlaces)}
     </span>
   );
 }
