@@ -7,9 +7,15 @@ import {
   startDangerJob,
 } from './domain/danger.js';
 import {
+  closeDailyRegister,
+  createManualBookkeepingEntry,
+  deleteManualBookkeepingEntry,
+  readDailyClosing,
+  reopenDailyRegister,
   recordPayment,
   recordRefund,
   reviewPaymentProof,
+  updateManualBookkeepingEntry,
   voidInvoice,
 } from './domain/finance.js';
 import { permanentlyDeleteGalleryItem } from './domain/gallery.js';
