@@ -268,7 +268,7 @@ export default function InventoryMaintenanceWorkspace() {
     estimatedCost: '',
     attachmentsText: '',
   });
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(0);
 
   useEffect(() => adminAuthRepository.subscribeAdminAuth((state) => {
     setAdminSession(state?.user || null);
@@ -304,8 +304,12 @@ export default function InventoryMaintenanceWorkspace() {
   }, []);
 
   useEffect(() => {
+    const initialUpdateId = window.setTimeout(() => setNow(Date.now()), 0);
     const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearTimeout(initialUpdateId);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const queueCounts = useMemo(() => workOrders.reduce((counts, row) => {
