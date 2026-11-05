@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const page = readFileSync('src/pages/admin/InventoryPage.jsx', 'utf8');
+const worker = readFileSync('workers/admin-operations-worker/src/domain/inventory.js', 'utf8');
+const router = readFileSync('workers/admin-operations-worker/src/index.js', 'utf8');
+const operations = readFileSync('src/services/adminOperationsRepository.js', 'utf8');
+const rules = readFileSync('firestore.rules', 'utf8');
+
+assert.match(page, /Procurement Management/);
+assert.match(page, /createCanonicalSupplier/);
+assert.match(page, /createCanonicalPurchaseOrder/);
+assert.match(page, /receiveCanonicalPurchaseOrder/);
+assert.match(page, /recordCanonicalProcurementPayment/);
+assert.match(worker, /export async function createSupplier/);
+assert.match(worker, /export async function createPurchaseOrder/);
+assert.match(worker, /export async function receivePurchaseOrder/);
+assert.match(worker, /export async function recordPurchaseOrderPayment/);
+assert.match(worker, /inventoryMovements/);
+assert.match(worker, /goodsReceipts/);
+assert.match(worker, /purchaseOrders/);
+assert.match(worker, /procurementPayments/);
+assert.match(worker, /commitIdempotentOperation/);
+assert.match(worker, /goods_receipt_quantity_invalid/);
+assert.match(worker, /procurement_payment_exceeds_balance/);
+assert.match(router, /\/v1\/procurement\/goods-receipts/);
+assert.match(operations, /\/v1\/procurement\/goods-receipts/);
+assert.match(rules, /match \/purchaseOrders\/{purchaseOrderId}[\s\S]*?allow create, update, delete: if false;/);
+process.stdout.write('✅ Procurement workflow contract passed.\n');
