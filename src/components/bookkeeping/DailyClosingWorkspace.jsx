@@ -233,7 +233,8 @@ export default function DailyClosingWorkspace() {
         </label>
         <label>
           <span>Register / Till ID</span>
-          <input value={registerId} maxLength={40} onChange={(event) => { setRegisterId(event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')); resetPreview(); }} />
+          <input value={registerId} readOnly aria-describedby="daily-closing-register-note" />
+          <small id="daily-closing-register-note" className="daily-closing-register-note">Register main (MVP)</small>
         </label>
         <button type="button" className="daily-closing-preview-button" disabled={isLoading || !businessDate || !registerId} onClick={loadPreview}>
           <ClipboardCheck size={15} /> {isLoading ? 'Menghitung...' : 'Hitung Preview'}
@@ -248,7 +249,7 @@ export default function DailyClosingWorkspace() {
           </div>
           <label className="daily-closing-field">
             <span>Opening float</span>
-            <div className="daily-closing-input-prefix"><b>Rp</b><input type="number" min="0" step="1000" value={openingCash} onChange={(event) => { setOpeningCash(event.target.value); resetPreview(); }} /></div>
+            <div className="daily-closing-input-prefix"><b>Rp</b><input type="number" min="0" step="1000" disabled={preview?.isClosed} value={openingCash} onChange={(event) => { setOpeningCash(event.target.value); resetPreview(); }} /></div>
           </label>
           <div className="daily-closing-subheading">
             <strong>Hitung uang fisik</strong>
@@ -258,7 +259,7 @@ export default function DailyClosingWorkspace() {
             {DENOMINATIONS.map((item) => (
               <label key={item.value}>
                 <span>{item.label}</span>
-                <input type="number" min="0" step="1" inputMode="numeric" value={denominations[String(item.value)]} onChange={(event) => { setDenominations((current) => ({ ...current, [String(item.value)]: event.target.value })); resetPreview(); }} />
+                <input type="number" min="0" step="1" inputMode="numeric" disabled={preview?.isClosed} value={denominations[String(item.value)]} onChange={(event) => { setDenominations((current) => ({ ...current, [String(item.value)]: event.target.value })); resetPreview(); }} />
               </label>
             ))}
           </div>
@@ -274,7 +275,7 @@ export default function DailyClosingWorkspace() {
           {METHODS.filter((method) => method.key !== 'cash').map((method) => (
             <label className="daily-closing-field" key={method.key}>
               <span>{method.label} terverifikasi</span>
-              <div className="daily-closing-input-prefix"><b>Rp</b><input type="number" min="0" step="1000" value={digitalCounts[method.key]} onChange={(event) => { setDigitalCounts((current) => ({ ...current, [method.key]: event.target.value })); resetPreview(); }} /></div>
+              <div className="daily-closing-input-prefix"><b>Rp</b><input type="number" min="0" step="1000" disabled={preview?.isClosed} value={digitalCounts[method.key]} onChange={(event) => { setDigitalCounts((current) => ({ ...current, [method.key]: event.target.value })); resetPreview(); }} /></div>
             </label>
           ))}
           <div className="daily-closing-panel-footnote">Expected digital dihitung terpisah dari kas fisik. QRIS dan transfer tidak menambah cash drawer.</div>
@@ -318,16 +319,23 @@ export default function DailyClosingWorkspace() {
                 );
               })}
             </div>
-            {varianceExists && !preview.isClosed ? (
-              <label className="daily-closing-field daily-closing-reason">
-                <span>Alasan selisih <b>Wajib</b></span>
-                <textarea rows="2" maxLength={600} value={varianceReason} onChange={(event) => setVarianceReason(event.target.value)} placeholder="Contoh: Selisih Rp20.000 karena uang kembalian belum tercatat." />
-              </label>
-            ) : null}
-            <label className="daily-closing-field daily-closing-reason">
-              <span>Catatan closing (opsional)</span>
-              <textarea rows="2" maxLength={1000} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Catatan tambahan untuk Owner atau shift berikutnya." />
-            </label>
+            {!preview.isClosed ? (
+              <>
+                <label className="daily-closing-field daily-closing-reason">
+                  <span>Alasan selisih <b>{varianceExists ? 'Wajib' : 'Isi bila ada selisih'}</b></span>
+                  <textarea rows="2" maxLength={600} value={varianceReason} onChange={(event) => setVarianceReason(event.target.value)} placeholder="Contoh: Selisih Rp20.000 karena uang kembalian belum tercatat." />
+                </label>
+                <label className="daily-closing-field daily-closing-reason">
+                  <span>Catatan closing (opsional)</span>
+                  <textarea rows="2" maxLength={1000} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Catatan tambahan untuk Owner atau shift berikutnya." />
+                </label>
+              </>
+            ) : (
+              <div className="daily-closing-foot-meta">
+                <span>Alasan selisih: {session?.varianceReason || 'Tidak ada selisih yang dicatat.'}</span>
+                {session?.reviewNote ? <span>Catatan: {session.reviewNote}</span> : null}
+              </div>
+            )}
             <div className="daily-closing-foot-meta">
               <span>Fingerprint <code>{preview.sourceFingerprint?.slice(0, 18) || session?.sourceFingerprint?.slice(0, 18) || '-'}</code></span>
               <span>Watermark {formatTimestamp(preview.sourceWatermark || session?.sourceWatermark)}</span>
