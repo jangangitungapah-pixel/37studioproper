@@ -221,9 +221,9 @@ const PURCHASE_ORDER_STATUSES = Object.freeze([
 ]);
 
 function procurementDate(value, label, { optional = false } = {}) {
-  const date = cleanText(value, 10);
+  const date = String(value ?? '').trim();
   if (!date && optional) return '';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (date.length !== 10 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new HttpError(400, 'procurement_date_invalid', label + ' harus menggunakan format YYYY-MM-DD.');
   }
   const parsed = new Date(date + 'T00:00:00.000Z');
