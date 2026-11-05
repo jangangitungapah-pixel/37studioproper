@@ -1889,6 +1889,27 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
+    match /suppliers/{supplierId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+    match /purchaseOrders/{purchaseOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+    match /goodsReceipts/{receiptId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+    match /procurementPayments/{paymentId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create, update, delete: if false;
+    }
+    match /procurementEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
