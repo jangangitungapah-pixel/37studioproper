@@ -1711,7 +1711,7 @@ export default function BookingDetailDrawer({
               role="tabpanel"
             >
               <div className="booking-detail-drawer-activity-note">
-                Ringkasan aktivitas ini diturunkan dari metadata booking, request, pesan, payment history, dan lifecycle sesi. Ini bukan audit log lengkap; event lifecycle sesi tersimpan append-only di bookingSessionEvents.
+                Ringkasan aktivitas ini diturunkan dari metadata booking, request, pesan, payment history, dan lifecycle sesi. Ini bukan audit log permanen yang lengkap; event lifecycle sesi tersimpan append-only di bookingSessionEvents.
               </div>
 
               {activity.length ? (
