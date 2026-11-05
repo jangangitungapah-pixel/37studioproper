@@ -586,13 +586,14 @@ async function loadClosingLedger(firestore, businessDate) {
   return { entryCount: eventIds.length, eventIds: eventIds.sort(), totals };
 }
 
-export async function readDailyClosing({ firestore, businessDate, registerId = 'main' }) {
+export async function readDailyClosing({ firestore, businessDate, registerId = 'main', preview = false }) {
   const date = validateBusinessDate(businessDate);
   const id = `${date}__${cleanText(registerId || 'main', 80)}`;
   const document = await firestore.getDocument('dailyClosings', id);
-  return document
-    ? { closing: { id: document.id, ...document.data }, businessDate: date, registerId }
-    : { closing: null, businessDate: date, registerId };
+  if (document) return { closing: { id: document.id, ...document.data }, businessDate: date, registerId };
+  if (!preview) return { closing: null, businessDate: date, registerId };
+  const ledger = await loadClosingLedger(firestore, date);
+  return { closing: null, businessDate: date, registerId, preview: { ...ledger, expectedCash: ledger.totals.cash } };
 }
 
 export async function closeDailyRegister({ actor, body, firestore, request }) {
