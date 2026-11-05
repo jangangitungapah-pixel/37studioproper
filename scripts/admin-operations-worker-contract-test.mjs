@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { transferOwnership } from '../workers/admin-operations-worker/src/domain/accounts.js';
 import { createManualBooking, decideBookingRequest, updateManualBooking } from '../workers/admin-operations-worker/src/domain/bookings.js';
+import { recordBookingSessionAction } from '../workers/admin-operations-worker/src/domain/bookingSessions.js';
 import {
   recordPayment,
   recordRefund,
@@ -1109,6 +1110,121 @@ function pendingClientRequest(id, startHour, durationHours = 2) {
   const archiveRetry = await archiveInventoryItem(archiveOptions);
   assert.equal(archiveRetry.duplicate, true);
   assert.equal(firestore.collection('inventoryMovements').size, 3);
+}
+
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'session-checkin': { id: 'session-checkin', customer: 'Band Checkin', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'upcoming' },
+    },
+  });
+  const options = {
+    actor,
+    body: { action: 'check_in', bookingId: 'session-checkin' },
+    firestore,
+    request: requestWithKey('session-checkin-one'),
+    now: new Date('2026-08-20T03:00:00.000Z'),
+  };
+  const checkedIn = await recordBookingSessionAction(options);
+  assert.equal(checkedIn.booking.sessionStatus, 'upcoming', 'Check-in must not start a session.');
+  assert.equal(checkedIn.booking.checkedInAt, '2026-08-20T03:00:00.000Z');
+  assert.equal(checkedIn.event.action, 'check_in');
+  assert.equal(firestore.collection('bookingSessionEvents').size, 1);
+  const retry = await recordBookingSessionAction(options);
+  assert.equal(retry.duplicate, true);
+  assert.equal(firestore.collection('bookingSessionEvents').size, 1);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'session-complete': { id: 'session-complete', customer: 'Band Selesai', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'upcoming' },
+    },
+  });
+  const started = await recordBookingSessionAction({
+    actor, body: { action: 'start', bookingId: 'session-complete' }, firestore,
+    request: requestWithKey('session-start-one'), now: new Date('2026-08-20T03:05:00.000Z'),
+  });
+  assert.equal(started.booking.sessionStatus, 'in_progress');
+  assert.equal(started.booking.actualStartAt, '2026-08-20T03:05:00.000Z');
+  const completed = await recordBookingSessionAction({
+    actor, body: { action: 'complete', bookingId: 'session-complete' }, firestore,
+    request: requestWithKey('session-complete-one'), now: new Date('2026-08-20T05:35:00.000Z'),
+  });
+  assert.equal(completed.booking.sessionStatus, 'completed');
+  assert.equal(completed.booking.actualDurationMinutes, 150);
+  assert.equal(completed.event.fromStatus, 'in_progress');
+  assert.equal(completed.event.toStatus, 'completed');
+  assert.equal(firestore.collection('bookingSessionEvents').size, 2);
+  await assert.rejects(recordBookingSessionAction({
+    actor, body: { action: 'start', bookingId: 'session-complete' }, firestore,
+    request: requestWithKey('session-start-after-complete'), now: new Date('2026-08-20T06:00:00.000Z'),
+  }), (error) => error?.code === 'session_terminal');
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'session-no-show': { id: 'session-no-show', customer: 'Band No Show', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'upcoming' },
+    },
+  });
+  const noShowOptions = {
+    actor, body: { action: 'no_show', bookingId: 'session-no-show', reason: 'Customer tidak hadir' }, firestore,
+    request: requestWithKey('session-no-show-one'),
+  };
+  await assert.rejects(recordBookingSessionAction({
+    ...noShowOptions, now: new Date('2026-08-20T03:14:59.999Z'),
+  }), (error) => error?.code === 'no_show_grace_not_elapsed');
+  const noShow = await recordBookingSessionAction({
+    ...noShowOptions, now: new Date('2026-08-20T03:15:00.000Z'),
+  });
+  assert.equal(noShow.booking.sessionStatus, 'no_show');
+  assert.equal(noShow.booking.noShowReason, 'Customer tidak hadir');
+  assert.equal(noShow.event.action, 'no_show');
+  assert.equal(firestore.collection('bookingSessionEvents').size, 1);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'session-cancel': { id: 'session-cancel', customer: 'Band Cancel', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'upcoming', requestStatus: 'cancellation_requested', bookingRequestStatus: 'cancellation_requested' },
+    },
+  });
+  const cancelled = await decideBookingRequest({
+    actor, body: { bookingId: 'session-cancel', status: 'cancelled', note: 'Permintaan pembatalan disetujui' },
+    firestore, request: requestWithKey('session-cancel-decision'),
+  });
+  assert.equal(cancelled.booking.sessionStatus, 'cancelled');
+  assert.equal(firestore.collection('bookingSessionEvents').size, 1);
+  const event = Array.from(firestore.collection('bookingSessionEvents').values())[0].data;
+  assert.equal(event.action, 'cancelled');
+  assert.equal(event.toStatus, 'cancelled');
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'session-cancel-started': { id: 'session-cancel-started', customer: 'Band Started', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'in_progress', requestStatus: 'cancellation_requested', bookingRequestStatus: 'cancellation_requested' },
+    },
+  });
+  await assert.rejects(decideBookingRequest({
+    actor, body: { bookingId: 'session-cancel-started', status: 'cancelled', note: 'Permintaan pembatalan disetujui' },
+    firestore, request: requestWithKey('session-cancel-started-decision'),
+  }), (error) => error?.code === 'session_not_cancellable');
+  assert.equal(firestore.collection('bookingSessionEvents').size, 0);
+}
+
+{
+  const firestore = new FakeFirestore({
+    bookings: {
+      'session-generic-edit': { id: 'session-generic-edit', customer: 'Band Generic', date: '2026-08-20', startHour: 10, durationHours: 2, sessionStatus: 'upcoming' },
+    },
+  });
+  await assert.rejects(updateManualBooking({
+    actor, body: { id: 'session-generic-edit', patch: { sessionStatus: 'completed' } },
+    firestore, request: requestWithKey('session-generic-edit'),
+  }), (error) => error?.code === 'session_action_required');
 }
 
 console.log('Admin operations Worker contract passed.');
