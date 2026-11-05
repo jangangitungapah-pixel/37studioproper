@@ -82,6 +82,11 @@ const guardAttendanceRecord = (id) => ({
 
 try {
   await environment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'inventoryItems', 'item-1'), {
+      category: 'Cable', condition: 'good', createdAt: now, id: 'item-1', location: 'Studio',
+      minStock: 1, name: 'Cable', note: '', quantity: 4, status: 'active', type: 'equipment',
+      unit: 'pcs', updatedAt: now,
+    });
     const db = context.firestore();
     const users = {
       'bootstrap-old': {
