@@ -574,7 +574,7 @@ async function loadClosingLedger(firestore, businessDate) {
   const eventIds = [];
   for (const row of entries) {
     const entry = row.data || {};
-    if (entry.voidedAt || entry.voided === true) continue;
+    if (entry.voidedAt || entry.voided === true || entry.deletedAt) continue;
     const amount = closingMoney(entry.amount, 'Nominal ledger');
     if (!amount) continue;
     const method = closingMethod(entry);
