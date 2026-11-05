@@ -675,3 +675,91 @@ export async function reopenDailyRegister({ actor, body, firestore, request }) {
   });
   return { ...committed.result, duplicate: committed.duplicate };
 }
+function normalizeManualEntry(body, actor, existing = null) {
+  const type = cleanText(body.type || existing?.type || 'expense', 20);
+  if (!['income', 'expense'].includes(type)) throw new HttpError(400, 'invalid_entry_type', 'Jenis transaksi tidak valid.');
+  const category = cleanText(body.category || existing?.category || 'other', 80);
+  const title = cleanText(body.title || existing?.title, 160);
+  if (!title) throw new HttpError(400, 'title_required', 'Judul transaksi wajib diisi.');
+  const amount = cleanMoney(body.amount ?? existing?.amount);
+  if (!amount) throw new HttpError(400, 'amount_required', 'Nominal transaksi wajib lebih dari 0.');
+  const date = cleanOperationDate(body.date || existing?.date, new Date().toISOString());
+  const method = cleanPaymentMethod(body.paymentMethod || existing?.paymentMethod || 'cash');
+  const now = new Date().toISOString();
+  return {
+    id: existing?.id || cleanText(body.id, 160),
+    type, category, title, amount, date, paymentMethod: method,
+    note: cleanText(body.note, 1000),
+    source: 'manual',
+    actorName: actor.displayName,
+    actorUid: actor.uid,
+    idempotencyKey: '',
+    immutable: false,
+    reversalOf: '',
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  };
+}
+
+export async function createManualBookkeepingEntry({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existing = await readOperationResult(firestore, 'manual-bookkeeping-create', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+  const id = cleanText(body.id, 160) || await stableDocumentId('manual-bookkeeping', key);
+  const entry = normalizeManualEntry({ ...body, id }, actor);
+  const result = { entry };
+  const committed = await commitIdempotentOperation({
+    actor,
+    documentRefs: { entry: { collectionId: 'bookkeepingEntries', documentId: id } },
+    firestore, key, receipt: {}, result, targetId: id, type: 'manual-bookkeeping-create',
+    writes: [firestore.setWrite('bookkeepingEntries', id, entry, { exists: false })],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
+
+export async function updateManualBookkeepingEntry({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existingOperation = await readOperationResult(firestore, 'manual-bookkeeping-update', key);
+  if (existingOperation.result) return { ...existingOperation.result, duplicate: true };
+  const id = cleanText(body.id, 160);
+  if (!id) throw new HttpError(400, 'entry_id_required', 'ID transaksi wajib diisi.');
+  const current = await firestore.getDocument('bookkeepingEntries', id);
+  if (!current) throw new HttpError(404, 'entry_not_found', 'Transaksi tidak ditemukan.');
+  if (current.data.source !== 'manual' || current.data.immutable === true) {
+    throw new HttpError(409, 'entry_read_only', 'Transaksi hasil rekonsiliasi tidak dapat diedit.');
+  }
+  if (body.expectedUpdatedAt && body.expectedUpdatedAt !== current.data.updatedAt) {
+    throw new HttpError(409, 'entry_changed', 'Transaksi berubah. Muat ulang sebelum menyimpan.');
+  }
+  const entry = normalizeManualEntry(body, actor, { id: current.id, ...current.data });
+  const result = { entry };
+  const committed = await commitIdempotentOperation({
+    actor, documentRefs: { entry: { collectionId: 'bookkeepingEntries', documentId: id } },
+    firestore, key, receipt: {}, result, targetId: id, type: 'manual-bookkeeping-update',
+    writes: [firestore.setWrite('bookkeepingEntries', id, entry, { updateTime: current.updateTime })],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
+
+export async function deleteManualBookkeepingEntry({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existingOperation = await readOperationResult(firestore, 'manual-bookkeeping-delete', key);
+  if (existingOperation.result) return { ...existingOperation.result, duplicate: true };
+  const id = cleanText(body.id, 160);
+  if (!id) throw new HttpError(400, 'entry_id_required', 'ID transaksi wajib diisi.');
+  const current = await firestore.getDocument('bookkeepingEntries', id);
+  if (!current) throw new HttpError(404, 'entry_not_found', 'Transaksi tidak ditemukan.');
+  if (current.data.source !== 'manual' || current.data.immutable === true) {
+    throw new HttpError(409, 'entry_read_only', 'Transaksi hasil rekonsiliasi tidak dapat dihapus.');
+  }
+  const now = new Date().toISOString();
+  const tombstone = { ...current.data, deletedAt: now, deletedByUid: actor.uid, deletedByName: actor.displayName, deletedReason: cleanText(body.reason || 'Transaksi manual dihapus', 600), updatedAt: now };
+  const result = { entry: tombstone };
+  const committed = await commitIdempotentOperation({
+    actor, documentRefs: { entry: { collectionId: 'bookkeepingEntries', documentId: id } },
+    firestore, key, receipt: {}, result, targetId: id, type: 'manual-bookkeeping-delete',
+    writes: [firestore.setWrite('bookkeepingEntries', id, tombstone, { updateTime: current.updateTime })],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
+
