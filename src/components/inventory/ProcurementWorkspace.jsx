@@ -147,6 +147,9 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const [cancelReason, setCancelReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const canApprovePurchaseOrders = currentUser?.role === 'admin' || (
+    currentUser?.role === 'owner' && currentUser?.isOwner !== false
+  );
   const canRecordPayments = (
     currentUser?.role === 'owner' && currentUser?.isOwner !== false
   ) || (
@@ -626,13 +629,14 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
                     </div>
                     <div className="procurement-po-actions">
                       {order.status === 'draft' ? <button type="button" className="procurement-button is-secondary" disabled={isSubmitting} onClick={() => changeOrderStatus(order, 'submitted')}>Ajukan approval</button> : null}
-                      {order.status === 'submitted' ? <button type="button" className="procurement-button is-primary" disabled={isSubmitting} onClick={() => changeOrderStatus(order, 'approved')}>Approve PO</button> : null}
+                      {order.status === 'submitted' && canApprovePurchaseOrders ? <button type="button" className="procurement-button is-primary" disabled={isSubmitting} onClick={() => changeOrderStatus(order, 'approved')}>Approve PO</button> : null}
                       {order.status === 'approved' ? <button type="button" className="procurement-button is-primary" disabled={isSubmitting} onClick={() => changeOrderStatus(order, 'ordered')}>Tandai dipesan</button> : null}
                       {['ordered', 'partially_received'].includes(order.status) ? <button type="button" className="procurement-button is-primary" disabled={isSubmitting} onClick={() => openReceipt(order)}><PackageCheck size={13} /> Goods Receipt</button> : null}
                       {canRecordPayments && !['draft', 'cancelled'].includes(order.status) && dueAmount > 0 ? <button type="button" className="procurement-button is-secondary" disabled={isSubmitting} onClick={() => openPayment(order)}><Wallet size={13} /> Pembayaran</button> : null}
-                      {['draft', 'submitted', 'approved'].includes(order.status) ? <button type="button" className="procurement-button is-danger" disabled={isSubmitting} onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setReceiptOrderId(''); setPaymentOrderId(''); }}>Batalkan</button> : null}
+                      {canApprovePurchaseOrders && ['draft', 'submitted', 'approved'].includes(order.status) ? <button type="button" className="procurement-button is-danger" disabled={isSubmitting} onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setReceiptOrderId(''); setPaymentOrderId(''); }}>Batalkan</button> : null}
                       {order.status === 'received' ? <span className="procurement-complete-label"><CheckCircle2 size={13} /> Penerimaan lengkap</span> : null}
                     </div>
+                    {order.status === 'submitted' && !canApprovePurchaseOrders ? <small className="procurement-permission-note">Approval PO memerlukan role Owner atau Admin.</small> : null}
                     {!canRecordPayments && !['draft', 'cancelled'].includes(order.status) && dueAmount > 0 ? <small className="procurement-permission-note">Pencatatan pembayaran memerlukan izin Pembukuan.</small> : null}
                   </article>
                 );
