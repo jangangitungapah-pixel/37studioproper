@@ -23,4 +23,4 @@ assert.match(worker, /type: archive \? 'inactive' : \(previous \? 'edit' : 'crea
 assert.match(router, /\/v1\/inventory\/items\/save/);
 assert.match(router, /\/v1\/inventory\/items\/archive/);
 assert.match(rules, /match \/inventoryMovements\/{movementId}[\s\S]*?allow create, update, delete: if false;/);
-process.stdout.write('✅ Canonical inventory metadata writes are atomic and Worker-only.\\n');
+process.stdout.write('✅ Canonical inventory metadata writes are atomic and Worker-only.\n');
