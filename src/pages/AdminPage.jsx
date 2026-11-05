@@ -40,6 +40,7 @@ import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import AdminTopbar from '../components/admin/AdminTopbar.jsx';
 import AdminBottomNav from '../components/admin/AdminBottomNav.jsx';
 import SpatialUiProvider from '../components/ui/SpatialUiProvider.jsx';
+import StudioToaster from '../components/ui/StudioToaster.jsx';
 import { ThemeProvider } from '../theme/ThemeProvider.jsx';
 import '../styles/routes/admin.css';
 import '../styles/spatial-foundation.css';
@@ -252,6 +253,7 @@ export default function AdminPage() {
   return (
     <ThemeProvider>
       <SpatialUiProvider>
+        <StudioToaster />
         <AdminPageContent />
       </SpatialUiProvider>
     </ThemeProvider>
