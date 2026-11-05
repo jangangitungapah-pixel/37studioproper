@@ -117,7 +117,7 @@ export default function DailyClosingWorkspace() {
     },
     varianceReason: varianceReason.trim(),
     reviewNote: reviewNote.trim(),
-  }), [businessDate, registerId, openingCash, countedCash, digitalCounts, varianceReason, reviewNote]);
+  }), [businessDate, registerId, openingCash, countedCash, denominations, digitalCounts, varianceReason, reviewNote]);
 
   function resetPreview() {
     setPreview(null);
