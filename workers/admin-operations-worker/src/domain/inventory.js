@@ -114,6 +114,7 @@ export async function createMaintenanceWorkOrder({ actor, body, firestore, reque
     id, inventoryItemId: itemId, inventoryItemName: cleanText(item.name, 160),
     title, description: cleanText(body.description, 2000), priority,
     status: 'reported', reportedAt: now, reportedByUid: actor.uid, reportedByName: actor.displayName,
+    previousItemStatus: cleanText(item.status || 'active', 40), previousItemCondition: cleanText(item.condition || 'good', 40),
     assignedToUid: '', assignedToName: '', dueAt: cleanText(body.dueAt, 80),
     diagnosis: '', resolution: '', partsRequired: '', cost: 0,
     expenseEntryId: '', verifiedAt: '', verifiedByUid: '',
@@ -200,8 +201,9 @@ export async function transitionMaintenanceWorkOrder({ actor, body, firestore, r
   const itemDocument = await firestore.getDocument('inventoryItems', order.inventoryItemId);
   if (!itemDocument) throw new HttpError(404, 'inventory_item_not_found', 'Item inventory tidak ditemukan.');
   const item = { id: itemDocument.id, ...itemDocument.data };
-  const itemStatus = targetStatus === 'cancelled' || targetStatus === 'verified' ? 'active' : 'maintenance';
-  const itemCondition = targetStatus === 'verified' ? 'good' : targetStatus === 'cancelled' ? (item.condition === 'maintenance' ? 'good' : item.condition) : 'maintenance';
+  const itemStatus = targetStatus === 'cancelled' ? (order.previousItemStatus || 'active') : targetStatus === 'verified' ? (order.previousItemStatus || 'active') : 'maintenance';
+  const itemCondition = targetStatus === 'verified' ? cleanText(body.verifiedCondition || 'fair', 40) : targetStatus === 'cancelled' ? (order.previousItemCondition || item.condition) : 'maintenance';
+  if (!['good', 'fair', 'maintenance', 'broken'].includes(itemCondition)) throw new HttpError(400, 'maintenance_condition_invalid', 'Kondisi alat hasil verifikasi tidak valid.');
   const nextItem = { ...item, status: itemStatus, condition: itemCondition, updatedAt: now };
   const eventId = await stableDocumentId('maintenance-event', `${id}:${key}`);
   const event = { id: eventId, workOrderId: id, inventoryItemId: order.inventoryItemId, action: 'status_change', fromStatus: order.status, toStatus: targetStatus, reason, ...maintenanceActor(actor), createdAt: now };
@@ -215,9 +217,15 @@ export async function transitionMaintenanceWorkOrder({ actor, body, firestore, r
     const cost = Number(body.cost);
     if (!Number.isFinite(cost) || cost < 0 || cost > 1_000_000_000) throw new HttpError(400, 'maintenance_cost_invalid', 'Biaya maintenance tidak valid.');
     if (targetStatus !== 'completed') throw new HttpError(409, 'maintenance_cost_stage_invalid', 'Biaya dicatat saat pekerjaan selesai.');
-    if (order.expenseEntryId) throw new HttpError(409, 'maintenance_expense_exists', 'Biaya work order ini sudah diposting.');
+    if (order.expenseEntryId) {
+      if (Math.round(cost) === Number(order.cost || 0)) {
+        // The same completed command may be retried with a new transport key; the existing expense remains canonical.
+      } else {
+        throw new HttpError(409, 'maintenance_expense_exists', 'Biaya work order ini sudah diposting.');
+      }
+    }
     next.cost = Math.round(cost);
-    if (cost > 0) {
+    if (cost > 0 && !order.expenseEntryId) {
       const expenseId = await stableDocumentId('maintenance-expense', id);
       expense = {
         id: expenseId, type: 'expense', category: 'maintenance',
