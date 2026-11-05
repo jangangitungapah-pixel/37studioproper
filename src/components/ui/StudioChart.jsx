@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { useTheme } from '../../theme/ThemeProvider.jsxx';
+import { useTheme } from '../../theme/ThemeProvider.jsx';
 
 const EChartsRenderer = lazy(() => import('./EChartsRenderer.jsx'));
 
