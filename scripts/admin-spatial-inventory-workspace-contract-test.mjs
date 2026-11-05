@@ -47,8 +47,6 @@ for (const required of [
   'adjustCanonicalInventory({',
   'adjustingItemIdsRef',
   'Alasan adjustment wajib diisi minimal 4 karakter.',
-  'previousQuantity',
-  'nextQuantity',
   'buildInventoryCsv',
   'downloadInventoryCsv',
   'ADMIN_LIST_PAGE_SIZE',
@@ -59,8 +57,28 @@ for (const required of [
   assert.equal(pageSource.includes(required), true, 'UI-9 preserved behavior missing: ' + required);
 }
 
+const inventoryAdjustmentStart = inventoryWorkerSource.indexOf('export async function adjustInventory({');
+const inventoryAdjustmentEnd = inventoryWorkerSource.indexOf('const PURCHASE_ORDER_STATUSES', inventoryAdjustmentStart);
+assert.notEqual(inventoryAdjustmentStart, -1, 'Canonical inventory adjustment Worker domain is missing.');
+assert.notEqual(inventoryAdjustmentEnd, -1, 'Canonical inventory adjustment boundary is missing.');
+const inventoryAdjustmentSource = inventoryWorkerSource.slice(inventoryAdjustmentStart, inventoryAdjustmentEnd);
+for (const required of [
+  'const previousQuantity = finiteQuantity(item.quantity || 0',
+  'const nextQuantity = finiteQuantity(previousQuantity + delta',
+  'previousQuantity,',
+  'nextQuantity,',
+  "firestore.setWrite('inventoryItems', itemId, nextItem",
+  "firestore.setWrite('inventoryMovements', movementId, movement",
+]) {
+  assert.equal(
+    inventoryAdjustmentSource.includes(required),
+    true,
+    'Canonical inventory adjustment behavior missing: ' + required,
+  );
+}
+
 assert.equal(
-  pageSource.includes('archiveCanonicalInventoryItem({ itemId: item.id, reason: \'Item dinonaktifkan\' })'),
+  pageSource.includes('archiveCanonicalInventoryItem({ itemId: item.id, reason: \'Item dinonaktifkan\' }),
   true,
   'Inventory UI must archive items through the canonical Worker wrapper.',
 );
