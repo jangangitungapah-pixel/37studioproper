@@ -280,11 +280,11 @@ export default function DailyClosingWorkspace() {
             <div><span>02 / DIGITAL RECONCILIATION</span><h4>Verifikasi non-tunai</h4></div>
             <ShieldCheck size={18} />
           </div>
-          <p className="daily-closing-panel-note">Masukkan nominal transaksi hari ini yang sudah cocok dengan mutasi bank, QRIS, atau kanal lain. Ini bukan saldo rekening total.</p>
+          <p className="daily-closing-panel-note">Masukkan nilai net mutasi hari ini (masuk dikurangi keluar) yang cocok dengan rekening atau dashboard kanal. Nilainya boleh negatif; ini bukan saldo rekening total.</p>
           {METHODS.filter((method) => method.key !== 'cash').map((method) => (
             <label className="daily-closing-field" key={method.key}>
-              <span>{method.label} terverifikasi</span>
-              <div className="daily-closing-input-prefix"><b>Rp</b><input type="number" min="0" step="1000" disabled={preview?.isClosed} value={digitalCounts[method.key]} onChange={(event) => { setDigitalCounts((current) => ({ ...current, [method.key]: event.target.value })); resetPreview(); }} /></div>
+              <span>{method.label} net terverifikasi</span>
+              <div className="daily-closing-input-prefix"><b>Rp</b><input type="number" min="-1000000000000" step="1000" disabled={preview?.isClosed} value={digitalCounts[method.key]} onChange={(event) => { setDigitalCounts((current) => ({ ...current, [method.key]: event.target.value })); resetPreview(); }} /></div>
             </label>
           ))}
           <div className="daily-closing-panel-footnote">Expected digital dihitung terpisah dari kas fisik. QRIS dan transfer tidak menambah cash drawer.</div>
