@@ -226,6 +226,25 @@ assert.equal(
   true,
 );
 
+for (const required of [
+  'Session Operations',
+  'Lifecycle Sesi',
+  'Catat Check-in',
+  'Mulai Sesi',
+  'Selesaikan Sesi',
+  'Tandai No-show',
+  'Konfirmasi No-show',
+  'checkedInAt',
+  'actualStartAt',
+  'actualEndAt',
+  'actualDurationMinutes',
+  'performSessionAction',
+  'recordCanonicalBookingSessionAction',
+  'Perlu Review',
+]) {
+  assert.equal(drawerSource.includes(required), true, 'Session Operations drawer contract missing ' + required);
+}
+
 assert.equal(
   drawerSource.includes(
     'buildBookingActivity',
