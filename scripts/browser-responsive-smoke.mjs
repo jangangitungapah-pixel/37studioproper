@@ -65,7 +65,7 @@ async function revealLandingSections(page) {
     const section = page.locator(selector);
     await section.scrollIntoViewIfNeeded();
     await page.waitForTimeout(650);
-    const opacity = await section.evaluate((element) => Number(getComputedStyle(element).opacity));
+    const opacity = await section.evaluate((element) => Number(window.getComputedStyle(element).opacity));
     assert.ok(opacity >= 0.98, selector + ' did not finish its Motion reveal after entering the viewport.');
   }
 

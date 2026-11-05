@@ -269,7 +269,7 @@ export default function ClientLandingPage() {
     pricingSettings,
     recordingTypeId,
     sessionId: sessionType,
-  }), [customDuration, duration, packageId, plannerMode, pricingSettings, recordingTypeId, sessionType]);
+  }), [customDuration, duration, isCustomDurationValid, packageId, plannerMode, pricingSettings, recordingTypeId, sessionType]);
 
   const startingPrice = useMemo(() => {
     const prices = sessionOptions
