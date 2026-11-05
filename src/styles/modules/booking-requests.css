@@ -2968,3 +2968,14 @@ html[
   .booking-request-command-shelf { animation: none; }
   .booking-request-queue { animation: none; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-request-row-open,
+  .booking-request-row-open:active,
+  .booking-request-row-actions button:hover:not(:disabled),
+  .booking-request-row-actions button:active:not(:disabled),
+  .booking-request-queue-row:hover {
+    transition: none;
+    transform: none;
+  }
+}

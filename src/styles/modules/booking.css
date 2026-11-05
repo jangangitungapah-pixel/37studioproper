@@ -2186,3 +2186,12 @@ html[data-admin-theme-active='true'][data-theme='dark']
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-section,
   .booking-modal-close, .booking-detail-compact-close { transition: none; transform: none; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-modal-close:hover,
+  .booking-modal-close:active,
+  .booking-detail-compact-close:hover,
+  .booking-detail-compact-close:active {
+    transform: none;
+  }
+}

@@ -3079,3 +3079,12 @@ html[
   .all-bookings-command-shelf { animation: none; }
   .all-bookings-data-surface { animation: none; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .all-bookings-mobile-row,
+  .all-bookings-mobile-row:hover,
+  .all-bookings-mobile-row:active {
+    transition: none;
+    transform: none;
+  }
+}

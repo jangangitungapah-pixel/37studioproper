@@ -4265,3 +4265,12 @@ html[
   .schedule-status-row { animation: none; }
   .schedule-workspace { animation: none; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-status-filter,
+  .schedule-status-filter:hover,
+  .schedule-status-filter:active {
+    transition: none;
+    transform: none;
+  }
+}

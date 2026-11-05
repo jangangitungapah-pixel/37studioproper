@@ -3075,3 +3075,11 @@ strong {
   .customer-followup-surface { animation: none; }
   .customer-directory-surface { animation: none; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-directory-row,
+  .customer-directory-row:hover {
+    transition: none;
+    transform: none;
+  }
+}

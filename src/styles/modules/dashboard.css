@@ -3388,3 +3388,12 @@ html[
   .dashboard-metric-strip { animation: none; }
   .dashboard-secondary-grid { animation: none; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-action-row,
+  .dashboard-action-row:hover,
+  .dashboard-action-row:active {
+    transition: none;
+    transform: none;
+  }
+}
