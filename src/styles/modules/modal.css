@@ -7,19 +7,18 @@
   place-items: center;
   overflow: auto;
   padding: 18px;
-  background: rgba(15, 12, 9, 0.66);
-  backdrop-filter: blur(10px);
+  background: var(--studio-overlay-backdrop);
 }
 
 .studio-confirm-dialog {
   width: min(100%, 440px);
   overflow: hidden;
   border: 1px solid var(--auth-border);
-  border-radius: var(--studio-radius-xl);
+  border-radius: var(--studio-dialog-radius);
   background: var(--auth-bg-elevated);
   color: var(--auth-text-main);
   box-shadow: var(--studio-shadow-float);
-  animation: studio-dialog-in 180ms ease-out both;
+  animation: studio-dialog-in var(--studio-motion-normal) var(--studio-ease-out) both;
 }
 
 .studio-confirm-header {
