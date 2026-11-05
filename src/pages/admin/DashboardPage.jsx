@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import StudioChart from '../../components/ui/StudioChart.jsx';
+import { NumberTicker } from '../../components/magicui/number-ticker.jsx';
 
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 
@@ -1662,6 +1663,7 @@ function DashboardTodayTimeline({
 }
 
 function DashboardMetricObject({
+  formatter,
   helper,
   icon: Icon,
   label,
@@ -1691,7 +1693,9 @@ function DashboardMetricObject({
         </small>
 
         <strong>
-          {value}
+          {typeof value === 'number'
+            ? <NumberTicker value={value} formatter={formatter} />
+            : value}
         </strong>
 
         <em>
@@ -1743,11 +1747,8 @@ function DashboardMetricStrip({
         icon={CreditCard}
         label="Outstanding"
         tone="is-billing"
-        value={
-          formatCurrency(
-            stats.outstanding,
-          )
-        }
+        formatter={formatCurrency}
+        value={stats.outstanding}
       />
 
       <DashboardMetricObject
@@ -1760,11 +1761,8 @@ function DashboardMetricStrip({
         icon={WalletCards}
         label="Net bulan ini"
         tone="is-finance"
-        value={
-          formatCurrency(
-            stats.net,
-          )
-        }
+        formatter={formatCurrency}
+        value={stats.net}
       />
     </section>
   );
