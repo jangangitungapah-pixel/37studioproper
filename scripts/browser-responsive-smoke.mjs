@@ -181,6 +181,29 @@ try {
         );
       }
 
+      if (['admin-login', 'guard-login', 'client-login'].includes(route.name)) {
+        await page.context().setOffline(true);
+        await page.locator('[data-auth-network-state="offline"]').waitFor({
+          state: 'visible',
+          timeout: 5_000,
+        });
+        await page.context().setOffline(false);
+        await page.locator('[data-auth-network-state="offline"]').waitFor({
+          state: 'hidden',
+          timeout: 5_000,
+        });
+        console.log('[browser-smoke] auth offline / online feedback PASS / ' + viewport.name);
+      }
+
+      if (route.name === 'public-booking') {
+        const offlineNotice = page.locator('.public-booking-offline-notice');
+        await page.context().setOffline(true);
+        await offlineNotice.waitFor({ state: 'visible', timeout: 5_000 });
+        await page.context().setOffline(false);
+        await offlineNotice.waitFor({ state: 'hidden', timeout: 5_000 });
+        console.log('[browser-smoke] public booking offline / online feedback PASS / ' + viewport.name);
+      }
+
       if (pageErrors.length) {
         failures.push(
           route.name + ' at ' + viewport.name + ' produced uncaught page errors: ' +
