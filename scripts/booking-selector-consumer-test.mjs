@@ -227,7 +227,31 @@ assert.equal(
       ),
     },
   ),
+  'upcoming',
+  'Elapsed calendar time alone must not mark a session as started.',
+);
+
+assert.equal(
+  getBookingSessionStatus(
+    {
+      date: '2026-08-08',
+      startHour: 19,
+      durationHours: 2,
+      sessionStatus: 'in_progress',
+    },
+    {
+      now: new Date(
+        2026,
+        7,
+        8,
+        20,
+        0,
+        0,
+      ),
+    },
+  ),
   'in_progress',
+  'The canonical event-backed session status must be preserved.',
 );
 
 /**

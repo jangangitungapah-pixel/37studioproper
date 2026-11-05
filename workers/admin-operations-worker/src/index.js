@@ -16,6 +16,7 @@ import {
   voidInvoice,
 } from './domain/finance.js';
 import { permanentlyDeleteGalleryItem } from './domain/gallery.js';
+import { cancelCustomerFollowUpTask, createCustomerFollowUpTask, listCustomerFollowUpAssignees, updateCustomerFollowUpTask } from './domain/customerFollowUp.js';
 import { adjustInventory, archiveInventoryItem, saveInventoryItem } from './domain/inventory.js';
 import { authorize } from './lib/auth.js';
 import { createFirestoreClient } from './lib/firestore.js';
@@ -125,6 +126,27 @@ async function handleRequest(request, env) {
     actor = await authorize(env, request, firestore, { permission: 'inventory' });
     body = await readJson(request);
     result = await archiveInventoryItem({ actor, body, firestore, request });
+  } else if (pathname === '/v1/customers/follow-ups/assignees') {
+    if (request.method !== 'GET') {
+      throw new HttpError(405, 'method_not_allowed', 'Gunakan GET untuk membaca daftar PIC.');
+    }
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    result = await listCustomerFollowUpAssignees({ actor, firestore });
+  } else if (pathname === '/v1/customers/follow-ups') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    body = await readJson(request);
+    result = await createCustomerFollowUpTask({ actor, body, firestore, request });
+  } else if (pathname === '/v1/customers/follow-ups/update') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    body = await readJson(request);
+    result = await updateCustomerFollowUpTask({ actor, body, firestore, request });
+  } else if (pathname === '/v1/customers/follow-ups/cancel') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'customers' });
+    body = await readJson(request);
+    result = await cancelCustomerFollowUpTask({ actor, body, firestore, request });
   } else if (pathname === '/v1/inventory/adjustments') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'inventory' });

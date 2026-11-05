@@ -95,7 +95,6 @@ const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const firestoreRules = read('firestore.rules');
 const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
 const maintenanceUi = read('src/components/inventory/InventoryMaintenanceWorkspace.jsx');
-const inventoryRepository = read('src/services/inventoryRepository.js');
 const adminOperationsRepository = read('src/services/adminOperationsRepository.js');
 const bookkeepingRepository = read('src/services/bookkeepingRepository.js');
 const bookkeepingPage = read('src/pages/admin/BookkeepingPage.jsx');

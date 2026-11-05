@@ -186,3 +186,86 @@ export const adminCustomerRepository = {
   findCustomerByPhone,
   migrateLocalCustomersToFirestore,
 };
+
+
+const ACTIVE_CUSTOMER_FOLLOW_UP_STATUSES = ['open', 'in_progress', 'snoozed'];
+
+export function subscribeCustomerFollowUpTasks(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+
+  const taskCollection = collection(firestoreDb, 'customerFollowUpTasks');
+  const activeQuery = query(
+    taskCollection,
+    where('status', 'in', ACTIVE_CUSTOMER_FOLLOW_UP_STATUSES),
+    orderBy('dueAt', 'asc'),
+    orderBy('dueTime', 'asc'),
+    limit(200),
+  );
+  const completedQuery = query(
+    taskCollection,
+    where('status', '==', 'completed'),
+    orderBy('completedAt', 'desc'),
+    limit(50),
+  );
+
+  let activeTasks = [];
+  let completedTasks = [];
+  let activeReady = false;
+  let completedReady = false;
+  let subscriptionError = null;
+  const fail = (error) => {
+    if (subscriptionError) return;
+    subscriptionError = error;
+    onError(error);
+  };
+  const emit = () => {
+    if (subscriptionError || !activeReady || !completedReady) return;
+    callback([...activeTasks, ...completedTasks]);
+  };
+
+  const unsubscribeActive = onSnapshot(
+    activeQuery,
+    (snapshot) => {
+      activeTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      activeReady = true;
+      emit();
+    },
+    fail,
+  );
+  const unsubscribeCompleted = onSnapshot(
+    completedQuery,
+    (snapshot) => {
+      completedTasks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      completedReady = true;
+      emit();
+    },
+    fail,
+  );
+
+  return () => {
+    unsubscribeActive();
+    unsubscribeCompleted();
+  };
+}
+
+export function subscribeCustomerFollowUpEvents(taskId, callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb || !taskId) {
+    onError(new Error('Histori follow-up tidak tersedia.'));
+    return () => {};
+  }
+  const eventCollection = collection(firestoreDb, 'customerFollowUpEvents');
+  const eventQuery = query(
+    eventCollection,
+    where('taskId', '==', taskId),
+    orderBy('createdAt', 'desc'),
+    limit(30),
+  );
+  return onSnapshot(
+    eventQuery,
+    (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    onError,
+  );
+}
