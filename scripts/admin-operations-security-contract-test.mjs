@@ -151,6 +151,7 @@ assert.equal(inventoryPage.includes('inventoryRepository.createInventoryItem('),
 assert.equal(inventoryPage.includes('inventoryRepository.updateInventoryItem('), false);
 assert.equal(workerIndex.includes("pathname === '/v1/inventory/items'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/inventory/items/archive'"), true);
+assert.equal(inventoryPage.includes('createInventoryMovement('), false, 'No direct movement writes may remain in the inventory page.');
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/items'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
 assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes('commitIdempotentOperation'), true);
