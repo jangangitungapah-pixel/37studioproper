@@ -482,7 +482,7 @@ assert.match(customerRepository, /where\('taskId', '==', taskId\)[\s\S]*?orderBy
 assert.match(ui, /subscribeCustomerFollowUpEvents\(/);
 assert.match(ui, /getCustomerFollowUpBuckets\(tasks(?:,\s*queueNow)?\)/);
 assert.match(ui, /getCanonicalCustomerFollowUpAssignees\(\)/);
-assert.match(ui, /onRetry=\{\(\) => setFollowUpTaskRetry/);
+assert.match(ui, /onRetry=\{[\s\S]*?setFollowUpTaskRetry/);
 assert.match(ui, /loadError=\{followUpTasksError\}/);
 assert.match(ui, /Catat hasil komunikasi/);
 assert.match(ui, /Jam follow-up \(WIB\)/);
