@@ -23,6 +23,7 @@ import {
 } from '../../services/adminOperationsRepository.js';
 import {
   subscribeGoodsReceipts,
+  subscribeProcurementPayments,
   subscribePurchaseOrders,
   subscribeSuppliers,
 } from '../../services/inventoryRepository.js';
@@ -104,10 +105,12 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const [suppliers, setSuppliers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loadState, setLoadState] = useState({
     suppliers: 'loading',
     orders: 'loading',
     receipts: 'loading',
+    payments: 'idle',
     error: '',
   });
   const [retryKey, setRetryKey] = useState(0);
@@ -144,11 +147,16 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const [cancelReason, setCancelReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const canRecordPayments = currentUser?.role === 'owner' ||
+    currentUser?.isOwner === true ||
+    currentUser?.permissions?.bookkeeping === true;
+
   useEffect(() => {
     setLoadState({
       suppliers: 'loading',
       orders: 'loading',
       receipts: 'loading',
+      payments: canRecordPayments ? 'loading' : 'idle',
       error: '',
     });
     const subscriptions = [
@@ -193,16 +201,29 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       ),
     ];
 
+    if (canRecordPayments) {
+      subscriptions.push(subscribeProcurementPayments(
+        (rows) => {
+          setPayments(rows);
+          setLoadState((current) => ({ ...current, payments: 'ready' }));
+        },
+        (error) => {
+          setLoadState((current) => ({
+            ...current,
+            payments: 'error',
+            error: error?.message || 'Riwayat pembayaran supplier belum bisa dimuat.',
+          }));
+        },
+      ));
+    }
+
     return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
-  }, [retryKey]);
+  }, [retryKey, canRecordPayments]);
 
   const activeInventoryItems = useMemo(
     () => inventoryItems.filter((item) => item.status !== 'inactive'),
     [inventoryItems],
   );
-  const canRecordPayments = currentUser?.role === 'owner' ||
-    currentUser?.isOwner === true ||
-    currentUser?.permissions?.bookkeeping === true;
   const activeOrders = useMemo(
     () => orders.filter((order) => !['received', 'cancelled'].includes(order.status)),
     [orders],
@@ -219,7 +240,8 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const supplierLoading = loadState.suppliers === 'loading';
   const orderLoading = loadState.orders === 'loading';
   const receiptLoading = loadState.receipts === 'loading';
-  const isLoading = supplierLoading || orderLoading || receiptLoading;
+  const paymentLoading = canRecordPayments && loadState.payments === 'loading';
+  const isLoading = supplierLoading || orderLoading || receiptLoading || paymentLoading;
   const receiptOrder = orders.find((order) => order.id === receiptOrderId) || null;
   const paymentOrder = orders.find((order) => order.id === paymentOrderId) || null;
 
@@ -636,6 +658,32 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
               </div>
             ) : <EmptyState title="Belum ada penerimaan" description="Goods Receipt akan muncul di sini setelah barang diterima." />}
           </section>
+
+          {canRecordPayments ? (
+            <section className="procurement-side-panel">
+              <header className="procurement-section-header"><div><span>Payment ledger</span><h3>Pembayaran terbaru</h3><small>{payments.length} pembayaran tersinkron</small></div></header>
+              {paymentLoading ? (
+                <div className="procurement-loading"><LoaderCircle size={16} className="auth-spin" /> Memuat pembayaran...</div>
+              ) : loadState.payments === 'error' ? (
+                <div className="procurement-inline-warning" role="alert">Riwayat pembayaran belum bisa dimuat.</div>
+              ) : payments.length ? (
+                <div className="procurement-payment-list">
+                  {payments.slice(0, 6).map((payment) => (
+                    <article key={payment.id}>
+                      <span><Wallet size={15} aria-hidden="true" /></span>
+                      <div>
+                        <strong>{formatRupiah(payment.amount)}</strong>
+                        <small>{payment.poNumber} · {payment.supplierName}</small>
+                        <em>{formatDate(payment.date)} · {String(payment.paymentMethod || '').toUpperCase()}</em>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="Belum ada pembayaran" description="Pembayaran supplier yang dicatat akan muncul di sini." />
+              )}
+            </section>
+          ) : null}
         </aside>
       </div>
 
