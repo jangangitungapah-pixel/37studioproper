@@ -5,13 +5,10 @@ import {
   limit,
   orderBy,
   query,
-  setDoc,
-  updateDoc,
 } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 
 const INVENTORY_COLLECTION = 'inventoryItems';
-const INVENTORY_MOVEMENTS_COLLECTION = 'inventoryMovements';
 
 function cleanText(value, fallback = '') {
   const text = String(value || '').trim();
@@ -31,14 +28,6 @@ function makeInventoryId() {
   }
 
   return 'inv_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 7);
-}
-
-function makeInventoryMovementId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-
-  return 'mov_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 7);
 }
 
 export function normalizeInventoryItem(item, fallbackId = '') {
@@ -168,95 +157,7 @@ export function subscribeInventoryMovements(callback, onError, maxResults = 8) {
   );
 }
 
-export async function createInventoryMovement(movement) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  const movementId = movement.id || doc(collection(firestoreDb, INVENTORY_MOVEMENTS_COLLECTION)).id;
-  const docRef = doc(firestoreDb, INVENTORY_MOVEMENTS_COLLECTION, movementId);
-  const actor = firebaseAuth?.currentUser;
-  const cleanMovement = normalizeInventoryMovement(
-    {
-      ...movement,
-      actorName: movement.actorName || actor?.displayName || actor?.email || 'Admin Studio',
-      actorUid: movement.actorUid || actor?.uid || '',
-      id: movementId,
-      createdAt: movement.createdAt || new Date().toISOString(),
-    },
-    movementId
-  );
-
-  await setDoc(docRef, cleanMovement);
-  return cleanMovement;
-}
-
-export async function createInventoryItem(item) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  const itemId = item.id || doc(collection(firestoreDb, INVENTORY_COLLECTION)).id;
-  const docRef = doc(firestoreDb, INVENTORY_COLLECTION, itemId);
-  const now = new Date().toISOString();
-  const cleanItem = normalizeInventoryItem(
-    {
-      ...item,
-      id: itemId,
-      createdAt: item.createdAt || now,
-      updatedAt: now,
-    },
-    itemId
-  );
-
-  await setDoc(docRef, cleanItem);
-  return cleanItem;
-}
-
-export async function updateInventoryItem(item) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  if (!item.id) {
-    throw new Error('Inventory item ID tidak boleh kosong.');
-  }
-
-  const docRef = doc(firestoreDb, INVENTORY_COLLECTION, item.id);
-  const originalQuantity = toNumber(item.quantity);
-  const cleanItem = normalizeInventoryItem(
-    {
-      ...item,
-      updatedAt: new Date().toISOString(),
-    },
-    item.id
-  );
-
-  // Quantity is deliberately excluded. Stock is mutated only by the protected,
-  // idempotent inventory adjustment operation so metadata edits cannot rewrite it.
-  await updateDoc(docRef, {
-    category: cleanItem.category,
-    condition: cleanItem.condition,
-    location: cleanItem.location,
-    minStock: cleanItem.minStock,
-    name: cleanItem.name,
-    note: cleanItem.note,
-    status: cleanItem.status,
-    type: cleanItem.type,
-    unit: cleanItem.unit,
-    updatedAt: cleanItem.updatedAt,
-  });
-
-  return {
-    ...cleanItem,
-    quantity: originalQuantity,
-  };
-}
-
 export const inventoryRepository = {
   subscribeInventoryItems,
   subscribeInventoryMovements,
-  createInventoryItem,
-  updateInventoryItem,
-  createInventoryMovement,
 };
