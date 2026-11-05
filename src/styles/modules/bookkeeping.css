@@ -1172,3 +1172,82 @@ html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-ledger-surf
     outline-offset: -2px;
   }
 }
+
+.bookkeeping-daily-closing {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 1.25rem;
+  background: var(--studio-surface-1);
+  box-shadow: var(--studio-shadow-surface);
+}
+.bookkeeping-daily-closing-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.bookkeeping-daily-closing h2 {
+  margin: .3rem 0;
+  color: var(--studio-text-primary);
+  font-size: 1.15rem;
+}
+.bookkeeping-daily-closing p,
+.bookkeeping-daily-closing span {
+  color: var(--studio-text-secondary);
+}
+.bookkeeping-closing-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: .75rem;
+}
+.bookkeeping-closing-form label,
+.bookkeeping-daily-closing-header label {
+  display: grid;
+  gap: .35rem;
+  color: var(--studio-text-secondary);
+  font-size: .78rem;
+}
+.bookkeeping-closing-form input,
+.bookkeeping-daily-closing-header input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: .55rem .7rem;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: .7rem;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+}
+.bookkeeping-closing-reason {
+  grid-column: span 2;
+}
+.bookkeeping-closing-form button,
+.bookkeeping-closing-locked button {
+  align-self: end;
+  min-height: 2.5rem;
+  padding: .6rem 1rem;
+  border: 1px solid var(--studio-accent);
+  border-radius: .7rem;
+  background: var(--studio-accent);
+  color: white;
+  font-weight: 700;
+}
+.bookkeeping-closing-locked {
+  display: grid;
+  gap: .75rem;
+}
+.bookkeeping-closing-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.bookkeeping-closing-error {
+  color: #c43d46 !important;
+}
+@media (max-width: 620px) {
+  .bookkeeping-daily-closing-header { display: grid; }
+  .bookkeeping-closing-reason { grid-column: 1; }
+}
