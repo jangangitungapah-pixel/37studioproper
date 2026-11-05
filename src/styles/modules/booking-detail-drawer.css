@@ -938,3 +938,229 @@
     transition-duration: 0.01ms;
   }
 }
+
+
+
+/* Phase 1 — Session Operations */
+.booking-detail-session-operations {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, var(--auth-accent-soft), transparent 55%),
+    var(--auth-bg-card);
+  padding: 14px;
+}
+
+.booking-detail-session-operations > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.booking-detail-session-operations > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.booking-detail-session-operations > header > div > span {
+  color: var(--auth-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.booking-detail-session-operations > header strong {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-md);
+  font-weight: 780;
+}
+
+.booking-detail-drawer-status.is-session-review {
+  border-color: color-mix(in srgb, var(--auth-warning) 38%, var(--auth-border));
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+}
+
+.booking-detail-session-timestamps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-border);
+}
+
+.booking-detail-session-timestamps > span {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  background: var(--auth-bg-elevated);
+  padding: 10px;
+}
+
+.booking-detail-session-timestamps small {
+  color: var(--auth-text-muted);
+  font-size: 0.6875rem;
+}
+
+.booking-detail-session-timestamps strong {
+  color: var(--auth-text-main);
+  font-size: var(--studio-text-xs);
+  font-weight: 720;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.booking-detail-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-detail-session-actions button,
+.booking-detail-session-no-show-form button {
+  min-height: 38px;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-bg-elevated);
+  color: var(--auth-text-main);
+  padding: 0 12px;
+  font-size: var(--studio-text-xs);
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.booking-detail-session-actions button:hover,
+.booking-detail-session-no-show-form button:hover {
+  border-color: var(--auth-border-strong);
+  background: var(--auth-bg-soft);
+}
+
+.booking-detail-session-actions button.is-primary {
+  border-color: var(--auth-accent);
+  background: var(--auth-accent);
+  color: var(--auth-on-accent, white);
+}
+
+.booking-detail-session-actions button.is-danger,
+.booking-detail-session-no-show-form button.is-danger {
+  border-color: color-mix(in srgb, var(--auth-danger) 42%, var(--auth-border));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
+
+.booking-detail-session-actions button:disabled,
+.booking-detail-session-no-show-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.booking-detail-session-confirmed {
+  color: var(--auth-success);
+  font-size: var(--studio-text-xs);
+  font-weight: 720;
+}
+
+.booking-detail-session-no-show-form {
+  display: grid;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--auth-warning) 35%, var(--auth-border));
+  border-radius: var(--studio-radius-md);
+  background: var(--auth-warning-soft);
+  padding: 11px;
+}
+
+.booking-detail-session-no-show-form label {
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-xs);
+  font-weight: 740;
+}
+
+.booking-detail-session-no-show-form textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--studio-radius-sm);
+  background: var(--auth-bg-elevated);
+  color: var(--auth-text-main);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: var(--studio-text-sm);
+}
+
+.booking-detail-session-no-show-form > div {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.booking-detail-session-feedback,
+.booking-detail-session-error,
+.booking-detail-session-review-note {
+  margin: 0;
+  font-size: var(--studio-text-xs);
+  line-height: 1.5;
+}
+
+.booking-detail-session-feedback {
+  color: var(--auth-success);
+}
+
+.booking-detail-session-error {
+  color: var(--auth-danger);
+}
+
+.booking-detail-session-review-note {
+  border-left: 3px solid var(--auth-warning);
+  background: var(--auth-warning-soft);
+  color: var(--auth-text-main);
+  padding: 8px 10px;
+}
+
+@media (max-width: 520px) {
+  .booking-detail-session-operations {
+    padding: 11px;
+  }
+
+  .booking-detail-session-timestamps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .booking-detail-session-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .booking-detail-session-actions button {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .booking-detail-session-no-show-form > div button {
+    flex: 1 1 auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .booking-detail-session-operations,
+  .booking-detail-session-timestamps,
+  .booking-detail-session-no-show-form {
+    border: 1px solid CanvasText;
+  }
+
+  .booking-detail-session-actions button,
+  .booking-detail-session-no-show-form button,
+  .booking-detail-session-no-show-form textarea {
+    border: 1px solid ButtonText;
+  }
+}
