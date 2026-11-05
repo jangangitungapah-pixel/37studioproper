@@ -186,3 +186,17 @@ export const adminCustomerRepository = {
   findCustomerByPhone,
   migrateLocalCustomersToFirestore,
 };
+
+export function subscribeCustomerFollowUpTasks(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+  const ref = collection(firestoreDb, 'customerFollowUpTasks');
+  const q = query(ref, orderBy('dueAt', 'asc'), limit(200));
+  return onSnapshot(q, (snapshot) => {
+    const tasks = [];
+    snapshot.forEach((docSnap) => tasks.push({ id: docSnap.id, ...docSnap.data() }));
+    callback(tasks);
+  }, onError);
+}
