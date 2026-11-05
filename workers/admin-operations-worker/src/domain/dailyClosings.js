@@ -4,6 +4,7 @@ import { stableDocumentId } from '../lib/firestore.js';
 
 const BUSINESS_TIME_ZONE = 'Asia/Jakarta';
 const METHODS = Object.freeze(['cash', 'transfer', 'qris', 'other']);
+const CASH_DENOMINATIONS = Object.freeze([100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100]);
 const MAX_QUERY_ROWS = 10_000;
 const MAX_BOOKING_PAGES = 50;
 const MAX_TRANSACTION_REFERENCES = 3_000;
@@ -263,19 +264,41 @@ async function collectBusinessTransactions({ businessDate, firestore, registerId
 
 function normalizeCounts(body, required = false) {
   const digitalSource = body.digitalCounts && typeof body.digitalCounts === 'object' ? body.digitalCounts : {};
+  const denominationSource = body.cashDenominations && typeof body.cashDenominations === 'object'
+    ? body.cashDenominations
+    : null;
+  if (required && !denominationSource) {
+    throw new HttpError(400, 'cash_denominations_required', 'Rincian pecahan uang fisik wajib diisi untuk menyimpan closing.');
+  }
+  const cashDenominations = {};
+  let countedCashFromDenominations = 0;
+  CASH_DENOMINATIONS.forEach((denomination) => {
+    const rawCount = denominationSource?.[String(denomination)] ?? 0;
+    const count = Number(rawCount);
+    if (!Number.isInteger(count) || count < 0 || count > 100000) {
+      throw new HttpError(400, 'invalid_cash_denomination', 'Jumlah lembar atau keping uang tidak valid.');
+    }
+    cashDenominations[String(denomination)] = count;
+    countedCashFromDenominations += denomination * count;
+  });
   const openingCash = required
     ? requiredMoney(body.openingCash, 'Opening cash')
     : optionalMoney(body.openingCash, 'Opening cash');
-  const countedCash = required
-    ? requiredMoney(body.countedCash, 'Cash fisik terhitung')
-    : optionalMoney(body.countedCash, 'Cash fisik terhitung');
+  const suppliedCountedCash = optionalMoney(body.countedCash, 'Cash fisik terhitung');
+  if (denominationSource && suppliedCountedCash !== null && suppliedCountedCash !== countedCashFromDenominations) {
+    throw new HttpError(400, 'cash_count_mismatch', 'Total kas harus sama dengan penjumlahan rincian pecahan uang.');
+  }
+  const countedCash = denominationSource ? countedCashFromDenominations : suppliedCountedCash;
+  if (required && countedCash === null) {
+    throw new HttpError(400, 'amount_required', 'Cash fisik terhitung wajib diisi.');
+  }
   const digitalCounts = {};
   METHODS.filter((method) => method !== 'cash').forEach((method) => {
     digitalCounts[method] = required
       ? requiredMoney(digitalSource[method], 'Saldo ' + method.toUpperCase())
       : optionalMoney(digitalSource[method], 'Saldo ' + method.toUpperCase());
   });
-  return { countedCash, digitalCounts, openingCash };
+  return { cashDenominations, countedCash, digitalCounts, openingCash };
 }
 
 function calculateReconciliation(totals, counts) {
@@ -355,6 +378,7 @@ function buildPreviewResult({ actor, businessDate, collected, counts, events, ex
   const isClosed = existing?.status === 'closed';
   const snapshotCounts = isClosed ? {
     openingCash: existing.openingCash,
+    cashDenominations: existing.cashDenominations || {},
     countedCash: existing.countedCash,
     digitalCounts: existing.digitalCounts || {},
   } : counts;
@@ -440,6 +464,7 @@ export async function closeDailyClosing({ actor, body, firestore, request, now =
     closedAt: timestamp,
     closedByName: actor.displayName,
     closedByUid: actor.uid,
+    cashDenominations: counts.cashDenominations,
     countedCash: counts.countedCash,
     createdAt: existing?.createdAt || timestamp,
     cutoffAt: timestamp,
@@ -478,6 +503,7 @@ export async function closeDailyClosing({ actor, body, firestore, request, now =
     snapshot: {
       businessDate,
       cashVariance: reconciliation.cashVariance,
+      cashDenominations: counts.cashDenominations,
       countedCash: counts.countedCash,
       cutoffAt: timestamp,
       digitalCounts: counts.digitalCounts,
