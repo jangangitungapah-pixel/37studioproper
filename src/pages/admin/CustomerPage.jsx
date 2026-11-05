@@ -27,7 +27,7 @@ import StudioTextField from '../../components/ui/StudioTextField.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
-import { adminCustomerRepository, subscribeCustomerFollowUpTasks } from '../../services/adminCustomerRepository.js';
+import { adminCustomerRepository, subscribeCustomerFollowUpTasks, subscribeCustomerFollowUpEvents } from '../../services/adminCustomerRepository.js';
 import { createCanonicalCustomerFollowUpTask, updateCanonicalCustomerFollowUpTask } from '../../services/adminOperationsRepository.js';
 
 const MANUAL_CUSTOMERS_STORAGE_KEY = '37musicstudio.customers.manual.v1';
@@ -1211,6 +1211,8 @@ function CustomerFollowUpCenter({
   const [taskNotes, setTaskNotes] = useState({});
   const [taskDueDates, setTaskDueDates] = useState({});
   const [savingTask, setSavingTask] = useState('');
+  const [expandedTaskId, setExpandedTaskId] = useState('');
+  const [taskEvents, setTaskEvents] = useState({});
   const candidates = getCustomerFollowUpCandidates(customers, activeFilter);
   const totalOutstanding = getFollowUpOutstandingTotal(candidates);
   const unpaidCount = candidates.filter(
@@ -1346,6 +1348,13 @@ function CustomerFollowUpCenter({
                       <div className="customer-followup-task-head"><span><strong>{task.title}</strong><small>{task.customerName} · PIC {task.assignedToName || 'Belum ditentukan'}</small></span><em className={'is-' + task.status}>{task.status.replaceAll('_', ' ')}</em></div>
                       {task.description ? <p>{task.description}</p> : null}
                       <div className="customer-followup-task-meta"><span>Due: {task.dueAt}</span><span>Hasil: {task.outcome || 'Belum dicatat'}</span></div>
+                      <button type="button" className="customer-followup-history-toggle" aria-expanded={expandedTaskId === task.id} onClick={() => setExpandedTaskId((current) => current === task.id ? '' : task.id)}> {expandedTaskId === task.id ? 'Tutup histori' : 'Lihat histori'} </button>
+                      {expandedTaskId === task.id ? (
+                        <ol className="customer-followup-history">
+                          {(taskEvents[task.id] || []).map((event) => <li key={event.id}><strong>{event.action}</strong><span>{event.actorName || 'Operator'} · {event.createdAt ? new Date(event.createdAt).toLocaleString('id-ID') : ''}</span>{event.note ? <p>{event.note}</p> : null}{event.outcome ? <small>Hasil: {event.outcome}</small> : null}</li>)}
+                          {!taskEvents[task.id]?.length ? <li>Belum ada histori tambahan.</li> : null}
+                        </ol>
+                      ) : null}
                       {task.status !== 'completed' ? (
                         <>
                           {whatsappHref ? <a className="customer-followup-task-wa" href={whatsappHref} rel="noreferrer" target="_blank" onClick={() => onUpdateTask(task, { status: 'in_progress', contacted: false })}><WhatsAppIcon size={14} /> Buka draft WhatsApp</a> : <small>Nomor WhatsApp tidak tersedia</small>}
