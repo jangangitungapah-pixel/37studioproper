@@ -12,6 +12,8 @@ assert.match(page, /Customer Follow-up Tasks/);
 assert.match(page, /createCanonicalCustomerFollowUpTask/);
 assert.match(page, /updateCanonicalCustomerFollowUpTask/);
 assert.match(page, /subscribeCustomerFollowUpTasks/);
+assert.match(page, /subscribeCustomerFollowUpEvents/);
+assert.match(page, /Lihat histori/);
 assert.match(page, /Due Today/);
 assert.match(page, /Overdue/);
 assert.match(page, /Upcoming/);
