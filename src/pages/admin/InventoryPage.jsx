@@ -23,7 +23,11 @@ import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
-import { adjustCanonicalInventory } from '../../services/adminOperationsRepository.js';
+import {
+  adjustCanonicalInventory,
+  archiveCanonicalInventoryItem,
+  saveCanonicalInventoryItem,
+} from '../../services/adminOperationsRepository.js';
 
 const categoryOptions = [
   { key: 'all', label: 'Semua Kategori', description: 'Tampilkan semua item' },
@@ -1156,23 +1160,11 @@ export default function InventoryPage() {
   async function saveItem(nextItem) {
     try {
       const isEditing = Boolean(nextItem.id);
-      const savedItem = isEditing
-        ? await inventoryRepository.updateInventoryItem({
-            ...nextItem,
-            quantity: editingItem?.quantity ?? nextItem.quantity,
-          })
-        : await inventoryRepository.createInventoryItem(nextItem);
-
-      await inventoryRepository.createInventoryMovement({
-        itemId: savedItem.id,
-        itemName: savedItem.name,
-        type: isEditing ? 'edit' : 'create',
-        quantity: savedItem.quantity,
-        previousQuantity: savedItem.quantity,
-        nextQuantity: savedItem.quantity,
-        unit: savedItem.unit,
-        note: isEditing ? 'Update data inventory' : 'Item baru ditambahkan',
+      const result = await saveCanonicalInventoryItem({
+        ...nextItem,
+        quantity: editingItem?.quantity ?? nextItem.quantity,
       });
+      const savedItem = result?.item;
 
       setIsFormOpen(false);
       setEditingItem(null);
@@ -1229,22 +1221,10 @@ export default function InventoryPage() {
 
   async function archiveItem(item) {
     try {
-      const savedItem = await inventoryRepository.updateInventoryItem({
-        ...item,
-        status: 'inactive',
-        lastMovementAt: new Date().toISOString(),
-        lastMovementType: 'inactive',
-      });
-
-      await inventoryRepository.createInventoryMovement({
-        itemId: savedItem.id,
-        itemName: savedItem.name,
-        type: 'inactive',
-        quantity: savedItem.quantity,
-        previousQuantity: savedItem.quantity,
-        nextQuantity: savedItem.quantity,
-        unit: savedItem.unit,
-        note: 'Item dinonaktifkan',
+      await archiveCanonicalInventoryItem({
+        itemId: item.id,
+        expectedUpdatedAt: item.updatedAt,
+        reason: 'Item dinonaktifkan',
       });
 
       setToast({
