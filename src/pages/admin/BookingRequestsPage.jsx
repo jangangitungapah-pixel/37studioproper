@@ -41,6 +41,7 @@ import {
 import {
   adminBookingRepository,
 } from '../../services/adminBookingRepository.js';
+import { updateCanonicalBookingSession } from '../../services/adminOperationsRepository.js';
 
 import {
   bookingCommunicationRepository,
@@ -1797,6 +1798,7 @@ export default function BookingRequestsPage({
         onRequestStatusChange={
           updateRequestStatus
         }
+        onSessionAction={updateCanonicalBookingSession}
         onTabChange={setTab}
         user={
           currentUser
