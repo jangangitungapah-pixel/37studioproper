@@ -141,8 +141,8 @@ export function createCanonicalDailyClosing(input, idempotencyKey = '') {
   });
 }
 
-export function getCanonicalDailyClosing(businessDate, registerId = 'main') {
-  const params = new URLSearchParams({ businessDate, registerId });
+export function getCanonicalDailyClosing(businessDate, registerId = 'main', preview = false) {
+  const params = new URLSearchParams({ businessDate, registerId, ...(preview ? { preview: 'true' } : {}) });
   return requestOperation(`/v1/finance/daily-closings?${params.toString()}`, { method: 'GET', retryCount: 0 });
 }
 
