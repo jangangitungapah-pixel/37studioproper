@@ -73,6 +73,12 @@ function requestWithKey(key) {
 
 const actor = { displayName: 'Procurement Owner', role: 'owner', uid: 'owner-procurement' };
 const firestore = new FakeFirestore({
+  cashClosingSessions: {
+    '2026-11-04__main': {
+      id: '2026-11-04__main',
+      status: 'closed',
+    },
+  },
   inventoryItems: {
     'item-cable': {
       id: 'item-cable',
@@ -264,6 +270,23 @@ assert.equal(finalReceiptRetry.duplicate, true);
 assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.quantity, 9);
 
 currentPO = (await firestore.getDocument('purchaseOrders', poId)).data;
+await assert.rejects(
+  recordPurchaseOrderPayment({
+    actor,
+    body: {
+      purchaseOrderId: poId,
+      expectedUpdatedAt: currentPO.updatedAt,
+      amount: 10000,
+      paymentMethod: 'transfer',
+      date: '2026-11-04',
+    },
+    firestore,
+    request: requestWithKey('procurement-payment-closed-date'),
+  }),
+  (error) => error?.code === 'business_date_closed',
+  'Procurement payment must not post into a date closed by Daily Closing.',
+);
+
 const paymentOptions = {
   actor,
   body: {
