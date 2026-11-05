@@ -170,3 +170,59 @@ export const inventoryRepository = {
   subscribeInventoryItems,
   subscribeInventoryMovements,
 };
+
+export function subscribeSuppliers(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+  const suppliersRef = collection(firestoreDb, 'suppliers');
+  const q = query(suppliersRef, orderBy('name', 'asc'), limit(100));
+  return onSnapshot(q, (snapshot) => {
+    const rows = [];
+    snapshot.forEach((item) => rows.push({ id: item.id, ...item.data() }));
+    callback(rows);
+  }, onError);
+}
+
+export function subscribePurchaseOrders(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+  const ordersRef = collection(firestoreDb, 'purchaseOrders');
+  const q = query(ordersRef, orderBy('updatedAt', 'desc'), limit(100));
+  return onSnapshot(q, (snapshot) => {
+    const rows = [];
+    snapshot.forEach((item) => rows.push({ id: item.id, ...item.data() }));
+    callback(rows);
+  }, onError);
+}
+
+export function subscribeGoodsReceipts(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+  const receiptsRef = collection(firestoreDb, 'goodsReceipts');
+  const q = query(receiptsRef, orderBy('receivedAt', 'desc'), limit(50));
+  return onSnapshot(q, (snapshot) => {
+    const rows = [];
+    snapshot.forEach((item) => rows.push({ id: item.id, ...item.data() }));
+    callback(rows);
+  }, onError);
+}
+
+export function subscribeProcurementPayments(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+  const paymentsRef = collection(firestoreDb, 'procurementPayments');
+  const q = query(paymentsRef, orderBy('createdAt', 'desc'), limit(50));
+  return onSnapshot(q, (snapshot) => {
+    const rows = [];
+    snapshot.forEach((item) => rows.push({ id: item.id, ...item.data() }));
+    callback(rows);
+  }, onError);
+}
