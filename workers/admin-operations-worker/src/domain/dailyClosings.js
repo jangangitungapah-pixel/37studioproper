@@ -36,6 +36,9 @@ function normalizeRegisterId(value) {
   if (!/^[a-z0-9_-]{1,40}$/.test(registerId)) {
     throw new HttpError(400, 'invalid_register', 'Register ID hanya boleh berisi huruf, angka, tanda hubung, dan underscore.');
   }
+  if (registerId !== 'main') {
+    throw new HttpError(400, 'register_not_supported', 'Register tambahan belum diaktifkan. MVP saat ini menggunakan register main.');
+  }
   return registerId;
 }
 
