@@ -288,7 +288,11 @@ assert.equal(firestore.collection('customerFollowUpEvents').size, 4);
 await assert.rejects(
   () => updateCustomerFollowUpTask({
     ...updateOptions,
-    body: { ...updateOptions.body, dueAt: '2026-02-30' },
+    body: {
+      ...updateOptions.body,
+      expectedUpdatedAt: updated.task.updatedAt,
+      dueAt: '2026-02-30',
+    },
     request: requestWithKey('follow-up-invalid-update-date'),
   }),
   (error) => error?.code === 'follow_up_due_invalid',
