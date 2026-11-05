@@ -2715,3 +2715,48 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
   .procurement-button { transition: none; }
   .procurement-button:hover:not(:disabled) { transform: none; }
 }
+
+.procurement-payment-list {
+  display: grid;
+  gap: 6px;
+}
+.procurement-payment-list article {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 9px;
+  background: var(--studio-surface-1);
+  padding: 8px;
+}
+.procurement-payment-list article > span {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--studio-accent-soft);
+  color: var(--studio-success, #559d7a);
+}
+.procurement-payment-list article > div {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+.procurement-payment-list strong {
+  color: var(--studio-text-primary);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+.procurement-payment-list small,
+.procurement-payment-list em {
+  overflow: hidden;
+  color: var(--studio-text-tertiary);
+  font-size: 0.53rem;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
