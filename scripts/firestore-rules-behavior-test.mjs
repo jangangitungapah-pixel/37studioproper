@@ -93,6 +93,21 @@ try {
       unit: 'pcs', updatedAt: now,
     });
     const db = context.firestore();
+    await setDoc(doc(db, 'cashClosingSessions', '2026-08-14__main'), {
+      businessDate: '2026-08-14', id: '2026-08-14__main', registerId: 'main', status: 'closed',
+    });
+    await setDoc(doc(db, 'cashClosingEvents', 'closing-event-1'), {
+      action: 'closed', actorName: 'Owner', actorUid: 'new-owner', businessDate: '2026-08-14',
+      closingId: '2026-08-14__main', createdAt: now, id: 'closing-event-1', reason: '',
+      registerId: 'main', revision: 1, type: 'cash-closing-event',
+    });
+    const closedManualEntry = {
+      actorName: 'Bookkeeping Admin', actorUid: 'bookkeeping-admin', amount: 20000,
+      category: 'Operational', createdAt: now, date: '2026-08-14', id: 'manual-closed-date',
+      idempotencyKey: 'manual-closed-date', immutable: false, note: '', paymentMethod: 'cash',
+      reversalOf: '', source: 'manual', title: 'Closed date expense', type: 'expense', updatedAt: now,
+    };
+    await setDoc(doc(db, 'bookkeepingEntries', 'manual-closed-date'), closedManualEntry);
     const users = {
       'bootstrap-old': {
         displayName: 'Former Bootstrap Owner',
@@ -109,6 +124,14 @@ try {
         role: 'admin',
         status: 'approved',
         uid: 'dashboard-only',
+      },
+      'bookkeeping-admin': {
+        displayName: 'Bookkeeping Admin',
+        email: 'bookkeeping@example.com',
+        permissions: permissions({ bookkeeping: true }),
+        role: 'admin',
+        status: 'approved',
+        uid: 'bookkeeping-admin',
       },
       'gallery-admin': {
         displayName: 'Gallery Admin',
@@ -317,10 +340,37 @@ try {
   await assertFails(deleteDoc(doc(dashboard, 'bookkeepingEntries', 'manual-1')));
 
   await assertFails(getDoc(doc(dashboard, 'bookingSessionEvents', 'session-event-1')));
+  await assertFails(getDoc(doc(dashboard, 'cashClosingSessions', '2026-08-14__main')));
+  await assertFails(getDoc(doc(dashboard, 'cashClosingEvents', 'closing-event-1')));
   await assertFails(setDoc(doc(dashboard, 'bookingSessionEvents', 'session-event-forged'), {
     action: 'completed', actorName: 'Dashboard', actorUid: 'dashboard-only', bookingId: 'booking-1',
     createdAt: now, fromStatus: 'in_progress', id: 'session-event-forged', reason: '',
     toStatus: 'completed', type: 'booking-session-event',
+  }));
+
+  const bookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
+  await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingSessions', '2026-08-14__main')));
+  await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingEvents', 'closing-event-1')));
+  await assertSucceeds(getDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-closed-date')));
+  await assertFails(updateDoc(doc(bookkeeping, 'cashClosingSessions', '2026-08-14__main'), { status: 'reopened' }));
+  await assertFails(setDoc(doc(bookkeeping, 'cashClosingEvents', 'forged-closing-event'), {
+    action: 'closed', actorName: 'Forged', actorUid: 'bookkeeping-admin', businessDate: '2026-08-14',
+    closingId: '2026-08-14__main', createdAt: now, id: 'forged-closing-event', reason: '',
+    registerId: 'main', revision: 2, type: 'cash-closing-event',
+  }));
+  await assertFails(updateDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-closed-date'), { title: 'Changed after close' }));
+  await assertFails(deleteDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-closed-date')));
+  await assertFails(setDoc(doc(bookkeeping, 'bookkeepingEntries', 'late-manual-entry'), {
+    actorName: 'Bookkeeping Admin', actorUid: 'bookkeeping-admin', amount: 30000,
+    category: 'Operational', createdAt: now, date: '2026-08-14', id: 'late-manual-entry',
+    idempotencyKey: 'late-manual-entry', immutable: false, note: '', paymentMethod: 'cash',
+    reversalOf: '', source: 'manual', title: 'Late expense', type: 'expense', updatedAt: now,
+  }));
+  await assertSucceeds(setDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-open-date'), {
+    actorName: 'Bookkeeping Admin', actorUid: 'bookkeeping-admin', amount: 30000,
+    category: 'Operational', createdAt: now, date: '2026-08-15', id: 'manual-open-date',
+    idempotencyKey: 'manual-open-date', immutable: false, note: '', paymentMethod: 'cash',
+    reversalOf: '', source: 'manual', title: 'Open date expense', type: 'expense', updatedAt: now,
   }));
 
   const schedule = context('schedule-admin', 'schedule@example.com');
