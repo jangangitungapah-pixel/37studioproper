@@ -15,6 +15,7 @@ import {
   Pencil,
   Plus,
   Search,
+  ShoppingCart,
   SlidersHorizontal,
   Wrench,
   X,
@@ -22,6 +23,7 @@ import {
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import InventoryMaintenanceWorkspace from '../../components/inventory/InventoryMaintenanceWorkspace.jsx';
+import ProcurementWorkspace from '../../components/inventory/ProcurementWorkspace.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
 import { adjustCanonicalInventory, archiveCanonicalInventoryItem, saveCanonicalInventoryItem } from '../../services/adminOperationsRepository.js';
@@ -1005,7 +1007,7 @@ function InventoryFormModal({ item, onClose, onSave }) {
   );
 }
 
-export default function InventoryPage() {
+export default function InventoryPage({ currentUser = null } = {}) {
   const [items, setItems] = useState([]);
   const [movements, setMovements] = useState([]);
   const [searchText, setSearchText] = useState('');
@@ -1258,10 +1260,15 @@ export default function InventoryPage() {
         <button aria-selected={activeTab === 'maintenance'} className={activeTab === 'maintenance' ? 'is-active' : ''} role="tab" type="button" onClick={() => setActiveTab('maintenance')}>
           <Wrench size={15} aria-hidden="true" /> Maintenance
         </button>
+        <button aria-selected={activeTab === 'procurement'} className={activeTab === 'procurement' ? 'is-active' : ''} role="tab" type="button" onClick={() => setActiveTab('procurement')}>
+          <ShoppingCart size={15} aria-hidden="true" /> Procurement
+        </button>
       </div>
 
       {activeTab === 'maintenance' ? (
         <InventoryMaintenanceWorkspace />
+      ) : activeTab === 'procurement' ? (
+        <ProcurementWorkspace currentUser={currentUser} inventoryItems={items} />
       ) : (
         <>
       <InventoryEditorialHeader items={items} />
