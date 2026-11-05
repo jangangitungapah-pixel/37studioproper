@@ -177,6 +177,7 @@ const preview = await previewDailyClosing({
     registerId: 'main',
     openingCash: 100000,
     countedCash: 220000,
+    cashDenominations: { 100000: 2, 50000: 0, 20000: 1, 10000: 0, 5000: 0, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 },
     digitalCounts: { transfer: 200000, qris: 150000, other: 0 },
   },
   firestore,
@@ -206,6 +207,7 @@ const closePayload = {
   registerId: 'main',
   openingCash: 100000,
   countedCash: 215000,
+  cashDenominations: { 100000: 2, 50000: 0, 20000: 0, 10000: 1, 5000: 1, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 },
   digitalCounts: { transfer: 200000, qris: 150000, other: 0 },
   varianceReason: 'Selisih kas sudah diperiksa',
   reviewNote: 'Closing shift malam',
@@ -341,7 +343,7 @@ assert.equal(firestore.collection('cashClosingEvents').size, 3);
 
 const closedPreview = await previewDailyClosing({
   actor,
-  body: { businessDate: date, registerId: 'main', openingCash: 0, countedCash: 0, digitalCounts: { transfer: 0, qris: 0, other: 0 } },
+  body: { businessDate: date, registerId: 'main', openingCash: 0, countedCash: 0, cashDenominations: { 100000: 0, 50000: 0, 20000: 0, 10000: 0, 5000: 0, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 }, digitalCounts: { transfer: 0, qris: 0, other: 0 } },
   firestore,
   now: new Date('2026-11-05T09:35:00.000Z'),
 });
