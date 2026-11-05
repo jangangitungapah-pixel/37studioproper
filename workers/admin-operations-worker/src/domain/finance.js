@@ -525,3 +525,153 @@ export async function reviewPaymentProof({ actor, body, firestore, proofId, requ
 
   return { ...committed.result, duplicate: committed.duplicate };
 }
+
+const CLOSING_METHODS = Object.freeze(['cash', 'transfer', 'qris', 'other']);
+
+function businessDateInJakarta(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+  }).format(now);
+}
+
+function validateBusinessDate(value) {
+  const date = cleanText(value, 10);
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new HttpError(400, 'invalid_business_date', 'Tanggal closing tidak valid.');
+  }
+  return date;
+}
+
+function closingMoney(value, label) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000_000) {
+    throw new HttpError(400, 'invalid_closing_amount', `${label} tidak valid.`);
+  }
+  return Math.round(amount);
+}
+
+function closingMethod(entry) {
+  const method = cleanText(entry.paymentMethod || entry.method || 'other', 40).toLowerCase();
+  return CLOSING_METHODS.includes(method) ? method : 'other';
+}
+
+async function loadClosingLedger(firestore, businessDate) {
+  const entries = await firestore.runQuery({
+    from: [{ collectionId: 'bookkeepingEntries' }],
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'date' },
+        op: 'EQUAL',
+        value: { stringValue: businessDate },
+      },
+    },
+  });
+  const totals = { cash: 0, transfer: 0, qris: 0, other: 0, income: 0, expense: 0 };
+  const eventIds = [];
+  for (const row of entries) {
+    const entry = row.data || {};
+    if (entry.voidedAt || entry.voided === true) continue;
+    const amount = closingMoney(entry.amount, 'Nominal ledger');
+    if (!amount) continue;
+    const method = closingMethod(entry);
+    const type = entry.type === 'expense' ? 'expense' : 'income';
+    totals[method] += type === 'income' ? amount : -amount;
+    totals[type] += amount;
+    eventIds.push(row.id);
+  }
+  return { entryCount: eventIds.length, eventIds: eventIds.sort(), totals };
+}
+
+export async function readDailyClosing({ firestore, businessDate, registerId = 'main' }) {
+  const date = validateBusinessDate(businessDate);
+  const id = `${date}__${cleanText(registerId || 'main', 80)}`;
+  const document = await firestore.getDocument('dailyClosings', id);
+  return document
+    ? { closing: { id: document.id, ...document.data }, businessDate: date, registerId }
+    : { closing: null, businessDate: date, registerId };
+}
+
+export async function closeDailyRegister({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const existing = await readOperationResult(firestore, 'daily-closing', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+  const businessDate = validateBusinessDate(body.businessDate || businessDateInJakarta());
+  const registerId = cleanText(body.registerId || 'main', 80);
+  const closingId = `${businessDate}__${registerId}`;
+  const current = await firestore.getDocument('dailyClosings', closingId);
+  if (current?.data?.status === 'closed') {
+    throw new HttpError(409, 'daily_closing_already_closed', 'Closing untuk tanggal dan register ini sudah ditutup.');
+  }
+  const openingFloat = closingMoney(body.openingFloat ?? 0, 'Saldo awal kas');
+  const counted = Object.fromEntries(CLOSING_METHODS.map((method) => [
+    method,
+    closingMoney(body.counted?.[method] ?? (method === 'cash' ? body.countedCash : 0) ?? 0, `Hitung ${method}`),
+  ]));
+  const ledger = await loadClosingLedger(firestore, businessDate);
+  const now = new Date().toISOString();
+  const expectedCash = openingFloat + ledger.totals.cash;
+  const cashVariance = counted.cash - expectedCash;
+  const varianceReason = cleanText(body.varianceReason, 600);
+  if (cashVariance !== 0 && varianceReason.length < 4) {
+    throw new HttpError(400, 'variance_reason_required', 'Alasan selisih kas minimal 4 karakter.');
+  }
+  const methodReconciliation = Object.fromEntries(CLOSING_METHODS.map((method) => [
+    method,
+    { ledgerNet: ledger.totals[method], counted: counted[method], variance: counted[method] - ledger.totals[method] },
+  ]));
+  const closing = {
+    id: closingId, businessDate, timezone: 'Asia/Jakarta', registerId, status: 'closed',
+    openingFloat, expectedCash, countedCash: counted.cash, cashVariance, varianceReason,
+    ledgerTotals: ledger.totals, methodReconciliation, ledgerEntryCount: ledger.entryCount,
+    ledgerEventIds: ledger.eventIds, ledgerSnapshotAt: now, closedAt: now,
+    closedByUid: actor.uid, closedByName: actor.displayName, reopenCount: 0,
+    notes: cleanText(body.notes, 1000), createdAt: now, updatedAt: now,
+  };
+  const eventId = await stableDocumentId('daily-closing-event', `${closingId}:${key}`);
+  const event = { id: eventId, closingId, businessDate, action: 'closed', actorUid: actor.uid, actorName: actor.displayName, createdAt: now, ledgerEntryCount: ledger.entryCount, ledgerSnapshotAt: now, cashVariance, reason: varianceReason };
+  const result = { closing, event };
+  const committed = await commitIdempotentOperation({
+    actor, documentRefs: {
+      closing: { collectionId: 'dailyClosings', documentId: closingId },
+      event: { collectionId: 'dailyClosingEvents', documentId: eventId },
+    },
+    firestore, key, receipt: { businessDate, registerId }, result, targetId: closingId, type: 'daily-closing',
+    writes: [
+      firestore.setWrite('dailyClosings', closingId, closing, current ? { updateTime: current.updateTime } : { exists: false }),
+      firestore.setWrite('dailyClosingEvents', eventId, event, { exists: false }),
+    ],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
+
+export async function reopenDailyRegister({ actor, body, firestore, request }) {
+  if (actor.role !== 'owner') throw new HttpError(403, 'owner_required', 'Hanya Owner yang dapat membuka kembali closing.');
+  const key = getIdempotencyKey(request, body);
+  const existing = await readOperationResult(firestore, 'daily-closing-reopen', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+  const businessDate = validateBusinessDate(body.businessDate);
+  const registerId = cleanText(body.registerId || 'main', 80);
+  const id = `${businessDate}__${registerId}`;
+  const current = await firestore.getDocument('dailyClosings', id);
+  if (!current || current.data.status !== 'closed') throw new HttpError(409, 'daily_closing_not_closed', 'Closing tidak berada dalam status tertutup.');
+  const reason = cleanText(body.reason, 600);
+  if (reason.length < 8) throw new HttpError(400, 'reopen_reason_required', 'Alasan membuka kembali minimal 8 karakter.');
+  const now = new Date().toISOString();
+  const next = { ...current.data, status: 'reopened', reopenedAt: now, reopenedByUid: actor.uid, reopenedByName: actor.displayName, reopenReason: reason, reopenCount: Number(current.data.reopenCount || 0) + 1, updatedAt: now };
+  const eventId = await stableDocumentId('daily-closing-event', `${id}:reopen:${key}`);
+  const event = { id: eventId, closingId: id, businessDate, action: 'reopened', actorUid: actor.uid, actorName: actor.displayName, reason, createdAt: now };
+  const result = { closing: next, event };
+  const committed = await commitIdempotentOperation({
+    actor, documentRefs: { closing: { collectionId: 'dailyClosings', documentId: id }, event: { collectionId: 'dailyClosingEvents', documentId: eventId } },
+    firestore, key, receipt: { businessDate, registerId }, result, targetId: id, type: 'daily-closing-reopen',
+    writes: [
+      firestore.setWrite('dailyClosings', id, next, { updateTime: current.updateTime }),
+      firestore.setWrite('dailyClosingEvents', eventId, event, { exists: false }),
+    ],
+  });
+  return { ...committed.result, duplicate: committed.duplicate };
+}
