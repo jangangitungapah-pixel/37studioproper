@@ -124,6 +124,7 @@ assert.equal(dailyClosingWorker.includes("firestore.listDocuments('bookings'"), 
 assert.equal(dailyClosingWorker.includes("'bookkeepingEntries'"), true);
 assert.equal(dailyClosingWorker.includes('transactionReferences'), true);
 assert.equal(dailyClosingWorker.includes('Asia/Jakarta'), true);
+assert.equal(dailyClosingWorker.includes('requiredSignedMoney'), true, 'Net digital reconciliation must support negative refunds and outflows.');
 assert.equal(dailyClosingWorker.includes('commitIdempotentOperation'), true);
 assert.match(rules, /function bookkeepingBusinessDateOpen\(data\)[\s\S]*?cashClosingSessions[\s\S]*?status != 'closed'/);
 assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
