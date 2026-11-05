@@ -373,6 +373,7 @@ await assert.rejects(
       taskId: contacted.task.id,
       expectedUpdatedAt: contacted.task.updatedAt,
       status: 'completed',
+      outcome: '',
     },
     firestore,
     now,
