@@ -98,6 +98,7 @@ const maintenanceUi = read('src/components/inventory/InventoryMaintenanceWorkspa
 const inventoryRepository = read('src/services/inventoryRepository.js');
 const adminOperationsRepository = read('src/services/adminOperationsRepository.js');
 const bookkeepingRepository = read('src/services/bookkeepingRepository.js');
+const bookkeepingPage = read('src/pages/admin/BookkeepingPage.jsx');
 const packageJson = JSON.parse(read('package.json'));
 
 const actor = { displayName: 'Admin Test', role: 'admin', uid: 'admin-1' };
@@ -399,6 +400,8 @@ assert.equal(adminOperationsRepository.includes('reportCanonicalMaintenanceWorkO
 assert.equal(adminOperationsRepository.includes('actOnCanonicalMaintenanceWorkOrder'), true);
 assert.equal(adminOperationsRepository.includes('recordCanonicalMaintenanceCost'), true);
 assert.equal(bookkeepingRepository.includes('sourceWorkOrderId'), true);
+assert.equal(bookkeepingPage.includes("source === 'maintenance'"), true);
+assert.equal(bookkeepingPage.includes('workOrderId: entry.sourceWorkOrderId'), true);
 assert.equal(packageJson.scripts['test:prd'].includes('maintenance-work-orders-contract-test.mjs'), true);
 assert.equal(packageJson.scripts.test.includes('maintenance-work-orders-contract-test.mjs'), true);
 
