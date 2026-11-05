@@ -137,13 +137,17 @@ async function handleRequest(request, env) {
     result = await reportMaintenanceWorkOrder({ actor, body, firestore, request });
   } else if (pathname === '/v1/inventory/maintenance/work-orders/action') {
     requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'inventory' });
     body = await readJson(request);
-    const ownerAction = body.action === 'reopen';
-    actor = await authorize(env, request, firestore, {
-      ...(ownerAction ? { ownerOnly: true, requireFreshAuth: true } : {}),
-      permission: 'inventory',
-    });
+    if (body.action === 'reopen') {
+      throw new HttpError(403, 'owner_reopen_route_required', 'Reopen harus menggunakan endpoint khusus Owner dengan verifikasi ulang.');
+    }
     result = await actOnMaintenanceWorkOrder({ actor, body, firestore, request });
+  } else if (pathname === '/v1/inventory/maintenance/work-orders/reopen') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'inventory', requireFreshAuth: true });
+    body = await readJson(request);
+    result = await actOnMaintenanceWorkOrder({ actor, body: { ...body, action: 'reopen' }, firestore, request });
   } else if (pathname === '/v1/inventory/maintenance/work-orders/cost') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
