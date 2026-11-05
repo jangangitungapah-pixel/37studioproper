@@ -255,6 +255,33 @@ assert.equal(
   'Activity tab must derive its read-only booking timeline.',
 );
 
+/**
+ * Session read-model variables must live in the React drawer component,
+ * never inside the module-level Activity helper.
+ */
+const activityHelperStart = drawerSource.indexOf('function buildBookingActivity(');
+const activityHelperEnd = drawerSource.indexOf('\\nfunction StatusChip(', activityHelperStart);
+assert.equal(activityHelperStart >= 0 && activityHelperEnd > activityHelperStart, true,
+  'Booking activity helper boundaries must be discoverable.');
+const activityHelperSource = drawerSource.slice(activityHelperStart, activityHelperEnd);
+for (const forbidden of ['sessionBookingSnapshot', 'const sessionBooking =', 'getScheduleTimingStatus', 'isBookingNoShowEligible']) {
+  assert.equal(activityHelperSource.includes(forbidden), false,
+    'Activity helper must not reference component-scoped session state: ' + forbidden);
+}
+const drawerComponentStart = drawerSource.indexOf('export default function BookingDetailDrawer(');
+const sessionReadModelIndex = drawerSource.indexOf('const sessionBooking =', drawerComponentStart);
+const sessionStatusIndex = drawerSource.indexOf('const sessionStatus =', drawerComponentStart);
+assert.equal(drawerComponentStart >= 0 && sessionReadModelIndex > drawerComponentStart, true,
+  'Session read model must be declared inside BookingDetailDrawer.');
+assert.equal(sessionStatusIndex > sessionReadModelIndex, true,
+  'Session read model must be declared before session status is derived.');
+for (const declaration of ['const sessionTimingStatus =', 'const isNoShowEligible =']) {
+  const declarationIndex = drawerSource.indexOf(declaration, drawerComponentStart);
+  assert.equal(declarationIndex > drawerComponentStart && declarationIndex < sessionStatusIndex, true,
+    declaration + ' must be in component scope before session status consumers.');
+}
+
+
 assert.equal(
   drawerSource.includes(
     'audit log permanen',
