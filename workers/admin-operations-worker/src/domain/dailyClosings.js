@@ -10,7 +10,7 @@ const MAX_TRANSACTION_REFERENCES = 5_000;
 
 function validBusinessDate(value) {
   const date = cleanText(value, 10);
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return '';
   const parsed = new Date(date + 'T00:00:00.000Z');
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date ? date : '';
 }
@@ -18,7 +18,7 @@ function validBusinessDate(value) {
 function businessDateOf(value) {
   if (value === undefined || value === null || value === '') return '';
   const raw = String(value).trim();
-  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(raw)) return validBusinessDate(raw);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return validBusinessDate(raw);
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return '';
   const parts = new Intl.DateTimeFormat('en-CA', {
