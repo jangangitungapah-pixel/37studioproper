@@ -50,6 +50,29 @@ let previewOutput = '';
 preview.stdout.on('data', (chunk) => { previewOutput += chunk.toString(); });
 preview.stderr.on('data', (chunk) => { previewOutput += chunk.toString(); });
 
+async function revealLandingSections(page) {
+  const selectors = [
+    '.client-landing-intro',
+    '.client-landing-services',
+    '.client-landing-planner',
+    '.client-landing-process',
+    '.client-landing-client-space',
+    '.client-landing-location',
+    '.client-landing-final-cta',
+  ];
+
+  for (const selector of selectors) {
+    const section = page.locator(selector);
+    await section.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(650);
+    const opacity = await section.evaluate((element) => Number(getComputedStyle(element).opacity));
+    assert.ok(opacity >= 0.98, selector + ' did not finish its Motion reveal after entering the viewport.');
+  }
+
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await page.waitForTimeout(120);
+}
+
 async function waitForPreview() {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     if (preview.exitCode !== null) {
@@ -121,6 +144,25 @@ try {
       await heading.waitFor({ state: 'visible', timeout: 20_000 });
       const headingText = (await heading.innerText()).trim();
       assert.ok(headingText, route.name + ' has an empty visible h1.');
+
+      if (route.name === 'landing') {
+        if (viewport.name === 'mobile-390') {
+          const menuButton = page.locator('.client-landing-menu-button');
+          await menuButton.click();
+          await page.locator('.client-landing-nav.is-open').waitFor({ state: 'visible', timeout: 5_000 });
+          assert.equal(await page.locator('body').evaluate((element) => element.style.overflow), 'hidden');
+          await page.locator('.client-landing-menu-backdrop').click({ position: { x: 190, y: 420 } });
+          await page.locator('.client-landing-nav.is-open').waitFor({ state: 'hidden', timeout: 5_000 });
+          assert.equal(await page.locator('body').evaluate((element) => element.style.overflow), '');
+          console.log('[browser-smoke] landing mobile menu and scroll-lock PASS / ' + viewport.name);
+        }
+
+        await page.getByRole('button', { name: 'Pilih Rehearsal dan lihat estimasi harga' }).click();
+        const selectedService = await page.locator('.client-landing-planner-form .studio-select-trigger').first().innerText();
+        assert.ok(selectedService.includes('Rehearsal'), 'Service story action must preselect Rehearsal in the planner.');
+        await revealLandingSections(page);
+        console.log('[browser-smoke] landing service shortcut and Motion reveals PASS / ' + viewport.name);
+      }
 
       await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => resolveFrame())));
       const dimensions = await page.evaluate(() => ({
