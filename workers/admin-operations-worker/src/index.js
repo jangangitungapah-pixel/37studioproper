@@ -13,7 +13,7 @@ import {
   voidInvoice,
 } from './domain/finance.js';
 import { permanentlyDeleteGalleryItem } from './domain/gallery.js';
-import { adjustInventory } from './domain/inventory.js';
+import { adjustInventory, archiveInventoryItem, saveInventoryItem } from './domain/inventory.js';
 import { authorize } from './lib/auth.js';
 import { createFirestoreClient } from './lib/firestore.js';
 import { HttpError, corsHeaders, json, readJson, toPublicError } from './lib/http.js';
@@ -97,6 +97,16 @@ async function handleRequest(request, env) {
     actor = await authorize(env, request, firestore, { permission: 'inventory' });
     body = await readJson(request);
     result = await adjustInventory({ actor, body, firestore, request });
+  } else if (pathname === '/v1/inventory/items/save') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'inventory' });
+    body = await readJson(request);
+    result = await saveInventoryItem({ actor, body, firestore, request });
+  } else if (pathname === '/v1/inventory/items/archive') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'inventory' });
+    body = await readJson(request);
+    result = await archiveInventoryItem({ actor, body, firestore, request });
   } else if (pathname === '/v1/gallery/permanent-delete') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'gallery' });
