@@ -1889,6 +1889,16 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
