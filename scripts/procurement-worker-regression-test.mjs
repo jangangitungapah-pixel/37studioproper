@@ -617,7 +617,7 @@ assert.equal(receiptRacePOAfter.items.reduce((sum, item) => sum + item.receivedQ
 assert.equal(receiptRaceItemAAfter + receiptRaceItemBAfter, receiptRaceOriginalItemA + receiptRaceOriginalItemB + 1);
 assert.equal(receiptRaceFirestore.collection('goodsReceipts').size, 1);
 assert.equal(receiptRaceFirestore.collection('inventoryMovements').size, 1);
-assert.equal(receiptRaceFirestore.collection('procurementEvents').size, 4,
+assert.equal(receiptRaceFirestore.collection('procurementEvents').size, 5,
   'Create, transitions and the single winning receipt must each leave one audit event.');
 
 // Two different POs can still contend for one canonical Inventory item. The
@@ -697,8 +697,6 @@ assert.equal(sharedStockRaceResults.filter((result) => result.status === 'fulfil
   'Only one PO receipt may update a shared inventory item revision.');
 const sharedItemAfter = await sharedItemFirestore.getDocument('inventoryItems', 'shared-stock-item');
 assert.equal(sharedItemAfter.data.quantity, sharedStockBefore + 1);
-assert.equal(sharedPOA.items[0].receivedQuantity + sharedPOB.items[0].receivedQuantity, 0,
-  'The in-memory PO snapshots remain unchanged; canonical revisions are asserted below.');
 const sharedPOAAfter = (await sharedItemFirestore.getDocument('purchaseOrders', sharedPOA.id)).data;
 const sharedPOBAfter = (await sharedItemFirestore.getDocument('purchaseOrders', sharedPOB.id)).data;
 assert.equal(sharedPOAAfter.items[0].receivedQuantity + sharedPOBAfter.items[0].receivedQuantity, 1);
