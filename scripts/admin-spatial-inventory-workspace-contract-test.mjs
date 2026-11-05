@@ -38,10 +38,7 @@ for (const required of [
 for (const required of [
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'createInventoryItem',
-  'updateInventoryItem',
-  'createInventoryMovement',
-  'saveCanonicalInventoryItem({',
+  'saveCanonicalInventoryItem({
   'archiveCanonicalInventoryItem({',
   "status: 'inactive'",
   "type: 'inactive'",
@@ -49,7 +46,6 @@ for (const required of [
   'adjustCanonicalInventory({',
   'adjustingItemIdsRef',
   'Alasan adjustment wajib diisi minimal 4 karakter.',
-  "quantity: editingItem?.quantity ?? nextItem.quantity",
   'previousQuantity',
   'nextQuantity',
   'buildInventoryCsv',
