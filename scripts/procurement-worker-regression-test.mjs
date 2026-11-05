@@ -133,6 +133,13 @@ await assert.rejects(
   }),
   (error) => error?.code === 'po_expected_date_invalid',
 );
+await assert.rejects(
+  createPurchaseOrder({
+    actor, body: { ...poPayload, expectedAt: '2026-11-09-extra' },
+    firestore, request: requestWithKey('procurement-po-malformed-date'),
+  }),
+  (error) => error?.code === 'procurement_date_invalid',
+);
 
 const poOptions = {
   actor,
