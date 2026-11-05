@@ -58,6 +58,7 @@ export async function saveInventoryItem({ actor, body, firestore, request }) {
     itemId: id, itemName: item.name, nextQuantity: quantity, note: reason,
     previousQuantity: isCreate ? 0 : quantity, quantity: isCreate ? quantity : 0,
     reason, type: isCreate ? 'create' : 'edit', unit: item.unit,
+    metadataSnapshot: { category: item.category, condition: item.condition, location: item.location, minStock: item.minStock, name: item.name, note: item.note, status: item.status, type: item.type, unit: item.unit },
   };
   const committed = await commitIdempotentOperation({
     actor,
@@ -90,6 +91,8 @@ export async function archiveInventoryItem({ actor, body, firestore, request }) 
     itemId, itemName: cleanText(item.name, 160), nextQuantity: Number(item.quantity || 0),
     note: 'Item dinonaktifkan', previousQuantity: Number(item.quantity || 0),
     quantity: 0, reason: 'Item dinonaktifkan', type: 'inactive', unit: cleanText(item.unit, 40),
+    previousMetadata: { status: current.status, condition: current.condition },
+    nextMetadata: { status: 'inactive', condition: current.condition },
   };
   const committed = await commitIdempotentOperation({
     actor,
