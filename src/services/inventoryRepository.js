@@ -52,6 +52,14 @@ export function normalizeInventoryItem(item, fallbackId = '') {
   };
 }
 
+function makeInventoryMovementId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return 'mov_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 7);
+}
+
 export function normalizeInventoryMovement(movement, fallbackId = '') {
   const source = movement && typeof movement === 'object' ? movement : {};
   const id = cleanText(source.id, fallbackId || makeInventoryMovementId());
