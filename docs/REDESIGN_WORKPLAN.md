@@ -71,7 +71,7 @@ Status: COMPLETE — UI scope and required automated/browser quality gates passe
 Acceptance: Admin/Guard/Client auth surfaces, public landing and public booking UI contracts pass; signed-out Admin redirect passes at all tested viewports; responsive smoke and offline/online feedback pass. Live availability and authenticated account integration remain explicit staging QA items.
 
 ## Phase 3A — Client landing conversion UX hardening (pre-Phase 4)
-Status: IMPLEMENTED — source changes and automated regression contract added; CI/browser screenshot verification pending.
+Status: COMPLETE — implementation, automated regression, responsive browser smoke, and screenshot evidence verified by Quality Gates run 42118757052 on commit 335fc3263f68120f16aaa024f6328890dc1c30c1 (SUCCESS).
 - Refined the client landing page with the existing Motion engine and Magic UI NumberTicker: section reveals, hero entrance, card/button feedback, scroll progress, animated estimate, and mobile navigation/CTA interactions.
 - Service story actions now select the matching estimator service and guide the visitor to the planner.
 - Package mode is unavailable when the configured package list is empty; recording estimates use the selected Recording Type duration; invalid custom durations no longer produce a misleading price.
@@ -80,7 +80,7 @@ Status: IMPLEMENTED — source changes and automated regression contract added; 
 - Booking history is cleared when auth state changes to prevent a previous client's information flashing on a new session. Mobile menu locks background scrolling and closes with Escape or backdrop interaction.
 - Shared StudioSelect gets reduced-motion-aware open/option micro-interactions. This is a scoped primitive enhancement, not a global library migration.
 - Added scripts/client-landing-experience-contract-test.mjs to npm test.
-- Confirm responsive browser screenshots after the Quality Gates run before claiming visual QA complete.
+- Browser smoke scrolled all seven Motion-reveal sections into view before screenshot capture and verified visible reveal completion. It also verified the Rehearsal service shortcut and mobile menu/backdrop/scroll lock.
 
 Acceptance: landing selection and pricing states are deterministic, empty package state is safe, booking handoff remains date/startHour only, previous user booking state is cleared on auth changes, reduced-motion is respected, and mobile CTA/menu remain usable.
 
