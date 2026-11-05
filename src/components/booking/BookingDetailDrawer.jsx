@@ -699,7 +699,7 @@ export default function BookingDetailDrawer({
   const canManageRequest =
     typeof onRequestStatusChange ===
     'function';
-  const canManageSessions = typeof onSessionAction === 'function' || Boolean(user?.role === 'owner' || user?.role === 'admin' || user?.role === 'operator');
+  const canManageSessions = typeof onSessionAction === 'function' || Boolean(user && ['owner', 'admin', 'operator'].includes(user.role));
   const sessionActionOptions = sessionStatus === 'upcoming'
     ? [
       { action: 'check_in', label: 'Check-in' },
