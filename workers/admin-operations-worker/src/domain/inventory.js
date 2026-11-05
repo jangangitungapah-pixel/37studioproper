@@ -14,7 +14,7 @@ function finiteQuantity(value, label) {
 async function assertNoActiveMaintenance(firestore, itemId, message) {
   const rows = await firestore.runQuery({
     from: [{ collectionId: 'maintenanceWorkOrders' }],
-    limit: 100,
+    limit: 500,
     where: {
       fieldFilter: {
         field: { fieldPath: 'inventoryItemId' },
