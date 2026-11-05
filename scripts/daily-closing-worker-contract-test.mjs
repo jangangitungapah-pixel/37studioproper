@@ -227,6 +227,23 @@ assert.equal(preview.reconciliation.cashVariance, 10000);
 assert.equal(preview.reconciliation.digital.transfer.variance, 0);
 assert.equal(preview.reconciliation.digital.qris.variance, 0);
 assert.equal(preview.reconciliation.digital.other.variance, 5000);
+
+const negativeNetPreview = await previewDailyClosing({
+  actor,
+  body: {
+    businessDate: date,
+    registerId: 'main',
+    openingCash: 100000,
+    countedCash: 220000,
+    cashDenominations: { 100000: 2, 50000: 0, 20000: 1, 10000: 0, 5000: 0, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 },
+    digitalCounts: { transfer: 200000, qris: 150000, other: -5000 },
+  },
+  firestore,
+  now: new Date('2026-11-05T09:00:00.000Z'),
+});
+assert.equal(negativeNetPreview.reconciliation.digital.other.expected, -5000);
+assert.equal(negativeNetPreview.reconciliation.digital.other.variance, 0);
+
 assert.equal(
   preview.transactionReferences.some((row) => row.id.includes('booking-legacy-jakarta-boundary')),
   true,
