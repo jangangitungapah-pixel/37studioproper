@@ -19,5 +19,5 @@ assert.match(worker, /already_checked_in/);
 assert.match(router, /\/v1\/bookings\/sessions\/action/);
 assert.match(operations, /\/v1\/bookings\/sessions\/action/);
 assert.match(normalizer, /return 'needs_review'/);
-assert.match(rules, /match \/bookings\/{bookingId}[\s\S]*?allow update: if validBooking\(request\.resource\.data\)/);
+assert.match(rules, /match \/bookingSessionEvents\/{eventId}[\s\S]*?allow create, update, delete: if false;/);
 process.stdout.write('✅ Session lifecycle transitions are Worker-only and audited.\\n');
