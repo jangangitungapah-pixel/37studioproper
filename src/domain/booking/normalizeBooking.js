@@ -370,7 +370,7 @@ export function normalizeSessionStatus(
   }
 
   if (scheduleDate < current.dateKey) {
-    return BOOKING_SESSION_STATUS.COMPLETED;
+    return 'needs_review';
   }
 
   const startMinute = getScheduleStartMinute(booking);
@@ -391,7 +391,7 @@ export function normalizeSessionStatus(
     return BOOKING_SESSION_STATUS.IN_PROGRESS;
   }
 
-  return BOOKING_SESSION_STATUS.COMPLETED;
+  return 'needs_review';
 }
 
 /**
