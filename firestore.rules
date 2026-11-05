@@ -1928,6 +1928,33 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
+    // Procurement reads follow Inventory/Bookkeeping permission boundaries.
+    // All supplier, PO, receipt, payment, and event writes are Worker-owned.
+    match /suppliers/{supplierId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /purchaseOrders/{purchaseOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /goodsReceipts/{receiptId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /procurementPayments/{paymentId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create, update, delete: if false;
+    }
+
+    match /procurementEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
     // Customer follow-up reads follow the existing customer permission boundary.
     // Canonical task and immutable event writes are exclusively Worker-owned.
     match /customerFollowUpTasks/{taskId} {
