@@ -200,3 +200,17 @@ export function subscribeCustomerFollowUpTasks(callback, onError = console.error
     callback(tasks);
   }, onError);
 }
+
+export function subscribeCustomerFollowUpEvents(taskId, callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb || !taskId) {
+    onError(new Error('Histori follow-up tidak tersedia.'));
+    return () => {};
+  }
+  const ref = collection(firestoreDb, 'customerFollowUpEvents');
+  const q = query(ref, where('taskId', '==', taskId), orderBy('createdAt', 'desc'), limit(30));
+  return onSnapshot(q, (snapshot) => {
+    const events = [];
+    snapshot.forEach((docSnap) => events.push({ id: docSnap.id, ...docSnap.data() }));
+    callback(events);
+  }, onError);
+}
