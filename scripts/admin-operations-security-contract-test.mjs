@@ -23,6 +23,7 @@ const dailyClosingWorker = read('workers/admin-operations-worker/src/domain/dail
 const adminBookingRepository = read('src/services/adminBookingRepository.js');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
 const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
+const inventoryWorker = read('workers/admin-operations-worker/src/domain/inventory.js');
 
 assert.match(
   rules,
@@ -77,7 +78,6 @@ for (const required of [
   "'paymentHistory', 'refundHistory', 'paymentStatus'",
   "'booking-payment'",
   "'booking-refund'",
-  'request.resource.data.quantity == resource.data.quantity',
   'match /adminOperationKeys/{operationId}',
   'match /adminOperationAudit/{auditId}',
   'match /adminOperationDryRuns/{snapshotId}',
@@ -193,6 +193,26 @@ assert.equal(workerIndex.includes("pathname === '/v1/inventory/items/archive'"),
 assert.equal(inventoryPage.includes('createInventoryMovement('), false, 'No direct movement writes may remain in the inventory page.');
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/items'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
 assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/);
+assert.match(
+  rules,
+  /match \/inventoryMovements\/\{movementId\} \{[\s\S]*?allow create, update, delete: if false;/,
+  'Inventory movements must remain server-write-only.',
+);
+assert.match(
+  inventoryWorker,
+  /if \(!isCreate && body\.quantity !== undefined && Number\(body\.quantity\) !== quantity\) \{\s*throw new HttpError\(400, 'stock_write_forbidden'/,
+  'Inventory metadata updates must not bypass the stock-adjustment workflow.',
+);
+assert.match(
+  inventoryWorker,
+  /if \(nextQuantity < 0\) \{\s*throw new HttpError\(\s*400,\s*'negative_stock'/,
+  'Canonical stock adjustments must reject negative stock.',
+);
+assert.match(
+  inventoryWorker,
+  /firestore\.setWrite\('inventoryItems', itemId, nextItem, \{ updateTime: itemDocument\.updateTime \}\)/,
+  'Canonical stock adjustments must use an update-time precondition.',
+);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes('commitIdempotentOperation'), true);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes("'inventoryMovements'"), true);
 assert.equal(galleryRepository.includes('permanentlyDeleteGalleryItem'), true);
