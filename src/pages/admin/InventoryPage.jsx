@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import InventoryMaintenanceWorkspace from '../../components/inventory/InventoryMaintenanceWorkspace.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
 import { adjustCanonicalInventory, archiveCanonicalInventoryItem, saveCanonicalInventoryItem } from '../../services/adminOperationsRepository.js';
@@ -1019,6 +1020,7 @@ export default function InventoryPage() {
   const [itemsLoadError, setItemsLoadError] = useState('');
   const [isMovementsLoading, setIsMovementsLoading] = useState(true);
   const [movementsLoadError, setMovementsLoadError] = useState('');
+  const [activeTab, setActiveTab] = useState('inventory');
   const [adjustingItemIds, setAdjustingItemIds] = useState(() => new Set());
   const adjustingItemIdsRef = useRef(new Set());
 
@@ -1245,10 +1247,23 @@ export default function InventoryPage() {
 
   return (
     <section
-      aria-labelledby="inventory-title"
+      aria-label="Inventory and equipment maintenance workspace"
       className="inventory-page"
       data-inventory-ui="ui-9-spatial"
     >
+      <div className="inventory-workspace-tabs" role="tablist" aria-label="Inventory workspace">
+        <button aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} role="tab" type="button" onClick={() => setActiveTab('inventory')}>
+          <Boxes size={15} aria-hidden="true" /> Inventory
+        </button>
+        <button aria-selected={activeTab === 'maintenance'} className={activeTab === 'maintenance' ? 'is-active' : ''} role="tab" type="button" onClick={() => setActiveTab('maintenance')}>
+          <Wrench size={15} aria-hidden="true" /> Maintenance
+        </button>
+      </div>
+
+      {activeTab === 'maintenance' ? (
+        <InventoryMaintenanceWorkspace />
+      ) : (
+        <>
       <InventoryEditorialHeader items={items} />
       <InventorySummary items={items} />
 
@@ -1347,6 +1362,8 @@ export default function InventoryPage() {
           </button>
         </aside>
       ) : null}
+        </>
+      )}
     </section>
   );
 }

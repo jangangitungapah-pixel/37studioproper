@@ -55,6 +55,7 @@ export function normalizeBookkeepingEntry(entry, fallbackId = '') {
     sourceEventId: cleanText(source.sourceEventId),
     sourceAction: cleanText(source.sourceAction),
     sourceFeeEntryId: cleanText(source.sourceFeeEntryId),
+    sourceWorkOrderId: cleanText(source.sourceWorkOrderId),
     actorName: cleanText(source.actorName),
     actorUid: cleanText(source.actorUid),
     idempotencyKey: cleanText(source.idempotencyKey),

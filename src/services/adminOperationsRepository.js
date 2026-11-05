@@ -224,6 +224,34 @@ export function adjustCanonicalInventory(input, idempotencyKey = '') {
   });
 }
 
+export function reportCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-report', input?.inventoryItemId),
+  });
+}
+
+export function actOnCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/action', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-' + input?.action, input?.workOrderId),
+  });
+}
+
+export function reopenCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/reopen', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-reopen', input?.workOrderId),
+  });
+}
+
+export function recordCanonicalMaintenanceCost(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/cost', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-cost', input?.workOrderId),
+  });
+}
+
 export function permanentlyDeleteGalleryItem(input, idempotencyKey = '') {
   return requestOperation('/v1/gallery/permanent-delete', {
     body: input,
@@ -270,6 +298,10 @@ export function getDangerZoneJob(jobId) {
 
 export const adminOperationsRepository = {
   adjustInventory: adjustCanonicalInventory,
+  reportMaintenanceWorkOrder: reportCanonicalMaintenanceWorkOrder,
+  actOnMaintenanceWorkOrder: actOnCanonicalMaintenanceWorkOrder,
+  recordMaintenanceCost: recordCanonicalMaintenanceCost,
+  reopenMaintenanceWorkOrder: reopenCanonicalMaintenanceWorkOrder,
   saveInventoryItem: saveCanonicalInventoryItem,
   archiveInventoryItem: archiveCanonicalInventoryItem,
   createManualBooking: createCanonicalManualBooking,

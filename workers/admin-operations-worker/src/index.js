@@ -2,6 +2,7 @@ import { transferOwnership } from './domain/accounts.js';
 import { createManualBooking, decideBookingRequest, updateManualBooking } from './domain/bookings.js';
 import { recordBookingSessionAction } from './domain/bookingSessions.js';
 import { closeDailyClosing, previewDailyClosing, reopenDailyClosing } from './domain/dailyClosings.js';
+import { actOnMaintenanceWorkOrder, recordMaintenanceCost, reportMaintenanceWorkOrder } from './domain/maintenance.js';
 import {
   createDangerDryRun,
   readDangerJob,
@@ -129,6 +130,29 @@ async function handleRequest(request, env) {
     actor = await authorize(env, request, firestore, { permission: 'inventory' });
     body = await readJson(request);
     result = await adjustInventory({ actor, body, firestore, request });
+  } else if (pathname === '/v1/inventory/maintenance/work-orders') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'inventory' });
+    body = await readJson(request);
+    result = await reportMaintenanceWorkOrder({ actor, body, firestore, request });
+  } else if (pathname === '/v1/inventory/maintenance/work-orders/action') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'inventory' });
+    body = await readJson(request);
+    if (body.action === 'reopen') {
+      throw new HttpError(403, 'owner_reopen_route_required', 'Reopen harus menggunakan endpoint khusus Owner dengan verifikasi ulang.');
+    }
+    result = await actOnMaintenanceWorkOrder({ actor, body, firestore, request });
+  } else if (pathname === '/v1/inventory/maintenance/work-orders/reopen') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'inventory', requireFreshAuth: true });
+    body = await readJson(request);
+    result = await actOnMaintenanceWorkOrder({ actor, body: { ...body, action: 'reopen' }, firestore, request });
+  } else if (pathname === '/v1/inventory/maintenance/work-orders/cost') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await recordMaintenanceCost({ actor, body, firestore, request });
   } else if (pathname === '/v1/gallery/permanent-delete') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'gallery' });
