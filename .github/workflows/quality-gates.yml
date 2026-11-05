@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - feature/admin-ops-phase-4-customer-follow-up-2026-11-05
+      - feature/admin-ops-phase-5-procurement-2026-11-05
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - main
       - audit/**
       - feature/admin-ops-phase-5-procurement-2026-11-05
+      - feature/ui-overhaul-premium-enterprise-2026-11-06
   workflow_dispatch:
 
 permissions:
