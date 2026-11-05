@@ -277,6 +277,13 @@ assert.equal(
 );
 
 /**
+ * Past sessions without execution evidence require manual review.
+ */
+assert.equal(normalizeSessionStatus({
+  date: '2026-08-07', startHour: 10, durationHours: 2,
+}, { now: todayMorning }), 'needs_review');
+
+/**
  * Full booking normalization.
  *
  * Legacy source:
