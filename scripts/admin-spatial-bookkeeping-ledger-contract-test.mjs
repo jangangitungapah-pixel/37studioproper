@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 
 const pageSource = readFileSync(resolve('src/pages/admin/BookkeepingPage.jsx'), 'utf8');
 const cssSource = readFileSync(resolve('src/styles/modules/bookkeeping.css'), 'utf8');
+const dailyClosingSource = readFileSync(resolve('src/components/bookkeeping/DailyClosingWorkspace.jsx'), 'utf8');
+const dailyClosingCss = readFileSync(resolve('src/styles/modules/bookkeeping-daily-closing.css'), 'utf8');
 const repositorySource = readFileSync(resolve('src/services/bookkeepingRepository.js'), 'utf8');
 const accountingSource = readFileSync(resolve('src/utils/bookingPaymentUtils.js'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
@@ -31,6 +33,9 @@ for (const required of [
   '<Dialog.Content className="bookkeeping-modal-panel"',
   'downloadBookkeepingXlsx',
   'PaginationControls',
+  'bookkeeping-subworkspace-nav',
+  "activeWorkspace === 'daily-closing'",
+  'DailyClosingWorkspace',
 ]) {
   assert.equal(pageSource.includes(required), true, 'UI-7 page contract missing: ' + required);
 }
@@ -69,6 +74,37 @@ for (const token of [
 
 assert.equal(cssSource.includes('--auth-'), false, 'UI-7 CSS must not depend on legacy auth tokens.');
 assert.equal(/#[0-9a-f]{3,8}\b/i.test(cssSource), false, 'UI-7 CSS must not add raw hex colors.');
+
+for (const required of [
+  'Daily Closing',
+  'DENOMINATIONS',
+  'openingCash',
+  'countedCash',
+  'digitalCounts',
+  'varianceReason',
+  'transactionReferences',
+  'latePostingExceptions',
+  'reauthenticateCurrentAdmin',
+  'Verifikasi & Reopen',
+  'Hitung Preview',
+  'Tutup dan kunci kas',
+]) {
+  assert.equal(dailyClosingSource.includes(required), true, 'Daily Closing UI contract missing: ' + required);
+}
+
+for (const required of [
+  '.daily-closing-workspace',
+  '.daily-closing-denominations',
+  '.daily-closing-method-table',
+  '.daily-closing-late-postings',
+  '.daily-closing-password-dialog',
+  '.bookkeeping-subworkspace-nav',
+  '@media (max-width: 640px)',
+  '@media (prefers-reduced-motion: reduce)',
+  '@media (forced-colors: active)',
+]) {
+  assert.equal(dailyClosingCss.includes(required), true, 'Daily Closing CSS contract missing: ' + required);
+}
 
 for (const required of [
   'buildBookingFinanceTransactions',
