@@ -308,6 +308,7 @@ const latePreview = await previewDailyClosing({
     registerId: 'main',
     openingCash: 100000,
     countedCash: 220000,
+    cashDenominations: { 100000: 2, 50000: 0, 20000: 1, 10000: 0, 5000: 0, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 },
     digitalCounts: { transfer: 200000, qris: 150000, other: 0 },
   },
   firestore,
@@ -326,6 +327,7 @@ const secondClose = await closeDailyClosing({
   body: {
     ...closePayload,
     countedCash: 220000,
+    cashDenominations: { 100000: 2, 50000: 0, 20000: 1, 10000: 0, 5000: 0, 2000: 0, 1000: 0, 500: 0, 200: 0, 100: 0 },
     varianceReason: 'Posting terlambat masuk',
   },
   firestore,
