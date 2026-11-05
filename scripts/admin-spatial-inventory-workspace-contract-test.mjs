@@ -5,6 +5,9 @@ import { resolve } from 'node:path';
 const pageSource = readFileSync(resolve('src/pages/admin/InventoryPage.jsx'), 'utf8');
 const cssSource = readFileSync(resolve('src/styles/modules/inventory.css'), 'utf8');
 const repositorySource = readFileSync(resolve('src/services/inventoryRepository.js'), 'utf8');
+const operationsRepositorySource = readFileSync(resolve('src/services/adminOperationsRepository.js'), 'utf8');
+const inventoryWorkerSource = readFileSync(resolve('workers/admin-operations-worker/src/domain/inventory.js'), 'utf8');
+const inventoryWorkerRouteSource = readFileSync(resolve('workers/admin-operations-worker/src/index.js'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
 for (const required of [
@@ -40,8 +43,6 @@ for (const required of [
   'subscribeInventoryMovements',
   'saveCanonicalInventoryItem({',
   'archiveCanonicalInventoryItem({',
-  "status: 'inactive'",
-  "type: 'inactive'",
   "adjustment.mode === 'in'",
   'adjustCanonicalInventory({',
   'adjustingItemIdsRef',
@@ -56,6 +57,36 @@ for (const required of [
   'resetFilters',
 ]) {
   assert.equal(pageSource.includes(required), true, 'UI-9 preserved behavior missing: ' + required);
+}
+
+assert.equal(
+  pageSource.includes('archiveCanonicalInventoryItem({ itemId: item.id, reason: \'Item dinonaktifkan\' })'),
+  true,
+  'Inventory UI must archive items through the canonical Worker wrapper.',
+);
+assert.equal(
+  operationsRepositorySource.includes("requestOperation('/v1/inventory/items/archive'"),
+  true,
+  'Inventory archive wrapper must target the canonical Worker route.',
+);
+assert.equal(
+  inventoryWorkerRouteSource.includes("pathname === '/v1/inventory/items/archive'") &&
+    inventoryWorkerRouteSource.includes('archiveInventoryItem({ actor, body, firestore, request })'),
+  true,
+  'Inventory archive route must authorize and dispatch through the Worker domain.',
+);
+for (const required of [
+  "status: 'inactive'",
+  "type: 'inactive'",
+  "nextMetadata: { status: 'inactive'",
+  "firestore.setWrite('inventoryItems'",
+  "firestore.setWrite('inventoryMovements'",
+]) {
+  assert.equal(
+    inventoryWorkerSource.includes(required),
+    true,
+    'Canonical Worker archive behavior missing: ' + required,
+  );
 }
 
 assert.equal(pageSource.includes('inventoryRepository.createInventoryMovement('), false, 'Inventory UI must not write movement documents from the browser.');
