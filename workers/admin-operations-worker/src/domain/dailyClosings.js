@@ -62,6 +62,21 @@ function requiredMoney(value, field) {
   return amount;
 }
 
+function optionalSignedMoney(value, field) {
+  if (value === undefined || value === null || value === '') return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || Math.abs(amount) > 1_000_000_000_000) {
+    throw new HttpError(400, 'invalid_amount', field + ' harus berupa nominal bersih yang valid.');
+  }
+  return Math.round(amount);
+}
+
+function requiredSignedMoney(value, field) {
+  const amount = optionalSignedMoney(value, field);
+  if (amount === null) throw new HttpError(400, 'amount_required', field + ' wajib diisi.');
+  return amount;
+}
+
 function normalizeMethod(value) {
   const method = cleanText(value, 30).toLowerCase();
   return METHODS.includes(method) ? method : 'other';
@@ -295,8 +310,8 @@ function normalizeCounts(body, required = false) {
   const digitalCounts = {};
   METHODS.filter((method) => method !== 'cash').forEach((method) => {
     digitalCounts[method] = required
-      ? requiredMoney(digitalSource[method], 'Saldo ' + method.toUpperCase())
-      : optionalMoney(digitalSource[method], 'Saldo ' + method.toUpperCase());
+      ? requiredSignedMoney(digitalSource[method], 'Net ' + method.toUpperCase())
+      : optionalSignedMoney(digitalSource[method], 'Net ' + method.toUpperCase());
   });
   return { cashDenominations, countedCash, digitalCounts, openingCash };
 }
