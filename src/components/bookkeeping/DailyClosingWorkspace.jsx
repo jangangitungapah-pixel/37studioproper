@@ -85,7 +85,7 @@ function StatusLabel({ status }) {
 
 export default function DailyClosingWorkspace() {
   const [businessDate, setBusinessDate] = useState(getJakartaDate);
-  const [registerId] = useState('main');
+  const registerId = 'main';
   const [openingCash, setOpeningCash] = useState('0');
   const [denominations, setDenominations] = useState(buildEmptyDenominations);
   const [digitalCounts, setDigitalCounts] = useState({ transfer: '0', qris: '0', other: '0' });
