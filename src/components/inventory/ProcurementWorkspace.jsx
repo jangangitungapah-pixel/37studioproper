@@ -152,13 +152,6 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
     currentUser?.permissions?.bookkeeping === true;
 
   useEffect(() => {
-    setLoadState({
-      suppliers: 'loading',
-      orders: 'loading',
-      receipts: 'loading',
-      payments: canRecordPayments ? 'loading' : 'idle',
-      error: '',
-    });
     const subscriptions = [
       subscribeSuppliers(
         (rows) => {
@@ -240,10 +233,21 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const supplierLoading = loadState.suppliers === 'loading';
   const orderLoading = loadState.orders === 'loading';
   const receiptLoading = loadState.receipts === 'loading';
-  const paymentLoading = canRecordPayments && loadState.payments === 'loading';
+  const paymentLoading = canRecordPayments && ['idle', 'loading'].includes(loadState.payments);
   const isLoading = supplierLoading || orderLoading || receiptLoading || paymentLoading;
   const receiptOrder = orders.find((order) => order.id === receiptOrderId) || null;
   const paymentOrder = orders.find((order) => order.id === paymentOrderId) || null;
+
+  function retrySubscriptions() {
+    setLoadState({
+      suppliers: 'loading',
+      orders: 'loading',
+      receipts: 'loading',
+      payments: canRecordPayments ? 'loading' : 'idle',
+      error: '',
+    });
+    setRetryKey((value) => value + 1);
+  }
 
   function showFeedback(tone, title, detail) {
     setMessage({ tone, title, detail });
@@ -461,7 +465,7 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
           <p>Kelola supplier, pesanan pembelian, penerimaan barang, dan pembayaran dalam satu alur yang terlacak.</p>
         </div>
         <div className="procurement-header-actions">
-          <button className="procurement-button is-secondary" type="button" onClick={() => setRetryKey((value) => value + 1)}>
+          <button className="procurement-button is-secondary" type="button" onClick={retrySubscriptions}>
             <RefreshCw size={14} aria-hidden="true" /> Refresh
           </button>
           <button className="procurement-button" type="button" onClick={() => { setShowSupplierForm((value) => !value); setShowOrderForm(false); }}>
@@ -492,7 +496,7 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
         <div className="procurement-load-error" role="alert">
           <AlertCircle size={17} />
           <span><strong>Data procurement belum lengkap</strong><small>{loadState.error}</small></span>
-          <button className="procurement-button is-secondary" type="button" onClick={() => setRetryKey((value) => value + 1)}>Coba lagi</button>
+          <button className="procurement-button is-secondary" type="button" onClick={retrySubscriptions}>Coba lagi</button>
         </div>
       ) : null}
 
