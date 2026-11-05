@@ -109,6 +109,7 @@ export default function DailyClosingWorkspace() {
     registerId,
     openingCash: Number(openingCash || 0),
     countedCash,
+    cashDenominations: denominations,
     digitalCounts: {
       transfer: Number(digitalCounts.transfer || 0),
       qris: Number(digitalCounts.qris || 0),
@@ -132,8 +133,16 @@ export default function DailyClosingWorkspace() {
         registerId,
         openingCash: Number(openingCash || 0),
         countedCash,
+        cashDenominations: denominations,
         digitalCounts: payload.digitalCounts,
       });
+      if (result.isClosed) {
+        setOpeningCash(String(result.counts?.openingCash ?? 0));
+        setDigitalCounts({ transfer: String(result.counts?.digitalCounts?.transfer ?? 0), qris: String(result.counts?.digitalCounts?.qris ?? 0), other: String(result.counts?.digitalCounts?.other ?? 0) });
+        if (result.counts?.cashDenominations) {
+          setDenominations(Object.fromEntries(DENOMINATIONS.map(({ value }) => [String(value), String(result.counts.cashDenominations[String(value)] ?? 0)])));
+        }
+      }
       setPreview(result);
     } catch (error) {
       setFeedback({ type: 'error', message: error?.message || 'Preview closing gagal dimuat.' });
