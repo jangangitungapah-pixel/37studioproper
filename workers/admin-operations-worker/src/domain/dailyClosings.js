@@ -328,7 +328,26 @@ async function loadClosingEvents(firestore, sessionId) {
     },
   });
   return rows
-    .map((row) => ({ id: row.id, ...(row.data || {}) }))
+    .map((row) => {
+      const data = row.data || {};
+      return {
+        action: data.action || '',
+        actorName: data.actorName || '',
+        actorUid: data.actorUid || '',
+        createdAt: data.createdAt || '',
+        id: row.id,
+        reason: data.reason || '',
+        revision: data.revision || 0,
+        snapshot: data.snapshot ? {
+          cutoffAt: data.snapshot.cutoffAt || '',
+          reviewNote: data.snapshot.reviewNote || '',
+          sourceFingerprint: data.snapshot.sourceFingerprint || '',
+          transactionCount: data.snapshot.transactionCount || 0,
+        } : null,
+        sourceFingerprint: data.sourceFingerprint || '',
+        summary: data.summary || null,
+      };
+    })
     .sort((first, second) => String(second.createdAt || '').localeCompare(String(first.createdAt || '')));
 }
 
