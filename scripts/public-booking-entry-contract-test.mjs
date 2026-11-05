@@ -303,7 +303,7 @@ const landingSource =
 
 assert.equal(
   landingSource.includes(
-    '<a href="/book" className="client-landing-nav-link">Booking Slot</a>',
+    '<a href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>',
   ),
   true,
 );
