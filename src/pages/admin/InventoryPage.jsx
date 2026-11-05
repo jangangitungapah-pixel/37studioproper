@@ -1353,6 +1353,7 @@ export default function InventoryPage() {
           </div>
         </section>
       ) : (
+      <>
       <InventoryEditorialHeader items={items} />
       <InventorySummary items={items} />
 
@@ -1409,6 +1410,7 @@ export default function InventoryPage() {
         onPageChange={setInventoryPage}
       />
 
+      </>
       )}
       {stockAdjustment ? (
         <StockAdjustmentModal
