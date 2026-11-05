@@ -147,7 +147,7 @@ const adminScopedCss = cssSource.slice(adminCssStart, adminCssEnd);
 
 for (const required of [
   '/* Admin Login inherits Light / Dark / System tokens from the root ThemeProvider. */',
-  'background: var(--auth-bg-page);',
+  'var(--auth-bg-page);',
   '@media (max-width: 900px)',
   '@media (max-width: 520px)',
 ]) {
