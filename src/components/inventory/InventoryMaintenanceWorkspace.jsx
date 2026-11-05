@@ -146,7 +146,7 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
 
   async function submit(event) {
     event.preventDefault();
-    let payload = {};
+    let payload;
     if (action === 'triage') {
       if (cleanText(form.diagnosis).length < 4) return setError('Diagnosis minimal 4 karakter.');
       payload = { diagnosis: form.diagnosis, priority: form.priority };
@@ -268,6 +268,7 @@ export default function InventoryMaintenanceWorkspace() {
     estimatedCost: '',
     attachmentsText: '',
   });
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => adminAuthRepository.subscribeAdminAuth((state) => {
     setAdminSession(state?.user || null);
@@ -302,7 +303,11 @@ export default function InventoryMaintenanceWorkspace() {
     };
   }, []);
 
-  const now = Date.now();
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const queueCounts = useMemo(() => workOrders.reduce((counts, row) => {
     const key = getQueueKey(row, now);
     counts.all += 1;
