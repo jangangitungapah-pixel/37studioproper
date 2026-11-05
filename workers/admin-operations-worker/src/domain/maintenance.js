@@ -90,7 +90,7 @@ export function isActiveMaintenanceStatus(status) {
   return ACTIVE_STATUSES.has(cleanText(status, 40));
 }
 
-export function getMaintenanceTransition(status, action) {
+export function getMaintenanceTransition(action) {
   const transitions = {
     triage: { from: ['reported'], to: 'triaged' },
     approve: { from: ['triaged'], to: 'approved' },
@@ -268,7 +268,7 @@ export async function actOnMaintenanceWorkOrder({ actor, body, firestore, reques
   const workOrderDocument = await loadWorkOrder(firestore, body.workOrderId);
   const current = { id: workOrderDocument.id, ...workOrderDocument.data };
   assertRevision(current, body.expectedRevision);
-  const policy = getMaintenanceTransition(current.status, action);
+  const policy = getMaintenanceTransition(action);
   if (!policy || !policy.from.includes(current.status)) {
     throw new HttpError(409, 'maintenance_transition_invalid', 'Aksi ' + action + ' tidak tersedia untuk status ' + current.status + '.');
   }
