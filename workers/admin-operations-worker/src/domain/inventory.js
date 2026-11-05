@@ -177,5 +177,5 @@ export function saveInventoryItem(input) {
 }
 
 export function archiveInventoryItem(input) {
-  return writeInventoryMetadata({ ...input, archive: true }, true);
+  return writeInventoryMetadata({ ...input, archive: true });
 }
