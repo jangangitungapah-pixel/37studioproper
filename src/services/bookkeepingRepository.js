@@ -59,6 +59,8 @@ export function normalizeBookkeepingEntry(entry, fallbackId = '') {
     actorUid: cleanText(source.actorUid),
     idempotencyKey: cleanText(source.idempotencyKey),
     immutable: source.immutable === true,
+    deletedAt: cleanText(source.deletedAt),
+    deletedReason: cleanText(source.deletedReason),
     reversalOf: cleanText(source.reversalOf),
     createdAt: source.createdAt || now,
     updatedAt: source.updatedAt || now,
@@ -106,6 +108,7 @@ export function subscribeBookkeepingEntries(options, callback, onError) {
       const entries = [];
 
       snapshot.forEach((entryDoc) => {
+        if (entryDoc.data()?.deletedAt) return;
         entries.push(normalizeBookkeepingEntry(
           {
             id: entryDoc.id,
