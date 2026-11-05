@@ -153,7 +153,7 @@
 .daily-closing-preview-button,
 .daily-closing-close-button {
   background: var(--studio-accent);
-  color: var(--studio-on-accent, #171717);
+  color: var(--studio-text-inverse, var(--studio-text-primary));
 }
 
 .daily-closing-reopen-button {
@@ -723,7 +723,7 @@
   display: grid;
   place-items: center;
   padding: 18px;
-  background: color-mix(in srgb, var(--studio-overlay, #000) 55%, transparent);
+  background: rgba(8, 12, 20, 0.58);
   backdrop-filter: blur(10px);
 }
 
@@ -766,4 +766,81 @@
 .daily-closing-password-dialog input:focus-visible {
   outline: 2px solid var(--studio-accent);
   outline-offset: 2px;
+}
+
+
+.daily-closing-event-history {
+  overflow: hidden;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: var(--studio-surface-2);
+}
+
+.daily-closing-event-history summary {
+  cursor: pointer;
+  color: var(--studio-text-secondary);
+  font-size: 0.66rem;
+  font-weight: 740;
+}
+
+.daily-closing-event-timeline {
+  display: grid;
+  gap: 0;
+  margin-top: 10px;
+}
+
+.daily-closing-event-timeline article {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 9px;
+  padding: 9px 0 12px;
+}
+
+.daily-closing-event-timeline article:not(:last-child)::after {
+  position: absolute;
+  top: 19px;
+  bottom: -1px;
+  left: 5px;
+  width: 1px;
+  background: var(--studio-edge-soft);
+  content: '';
+}
+
+.daily-closing-event-marker {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin-top: 2px;
+  border: 2px solid var(--studio-success);
+  border-radius: 50%;
+  background: var(--studio-surface-1);
+}
+
+.daily-closing-event-marker.is-reopened {
+  border-color: var(--studio-warning);
+}
+
+.daily-closing-event-timeline article > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.daily-closing-event-timeline article strong {
+  font-size: 0.64rem;
+}
+
+.daily-closing-event-timeline article small {
+  color: var(--studio-text-tertiary);
+  font-size: 0.55rem;
+}
+
+.daily-closing-event-timeline article p {
+  margin: 0;
+  color: var(--studio-text-secondary);
+  font-size: 0.6rem;
+  line-height: 1.45;
 }
