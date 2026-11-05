@@ -666,7 +666,12 @@ export default function BookingDetailDrawer({
       sessionBooking,
     );
 
-  const sessionBooking = sessionBookingSnapshot?.bookingId === booking?.id
+  const sessionSnapshotTime = Date.parse(sessionBookingSnapshot?.booking?.updatedAt || '');
+  const currentBookingTime = Date.parse(booking?.updatedAt || '');
+  const useSessionSnapshot = sessionBookingSnapshot?.bookingId === booking?.id &&
+    Number.isFinite(sessionSnapshotTime) &&
+    (!Number.isFinite(currentBookingTime) || sessionSnapshotTime >= currentBookingTime);
+  const sessionBooking = useSessionSnapshot
     ? { ...booking, ...sessionBookingSnapshot.booking }
     : booking;
   const sessionTimingStatus = getScheduleTimingStatus(sessionBooking || {});
@@ -700,11 +705,11 @@ export default function BookingDetailDrawer({
     useMemo(
       () =>
         buildBookingActivity(
-          booking,
+          sessionBooking,
           paymentHistory,
         ),
       [
-        booking,
+        sessionBooking,
         paymentHistory,
       ],
     );
