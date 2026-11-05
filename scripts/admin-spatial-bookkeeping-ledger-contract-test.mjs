@@ -81,6 +81,8 @@ for (const required of [
   'openingCash',
   'countedCash',
   'digitalCounts',
+  'nilai net mutasi hari ini',
+  'min="-1000000000000"',
   'varianceReason',
   'transactionReferences',
   'latePostingExceptions',
