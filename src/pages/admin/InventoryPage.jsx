@@ -22,8 +22,8 @@ import {
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
-import { inventoryRepository } from '../../services/inventoryRepository.js';
-import { adjustCanonicalInventory } from '../../services/adminOperationsRepository.js';
+import { inventoryRepository, subscribeMaintenanceWorkOrders } from '../../services/inventoryRepository.js';
+import { adjustCanonicalInventory, createCanonicalMaintenanceWorkOrder, transitionCanonicalMaintenanceWorkOrder } from '../../services/adminOperationsRepository.js';
 
 const categoryOptions = [
   { key: 'all', label: 'Semua Kategori', description: 'Tampilkan semua item' },
@@ -1007,6 +1007,14 @@ function InventoryFormModal({ item, onClose, onSave }) {
 export default function InventoryPage() {
   const [items, setItems] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [maintenanceOrders, setMaintenanceOrders] = useState([]);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+  const [maintenanceError, setMaintenanceError] = useState('');
+  const [activeInventoryWorkspace, setActiveInventoryWorkspace] = useState('inventory');
+  const [maintenanceDraft, setMaintenanceDraft] = useState({ inventoryItemId: '', title: '', description: '', priority: 'normal', dueAt: '' });
+  const [maintenanceActionId, setMaintenanceActionId] = useState('');
+  const [maintenanceCostDrafts, setMaintenanceCostDrafts] = useState({});
+  const [maintenanceEditDrafts, setMaintenanceEditDrafts] = useState({});
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -1062,6 +1070,23 @@ export default function InventoryPage() {
   }, []);
 
   useEffect(() => {
+    const unsubscribe = subscribeMaintenanceWorkOrders(
+      (data) => {
+        setMaintenanceOrders(data);
+        setMaintenanceLoading(false);
+        setMaintenanceError('');
+      },
+      (error) => {
+        console.error('Gagal memuat work order maintenance:', error);
+        setMaintenanceLoading(false);
+        setMaintenanceError('Work order maintenance belum bisa dimuat dari Firestore.');
+      },
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (!toast) return undefined;
     const timerId = window.setTimeout(() => setToast(null), 4200);
     return () => window.clearTimeout(timerId);
@@ -1094,6 +1119,80 @@ export default function InventoryPage() {
   );
 
   const isFiltered = Boolean(searchText.trim()) || categoryFilter !== 'all' || statusFilter !== 'all';
+
+  async function reportMaintenanceIssue(event) {
+    event.preventDefault();
+    if (!maintenanceDraft.inventoryItemId || !maintenanceDraft.title.trim()) return;
+    setMaintenanceActionId('create');
+    try {
+      const result = await createCanonicalMaintenanceWorkOrder(maintenanceDraft);
+      setMaintenanceOrders((current) => [result.workOrder, ...current.filter((order) => order.id !== result.workOrder.id)]);
+      setMaintenanceDraft({ inventoryItemId: '', title: '', description: '', priority: 'normal', dueAt: '' });
+      setToast({ title: 'Laporan maintenance dibuat', message: result.workOrder.inventoryItemName + ' masuk antrean perbaikan.' });
+    } catch (error) {
+      setToast({ title: 'Gagal membuat work order', message: error?.message || 'Laporan maintenance belum tersimpan.' });
+    } finally {
+      setMaintenanceActionId('');
+    }
+  }
+
+  async function updateMaintenanceOrder(order, status) {
+    const cost = maintenanceCostDrafts[order.id];
+    const draft = maintenanceEditDrafts[order.id] || {};
+    const assignedToName = String(draft.assignedToName ?? order.assignedToName ?? '').trim();
+    const cancelReason = String(draft.cancelReason ?? '').trim();
+
+    if (status === 'assigned' && !assignedToName) {
+      setToast({ title: 'PIC belum ditentukan', message: 'Isi nama PIC atau teknisi sebelum menugaskan work order.' });
+      return;
+    }
+    if (status === 'cancelled' && cancelReason.length < 4) {
+      setToast({ title: 'Alasan pembatalan wajib diisi', message: 'Masukkan alasan minimal 4 karakter sebelum membatalkan work order.' });
+      return;
+    }
+    if (status === 'completed' && (cost === undefined || String(cost).trim() === '' || !Number.isFinite(Number(cost)) || Number(cost) < 0)) {
+      setToast({ title: 'Biaya belum valid', message: 'Masukkan nominal biaya perbaikan. Isi 0 jika tidak ada biaya.' });
+      return;
+    }
+
+    const body = {
+      workOrderId: order.id,
+      expectedUpdatedAt: order.updatedAt,
+      status,
+      ...(assignedToName ? { assignedToName } : {}),
+      ...(order.assignedToUid ? { assignedToUid: order.assignedToUid } : {}),
+      ...(Object.hasOwn(draft, 'dueAt') ? { dueAt: draft.dueAt } : {}),
+      ...(Object.hasOwn(draft, 'diagnosis') ? { diagnosis: draft.diagnosis } : {}),
+      ...(Object.hasOwn(draft, 'resolution') ? { resolution: draft.resolution } : {}),
+      ...(Object.hasOwn(draft, 'partsRequired') ? { partsRequired: draft.partsRequired } : {}),
+      ...(status === 'completed' ? { cost: Number(cost), paymentMethod: 'cash' } : {}),
+      ...(status === 'cancelled' ? { reason: cancelReason } : {}),
+      ...(status === 'verified' ? {
+        reason: 'Pemeriksaan akhir selesai',
+        verifiedCondition: draft.verifiedCondition || 'good',
+      } : {}),
+    };
+
+    setMaintenanceActionId(order.id);
+    try {
+      const result = await transitionCanonicalMaintenanceWorkOrder(body);
+      setMaintenanceOrders((current) => current.map((item) => item.id === order.id ? result.workOrder : item));
+      setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: {} }));
+      setMaintenanceCostDrafts((current) => ({ ...current, [order.id]: '' }));
+      setToast({
+        title: 'Work order diperbarui',
+        message: result.expense
+          ? 'Biaya maintenance sudah masuk ke pembukuan.'
+          : status === 'completed'
+            ? 'Pekerjaan selesai tanpa biaya tambahan.'
+            : 'Status work order berhasil diperbarui.',
+      });
+    } catch (error) {
+      setToast({ title: 'Gagal memperbarui work order', message: error?.message || 'Perubahan belum tersimpan.' });
+    } finally {
+      setMaintenanceActionId('');
+    }
+  }
 
   function handleInventorySearchChange(nextSearchText) {
     setSearchText(nextSearchText);
@@ -1266,6 +1365,62 @@ export default function InventoryPage() {
       className="inventory-page"
       data-inventory-ui="ui-9-spatial"
     >
+      <nav className="inventory-workspace-tabs" aria-label="Inventory workspaces">
+        <button type="button" className={activeInventoryWorkspace === 'inventory' ? 'is-active' : ''} onClick={() => setActiveInventoryWorkspace('inventory')}>Inventory</button>
+        <button type="button" className={activeInventoryWorkspace === 'maintenance' ? 'is-active' : ''} onClick={() => setActiveInventoryWorkspace('maintenance')}>Equipment Maintenance <span>{maintenanceOrders.filter((order) => !['verified', 'cancelled'].includes(order.status)).length}</span></button>
+      </nav>
+      {activeInventoryWorkspace === 'maintenance' ? (
+        <section className="inventory-maintenance-workspace" aria-labelledby="maintenance-title">
+          <header className="inventory-maintenance-header">
+            <div><span className="inventory-eyebrow">Asset care</span><h2 id="maintenance-title">Equipment Maintenance</h2><p>Laporan kerusakan, penugasan, perbaikan, dan verifikasi kondisi alat.</p></div>
+          </header>
+          <form className="inventory-maintenance-report" onSubmit={reportMaintenanceIssue}>
+            <label><span>Alat</span><StudioSelect value={maintenanceDraft.inventoryItemId} options={[{ value: '', label: 'Pilih item inventory' }, ...items.filter((item) => !['maintenance', 'inactive', 'lost'].includes(item.status)).map((item) => ({ value: item.id, label: item.name }))]} onValueChange={(value) => setMaintenanceDraft((current) => ({ ...current, inventoryItemId: value }))} /></label>
+            <label><span>Judul laporan</span><input value={maintenanceDraft.title} onChange={(event) => setMaintenanceDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Contoh: Output amplifier kanan mati" /></label>
+            <label><span>Prioritas</span><select value={maintenanceDraft.priority} onChange={(event) => setMaintenanceDraft((current) => ({ ...current, priority: event.target.value }))}><option value="low">Rendah</option><option value="normal">Normal</option><option value="high">Tinggi</option><option value="urgent">Urgent</option></select></label>
+            <label><span>Target selesai</span><input type="date" value={maintenanceDraft.dueAt} onChange={(event) => setMaintenanceDraft((current) => ({ ...current, dueAt: event.target.value }))} /></label>
+            <label className="inventory-maintenance-description"><span>Deskripsi masalah</span><textarea value={maintenanceDraft.description} onChange={(event) => setMaintenanceDraft((current) => ({ ...current, description: event.target.value }))} rows={2} placeholder="Gejala, kondisi terakhir, atau hasil pengecekan awal" /></label>
+            <button type="submit" disabled={maintenanceActionId === 'create' || !maintenanceDraft.inventoryItemId || maintenanceDraft.title.trim().length < 3}>{maintenanceActionId === 'create' ? 'Menyimpan...' : 'Buat Work Order'}</button>
+          </form>
+          {maintenanceError ? <p role="alert" className="inventory-maintenance-error">{maintenanceError}</p> : null}
+          {maintenanceLoading ? <p role="status">Memuat work order...</p> : null}
+          <div className="inventory-maintenance-list">
+            {maintenanceOrders.map((order) => (
+              <article className="inventory-maintenance-card" key={order.id}>
+                <div className="inventory-maintenance-card-head"><div><strong>{order.title}</strong><span>{order.inventoryItemName} · {order.priority}</span></div><span className={'inventory-maintenance-status is-' + order.status}>{order.status.replaceAll('_', ' ')}</span></div>
+                {order.description ? <p>{order.description}</p> : null}
+                <div className="inventory-maintenance-edit-grid">
+                  <label><span>PIC / Teknisi</span><input value={(maintenanceEditDrafts[order.id]?.assignedToName ?? order.assignedToName) || ''} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], assignedToName: event.target.value } }))} placeholder="Nama PIC" /></label>
+                  <label><span>Target selesai</span><input type="date" value={(maintenanceEditDrafts[order.id]?.dueAt ?? order.dueAt) || ''} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], dueAt: event.target.value } }))} /></label>
+                  <label><span>Diagnosis</span><textarea rows={2} value={(maintenanceEditDrafts[order.id]?.diagnosis ?? order.diagnosis) || ''} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], diagnosis: event.target.value } }))} placeholder="Hasil pengecekan teknisi" /></label>
+                  <label><span>Spare part / kebutuhan</span><textarea rows={2} value={(maintenanceEditDrafts[order.id]?.partsRequired ?? order.partsRequired) || ''} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], partsRequired: event.target.value } }))} placeholder="Komponen yang harus diganti" /></label>
+                  <label className="inventory-maintenance-resolution"><span>Resolusi perbaikan</span><textarea rows={2} value={(maintenanceEditDrafts[order.id]?.resolution ?? order.resolution) || ''} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], resolution: event.target.value } }))} placeholder="Tindakan perbaikan yang dilakukan" /></label>
+                  {order.status === 'completed' ? (
+                    <label><span>Kondisi setelah verifikasi</span><select value={maintenanceEditDrafts[order.id]?.verifiedCondition || 'good'} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], verifiedCondition: event.target.value } }))}><option value="good">Baik</option><option value="fair">Cukup, perlu dipantau</option><option value="broken">Masih rusak</option></select></label>
+                  ) : null}
+                  {!['verified', 'cancelled'].includes(order.status) ? (
+                    <label className="inventory-maintenance-resolution"><span>Alasan pembatalan (wajib bila dibatalkan)</span><textarea rows={2} value={maintenanceEditDrafts[order.id]?.cancelReason || ''} onChange={(event) => setMaintenanceEditDrafts((current) => ({ ...current, [order.id]: { ...current[order.id], cancelReason: event.target.value } }))} placeholder="Alasan membatalkan work order" /></label>
+                  ) : null}
+                  {order.status !== 'verified' && order.status !== 'cancelled' ? <button type="button" onClick={() => updateMaintenanceOrder(order, order.status)}>Simpan detail</button> : null}
+                </div>
+                <div className="inventory-maintenance-meta"><span>Pelapor: {order.reportedByName}</span><span>PIC: {order.assignedToName || 'Belum ditugaskan'}</span><span>Target: {order.dueAt || 'Belum ditentukan'}</span></div>
+                {['in_progress', 'waiting_parts'].includes(order.status) ? <label className="inventory-maintenance-cost"><span>Biaya perbaikan (IDR)</span><input type="number" min="0" step="1" inputMode="numeric" value={maintenanceCostDrafts[order.id] ?? ''} onChange={(event) => setMaintenanceCostDrafts((current) => ({ ...current, [order.id]: event.target.value }))} placeholder="0" /></label> : null}
+                <div className="inventory-maintenance-actions">
+                  {order.status === 'reported' ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'triaged')}>Triage</button> : null}
+                  {order.status === 'triaged' ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'assigned')}>Tugaskan PIC</button> : null}
+                  {order.status === 'assigned' ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'in_progress')}>Mulai Pengerjaan</button> : null}
+                  {order.status === 'in_progress' ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'waiting_parts')}>Menunggu Spare Part</button> : null}
+                  {['in_progress', 'waiting_parts'].includes(order.status) ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'completed')}>Selesai &amp; Posting Biaya</button> : null}
+                  {order.status === 'completed' ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'verified')}>Verifikasi Alat</button> : null}
+                  {!['verified', 'cancelled'].includes(order.status) ? <button type="button" disabled={maintenanceActionId === order.id} onClick={() => updateMaintenanceOrder(order, 'cancelled')}>Batalkan Work Order</button> : null}
+                </div>
+              </article>
+            ))}
+            {!maintenanceLoading && !maintenanceOrders.length ? <p>Belum ada work order. Buat laporan pertama untuk alat yang perlu diperiksa.</p> : null}
+          </div>
+        </section>
+      ) : (
+      <>
       <InventoryEditorialHeader items={items} />
       <InventorySummary items={items} />
 
@@ -1322,6 +1477,8 @@ export default function InventoryPage() {
         onPageChange={setInventoryPage}
       />
 
+      </>
+      )}
       {stockAdjustment ? (
         <StockAdjustmentModal
           key={stockAdjustment.item?.id + '-' + stockAdjustment.mode}

@@ -260,3 +260,20 @@ export const inventoryRepository = {
   updateInventoryItem,
   createInventoryMovement,
 };
+
+export function subscribeMaintenanceWorkOrders(callback, onError = console.error) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+  const ref = collection(firestoreDb, 'maintenanceWorkOrders');
+  const q = query(ref, orderBy('updatedAt', 'desc'), limit(100));
+  return onSnapshot(q, (snapshot) => {
+    const rows = [];
+    snapshot.forEach((item) => {
+      if (item.data()?.deletedAt) return;
+      rows.push({ id: item.id, ...item.data() });
+    });
+    callback(rows);
+  }, onError);
+}
