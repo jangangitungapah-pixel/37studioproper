@@ -5,6 +5,9 @@ import { resolve } from 'node:path';
 const pageSource = readFileSync(resolve('src/pages/admin/InventoryPage.jsx'), 'utf8');
 const cssSource = readFileSync(resolve('src/styles/modules/inventory.css'), 'utf8');
 const repositorySource = readFileSync(resolve('src/services/inventoryRepository.js'), 'utf8');
+const operationsRepositorySource = readFileSync(resolve('src/services/adminOperationsRepository.js'), 'utf8');
+const inventoryWorkerSource = readFileSync(resolve('workers/admin-operations-worker/src/domain/inventory.js'), 'utf8');
+const inventoryWorkerRouteSource = readFileSync(resolve('workers/admin-operations-worker/src/index.js'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
 for (const required of [
@@ -40,14 +43,10 @@ for (const required of [
   'subscribeInventoryMovements',
   'saveCanonicalInventoryItem({',
   'archiveCanonicalInventoryItem({',
-  "status: 'inactive'",
-  "type: 'inactive'",
   "adjustment.mode === 'in'",
   'adjustCanonicalInventory({',
   'adjustingItemIdsRef',
   'Alasan adjustment wajib diisi minimal 4 karakter.',
-  'previousQuantity',
-  'nextQuantity',
   'buildInventoryCsv',
   'downloadInventoryCsv',
   'ADMIN_LIST_PAGE_SIZE',
@@ -56,6 +55,56 @@ for (const required of [
   'resetFilters',
 ]) {
   assert.equal(pageSource.includes(required), true, 'UI-9 preserved behavior missing: ' + required);
+}
+
+const inventoryAdjustmentStart = inventoryWorkerSource.indexOf('export async function adjustInventory({');
+const inventoryAdjustmentEnd = inventoryWorkerSource.indexOf('const PURCHASE_ORDER_STATUSES', inventoryAdjustmentStart);
+assert.notEqual(inventoryAdjustmentStart, -1, 'Canonical inventory adjustment Worker domain is missing.');
+assert.notEqual(inventoryAdjustmentEnd, -1, 'Canonical inventory adjustment boundary is missing.');
+const inventoryAdjustmentSource = inventoryWorkerSource.slice(inventoryAdjustmentStart, inventoryAdjustmentEnd);
+for (const required of [
+  'const previousQuantity = finiteQuantity(item.quantity || 0',
+  'const nextQuantity = finiteQuantity(previousQuantity + delta',
+  'previousQuantity,',
+  'nextQuantity,',
+  "firestore.setWrite('inventoryItems', itemId, nextItem",
+  "firestore.setWrite('inventoryMovements', movementId, movement",
+]) {
+  assert.equal(
+    inventoryAdjustmentSource.includes(required),
+    true,
+    'Canonical inventory adjustment behavior missing: ' + required,
+  );
+}
+
+assert.equal(
+  pageSource.includes("archiveCanonicalInventoryItem({ itemId: item.id, reason: 'Item dinonaktifkan' })"),
+  true,
+  'Inventory UI must archive items through the canonical Worker wrapper.',
+);
+assert.equal(
+  operationsRepositorySource.includes("requestOperation('/v1/inventory/items/archive'"),
+  true,
+  'Inventory archive wrapper must target the canonical Worker route.',
+);
+assert.equal(
+  inventoryWorkerRouteSource.includes("pathname === '/v1/inventory/items/archive'") &&
+    inventoryWorkerRouteSource.includes('archiveInventoryItem({ actor, body, firestore, request })'),
+  true,
+  'Inventory archive route must authorize and dispatch through the Worker domain.',
+);
+for (const required of [
+  "status: 'inactive'",
+  "type: 'inactive'",
+  "nextMetadata: { status: 'inactive'",
+  "firestore.setWrite('inventoryItems'",
+  "firestore.setWrite('inventoryMovements'",
+]) {
+  assert.equal(
+    inventoryWorkerSource.includes(required),
+    true,
+    'Canonical Worker archive behavior missing: ' + required,
+  );
 }
 
 assert.equal(pageSource.includes('inventoryRepository.createInventoryMovement('), false, 'Inventory UI must not write movement documents from the browser.');

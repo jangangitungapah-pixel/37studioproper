@@ -256,7 +256,47 @@ export async function updateInventoryItem(item) {
 export const inventoryRepository = {
   subscribeInventoryItems,
   subscribeInventoryMovements,
+  subscribeSuppliers,
+  subscribePurchaseOrders,
+  subscribeGoodsReceipts,
+  subscribeProcurementPayments,
   createInventoryItem,
   updateInventoryItem,
   createInventoryMovement,
 };
+
+function subscribeProcurementCollection(collectionName, sortField, sortDirection, maxResults, callback, onError) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    const error = new Error('Firebase belum dikonfigurasi.');
+    if (onError) onError(error);
+    else console.error(error);
+    return () => {};
+  }
+
+  const source = collection(firestoreDb, collectionName);
+  const q = query(source, orderBy(sortField, sortDirection), limit(maxResults));
+  return onSnapshot(
+    q,
+    (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    (error) => {
+      console.error('Error fetching ' + collectionName + ' from Firestore:', error);
+      if (onError) onError(error);
+    },
+  );
+}
+
+export function subscribeSuppliers(callback, onError = console.error) {
+  return subscribeProcurementCollection('suppliers', 'name', 'asc', 100, callback, onError);
+}
+
+export function subscribePurchaseOrders(callback, onError = console.error) {
+  return subscribeProcurementCollection('purchaseOrders', 'updatedAt', 'desc', 100, callback, onError);
+}
+
+export function subscribeGoodsReceipts(callback, onError = console.error) {
+  return subscribeProcurementCollection('goodsReceipts', 'receivedAt', 'desc', 50, callback, onError);
+}
+
+export function subscribeProcurementPayments(callback, onError = console.error) {
+  return subscribeProcurementCollection('procurementPayments', 'createdAt', 'desc', 50, callback, onError);
+}

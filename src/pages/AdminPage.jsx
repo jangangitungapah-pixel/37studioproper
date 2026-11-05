@@ -196,7 +196,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'bookkeeping') return <BookkeepingPage />;
   if (activeKey === 'operator-fee') return <OperatorFeePage currentUser={currentUser} />;
   if (activeKey === 'guard-attendance') return <GuardAttendancePage currentUser={currentUser} />;
-  if (activeKey === 'inventory') return <InventoryPage />;
+  if (activeKey === 'inventory') return <InventoryPage currentUser={currentUser} />;
   if (activeKey === 'gallery') return <GalleryPage currentUser={currentUser} />;
 
   return <SchedulePage currentUser={currentUser} />;

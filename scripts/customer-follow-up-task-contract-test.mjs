@@ -288,7 +288,11 @@ assert.equal(firestore.collection('customerFollowUpEvents').size, 4);
 await assert.rejects(
   () => updateCustomerFollowUpTask({
     ...updateOptions,
-    body: { ...updateOptions.body, dueAt: '2026-02-30' },
+    body: {
+      ...updateOptions.body,
+      expectedUpdatedAt: updated.task.updatedAt,
+      dueAt: '2026-02-30',
+    },
     request: requestWithKey('follow-up-invalid-update-date'),
   }),
   (error) => error?.code === 'follow_up_due_invalid',
@@ -369,6 +373,7 @@ await assert.rejects(
       taskId: contacted.task.id,
       expectedUpdatedAt: contacted.task.updatedAt,
       status: 'completed',
+      outcome: '',
     },
     firestore,
     now,
@@ -475,9 +480,9 @@ assert.match(customerRepository, /where\('status', 'in', ACTIVE_CUSTOMER_FOLLOW_
 assert.match(customerRepository, /where\('status', '==', 'completed'\)[\s\S]*?limit\(50\)/);
 assert.match(customerRepository, /where\('taskId', '==', taskId\)[\s\S]*?orderBy\('createdAt', 'desc'\)[\s\S]*?limit\(30\)/);
 assert.match(ui, /subscribeCustomerFollowUpEvents\(/);
-assert.match(ui, /getCustomerFollowUpBuckets\(tasks\)/);
+assert.match(ui, /getCustomerFollowUpBuckets\(tasks(?:,\s*queueNow)?\)/);
 assert.match(ui, /getCanonicalCustomerFollowUpAssignees\(\)/);
-assert.match(ui, /onRetry=\{\(\) => setFollowUpTaskRetry/);
+assert.match(ui, /onRetry=\{[\s\S]*?setFollowUpTaskRetry/);
 assert.match(ui, /loadError=\{followUpTasksError\}/);
 assert.match(ui, /Catat hasil komunikasi/);
 assert.match(ui, /Jam follow-up \(WIB\)/);

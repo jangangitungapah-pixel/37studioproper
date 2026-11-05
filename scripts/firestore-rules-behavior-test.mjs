@@ -93,6 +93,26 @@ try {
       unit: 'pcs', updatedAt: now,
     });
     const db = context.firestore();
+    await setDoc(doc(db, 'suppliers', 'supplier-rules-1'), {
+      id: 'supplier-rules-1', name: 'Supplier Rules', status: 'active', createdAt: now, updatedAt: now,
+    });
+    await setDoc(doc(db, 'purchaseOrders', 'po-rules-1'), {
+      id: 'po-rules-1', poNumber: 'PO-RULES-1', supplierId: 'supplier-rules-1',
+      supplierName: 'Supplier Rules', items: [], totalAmount: 100000, paidAmount: 0,
+      status: 'ordered', orderDate: '2026-08-14', expectedAt: '', createdAt: now, updatedAt: now,
+    });
+    await setDoc(doc(db, 'goodsReceipts', 'receipt-rules-1'), {
+      id: 'receipt-rules-1', purchaseOrderId: 'po-rules-1', poNumber: 'PO-RULES-1',
+      supplierId: 'supplier-rules-1', supplierName: 'Supplier Rules', items: [],
+      receivedAt: now, createdAt: now,
+    });
+    await setDoc(doc(db, 'procurementPayments', 'payment-rules-1'), {
+      id: 'payment-rules-1', purchaseOrderId: 'po-rules-1', amount: 10000, paymentMethod: 'transfer', date: '2026-08-14', createdAt: now,
+    });
+    await setDoc(doc(db, 'procurementEvents', 'procurement-event-rules-1'), {
+      id: 'procurement-event-rules-1', entityType: 'purchase_order', entityId: 'po-rules-1',
+      action: 'created', actorUid: 'new-owner', actorName: 'Owner', createdAt: now,
+    });
     await setDoc(doc(db, 'cashClosingSessions', '2026-08-14__main'), {
       businessDate: '2026-08-14', id: '2026-08-14__main', registerId: 'main', status: 'closed',
     });
@@ -350,6 +370,26 @@ try {
   const missingBootstrap = context('bootstrap-missing', 'marsicprod@gmail.com');
   const owner = context('new-owner', 'owner@example.com');
   const inventoryAdmin = context('inventory-admin', 'inventory@example.com');
+  const procurementBookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
+
+  await assertSucceeds(getDoc(doc(inventoryAdmin, 'suppliers', 'supplier-rules-1')));
+  await assertSucceeds(getDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1')));
+  await assertSucceeds(getDoc(doc(inventoryAdmin, 'goodsReceipts', 'receipt-rules-1')));
+  await assertSucceeds(getDoc(doc(inventoryAdmin, 'procurementEvents', 'procurement-event-rules-1')));
+  await assertFails(getDoc(doc(inventoryAdmin, 'procurementPayments', 'payment-rules-1')));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementPayments', 'payment-rules-1')));
+
+  await assertFails(setDoc(doc(inventoryAdmin, 'suppliers', 'supplier-browser-create'), {
+    id: 'supplier-browser-create', name: 'Forged Supplier', status: 'active', createdAt: now, updatedAt: now,
+  }));
+  await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1'), { status: 'received' }));
+  await assertFails(deleteDoc(doc(inventoryAdmin, 'goodsReceipts', 'receipt-rules-1')));
+  await assertFails(setDoc(doc(inventoryAdmin, 'procurementEvents', 'procurement-event-browser-create'), {
+    id: 'procurement-event-browser-create', action: 'forged', createdAt: now,
+  }));
+  await assertFails(setDoc(doc(procurementBookkeeping, 'procurementPayments', 'payment-browser-create'), {
+    id: 'payment-browser-create', amount: 5000, createdAt: now,
+  }));
 
   await assertFails(updateDoc(doc(inventoryAdmin, 'inventoryItems', 'item-1'), {
     note: 'Direct browser mutation',
