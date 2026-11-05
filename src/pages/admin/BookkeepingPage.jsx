@@ -248,6 +248,16 @@ function getTransactionSourceMeta(transaction) {
     };
   }
 
+  if (source === 'maintenance') {
+    return {
+      key: 'maintenance',
+      label: 'Work Order',
+      description: transaction?.workOrderId ? 'WO ' + String(transaction.workOrderId).slice(0, 12) : 'Biaya maintenance equipment',
+      searchText: 'maintenance work order equipment service repair ' + String(transaction?.workOrderId || ''),
+      reconciled: true,
+    };
+  }
+
   if (source === 'guardAttendanceMeal') {
     return {
       key: 'guard-meal',
@@ -289,6 +299,7 @@ function buildExpenseTransactions(entries) {
         entryId: entry.id,
         source: entry.source || 'manual',
         bookingId: entry.sourceBookingId,
+        workOrderId: entry.sourceWorkOrderId,
         sourceEventId: entry.sourceEventId,
         type: entryType,
         title: entry.title,
