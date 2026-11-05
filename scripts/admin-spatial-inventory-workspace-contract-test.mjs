@@ -38,7 +38,7 @@ for (const required of [
 for (const required of [
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'saveCanonicalInventoryItem({
+  'saveCanonicalInventoryItem({',
   'archiveCanonicalInventoryItem({',
   "status: 'inactive'",
   "type: 'inactive'",
