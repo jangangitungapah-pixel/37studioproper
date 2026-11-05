@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -9,14 +9,11 @@ import {
   LoaderCircle,
   LockKeyhole,
   Mail,
-  Phone,
   ShieldCheck,
   Sparkles,
-  KeyRound,
   Settings2,
   UsersRound
 } from 'lucide-react';
-import { RecaptchaVerifier } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { adminAuthRepository } from '../services/adminAuthRepository.js';
 import AccountRoleDecisionDialog from '../components/auth/AccountRoleDecisionDialog.jsx';
@@ -74,16 +71,13 @@ export default function LoginPage() {
 function LoginPageContent() {
   const navigate = useNavigate();
   
-  // Tab and Mode States
-  const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
+  // Authentication mode
   const [authMode, setAuthMode] = useState('signIn'); // 'signIn' | 'signUp'
   
   // Form Inputs
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
   
   // UI States
   const [showPassword, setShowPassword] = useState(false);
@@ -93,14 +87,6 @@ function LoginPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roleDecision, setRoleDecision] = useState(null);
   
-  // Phone OTP Flow States
-  const [isOtpSent, setIsOtpSent] = useState(false);
-  const [verificationResult, setVerificationResult] = useState(null);
-  const [resendTimer, setResendTimer] = useState(0);
-  
-  // Refs
-  const recaptchaContainerRef = useRef(null);
-
   const [searchParams] = useSearchParams();
   const redirectTo = sanitizePortalRedirect(
     searchParams.get('redirectTo'),
@@ -232,39 +218,6 @@ function LoginPageContent() {
   }, [guardIntent]);
 
   // Resend Timer Effect
-  useEffect(() => {
-    let timerId;
-    if (resendTimer > 0) {
-      timerId = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-    }
-    return () => clearTimeout(timerId);
-  }, [resendTimer]);
-
-  // Clean up recaptcha verifier on unmount
-  useEffect(() => {
-    return () => {
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        } catch (err) {
-          console.error('Error clearing RecaptchaVerifier:', err);
-        }
-      }
-    };
-  }, []);
-
-  function formatPhoneNumber(num) {
-    let cleaned = num.replace(/\D/g, ''); // remove non-digits
-    if (cleaned.startsWith('0')) {
-      cleaned = '62' + cleaned.substring(1);
-    }
-    if (!cleaned.startsWith('62') && cleaned.length > 5) {
-      cleaned = '62' + cleaned;
-    }
-    return '+' + cleaned;
-  }
-
   async function handleEmailAuth(event) {
     event.preventDefault();
     setError('');
@@ -315,93 +268,6 @@ function LoginPageContent() {
           ),
         );
       }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleSendOTP(event) {
-    event?.preventDefault();
-    setError('');
-    setSuccess('');
-
-    const formatted = formatPhoneNumber(phoneNumber);
-    if (formatted.length < 10) {
-      setError('Format nomor HP belum valid. Contoh: 08123456789');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Initialize invisible Recaptcha if it doesn't exist
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(
-          firebaseAuth,
-          'recaptcha-container',
-          {
-            size: 'invisible',
-            callback: () => {
-              // Recaptcha resolved
-            },
-            'expired-callback': () => {
-              setError('Verifikasi reCAPTCHA kedaluwarsa. Harap coba lagi.');
-            }
-          }
-        );
-      }
-
-      const result = await adminAuthRepository.sendPhoneOTP(formatted, window.recaptchaVerifier);
-      setVerificationResult(result);
-      setIsOtpSent(true);
-      setResendTimer(60); // 60 seconds cooldown
-      setSuccess('Kode OTP telah dikirim ke nomor HP Anda.');
-    } catch (err) {
-      setError(adminAuthRepository.getAdminAuthErrorMessage(err));
-      // Reset recaptcha verifier on failure so it can re-initialize
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        } catch {
-          // Browser storage / verifier cleanup can fail in restricted contexts.
-        }
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleVerifyOTP(event) {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!verificationCode || verificationCode.length < 6) {
-      setError('Harap masukkan 6 digit kode OTP.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (!verificationResult) {
-        throw new Error('Hasil verifikasi tidak ditemukan. Kirim ulang OTP.');
-      }
-      await verificationResult.confirm(verificationCode);
-
-      if (!guardIntent) {
-        await adminAuthRepository.ensureCurrentAdminAccess();
-      }
-
-      setSuccess(
-        guardIntent
-          ? 'Verifikasi berhasil! Membuka Guard Portal...'
-          : 'Verifikasi berhasil! Mengarahkan...',
-      );
-    } catch (err) {
-      if (err?.access === PORTAL_ACCESS.WRONG_PORTAL_CLIENT) {
-        setRoleDecision({ access: err.access, identity: err.identity });
-      }
-      setError(adminAuthRepository.getAdminAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -619,42 +485,6 @@ function LoginPageContent() {
             </p>
           </header>
 
-          <div
-            className="auth-tabs admin-login-method-tabs"
-            role="tablist"
-            aria-label="Metode login"
-          >
-            <button
-              type="button"
-              className={`auth-tab-btn ${activeTab === 'email' ? 'is-active' : ''}`}
-              onClick={() => {
-                setActiveTab('email');
-                setError('');
-                setSuccess('');
-              }}
-              role="tab"
-              aria-selected={activeTab === 'email'}
-            >
-              <Mail size={14} />
-              <span>Email</span>
-            </button>
-
-            <button
-              type="button"
-              className={`auth-tab-btn ${activeTab === 'phone' ? 'is-active' : ''}`}
-              onClick={() => {
-                setActiveTab('phone');
-                setError('');
-                setSuccess('');
-              }}
-              role="tab"
-              aria-selected={activeTab === 'phone'}
-            >
-              <Phone size={14} />
-              <span>WhatsApp / SMS</span>
-            </button>
-          </div>
-
           {error ? (
             <div className="auth-alert admin-login-alert" role="alert">
               <AlertCircle size={15} className="shrink-0 mt-0.5" />
@@ -672,13 +502,7 @@ function LoginPageContent() {
             </div>
           ) : null}
 
-          <div
-            id="recaptcha-container"
-            ref={recaptchaContainerRef}
-          />
-
-          {activeTab === 'email' && (
-            <form
+          <form
               className="auth-form admin-login-form"
               onSubmit={handleEmailAuth}
               noValidate
@@ -794,134 +618,7 @@ function LoginPageContent() {
                   </button>
                 </div>
               ) : null}
-            </form>
-          )}
-
-          {activeTab === 'phone' && (
-            <div className="auth-form admin-login-form">
-              {!isOtpSent ? (
-                <form
-                  onSubmit={handleSendOTP}
-                  className="auth-form"
-                  noValidate
-                >
-                  <label className="auth-field">
-                    <span>Nomor HP (WhatsApp / SMS)</span>
-                    <div className="auth-input-wrap">
-                      <Phone size={15} aria-hidden="true" />
-                      <input
-                        type="tel"
-                        className="auth-native-input"
-                        placeholder="Contoh: 081234567890"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        disabled={isSubmitting}
-                        autoComplete="tel"
-                        required
-                      />
-                    </div>
-                  </label>
-
-                  <p className="admin-login-field-hint">
-                    Kode verifikasi akan dikirim ke nomor yang terhubung dengan akun.
-                  </p>
-
-                  <button
-                    className="auth-submit admin-login-primary-action"
-                    type="submit"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <LoaderCircle className="auth-spin" size={15} />
-                    ) : (
-                      <ShieldCheck size={15} />
-                    )}
-                    <span>
-                      {isSubmitting ? 'Mengirim...' : 'Kirim Kode OTP'}
-                    </span>
-                  </button>
-                </form>
-              ) : (
-                <form
-                  onSubmit={handleVerifyOTP}
-                  className="auth-form"
-                  noValidate
-                >
-                  <div className="admin-login-otp-heading">
-                    <span className="admin-login-otp-icon">
-                      <KeyRound size={16} aria-hidden="true" />
-                    </span>
-                    <div>
-                      <strong>Verifikasi nomor HP</strong>
-                      <span>Masukkan 6 digit kode yang baru dikirim.</span>
-                    </div>
-                  </div>
-
-                  <label className="auth-field">
-                    <span>Kode Verifikasi (OTP)</span>
-                    <div className="auth-input-wrap">
-                      <KeyRound size={15} aria-hidden="true" />
-                      <input
-                        type="text"
-                        className="auth-native-input"
-                        placeholder="Masukkan 6 digit kode OTP"
-                        maxLength={6}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value)}
-                        disabled={isSubmitting}
-                        required
-                      />
-                    </div>
-                  </label>
-
-                  <div className="auth-resend-container">
-                    <span>Tidak menerima kode?</span>
-                    <button
-                      type="button"
-                      className="auth-resend-btn"
-                      onClick={handleSendOTP}
-                      disabled={resendTimer > 0 || isSubmitting}
-                    >
-                      {resendTimer > 0
-                        ? `Kirim ulang (${resendTimer}s)`
-                        : 'Kirim Ulang'}
-                    </button>
-                  </div>
-
-                  <button
-                    className="auth-submit admin-login-primary-action"
-                    type="submit"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <LoaderCircle className="auth-spin" size={15} />
-                    ) : (
-                      <ShieldCheck size={15} />
-                    )}
-                    <span>
-                      {isSubmitting ? 'Memverifikasi...' : 'Verifikasi OTP'}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="auth-mode-link admin-login-secondary-link"
-                    onClick={() => {
-                      setIsOtpSent(false);
-                      setVerificationCode('');
-                      setError('');
-                      setSuccess('');
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    Ubah nomor handphone
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
+          </form>
 
           <div className="auth-divider admin-login-divider">
             <span>atau lanjutkan dengan</span>

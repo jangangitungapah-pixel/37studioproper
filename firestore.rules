@@ -1132,6 +1132,12 @@ match /users/{userId} {
       allow delete: if isOwner();
     }
 
+    match /bookingSessionEvents/{eventId} {
+      allow read: if isApproved() && hasPermission('schedule');
+      // Session events are append-only server records created atomically by the Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
     function validCalendarSlot(data) {
       return data.keys().hasOnly(['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt']) &&
         validString(data.bookingId, 1, 160) &&
@@ -1503,7 +1509,7 @@ match /users/{userId} {
           'paymentMethod', 'note', 'source',
           'sourceAttendanceId', 'sourceAttendanceDate',
           'sourceGuardPersonId', 'sourceBookingId',
-          'sourceFeeEntryId', 'sourceEventId', 'sourceAction',
+          'sourceFeeEntryId', 'sourceEventId', 'sourceAction', 'sourceWorkOrderId',
           'actorName', 'actorUid', 'idempotencyKey', 'immutable',
           'reversalOf', 'createdAt', 'updatedAt'
         ]) &&
@@ -1521,6 +1527,7 @@ match /users/{userId} {
         validOptionalString(data, 'sourceGuardPersonId', 160) &&
         validOptionalString(data, 'sourceBookingId', 160) &&
         validOptionalString(data, 'sourceFeeEntryId', 240) &&
+        validOptionalString(data, 'sourceWorkOrderId', 160) &&
         validOptionalString(data, 'sourceEventId', 240) &&
         validOptionalString(data, 'sourceAction', 80) &&
         validOptionalString(data, 'actorName', 120) &&
@@ -1620,6 +1627,12 @@ match /users/{userId} {
         );
     }
 
+    function bookkeepingBusinessDateOpen(data) {
+      let closingId = data.date + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return !exists(closingPath) || get(closingPath).data.status != 'closed';
+    }
+
     match /bookkeepingEntries/{entryId} {
       allow read:
         if isApproved() &&
@@ -1635,6 +1648,7 @@ match /users/{userId} {
           request.resource.data,
           entryId
         ) &&
+        bookkeepingBusinessDateOpen(request.resource.data) &&
         request.resource.data.source in ['', 'manual', 'operatorFee', 'guardAttendanceMeal'] &&
         reconciledBookkeepingWriteAllowed(
           request.resource.data
@@ -1650,6 +1664,8 @@ match /users/{userId} {
           request.resource.data,
           entryId
         ) &&
+        bookkeepingBusinessDateOpen(resource.data) &&
+        bookkeepingBusinessDateOpen(request.resource.data) &&
         resource.data.source in ['', 'manual'] &&
         request.resource.data.source in ['', 'manual'] &&
         (
@@ -1673,10 +1689,24 @@ match /users/{userId} {
       allow delete:
         if isApprovedAdmin() &&
         canManageBookkeepingData() &&
+        bookkeepingBusinessDateOpen(resource.data) &&
         !isReconciledBookkeepingSource(
           resource.data
         ) &&
         resource.data.source in ['', 'manual'];
+    }
+
+
+    match /cashClosingSessions/{closingId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      // Closing snapshots are written only by the Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
+    match /cashClosingEvents/{eventId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      // Audit events are append-only server records.
+      allow create, update, delete: if false;
     }
 
     function validInventoryItem(data, itemId) {
@@ -1698,16 +1728,25 @@ match /users/{userId} {
 
     match /inventoryItems/{itemId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create: if isApproved() && canManageInventoryData() && validInventoryItem(request.resource.data, itemId);
-      allow update: if isApproved() && canManageInventoryData() &&
-        validInventoryItem(request.resource.data, itemId) &&
-        request.resource.data.quantity == resource.data.quantity &&
-        request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if isApproved() && canManageInventoryData();
+      // Canonical inventory writes run through Admin Operations Worker so item
+      // metadata, stock movements, idempotency keys, and audit records commit atomically.
+      allow create, update, delete: if false;
     }
 
     match /inventoryMovements/{movementId} {
       allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Work orders and their lifecycle are written only by Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Maintenance history is append-only and server-authoritative.
       allow create, update, delete: if false;
     }
 
@@ -1770,18 +1809,6 @@ match /users/{userId} {
     match /adminOperationJobs/{jobId} {
       allow read: if isOwner();
       allow create, update, delete: if false;
-    }
-
-    function validApprovalMail(data) {
-      return data.keys().hasOnly(['createdBy', 'type', 'createdAt', 'to', 'message']) &&
-        data.createdBy == request.auth.uid &&
-        data.type == 'adminApprovalRequest' &&
-        data.to == 'marsicprod@gmail.com' &&
-        validIsoTimestampString(data.createdAt) &&
-        data.message is map &&
-        data.message.keys().hasOnly(['subject', 'html']) &&
-        validString(data.message.subject, 1, 240) &&
-        validString(data.message.html, 1, 20000);
     }
 
     // >>> STUDIO37 NOTIFICATION EVENT RULES START
@@ -1900,15 +1927,6 @@ match /users/{userId} {
       allow update, delete: if false;
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
-
-    match /mail/{mailId} {
-      allow create: if isSignedIn() &&
-        userDocExists() &&
-        getUserData().role == 'admin' &&
-        getUserData().status == 'pending' &&
-        validApprovalMail(request.resource.data);
-      allow read, update, delete: if false;
-    }
 
     match /{document=**} {
       allow read, write: if false;

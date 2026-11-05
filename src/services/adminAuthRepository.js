@@ -13,7 +13,6 @@ import {
   updatePassword,
   browserLocalPersistence,
   setPersistence,
-  signInWithPhoneNumber,
   sendPasswordResetEmail,
   signOut,
   updateProfile
@@ -258,9 +257,21 @@ async function ensureAdminAccount(user) {
   const access = getPortalAccess(result.identity, 'admin');
 
   if (result.created && result.identity.role === ACCOUNT_ROLES.ADMIN) {
-    sendNewUserNotificationEmail(result.identity).catch((error) =>
-      console.error('Failed to trigger email notification:', error)
-    );
+    void sendNewUserNotificationEmail(result.identity)
+      .then((delivery) => {
+        if (!delivery?.sent) {
+          console.warn(
+            '[admin-auth] The admin request was saved, but its notification email was not sent. Review pending admin requests in the Admin Portal.',
+            { reason: delivery?.reason || 'unknown' },
+          );
+        }
+      })
+      .catch((error) => {
+        console.error(
+          '[admin-auth] The admin request was saved, but notification email delivery failed.',
+          error,
+        );
+      });
   }
 
   return { ...result, access };
@@ -534,20 +545,6 @@ export async function handleRedirectResult() {
     clearGoogleRedirectPending();
     throw error;
   }
-}
-
-export async function sendPhoneOTP(phoneNumber, recaptchaVerifier) {
-  if (!isFirebaseConfigured || !firebaseAuth) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  await ensureAuthPersistence();
-
-  return await signInWithPhoneNumber(
-    firebaseAuth,
-    String(phoneNumber || '').trim(),
-    recaptchaVerifier
-  );
 }
 
 export async function ensureCurrentAdminAccess() {
@@ -837,7 +834,6 @@ export const adminAuthRepository = {
   signUpAdmin,
   signInWithGoogle,
   handleRedirectResult,
-  sendPhoneOTP,
   ensureCurrentAdminAccess,
   reauthenticateCurrentAdmin,
   sendAdminPasswordReset,

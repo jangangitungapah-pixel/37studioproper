@@ -481,11 +481,20 @@ assert.equal(
 );
 
 assert.equal(
-  communicationSource.includes(
-    'bookingRequestStatus: status',
-  ),
+  communicationSource.includes('decideCanonicalBookingRequest'),
   true,
-  'Admin request decision compatibility write disappeared.',
+  'Admin request decisions must use the protected server-side mutation boundary.',
+);
+
+const workerBookingSource = readFileSync(
+  resolve('workers/admin-operations-worker/src/domain/bookings.js'),
+  'utf8',
+);
+
+assert.equal(
+  workerBookingSource.includes('bookingRequestStatus: status'),
+  true,
+  'Server-side booking decision must retain the legacy request-status compatibility field.',
 );
 
 process.stdout.write(

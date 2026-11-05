@@ -1,0 +1,77 @@
+name: Quality Gates
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches:
+      - main
+      - audit/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build, lint, regression, and responsive browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java for Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install Firebase CLI for Firestore emulator tests
+        run: npm install --global firebase-tools
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Lint source
+        run: npm run lint
+
+      - name: Run regression contracts
+        run: npm test
+
+      - name: Run PRD and Firestore security contracts
+        run: npm run test:prd
+
+      - name: Install Playwright for responsive browser smoke
+        run: npm install --no-save --no-package-lock playwright@1.64.1
+
+      - name: Install Chromium for responsive browser smoke
+        run: npx playwright install --with-deps chromium
+
+      - name: Run responsive browser smoke
+        run: node scripts/browser-responsive-smoke.mjs
+
+      - name: Upload responsive browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-responsive-smoke
+          path: output/browser-smoke/
+          if-no-files-found: ignore
+          retention-days: 7

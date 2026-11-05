@@ -24,6 +24,16 @@ export const AI_DEFAULTS = Object.freeze({
   temperature: 0.35,
 });
 
+// Keep Remote Config model overrides within Firebase AI Logic's documented no-billing
+// Gemini Developer API models. New models require an explicit code review and policy update.
+const SPARK_ALLOWED_MODELS = Object.freeze([
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+]);
+
 const REMOTE_CONFIG_KEYS = Object.freeze({
   enabled: 'studio37_ai_enabled',
   maxOutputTokens: 'studio37_ai_max_output_tokens',
@@ -105,7 +115,7 @@ function clampNumber(value, minimum, maximum, fallback) {
 }
 
 function isAllowedModelName(value) {
-  return /^gemini-[a-z0-9][a-z0-9.-]{2,80}$/i.test(String(value || ''));
+  return SPARK_ALLOWED_MODELS.includes(String(value || '').trim().toLowerCase());
 }
 
 async function resolveRuntimeConfig() {

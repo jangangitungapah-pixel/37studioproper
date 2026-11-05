@@ -38,16 +38,14 @@ for (const required of [
 for (const required of [
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'createInventoryItem',
-  'updateInventoryItem',
-  'createInventoryMovement',
+  'saveCanonicalInventoryItem({
+  'archiveCanonicalInventoryItem({',
   "status: 'inactive'",
   "type: 'inactive'",
   "adjustment.mode === 'in'",
   'adjustCanonicalInventory({',
   'adjustingItemIdsRef',
   'Alasan adjustment wajib diisi minimal 4 karakter.',
-  "quantity: editingItem?.quantity ?? nextItem.quantity",
   'previousQuantity',
   'nextQuantity',
   'buildInventoryCsv',
@@ -60,6 +58,9 @@ for (const required of [
   assert.equal(pageSource.includes(required), true, 'UI-9 preserved behavior missing: ' + required);
 }
 
+assert.equal(pageSource.includes('inventoryRepository.createInventoryMovement('), false, 'Inventory UI must not write movement documents from the browser.');
+assert.equal(pageSource.includes('inventoryRepository.createInventoryItem('), false, 'Inventory UI must create items through the canonical Worker.');
+assert.equal(pageSource.includes('inventoryRepository.updateInventoryItem('), false, 'Inventory UI must update metadata through the canonical Worker.');
 for (const forbidden of [
   'deleteInventoryItem(',
   'deleteDoc(',

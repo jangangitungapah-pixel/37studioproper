@@ -24,6 +24,7 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
+import DailyClosingWorkspace from '../../components/bookkeeping/DailyClosingWorkspace.jsx';
 import {
   buildBookingFinanceTransactions,
   getBookingBillingTotal,
@@ -247,6 +248,16 @@ function getTransactionSourceMeta(transaction) {
     };
   }
 
+  if (source === 'maintenance') {
+    return {
+      key: 'maintenance',
+      label: 'Work Order',
+      description: transaction?.workOrderId ? 'WO ' + String(transaction.workOrderId).slice(0, 12) : 'Biaya maintenance equipment',
+      searchText: 'maintenance work order equipment service repair ' + String(transaction?.workOrderId || ''),
+      reconciled: true,
+    };
+  }
+
   if (source === 'guardAttendanceMeal') {
     return {
       key: 'guard-meal',
@@ -288,6 +299,7 @@ function buildExpenseTransactions(entries) {
         entryId: entry.id,
         source: entry.source || 'manual',
         bookingId: entry.sourceBookingId,
+        workOrderId: entry.sourceWorkOrderId,
         sourceEventId: entry.sourceEventId,
         type: entryType,
         title: entry.title,
@@ -1394,6 +1406,7 @@ function ExpenseFormModal({ entry, mode = 'expense', onClose, onSave }) {
    MAIN COMPONENT: BOOKKEEPING PAGE
    ========================================================================== */
 export default function BookkeepingPage() {
+  const [activeWorkspace, setActiveWorkspace] = useState('ledger');
   const [bookings, setBookings] = useState([]);
   const [entries, setEntries] = useState([]);
   const [period, setPeriod] = useState('month');
@@ -1670,43 +1683,70 @@ export default function BookkeepingPage() {
         reconciledCount={visibleSourceCounts.reconciled}
       />
 
-      <BookkeepingSummary
-        bookings={bookings}
-        period={period}
-        transactions={filteredTransactions}
-      />
+      <nav className="bookkeeping-subworkspace-nav" aria-label="Workspace pembukuan">
+        <button
+          type="button"
+          className={activeWorkspace === 'ledger' ? 'is-active' : ''}
+          aria-pressed={activeWorkspace === 'ledger'}
+          onClick={() => setActiveWorkspace('ledger')}
+        >
+          <BookOpenCheck size={14} aria-hidden="true" />
+          <span>Ledger Transaksi</span>
+        </button>
+        <button
+          type="button"
+          className={activeWorkspace === 'daily-closing' ? 'is-active' : ''}
+          aria-pressed={activeWorkspace === 'daily-closing'}
+          onClick={() => setActiveWorkspace('daily-closing')}
+        >
+          <WalletCards size={14} aria-hidden="true" />
+          <span>Daily Closing</span>
+        </button>
+      </nav>
 
-      <BookkeepingToolbar
-        exportDisabled={!filteredTransactions.length && getBookkeepingStats(filteredTransactions, bookings, period).receivable <= 0}
-        filteredCount={filteredTransactions.length}
-        period={period}
-        searchText={transactionSearchText}
-        totalCount={allTransactions.length}
-        typeFilter={transactionTypeFilter}
-        onAddTransaction={openAddTransaction}
-        onExportTransactions={exportBookkeepingXlsx}
-        onPeriodChange={handlePeriodChange}
-        onReset={resetTransactionFilters}
-        onSearchChange={handleTransactionSearchChange}
-        onTypeFilterChange={handleTransactionTypeFilterChange}
-      />
+      {activeWorkspace === 'daily-closing' ? (
+        <DailyClosingWorkspace />
+      ) : (
+        <>
+          <BookkeepingSummary
+            bookings={bookings}
+            period={period}
+            transactions={filteredTransactions}
+          />
 
-      <BookkeepingTransactionLedger
-        isLoading={isLedgerLoading}
-        loadError={ledgerLoadError}
-        totalCount={filteredTransactions.length}
-        transactions={paginatedTransactions}
-        onDeleteExpense={deleteExpense}
-        onEditExpense={openEditExpense}
-      />
+          <BookkeepingToolbar
+            exportDisabled={!filteredTransactions.length && getBookkeepingStats(filteredTransactions, bookings, period).receivable <= 0}
+            filteredCount={filteredTransactions.length}
+            period={period}
+            searchText={transactionSearchText}
+            totalCount={allTransactions.length}
+            typeFilter={transactionTypeFilter}
+            onAddTransaction={openAddTransaction}
+            onExportTransactions={exportBookkeepingXlsx}
+            onPeriodChange={handlePeriodChange}
+            onReset={resetTransactionFilters}
+            onSearchChange={handleTransactionSearchChange}
+            onTypeFilterChange={handleTransactionTypeFilterChange}
+          />
 
-      <PaginationControls
-        label="transaksi"
-        page={transactionPage}
-        pageSize={ADMIN_LIST_PAGE_SIZE}
-        totalItems={filteredTransactions.length}
-        onPageChange={setTransactionPage}
-      />
+          <BookkeepingTransactionLedger
+            isLoading={isLedgerLoading}
+            loadError={ledgerLoadError}
+            totalCount={filteredTransactions.length}
+            transactions={paginatedTransactions}
+            onDeleteExpense={deleteExpense}
+            onEditExpense={openEditExpense}
+          />
+
+          <PaginationControls
+            label="transaksi"
+            page={transactionPage}
+            pageSize={ADMIN_LIST_PAGE_SIZE}
+            totalItems={filteredTransactions.length}
+            onPageChange={setTransactionPage}
+          />
+        </>
+      )}
 
       {isExpenseFormOpen ? (
         <ExpenseFormModal

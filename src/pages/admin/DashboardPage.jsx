@@ -63,10 +63,12 @@ import {
 
 import {
   getBookingRequestStatus,
+  getBookingSessionStatus,
   getLegacyBookingPaymentStatus,
   isBookingCancelled,
   isBookingRequestActionable,
 } from '../../domain/booking/bookingSelectors.js';
+import { getScheduleTimingStatus } from '../../domain/booking/normalizeBooking.js';
 
 import {
   buildBookingFinanceTransactions,
@@ -1517,6 +1519,10 @@ function DashboardTodayTimeline({
       bookings.length -
         visibleBookings.length,
     );
+  const inProgressCount = bookings.filter((booking) => getBookingSessionStatus(booking) === 'in_progress').length;
+  const needsReviewCount = bookings.filter((booking) =>
+    getBookingSessionStatus(booking) === 'upcoming' && getScheduleTimingStatus(booking) === 'past_due'
+  ).length;
 
   return (
     <section
@@ -1535,8 +1541,7 @@ function DashboardTodayTimeline({
 
           <p>
             {bookings.length
-              ? bookings.length +
-                ' sesi aktif hari ini'
+              ? `${bookings.length} sesi hari ini · ${inProgressCount} berlangsung · ${needsReviewCount} perlu review`
               : 'Tidak ada sesi aktif hari ini'}
           </p>
         </div>
@@ -1564,10 +1569,16 @@ function DashboardTodayTimeline({
               booking,
               index,
             ) => {
-              const paymentStatus =
-                getBookingStatus(
-                  booking,
-                );
+              const paymentStatus = getBookingStatus(booking);
+              const sessionStatus = getBookingSessionStatus(booking);
+              const needsReview = sessionStatus === 'upcoming' && getScheduleTimingStatus(booking) === 'past_due';
+              const sessionLabel = needsReview ? 'Perlu Review' : ({
+                upcoming: 'Akan Datang',
+                in_progress: 'Berlangsung',
+                completed: 'Selesai',
+                no_show: 'Tidak Hadir',
+                cancelled: 'Dibatalkan',
+              }[sessionStatus] || sessionStatus);
 
               return (
                 <article
@@ -1615,13 +1626,12 @@ function DashboardTodayTimeline({
                     </small>
                   </span>
 
-                  <StatusPill
-                    status={
-                      paymentStatus
-                    }
-                  >
-                    {paymentStatus}
-                  </StatusPill>
+                  <span className="dashboard-timeline-statuses">
+                    <StatusPill status={paymentStatus}>{paymentStatus}</StatusPill>
+                    <span className={'dashboard-session-pill' + (needsReview ? ' is-review' : ' is-' + sessionStatus)}>
+                      {sessionLabel}
+                    </span>
+                  </span>
                 </article>
               );
             },

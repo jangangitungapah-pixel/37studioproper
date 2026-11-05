@@ -124,28 +124,24 @@ function normalizeSessionAlias(value) {
 }
 
 function getCurrentDateParts(now) {
-  const date = now instanceof Date
-    ? now
-    : new Date(now || Date.now());
-
-  const safeDate = Number.isNaN(date.getTime())
-    ? new Date()
-    : date;
-
+  const date = now instanceof Date ? now : new Date(now || Date.now());
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+    month: '2-digit',
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+  }).formatToParts(safeDate);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return {
-    dateKey:
-      String(safeDate.getFullYear()) +
-      '-' +
-      String(safeDate.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(safeDate.getDate()).padStart(2, '0'),
-
-    minuteOfDay:
-      safeDate.getHours() * 60 +
-      safeDate.getMinutes(),
+    dateKey: `${values.year}-${values.month}-${values.day}`,
+    minuteOfDay: Number(values.hour) * 60 + Number(values.minute),
+    timestamp: safeDate.getTime(),
   };
 }
-
 function getScheduleDateKey(booking) {
   const value = String(booking?.date || '').trim();
 
@@ -311,89 +307,56 @@ export function normalizePaymentStatus(booking = {}) {
   return BOOKING_PAYMENT_STATUS.UNPAID;
 }
 
+export const BOOKING_NO_SHOW_GRACE_MINUTES = 15;
+
 /**
- * Session normalization.
- *
- * Explicit session status wins.
- * Rejected/cancelled requests cannot represent an active scheduled session.
- * Otherwise status is derived from booking date/time relative to "now".
- *
- * options.now exists so tests/selectors can be deterministic.
+ * Schedule timing is a read-only clock signal. It never changes the recorded
+ * session lifecycle. A past slot without an execution event is flagged for
+ * review instead of being treated as completed.
  */
-export function normalizeSessionStatus(
-  booking = {},
-  options = {},
-) {
-  const canonicalStatus = cleanStatus(
-    booking?.sessionStatus,
-  );
+export function getScheduleTimingStatus(booking = {}, options = {}) {
+  const scheduleDate = getScheduleDateKey(booking);
+  if (!scheduleDate) return 'schedule_unknown';
+  const current = getCurrentDateParts(options.now);
+  if (scheduleDate > current.dateKey) return 'before_start';
+  if (scheduleDate < current.dateKey) return 'past_due';
+  const startMinute = getScheduleStartMinute(booking);
+  if (startMinute === null) return 'schedule_unknown';
+  if (current.minuteOfDay < startMinute) return 'before_start';
+  if (current.minuteOfDay < startMinute + getDurationMinutes(booking)) return 'scheduled_window';
+  return 'past_due';
+}
 
-  if (isBookingSessionStatus(canonicalStatus)) {
-    return canonicalStatus;
-  }
+export function isBookingNoShowEligible(booking = {}, options = {}) {
+  const scheduleDate = getScheduleDateKey(booking);
+  const startMinute = getScheduleStartMinute(booking);
+  if (!scheduleDate || startMinute === null) return false;
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  if (Number.isNaN(now.getTime())) return false;
+  const scheduledStart = new Date(`${scheduleDate}T00:00:00+07:00`).getTime() + startMinute * 60_000;
+  return now.getTime() >= scheduledStart + BOOKING_NO_SHOW_GRACE_MINUTES * 60_000;
+}
 
-  const explicitAlias =
-    normalizeSessionAlias(booking?.sessionStatus) ||
-    normalizeSessionAlias(booking?.sessionState);
+/**
+ * Session status is event-backed. Calendar time alone is not evidence that
+ * staff actually started or completed the session.
+ */
+export function normalizeSessionStatus(booking = {}) {
+  const canonicalStatus = cleanStatus(booking?.sessionStatus);
+  if (isBookingSessionStatus(canonicalStatus)) return canonicalStatus;
 
-  if (explicitAlias) {
-    return explicitAlias;
-  }
-
-  const legacyGeneralStatus = normalizeSessionAlias(
-    booking?.status,
-  );
-
-  if (legacyGeneralStatus) {
-    return legacyGeneralStatus;
-  }
+  const explicitAlias = normalizeSessionAlias(booking?.sessionStatus)
+    || normalizeSessionAlias(booking?.sessionState)
+    || normalizeSessionAlias(booking?.status);
+  if (explicitAlias) return explicitAlias;
 
   const requestStatus = normalizeRequestStatus(booking);
-
-  if (
-    requestStatus === BOOKING_REQUEST_STATUS.REJECTED ||
-    requestStatus === BOOKING_REQUEST_STATUS.CANCELLED
-  ) {
+  if ([BOOKING_REQUEST_STATUS.REJECTED, BOOKING_REQUEST_STATUS.CANCELLED].includes(requestStatus)) {
     return BOOKING_SESSION_STATUS.CANCELLED;
   }
 
-  const scheduleDate = getScheduleDateKey(booking);
-
-  if (!scheduleDate) {
-    return BOOKING_SESSION_STATUS.UPCOMING;
-  }
-
-  const current = getCurrentDateParts(options.now);
-
-  if (scheduleDate > current.dateKey) {
-    return BOOKING_SESSION_STATUS.UPCOMING;
-  }
-
-  if (scheduleDate < current.dateKey) {
-    return BOOKING_SESSION_STATUS.COMPLETED;
-  }
-
-  const startMinute = getScheduleStartMinute(booking);
-
-  if (startMinute === null) {
-    return BOOKING_SESSION_STATUS.UPCOMING;
-  }
-
-  const endMinute =
-    startMinute +
-    getDurationMinutes(booking);
-
-  if (current.minuteOfDay < startMinute) {
-    return BOOKING_SESSION_STATUS.UPCOMING;
-  }
-
-  if (current.minuteOfDay < endMinute) {
-    return BOOKING_SESSION_STATUS.IN_PROGRESS;
-  }
-
-  return BOOKING_SESSION_STATUS.COMPLETED;
+  return BOOKING_SESSION_STATUS.UPCOMING;
 }
-
 /**
  * Main read-model adapter.
  *
@@ -420,14 +383,12 @@ export function normalizeBooking(
   const paymentStatus =
     normalizePaymentStatus(booking);
 
-  const sessionStatus =
-    normalizeSessionStatus(
-      {
-        ...booking,
-        requestStatus,
-      },
-      options,
-    );
+  const sessionStatus = normalizeSessionStatus({
+    ...booking,
+    requestStatus,
+  });
+  const scheduleTimingStatus = getScheduleTimingStatus(booking, options);
+  const noShowEligible = isBookingNoShowEligible(booking, options);
 
   return {
     ...booking,
@@ -437,6 +398,8 @@ export function normalizeBooking(
     requestStatus,
     paymentStatus,
     sessionStatus,
+    scheduleTimingStatus,
+    noShowEligible,
 
     statusSource: {
       requestStatus:

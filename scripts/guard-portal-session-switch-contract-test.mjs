@@ -305,7 +305,7 @@ for (
     "searchParams.get('portal') === 'guard'",
     "startsWith('/guard')",
     'guardRedirectTarget',
-    'adminAuthRepository.sendPhoneOTP',
+    'adminAuthRepository.signInAdmin',
     '!guardIntent',
     'Masuk Guard Portal',
   ]
@@ -366,6 +366,8 @@ assert.equal(
   true,
   'GP-4 session-switch contract must be registered in npm test.'
 );
+
+assert.doesNotMatch(loginSource, /sendPhoneOTP|signInWithPhoneNumber|RecaptchaVerifier/, 'Shared login must not expose Firebase phone OTP on Spark.');
 
 console.log(
   'guard-portal-session-switch-contract-test: PASS'

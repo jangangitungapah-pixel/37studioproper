@@ -21,9 +21,10 @@ import {
 } from 'lucide-react';
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 import PaginationControls from '../../components/ui/PaginationControls.jsx';
+import InventoryMaintenanceWorkspace from '../../components/inventory/InventoryMaintenanceWorkspace.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
-import { adjustCanonicalInventory } from '../../services/adminOperationsRepository.js';
+import { adjustCanonicalInventory, archiveCanonicalInventoryItem, saveCanonicalInventoryItem } from '../../services/adminOperationsRepository.js';
 
 const categoryOptions = [
   { key: 'all', label: 'Semua Kategori', description: 'Tampilkan semua item' },
@@ -1019,6 +1020,7 @@ export default function InventoryPage() {
   const [itemsLoadError, setItemsLoadError] = useState('');
   const [isMovementsLoading, setIsMovementsLoading] = useState(true);
   const [movementsLoadError, setMovementsLoadError] = useState('');
+  const [activeTab, setActiveTab] = useState('inventory');
   const [adjustingItemIds, setAdjustingItemIds] = useState(() => new Set());
   const adjustingItemIdsRef = useRef(new Set());
 
@@ -1156,23 +1158,23 @@ export default function InventoryPage() {
   async function saveItem(nextItem) {
     try {
       const isEditing = Boolean(nextItem.id);
-      const savedItem = isEditing
-        ? await inventoryRepository.updateInventoryItem({
-            ...nextItem,
-            quantity: editingItem?.quantity ?? nextItem.quantity,
-          })
-        : await inventoryRepository.createInventoryItem(nextItem);
-
-      await inventoryRepository.createInventoryMovement({
-        itemId: savedItem.id,
-        itemName: savedItem.name,
-        type: isEditing ? 'edit' : 'create',
-        quantity: savedItem.quantity,
-        previousQuantity: savedItem.quantity,
-        nextQuantity: savedItem.quantity,
-        unit: savedItem.unit,
-        note: isEditing ? 'Update data inventory' : 'Item baru ditambahkan',
+      const result = await saveCanonicalInventoryItem({
+        action: isEditing ? 'update' : 'create',
+        ...(isEditing ? { itemId: nextItem.id } : {}),
+        category: nextItem.category,
+        condition: nextItem.condition,
+        location: nextItem.location,
+        minStock: nextItem.minStock,
+        name: nextItem.name,
+        note: nextItem.note,
+        ...(isEditing ? {} : { quantity: nextItem.quantity }),
+        reason: isEditing ? 'Update data inventory' : 'Item baru ditambahkan',
+        status: nextItem.status,
+        type: nextItem.type,
+        unit: nextItem.unit,
       });
+      const savedItem = result?.item;
+      if (!savedItem?.id) throw new Error('Worker tidak mengembalikan inventory item yang tersimpan.');
 
       setIsFormOpen(false);
       setEditingItem(null);
@@ -1184,7 +1186,7 @@ export default function InventoryPage() {
       console.error('Gagal menyimpan inventory:', error);
       setToast({
         title: 'Gagal menyimpan',
-        message: 'Inventory belum berhasil disimpan ke Firestore.',
+        message: error?.message || 'Inventory belum berhasil disimpan.',
       });
     }
   }
@@ -1229,24 +1231,7 @@ export default function InventoryPage() {
 
   async function archiveItem(item) {
     try {
-      const savedItem = await inventoryRepository.updateInventoryItem({
-        ...item,
-        status: 'inactive',
-        lastMovementAt: new Date().toISOString(),
-        lastMovementType: 'inactive',
-      });
-
-      await inventoryRepository.createInventoryMovement({
-        itemId: savedItem.id,
-        itemName: savedItem.name,
-        type: 'inactive',
-        quantity: savedItem.quantity,
-        previousQuantity: savedItem.quantity,
-        nextQuantity: savedItem.quantity,
-        unit: savedItem.unit,
-        note: 'Item dinonaktifkan',
-      });
-
+      await archiveCanonicalInventoryItem({ itemId: item.id, reason: 'Item dinonaktifkan' });
       setToast({
         title: 'Item dinonaktifkan',
         message: item.name + ' tidak lagi dihitung sebagai item aktif.',
@@ -1255,17 +1240,30 @@ export default function InventoryPage() {
       console.error('Gagal menonaktifkan inventory:', error);
       setToast({
         title: 'Gagal menonaktifkan',
-        message: 'Status item belum berhasil diperbarui.',
+        message: error?.message || 'Status item belum berhasil diperbarui.',
       });
     }
   }
 
   return (
     <section
-      aria-labelledby="inventory-title"
+      aria-label="Inventory and equipment maintenance workspace"
       className="inventory-page"
       data-inventory-ui="ui-9-spatial"
     >
+      <div className="inventory-workspace-tabs" role="tablist" aria-label="Inventory workspace">
+        <button aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} role="tab" type="button" onClick={() => setActiveTab('inventory')}>
+          <Boxes size={15} aria-hidden="true" /> Inventory
+        </button>
+        <button aria-selected={activeTab === 'maintenance'} className={activeTab === 'maintenance' ? 'is-active' : ''} role="tab" type="button" onClick={() => setActiveTab('maintenance')}>
+          <Wrench size={15} aria-hidden="true" /> Maintenance
+        </button>
+      </div>
+
+      {activeTab === 'maintenance' ? (
+        <InventoryMaintenanceWorkspace />
+      ) : (
+        <>
       <InventoryEditorialHeader items={items} />
       <InventorySummary items={items} />
 
@@ -1364,6 +1362,8 @@ export default function InventoryPage() {
           </button>
         </aside>
       ) : null}
+        </>
+      )}
     </section>
   );
 }

@@ -751,6 +751,8 @@ export function buildGuardAttendanceCheckOutPatch(
 async function hasApprovedGuardMealForDay(
   record,
 ) {
+  if (!record?.guardUid || !record?.date) return false;
+
   const snapshot =
     await getDocs(
       query(
@@ -762,6 +764,11 @@ async function hasApprovedGuardMealForDay(
           'guardUid',
           '==',
           record.guardUid,
+        ),
+        where(
+          'date',
+          '==',
+          record.date,
         ),
       ),
     );

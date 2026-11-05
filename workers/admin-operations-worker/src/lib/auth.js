@@ -93,6 +93,20 @@ function permissionEnabled(user, permission) {
   return user.permissions?.[permission] === true;
 }
 
+export function assertOwnerControlMatches(user, uid, ownershipControlDocument) {
+  if (
+    user?.role === 'owner' &&
+    ownershipControlDocument &&
+    String(ownershipControlDocument.data?.currentOwnerUid || '').trim() !== String(uid || '').trim()
+  ) {
+    throw new HttpError(
+      403,
+      'owner_identity_mismatch',
+      'Akun ini tidak lagi terdaftar sebagai Owner aktif.',
+    );
+  }
+}
+
 export async function authorize(env, request, firestore, options = {}) {
   const identity = await verifyFirebaseToken(env, request);
   const userDocument = await firestore.getDocument('users', identity.uid);
@@ -101,6 +115,11 @@ export async function authorize(env, request, firestore, options = {}) {
   if (!user || !['owner', 'admin'].includes(user.role) || user.status !== 'approved') {
     throw new HttpError(403, 'admin_access_required', 'Akun tidak memiliki akses Admin aktif.');
   }
+
+  const ownershipControlDocument = user.role === 'owner'
+    ? await firestore.getDocument('adminControl', 'ownership')
+    : null;
+  assertOwnerControlMatches(user, identity.uid, ownershipControlDocument);
 
   if (options.ownerOnly && user.role !== 'owner') {
     throw new HttpError(403, 'owner_required', 'Operasi ini hanya tersedia untuk Owner.');

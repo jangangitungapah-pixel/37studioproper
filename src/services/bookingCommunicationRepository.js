@@ -4,15 +4,14 @@ import {
   getDocs,
   onSnapshot,
   query,
-  runTransaction,
   where,
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { decideCanonicalBookingRequest } from './adminOperationsRepository.js';
 import { getBookingRequestStatus } from '../domain/booking/bookingSelectors.js';
 import {
   buildBookingDecisionKey,
-  buildBookingDecisionPatch,
   validateBookingDecision,
 } from '../domain/booking/bookingDecision.js';
 import {
@@ -337,8 +336,7 @@ export async function updateBookingRequestStatus({
   }
 
   const cleanNote = cleanText(
-    note ||
-    `Status booking diperbarui: ${statusMeta.label}.`,
+    note || `Status booking diperbarui: ${statusMeta.label}.`,
   );
   const decisionBookings = await resolveDecisionBookings({
     booking,
@@ -347,98 +345,33 @@ export async function updateBookingRequestStatus({
   });
   const initialIssue = validateBookingDecision({
     booking,
+    // This is a fast UX check only. The Worker repeats conflict validation
+    // against server state under the shared date coordination precondition.
     currentBookings: decisionBookings,
-    reason: note,
+    reason: cleanText(note),
     status,
   });
 
-  if (!initialIssue.ok) {
-    throwBookingDecisionIssue(initialIssue);
+  if (!initialIssue.ok) throwBookingDecisionIssue(initialIssue);
+
+  const decisionKey = buildBookingDecisionKey({ booking, status });
+  const decisionNote = status === 'confirmed' ? cleanNote : cleanText(note);
+  const result = await decideCanonicalBookingRequest({
+    bookingId: booking.id,
+    decisionKey,
+    note: decisionNote,
+    status,
+  }, decisionKey);
+  const message = result.message;
+  const alreadyApplied = Boolean(result.alreadyApplied || result.duplicate);
+
+  if (!message?.id) {
+    throw new Error('Keputusan tersimpan tetapi pesan konfirmasi belum tersedia. Muat ulang data sebelum mencoba lagi.');
   }
-
-  const decisionKey = buildBookingDecisionKey({
-    booking,
-    status,
-  });
-  const createdAt = new Date().toISOString();
-  const messageId = `request-${decisionKey}`;
-  const messageRef = doc(
-    firestoreDb,
-    MESSAGE_COLLECTION,
-    messageId,
-  );
-  const message = makeMessagePayload({
-    booking,
-    createdAt,
-    messageId,
-    role: 'admin',
-    text: cleanNote,
-    type: 'status',
-    user,
-  });
-  const bookingRef = doc(
-    firestoreDb,
-    'bookings',
-    booking.id,
-  );
-  let alreadyApplied = false;
-
-  await runTransaction(
-    firestoreDb,
-    async (transaction) => {
-      const liveSnapshot =
-        await transaction.get(bookingRef);
-
-      if (!liveSnapshot.exists()) {
-        throwBookingDecisionIssue({
-          code: 'booking-not-found',
-          message: 'Booking sudah tidak tersedia.',
-        });
-      }
-
-      const liveBooking = {
-        id: liveSnapshot.id,
-        ...liveSnapshot.data(),
-      };
-
-      if (
-        liveBooking.lastRequestDecisionKey ===
-        decisionKey
-      ) {
-        alreadyApplied = true;
-        return;
-      }
-
-      const liveIssue = validateBookingDecision({
-        booking: liveBooking,
-        currentBookings: decisionBookings,
-        reason: note,
-        status,
-      });
-
-      if (!liveIssue.ok) {
-        throwBookingDecisionIssue(liveIssue);
-      }
-
-      transaction.set(messageRef, message);
-      transaction.update(bookingRef, {
-        ...makeBookingMessageSummary(message),
-        ...buildBookingDecisionPatch({
-          actor: user,
-          decisionKey,
-          note: cleanNote,
-          status,
-          timestamp: createdAt,
-        }),
-        // Compatibility alias retained while legacy readers still migrate.
-        bookingRequestStatus: status,
-      });
-    },
-  );
 
   if (!alreadyApplied) {
     await safeCreateBookingStatusNotificationEvent({
-      booking,
+      booking: result.booking || booking,
       decisionKey,
       message,
       status,
@@ -453,7 +386,6 @@ export async function updateBookingRequestStatus({
     status,
   };
 }
-
 export const bookingCommunicationRepository = {
   markBookingMessagesRead,
   requestBookingCancellation,

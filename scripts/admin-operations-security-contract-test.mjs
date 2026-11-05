@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assertOwnerControlMatches } from '../workers/admin-operations-worker/src/lib/auth.js';
+
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const read = (path) => readFileSync(resolve(repositoryRoot, path), 'utf8');
 const rules = read('firestore.rules');
@@ -16,7 +18,11 @@ const dangerWorker = read('workers/admin-operations-worker/src/domain/danger.js'
 const bookingWorker = read('workers/admin-operations-worker/src/domain/bookings.js');
 const galleryWorker = read('workers/admin-operations-worker/src/domain/gallery.js');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
+const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
+const dailyClosingWorker = read('workers/admin-operations-worker/src/domain/dailyClosings.js');
+const adminBookingRepository = read('src/services/adminBookingRepository.js');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
+const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
 
 assert.match(
   rules,
@@ -25,6 +31,33 @@ assert.match(
 );
 assert.equal(rules.includes('match /adminControl/ownership'), true);
 assert.equal(rules.includes('ownershipControlMatches()'), true);
+assert.doesNotThrow(() => assertOwnerControlMatches(
+  { role: 'owner', status: 'approved' },
+  'uid-current',
+  { data: { currentOwnerUid: 'uid-current' } },
+));
+assert.doesNotThrow(() => assertOwnerControlMatches(
+  { role: 'owner', status: 'approved' },
+  'uid-legacy',
+  null,
+), 'A legacy owner remains compatible until ownership control is initialized.');
+assert.throws(
+  () => assertOwnerControlMatches(
+    { role: 'owner', status: 'approved' },
+    'uid-former-owner',
+    { data: { currentOwnerUid: 'uid-current' } },
+  ),
+  (error) => error?.code === 'owner_identity_mismatch' && error?.status === 403,
+  'A stale owner role must not bypass canonical ownership after a transfer.',
+);
+assert.doesNotThrow(() => assertOwnerControlMatches(
+  { role: 'admin', status: 'approved' },
+  'uid-admin',
+  { data: { currentOwnerUid: 'uid-current' } },
+), 'The canonical owner control must not block ordinary approved admins.');
+assert.equal(workerAuth.includes("firestore.getDocument('adminControl', 'ownership')"), true);
+assert.equal(workerAuth.includes('assertOwnerControlMatches(user, identity.uid, ownershipControlDocument)'), true);
+
 assert.equal(accountRoleRepository.includes("doc(firestoreDb, 'adminControl', 'ownership')"), true);
 assert.doesNotMatch(
   rules,
@@ -66,6 +99,42 @@ assert.match(
 assert.equal(galleryWorker.includes("studio37/gallery/"), true);
 assert.equal(galleryWorker.includes("permanentDeleteStatus: 'deleting'"), true);
 assert.equal(bookingWorker.includes("type: 'manual-booking-create'"), true);
+assert.equal(bookingSessionsWorker.includes('commitIdempotentOperation'), true);
+assert.equal(bookingSessionsWorker.includes("'bookingSessionEvents'"), true);
+assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'"), true);
+assert.match(workerIndex, /pathname === '\/v1\/bookings\/sessions\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'schedule' \}\);[\s\S]*?body = await readJson\(request\);/);
+assert.match(rules, /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && hasPermission\('schedule'\);[\s\S]*?allow create, update, delete: if false;/);
+
+assert.match(
+  workerIndex,
+  /pathname === '\/v1\/finance\/daily-closings\/preview'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'bookkeeping' \}\);[\s\S]*?body = await readJson\(request\);/,
+  'Daily closing preview must be authenticated and authorized before reading the body.',
+);
+assert.match(
+  workerIndex,
+  /pathname === '\/v1\/finance\/daily-closings\/close'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'bookkeeping' \}\);[\s\S]*?body = await readJson\(request\);/,
+  'Closing must require the bookkeeping permission before reading the body.',
+);
+assert.match(
+  workerIndex,
+  /pathname === '\/v1\/finance\/daily-closings\/reopen'[\s\S]*?ownerOnly: true[\s\S]*?requireFreshAuth: true[\s\S]*?body = await readJson\(request\);/,
+  'Reopen must be Owner-only and require fresh authentication.',
+);
+assert.equal(dailyClosingWorker.includes("firestore.listDocuments('bookings'"), true, 'Legacy payments must be included without relying on the UI 150-row query.');
+assert.equal(dailyClosingWorker.includes("'bookkeepingEntries'"), true);
+assert.equal(dailyClosingWorker.includes('transactionReferences'), true);
+assert.equal(dailyClosingWorker.includes('Asia/Jakarta'), true);
+assert.equal(dailyClosingWorker.includes('requiredSignedMoney'), true, 'Net digital reconciliation must support negative refunds and outflows.');
+assert.equal(dailyClosingWorker.includes('commitIdempotentOperation'), true);
+assert.match(rules, /function bookkeepingBusinessDateOpen\(data\)[\s\S]*?cashClosingSessions[\s\S]*?status != 'closed'/);
+assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.equal(rules.includes('bookkeepingBusinessDateOpen(request.resource.data)'), true);
+assert.equal(rules.includes('bookkeepingBusinessDateOpen(resource.data)'), true);
+
+assert.equal(adminBookingRepository.includes("'sessionStatus', 'sessionState', 'checkedInAt'"), true);
+assert.equal(bookingWorker.includes("'sessionStatus',\n  'sessionType'"), false, 'Generic booking updates must not accept sessionStatus.');
+
 assert.equal(bookingWorker.includes("'bookkeepingEntries'"), true);
 assert.match(
   rules,
@@ -113,6 +182,19 @@ assert.equal(
   'Inventory repository compatibility API should remain available while Page owns protected adjustment.',
 );
 assert.equal(read('src/pages/admin/InventoryPage.jsx').includes('adjustCanonicalInventory'), true);
+const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
+assert.equal(inventoryPage.includes('saveCanonicalInventoryItem'), true);
+assert.equal(inventoryPage.includes('archiveCanonicalInventoryItem'), true);
+assert.equal(inventoryPage.includes('inventoryRepository.createInventoryMovement('), false);
+assert.equal(inventoryPage.includes('inventoryRepository.createInventoryItem('), false);
+assert.equal(inventoryPage.includes('inventoryRepository.updateInventoryItem('), false);
+assert.equal(workerIndex.includes("pathname === '/v1/inventory/items'"), true);
+assert.equal(workerIndex.includes("pathname === '/v1/inventory/items/archive'"), true);
+assert.equal(inventoryPage.includes('createInventoryMovement('), false, 'No direct movement writes may remain in the inventory page.');
+assert.match(workerIndex, /pathname === '\/v1\/inventory\/items'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
+assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/);
+assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes('commitIdempotentOperation'), true);
+assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes("'inventoryMovements'"), true);
 assert.equal(galleryRepository.includes('permanentlyDeleteGalleryItem'), true);
 assert.equal(settings.includes('DANGER_ZONE_DELETE_BATCH_SIZE'), false, 'Danger Zone still contains a browser delete loop.');
 for (const collectionId of [

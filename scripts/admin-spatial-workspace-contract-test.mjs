@@ -156,7 +156,7 @@ for (
     '--studio-canvas',
     '--studio-shadow-surface',
     '--studio-radius-large',
-    'min-width: 768px',
+    'min-width: 900px',
     'min-width: 1280px',
     'prefers-reduced-motion: reduce',
   ]

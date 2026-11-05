@@ -22,6 +22,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import {
+  useLocation,
   useNavigate,
 } from 'react-router-dom';
 import {
@@ -37,6 +38,7 @@ import {
   buildClientBookingResumePath,
   isBookingStartOccupied,
 } from '../utils/clientBookingHandoff.js';
+import { parsePublicBookingSelection } from '../utils/publicBookingSelection.js';
 import '../styles/routes/public.css';
 import '../styles/public-booking.css';
 
@@ -177,11 +179,16 @@ function SlotGroup({
 }
 
 export default function PublicBookingPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const todayKey = useMemo(() => getLocalDateKey(new Date()), []);
-  const [selectedDate, setSelectedDate] = useState(todayKey);
-  const [selectedStartHour, setSelectedStartHour] = useState(null);
-  const [dateWindowOffset, setDateWindowOffset] = useState(0);
+  const initialSelection = useMemo(
+    () => parsePublicBookingSelection(location.search, todayKey),
+    [location.search, todayKey],
+  );
+  const [selectedDate, setSelectedDate] = useState(initialSelection.date);
+  const [selectedStartHour, setSelectedStartHour] = useState(initialSelection.startHour);
+  const [dateWindowOffset, setDateWindowOffset] = useState(initialSelection.dateWindowOffset);
   const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -445,13 +452,13 @@ export default function PublicBookingPage() {
               <SlotGroup
                 items={afternoonSlots}
                 label="Siang"
-                selectedStartHour={selectedStartHour}
+                selectedStartHour={selectedSlot?.startHour ?? null}
                 onSelect={setSelectedStartHour}
               />
               <SlotGroup
                 items={eveningSlots}
                 label="Malam"
-                selectedStartHour={selectedStartHour}
+                selectedStartHour={selectedSlot?.startHour ?? null}
                 onSelect={setSelectedStartHour}
               />
             </div>

@@ -119,6 +119,52 @@ async function requestOperation(path, {
   throw lastError;
 }
 
+
+export function decideCanonicalBookingRequest(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/requests/decision', {
+    body: input,
+    idempotencyKey: idempotencyKey || input?.decisionKey || createAdminOperationKey('booking-decision', input?.bookingId),
+  });
+}
+
+export function recordCanonicalBookingSessionAction(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/sessions/action', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey(
+      `session-${input?.action || 'action'}`,
+      input?.bookingId || input?.id,
+    ),
+  });
+}
+
+export function updateCanonicalManualBooking(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/manual/update', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('booking-update', input?.id),
+  });
+}
+
+export function previewCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/preview', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-preview', input?.businessDate),
+  });
+}
+
+export function closeCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/close', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-close', input?.businessDate),
+  });
+}
+
+export function reopenCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/reopen', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-reopen', input?.businessDate),
+  });
+}
+
 export function recordCanonicalPayment(input, idempotencyKey = '') {
   return requestOperation('/v1/finance/payments', {
     body: input,
@@ -154,10 +200,55 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
+export function saveCanonicalInventoryItem(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/items', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey(
+      input?.action === 'create' ? 'inventory-create' : 'inventory-update',
+      input?.itemId,
+    ),
+  });
+}
+
+export function archiveCanonicalInventoryItem(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/items/archive', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('inventory-archive', input?.itemId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
     idempotencyKey: idempotencyKey || createAdminOperationKey('inventory', input?.itemId),
+  });
+}
+
+export function reportCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-report', input?.inventoryItemId),
+  });
+}
+
+export function actOnCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/action', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-' + input?.action, input?.workOrderId),
+  });
+}
+
+export function reopenCanonicalMaintenanceWorkOrder(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/reopen', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-reopen', input?.workOrderId),
+  });
+}
+
+export function recordCanonicalMaintenanceCost(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/maintenance/work-orders/cost', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('maintenance-cost', input?.workOrderId),
   });
 }
 
@@ -207,11 +298,21 @@ export function getDangerZoneJob(jobId) {
 
 export const adminOperationsRepository = {
   adjustInventory: adjustCanonicalInventory,
+  reportMaintenanceWorkOrder: reportCanonicalMaintenanceWorkOrder,
+  actOnMaintenanceWorkOrder: actOnCanonicalMaintenanceWorkOrder,
+  recordMaintenanceCost: recordCanonicalMaintenanceCost,
+  reopenMaintenanceWorkOrder: reopenCanonicalMaintenanceWorkOrder,
+  saveInventoryItem: saveCanonicalInventoryItem,
+  archiveInventoryItem: archiveCanonicalInventoryItem,
   createManualBooking: createCanonicalManualBooking,
+  recordBookingSessionAction: recordCanonicalBookingSessionAction,
   createDangerZoneDryRun,
   getDangerZoneJob,
   permanentlyDeleteGalleryItem,
   recordPayment: recordCanonicalPayment,
+  previewDailyClosing: previewCanonicalDailyClosing,
+  closeDailyClosing: closeCanonicalDailyClosing,
+  reopenDailyClosing: reopenCanonicalDailyClosing,
   recordRefund: recordCanonicalRefund,
   reviewPaymentProof: reviewCanonicalPaymentProof,
   startDangerZoneJob,

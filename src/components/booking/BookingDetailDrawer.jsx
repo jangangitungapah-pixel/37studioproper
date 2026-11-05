@@ -23,7 +23,12 @@ import {
   getBookingRequestStatus,
   getBookingSessionStatus,
 } from '../../domain/booking/bookingSelectors.js';
+import {
+  getScheduleTimingStatus,
+  isBookingNoShowEligible,
+} from '../../domain/booking/normalizeBooking.js';
 import { firebaseAuth } from '../../lib/firebase.js';
+import { recordCanonicalBookingSessionAction } from '../../services/adminOperationsRepository.js';
 import {
   getBookingRequestStatusMeta,
 } from '../../services/bookingCommunicationRepository.js';
@@ -401,6 +406,19 @@ function buildBookingActivity(
     });
   }
 
+  if (booking?.checkedInAt) {
+    addActivity({ at: booking.checkedInAt, detail: booking.checkedInByName || 'Admin Studio', id: 'session-check-in', title: 'Customer check-in', tone: 'success' });
+  }
+  if (booking?.actualStartAt) {
+    addActivity({ at: booking.actualStartAt, detail: booking.actualStartByName || 'Admin Studio', id: 'session-start', title: 'Sesi dimulai', tone: 'accent' });
+  }
+  if (booking?.actualEndAt) {
+    addActivity({ at: booking.actualEndAt, detail: Number(booking.actualDurationMinutes || 0) + ' menit · ' + (booking.actualEndByName || 'Admin Studio'), id: 'session-complete', title: 'Sesi diselesaikan', tone: 'success' });
+  }
+  if (booking?.noShowAt) {
+    addActivity({ at: booking.noShowAt, detail: booking.noShowReason || 'Tidak ada alasan yang dicatat', id: 'session-no-show', title: 'No-show dicatat', tone: 'warning' });
+  }
+
   paymentHistory.forEach(
     (payment, index) => {
       addActivity({
@@ -574,6 +592,8 @@ export default function BookingDetailDrawer({
     useRef(initialTab);
   const isUpdatingRequestRef =
     useRef(false);
+  const isUpdatingSessionRef =
+    useRef(false);
 
   const [
     tabState,
@@ -587,6 +607,13 @@ export default function BookingDetailDrawer({
     isUpdatingRequest,
     setIsUpdatingRequest,
   ] = useState(false);
+
+  const [isUpdatingSession, setIsUpdatingSession] = useState(false);
+  const [sessionActionError, setSessionActionError] = useState('');
+  const [sessionActionFeedback, setSessionActionFeedback] = useState('');
+  const [sessionBookingSnapshot, setSessionBookingSnapshot] = useState(null);
+  const [isNoShowReasonOpen, setIsNoShowReasonOpen] = useState(false);
+  const [noShowReason, setNoShowReason] = useState('');
 
   const normalizedInitialTab =
     DETAIL_TAB_KEYS.includes(
@@ -619,6 +646,17 @@ export default function BookingDetailDrawer({
         : normalizedInitialTab
     );
 
+  const sessionSnapshotTime = Date.parse(sessionBookingSnapshot?.booking?.updatedAt || '');
+  const currentBookingTime = Date.parse(booking?.updatedAt || '');
+  const useSessionSnapshot = sessionBookingSnapshot?.bookingId === booking?.id &&
+    Number.isFinite(sessionSnapshotTime) &&
+    (!Number.isFinite(currentBookingTime) || sessionSnapshotTime >= currentBookingTime);
+  const sessionBooking = useSessionSnapshot
+    ? { ...booking, ...sessionBookingSnapshot.booking }
+    : booking;
+  const sessionTimingStatus = getScheduleTimingStatus(sessionBooking || {});
+  const isNoShowEligible = isBookingNoShowEligible(sessionBooking || {});
+
   const requestStatus =
     getBookingRequestStatus(
       booking,
@@ -636,8 +674,9 @@ export default function BookingDetailDrawer({
 
   const sessionStatus =
     getBookingSessionStatus(
-      booking,
+      sessionBooking,
     );
+
 
   const paymentHistory =
     useMemo(
@@ -667,11 +706,11 @@ export default function BookingDetailDrawer({
     useMemo(
       () =>
         buildBookingActivity(
-          booking,
+          sessionBooking,
           paymentHistory,
         ),
       [
-        booking,
+        sessionBooking,
         paymentHistory,
       ],
     );
@@ -699,11 +738,21 @@ export default function BookingDetailDrawer({
     onCloseRef.current = onClose;
     initialTabRef.current = normalizedInitialTab;
     isUpdatingRequestRef.current = isUpdatingRequest;
+    isUpdatingSessionRef.current = isUpdatingSession;
   }, [
     isUpdatingRequest,
+    isUpdatingSession,
     normalizedInitialTab,
     onClose,
   ]);
+
+  useEffect(() => {
+    setSessionBookingSnapshot(null);
+    setSessionActionError('');
+    setSessionActionFeedback('');
+    setIsNoShowReasonOpen(false);
+    setNoShowReason('');
+  }, [bookingKey]);
 
   useEffect(() => {
     if (
@@ -736,7 +785,8 @@ export default function BookingDetailDrawer({
             ?.closest?.(
               '[role="alertdialog"], [data-booking-decision-dialog="true"]',
             ) ||
-          isUpdatingRequestRef.current
+          isUpdatingRequestRef.current ||
+          isUpdatingSessionRef.current
         ) {
           return;
         }
@@ -918,6 +968,38 @@ export default function BookingDetailDrawer({
       // Parent surfaces its own request update feedback.
     } finally {
       setIsUpdatingRequest(false);
+    }
+  }
+
+  async function performSessionAction(action, reason = '') {
+    if (!booking?.id || isUpdatingSession) return;
+    if (action === 'no_show' && String(reason || '').trim().length < 4) {
+      setSessionActionError('Alasan no-show wajib diisi minimal 4 karakter.');
+      return;
+    }
+    setIsUpdatingSession(true);
+    setSessionActionError('');
+    setSessionActionFeedback('');
+    try {
+      const result = await recordCanonicalBookingSessionAction({
+        action,
+        bookingId: booking.id,
+        ...(reason ? { reason } : {}),
+      });
+      if (!result?.booking?.id) throw new Error('Worker tidak mengembalikan status sesi yang tersimpan.');
+      setSessionBookingSnapshot({ bookingId: booking.id, booking: result.booking });
+      setSessionActionFeedback({
+        check_in: 'Check-in berhasil dicatat.',
+        start: 'Sesi berhasil dimulai.',
+        complete: 'Sesi berhasil diselesaikan.',
+        no_show: 'No-show berhasil dicatat.',
+      }[action] || 'Operasi sesi tersimpan.');
+      setIsNoShowReasonOpen(false);
+      setNoShowReason('');
+    } catch (error) {
+      setSessionActionError(error?.message || 'Operasi sesi belum berhasil disimpan.');
+    } finally {
+      setIsUpdatingSession(false);
     }
   }
 
@@ -1233,6 +1315,50 @@ export default function BookingDetailDrawer({
                   </small>
                 </article>
               </div>
+
+              <section className="booking-detail-session-operations" aria-labelledby="booking-session-operations-title">
+                <header>
+                  <div>
+                    <span>Session Operations</span>
+                    <strong id="booking-session-operations-title">Lifecycle Sesi</strong>
+                  </div>
+                  <StatusChip
+                    label={sessionStatus === 'upcoming' && sessionTimingStatus === 'past_due' ? 'Perlu Review' : (SESSION_STATUS_LABELS[sessionStatus] || sessionStatus)}
+                    tone={sessionStatus === 'upcoming' && sessionTimingStatus === 'past_due' ? 'session-review' : 'session-' + sessionStatus}
+                  />
+                </header>
+                <div className="booking-detail-session-timestamps">
+                  <span><small>Check-in</small><strong>{sessionBooking?.checkedInAt ? formatDateTime(sessionBooking.checkedInAt) : 'Belum tercatat'}</strong></span>
+                  <span><small>Mulai aktual</small><strong>{sessionBooking?.actualStartAt ? formatDateTime(sessionBooking.actualStartAt) : 'Belum dimulai'}</strong></span>
+                  <span><small>Selesai aktual</small><strong>{sessionBooking?.actualEndAt ? formatDateTime(sessionBooking.actualEndAt) : 'Belum selesai'}</strong></span>
+                  {sessionBooking?.actualDurationMinutes ? <span><small>Durasi aktual</small><strong>{sessionBooking.actualDurationMinutes} menit</strong></span> : null}
+                </div>
+                {sessionStatus === 'upcoming' ? (
+                  <div className="booking-detail-session-actions">
+                    {!sessionBooking?.checkedInAt ? <button type="button" disabled={isUpdatingSession} onClick={() => performSessionAction('check_in')}>Catat Check-in</button> : <span className="booking-detail-session-confirmed">Check-in sudah tercatat</span>}
+                    <button className="is-primary" type="button" disabled={isUpdatingSession} onClick={() => performSessionAction('start')}>{isUpdatingSession ? 'Memproses...' : 'Mulai Sesi'}</button>
+                    {isNoShowEligible ? <button className="is-danger" type="button" disabled={isUpdatingSession} onClick={() => setIsNoShowReasonOpen(true)}>Tandai No-show</button> : null}
+                  </div>
+                ) : null}
+                {sessionStatus === 'in_progress' ? (
+                  <div className="booking-detail-session-actions">
+                    <button className="is-primary" type="button" disabled={isUpdatingSession} onClick={() => performSessionAction('complete')}>{isUpdatingSession ? 'Memproses...' : 'Selesaikan Sesi'}</button>
+                  </div>
+                ) : null}
+                {isNoShowReasonOpen ? (
+                  <div className="booking-detail-session-no-show-form">
+                    <label htmlFor="booking-session-no-show-reason">Alasan tidak hadir</label>
+                    <textarea id="booking-session-no-show-reason" value={noShowReason} maxLength={600} onChange={(event) => setNoShowReason(event.target.value)} placeholder="Contoh: customer tidak datang dan tidak merespons konfirmasi..." />
+                    <div>
+                      <button type="button" disabled={isUpdatingSession} onClick={() => { setIsNoShowReasonOpen(false); setNoShowReason(''); }}>Batal</button>
+                      <button className="is-danger" type="button" disabled={isUpdatingSession || noShowReason.trim().length < 4} onClick={() => performSessionAction('no_show', noShowReason)}>{isUpdatingSession ? 'Menyimpan...' : 'Konfirmasi No-show'}</button>
+                    </div>
+                  </div>
+                ) : null}
+                {sessionActionFeedback ? <p className="booking-detail-session-feedback" role="status">{sessionActionFeedback}</p> : null}
+                {sessionActionError ? <p className="booking-detail-session-error" role="alert">{sessionActionError}</p> : null}
+                {sessionStatus === 'upcoming' && sessionTimingStatus === 'past_due' ? <p className="booking-detail-session-review-note">Jadwal sudah lewat, tetapi belum ada bukti sesi dimulai atau selesai. Periksa kondisi aktual sebelum menutup sesi.</p> : null}
+              </section>
 
               <section className="booking-detail-drawer-contact">
                 <div>
@@ -1585,7 +1711,7 @@ export default function BookingDetailDrawer({
               role="tabpanel"
             >
               <div className="booking-detail-drawer-activity-note">
-                Timeline ini diturunkan dari metadata booking, request, pesan terakhir, dan payment history yang sudah tersimpan. Ini belum merupakan audit log permanen.
+                Ringkasan aktivitas ini diturunkan dari metadata booking, request, pesan, payment history, dan lifecycle sesi. Ini bukan audit log permanen yang lengkap; event lifecycle sesi tersimpan append-only di bookingSessionEvents.
               </div>
 
               {activity.length ? (

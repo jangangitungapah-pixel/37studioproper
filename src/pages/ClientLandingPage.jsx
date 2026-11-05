@@ -31,6 +31,7 @@ import {
 } from '../settings/pricingSettings.js';
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import { businessHours, durationOptions } from '../constants/scheduleConfig.js';
+import { getLocalDateKey } from '../utils/publicBookingSelection.js';
 import StudioSelect from '../components/ui/StudioSelect.jsx';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
@@ -100,7 +101,7 @@ export default function ClientLandingPage() {
   const [sessionType, setSessionType] = useState('rehearsal');
   const [recordingTypeId, setRecordingTypeId] = useState('none');
   const [packageId, setPackageId] = useState('none');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => getLocalDateKey(new Date()));
   const [startHour, setStartHour] = useState('10');
   const [duration, setDuration] = useState('2');
   const [customDuration, setCustomDuration] = useState('');
@@ -256,7 +257,12 @@ export default function ClientLandingPage() {
 
   function handleBookingAction(event) {
     event.preventDefault();
-    navigate('/book');
+
+    const params = new URLSearchParams();
+    params.set('date', date);
+    params.set('startHour', startHour);
+
+    navigate('/book?' + params.toString());
   }
 
   async function handleLogout() {
@@ -453,7 +459,7 @@ export default function ClientLandingPage() {
 
               <label className="client-landing-field">
                 <span>Tanggal</span>
-                <input min={new Date().toISOString().split('T')[0]} type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+                <input min={getLocalDateKey(new Date())} type="date" value={date} onChange={(event) => setDate(event.target.value)} />
               </label>
 
               <div className="client-landing-field">

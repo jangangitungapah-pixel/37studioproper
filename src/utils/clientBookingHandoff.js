@@ -11,15 +11,32 @@ function isIsoDate(value) {
 }
 
 function isValidStartHour(value) {
-  const numericValue =
-    Number(value);
+  if (
+    (typeof value !== 'number' && typeof value !== 'string') ||
+    (typeof value === 'string' && !/^\d+$/.test(value.trim()))
+  ) {
+    return false;
+  }
+
+  const numericValue = Number(value);
 
   return (
-    Number.isFinite(
-      numericValue,
-    ) &&
+    Number.isInteger(numericValue) &&
     numericValue >= 0 &&
     numericValue <= 23
+  );
+}
+
+function isValidCalendarDate(value) {
+  if (!isIsoDate(value)) return false;
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
   );
 }
 
@@ -33,7 +50,7 @@ export function buildClientBookingResumePath({
     ).trim();
 
   if (
-    !isIsoDate(
+    !isValidCalendarDate(
       cleanDate,
     ) ||
     !isValidStartHour(
@@ -84,25 +101,18 @@ export function parseClientBookingResume(
       ) || '',
     ).trim();
 
-  const startHour =
-    Number(
-      params.get(
-        'bookStart',
-      ),
-    );
+  const rawStartHour = params.get('bookStart');
 
   if (
-    !isIsoDate(date) ||
-    !isValidStartHour(
-      startHour,
-    )
+    !isValidCalendarDate(date) ||
+    !isValidStartHour(rawStartHour)
   ) {
     return null;
   }
 
   return {
     date,
-    startHour,
+    startHour: Number(rawStartHour),
   };
 }
 
@@ -165,33 +175,26 @@ export function isBookingStartOccupied(
       ? slots
       : [];
 
-  const targetStart =
-    Number(
-      startHour,
-    );
-
   if (
-    !isIsoDate(date) ||
-    !isValidStartHour(
-      targetStart,
-    )
+    !isValidCalendarDate(date) ||
+    !isValidStartHour(startHour)
   ) {
     return false;
   }
+
+  const targetStart = Number(startHour);
 
   return safeSlots.some(
     (slot) => {
       if (
         slot?.date !==
-        date
+        date ||
+        !isValidStartHour(slot?.startHour)
       ) {
         return false;
       }
 
-      const slotStart =
-        Number(
-          slot?.startHour,
-        );
+      const slotStart = Number(slot.startHour);
 
       const duration =
         Math.max(
@@ -201,14 +204,6 @@ export function isBookingStartOccupied(
           ) ||
             1,
         );
-
-      if (
-        !Number.isFinite(
-          slotStart,
-        )
-      ) {
-        return false;
-      }
 
       return (
         targetStart >=
