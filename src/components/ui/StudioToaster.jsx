@@ -1,5 +1,5 @@
 import { Toaster } from 'sonner';
-import { useTheme } from '../../theme/ThemeProvider.js';
+import { useTheme } from '../../theme/ThemeProvider.jsx';
 
 export default function StudioToaster() {
   const { resolvedTheme } = useTheme();
