@@ -458,7 +458,11 @@ export async function updateManualBooking({ actor, body, firestore, request }) {
 }
 
 function currentBookingSessionStatus(booking) {
-  const value = normalizeStatus(booking?.sessionStatus || booking?.sessionState);
+  const explicitValue = normalizeStatus(booking?.sessionStatus || booking?.sessionState);
+  const legacyValue = normalizeStatus(booking?.status);
+  const value = ['upcoming', 'scheduled', 'in_progress', 'active', 'completed', 'no_show', 'cancelled', 'canceled'].includes(explicitValue)
+    ? explicitValue
+    : legacyValue;
   if (['upcoming', 'scheduled', 'in_progress', 'active', 'completed', 'no_show', 'cancelled', 'canceled'].includes(value)) {
     return value === 'scheduled' ? 'upcoming' : value;
   }
