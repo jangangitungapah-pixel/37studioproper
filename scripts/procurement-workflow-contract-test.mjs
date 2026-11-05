@@ -122,7 +122,7 @@ assert.match(
   /firestore\.setWrite\('cashClosingSessions'/,
   'Daily Closing must retain the atomic session precondition used by Procurement payments.',
 );
-assert.match(workspace, /orders\.filter\(\(order\) => !\['draft', 'cancelled'\]\.includes\(order\.status\)\)/);
+assert.match(workspace, /orders\s*\.filter\(\(order\)\s*=>\s*!\['draft',\s*'cancelled'\]\.includes\(order\.status\)\)/);
 assert.match(
   read('src/pages/admin/BookkeepingPage.jsx'),
   /key: 'procurement', label: 'Pengadaan'/,
