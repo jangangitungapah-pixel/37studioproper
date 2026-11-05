@@ -311,7 +311,6 @@ const EDITABLE_BOOKING_FIELDS = new Set([
   'recordingTypeId',
   'recordingTypeLabel',
   'sessionLabel',
-  'sessionStatus',
   'sessionType',
   'startHour',
   'startTimeLabel',
@@ -659,3 +658,166 @@ export async function decideBookingRequest({ actor, body, firestore, request }) 
   throw new HttpError(409, 'booking_conflict', 'Jadwal berubah saat request diproses. Muat ulang data dan coba kembali.');
 }
 
+
+const SESSION_TRANSITIONS = Object.freeze({
+  upcoming: new Set(['in_progress', 'no_show', 'cancelled']),
+  in_progress: new Set(['completed']),
+  completed: new Set([]),
+  no_show: new Set([]),
+  cancelled: new Set([]),
+});
+
+const SESSION_ACTION_STATUS = Object.freeze({
+  check_in: 'upcoming',
+  start: 'in_progress',
+  complete: 'completed',
+  no_show: 'no_show',
+  cancel: 'cancelled',
+  correct: '',
+});
+
+function sessionStatus(booking) {
+  const value = normalizeStatus(booking?.sessionStatus || booking?.sessionState);
+  if (['upcoming', 'scheduled'].includes(value)) return 'upcoming';
+  if (['in_progress', 'active', 'ongoing'].includes(value)) return 'in_progress';
+  if (['completed', 'complete', 'finished', 'done'].includes(value)) return 'completed';
+  if (['no_show', 'noshow', 'absent'].includes(value)) return 'no_show';
+  if (['cancelled', 'canceled'].includes(value)) return 'cancelled';
+  return 'upcoming';
+}
+
+function isoBusinessDate(value) {
+  const date = cleanText(value, 10);
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new HttpError(400, 'invalid_date', 'Tanggal booking tidak valid.');
+  }
+  return date;
+}
+
+function sessionTransitionPatch(action, currentBooking, actor, body, now) {
+  const currentStatus = sessionStatus(currentBooking);
+  const status = action === 'correct'
+    ? normalizeStatus(body.targetStatus)
+    : SESSION_ACTION_STATUS[action];
+  const reason = cleanText(body.reason, 600);
+
+  if (!status || !['upcoming', 'in_progress', 'completed', 'no_show', 'cancelled'].includes(status)) {
+    throw new HttpError(400, 'invalid_session_action', 'Aksi atau target status sesi tidak valid.');
+  }
+  if (action === 'correct') {
+    if (reason.length < 8) throw new HttpError(400, 'correction_reason_required', 'Alasan koreksi minimal 8 karakter.');
+    if (!['completed', 'no_show', 'cancelled', 'upcoming', 'in_progress'].includes(status)) {
+      throw new HttpError(400, 'invalid_session_status', 'Status koreksi tidak valid.');
+    }
+  } else if (!SESSION_TRANSITIONS[currentStatus]?.has(status) && !(action === 'check_in' && currentStatus === 'upcoming')) {
+    throw new HttpError(409, 'invalid_session_transition', 'Transisi status sesi tidak diizinkan.');
+  }
+
+  if (action === 'no_show') {
+    if (currentBooking.checkedInAt || currentStatus === 'in_progress') {
+      throw new HttpError(409, 'no_show_not_allowed', 'Sesi yang telah check-in atau dimulai tidak dapat ditandai no-show.');
+    }
+    const date = isoBusinessDate(currentBooking.date);
+    const startHour = Number(currentBooking.startHour);
+    const duration = Number(currentBooking.durationHours ?? currentBooking.duration ?? 1);
+    const scheduledEnd = new Date(`${date}T00:00:00.000+07:00`).getTime() + ((startHour + duration) * 60 * 60 * 1000);
+    const graceMinutes = 30;
+    if (new Date(now).getTime() < scheduledEnd + graceMinutes * 60 * 1000) {
+      throw new HttpError(409, 'no_show_too_early', 'No-show hanya dapat dicatat setelah sesi berakhir dan melewati toleransi 30 menit.');
+    }
+    if (reason.length < 4) throw new HttpError(400, 'no_show_reason_required', 'Alasan no-show minimal 4 karakter.');
+  }
+
+  if (action === 'cancel' && reason.length < 4) {
+    throw new HttpError(400, 'cancel_reason_required', 'Alasan pembatalan minimal 4 karakter.');
+  }
+
+  if (action === 'start' && currentStatus !== 'upcoming') {
+    throw new HttpError(409, 'invalid_session_transition', 'Sesi hanya dapat dimulai dari status akan datang.');
+  }
+
+  const patch = { sessionStatus: status, updatedAt: now };
+  const event = {
+    action,
+    actorName: actor.displayName,
+    actorUid: actor.uid,
+    bookingId: currentBooking.id,
+    createdAt: now,
+    fromStatus: currentStatus,
+    id: '',
+    reason,
+    toStatus: status,
+  };
+  if (action === 'check_in') {
+    if (currentBooking.checkedInAt) throw new HttpError(409, 'already_checked_in', 'Customer sudah tercatat check-in.');
+    patch.checkedInAt = now;
+  }
+  if (action === 'start' || action === 'correct' && status === 'in_progress') {
+    patch.actualStartAt = currentBooking.actualStartAt || now;
+  }
+  if (action === 'complete' || action === 'correct' && status === 'completed') {
+    patch.actualEndAt = now;
+    const startedAt = new Date(currentBooking.actualStartAt || now).getTime();
+    patch.actualDurationMinutes = Math.max(0, Math.round((new Date(now).getTime() - startedAt) / 60000));
+  }
+  if (action === 'no_show') patch.noShowAt = now;
+  if (action === 'cancel') patch.sessionCancelledAt = now;
+  if (action === 'correct') patch.sessionCorrectedAt = now;
+  return { currentStatus, event, patch, status };
+}
+
+export async function updateBookingSession({ actor, body, firestore, request }) {
+  const key = getIdempotencyKey(request, body);
+  const bookingId = cleanText(body.bookingId || body.id, 160);
+  const action = cleanText(body.action, 40);
+  if (!bookingId) throw new HttpError(400, 'booking_id_required', 'Booking ID wajib tersedia.');
+  if (!Object.hasOwn(SESSION_ACTION_STATUS, action)) {
+    throw new HttpError(400, 'invalid_session_action', 'Aksi sesi tidak dikenal.');
+  }
+  if (action === 'correct' && actor.role !== 'owner') {
+    throw new HttpError(403, 'owner_required', 'Koreksi status sesi hanya dapat dilakukan Owner.');
+  }
+  const existing = await readOperationResult(firestore, 'booking-session-action', key);
+  if (existing.result) return { ...existing.result, duplicate: true };
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const current = await firestore.getDocument('bookings', bookingId);
+    if (!current) throw new HttpError(404, 'booking_not_found', 'Booking tidak ditemukan.');
+    const booking = { id: current.id, ...current.data };
+    if (body.expectedUpdatedAt && body.expectedUpdatedAt !== booking.updatedAt) {
+      throw new HttpError(409, 'booking_changed', 'Booking berubah. Muat ulang sebelum mengubah status sesi.');
+    }
+    const now = new Date().toISOString();
+    const transition = sessionTransitionPatch(action, booking, actor, body, now);
+    const eventId = await stableDocumentId('session-event', `${bookingId}:${key}`);
+    transition.event.id = eventId;
+    const updatedBooking = { ...booking, ...transition.patch };
+    const event = transition.event;
+    const result = { booking: updatedBooking, event };
+    try {
+      const committed = await commitIdempotentOperation({
+        actor,
+        documentRefs: {
+          booking: { collectionId: 'bookings', documentId: bookingId },
+          event: { collectionId: 'bookingSessionEvents', documentId: eventId },
+        },
+        firestore,
+        key,
+        receipt: {},
+        result,
+        targetId: bookingId,
+        type: 'booking-session-action',
+        writes: [
+          firestore.setWrite('bookings', bookingId, updatedBooking, { updateTime: current.updateTime }),
+          firestore.setWrite('bookingSessionEvents', eventId, event, { exists: false }),
+        ],
+      });
+      return { ...committed.result, duplicate: committed.duplicate };
+    } catch (error) {
+      if (error?.status === 409 && error?.code === 'operation_conflict' && attempt < 3) continue;
+      throw error;
+    }
+  }
+  throw new HttpError(409, 'booking_conflict', 'Data booking berubah saat operasi. Muat ulang dan coba lagi.');
+}

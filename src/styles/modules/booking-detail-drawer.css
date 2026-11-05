@@ -938,3 +938,31 @@
     transition-duration: 0.01ms;
   }
 }
+
+.booking-session-operations {
+  display: grid;
+  gap: 0.6rem;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.booking-session-operations-label {
+  color: var(--text-muted, #8992a4);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.booking-session-operations-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.booking-session-operations-error {
+  color: var(--danger, #dc5555);
+  font-size: 0.8rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}

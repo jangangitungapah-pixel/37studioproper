@@ -24,6 +24,7 @@ import {
   getBookingSessionStatus,
 } from '../../domain/booking/bookingSelectors.js';
 import { firebaseAuth } from '../../lib/firebase.js';
+import { updateCanonicalBookingSession } from '../../services/adminOperationsRepository.js';
 import {
   getBookingRequestStatusMeta,
 } from '../../services/bookingCommunicationRepository.js';
@@ -81,6 +82,7 @@ const SESSION_STATUS_LABELS =
     completed: 'Selesai',
     no_show: 'Tidak Hadir',
     cancelled: 'Dibatalkan',
+    needs_review: 'Perlu Review',
   });
 
 function formatRupiah(value) {
@@ -559,6 +561,7 @@ export default function BookingDetailDrawer({
   onTabChange,
   operatorFeeVisibility = null,
   user,
+  onSessionAction = null,
 }) {
   const closeButtonRef =
     useRef(null);
@@ -587,6 +590,8 @@ export default function BookingDetailDrawer({
     isUpdatingRequest,
     setIsUpdatingRequest,
   ] = useState(false);
+  const [isUpdatingSession, setIsUpdatingSession] = useState(false);
+  const [sessionActionError, setSessionActionError] = useState('');
 
   const normalizedInitialTab =
     DETAIL_TAB_KEYS.includes(
@@ -694,6 +699,16 @@ export default function BookingDetailDrawer({
   const canManageRequest =
     typeof onRequestStatusChange ===
     'function';
+  const canManageSessions = typeof onSessionAction === 'function' || Boolean(user && ['owner', 'admin', 'operator'].includes(user.role));
+  const sessionActionOptions = sessionStatus === 'upcoming'
+    ? [
+      { action: 'check_in', label: 'Check-in' },
+      { action: 'start', label: 'Mulai Sesi', className: 'is-positive' },
+      { action: 'no_show', label: 'No-show', className: 'is-negative' },
+    ]
+    : sessionStatus === 'in_progress'
+      ? [{ action: 'complete', label: 'Selesaikan Sesi', className: 'is-positive' }]
+      : [];
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -894,6 +909,30 @@ export default function BookingDetailDrawer({
       event.currentTarget
     ) {
       closeDrawer();
+    }
+  }
+
+  async function updateSession(action) {
+    if (isUpdatingSession) return;
+    const reason = action === 'no_show'
+      ? window.prompt('Alasan no-show (minimal 4 karakter):')
+      : action === 'cancel'
+        ? window.prompt('Alasan pembatalan (minimal 4 karakter):')
+        : '';
+    if (['no_show', 'cancel'].includes(action) && !reason) return;
+    setIsUpdatingSession(true);
+    setSessionActionError('');
+    try {
+      await (onSessionAction || updateCanonicalBookingSession)({
+        action,
+        bookingId: booking.id,
+        expectedUpdatedAt: booking.updatedAt || '',
+        reason: reason || '',
+      });
+    } catch (error) {
+      setSessionActionError(error?.message || 'Status sesi belum berhasil diperbarui.');
+    } finally {
+      setIsUpdatingSession(false);
     }
   }
 
@@ -1745,6 +1784,27 @@ export default function BookingDetailDrawer({
                 Pertahankan
               </button>
             </>
+          ) : null}
+
+          {sessionActionError ? <p className="booking-session-operations-error" role="alert">{sessionActionError}</p> : null}
+          
+          {canManageSessions && sessionActionOptions.length ? (
+            <div className="booking-session-operations" aria-label="Session operations">
+              <span className="booking-session-operations-label">Session Operations</span>
+              <div className="booking-session-operations-actions">
+                {sessionActionOptions.map((option) => (
+                  <button
+                    className={option.className || ''}
+                    disabled={isUpdatingSession}
+                    key={option.action}
+                    type="button"
+                    onClick={() => updateSession(option.action)}
+                  >
+                    {isUpdatingSession ? 'Menyimpan...' : option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : null}
 
           <span className="booking-detail-drawer-action-spacer" />

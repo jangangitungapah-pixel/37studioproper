@@ -169,6 +169,13 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
+export function updateCanonicalBookingSession(input, idempotencyKey = '') {
+  return requestOperation('/v1/bookings/sessions/action', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('booking-session', input?.bookingId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
@@ -221,6 +228,7 @@ export function getDangerZoneJob(jobId) {
 }
 
 export const adminOperationsRepository = {
+  updateBookingSession: updateCanonicalBookingSession,
   adjustInventory: adjustCanonicalInventory,
   createManualBooking: createCanonicalManualBooking,
   createDangerZoneDryRun,

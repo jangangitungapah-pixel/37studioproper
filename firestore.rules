@@ -1889,7 +1889,14 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
-    match /{document=**} {
+    
+    // Session lifecycle history is immutable and only the trusted Worker may write it.
+    match /bookingSessionEvents/{eventId} {
+      allow read: if isApproved() && canAccessBookingData();
+      allow create, update, delete: if false;
+    }
+
+match /{document=**} {
       allow read, write: if false;
     }
   }

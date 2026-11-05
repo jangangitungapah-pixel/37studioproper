@@ -373,6 +373,9 @@ assert.equal(
   true,
 );
 
+assert.equal(drawerSource.includes('Session Operations'), true, 'Session action panel missing.');
+assert.equal(drawerSource.includes('updateCanonicalBookingSession'), true, 'Session actions must use Worker.');
+
 process.stdout.write(
   '✅ Unified Booking Detail Drawer contract passed.\n',
 );
