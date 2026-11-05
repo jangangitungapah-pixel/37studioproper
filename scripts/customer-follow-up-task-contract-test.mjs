@@ -480,7 +480,7 @@ assert.match(customerRepository, /where\('status', 'in', ACTIVE_CUSTOMER_FOLLOW_
 assert.match(customerRepository, /where\('status', '==', 'completed'\)[\s\S]*?limit\(50\)/);
 assert.match(customerRepository, /where\('taskId', '==', taskId\)[\s\S]*?orderBy\('createdAt', 'desc'\)[\s\S]*?limit\(30\)/);
 assert.match(ui, /subscribeCustomerFollowUpEvents\(/);
-assert.match(ui, /getCustomerFollowUpBuckets\(tasks\)/);
+assert.match(ui, /getCustomerFollowUpBuckets\(tasks(?:,\s*queueNow)?\)/);
 assert.match(ui, /getCanonicalCustomerFollowUpAssignees\(\)/);
 assert.match(ui, /onRetry=\{\(\) => setFollowUpTaskRetry/);
 assert.match(ui, /loadError=\{followUpTasksError\}/);
