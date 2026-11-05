@@ -1889,6 +1889,16 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create, update, delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
