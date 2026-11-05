@@ -1509,7 +1509,7 @@ match /users/{userId} {
           'paymentMethod', 'note', 'source',
           'sourceAttendanceId', 'sourceAttendanceDate',
           'sourceGuardPersonId', 'sourceBookingId',
-          'sourceFeeEntryId', 'sourceEventId', 'sourceAction',
+          'sourceFeeEntryId', 'sourceEventId', 'sourceAction', 'sourceWorkOrderId',
           'actorName', 'actorUid', 'idempotencyKey', 'immutable',
           'reversalOf', 'createdAt', 'updatedAt'
         ]) &&
@@ -1527,6 +1527,7 @@ match /users/{userId} {
         validOptionalString(data, 'sourceGuardPersonId', 160) &&
         validOptionalString(data, 'sourceBookingId', 160) &&
         validOptionalString(data, 'sourceFeeEntryId', 240) &&
+        validOptionalString(data, 'sourceWorkOrderId', 160) &&
         validOptionalString(data, 'sourceEventId', 240) &&
         validOptionalString(data, 'sourceAction', 80) &&
         validOptionalString(data, 'actorName', 120) &&
@@ -1734,6 +1735,18 @@ match /users/{userId} {
 
     match /inventoryMovements/{movementId} {
       allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Work orders and their lifecycle are written only by Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Maintenance history is append-only and server-authoritative.
       allow create, update, delete: if false;
     }
 
