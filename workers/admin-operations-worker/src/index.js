@@ -1,6 +1,7 @@
 import { transferOwnership } from './domain/accounts.js';
 import { createManualBooking, decideBookingRequest, updateManualBooking } from './domain/bookings.js';
 import { recordBookingSessionAction } from './domain/bookingSessions.js';
+import { closeDailyClosing, previewDailyClosing, reopenDailyClosing } from './domain/dailyClosings.js';
 import {
   createDangerDryRun,
   readDangerJob,
@@ -71,6 +72,21 @@ async function handleRequest(request, env) {
     actor = await authorize(env, request, firestore, { permission: 'schedule' });
     body = await readJson(request);
     result = await updateManualBooking({ actor, body, firestore, request });
+  } else if (pathname === '/v1/finance/daily-closings/preview') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await previewDailyClosing({ actor, body, firestore });
+  } else if (pathname === '/v1/finance/daily-closings/close') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { permission: 'bookkeeping' });
+    body = await readJson(request);
+    result = await closeDailyClosing({ actor, body, firestore, request });
+  } else if (pathname === '/v1/finance/daily-closings/reopen') {
+    requirePost(request);
+    actor = await authorize(env, request, firestore, { ownerOnly: true, permission: 'bookkeeping', requireFreshAuth: true });
+    body = await readJson(request);
+    result = await reopenDailyClosing({ actor, body, firestore, request });
   } else if (pathname === '/v1/finance/payments') {
     requirePost(request);
     actor = await authorize(env, request, firestore, { permission: 'billing' });

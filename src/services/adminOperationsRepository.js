@@ -144,6 +144,27 @@ export function updateCanonicalManualBooking(input, idempotencyKey = '') {
   });
 }
 
+export function previewCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/preview', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-preview', input?.businessDate),
+  });
+}
+
+export function closeCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/close', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-close', input?.businessDate),
+  });
+}
+
+export function reopenCanonicalDailyClosing(input, idempotencyKey = '') {
+  return requestOperation('/v1/finance/daily-closings/reopen', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('daily-closing-reopen', input?.businessDate),
+  });
+}
+
 export function recordCanonicalPayment(input, idempotencyKey = '') {
   return requestOperation('/v1/finance/payments', {
     body: input,
@@ -257,6 +278,9 @@ export const adminOperationsRepository = {
   getDangerZoneJob,
   permanentlyDeleteGalleryItem,
   recordPayment: recordCanonicalPayment,
+  previewDailyClosing: previewCanonicalDailyClosing,
+  closeDailyClosing: closeCanonicalDailyClosing,
+  reopenDailyClosing: reopenCanonicalDailyClosing,
   recordRefund: recordCanonicalRefund,
   reviewPaymentProof: reviewCanonicalPaymentProof,
   startDangerZoneJob,

@@ -19,6 +19,7 @@ const bookingWorker = read('workers/admin-operations-worker/src/domain/bookings.
 const galleryWorker = read('workers/admin-operations-worker/src/domain/gallery.js');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
+const dailyClosingWorker = read('workers/admin-operations-worker/src/domain/dailyClosings.js');
 const adminBookingRepository = read('src/services/adminBookingRepository.js');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
 const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
@@ -103,6 +104,34 @@ assert.equal(bookingSessionsWorker.includes("'bookingSessionEvents'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'"), true);
 assert.match(workerIndex, /pathname === '\/v1\/bookings\/sessions\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'schedule' \}\);[\s\S]*?body = await readJson\(request\);/);
 assert.match(rules, /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && hasPermission\('schedule'\);[\s\S]*?allow create, update, delete: if false;/);
+
+assert.match(
+  workerIndex,
+  /pathname === '\/v1\/finance\/daily-closings\/preview'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'bookkeeping' \}\);[\s\S]*?body = await readJson\(request\);/,
+  'Daily closing preview must be authenticated and authorized before reading the body.',
+);
+assert.match(
+  workerIndex,
+  /pathname === '\/v1\/finance\/daily-closings\/close'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'bookkeeping' \}\);[\s\S]*?body = await readJson\(request\);/,
+  'Closing must require the bookkeeping permission before reading the body.',
+);
+assert.match(
+  workerIndex,
+  /pathname === '\/v1\/finance\/daily-closings\/reopen'[\s\S]*?ownerOnly: true[\s\S]*?requireFreshAuth: true[\s\S]*?body = await readJson\(request\);/,
+  'Reopen must be Owner-only and require fresh authentication.',
+);
+assert.equal(dailyClosingWorker.includes("firestore.listDocuments('bookings'"), true, 'Legacy payments must be included without relying on the UI 150-row query.');
+assert.equal(dailyClosingWorker.includes("'bookkeepingEntries'"), true);
+assert.equal(dailyClosingWorker.includes('transactionReferences'), true);
+assert.equal(dailyClosingWorker.includes('Asia/Jakarta'), true);
+assert.equal(dailyClosingWorker.includes('requiredSignedMoney'), true, 'Net digital reconciliation must support negative refunds and outflows.');
+assert.equal(dailyClosingWorker.includes('commitIdempotentOperation'), true);
+assert.match(rules, /function bookkeepingBusinessDateOpen\(data\)[\s\S]*?cashClosingSessions[\s\S]*?status != 'closed'/);
+assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.equal(rules.includes('bookkeepingBusinessDateOpen(request.resource.data)'), true);
+assert.equal(rules.includes('bookkeepingBusinessDateOpen(resource.data)'), true);
+
 assert.equal(adminBookingRepository.includes("'sessionStatus', 'sessionState', 'checkedInAt'"), true);
 assert.equal(bookingWorker.includes("'sessionStatus',\n  'sessionType'"), false, 'Generic booking updates must not accept sessionStatus.');
 
