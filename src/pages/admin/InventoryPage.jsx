@@ -1165,6 +1165,7 @@ export default function InventoryPage() {
         quantity: editingItem?.quantity ?? nextItem.quantity,
       });
       const savedItem = result?.item;
+      if (!savedItem?.id) throw new Error('Worker tidak mengembalikan item yang tersimpan.');
 
       setIsFormOpen(false);
       setEditingItem(null);
@@ -1176,7 +1177,7 @@ export default function InventoryPage() {
       console.error('Gagal menyimpan inventory:', error);
       setToast({
         title: 'Gagal menyimpan',
-        message: 'Inventory belum berhasil disimpan ke Firestore.',
+        message: error?.message || 'Inventory belum berhasil disimpan.',
       });
     }
   }
@@ -1235,7 +1236,7 @@ export default function InventoryPage() {
       console.error('Gagal menonaktifkan inventory:', error);
       setToast({
         title: 'Gagal menonaktifkan',
-        message: 'Status item belum berhasil diperbarui.',
+        message: error?.message || 'Status item belum berhasil diperbarui.',
       });
     }
   }
