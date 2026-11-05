@@ -256,6 +256,10 @@ export async function updateInventoryItem(item) {
 export const inventoryRepository = {
   subscribeInventoryItems,
   subscribeInventoryMovements,
+  subscribeSuppliers,
+  subscribePurchaseOrders,
+  subscribeGoodsReceipts,
+  subscribeProcurementPayments,
   createInventoryItem,
   updateInventoryItem,
   createInventoryMovement,
