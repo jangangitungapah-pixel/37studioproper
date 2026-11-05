@@ -499,6 +499,9 @@ export async function updateManualBooking(booking) {
     'refundHistory', 'refundedAmount', 'refundStatus', 'status', 'subtotal',
     'total', 'voidReason', 'voidedAt', 'voidedByName', 'voidedByUid',
     'bookingRequestStatus', 'requestStatus', 'source',
+    'sessionStatus', 'sessionState', 'checkedInAt', 'checkedInByUid', 'checkedInByName',
+    'actualStartAt', 'actualStartByUid', 'actualStartByName', 'actualEndAt', 'actualEndByUid',
+    'actualEndByName', 'actualDurationMinutes', 'noShowAt', 'noShowByUid', 'noShowByName', 'noShowReason',
   ]);
   const safePatch = Object.fromEntries(
     Object.entries(booking).filter(([key]) => !protectedFields.has(key)),
@@ -518,14 +521,13 @@ export async function updateManualBooking(booking) {
     booking.id
   );
 
-  const scheduleFields = ['date', 'startHour', 'durationHours', 'duration', 'sessionStatus'];
+  const scheduleFields = ['date', 'startHour', 'durationHours', 'duration'];
   const currentDuration = Number(currentBooking.durationHours ?? currentBooking.duration ?? 0);
   const nextDuration = Number(booking.durationHours ?? booking.duration ?? currentDuration);
   const scheduleChanged =
     String(booking.date ?? currentBooking.date ?? '') !== String(currentBooking.date ?? '') ||
     Number(booking.startHour ?? currentBooking.startHour) !== Number(currentBooking.startHour) ||
-    nextDuration !== currentDuration ||
-    String(booking.sessionStatus ?? currentBooking.sessionStatus ?? '') !== String(currentBooking.sessionStatus ?? '');
+    nextDuration !== currentDuration;
 
   if (scheduleChanged) {
     const result = await updateCanonicalManualBooking({
