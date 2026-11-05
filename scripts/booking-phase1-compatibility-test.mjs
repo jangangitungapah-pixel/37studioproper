@@ -110,9 +110,9 @@ const compatibilityMatrix = [
   },
 
   {
-    name: 'confirmed legacy paid completed session',
+    name: 'confirmed legacy paid past slot remains unverified without session event',
     booking: {
-      id: 'paid-completed',
+      id: 'paid-past-unverified',
       bookingRequestStatus: 'confirmed',
       paymentStatus: 'lunas',
       status: 'lunas',
@@ -124,7 +124,7 @@ const compatibilityMatrix = [
     expected: {
       requestStatus: 'confirmed',
       paymentStatus: 'paid',
-      sessionStatus: 'completed',
+      sessionStatus: 'upcoming',
       legacyPaymentStatus: 'lunas',
       cancelled: false,
       paymentOpen: false,
