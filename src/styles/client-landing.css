@@ -1682,3 +1682,31 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Make hover/tap feedback consistent across every public landing control. */
+.client-landing-page :where(a, button) {
+  transition: color var(--client-motion-fast) var(--client-ease),
+    background var(--client-motion-fast) var(--client-ease),
+    border-color var(--client-motion-fast) var(--client-ease),
+    box-shadow var(--client-motion-fast) var(--client-ease),
+    translate var(--client-motion-fast) var(--client-ease),
+    scale var(--client-motion-fast) var(--client-ease);
+}
+
+.client-landing-page :where(a, button):hover:not(:disabled) {
+  translate: 0 -1px;
+}
+
+.client-landing-page :where(a, button):active:not(:disabled) {
+  translate: 0 0;
+  scale: 0.985;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-landing-page :where(a, button) {
+    transition: none;
+    translate: none;
+    scale: none;
+  }
+}

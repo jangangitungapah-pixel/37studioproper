@@ -377,7 +377,7 @@ export default function ClientLandingPage() {
         >
           <a href="#services" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Studio</a>
           <a href="#pricelist" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Harga</a>
-          <a href="/book" className="client-landing-nav-link">Booking Slot</a>
+          <a href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>
           <a href="#location" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Lokasi</a>
         </nav>
 
@@ -497,7 +497,7 @@ export default function ClientLandingPage() {
 
             <div className="client-landing-starting-price">
               <small>Mulai dari</small>
-              <strong>{formatRupiah(startingPrice)}</strong>
+              <strong><NumberTicker value={startingPrice} formatter={formatTickerRupiah} duration={shouldReduceMotion ? 0 : 0.52} /></strong>
               <span>/ jam</span>
             </div>
 
@@ -667,7 +667,7 @@ export default function ClientLandingPage() {
               </div>
             )}
           </div>
-        </section>
+        </motion.section>
 
         <motion.section className="client-landing-location" {...sectionRevealProps} id="location" aria-labelledby="client-location-title">
           <div className="client-landing-location-heading">
