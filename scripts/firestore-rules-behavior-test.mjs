@@ -435,8 +435,12 @@ try {
     toStatus: 'completed', type: 'booking-session-event',
   }));
 
-  await assertFails(getDoc(doc(dashboard, 'customerFollowUpTasks', 'follow-up-rules-task')));
-  await assertFails(getDoc(doc(dashboard, 'customerFollowUpEvents', 'follow-up-rules-event')));
+  // Dashboard permission also grants read-only access to Customer Follow-up data.
+  // Writes remain Worker-only and the unrelated Settings permission is not sufficient.
+  await assertSucceeds(getDoc(doc(dashboard, 'customerFollowUpTasks', 'follow-up-rules-task')));
+  await assertSucceeds(getDoc(doc(dashboard, 'customerFollowUpEvents', 'follow-up-rules-event')));
+  await assertFails(getDoc(doc(closingSettingsAdmin, 'customerFollowUpTasks', 'follow-up-rules-task')));
+  await assertFails(getDoc(doc(closingSettingsAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
 
   const customersAdmin = context('customers-admin', 'customer-admin@example.com');
   await assertSucceeds(getDoc(doc(customersAdmin, 'customerFollowUpTasks', 'follow-up-rules-task')));
