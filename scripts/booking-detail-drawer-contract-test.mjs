@@ -260,7 +260,7 @@ assert.equal(
  * never inside the module-level Activity helper.
  */
 const activityHelperStart = drawerSource.indexOf('function buildBookingActivity(');
-const activityHelperEnd = drawerSource.indexOf('\\nfunction StatusChip(', activityHelperStart);
+const activityHelperEnd = drawerSource.indexOf('\nfunction StatusChip(', activityHelperStart);
 assert.equal(activityHelperStart >= 0 && activityHelperEnd > activityHelperStart, true,
   'Booking activity helper boundaries must be discoverable.');
 const activityHelperSource = drawerSource.slice(activityHelperStart, activityHelperEnd);
