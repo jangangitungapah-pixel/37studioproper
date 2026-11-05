@@ -370,6 +370,12 @@ export default function BookingFormModal({
       return;
     }
 
+    if (!editingBooking && form.date < getTodayIsoDate()) {
+      setError('Tanggal booking baru tidak boleh sebelum hari ini.');
+      navigateToBookingStep('slot');
+      return;
+    }
+
     if (isRecordingSessionSelected && !recordingTypeOptions.length) {
       setError('Recording Type belum tersedia. Tambahkan harga Recording Type di Settings terlebih dahulu.');
       return;
@@ -1271,6 +1277,7 @@ export default function BookingFormModal({
                       icon={CalendarDays}
                       id="booking-date"
                       label="Tanggal"
+                      min={!editingBooking ? getTodayIsoDate() : undefined}
                       required
                       type="date"
                       value={form.date}

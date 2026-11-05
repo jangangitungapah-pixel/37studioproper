@@ -172,6 +172,17 @@ for (
 }
 
 assert.equal(
+  modalSource.includes("if (!editingBooking && form.date < getTodayIsoDate()) {"),
+  true,
+  'New bookings must reject dates before today.',
+);
+assert.equal(
+  modalSource.includes('min={!editingBooking ? getTodayIsoDate() : undefined}'),
+  true,
+  'New booking date picker must prevent selecting past dates.',
+);
+
+assert.equal(
   modalSource.includes(
     'disabled={!isBookingReady || isSaving}'
   ),
@@ -343,8 +354,18 @@ assert.match(
 
 assert.match(
   modalCss,
-  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-summary\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
-  'UI-3C desktop live summary must remain sticky.',
+  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-layout\s*\{[\s\S]*?overflow:\s*hidden;/,
+  'UI-3C desktop layout must keep scroll boundaries inside its two panes.',
+);
+assert.match(
+  modalCss,
+  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-fields\s*\{[\s\S]*?overflow-y:\s*auto;/,
+  'UI-3C desktop form fields must scroll independently.',
+);
+assert.match(
+  modalCss,
+  /@media \(min-width: 768px\)[\s\S]*?\.booking-form-summary\s*\{[\s\S]*?position:\s*static;[\s\S]*?overflow-y:\s*auto;/,
+  'UI-3C desktop summary must remain independently readable without sticky overflow coupling.',
 );
 
 assert.equal(

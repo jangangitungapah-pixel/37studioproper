@@ -1728,8 +1728,8 @@
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] {
     top: 50%;
     bottom: auto;
-    width: min(1180px, calc(100vw - 48px));
-    max-height: min(92dvh, 900px);
+    width: min(1120px, calc(100vw - 48px));
+    max-height: min(90dvh, 840px);
     grid-template-rows: auto minmax(0, 1fr);
     translate: -50% -50%;
     border-radius: var(--studio-radius-large);
@@ -1738,9 +1738,9 @@
 
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-modal-head {
     grid-template-columns: minmax(0, 1fr) 42px;
-    gap: 18px;
+    gap: 14px;
     border-bottom: 1px solid var(--studio-edge-soft);
-    padding: 18px 20px 16px;
+    padding: 16px 20px 12px;
   }
 
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-modal-head::before {
@@ -1813,14 +1813,24 @@
   }
 
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(276px, 320px);
+    grid-template-columns: minmax(0, 1fr) minmax(276px, 310px);
     grid-template-areas: 'fields summary';
-    align-items: start;
+    align-items: stretch;
+    overflow: hidden;
+    scroll-behavior: auto;
     scroll-padding-top: 14px;
   }
 
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-fields {
+    min-height: 0;
     gap: 12px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    scroll-padding-top: 14px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
     border-right: 1px solid var(--studio-edge-soft);
     padding: 14px;
   }
@@ -1847,8 +1857,15 @@
   }
 
   .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-summary {
-    position: sticky;
-    top: 0;
+    position: static;
+    align-self: stretch;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     border-bottom: 0;
@@ -2009,6 +2026,27 @@
     min-height: 44px;
     padding-inline: 14px;
     font-size: 0.76rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-fields::-webkit-scrollbar,
+  .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-summary::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-fields::-webkit-scrollbar-track,
+  .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-summary::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-fields::-webkit-scrollbar-thumb,
+  .booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first'] .booking-form-summary::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--studio-radius-full);
+    background: var(--studio-edge-normal);
+    background-clip: padding-box;
   }
 }
 
