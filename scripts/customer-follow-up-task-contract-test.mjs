@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const page = readFileSync('src/pages/admin/CustomerPage.jsx', 'utf8');
+const repository = readFileSync('src/services/adminCustomerRepository.js', 'utf8');
+const operations = readFileSync('src/services/adminOperationsRepository.js', 'utf8');
+const worker = readFileSync('workers/admin-operations-worker/src/domain/customerFollowUp.js', 'utf8');
+const router = readFileSync('workers/admin-operations-worker/src/index.js', 'utf8');
+const rules = readFileSync('firestore.rules', 'utf8');
+
+assert.match(page, /Customer Follow-up Tasks/);
+assert.match(page, /createCanonicalCustomerFollowUpTask/);
+assert.match(page, /updateCanonicalCustomerFollowUpTask/);
+assert.match(page, /subscribeCustomerFollowUpTasks/);
+assert.match(page, /subscribeCustomerFollowUpEvents/);
+assert.match(page, /Lihat histori/);
+assert.match(page, /Due Today/);
+assert.match(page, /Overdue/);
+assert.match(page, /Upcoming/);
+assert.match(page, /Catat hasil &amp; selesai/);
+assert.match(page, /wa.me/);
+assert.match(worker, /export async function createCustomerFollowUpTask/);
+assert.match(worker, /export async function updateCustomerFollowUpTask/);
+assert.match(worker, /customerFollowUpTasks/);
+assert.match(worker, /customerFollowUpEvents/);
+assert.match(worker, /commitIdempotentOperation/);
+assert.match(worker, /follow_up_outcome_required/);
+assert.match(router, /\/v1\/customers\/follow-ups/);
+assert.match(operations, /\/v1\/customers\/follow-ups/);
+assert.match(rules, /match \/customerFollowUpTasks\/{taskId}[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/customerFollowUpEvents\/{eventId}[\s\S]*?allow create, update, delete: if false;/);
+process.stdout.write('✅ Customer follow-up task contract passed.\n');
