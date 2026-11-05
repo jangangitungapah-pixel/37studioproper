@@ -106,6 +106,24 @@ assert.match(
   /function isReconciledBookkeepingSource\([\s\S]*?'procurement-payment'/,
   'Supplier payment ledger rows must be treated as immutable reconciled sources.',
 );
+assert.match(inventoryWorker, /lastProcurementPaymentAt/);
+assert.match(inventoryWorker, /cashClosingSessions/);
+assert.match(
+  inventoryWorker,
+  /purchaseOrder:\s*\{ collectionId: 'purchaseOrders'/,
+  'Idempotent Procurement responses must use the canonical purchaseOrder result key.',
+);
+assert.match(
+  read('workers/admin-operations-worker/src/domain/dailyClosings.js'),
+  /firestore\.setWrite\('cashClosingSessions'/,
+  'Daily Closing must retain the atomic session precondition used by Procurement payments.',
+);
+assert.match(workspace, /orders\.filter\(\(order\) => !\['draft', 'cancelled'\]\.includes\(order\.status\)\)/);
+assert.match(
+  read('src/pages/admin/BookkeepingPage.jsx'),
+  /key: 'procurement', label: 'Pengadaan'/,
+  'Bookkeeping must label the canonical procurement expense category.',
+);
 assert.match(
   rules,
   /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/,

@@ -147,9 +147,11 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const [cancelReason, setCancelReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const canRecordPayments = currentUser?.role === 'owner' ||
-    currentUser?.isOwner === true ||
-    currentUser?.permissions?.bookkeeping === true;
+  const canRecordPayments = (
+    currentUser?.role === 'owner' && currentUser?.isOwner !== false
+  ) || (
+    currentUser?.role === 'admin' && currentUser?.permissions?.bookkeeping === true
+  );
 
   useEffect(() => {
     const subscriptions = [
@@ -229,7 +231,9 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   );
   const pendingApprovalCount = orders.filter((order) => order.status === 'submitted').length;
   const inTransitCount = orders.filter((order) => ['ordered', 'partially_received'].includes(order.status)).length;
-  const outstandingTotal = orders.reduce((sum, order) => sum + remainingAmount(order), 0);
+  const outstandingTotal = orders
+    .filter((order) => !['draft', 'cancelled'].includes(order.status))
+    .reduce((sum, order) => sum + remainingAmount(order), 0);
   const supplierLoading = loadState.suppliers === 'loading';
   const orderLoading = loadState.orders === 'loading';
   const receiptLoading = loadState.receipts === 'loading';

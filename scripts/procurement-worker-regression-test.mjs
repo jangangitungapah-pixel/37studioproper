@@ -6,6 +6,7 @@ import {
   recordPurchaseOrderPayment,
   transitionPurchaseOrder,
 } from '../workers/admin-operations-worker/src/domain/inventory.js';
+import { closeDailyClosing } from '../workers/admin-operations-worker/src/domain/dailyClosings.js';
 
 function clone(value) {
   return structuredClone(value);
@@ -33,6 +34,36 @@ class FakeFirestore {
   async getDocument(collectionId, id) {
     const entry = this.collection(collectionId).get(id);
     return entry ? { data: clone(entry.data), id, updateTime: entry.updateTime } : null;
+  }
+
+  async runQuery(specification) {
+    const collectionId = specification?.from?.[0]?.collectionId || '';
+    const documents = [...this.collection(collectionId)].map(([id, entry]) => ({
+      data: clone(entry.data),
+      id,
+    }));
+    const filter = specification?.where?.fieldFilter;
+    const filtered = filter?.op === 'EQUAL'
+      ? documents.filter((document) => document.data?.[filter.field?.fieldPath] === filter.value?.stringValue)
+      : documents;
+    const offset = Number(specification?.offset || 0);
+    const limit = Number(specification?.limit || filtered.length);
+    return filtered.slice(offset, offset + limit);
+  }
+
+  async listDocuments(collectionId, options = {}) {
+    const documents = [...this.collection(collectionId)].map(([id, entry]) => ({
+      data: clone(entry.data),
+      id,
+    }));
+    const offset = Number(options.pageToken || 0);
+    const pageSize = Number(options.pageSize || 500);
+    const page = documents.slice(offset, offset + pageSize);
+    const nextOffset = offset + page.length;
+    return {
+      documents: page,
+      nextPageToken: nextOffset < documents.length ? String(nextOffset) : '',
+    };
   }
 
   setWrite(collectionId, id, data, precondition = null) {
@@ -161,6 +192,8 @@ assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.
   'Creating a PO must not change inventory stock.');
 const poRetry = await createPurchaseOrder(poOptions);
 assert.equal(poRetry.duplicate, true);
+assert.equal(poRetry.purchaseOrder.id, poResult.purchaseOrder.id,
+  'A purchase-order retry must preserve the canonical purchaseOrder response key.');
 assert.equal(firestore.collection('purchaseOrders').size, 1);
 assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.quantity, 4);
 
@@ -217,6 +250,9 @@ assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.
   'A partial receipt must add only the quantity actually received.');
 const partialReceiptRetry = await receivePurchaseOrder(partialReceiptOptions);
 assert.equal(partialReceiptRetry.duplicate, true);
+assert.equal(partialReceiptRetry.purchaseOrder.id, partialReceipt.purchaseOrder.id,
+  'A Goods Receipt retry must preserve the canonical purchaseOrder response key.');
+assert.equal(partialReceiptRetry.receipt.id, partialReceipt.receipt.id);
 assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.quantity, 7,
   'A receipt retry must not add stock twice.');
 
@@ -267,6 +303,8 @@ assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.
 assert.equal(firestore.collection('inventoryMovements').size, 2);
 const finalReceiptRetry = await receivePurchaseOrder(finalReceiptOptions);
 assert.equal(finalReceiptRetry.duplicate, true);
+assert.equal(finalReceiptRetry.purchaseOrder.id, finalReceipt.purchaseOrder.id);
+assert.equal(finalReceiptRetry.receipt.id, finalReceipt.receipt.id);
 assert.equal((await firestore.getDocument('inventoryItems', 'item-cable')).data.quantity, 9);
 
 currentPO = (await firestore.getDocument('purchaseOrders', poId)).data;
@@ -308,6 +346,9 @@ assert.equal(paymentResult.purchaseOrder.paidAmount, 10000);
 assert.equal(firestore.collection('bookkeepingEntries').size, 1);
 const paymentRetry = await recordPurchaseOrderPayment(paymentOptions);
 assert.equal(paymentRetry.duplicate, true);
+assert.equal(paymentRetry.purchaseOrder.id, paymentResult.purchaseOrder.id,
+  'A payment retry must preserve the canonical purchaseOrder response key.');
+assert.equal(paymentRetry.payment.id, paymentResult.payment.id);
 assert.equal(firestore.collection('bookkeepingEntries').size, 1);
 currentPO = (await firestore.getDocument('purchaseOrders', poId)).data;
 await assert.rejects(
@@ -375,5 +416,88 @@ await assert.rejects(
   }),
   (error) => error?.code === 'purchase_order_has_payment',
 );
+
+
+// A supplier payment and Daily Closing racing on the same business date must
+// serialize through cashClosingSessions. Exactly one stale revision may commit.
+const raceFirestore = new FakeFirestore({
+  purchaseOrders: {
+    'po-closing-race': {
+      id: 'po-closing-race',
+      poNumber: 'PO-CLOSING-RACE',
+      supplierId: 'supplier-race',
+      supplierName: 'Race Supplier',
+      status: 'ordered',
+      totalAmount: 10000,
+      paidAmount: 0,
+      updatedAt: 'race-po-revision-1',
+    },
+  },
+});
+const originalRaceCommit = raceFirestore.commit.bind(raceFirestore);
+let raceCommitArrivals = 0;
+let releaseRaceCommits;
+const raceCommitBarrier = new Promise((resolve) => { releaseRaceCommits = resolve; });
+raceFirestore.commit = async (writes) => {
+  const touchesClosingSession = writes.some((write) =>
+    write.collectionId === 'cashClosingSessions' && write.id === '2026-11-05__main');
+  if (touchesClosingSession) {
+    raceCommitArrivals += 1;
+    if (raceCommitArrivals === 2) releaseRaceCommits();
+    await raceCommitBarrier;
+  }
+  return originalRaceCommit(writes);
+};
+const racePaymentOptions = {
+  actor,
+  body: {
+    purchaseOrderId: 'po-closing-race',
+    expectedUpdatedAt: 'race-po-revision-1',
+    amount: 1000,
+    paymentMethod: 'transfer',
+    date: '2026-11-05',
+    note: 'Race test supplier payment',
+  },
+  firestore: raceFirestore,
+  request: requestWithKey('procurement-payment-daily-closing-race'),
+};
+const denominations = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
+const raceClosingOptions = {
+  actor,
+  body: {
+    businessDate: '2026-11-05',
+    registerId: 'main',
+    openingCash: 0,
+    cashDenominations: Object.fromEntries(denominations.map((value) => [String(value), 0])),
+    digitalCounts: { transfer: 0, qris: 0, other: 0 },
+  },
+  firestore: raceFirestore,
+  request: requestWithKey('daily-closing-procurement-race'),
+  now: new Date('2026-11-06T00:00:00.000Z'),
+};
+const raceResults = await Promise.allSettled([
+  recordPurchaseOrderPayment(racePaymentOptions),
+  closeDailyClosing(raceClosingOptions),
+]);
+assert.equal(raceCommitArrivals, 2, 'Both competing operations must reach the atomic commit.');
+assert.equal(raceResults.filter((result) => result.status === 'fulfilled').length, 1,
+  'Payment and Daily Closing must not both commit against the same session revision.');
+const raceSession = await raceFirestore.getDocument('cashClosingSessions', '2026-11-05__main');
+const racePO = await raceFirestore.getDocument('purchaseOrders', 'po-closing-race');
+if (raceSession.data.status === 'closed') {
+  assert.equal(racePO.data.paidAmount, 0);
+  assert.equal(raceFirestore.collection('procurementPayments').size, 0);
+  assert.equal(raceFirestore.collection('bookkeepingEntries').size, 0,
+    'A losing payment must not leave a partial ledger entry.');
+  assert.equal(raceFirestore.collection('cashClosingEvents').size, 1);
+} else {
+  assert.equal(raceSession.data.status, 'not_opened');
+  assert.equal(raceSession.data.lastProcurementPaymentId !== undefined, true);
+  assert.equal(racePO.data.paidAmount, 1000);
+  assert.equal(raceFirestore.collection('procurementPayments').size, 1);
+  assert.equal(raceFirestore.collection('bookkeepingEntries').size, 1);
+  assert.equal(raceFirestore.collection('cashClosingEvents').size, 0,
+    'A losing closing operation must not leave a closing event.');
+}
 
 console.log('procurement-worker-regression-test: PASS');

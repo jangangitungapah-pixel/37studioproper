@@ -434,7 +434,7 @@ export async function createPurchaseOrder({ actor, body, firestore, request }) {
   const committed = await commitIdempotentOperation({
     actor,
     documentRefs: {
-      po: { collectionId: 'purchaseOrders', documentId: id },
+      purchaseOrder: { collectionId: 'purchaseOrders', documentId: id },
       event: { collectionId: 'procurementEvents', documentId: eventId },
     },
     firestore,
@@ -524,7 +524,7 @@ export async function transitionPurchaseOrder({ actor, body, firestore, request 
   const committed = await commitIdempotentOperation({
     actor,
     documentRefs: {
-      po: { collectionId: 'purchaseOrders', documentId: id },
+      purchaseOrder: { collectionId: 'purchaseOrders', documentId: id },
       event: { collectionId: 'procurementEvents', documentId: eventId },
     },
     firestore,
@@ -571,7 +571,7 @@ export async function receivePurchaseOrder({ actor, body, firestore, request }) 
   const nextItems = po.items.map((item) => ({ ...item }));
   const writes = [];
   const refs = {
-    po: { collectionId: 'purchaseOrders', documentId: poId },
+    purchaseOrder: { collectionId: 'purchaseOrders', documentId: poId },
   };
   const receivedSummary = [];
   const seenLineIds = new Set();
@@ -635,8 +635,6 @@ export async function receivePurchaseOrder({ actor, body, firestore, request }) 
       firestore.setWrite('inventoryItems', inventoryItem.id, nextItem, { updateTime: itemDocument.updateTime }),
       firestore.setWrite('inventoryMovements', movementId, movement, { exists: false }),
     );
-    refs['item_' + inventoryItem.id] = { collectionId: 'inventoryItems', documentId: inventoryItem.id };
-    refs['movement_' + movementId] = { collectionId: 'inventoryMovements', documentId: movementId };
 
     orderedLine.receivedQuantity = finiteQuantity(previouslyReceived + quantity, 'Total diterima');
     receivedSummary.push({
@@ -736,12 +734,26 @@ export async function recordPurchaseOrderPayment({ actor, body, firestore, reque
     throw new HttpError(400, 'procurement_payment_method_invalid', 'Metode pembayaran tidak didukung.');
   }
   const paymentDate = procurementDate(body.date || new Date().toISOString().slice(0, 10), 'Tanggal pembayaran');
-  const closingDocument = await firestore.getDocument('cashClosingSessions', paymentDate + '__main');
+  const closingSessionId = paymentDate + '__main';
+  const closingDocument = await firestore.getDocument('cashClosingSessions', closingSessionId);
   if (closingDocument?.data?.status === 'closed') {
     throw new HttpError(409, 'business_date_closed', 'Tanggal pembayaran sudah ditutup oleh Daily Closing. Buka kembali tanggal tersebut melalui alur Owner sebelum mencatat pembayaran.');
   }
   const now = new Date().toISOString();
   const paymentId = await stableDocumentId('procurement-payment', key);
+  // The closing session is also the per-business-date optimistic lock.
+  // A payment and Daily Closing therefore cannot commit against the same stale revision.
+  const nextClosingSession = {
+    ...(closingDocument?.data || {}),
+    id: closingSessionId,
+    businessDate: paymentDate,
+    registerId: 'main',
+    status: closingDocument?.data?.status || 'not_opened',
+    createdAt: closingDocument?.data?.createdAt || now,
+    updatedAt: now,
+    lastProcurementPaymentAt: now,
+    lastProcurementPaymentId: paymentId,
+  };
   const payment = {
     id: paymentId,
     purchaseOrderId: poId,
@@ -795,7 +807,7 @@ export async function recordPurchaseOrderPayment({ actor, body, firestore, reque
   const committed = await commitIdempotentOperation({
     actor,
     documentRefs: {
-      po: { collectionId: 'purchaseOrders', documentId: poId },
+      purchaseOrder: { collectionId: 'purchaseOrders', documentId: poId },
       payment: { collectionId: 'procurementPayments', documentId: paymentId },
       expense: { collectionId: 'bookkeepingEntries', documentId: paymentId },
       event: { collectionId: 'procurementEvents', documentId: eventId },
@@ -811,6 +823,12 @@ export async function recordPurchaseOrderPayment({ actor, body, firestore, reque
       firestore.setWrite('procurementPayments', paymentId, payment, { exists: false }),
       firestore.setWrite('bookkeepingEntries', paymentId, expense, { exists: false }),
       firestore.setWrite('procurementEvents', eventId, event, { exists: false }),
+      firestore.setWrite(
+        'cashClosingSessions',
+        closingSessionId,
+        nextClosingSession,
+        closingDocument ? { updateTime: closingDocument.updateTime } : { exists: false },
+      ),
     ],
   });
   return { ...committed.result, duplicate: committed.duplicate };

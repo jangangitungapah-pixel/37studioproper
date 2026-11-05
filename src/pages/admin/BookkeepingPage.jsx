@@ -54,6 +54,7 @@ const expenseCategoryOptions = [
   { key: 'maintenance', label: 'Maintenance', description: 'Servis alat dan perbaikan' },
   { key: 'utility', label: 'Operasional', description: 'Listrik, internet, kebersihan' },
   { key: 'inventory', label: 'Inventory', description: 'Kabel, senar, stick, aksesoris' },
+  { key: 'procurement', label: 'Pengadaan', description: 'Pembayaran supplier melalui Purchase Order' },
   { key: 'crew', label: 'Crew', description: 'Fee operator atau helper' },
   { key: 'promotion', label: 'Promosi', description: 'Iklan dan konten' },
   { key: 'rent', label: 'Sewa', description: 'Biaya sewa tempat' },
@@ -254,6 +255,16 @@ function getTransactionSourceMeta(transaction) {
       label: 'Work Order',
       description: transaction?.workOrderId ? 'WO ' + String(transaction.workOrderId).slice(0, 12) : 'Biaya maintenance equipment',
       searchText: 'maintenance work order equipment service repair ' + String(transaction?.workOrderId || ''),
+      reconciled: true,
+    };
+  }
+
+  if (source === 'procurement-payment') {
+    return {
+      key: 'procurement',
+      label: 'Pengadaan',
+      description: 'Pembayaran supplier melalui Purchase Order',
+      searchText: 'pengadaan supplier purchase order procurement pembayaran',
       reconciled: true,
     };
   }
