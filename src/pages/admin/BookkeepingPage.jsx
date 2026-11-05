@@ -24,6 +24,7 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
+import { createCanonicalBookkeepingEntry, updateCanonicalBookkeepingEntry, deleteCanonicalBookkeepingEntry, createCanonicalDailyClosing, getCanonicalDailyClosing, reopenCanonicalDailyClosing } from '../../services/adminOperationsRepository.js';
 import {
   buildBookingFinanceTransactions,
   getBookingBillingTotal,
@@ -1615,8 +1616,8 @@ export default function BookkeepingPage() {
     try {
       const isEditing = Boolean(entry.id);
       const savedEntry = isEditing
-        ? await bookkeepingRepository.updateBookkeepingEntry(entry)
-        : await bookkeepingRepository.createBookkeepingEntry(entry);
+        ? await updateCanonicalBookkeepingEntry(entry)
+        : await createCanonicalBookkeepingEntry(entry);
       const typeLabel = getEntryTypeLabel(savedEntry.type);
 
       closeExpenseForm();
@@ -1643,7 +1644,7 @@ export default function BookkeepingPage() {
 
       if (!confirmed) return;
 
-      await bookkeepingRepository.deleteBookkeepingEntry(transaction.entryId);
+      await deleteCanonicalBookkeepingEntry({ id: transaction.entryId });
 
       setToast({
         title: getEntryTypeLabel(transaction.type) + ' dihapus',
