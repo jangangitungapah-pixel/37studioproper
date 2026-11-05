@@ -87,15 +87,18 @@ await expectCode(createMaintenanceWorkOrder({
   body: { inventoryItemId: 'amp-3', title: 'Repair archived equipment' },
 }), 'maintenance_item_unavailable');
 
-await expectCode(transitionMaintenanceWorkOrder({
-  actor, firestore, request: requestFor('assign-missing-pic'),
-  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: created.workOrder.updatedAt, status: 'assigned' },
-}), 'maintenance_assignee_required');
-
 const triaged = await transitionMaintenanceWorkOrder({
   actor, firestore, request: requestFor('triage-amp-1'),
   body: { workOrderId: created.workOrder.id, expectedUpdatedAt: created.workOrder.updatedAt, status: 'triaged' },
 });
+await expectCode(transitionMaintenanceWorkOrder({
+  actor, firestore, request: requestFor('assign-missing-revision'),
+  body: { workOrderId: created.workOrder.id, status: 'assigned', assignedToName: 'Teknisi Studio' },
+}), 'maintenance_revision_required');
+await expectCode(transitionMaintenanceWorkOrder({
+  actor, firestore, request: requestFor('assign-missing-pic'),
+  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: triaged.workOrder.updatedAt, status: 'assigned' },
+}), 'maintenance_assignee_required');
 const assigned = await transitionMaintenanceWorkOrder({
   actor, firestore, request: requestFor('assign-amp-1'),
   body: { workOrderId: created.workOrder.id, expectedUpdatedAt: triaged.workOrder.updatedAt, status: 'assigned', assignedToName: 'Teknisi Studio' },
@@ -111,21 +114,29 @@ assert.equal(detailEvent.action, 'details_updated');
 
 await expectCode(transitionMaintenanceWorkOrder({
   actor, firestore, request: requestFor('start-stale-amp-1'),
-  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: assigned.workOrder.updatedAt, status: 'in_progress' },
+  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: 'stale-revision', status: 'in_progress' },
 }), 'maintenance_changed');
 
 const inProgress = await transitionMaintenanceWorkOrder({
   actor, firestore, request: requestFor('start-amp-1'),
   body: { workOrderId: created.workOrder.id, expectedUpdatedAt: detailsUpdated.workOrder.updatedAt, status: 'in_progress' },
 });
+const waitingParts = await transitionMaintenanceWorkOrder({
+  actor, firestore, request: requestFor('waiting-parts-amp-1'),
+  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: inProgress.workOrder.updatedAt, status: 'waiting_parts' },
+});
 await expectCode(transitionMaintenanceWorkOrder({
   actor, firestore, request: requestFor('complete-no-cost'),
-  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: inProgress.workOrder.updatedAt, status: 'completed' },
+  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: waitingParts.workOrder.updatedAt, status: 'completed' },
+}), 'maintenance_cost_required');
+await expectCode(transitionMaintenanceWorkOrder({
+  actor, firestore, request: requestFor('complete-empty-cost'),
+  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: waitingParts.workOrder.updatedAt, status: 'completed', cost: '' },
 }), 'maintenance_cost_required');
 
 const completed = await transitionMaintenanceWorkOrder({
   actor, firestore, request: requestFor('complete-amp-1'),
-  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: inProgress.workOrder.updatedAt, status: 'completed', cost: 225000, paymentMethod: 'cash' },
+  body: { workOrderId: created.workOrder.id, expectedUpdatedAt: waitingParts.workOrder.updatedAt, status: 'completed', cost: 225000, paymentMethod: 'cash' },
 });
 assert.equal(completed.workOrder.cost, 225000);
 assert.equal(completed.expense.amount, 225000);

@@ -265,7 +265,12 @@ export async function transitionMaintenanceWorkOrder({ actor, body, firestore, r
     firestore.setWrite('maintenanceEvents', eventId, event, { exists: false }),
   ];
   let expense = null;
-  if (targetStatus === 'completed' && !Object.hasOwn(body, 'cost')) {
+  if (targetStatus === 'completed' && (
+    !Object.hasOwn(body, 'cost') ||
+    body.cost === null ||
+    (typeof body.cost === 'string' && !body.cost.trim()) ||
+    !['number', 'string'].includes(typeof body.cost)
+  )) {
     throw new HttpError(400, 'maintenance_cost_required', 'Masukkan biaya perbaikan. Isi 0 jika tidak ada biaya tambahan.');
   }
   if (Object.hasOwn(body, 'cost')) {
