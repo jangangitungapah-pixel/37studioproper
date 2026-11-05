@@ -292,3 +292,7 @@ export function subscribePurchaseOrders(callback, onError = console.error) {
 export function subscribeGoodsReceipts(callback, onError = console.error) {
   return subscribeProcurementCollection('goodsReceipts', 'receivedAt', 'desc', 50, callback, onError);
 }
+
+export function subscribeProcurementPayments(callback, onError = console.error) {
+  return subscribeProcurementCollection('procurementPayments', 'createdAt', 'desc', 50, callback, onError);
+}
