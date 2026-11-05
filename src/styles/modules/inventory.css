@@ -1774,7 +1774,7 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
 .inventory-maintenance-meta { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
 .inventory-maintenance-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .inventory-maintenance-cost { max-width: 260px; }
-.inventory-maintenance-error { color: #b33d4a; }
+.inventory-maintenance-error { color: var(--studio-danger); }
 @media (max-width: 620px) {
   .inventory-maintenance-description { grid-column: 1; }
   .inventory-maintenance-card-head { display: grid; }
