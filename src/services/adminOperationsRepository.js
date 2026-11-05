@@ -204,6 +204,20 @@ export function recordCanonicalProcurementPayment(input, idempotencyKey = '') {
   });
 }
 
+export function saveCanonicalInventoryItem(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/items/save', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('inventory-save', input?.id),
+  });
+}
+
+export function archiveCanonicalInventoryItem(input, idempotencyKey = '') {
+  return requestOperation('/v1/inventory/items/archive', {
+    body: input,
+    idempotencyKey: idempotencyKey || createAdminOperationKey('inventory-archive', input?.itemId),
+  });
+}
+
 export function adjustCanonicalInventory(input, idempotencyKey = '') {
   return requestOperation('/v1/inventory/adjustments', {
     body: input,
