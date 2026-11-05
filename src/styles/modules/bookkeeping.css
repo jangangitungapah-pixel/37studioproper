@@ -1251,3 +1251,23 @@ html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-ledger-surf
   .bookkeeping-daily-closing-header { display: grid; }
   .bookkeeping-closing-reason { grid-column: 1; }
 }
+
+.bookkeeping-closing-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem .9rem;
+  grid-column: 1 / -1;
+  padding: .85rem;
+  border: 1px solid var(--studio-edge-soft);
+  border-radius: .8rem;
+  background: var(--studio-surface-2);
+}
+.bookkeeping-closing-preview strong {
+  width: 100%;
+  color: var(--studio-text-primary);
+}
+.bookkeeping-closing-preview span {
+  color: var(--studio-text-secondary);
+  font-size: .78rem;
+}
