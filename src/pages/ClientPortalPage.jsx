@@ -312,6 +312,35 @@ export default function ClientPortalPage() {
   const [simProofFile, setSimProofFile] = useState(null);
   const [simProofNote, setSimProofNote] = useState('');
 
+  function retryClientBookings() {
+    setBookings([]);
+    setBookingsLoading(true);
+    setBookingsError('');
+    setBookingsRetryVersion((value) => value + 1);
+  }
+
+  function retryCalendarSlots() {
+    setCalendarSlots([]);
+    setCalendarSlotsReady(false);
+    setCalendarSlotsLoading(true);
+    setCalendarSlotsError('');
+    setCalendarRetryVersion((value) => value + 1);
+  }
+
+  function retryPaymentProofs() {
+    setPaymentProofs([]);
+    setPaymentProofsLoading(true);
+    setPaymentProofsError('');
+    setPaymentProofsRetryVersion((value) => value + 1);
+  }
+
+  function retryClientNotifications() {
+    setClientNotifications([]);
+    setClientNotificationsLoading(true);
+    setClientNotificationsError('');
+    setClientNotificationsRetryVersion((value) => value + 1);
+  }
+
   // Calendar parameters
   const [calendarViewMode, setCalendarViewMode] = useState('week'); // 'day' | 'week' | 'month'
   const [calendarSelectedDate, setCalendarSelectedDate] = useState(() => startOfDay(new Date()));
@@ -399,9 +428,6 @@ export default function ClientPortalPage() {
 
     let active = true;
     let unsubscribe;
-    setBookings([]);
-    setBookingsLoading(true);
-    setBookingsError('');
 
     try {
       unsubscribe = adminBookingRepository.subscribeClientBookingsForUser(
@@ -437,10 +463,6 @@ export default function ClientPortalPage() {
 
     let active = true;
     let unsubscribe;
-    setCalendarSlots([]);
-    setCalendarSlotsReady(false);
-    setCalendarSlotsLoading(true);
-    setCalendarSlotsError('');
 
     try {
       unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
@@ -564,9 +586,6 @@ export default function ClientPortalPage() {
 
     let active = true;
     let unsubscribe;
-    setPaymentProofs([]);
-    setPaymentProofsLoading(true);
-    setPaymentProofsError('');
 
     try {
       unsubscribe = paymentProofRepository.subscribeClientPaymentProofs(
@@ -602,9 +621,6 @@ export default function ClientPortalPage() {
 
     let active = true;
     let unsubscribe;
-    setClientNotifications([]);
-    setClientNotificationsLoading(true);
-    setClientNotificationsError('');
 
     try {
       unsubscribe = notificationEventRepository.subscribeClientNotificationEvents(
@@ -670,18 +686,28 @@ export default function ClientPortalPage() {
   // client booking query; arbitrary event URLs are never navigated to.
   useEffect(() => {
     const bookingId = new URLSearchParams(location.search).get('bookingId');
-    if (!bookingId || !currentUser || bookingsLoading || bookingsError) return;
+    if (!bookingId || !currentUser || bookingsLoading || bookingsError) return undefined;
 
-    const ownedBooking = userBookings.find((booking) => booking.id === bookingId);
-    if (ownedBooking) {
-      setBookingsSection('bookings');
-      setActiveTab('bookings');
-      setSelectedBookingDetail(ownedBooking);
-    } else {
-      setActionFeedback('Booking dari notifikasi tidak tersedia di data akun ini.');
-    }
+    let active = true;
+    const resolveNotificationBooking = window.setTimeout(() => {
+      if (!active) return;
 
-    navigate('/client/portal', { replace: true });
+      const ownedBooking = userBookings.find((booking) => booking.id === bookingId);
+      if (ownedBooking) {
+        setBookingsSection('bookings');
+        setActiveTab('bookings');
+        setSelectedBookingDetail(ownedBooking);
+      } else {
+        setActionFeedback('Booking dari notifikasi tidak tersedia di data akun ini.');
+      }
+
+      navigate('/client/portal', { replace: true });
+    }, 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(resolveNotificationBooking);
+    };
   }, [bookingsError, bookingsLoading, currentUser, location.search, navigate, userBookings]);
 
   const unreadAdminMessages = useMemo(
@@ -1530,7 +1556,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           isLoading={clientNotificationsLoading}
           onClose={() => setIsNotificationsOpen(false)}
           onOpenBooking={handleClientNotificationOpen}
-          onRetry={() => setClientNotificationsRetryVersion((value) => value + 1)}
+          onRetry={retryClientNotifications}
         />
       ) : null}
 
@@ -1574,7 +1600,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           {bookingsError ? (
             <div className="client-data-status is-error" role="alert">
               <span>{bookingsError}</span>
-              <button onClick={() => setBookingsRetryVersion((value) => value + 1)} type="button">Coba lagi</button>
+              <button onClick={retryClientBookings} type="button">Coba lagi</button>
             </div>
           ) : null}
           {activeTab === 'bookings' && bookingsSection === 'payments' && paymentProofsLoading ? (
@@ -1583,7 +1609,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           {activeTab === 'bookings' && bookingsSection === 'payments' && paymentProofsError ? (
             <div className="client-data-status is-error" role="alert">
               <span>{paymentProofsError}</span>
-              <button onClick={() => setPaymentProofsRetryVersion((value) => value + 1)} type="button">Coba lagi</button>
+              <button onClick={retryPaymentProofs} type="button">Coba lagi</button>
             </div>
           ) : null}
         </div>
@@ -1624,7 +1650,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             calendarSlotsReady={calendarSlotsReady}
             calendarSlotsLoading={calendarSlotsLoading}
             calendarSlotsError={calendarSlotsError}
-            onRetryCalendarSlots={() => setCalendarRetryVersion((value) => value + 1)}
+            onRetryCalendarSlots={retryCalendarSlots}
             handleSlotClick={handleSlotClick}
             bookingBlocks={bookingBlocks}
             handleBookingBlockClick={handleBookingBlockClick}
@@ -1838,7 +1864,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 <span>Status bukti pembayaran</span>
                 <strong>{paymentProofsLoading ? 'Memuat status bukti…' : 'Status bukti belum dapat diperiksa'}</strong>
                 {paymentProofsError ? (
-                  <button type="button" onClick={() => setPaymentProofsRetryVersion((value) => value + 1)}>
+                  <button type="button" onClick={retryPaymentProofs}>
                     Coba lagi
                   </button>
                 ) : null}
@@ -1922,6 +1948,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
             {selectedBookingDetail.clientUid ? (
               <BookingConversationPanel
+                key={`${currentUser.uid}:${selectedBookingDetail.id}`}
                 booking={selectedBookingDetail}
                 role="client"
                 user={currentUser}

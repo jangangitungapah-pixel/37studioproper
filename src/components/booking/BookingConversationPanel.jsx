@@ -16,40 +16,52 @@ function formatMessageTime(value) {
 }
 
 export default function BookingConversationPanel({ booking, role, user }) {
-  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isLoading, setIsLoading] = useState(Boolean(booking?.id && user?.uid));
-  const [loadError, setLoadError] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
   const [retryVersion, setRetryVersion] = useState(0);
+  const [conversationState, setConversationState] = useState(() => ({
+    key: `${user?.uid || ''}:${booking?.id || ''}:${role}:${retryVersion}`,
+    messages: [],
+    isLoading: Boolean(booking?.id && user?.uid),
+    loadError: '',
+  }));
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const subscriptionKey = `${user?.uid || ''}:${booking?.id || ''}:${role}:${retryVersion}`;
+  const currentConversationState = conversationState.key === subscriptionKey
+    ? conversationState
+    : {
+      messages: [],
+      isLoading: Boolean(booking?.id && user?.uid),
+      loadError: '',
+    };
+  const { messages, isLoading, loadError } = currentConversationState;
 
   useEffect(() => {
-    if (!booking?.id || !user?.uid) {
-      setMessages([]);
-      setIsLoading(false);
-      setLoadError('');
-      return undefined;
-    }
+    if (!booking?.id || !user?.uid) return undefined;
 
     let active = true;
-    setMessages([]);
-    setIsLoading(true);
-    setLoadError('');
 
     try {
       const unsubscribe = bookingCommunicationRepository.subscribeBookingMessages(
         { booking, role, user },
         (nextMessages) => {
           if (!active) return;
-          setMessages(nextMessages);
-          setIsLoading(false);
-          setLoadError('');
+          setConversationState({
+            key: subscriptionKey,
+            messages: nextMessages,
+            isLoading: false,
+            loadError: '',
+          });
         },
         () => {
           if (!active) return;
-          setIsLoading(false);
-          setLoadError('Percakapan belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+          setConversationState({
+            key: subscriptionKey,
+            messages: [],
+            isLoading: false,
+            loadError: 'Percakapan belum dapat dimuat. Periksa koneksi lalu coba lagi.',
+          });
         }
       );
 
@@ -59,13 +71,20 @@ export default function BookingConversationPanel({ booking, role, user }) {
       };
     } catch (error) {
       console.error('Gagal memasang subscription percakapan:', error);
-      setIsLoading(false);
-      setLoadError('Percakapan belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setConversationState({
+          key: subscriptionKey,
+          messages: [],
+          isLoading: false,
+          loadError: 'Percakapan belum dapat dimuat. Periksa koneksi lalu coba lagi.',
+        });
+      });
       return () => {
         active = false;
       };
     }
-  }, [booking, role, user, retryVersion]);
+  }, [booking, role, user, retryVersion, subscriptionKey]);
 
   const unreadMessages = useMemo(
     () => messages.filter((message) => message[role === 'admin' ? 'readByAdmin' : 'readByClient'] === false),
