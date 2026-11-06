@@ -236,6 +236,48 @@ export function subscribeNotificationEvents({ status = 'all' } = {}, callback, o
   );
 }
 
+export function subscribeClientNotificationEvents(user, callback, onError) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError?.(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+
+  if (!user?.uid) {
+    callback([]);
+    return () => {};
+  }
+
+  // The UID equality is intentional: it matches the client recipient rule and
+  // lets Firestore prove that the query can only return this account's events.
+  const eventsRef = collection(firestoreDb, NOTIFICATION_EVENTS_COLLECTION);
+  const clientEventsQuery = query(eventsRef, where('targetUid', '==', user.uid));
+
+  return onSnapshot(
+    clientEventsQuery,
+    (snapshot) => {
+      const events = snapshot.docs
+        .map((eventDoc) => normalizeNotificationEvent({
+          id: eventDoc.id,
+          ...eventDoc.data(),
+        }))
+        .filter((event) =>
+          event.targetUid === user.uid &&
+          event.targetMode === 'user' &&
+          event.targetRole === 'client'
+        )
+        .sort((first, second) =>
+          String(second.createdAt || '').localeCompare(String(first.createdAt || ''))
+        );
+
+      callback(events);
+    },
+    (error) => {
+      console.error('Gagal membaca notifikasi client:', error);
+      onError?.(error);
+    },
+  );
+}
+
 export const notificationEventRepository = {
   buildNotificationEventRecord,
   createAdminNotificationEvent,
@@ -243,5 +285,6 @@ export const notificationEventRepository = {
   createNotificationEvent,
   getNotificationEventStatusLabel,
   normalizeNotificationEvent,
+  subscribeClientNotificationEvents,
   subscribeNotificationEvents,
 };
