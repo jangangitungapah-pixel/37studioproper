@@ -303,9 +303,22 @@ const landingSource =
 
 assert.equal(
   landingSource.includes(
-    '<a href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>',
+    '<a href="/book" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Booking Slot</a>',
   ),
   true,
+  'Public booking navigation must use the focus-aware menu close handler.',
+);
+
+assert.match(
+  landingSource,
+  /function handleNavigationLinkClick\(event\)[\s\S]*?target\.focus\(\{ preventScroll: true \}\)/,
+  'In-page navigation must move focus to its destination section.',
+);
+
+assert.match(
+  landingSource,
+  /if \(event\.key !== 'Escape'\) return;[\s\S]*?menuButtonRef\.current\?\.focus\(\)/,
+  'Escape from an open mobile navigation must restore focus to its trigger.',
 );
 
 assert.equal(
