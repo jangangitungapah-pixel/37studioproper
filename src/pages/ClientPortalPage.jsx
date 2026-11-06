@@ -689,10 +689,6 @@ export default function ClientPortalPage() {
     [userBookings]
   );
 
-  const clientActionBadgeCount = bookingsLoading || bookingsError || paymentProofsLoading || paymentProofsError
-    ? null
-    : unreadAdminMessages + pendingPaymentProofs.length;
-
   const calendarBookings = useMemo(() => {
     const ownBookingsById = new Map(
       userBookings
@@ -829,6 +825,10 @@ export default function ClientPortalPage() {
     () => paymentProofs.filter((proof) => proof.status === 'pending'),
     [paymentProofs]
   );
+
+  const clientActionBadgeCount = bookingsLoading || bookingsError || paymentProofsLoading || paymentProofsError
+    ? null
+    : unreadAdminMessages + pendingPaymentProofs.length;
 
   const clientAiContext = useMemo(
     () => createClientAiContext({
