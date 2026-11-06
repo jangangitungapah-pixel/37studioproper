@@ -120,5 +120,9 @@ assert.match(bookingsHub, /typeof unreadCount === 'number' \? unreadCount : '—
 assert.match(bookingsHub, /typeof pendingPaymentCount === 'number' \? pendingPaymentCount : '—'/);
 
 assert.match(portalStyles, /\.client-billing-clear\.is-unavailable/);
+assert.match(portalStyles, /\.client-detail-modal \.client-request-state\.is-paid/);
+assert.match(portalStyles, /\.client-detail-modal \.client-request-state\.is-upcoming/);
+assert.match(portalStyles, /\.client-detail-modal \.client-request-state\.is-no-show/);
+
 
 console.log('Phase 7 Client Portal interaction and ownership contracts passed.');
