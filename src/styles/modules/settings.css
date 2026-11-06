@@ -2008,6 +2008,11 @@
   outline-offset: 2px;
 }
 
+.settings-page[data-settings-ui='ui-12-spatial'] :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--settings-accent);
+  outline-offset: 2px;
+}
+
 .settings-page[data-settings-ui='ui-12-spatial'] .settings-mini-button.is-primary {
   background: linear-gradient(135deg, var(--settings-accent), var(--auth-accent-strong, var(--settings-accent)));
   color: var(--studio-text-inverse, white);
@@ -2287,6 +2292,14 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
     transition-duration: 0.001ms !important;
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-navigation-tab:active,
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-mini-button:active,
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-row-actions button:active,
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-icon-action-btn:active,
+  .settings-page[data-settings-ui='ui-12-spatial'] .settings-role-select:active {
+    transform: none;
   }
 }
 
@@ -4194,4 +4207,15 @@ html[data-admin-theme-active='true'][data-theme='dark'] .settings-page[data-sett
   .settings-danger-exclusions {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+
+/* UI-12D — Consistent press feedback for settings actions */
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-navigation-tab:active:not(:disabled),
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-mini-button:active:not(:disabled),
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-row-actions button:active:not(:disabled),
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-icon-action-btn:active:not(:disabled),
+.settings-page[data-settings-ui='ui-12-spatial'] .settings-role-select:active:not(:disabled),
+.settings-permission-backdrop button:active:not(:disabled) {
+  transform: scale(0.985);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, BellRing, Search, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, BellRing, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import {
   getNotificationEventStatusLabel,
   notificationEventStatusOptions,
@@ -41,6 +41,7 @@ export default function NotificationsPage({ currentUser }) {
   const [status, setStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadState, setLoadState] = useState('loading');
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     return subscribeNotificationEvents(
@@ -51,7 +52,7 @@ export default function NotificationsPage({ currentUser }) {
       },
       () => setLoadState('error'),
     );
-  }, [status]);
+  }, [retryToken, status]);
 
   const visibleEvents = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -70,6 +71,11 @@ export default function NotificationsPage({ currentUser }) {
     payment: events.filter((event) => /payment|proof/.test(String(event.type))).length,
     total: events.length,
   }), [events]);
+
+  const handleRetry = () => {
+    setLoadState('loading');
+    setRetryToken((current) => current + 1);
+  };
 
   return (
     <section className="notif-page" data-notification-ui="in-app-activity">
@@ -109,12 +115,17 @@ export default function NotificationsPage({ currentUser }) {
             placeholder="Cari booking, pesan, atau pembayaran"
           />
         </label>
-        <div className="notif-filter-strip" aria-label="Filter status">
+        <div className="notif-filter-strip" role="group" aria-label="Filter status">
           {notificationEventStatusOptions.map((option) => (
             <button
               className={`notif-filter-pill${status === option.key ? ' is-active' : ''}`}
               key={option.key}
-              onClick={() => setStatus(option.key)}
+              aria-pressed={status === option.key}
+              onClick={() => {
+                if (status === option.key) return;
+                setLoadState('loading');
+                setStatus(option.key);
+              }}
               type="button"
             >
               {option.label}
@@ -134,10 +145,28 @@ export default function NotificationsPage({ currentUser }) {
           </div>
         </div>
 
-        {loadState === 'loading' && <div className="notif-empty">Memuat aktivitas…</div>}
-        {loadState === 'error' && <div className="notif-empty is-error">Aktivitas belum dapat dimuat. Coba refresh halaman.</div>}
+        {loadState === 'loading' && (
+          <div className="notif-empty" role="status" aria-live="polite">
+            Memuat aktivitas…
+          </div>
+        )}
+        {loadState === 'error' && (
+          <div className="notif-empty is-error" role="alert">
+            <p>Aktivitas belum dapat dimuat. Koneksi atau izin baca mungkin sedang bermasalah.</p>
+            <button className="notif-retry-button" type="button" onClick={handleRetry}>
+              <RefreshCw size={15} aria-hidden="true" />
+              <span>Coba muat lagi</span>
+            </button>
+          </div>
+        )}
         {loadState === 'ready' && visibleEvents.length === 0 && (
-          <div className="notif-empty">Belum ada aktivitas yang cocok dengan filter.</div>
+          <div className="notif-empty">
+            {searchQuery.trim()
+              ? 'Tidak ada aktivitas yang cocok dengan pencarian.'
+              : events.length === 0
+                ? 'Belum ada aktivitas pada status ini.'
+                : 'Tidak ada aktivitas yang cocok dengan filter.'}
+          </div>
         )}
 
         {loadState === 'ready' && visibleEvents.length > 0 && (
