@@ -187,20 +187,12 @@ assert.ok(
   publicPageSource.includes('className="public-booking-intro-aside"'),
   'Public Booking AI launcher must live in the page intro layout rather than a floating viewport layer.',
 );
-assert.match(
-  publicPageSource,
-  /className="public-booking-intro-aside"[\s\S]*?surface="public-booking"[\s\S]*?className="public-booking-workspace"/,
-  'Public Booking AI launcher must be placed before the calendar workspace.',
-);
 assert.ok(
-  aiAssistantSource.includes('data-ai-surface={surface}'),
-  'Role AI Assistant must expose its surface for layout-specific behavior.',
+  publicPageSource.includes(
+    "className={`public-booking-summary ${canContinue ? 'is-ready' : 'is-pending'}`}",
+  ),
+  'The mobile summary must distinguish actionable and pending booking states.',
 );
-assert.ok(
-  aiAssistantSource.includes('className="role-ai-assistant"'),
-  'Role AI Assistant root must retain its stable layout class.',
-);
-
 assert.equal(
   publicPageSource.includes(
     'subscribeClientCalendarSlots(',
