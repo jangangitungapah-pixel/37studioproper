@@ -357,6 +357,19 @@
   color: var(--studio-surface-1);
 }
 
+.inventory-page[data-inventory-ui='ui-9-spatial'] .inventory-adjust-btn:active:not(:disabled),
+.inventory-page[data-inventory-ui='ui-9-spatial'] .inventory-crud-btn:active:not(:disabled),
+.inventory-page[data-inventory-ui='ui-9-spatial'] .inventory-add-button:active:not(:disabled),
+.inventory-page[data-inventory-ui='ui-9-spatial'] .inventory-export-button:active:not(:disabled),
+.inventory-page .procurement-button:active:not(:disabled),
+.inventory-page .maintenance-primary-button:active:not(:disabled),
+.inventory-page .maintenance-detail-actions button:active:not(:disabled),
+.inventory-page .maintenance-report-panel footer button:active:not(:disabled),
+.inventory-page .maintenance-action-form footer button:active:not(:disabled),
+.inventory-page .maintenance-cost-form > button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
 .inventory-export-button:disabled {
   cursor: not-allowed;
   opacity: 0.46;
@@ -1634,6 +1647,11 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
+
+  .inventory-page button:active,
+  .inventory-modal-panel button:active {
+    transform: none;
+  }
 }
 
 @media (forced-colors: active) {
@@ -2713,7 +2731,8 @@ html[data-admin-theme-active='true'][data-theme='dark'] .inventory-movement-pane
 }
 @media (prefers-reduced-motion: reduce) {
   .procurement-button { transition: none; }
-  .procurement-button:hover:not(:disabled) { transform: none; }
+  .procurement-button:hover:not(:disabled),
+  .procurement-button:active { transform: none; }
 }
 
 .procurement-payment-list {
