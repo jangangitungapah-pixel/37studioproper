@@ -1433,3 +1433,46 @@ button.client-booking-slot { cursor: pointer; }
     color: CanvasText;
   }
 }
+
+.client-home-recent-statuses {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.client-home-recent-status {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid var(--client-line);
+  border-radius: var(--studio-radius-full);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  padding: 4px 7px;
+  font-size: 7px;
+  font-weight: 740;
+  line-height: 1.2;
+}
+
+.client-home-recent-status.is-pending,
+.client-home-recent-status.is-attention {
+  border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--client-line));
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+}
+
+.client-home-recent-status.is-confirmed,
+.client-home-recent-status.is-paid {
+  border-color: color-mix(in srgb, var(--auth-success) 34%, var(--client-line));
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
+.client-home-recent-status.is-rejected,
+.client-home-recent-status.is-cancelled,
+.client-home-recent-status.is-void {
+  border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--client-line));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
