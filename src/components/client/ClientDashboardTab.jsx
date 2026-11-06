@@ -23,8 +23,8 @@ import {
 
 function getClientBookingStatusMeta(booking) {
   return {
-    payment: BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
     request: BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+    payment: BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
     session: BOOKING_SESSION_STATUS_META[getBookingSessionStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
   };
 }
@@ -121,8 +121,8 @@ export default function ClientDashboardTab({
             {upcomingBooking ? (
               <div aria-label="Status booking" className="client-home-status-stack">
                 {Object.entries(getClientBookingStatusMeta(upcomingBooking)).map(([key, status]) => (
-                  <span className="client-home-status-chip" key={key}>
-                    <small>{key === 'request' ? 'Request' : 'Pembayaran'}</small>
+                  <span className={`client-home-status-chip is-${status.tone}`} key={key}>
+                    <small>{key === 'request' ? 'Request' : key === 'payment' ? 'Pembayaran' : 'Sesi'}</small>
                     <strong>{status.label}</strong>
                   </span>
                 ))}
