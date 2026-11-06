@@ -187,6 +187,69 @@ assert.ok(
   publicPageSource.includes('className="public-booking-intro-aside"'),
   'Public Booking AI launcher must live in the page intro layout rather than a floating viewport layer.',
 );
+assert.match(
+  publicPageSource,
+  /className="public-booking-intro-aside"[\s\S]*?surface="public-booking"[\s\S]*?className="public-booking-workspace"/,
+  'Public Booking AI launcher must be placed before the calendar workspace.',
+);
+assert.ok(
+  aiAssistantSource.includes('data-ai-surface={surface}'),
+  'Role AI Assistant must expose its surface for layout-specific behavior.',
+);
+assert.ok(
+  aiAssistantSource.includes('className="role-ai-assistant"'),
+  'Role AI Assistant root must retain its stable layout class.',
+);
+
+assert.equal(
+  publicPageSource.includes('subscribeClientCalendarSlots('),
+  true,
+  'Public booking page must read the public-safe availability mirror.',
+);
+assert.match(
+  publicPageSource,
+  /const hasAvailabilityData = !isLoading && !loadError;/,
+  'Public availability must remain unverified until the subscription succeeds.',
+);
+assert.match(
+  publicPageSource,
+  /available: hasAvailabilityData && !occupied && !past/,
+  'Loading and error states must never fabricate available slots.',
+);
+assert.match(
+  publicPageSource,
+  /availabilityStatus: isLoading \? 'loading' : loadError \? 'error' : 'ready'/,
+  'AI context must receive the availability lifecycle state.',
+);
+assert.match(
+  publicPageSource,
+  /availableStartHours: hasAvailabilityData[\s\S]*?: \[\]/,
+  'AI context must not receive slot suggestions before availability is verified.',
+);
+assert.match(
+  publicPageSource,
+  /Status tidak diketahui/,
+  'An unavailable calendar must not display an available-slot count.',
+);
+assert.match(
+  publicPageSource,
+  /loadError\s*\?\s*'Status jadwal tidak diketahui'[\s\S]*?isLoading\s*\?\s*'Memeriksa jadwal'[\s\S]*?:\s*'Jadwal realtime'/,
+  'The public header must only claim realtime after availability subscription succeeds.',
+);
+assert.match(
+  publicPageSource,
+  /loadError\s*\?\s*<Info[\s\S]*?isLoading[\s\S]*?<LoaderCircle/,
+  'The public header indicator must visually distinguish error and loading states.',
+);
+assert.match(
+  publicPageSource,
+  /Jadwal belum terverifikasi\. Pilihan ini belum dapat dikirim\./,
+  'The summary must explain that an unverified slot cannot be submitted.',
+);
+assert.ok(
+  publicPageSource.includes("className={`public-booking-summary ${canContinue ? 'is-ready' : 'is-pending'}`}") ,
+  'The mobile summary must distinguish actionable and pending booking states.',
+);
 
 assert.equal(
   publicPageSource.includes(
