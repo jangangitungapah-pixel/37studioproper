@@ -1135,9 +1135,9 @@ button.client-booking-slot { cursor: pointer; }
 
 .client-data-status.is-error,
 .client-calendar-data-state.is-error {
-  border-color: color-mix(in srgb, var(--studio-status-danger) 42%, var(--client-line));
-  background: var(--studio-status-danger-soft);
-  color: var(--studio-status-danger);
+  border-color: color-mix(in srgb, var(--auth-danger) 42%, var(--client-line));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
 }
 
 .client-data-status > span,
