@@ -1367,3 +1367,19 @@ button.client-booking-slot { cursor: pointer; }
     max-width: 160px;
   }
 }
+
+@media (forced-colors: active) {
+  .client-home-status-chip,
+  .client-history-status {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+}
+
+.client-history-filters button:focus-visible,
+.client-history-card-main:focus-visible,
+.client-history-copy:focus-visible {
+  outline: 2px solid var(--client-accent);
+  outline-offset: 2px;
+}
