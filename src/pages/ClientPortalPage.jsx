@@ -1945,7 +1945,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 Tutup
               </button>
 
-              {!paymentProofsLoading && !paymentProofsError && getBookingStatus(selectedBookingDetail) !== 'lunas' && !['cancelled', 'canceled', 'void', 'deleted'].includes(getBookingStatus(selectedBookingDetail).toLowerCase()) && (
+              {!paymentProofsLoading && !paymentProofsError && isBookingPaymentOpen(selectedBookingDetail) && (
                 <button
                   type="button"
                   onClick={() => {
