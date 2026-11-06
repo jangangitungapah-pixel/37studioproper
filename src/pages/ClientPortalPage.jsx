@@ -662,6 +662,24 @@ export default function ClientPortalPage() {
     });
   }, [bookings, currentUser]);
 
+  // Notification destinations are resolved only against the already-scoped
+  // client booking query; arbitrary event URLs are never navigated to.
+  useEffect(() => {
+    const bookingId = new URLSearchParams(location.search).get('bookingId');
+    if (!bookingId || !currentUser || bookingsLoading || bookingsError) return;
+
+    const ownedBooking = userBookings.find((booking) => booking.id === bookingId);
+    if (ownedBooking) {
+      setBookingsSection('bookings');
+      setActiveTab('bookings');
+      setSelectedBookingDetail(ownedBooking);
+    } else {
+      setActionFeedback('Booking dari notifikasi tidak tersedia di data akun ini.');
+    }
+
+    navigate('/client/portal', { replace: true });
+  }, [bookingsError, bookingsLoading, currentUser, location.search, navigate, userBookings]);
+
   const unreadAdminMessages = useMemo(
     () => userBookings.filter((booking) => booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false).length,
     [userBookings]
@@ -1007,7 +1025,8 @@ export default function ClientPortalPage() {
         method: proofMethod,
       });
 
-      closePaymentProofModal();
+      setSelectedProofBooking(null);
+      resetStandaloneProofForm();
       setActionFeedback('Bukti pembayaran berhasil dikirim. Menunggu review admin.');
       window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
