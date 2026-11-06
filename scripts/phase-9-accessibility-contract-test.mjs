@@ -46,7 +46,7 @@ function token(block, name) {
 
 const rootStart = tokens.indexOf(':root {');
 assert.ok(rootStart >= 0, 'Dark default theme token block must exist');
-const rootEnd = tokens.indexOf('\\n}\\n\\n[data-theme=', rootStart);
+const rootEnd = tokens.indexOf('\n}\n\n[data-theme=', rootStart);
 assert.ok(rootEnd > rootStart, 'Dark default theme token block must be bounded');
 const dark = tokens.slice(rootStart, rootEnd);
 
