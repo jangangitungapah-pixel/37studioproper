@@ -9,6 +9,9 @@ const auth = read('src/styles/modules/auth.css');
 const wizard = read('src/styles/modules/client-booking-wizard.css');
 const guard = read('src/styles/modules/guard-attendance.css');
 const app = read('src/App.jsx');
+const themeProvider = read('src/theme/ThemeProvider.jsx');
+const themeContext = read('src/theme/ThemePreferenceContext.jsx');
+const publicThemeScope = read('src/theme/ThemePreferenceScope.jsx');
 const browserSmoke = read('scripts/browser-responsive-smoke.mjs');
 
 function luminance(hex) {
@@ -99,10 +102,14 @@ assert.match(
   'Guard approval dialogs must be included in reduced-motion coverage',
 );
 
-assert.match(app, /import \{ ThemeProvider \} from '\.\/theme\/ThemeProvider\.jsx'/);
-assert.match(app, /path="\/" element=\{<ThemeProvider><ClientLandingPage \/><\/ThemeProvider>\}/);
-assert.match(app, /path="\/book" element=\{<ThemeProvider><PublicBookingPage \/><\/ThemeProvider>\}/);
-assert.match(app, /path="\/client" element=\{<ThemeProvider><ClientLandingPage \/><\/ThemeProvider>\}/);
+assert.equal(app.includes('ThemeProvider'), false, 'Admin ThemeProvider must remain outside the root App.');
+assert.match(app, /import ThemePreferenceScope from '\.\/theme\/ThemePreferenceScope\.jsx'/);
+assert.match(app, /path="\/" element=\{<ThemePreferenceScope><ClientLandingPage \/><\/ThemePreferenceScope>\}/);
+assert.match(app, /path="\/book" element=\{<ThemePreferenceScope><PublicBookingPage \/><\/ThemePreferenceScope>\}/);
+assert.match(app, /path="\/client" element=\{<ThemePreferenceScope><ClientLandingPage \/><\/ThemePreferenceScope>\}/);
+assert.match(themeProvider, /<ThemePreferenceContextProvider adminThemeActive>/);
+assert.match(themeContext, /if \(adminThemeActive\)\s*\{\s*root\.dataset\.adminThemeActive = 'true';/);
+assert.match(publicThemeScope, /<ThemePreferenceContextProvider>/);
 for (const width of [360, 390, 430, 768, 900, 1024, 1280, 1440, 1920]) {
   assert.match(browserSmoke, new RegExp('width: ' + width + '\\b'), 'Responsive matrix missing ' + width + 'px');
 }
