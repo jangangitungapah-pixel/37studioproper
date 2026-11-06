@@ -1,17 +1,14 @@
 import { CalendarDays, ChevronRight, Clock3, Copy, Search, Volume2 } from 'lucide-react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
-import { statusFilters } from '../../constants/scheduleConfig.js';
+import {
+  BOOKING_PAYMENT_STATUS_META,
+  BOOKING_REQUEST_STATUS_META,
+  BOOKING_SESSION_STATUS_META,
+  getBookingPaymentStatus,
+  getBookingRequestStatus,
+  getBookingSessionStatus,
+} from '../../domain/booking/bookingSelectors.js';
 
-function getStatusLabel(status) {
-  return statusFilters.find((item) => item.key === status)?.label || status;
-}
-
-function getStatusBadgeTone(status = '') {
-  const cleanStatus = status.toLowerCase();
-  if (cleanStatus === 'lunas') return 'success';
-  if (cleanStatus === 'void' || cleanStatus === 'cancelled') return 'muted';
-  return 'warning';
-}
 
 function formatBookingDate(value) {
   const date = new Date(`${value}T00:00:00`);
@@ -32,7 +29,6 @@ export default function ClientHistoryTab({
   setHistoryFilter,
   historyFilterOptions,
   handleBookingBlockClick,
-  getBookingStatus,
   copyText,
 }) {
   return (
@@ -59,6 +55,7 @@ export default function ClientHistoryTab({
         <div className="client-history-filters" aria-label="Filter riwayat booking">
           {historyFilterOptions.map((option) => (
             <button
+              aria-pressed={historyFilter === option.key}
               className={historyFilter === option.key ? 'is-active' : ''}
               key={option.key}
               type="button"
@@ -85,8 +82,10 @@ export default function ClientHistoryTab({
       ) : (
         <div className="client-history-list">
           {filteredHistoryBookings.map((booking) => {
-            const status = getBookingStatus(booking);
-            const isVoid = status === 'void' || status === 'cancelled';
+            const requestMeta = BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' };
+            const paymentMeta = BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' };
+            const sessionMeta = BOOKING_SESSION_STATUS_META[getBookingSessionStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' };
+            const isVoid = ['cancelled', 'rejected', 'void'].includes(requestMeta.tone) || ['cancelled', 'void'].includes(paymentMeta.tone);
             const startHour = Number(booking.startHour || 0);
             const duration = Number(booking.durationHours || booking.duration || 1);
             const endHour = startHour + duration;
@@ -110,7 +109,11 @@ export default function ClientHistoryTab({
                     <strong>{String(startHour).padStart(2, '0')}.00–{String(endHour).padStart(2, '0')}</strong>
                   </span>
                   <span className="client-history-card-amount">
-                    <small className={`client-request-badge is-${getStatusBadgeTone(status)}`}>{getStatusLabel(status)}</small>
+                    <span aria-label="Status request, pembayaran, dan sesi" className="client-history-status-list">
+                      <small className={`client-history-status is-${requestMeta.tone}`}><b>Request</b>{requestMeta.label}</small>
+                      <small className={`client-history-status is-${paymentMeta.tone}`}><b>Bayar</b>{paymentMeta.label}</small>
+                      <small className={`client-history-status is-${sessionMeta.tone}`}><b>Sesi</b>{sessionMeta.label}</small>
+                    </span>
                     <strong>{formatRupiah(booking.total || 0)}</strong>
                   </span>
                   <ChevronRight className="client-history-card-chevron" size={17} />
