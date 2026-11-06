@@ -76,6 +76,8 @@ export default function ClientDashboardTab({
   bookingsLoading = false,
   bookingsError = '',
 }) {
+  const bookingDataUnavailable = bookingsLoading || Boolean(bookingsError);
+
   return (
     <div className="client-home-dashboard">
       <header className="client-home-heading">
@@ -284,7 +286,7 @@ export default function ClientDashboardTab({
 
             <strong>
               {
-                stats.totalBookings
+                {bookingDataUnavailable ? '—' : stats.totalBookings}
               }
             </strong>
 
@@ -299,12 +301,8 @@ export default function ClientDashboardTab({
             </span>
 
             <strong>
-              {
-                stats.totalDuration
-              }
-              <b>
-                {' '}jam
-              </b>
+              {bookingDataUnavailable ? '—' : stats.totalDuration}
+              {!bookingDataUnavailable ? <b>{' '}jam</b> : null}
             </strong>
 
             <small>
@@ -319,9 +317,7 @@ export default function ClientDashboardTab({
 
             <strong>
               {
-                formatRupiah(
-                  stats.unpaidAmount,
-                )
+                bookingDataUnavailable ? '—' : formatRupiah(stats.unpaidAmount)
               }
             </strong>
 
@@ -330,32 +326,20 @@ export default function ClientDashboardTab({
             </small>
           </div>
 
-          {stats.unpaidAmount > 0 ? (
-            <button
-              className="client-home-payment-cta"
-              type="button"
-              onClick={
-                onOpenPayments
-              }
-            >
-              <CreditCard
-                size={15}
-              />
-
-              <span>
-                Lihat Tagihan
-              </span>
-
-              <ChevronRight
-                size={15}
-              />
+          {bookingDataUnavailable ? (
+            <div className="client-home-payment-clear">
+              <CreditCard size={15} />
+              Status pembayaran belum tersedia
+            </div>
+          ) : stats.unpaidAmount > 0 ? (
+            <button className="client-home-payment-cta" type="button" onClick={onOpenPayments}>
+              <CreditCard size={15} />
+              <span>Lihat Tagihan</span>
+              <ChevronRight size={15} />
             </button>
           ) : (
             <div className="client-home-payment-clear">
-              <CreditCard
-                size={15}
-              />
-
+              <CreditCard size={15} />
               Tidak ada tagihan aktif
             </div>
           )}
