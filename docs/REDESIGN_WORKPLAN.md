@@ -109,11 +109,45 @@ Status: COMPLETE — required regression contracts and CI quality gates passed; 
 Acceptance: Phase 4 regression contracts and booking/customer/calendar contract coverage pass; production build and lint pass; responsive browser smoke passes; user confirms manual responsive testing. Authenticated visual QA evidence remains a Phase 9 item and does not block this phase's automated/source-contract acceptance.
 
 ## Phase 5 — Admin finance & operations
-- Invoices & Payments, payment proof review, Bookkeeping, Operator Fee, Inventory/Procurement/Maintenance, Guard Attendance.
-- Shared finance and operations patterns.
-- Preserve Worker authorization, idempotency, ledger integrity, refund/void, inventory movements, receipt/payment and attendance audit trail.
+Status: COMPLETE — owner surfaces audited, UI interaction refinements implemented, and required automated quality gates passed on 2026-11-06. Authenticated staging visual inspection remains an explicit Phase 9 item because no dedicated non-production environment/session is configured.
 
-Acceptance: all finance/procurement/guard contracts pass; use emulators/synthetic fixtures only.
+- Audited the existing owner surfaces and their contracts before implementation:
+  - src/pages/admin/BillingPage.jsx — invoices, payments, and payment-proof review.
+  - src/pages/admin/BookkeepingPage.jsx — bookkeeping ledger and daily-closing workspace.
+  - src/pages/admin/OperatorFeePage.jsx — operator fee review and related meal reconciliation surface.
+  - src/pages/admin/InventoryPage.jsx — inventory, procurement, and maintenance workspaces.
+  - src/pages/admin/GuardAttendancePage.jsx — owner-side guard attendance review.
+  - src/pages/guard/GuardAttendancePage.jsx — standalone guard self-service attendance portal.
+- The branch already contained the UI-6 through UI-10 spatial page foundations. This Phase 5 implementation refined the owner styles rather than replacing their layout architecture:
+  - Consistent focus-visible treatment for Billing actions and fields.
+  - Focus-within context and tactile press feedback for invoice/payment/proof actions, ledger controls, operator-fee decisions, inventory/procurement/maintenance actions, guard review decisions, and guard self-service actions.
+  - Shared motion tokens used for new transitions; reduced-motion rules explicitly suppress the added transforms and transitions.
+- Added scripts/admin-finance-operations-interactions-contract-test.mjs and registered it in npm test so Finance & Operations interaction states and reduced-motion behavior remain covered by regression.
+- Files changed:
+  - src/styles/modules/billing.css
+  - src/styles/modules/bookkeeping.css
+  - src/styles/modules/operator-fee.css
+  - src/styles/modules/inventory.css
+  - src/styles/modules/guard-attendance.css
+  - src/styles/modules/guard-portal.css
+  - scripts/admin-finance-operations-interactions-contract-test.mjs
+  - package.json
+- Implementation commit: 2f3bb61e649bfda172122ea026d9769ba75b40f6 — feat(admin): refine phase 5 finance and operations interactions.
+- Quality Gates run #218, run ID 42146646993, tested commit 2f3bb61e649bfda172122ea026d9769ba75b40f6 and completed SUCCESS:
+  - npm run build — success.
+  - npm run lint — success.
+  - npm test — success, including the Phase 5 interaction contract and registered finance, proof-review, bookkeeping, operator-fee, inventory, procurement, refund/void, and guard-attendance regression contracts.
+  - npm run test:prd — success, including PRD, Worker, and Firestore security contracts.
+  - Playwright responsive browser smoke — success.
+  - Screenshot artifact browser-responsive-smoke uploaded successfully (artifact ID 13470716951).
+- Responsive smoke covered the public landing and booking surfaces, Admin/Guard/Client login entry points, and the signed-out redirect for /admin/finance/invoices at the configured responsive viewports. It does not authenticate to Finance, Procurement, Bookkeeping, Operator Fee, or Guard workspaces and is not evidence of authenticated visual QA.
+- Business and data contracts were intentionally left unchanged: no page JSX, route, role/permission, Firebase Auth, Firestore rules/collections, repository, Worker authorization, payment state transition, invoice identity, idempotency, ledger, refund/void, inventory movement, procurement transition, attendance audit, or production-data changes. No production data was used for QA; no merge or deployment was performed.
+- Known QA limitation carried forward:
+  - Authenticated Admin Finance/Operations and Guard visual walkthroughs remain unverified at mobile/tablet/desktop sizes.
+  - The staging-readiness audit records that the current default Firebase/Worker configuration is production-facing (studio-proper, studio-37.web.app, APP_ENVIRONMENT=production). Do not perform mutating Finance, Procurement, Inventory, Attendance, Gallery, or destructive-action acceptance against those production targets.
+  - Complete authenticated visual QA in Phase 9 after a separate Firebase Spark staging project, isolated Worker environment, and synthetic accounts/data are available.
+
+Acceptance: source ownership and existing finance/procurement/guard contracts audited; interaction implementation is present in owner stylesheets; build, lint, npm test, npm run test:prd, and responsive browser smoke pass; screenshot evidence is uploaded; business/financial/Worker/attendance contracts remain unchanged; authenticated visual/staging limitations are documented and carried into Phase 9. Use emulators and synthetic fixtures only for any future operation-contract testing.
 
 ## Phase 6 — Content, notifications & settings
 - Gallery, notification center, all settings subpages and Owner-only workflows.
