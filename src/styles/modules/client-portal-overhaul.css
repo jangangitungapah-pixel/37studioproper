@@ -1505,3 +1505,73 @@ button.client-booking-slot { cursor: pointer; }
     color: CanvasText;
   }
 }
+
+/* Canonical lifecycle tones on the booking detail invoice surface. */
+.client-detail-modal .client-request-state.is-pending,
+.client-detail-modal .client-request-state.is-upcoming {
+  border-left-color: var(--auth-warning);
+  background: var(--auth-warning-soft);
+}
+
+.client-detail-modal .client-request-state.is-pending strong,
+.client-detail-modal .client-request-state.is-upcoming strong {
+  color: var(--auth-warning);
+}
+
+.client-detail-modal .client-request-state.is-confirmed,
+.client-detail-modal .client-request-state.is-paid,
+.client-detail-modal .client-request-state.is-completed,
+.client-detail-modal .client-request-state.is-active {
+  border-left-color: var(--auth-success);
+  background: var(--auth-success-soft);
+}
+
+.client-detail-modal .client-request-state.is-confirmed strong,
+.client-detail-modal .client-request-state.is-paid strong,
+.client-detail-modal .client-request-state.is-completed strong,
+.client-detail-modal .client-request-state.is-active strong {
+  color: var(--auth-success);
+}
+
+.client-detail-modal .client-request-state.is-partial {
+  border-left-color: var(--client-accent);
+  background: var(--client-accent-soft);
+}
+
+.client-detail-modal .client-request-state.is-partial strong {
+  color: var(--client-accent);
+}
+
+.client-detail-modal .client-request-state.is-rejected,
+.client-detail-modal .client-request-state.is-cancelled,
+.client-detail-modal .client-request-state.is-void,
+.client-detail-modal .client-request-state.is-no-show {
+  border-left-color: var(--auth-danger);
+  background: var(--auth-danger-soft);
+}
+
+.client-detail-modal .client-request-state.is-rejected strong,
+.client-detail-modal .client-request-state.is-cancelled strong,
+.client-detail-modal .client-request-state.is-void strong,
+.client-detail-modal .client-request-state.is-no-show strong {
+  color: var(--auth-danger);
+}
+
+.client-detail-modal .client-request-state.is-refunded {
+  border-left-color: var(--studio-edge-normal);
+  background: var(--studio-surface-2);
+}
+
+@media (forced-colors: active) {
+  .client-detail-modal .client-request-state {
+    border: 1px solid CanvasText;
+    border-left-width: 3px;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .client-detail-modal .client-request-state strong,
+  .client-detail-modal .client-request-state small {
+    color: CanvasText;
+  }
+}
