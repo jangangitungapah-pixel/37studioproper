@@ -196,7 +196,49 @@ Status: COMPLETE — Gallery, Notification Center, and Settings owner surfaces a
 Acceptance: Gallery subscription retry and protected media actions, immutable in-app notification feed/state, Settings persistence and Owner-only access, and shared interaction/reduced-motion behavior are covered by source contracts; production build, lint, npm test, npm run test:prd, and responsive browser smoke pass; screenshot evidence is uploaded; no production mutation occurred; authenticated/staging limitations are recorded for Phase 9.
 
 ## Phase 7 — Client Portal
-- Overview, bookings, details/conversation, payments/proof, account and notifications.
+Status: IN PROGRESS — recipient-scoped notifications, explicit client data subscription states, availability gating, and conversation interaction hardening implemented on 2026-11-06. Full quality gates and completion evidence remain pending.
+
+- Audited current source ownership:
+  - Route boundary: src/App.jsx and src/components/client/ClientSpatialRoute.jsx.
+  - Main authenticated workspace and orchestration: src/pages/ClientPortalPage.jsx.
+  - Client views: src/components/client/ClientDashboardTab.jsx, ClientCalendarTab.jsx, ClientHistoryTab.jsx, ClientBookingWizard.jsx, ClientBillingTab.jsx, ClientBookingsHub.jsx, ClientAccountTab.jsx.
+  - Booking detail conversation: src/components/booking/BookingConversationPanel.jsx.
+  - Owner styles: src/styles/routes/client.css, src/styles/modules/client-portal-overhaul.css, src/styles/modules/booking.css.
+  - Data services: adminBookingRepository, clientProfileRepository, accountRoleRepository, bookingCommunicationRepository, paymentProofRepository, notificationEventRepository; pricing/invoice/studio settings and Cloudinary upload remain existing dependencies.
+  - Firestore ownership: bookings, bookingMessages, paymentProofs, customers, notificationEvents, and public-safe clientCalendarSlots rules. Client role/auth resolution remains owned by accountRoleRepository and existing Firestore rules.
+- Implemented:
+  - Added subscribeClientNotificationEvents with a Firestore query constrained to targetUid == authenticated UID and a second client recipient filter (targetMode=user, targetRole=client).
+  - Added ClientNotificationsPanel as a read-only activity surface. It preserves the existing immutable activity event model; no read/unread actions, notification mutation, OneSignal, or push delivery were introduced.
+  - Added notification entry points to desktop and mobile headers. Notification booking navigation resolves only through the current client's already-scoped userBookings collection; raw event URLs are not trusted for navigation.
+  - Auth identity changes clear prior-client bookings, payment proofs, notifications, and selected booking detail before resolving the new identity.
+  - Booking, payment-proof, calendar-slot, and notification subscriptions now expose loading/error states with retry actions. The calendar remains non-actionable when slot availability has not been verified.
+  - Booking request submission rechecks the latest available slot snapshot and blocks known occupied slots before writing.
+  - Booking conversation now has explicit loading/error/retry states, preserves the draft after send failure, and follows PRD keyboard behavior: Enter sends; Shift+Enter inserts a line break.
+  - Mobile booking conversation composer receives sticky positioning and safe-area padding within the booking detail surface.
+  - Added scripts/client-portal-phase-7-contract-test.mjs and registered it in npm test.
+- Current changed owner files:
+  - package.json
+  - scripts/client-portal-phase-7-contract-test.mjs
+  - src/components/booking/BookingConversationPanel.jsx
+  - src/components/client/ClientCalendarTab.jsx
+  - src/components/client/ClientNotificationsPanel.jsx
+  - src/pages/ClientPortalPage.jsx
+  - src/services/notificationEventRepository.js
+  - src/styles/modules/booking.css
+  - src/styles/modules/client-portal-overhaul.css
+- Business and security contracts deliberately preserved:
+  - No Firestore rules, collections, indexes, schemas, Worker, account-role mapping, or canonical booking/payment writes changed.
+  - No payment proof status is displayed as paid/success by this work.
+  - Notification feed is read-only and does not invent an unread state.
+  - Calendar revalidation is client-side against the latest subscription snapshot, not a transactional reservation lock. The existing createClientBookingRequest write is unchanged; atomic concurrent slot reservation remains a known domain-level limitation and must not be claimed as solved by this UI work.
+  - No production data, proof upload, payment, or booking mutation was run.
+- Targeted source contract registered, but not yet verified by an actual local/CI run at the time of this note.
+- Known verification limitations:
+  - Local working tree on the user's PC is not observable from the GitHub connector.
+  - The connector does not expose push-triggered workflow-run listing; commit status query currently returns no status contexts. Confirm actual Quality Gates run/checks before marking Phase 7 complete.
+  - Authenticated browser walkthrough remains blocked until an isolated Firebase Spark staging project, staging Worker and Hosting environment, and synthetic accounts/data are available. Do not use the production-facing default Firebase/Worker targets for write acceptance.
+
+Acceptance: overview, bookings, calendar/detail, conversation, payment/proof, account and notifications must be source-audited and modernized; client ownership/isolation and business contracts must remain correct; targeted Client contracts, build, lint, npm test, npm run test:prd and responsive browser smoke must pass; authenticated staging limitations must be explicitly documented.
 - Responsive client shell, plain-language statuses and clear task actions.
 - Preserve client ownership and isolation.
 
