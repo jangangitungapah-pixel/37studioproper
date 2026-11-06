@@ -369,7 +369,12 @@ export default function ClientDashboardTab({
             </button>
           </header>
 
-          {recentBookings.length ? (
+          {bookingsLoading || bookingsError ? (
+            <div className="client-home-data-state" role={bookingsError ? 'alert' : 'status'}>
+              <strong>{bookingsError ? 'Aktivitas belum dapat dimuat' : 'Memuat aktivitas…'}</strong>
+              <p>{bookingsError ? 'Riwayat booking akan muncul setelah data berhasil dibaca.' : 'Mengambil booking terbaru dari akun Anda.'}</p>
+            </div>
+          ) : recentBookings.length ? (
             <div className="client-home-recent-list">
               {recentBookings.map(
                 (
