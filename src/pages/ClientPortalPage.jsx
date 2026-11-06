@@ -447,8 +447,11 @@ export default function ClientPortalPage() {
       );
     } catch (error) {
       console.error('Gagal memasang subscription booking client:', error);
-      setBookingsLoading(false);
-      setBookingsError('Data booking belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setBookingsLoading(false);
+        setBookingsError('Data booking belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      });
     }
 
     return () => {
@@ -483,9 +486,12 @@ export default function ClientPortalPage() {
       );
     } catch (error) {
       console.error('Gagal memasang subscription slot calendar client:', error);
-      setCalendarSlotsReady(false);
-      setCalendarSlotsLoading(false);
-      setCalendarSlotsError('Ketersediaan jadwal belum dapat diverifikasi. Slot booking dinonaktifkan sampai data berhasil dimuat.');
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setCalendarSlotsReady(false);
+        setCalendarSlotsLoading(false);
+        setCalendarSlotsError('Ketersediaan jadwal belum dapat diverifikasi. Slot booking dinonaktifkan sampai data berhasil dimuat.');
+      });
     }
 
     return () => {
@@ -605,8 +611,11 @@ export default function ClientPortalPage() {
       );
     } catch (error) {
       console.error('Gagal memasang subscription bukti pembayaran client:', error);
-      setPaymentProofsLoading(false);
-      setPaymentProofsError('Riwayat bukti pembayaran belum dapat dimuat. Coba ulang tanpa mengirim bukti baru.');
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setPaymentProofsLoading(false);
+        setPaymentProofsError('Riwayat bukti pembayaran belum dapat dimuat. Coba ulang tanpa mengirim bukti baru.');
+      });
     }
 
     return () => {
@@ -640,8 +649,11 @@ export default function ClientPortalPage() {
       );
     } catch (error) {
       console.error('Gagal memasang subscription notifikasi client:', error);
-      setClientNotificationsLoading(false);
-      setClientNotificationsError('Aktivitas belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setClientNotificationsLoading(false);
+        setClientNotificationsError('Aktivitas belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      });
     }
 
     return () => {

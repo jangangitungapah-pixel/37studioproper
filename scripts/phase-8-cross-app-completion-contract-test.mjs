@@ -10,7 +10,7 @@ assert.match(conversation, /const subscriptionKey = `\$\{user\?\.uid \|\| ''\}:\
 assert.match(conversation, /conversationState\.key === subscriptionKey/);
 assert.match(conversation, /setConversationState\(\{[\s\S]*?key: subscriptionKey/);
 assert.match(conversation, /Promise\.resolve\(\)\.then\(\(\) => \{/);
-assert.match(page, /key=\{\`\$\{currentUser\.uid\}:\$\{selectedBookingDetail\.id\}\`\}/);
+assert.equal(page.includes('key={`${currentUser.uid}:${selectedBookingDetail.id}`}'), true);
 
 const subscriptionEffects = [
   ['booking', '// Load client-owned bookings', '// Availability is actionable'],
