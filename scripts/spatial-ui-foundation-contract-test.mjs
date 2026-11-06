@@ -118,6 +118,14 @@ for (
 const themeSource =
   readFileSync(
     resolve(
+      'src/theme/ThemePreferenceContext.jsx',
+    ),
+    'utf8',
+  );
+
+const adminThemeProviderSource =
+  readFileSync(
+    resolve(
       'src/theme/ThemeProvider.jsx',
     ),
     'utf8',
@@ -160,6 +168,17 @@ assert.equal(
   ),
   false,
   'Pure theme helpers must stay outside the React component module.',
+);
+
+assert.equal(
+  adminThemeProviderSource.includes("from './ThemePreferenceContext.jsx'"),
+  true,
+  'Admin ThemeProvider must consume the shared theme preference context.',
+);
+assert.equal(
+  adminThemeProviderSource.includes('<ThemePreferenceContextProvider adminThemeActive>'),
+  true,
+  'Admin ThemeProvider must retain the spatial Admin theme marker.',
 );
 
 assert.equal(
