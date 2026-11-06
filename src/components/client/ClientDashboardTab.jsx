@@ -13,31 +13,17 @@ import {
   formatRupiah,
 } from '../../settings/pricingSettings.js';
 import {
-  statusFilters,
-} from '../../constants/scheduleConfig.js';
-import {
-  getLegacyBookingPaymentStatus,
+  BOOKING_PAYMENT_STATUS_META,
+  BOOKING_REQUEST_STATUS_META,
+  getBookingPaymentStatus,
+  getBookingRequestStatus,
 } from '../../domain/booking/bookingSelectors.js';
 
-function getBookingStatus(
-  booking,
-) {
-  return getLegacyBookingPaymentStatus(
-    booking,
-  );
-}
-
-function getStatusLabel(
-  status,
-) {
-  return (
-    statusFilters.find(
-      (item) =>
-        item.key ===
-        status,
-    )?.label ||
-    status
-  );
+function getClientBookingStatusMeta(booking) {
+  return {
+    payment: BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+    request: BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+  };
 }
 
 function formatBookingDate(
@@ -130,22 +116,14 @@ export default function ClientDashboardTab({
             </span>
 
             {upcomingBooking ? (
-              <span
-                className={
-                  'client-payment-state is-' +
-                  getBookingStatus(
-                    upcomingBooking,
-                  )
-                }
-              >
-                {
-                  getStatusLabel(
-                    getBookingStatus(
-                      upcomingBooking,
-                    ),
-                  )
-                }
-              </span>
+              <div aria-label="Status booking" className="client-home-status-stack">
+                {Object.entries(getClientBookingStatusMeta(upcomingBooking)).map(([key, status]) => (
+                  <span className="client-home-status-chip" key={key}>
+                    <small>{key === 'request' ? 'Request' : 'Pembayaran'}</small>
+                    <strong>{status.label}</strong>
+                  </span>
+                ))}
+              </div>
             ) : null}
           </div>
 
