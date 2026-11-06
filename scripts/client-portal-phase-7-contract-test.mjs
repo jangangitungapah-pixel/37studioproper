@@ -27,6 +27,10 @@ assert.match(panel, /Tercatat/);
 assert.match(panel, /onRetry/);
 assert.doesNotMatch(panel, /readByClient|mark.*read|unread/i);
 
+assert.match(page, /BOOKING_PAYMENT_STATUS_META/);
+assert.match(page, /BOOKING_SESSION_STATUS_META/);
+assert.match(page, /getBookingPaymentStatus\(selectedBookingDetail\) === 'paid'/);
+assert.doesNotMatch(page, /Lunas\s*\/\s*Selesai/);
 assert.match(page, /notificationEventRepository\.subscribeClientNotificationEvents/);
 assert.match(page, /userBookings\.find\(\(item\) => item\.id === event\?\.bookingId\)/);
 assert.match(page, /new URLSearchParams\(location\.search\)\.get\('bookingId'\)/);
@@ -70,6 +74,7 @@ assert.match(bookingStyles, /env\(safe-area-inset-bottom\)/);
 assert.match(portalStyles, /\.client-notifications-panel/);
 assert.match(portalStyles, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(portalStyles, /@media \(forced-colors: active\)/);
+assert.match(portalStyles, /\.client-history-filters button:focus-visible/);
 assert.match(portalStyles, /\.client-data-status-group:empty/);
 assert.match(portalStyles, /\.client-booking-slot:disabled/);
 
