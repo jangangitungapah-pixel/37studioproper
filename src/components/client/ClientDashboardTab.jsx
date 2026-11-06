@@ -422,21 +422,13 @@ export default function ClientDashboardTab({
                       </small>
                     </span>
 
-                    <span
-                      className={
-                        'client-home-recent-status is-' +
-                        getBookingStatus(
-                          booking,
-                        )
-                      }
-                    >
-                      {
-                        getStatusLabel(
-                          getBookingStatus(
-                            booking,
-                          ),
-                        )
-                      }
+                    <span className="client-home-recent-statuses" aria-label="Status request dan pembayaran">
+                      <small className={`client-home-recent-status is-${getClientBookingStatusMeta(booking).request.tone}`}>
+                        Request · {getClientBookingStatusMeta(booking).request.label}
+                      </small>
+                      <small className={`client-home-recent-status is-${getClientBookingStatusMeta(booking).payment.tone}`}>
+                        Bayar · {getClientBookingStatusMeta(booking).payment.label}
+                      </small>
                     </span>
 
                     <ChevronRight
