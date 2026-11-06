@@ -284,11 +284,7 @@ export default function ClientDashboardTab({
               Total Booking
             </span>
 
-            <strong>
-              {
-                {bookingDataUnavailable ? '—' : stats.totalBookings}
-              }
-            </strong>
+            <strong>{bookingDataUnavailable ? '—' : stats.totalBookings}</strong>
 
             <small>
               seluruh request
