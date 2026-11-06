@@ -1476,3 +1476,32 @@ button.client-booking-slot { cursor: pointer; }
   background: var(--auth-danger-soft);
   color: var(--auth-danger);
 }
+
+.client-billing-clear.is-unavailable {
+  border-color: color-mix(in srgb, var(--auth-warning) 38%, var(--client-line));
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+}
+
+.client-billing-clear.is-unavailable > span {
+  background: color-mix(in srgb, var(--auth-warning) 14%, transparent);
+  color: var(--auth-warning);
+}
+
+.client-billing-clear.is-unavailable strong,
+.client-billing-clear.is-unavailable small {
+  color: var(--auth-warning);
+}
+
+@media (forced-colors: active) {
+  .client-billing-clear.is-unavailable {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .client-billing-clear.is-unavailable strong,
+  .client-billing-clear.is-unavailable small {
+    color: CanvasText;
+  }
+}
