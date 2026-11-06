@@ -19,17 +19,53 @@ export default function BookingConversationPanel({ booking, role, user }) {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(Boolean(booking?.id && user?.uid));
+  const [loadError, setLoadError] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [retryVersion, setRetryVersion] = useState(0);
 
   useEffect(() => {
-    if (!booking?.id || !user?.uid) return undefined;
+    if (!booking?.id || !user?.uid) {
+      setMessages([]);
+      setIsLoading(false);
+      setLoadError('');
+      return undefined;
+    }
 
-    return bookingCommunicationRepository.subscribeBookingMessages(
-      { booking, role, user },
-      setMessages,
-      () => setErrorMessage('Percakapan belum dapat dimuat.')
-    );
-  }, [booking, role, user]);
+    let active = true;
+    setMessages([]);
+    setIsLoading(true);
+    setLoadError('');
+
+    try {
+      const unsubscribe = bookingCommunicationRepository.subscribeBookingMessages(
+        { booking, role, user },
+        (nextMessages) => {
+          if (!active) return;
+          setMessages(nextMessages);
+          setIsLoading(false);
+          setLoadError('');
+        },
+        () => {
+          if (!active) return;
+          setIsLoading(false);
+          setLoadError('Percakapan belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+        }
+      );
+
+      return () => {
+        active = false;
+        unsubscribe?.();
+      };
+    } catch (error) {
+      console.error('Gagal memasang subscription percakapan:', error);
+      setIsLoading(false);
+      setLoadError('Percakapan belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      return () => {
+        active = false;
+      };
+    }
+  }, [booking, role, user, retryVersion]);
 
   const unreadMessages = useMemo(
     () => messages.filter((message) => message[role === 'admin' ? 'readByAdmin' : 'readByClient'] === false),
@@ -56,10 +92,16 @@ export default function BookingConversationPanel({ booking, role, user }) {
       setDraft('');
     } catch (error) {
       console.error('Gagal mengirim pesan booking:', error);
-      setErrorMessage('Pesan belum berhasil dikirim.');
+      setErrorMessage('Pesan belum berhasil dikirim. Isi pesan tetap tersimpan agar bisa dicoba lagi.');
     } finally {
       setIsSending(false);
     }
+  }
+
+  function handleComposerKeyDown(event) {
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
   }
 
   return (
@@ -69,10 +111,22 @@ export default function BookingConversationPanel({ booking, role, user }) {
         <small>Real-time</small>
       </header>
 
-      <div className="booking-conversation-list" aria-live="polite">
-        {messages.length ? messages.map((message) => (
+      <div aria-busy={isLoading} aria-live="polite" className="booking-conversation-list">
+        {isLoading ? (
+          <div className="booking-conversation-empty" role="status">Memuat percakapan…</div>
+        ) : loadError ? (
+          <div className="booking-conversation-load-error" role="alert">
+            <span>{loadError}</span>
+            <button onClick={() => setRetryVersion((value) => value + 1)} type="button">
+              Coba lagi
+            </button>
+          </div>
+        ) : messages.length ? messages.map((message) => (
           <article className={message.senderRole === role ? 'is-own' : 'is-other'} key={message.id}>
-            <div><strong>{message.senderRole === 'admin' ? 'Admin Studio' : message.senderName}</strong><time>{formatMessageTime(message.createdAt)}</time></div>
+            <div>
+              <strong>{message.senderRole === 'admin' ? 'Admin Studio' : message.senderName}</strong>
+              <time>{formatMessageTime(message.createdAt)}</time>
+            </div>
             <p>{message.text}</p>
           </article>
         )) : (
@@ -85,7 +139,8 @@ export default function BookingConversationPanel({ booking, role, user }) {
           aria-label="Tulis pesan booking"
           maxLength={600}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={role === 'admin' ? 'Balas client...' : 'Tulis pesan untuk admin...'}
+          onKeyDown={handleComposerKeyDown}
+          placeholder={role === 'admin' ? 'Balas client…' : 'Tulis pesan untuk admin… (Enter untuk kirim, Shift+Enter untuk baris baru)'}
           rows={2}
           value={draft}
         />
