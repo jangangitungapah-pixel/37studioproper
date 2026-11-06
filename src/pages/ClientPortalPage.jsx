@@ -1671,6 +1671,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 copyText={copyText}
                 paymentProofsLoading={paymentProofsLoading}
                 paymentProofsError={paymentProofsError}
+                bookingsLoading={bookingsLoading}
+                bookingsError={bookingsError}
               />
             )}
           />
@@ -1689,6 +1691,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               setBookingsSection('payments');
               setActiveTab('bookings');
             }}
+            statsUnavailable={bookingsLoading || Boolean(bookingsError)}
           />
         )}
         </div>
