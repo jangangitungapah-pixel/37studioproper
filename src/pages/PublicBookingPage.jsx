@@ -374,20 +374,30 @@ export default function PublicBookingPage() {
           </p>
         </div>
 
-        <ol className="public-booking-progress" aria-label="Tahapan booking">
-          <li className="is-active">
-            <span>01</span>
-            <strong>Pilih waktu</strong>
-          </li>
-          <li>
-            <span>02</span>
-            <strong>Masuk akun</strong>
-          </li>
-          <li>
-            <span>03</span>
-            <strong>Kirim request</strong>
-          </li>
-        </ol>
+        <div className="public-booking-intro-aside">
+          <ol className="public-booking-progress" aria-label="Tahapan booking">
+            <li className="is-active">
+              <span>01</span>
+              <strong>Pilih waktu</strong>
+            </li>
+            <li>
+              <span>02</span>
+              <strong>Masuk akun</strong>
+            </li>
+            <li>
+              <span>03</span>
+              <strong>Kirim request</strong>
+            </li>
+          </ol>
+          <Suspense fallback={null}>
+            <RoleAiAssistant
+              context={publicAiContext}
+              role="client"
+              surface="public-booking"
+              user={firebaseAuth?.currentUser || null}
+            />
+          </Suspense>
+        </div>
       </section>
 
       <div className="public-booking-workspace">
@@ -573,14 +583,6 @@ export default function PublicBookingPage() {
         </aside>
       </div>
 
-      <Suspense fallback={null}>
-        <RoleAiAssistant
-          context={publicAiContext}
-          role="client"
-          surface="public-booking"
-          user={firebaseAuth?.currentUser || null}
-        />
-      </Suspense>
     </main>
   );
 }

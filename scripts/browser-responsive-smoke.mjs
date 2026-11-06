@@ -8,6 +8,16 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
 
 const baseUrl = process.env.BROWSER_SMOKE_BASE_URL || 'http://127.0.0.1:4173';
+
+function rectanglesOverlap(first, second) {
+  if (!first || !second) return false;
+  return (
+    first.x < second.x + second.width &&
+    first.x + first.width > second.x &&
+    first.y < second.y + second.height &&
+    first.y + first.height > second.y
+  );
+}
 const screenshotDir = resolve('output/browser-smoke');
 const viewports = [
   { name: 'mobile-360', width: 360, height: 800, isMobile: true },
@@ -305,6 +315,21 @@ try {
       }
 
       if (route.name === 'public-booking') {
+        const aiLauncher = page.locator('.public-booking-intro-aside .role-ai-launcher');
+        await aiLauncher.waitFor({ state: 'visible', timeout: 5_000 });
+        const aiLauncherBox = await aiLauncher.boundingBox();
+        const calendarBox = await page.locator('.public-booking-calendar').boundingBox();
+        const summaryBox = await page.locator('.public-booking-summary').boundingBox();
+        assert.ok(aiLauncherBox, 'Public Booking AI launcher must have a visible in-flow layout box.');
+        assert.ok(
+          !rectanglesOverlap(aiLauncherBox, calendarBox),
+          'Public Booking AI launcher must not cover the calendar.',
+        );
+        assert.ok(
+          !rectanglesOverlap(aiLauncherBox, summaryBox),
+          'Public Booking AI launcher must not cover the booking summary.',
+        );
+
         if (expectedEnvironmentConsoleErrors.length) {
           const availabilityError = page.locator('.public-booking-state.is-error[role="alert"]');
           await availabilityError.waitFor({ state: 'visible', timeout: 5_000 });

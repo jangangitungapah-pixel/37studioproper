@@ -175,6 +175,32 @@ const publicPageSource =
     'utf8',
   );
 
+const aiAssistantSource =
+  readFileSync(
+    resolve(
+      'src/components/ai/RoleAiAssistant.jsx',
+    ),
+    'utf8',
+  );
+
+assert.ok(
+  publicPageSource.includes('className="public-booking-intro-aside"'),
+  'Public Booking AI launcher must live in the page intro layout rather than a floating viewport layer.',
+);
+assert.match(
+  publicPageSource,
+  /className="public-booking-intro-aside"[\s\S]*?surface="public-booking"[\s\S]*?className="public-booking-workspace"/,
+  'Public Booking AI launcher must be placed before the calendar workspace.',
+);
+assert.ok(
+  aiAssistantSource.includes('data-ai-surface={surface}'),
+  'Role AI Assistant must expose its surface for layout-specific behavior.',
+);
+assert.ok(
+  aiAssistantSource.includes('className="role-ai-assistant"'),
+  'Role AI Assistant root must retain its stable layout class.',
+);
+
 assert.equal(
   publicPageSource.includes(
     'subscribeClientCalendarSlots(',

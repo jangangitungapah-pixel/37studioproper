@@ -405,7 +405,7 @@ export default function RoleAiAssistant({
   }
 
   return (
-    <aside className="role-ai-assistant" data-ai-role={role}>
+    <aside className="role-ai-assistant" data-ai-role={role} data-ai-surface={surface}>
       {!isOpen ? (
         <button
           aria-label={`Buka ${profile.label}`}
