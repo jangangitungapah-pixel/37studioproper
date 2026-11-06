@@ -17,6 +17,8 @@ export default function ClientBillingTab({
   copyText,
   paymentProofsLoading = false,
   paymentProofsError = '',
+  bookingsLoading = false,
+  bookingsError = '',
 }) {
   return (
     <section className="client-billing-tab" aria-labelledby="client-billing-title">
@@ -26,10 +28,20 @@ export default function ClientBillingTab({
           <h3 id="client-billing-title">Sisa tagihan</h3>
           <p>Transfer sesuai nominal booking, lalu kirim bukti untuk direview admin.</p>
         </div>
-        <strong>{formatRupiah(stats.unpaidAmount)}</strong>
+        <strong>{bookingsLoading || bookingsError ? '—' : formatRupiah(stats.unpaidAmount)}</strong>
       </header>
 
-      {unpaidBookings.length > 0 ? (
+      {bookingsLoading ? (
+        <div className="client-billing-clear" role="status">
+          <span><Info size={22} /></span>
+          <div><strong>Memuat tagihan</strong><small>Memeriksa booking dan sisa pembayaran Anda.</small></div>
+        </div>
+      ) : bookingsError ? (
+        <div className="client-billing-clear is-unavailable" role="alert">
+          <span><Info size={22} /></span>
+          <div><strong>Tagihan belum dapat diperiksa</strong><small>Data booking belum berhasil dimuat. Coba lagi melalui pemberitahuan di atas.</small></div>
+        </div>
+      ) : unpaidBookings.length > 0 ? (
         <section className="client-billing-worklist" aria-labelledby="client-billing-worklist-title">
           <header>
             <div>
