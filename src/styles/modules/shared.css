@@ -381,6 +381,13 @@
   color: var(--studio-text-inverse);
 }
 
+/* In Light mode, use the deeper accent fill so white button labels meet AA. */
+[data-theme='light'] .studio-button.is-primary {
+  border-color: var(--studio-accent-strong);
+  background: var(--studio-accent-strong);
+  color: var(--studio-text-inverse);
+}
+
 .studio-button.is-primary:hover:not(:disabled) {
   border-color: var(--auth-accent-strong);
   background: var(--auth-accent-strong);

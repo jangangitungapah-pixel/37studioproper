@@ -1550,7 +1550,24 @@ html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-attention-
   }
 }
 
+.guard-review-priority-link:focus-visible,
+.guard-review-priority-actions button:focus-visible,
+.guard-review-filter-context button:focus-visible,
+.guard-review-row-actions button:focus-visible,
+.guard-review-dialog button:focus-visible,
+.guard-review-attention-modal button:focus-visible {
+  outline: var(--studio-focus-outline);
+  outline-offset: var(--studio-focus-offset);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .pulse-dot,
+  .guard-shift-status-chip.is-offline,
+  .guard-attendance-approval-backdrop,
+  .guard-attendance-approval-modal {
+    animation: none !important;
+  }
+
   .guard-review-dialog-backdrop,
   .guard-review-attention-backdrop,
   .guard-review-dialog,

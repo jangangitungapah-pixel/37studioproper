@@ -159,6 +159,11 @@
   opacity: 0.92;
 }
 
+[data-theme='light'] .auth-submit {
+  border-color: var(--studio-accent-strong);
+  background: var(--studio-accent-strong);
+}
+
 .auth-submit:disabled {
   cursor: not-allowed;
   opacity: 0.58;
@@ -892,9 +897,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .auth-spin {
+    animation: none !important;
+  }
+
   .admin-login-primary-action.auth-submit,
   .admin-login-google.auth-google-btn {
     transition: none;
+  }
+
+  .admin-login-primary-action.auth-submit:hover:not(:disabled),
+  .admin-login-google.auth-google-btn:hover:not(:disabled) {
+    transform: none;
   }
 }
 /* <<< ADMIN LOGIN SPATIAL GATEWAY END */

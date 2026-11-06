@@ -198,7 +198,7 @@
 .booking-price-note {
   border-color: color-mix(in srgb, var(--studio-accent) 26%, var(--studio-border));
   background: var(--studio-accent-soft);
-  color: var(--studio-accent);
+  color: var(--studio-accent-text);
 }
 
 .booking-form-error {
