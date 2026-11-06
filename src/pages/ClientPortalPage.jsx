@@ -1051,6 +1051,20 @@ export default function ClientPortalPage() {
   async function submitBookingRequest() {
     if (!currentUser || !simulatorDate || isSubmittingRequest) return null;
 
+    if (!calendarSlotsReady || calendarSlotsError || bookingsLoading || bookingsError) {
+      setActionFeedback('Data jadwal belum siap atau belum dapat diverifikasi. Muat ulang data sebelum mengirim booking.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return null;
+    }
+
+    if (isBookingStartOccupied(calendarSlots, simulatorDate, Number(simulatorStartHour))) {
+      setIsSimulatorOpen(false);
+      setActiveTab('book');
+      setActionFeedback('Slot ini baru saja terisi. Pilih jadwal lain yang masih tersedia.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return null;
+    }
+
     if (!simCustomerName.trim()) {
       setActionFeedback('Nama pelanggan wajib diisi.');
       window.setTimeout(() => setActionFeedback(''), 3600);
