@@ -32,6 +32,8 @@ export default function ClientHistoryTab({
   historyFilterOptions,
   handleBookingBlockClick,
   copyText,
+  bookingsLoading = false,
+  bookingsError = '',
 }) {
   return (
     <section className="client-history-tab" aria-labelledby="client-history-title">
@@ -69,7 +71,19 @@ export default function ClientHistoryTab({
         </div>
       </div>
 
-      {userBookings.length === 0 ? (
+      {bookingsLoading ? (
+        <div className="client-history-empty" role="status">
+          <span><CalendarDays size={24} /></span>
+          <strong>Memuat riwayat booking…</strong>
+          <p>Mengambil data booking dari akun Anda.</p>
+        </div>
+      ) : bookingsError ? (
+        <div className="client-history-empty" role="alert">
+          <span><CalendarDays size={24} /></span>
+          <strong>Riwayat booking belum tersedia</strong>
+          <p>Data belum bisa diperiksa. Gunakan tombol coba lagi pada pemberitahuan di atas.</p>
+        </div>
+      ) : userBookings.length === 0 ? (
         <div className="client-history-empty">
           <span><CalendarDays size={24} /></span>
           <strong>Belum ada booking</strong>
