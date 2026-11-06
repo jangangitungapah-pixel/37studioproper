@@ -124,7 +124,7 @@ export default function ClientDashboardTab({
               Next Session
             </span>
 
-            {upcomingBooking ? (
+            {!bookingDataUnavailable && upcomingBooking ? (
               <div aria-label="Status booking" className="client-home-status-stack">
                 {Object.entries(getClientBookingStatusMeta(upcomingBooking)).map(([key, status]) => (
                   <span className={`client-home-status-chip is-${status.tone}`} key={key}>
