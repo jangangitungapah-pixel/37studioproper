@@ -1592,6 +1592,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             }}
             handleBookingBlockClick={handleBookingBlockClick}
             downloadCalendarEvent={downloadCalendarEvent}
+            bookingsLoading={bookingsLoading}
+            bookingsError={bookingsError}
           />
         )}
 
@@ -1639,6 +1641,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 historyFilterOptions={historyFilterOptions}
                 handleBookingBlockClick={handleBookingBlockClick}
                 copyText={copyText}
+                bookingsLoading={bookingsLoading}
+                bookingsError={bookingsError}
               />
             )}
             paymentsContent={(
@@ -1653,6 +1657,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 transferAccountNumber={transferAccountNumber}
                 studioPaymentTerms={studioPaymentTerms}
                 copyText={copyText}
+                paymentProofsLoading={paymentProofsLoading}
+                paymentProofsError={paymentProofsError}
               />
             )}
           />
