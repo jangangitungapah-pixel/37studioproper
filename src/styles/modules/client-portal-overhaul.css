@@ -1216,3 +1216,129 @@ button.client-booking-slot { cursor: pointer; }
     color: CanvasText;
   }
 }
+
+/* Phase 7 — keep request, payment and session lifecycle visibly separate. */
+.client-home-status-stack {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.client-home-status-chip {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-full);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+  padding: 5px 9px;
+}
+
+.client-home-status-chip small {
+  color: var(--studio-text-tertiary);
+  font-size: 8px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.client-home-status-chip strong {
+  overflow-wrap: anywhere;
+  font-size: 8px;
+  font-weight: 780;
+  text-align: right;
+}
+
+.client-history-status-list {
+  max-width: 190px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.client-history-status {
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--client-line);
+  border-radius: var(--studio-radius-full);
+  background: var(--studio-surface-2);
+  color: var(--studio-text-secondary);
+  padding: 3px 7px;
+  font-size: 8px;
+  font-weight: 720;
+  line-height: 1.2;
+}
+
+.client-history-status b {
+  color: inherit;
+  font-size: 7px;
+  font-weight: 820;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.client-history-status.is-pending,
+.client-history-status.is-attention,
+.client-history-status.is-upcoming,
+.client-home-status-chip.is-pending,
+.client-home-status-chip.is-attention {
+  border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--client-line));
+  background: var(--auth-warning-soft);
+  color: var(--auth-warning);
+}
+
+.client-history-status.is-confirmed,
+.client-history-status.is-paid,
+.client-history-status.is-completed,
+.client-history-status.is-active {
+  border-color: color-mix(in srgb, var(--auth-success) 34%, var(--client-line));
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
+.client-history-status.is-rejected,
+.client-history-status.is-cancelled,
+.client-history-status.is-void,
+.client-history-status.is-no-show {
+  border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--client-line));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
+
+.client-history-status.is-partial,
+.client-home-status-chip.is-partial {
+  border-color: color-mix(in srgb, var(--client-accent) 34%, var(--client-line));
+  background: var(--client-accent-soft);
+  color: var(--client-accent);
+}
+
+.client-history-status.is-refunded {
+  color: var(--studio-text-secondary);
+}
+
+@media (max-width: 640px) {
+  .client-home-status-stack {
+    justify-items: start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .client-home-status-chip {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 2px;
+  }
+
+  .client-home-status-chip strong {
+    text-align: left;
+  }
+
+  .client-history-status-list {
+    max-width: 160px;
+  }
+}
