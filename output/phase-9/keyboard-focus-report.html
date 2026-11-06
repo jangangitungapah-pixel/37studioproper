@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Phase 9 Keyboard & Focus QA</title>
+<style>
+body{font:15px/1.5 system-ui,sans-serif;max-width:1100px;margin:32px auto;padding:0 18px;color:#20242b}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #ddd;vertical-align:top}
+.pass{color:#087443;font-weight:700}
+.fail{color:#c62828;font-weight:700}
+.summary{display:flex;gap:20px;flex-wrap:wrap;padding:16px;background:#f4f5f7;border-radius:12px}
+</style>
+</head>
+<body>
+<h1>Phase 9.2 · Keyboard & Focus QA</h1>
+<p>Generated: 2026-11-06T18:55:47.225Z</p>
+<div class="summary">
+<strong>PASS: 15</strong>
+<strong>FAIL: 1</strong>
+<strong>SKIP: 0</strong>
+</div>
+<h2>Test results</h2>
+<table>
+<thead><tr><th>Test</th><th>Status</th><th>Detail</th></tr></thead>
+<tbody><tr><td>Landing menu ARIA disclosure</td><td class="pass">PASS</td><td>ARIA controls dan expanded valid</td></tr>
+<tr><td>Landing menu Enter dan Escape</td><td class="pass">PASS</td><td>Enter membuka dan Escape menutup menu</td></tr>
+<tr><td>Landing navigation keyboard focus</td><td class="pass">PASS</td><td>Link navigasi dapat difokuskan</td></tr>
+<tr><td>Landing navigation focus restoration</td><td class="fail">FAIL</td><td>Fokus tidak kembali ke tombol menu</td></tr>
+<tr><td>StudioSelect ArrowDown opens listbox</td><td class="pass">PASS</td><td>Listbox terbuka dan active descendant tersedia</td></tr>
+<tr><td>StudioSelect skips disabled option</td><td class="pass">PASS</td><td>Opsi disabled dilewati</td></tr>
+<tr><td>StudioSelect Home dan End</td><td class="pass">PASS</td><td>Home=Alpha dan End=Gamma</td></tr>
+<tr><td>StudioSelect typeahead</td><td class="pass">PASS</td><td>Typeahead b memilih Beta</td></tr>
+<tr><td>StudioSelect Enter memilih opsi</td><td class="pass">PASS</td><td>Beta dipilih dan listbox tertutup</td></tr>
+<tr><td>StudioSelect Escape</td><td class="pass">PASS</td><td>Escape menutup dan memulihkan fokus</td></tr>
+<tr><td>StudioSelect Tab</td><td class="pass">PASS</td><td>Tab menutup listbox dan memindahkan fokus</td></tr>
+<tr><td>StudioSelect multi-select</td><td class="pass">PASS</td><td>Multi-select memilih Alpha tanpa menutup listbox</td></tr>
+<tr><td>ConfirmDialog ARIA dan initial focus</td><td class="pass">PASS</td><td>ARIA valid, fokus awal Cancel, scroll terkunci</td></tr>
+<tr><td>ConfirmDialog focus trap dua arah</td><td class="pass">PASS</td><td>Shift+Tab dan Tab membungkus fokus</td></tr>
+<tr><td>ConfirmDialog Escape dan focus restoration</td><td class="pass">PASS</td><td>Escape menutup dialog dan memulihkan fokus</td></tr>
+<tr><td>ConfirmDialog pending blocks Escape</td><td class="pass">PASS</td><td>Pending menahan Escape hingga callback lokal selesai</td></tr></tbody>
+</table>
+<h2>Runtime errors</h2>
+<pre>None</pre>
+<p>Screenshots: output/phase-9/screenshots/</p>
+</body></html>

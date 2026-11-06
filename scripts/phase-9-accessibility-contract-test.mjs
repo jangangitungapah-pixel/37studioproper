@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const tokens = read('src/index.css');
 const baseTokens = read('src/styles/modules/base.css');
 const shared = read('src/styles/modules/shared.css');
