@@ -1634,7 +1634,6 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 setHistoryFilter={setHistoryFilter}
                 historyFilterOptions={historyFilterOptions}
                 handleBookingBlockClick={handleBookingBlockClick}
-                getBookingStatus={getBookingStatus}
                 copyText={copyText}
               />
             )}
