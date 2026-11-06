@@ -218,11 +218,14 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - Booking detail surfaces now separate request, payment, session, and proof-review states. The invoice balance no longer describes the payment status as “Lunas / Selesai”.
   - Mobile booking conversation composer receives sticky positioning and safe-area padding within the booking detail surface.
   - Added scripts/client-portal-phase-7-contract-test.mjs and registered it in npm test.
-- Current changed owner files:
+- Current changed files:
+  - docs/REDESIGN_WORKPLAN.md
   - package.json
   - scripts/client-portal-phase-7-contract-test.mjs
   - src/components/booking/BookingConversationPanel.jsx
   - src/components/client/ClientCalendarTab.jsx
+  - src/components/client/ClientDashboardTab.jsx
+  - src/components/client/ClientHistoryTab.jsx
   - src/components/client/ClientNotificationsPanel.jsx
   - src/pages/ClientPortalPage.jsx
   - src/services/notificationEventRepository.js
@@ -234,7 +237,8 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - Notification feed is read-only and does not invent an unread state.
   - Calendar revalidation is client-side against the latest subscription snapshot, not a transactional reservation lock. The existing createClientBookingRequest write is unchanged; atomic concurrent slot reservation remains a known domain-level limitation and must not be claimed as solved by this UI work.
   - No production data, proof upload, payment, or booking mutation was run.
-- Targeted source contract registered, but not yet verified by an actual local/CI run at the time of this note.
+- Targeted Phase 7 source contract is registered in `npm test`. A connector-driven source inspection exercised its key contracts successfully, including recipient UID scoping, Firestore immutability, canonical lifecycle selectors, calendar availability gating, conversation keyboard/retry behavior, and accessibility selectors. This is not equivalent to executing the Node test file locally.
+- Full `npm run build`, `npm run lint`, `npm test`, `npm run test:prd`, and Playwright responsive smoke have not been executed in this environment. The container cannot resolve github.com for a repository clone, and the GitHub connector exposes no push-triggered workflow run/check-run listing. Do not mark acceptance passed based on source inspection alone.
 - Known verification limitations:
   - Local working tree on the user's PC is not observable from the GitHub connector.
   - The connector does not expose push-triggered workflow-run listing; commit status query currently returns no status contexts. Confirm actual Quality Gates run/checks before marking Phase 7 complete.
