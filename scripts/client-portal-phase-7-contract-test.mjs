@@ -8,6 +8,9 @@ const page = read('../src/pages/ClientPortalPage.jsx');
 const calendar = read('../src/components/client/ClientCalendarTab.jsx');
 const dashboard = read('../src/components/client/ClientDashboardTab.jsx');
 const history = read('../src/components/client/ClientHistoryTab.jsx');
+const billing = read('../src/components/client/ClientBillingTab.jsx');
+const account = read('../src/components/client/ClientAccountTab.jsx');
+const bookingsHub = read('../src/components/client/ClientBookingsHub.jsx');
 const conversation = read('../src/components/booking/BookingConversationPanel.jsx');
 const portalStyles = read('../src/styles/modules/client-portal-overhaul.css');
 const bookingStyles = read('../src/styles/modules/booking.css');
@@ -82,5 +85,40 @@ const notificationRule = rules.match(/match \/notificationEvents\/\{eventId\}[\s
 assert.match(notificationRule, /resource\.data\.targetUid == request\.auth\.uid/);
 assert.match(notificationRule, /allow update, delete: if false/);
 assert.match(packageJson.scripts.test, /client-portal-phase-7-contract-test\.mjs/);
+
+
+assert.ok(
+  page.indexOf('const pendingPaymentProofs = useMemo') < page.indexOf('const clientActionBadgeCount'),
+  'Action badge count must be derived after pending proof state to avoid a temporal dead zone.',
+);
+assert.match(page, /if \(paymentProofsLoading \|\| paymentProofsError\)/);
+assert.match(page, /isBookingPaymentOpen\(selectedBookingDetail\)/);
+assert.match(page, /setPaymentProofsRetryVersion\(\(value\) => value \+ 1\)/);
+assert.match(page, /Status bukti belum dapat diperiksa/);
+assert.match(page, /disabled=\{isSubmittingProof \|\| !proofFile \|\| paymentProofsLoading \|\| Boolean\(paymentProofsError\)\}/);
+
+assert.match(dashboard, /bookingDataUnavailable = bookingsLoading \|\| Boolean\(bookingsError\)/);
+assert.match(dashboard, /Jadwal belum dapat dimuat/);
+assert.match(dashboard, /Aktivitas belum dapat dimuat/);
+assert.match(dashboard, /bookingDataUnavailable \? '—' : stats\.totalBookings/);
+assert.match(dashboard, /client-home-recent-statuses/);
+assert.doesNotMatch(dashboard, /getBookingStatus|getStatusLabel|getLegacyBookingPaymentStatus/);
+
+assert.match(history, /bookingsLoading \? \(/);
+assert.match(history, /bookingsError \? \(/);
+assert.match(history, /Riwayat booking belum tersedia/);
+
+assert.match(billing, /bookingsLoading \? \(/);
+assert.match(billing, /bookingsError \? \(/);
+assert.match(billing, /paymentProofsLoading \|\| Boolean\(paymentProofsError\)/);
+assert.match(billing, /disabled=\{hasPendingProof \|\| proofStatusUnavailable\}/);
+assert.match(billing, /Semua pembayaran beres/);
+
+assert.match(account, /statsUnavailable \? '—' : stats\.totalBookings/);
+assert.match(account, /statsUnavailable \? '—' : formatRupiah\(stats\.unpaidAmount\)/);
+assert.match(bookingsHub, /typeof unreadCount === 'number' \? unreadCount : '—'/);
+assert.match(bookingsHub, /typeof pendingPaymentCount === 'number' \? pendingPaymentCount : '—'/);
+
+assert.match(portalStyles, /\.client-billing-clear\.is-unavailable/);
 
 console.log('Phase 7 Client Portal interaction and ownership contracts passed.');
