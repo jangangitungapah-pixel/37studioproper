@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ClientSpatialRoute from './components/client/ClientSpatialRoute.jsx';
+import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import ErrorBoundary from './components/ui/ErrorBoundary.jsx';
 import { cleanupRetiredPushWorkers } from './utils/retiredPushCleanup.js';
 
@@ -23,10 +24,10 @@ export default function App() {
       <ErrorBoundary>
         <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>Loading...</div>}>
           <Routes>
-            <Route path="/" element={<ClientLandingPage />} />
+            <Route path="/" element={<ThemeProvider><ClientLandingPage /></ThemeProvider>} />
             <Route path="/launch" element={<PwaLaunchPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/book" element={<PublicBookingPage />} />
+            <Route path="/book" element={<ThemeProvider><PublicBookingPage /></ThemeProvider>} />
             <Route
               path="/client/login"
               element={(
@@ -43,7 +44,7 @@ export default function App() {
                 </ClientSpatialRoute>
               )}
             />
-            <Route path="/client" element={<ClientLandingPage />} />
+            <Route path="/client" element={<ThemeProvider><ClientLandingPage /></ThemeProvider>} />
             <Route path="/guard" element={<Navigate to="/guard/attendance" replace />} />
             <Route path="/guard/attendance" element={<GuardAttendancePage />} />
             <Route path="/admin/*" element={<AdminPage />} />

@@ -10,9 +10,20 @@ import { chromium } from 'playwright';
 const baseUrl = process.env.BROWSER_SMOKE_BASE_URL || 'http://127.0.0.1:4173';
 const screenshotDir = resolve('output/browser-smoke');
 const viewports = [
-  { name: 'mobile-390', width: 390, height: 844 },
-  { name: 'tablet-768', width: 768, height: 1024 },
-  { name: 'desktop-1440', width: 1440, height: 900 },
+  { name: 'mobile-360', width: 360, height: 800, isMobile: true },
+  { name: 'mobile-390', width: 390, height: 844, isMobile: true },
+  { name: 'mobile-430', width: 430, height: 932, isMobile: true },
+  { name: 'tablet-768', width: 768, height: 1024, isMobile: false },
+  { name: 'tablet-900', width: 900, height: 1100, isMobile: false },
+  { name: 'laptop-1024', width: 1024, height: 900, isMobile: false },
+  { name: 'desktop-1280', width: 1280, height: 900, isMobile: false },
+  { name: 'desktop-1440', width: 1440, height: 900, isMobile: false },
+  { name: 'wide-1920', width: 1920, height: 1080, isMobile: false },
+];
+const themes = [
+  { name: 'light', preference: 'light', colorScheme: 'light' },
+  { name: 'dark', preference: 'dark', colorScheme: 'dark' },
+  { name: 'system', preference: 'system', colorScheme: 'dark' },
 ];
 const routes = [
   { path: '/', name: 'landing' },
@@ -102,21 +113,50 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const viewport of viewports) {
-    for (const route of routes) {
-      const page = await browser.newPage({
-        viewport: { width: viewport.width, height: viewport.height },
-        deviceScaleFactor: viewport.name.startsWith('mobile') ? 2 : 1,
-        isMobile: viewport.name.startsWith('mobile'),
-        hasTouch: viewport.name.startsWith('mobile'),
-      });
-      const pageErrors = [];
+    for (const theme of themes) {
+      for (const route of routes) {
+        const page = await browser.newPage({
+          viewport: { width: viewport.width, height: viewport.height },
+          colorScheme: theme.colorScheme,
+          deviceScaleFactor: viewport.isMobile ? 2 : 1,
+          isMobile: viewport.isMobile,
+          hasTouch: viewport.isMobile,
+        });
+        await page.addInitScript(({ storageKey, preference }) => {
+          try {
+            window.localStorage.setItem(storageKey, preference);
+          } catch {
+            // The browser may block storage in restricted environments.
+          }
+        }, {
+          storageKey: '37studioproper.theme.v1',
+          preference: theme.preference,
+        });
 
-      page.on('pageerror', (error) => {
-        pageErrors.push(error.message);
-      });
+        const pageErrors = [];
+        const consoleErrors = [];
+        const requestFailures = [];
+        const expectedOfflineConsoleErrors = [];
+        const expectedOfflineRequestFailures = [];
+        let isIntentionalOffline = false;
+
+        page.on('pageerror', (error) => {
+          pageErrors.push(error.message);
+        });
+        page.on('console', (message) => {
+          if (message.type() !== 'error') return;
+          if (isIntentionalOffline) expectedOfflineConsoleErrors.push(message.text());
+          else consoleErrors.push(message.text());
+        });
+        page.on('requestfailed', (request) => {
+          const failure = request.failure()?.errorText || 'unknown network failure';
+          const detail = request.url() + ' — ' + failure;
+          if (isIntentionalOffline) expectedOfflineRequestFailures.push(detail);
+          else if (!failure.includes('ERR_ABORTED')) requestFailures.push(detail);
+        });
 
       const url = new URL(route.path, baseUrl).toString();
-      console.log('[browser-smoke] loading ' + route.name + ' / ' + viewport.name);
+      console.log('[browser-smoke] loading ' + route.name + ' / ' + viewport.name + ' / ' + theme.name);
       const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
         timeout: 30_000,
@@ -140,13 +180,28 @@ try {
         );
       }
 
+      const expectedTheme = theme.preference === 'system' ? theme.colorScheme : theme.preference;
+      await page.waitForFunction(
+        (expected) => document.documentElement.dataset.theme === expected,
+        expectedTheme,
+        { timeout: 5_000 },
+      );
+
+      if (theme.preference === 'system' && route.name === 'landing' && viewport.name === 'mobile-390') {
+        await page.emulateMedia({ colorScheme: 'light' });
+        await page.waitForFunction(() => document.documentElement.dataset.theme === 'light', null, { timeout: 5_000 });
+        await page.emulateMedia({ colorScheme: 'dark' });
+        await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark', null, { timeout: 5_000 });
+        console.log('[browser-smoke] System theme follows OS Light/Dark changes PASS');
+      }
+
       const heading = page.locator('h1').first();
       await heading.waitFor({ state: 'visible', timeout: 20_000 });
       const headingText = (await heading.innerText()).trim();
       assert.ok(headingText, route.name + ' has an empty visible h1.');
 
       if (route.name === 'landing') {
-        if (viewport.name === 'mobile-390') {
+        if (viewport.isMobile) {
           const menuButton = page.locator('.client-landing-menu-button');
           await menuButton.click();
           await page.locator('.client-landing-nav.is-open').waitFor({ state: 'visible', timeout: 5_000 });
@@ -185,7 +240,7 @@ try {
 
       const screenshotPath = resolve(
         screenshotDir,
-        route.name + '-' + viewport.name + '.png',
+        route.name + '-' + viewport.name + '-' + theme.name + '.png',
       );
       console.log('[browser-smoke] capturing ' + screenshotPath);
       await page.screenshot({
@@ -224,6 +279,7 @@ try {
       }
 
       if (['admin-login', 'guard-login', 'client-login'].includes(route.name)) {
+        isIntentionalOffline = true;
         await page.context().setOffline(true);
         await page.locator('[data-auth-network-state="offline"]').waitFor({
           state: 'visible',
@@ -234,35 +290,62 @@ try {
           state: 'hidden',
           timeout: 5_000,
         });
-        console.log('[browser-smoke] auth offline / online feedback PASS / ' + viewport.name);
+        isIntentionalOffline = false;
+        console.log('[browser-smoke] auth offline / online feedback PASS / ' + viewport.name + ' / ' + theme.name);
       }
 
       if (route.name === 'public-booking') {
         const offlineNotice = page.locator('.public-booking-offline-notice');
+        isIntentionalOffline = true;
         await page.context().setOffline(true);
         await offlineNotice.waitFor({ state: 'visible', timeout: 5_000 });
         await page.context().setOffline(false);
         await offlineNotice.waitFor({ state: 'hidden', timeout: 5_000 });
-        console.log('[browser-smoke] public booking offline / online feedback PASS / ' + viewport.name);
+        isIntentionalOffline = false;
+        console.log('[browser-smoke] public booking offline / online feedback PASS / ' + viewport.name + ' / ' + theme.name);
       }
 
       if (pageErrors.length) {
         failures.push(
-          route.name + ' at ' + viewport.name + ' produced uncaught page errors: ' +
+          route.name + ' at ' + viewport.name + ' / ' + theme.name + ' produced uncaught page errors: ' +
           pageErrors.join(' | '),
+        );
+      }
+      if (consoleErrors.length) {
+        failures.push(
+          route.name + ' at ' + viewport.name + ' / ' + theme.name + ' produced console errors: ' +
+          consoleErrors.join(' | '),
+        );
+      }
+      if (requestFailures.length) {
+        failures.push(
+          route.name + ' at ' + viewport.name + ' / ' + theme.name + ' produced failed requests: ' +
+          requestFailures.join(' | '),
         );
       }
 
       console.log(
-        '[browser-smoke] ' + route.name + ' / ' + viewport.name +
+        '[browser-smoke] diagnostics ' + route.name + ' / ' + viewport.name + ' / ' + theme.name +
+        ' — consoleErrors=' + consoleErrors.length +
+        ', failedRequests=' + requestFailures.length +
+        ', expectedOfflineConsoleErrors=' + expectedOfflineConsoleErrors.length +
+        ', expectedOfflineRequestFailures=' + expectedOfflineRequestFailures.length,
+      );
+
+      console.log(
+        '[browser-smoke] ' + route.name + ' / ' + viewport.name + ' / ' + theme.name +
         ' — HTTP ' + response.status() +
         ', h1="' + headingText + '"' +
         ', documentWidth=' + overflowWidth +
         ', viewportWidth=' + dimensions.viewportWidth +
+        ', theme=' + expectedTheme +
+        ', consoleErrors=' + consoleErrors.length +
+        ', failedRequests=' + requestFailures.length +
         ', screenshot=' + screenshotPath,
       );
 
-      await page.close();
+        await page.close();
+      }
     }
   }
 } finally {

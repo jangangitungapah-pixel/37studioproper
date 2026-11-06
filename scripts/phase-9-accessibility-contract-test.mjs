@@ -8,6 +8,8 @@ const booking = read('src/styles/modules/booking.css');
 const auth = read('src/styles/modules/auth.css');
 const wizard = read('src/styles/modules/client-booking-wizard.css');
 const guard = read('src/styles/modules/guard-attendance.css');
+const app = read('src/App.jsx');
+const browserSmoke = read('scripts/browser-responsive-smoke.mjs');
 
 function luminance(hex) {
   const value = hex.replace('#', '');
@@ -96,5 +98,19 @@ assert.match(
   /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.guard-attendance-approval-modal/,
   'Guard approval dialogs must be included in reduced-motion coverage',
 );
+
+assert.match(app, /import \{ ThemeProvider \} from '\.\/theme\/ThemeProvider\.jsx'/);
+assert.match(app, /path="\/" element=\{<ThemeProvider><ClientLandingPage \/><\/ThemeProvider>\}/);
+assert.match(app, /path="\/book" element=\{<ThemeProvider><PublicBookingPage \/><\/ThemeProvider>\}/);
+assert.match(app, /path="\/client" element=\{<ThemeProvider><ClientLandingPage \/><\/ThemeProvider>\}/);
+for (const width of [360, 390, 430, 768, 900, 1024, 1280, 1440, 1920]) {
+  assert.match(browserSmoke, new RegExp('width: ' + width + '\\b'), 'Responsive matrix missing ' + width + 'px');
+}
+for (const preference of ["name: 'light'", "name: 'dark'", "name: 'system'"]) {
+  assert.ok(browserSmoke.includes(preference), 'Theme matrix missing ' + preference);
+}
+assert.match(browserSmoke, /page\.on\('console'/, 'Browser smoke must inspect console errors');
+assert.match(browserSmoke, /page\.on\('requestfailed'/, 'Browser smoke must inspect failed requests');
+assert.match(browserSmoke, /System theme follows OS Light\/Dark changes PASS/);
 
 console.log('phase-9-accessibility-contract-test: PASS');
