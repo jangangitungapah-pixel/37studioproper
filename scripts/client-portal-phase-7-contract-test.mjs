@@ -35,6 +35,8 @@ assert.match(page, /setBookingsRetryVersion/);
 assert.match(page, /setPaymentProofsRetryVersion/);
 assert.match(page, /setClientNotificationsRetryVersion/);
 assert.match(page, /Ketersediaan jadwal belum dapat diverifikasi/);
+assert.match(page, /isBookingStartOccupied\(calendarSlots, simulatorDate, Number\(simulatorStartHour\)\)/);
+assert.match(page, /Data jadwal belum siap atau belum dapat diverifikasi/);
 assert.match(page, /setCalendarSlotsReady\(false\);\s*setCalendarSlotsLoading\(false\)/);
 
 assert.match(calendar, /calendarSlotsReady = false/);
