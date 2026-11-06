@@ -215,6 +215,7 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - Booking request submission rechecks the latest available slot snapshot and blocks known occupied slots before writing.
   - Booking conversation now has explicit loading/error/retry states, preserves the draft after send failure, and follows PRD keyboard behavior: Enter sends; Shift+Enter inserts a line break.
   - Dashboard and booking history now show canonical request, payment, and session lifecycle labels separately through booking selectors and status metadata; history filters expose aria-pressed state.
+  - Booking detail surfaces now separate request, payment, session, and proof-review states. The invoice balance no longer describes the payment status as “Lunas / Selesai”.
   - Mobile booking conversation composer receives sticky positioning and safe-area padding within the booking detail surface.
   - Added scripts/client-portal-phase-7-contract-test.mjs and registered it in npm test.
 - Current changed owner files:
