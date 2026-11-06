@@ -43,6 +43,9 @@ assert.match(page, /setCalendarSlotsReady\(false\);\s*setCalendarSlotsLoading\(f
 
 assert.match(dashboard, /BOOKING_REQUEST_STATUS_META/);
 assert.match(dashboard, /BOOKING_PAYMENT_STATUS_META/);
+assert.match(dashboard, /BOOKING_SESSION_STATUS_META/);
+assert.match(dashboard, /from '..\/..\/domain\/booking\/bookingStatus\.js'/);
+assert.match(history, /from '..\/..\/domain\/booking\/bookingStatus\.js'/);
 assert.match(dashboard, /getBookingRequestStatus\(booking\)/);
 assert.match(dashboard, /getBookingPaymentStatus\(booking\)/);
 assert.match(dashboard, /client-home-status-stack/);
