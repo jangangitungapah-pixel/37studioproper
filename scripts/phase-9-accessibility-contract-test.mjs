@@ -44,11 +44,30 @@ function token(block, name) {
   return match[1];
 }
 
+const rootStart = tokens.indexOf(':root {');
+assert.ok(rootStart >= 0, 'Dark default theme token block must exist');
+const rootEnd = tokens.indexOf('\\n}\\n\\n[data-theme=', rootStart);
+assert.ok(rootEnd > rootStart, 'Dark default theme token block must be bounded');
+const dark = tokens.slice(rootStart, rootEnd);
+
 const lightStart = tokens.indexOf("[data-theme='light']");
 assert.ok(lightStart >= 0, 'Light theme token block must exist');
 const lightEnd = tokens.indexOf('\n}\n*', lightStart);
 assert.ok(lightEnd > lightStart, 'Light theme token block must be bounded');
 const light = tokens.slice(lightStart, lightEnd);
+
+const darkTextSubtle = token(dark, '--studio-text-subtle');
+const darkAccent = token(dark, '--studio-accent');
+const darkAccentStrong = token(dark, '--studio-accent-strong');
+const darkWarning = token(dark, '--studio-warning');
+const darkInverseText = token(dark, '--studio-text-inverse');
+const darkPage = token(dark, '--studio-bg-page');
+const darkSurface1 = token(dark, '--studio-surface-1');
+const darkSurface2 = token(dark, '--studio-surface-2');
+const darkSurface3 = token(dark, '--studio-surface-3');
+const darkAccentSoftBackground = mixHex(darkAccent, darkSurface2, 0.13);
+const darkWarningSoftBackground = mixHex(darkWarning, darkSurface2, 0.16);
+const darkInputBackground = mixHex(darkSurface1, darkSurface2, 0.86);
 
 const lightAccentText = token(light, '--studio-accent-text');
 const lightTextSubtle = token(light, '--studio-text-subtle');
@@ -60,6 +79,11 @@ const lightSurface2 = token(light, '--studio-surface-2');
 const lightPage = token(light, '--studio-bg-page');
 const lightAccent = token(light, '--studio-accent');
 const accentSoftBackground = mixHex(lightAccent, lightSurface2, 0.13);
+const lightSurface1 = token(light, '--studio-surface-1');
+const lightSurface3 = token(light, '--studio-surface-3');
+const lightShell = token(light, '--studio-bg-shell');
+const lightInputBackground = mixHex(lightSurface1, lightSurface2, 0.86);
+
 
 assert.ok(
   contrastRatio(lightAccentText, accentSoftBackground) >= 4.5,
@@ -81,6 +105,43 @@ assert.ok(
   contrastRatio(lightTextSubtle, lightSurface2) >= 4.5,
   'Light subtle text must meet WCAG AA on secondary surface',
 );
+
+assert.ok(
+  contrastRatio(lightTextSubtle, lightSurface3) >= 4.5,
+  'Light subtle text must meet WCAG AA on tertiary surface',
+);
+assert.ok(
+  contrastRatio(lightTextSubtle, lightShell) >= 4.5,
+  'Light subtle text must meet WCAG AA on shell background',
+);
+assert.ok(
+  contrastRatio(lightTextSubtle, lightInputBackground) >= 4.5,
+  'Light client auth input placeholder must meet WCAG AA on its blended control surface',
+);
+assert.ok(
+  contrastRatio(darkAccent, darkAccentSoftBackground) >= 4.5,
+  'Dark booking price-note accent text must meet WCAG AA on accent-soft surface',
+);
+assert.ok(
+  contrastRatio(darkWarning, darkWarningSoftBackground) >= 4.5,
+  'Dark pending warning text must meet WCAG AA on warning-soft surface',
+);
+assert.ok(
+  contrastRatio(darkInverseText, darkAccentStrong) >= 4.5,
+  'Dark primary button label must meet WCAG AA on accent-strong fill',
+);
+for (const [name, background] of [
+  ['page', darkPage],
+  ['primary surface', darkSurface1],
+  ['secondary surface', darkSurface2],
+  ['tertiary surface', darkSurface3],
+  ['client auth input', darkInputBackground],
+]) {
+  assert.ok(
+    contrastRatio(darkTextSubtle, background) >= 4.5,
+    'Dark subtle text must meet WCAG AA on ' + name,
+  );
+}
 assert.match(baseTokens, /--auth-text-subtle:\s*var\(--studio-text-subtle\)/);
 
 assert.match(booking, /\.booking-price-note\s*\{[^}]*color:\s*var\(--studio-accent-text\)/s);
