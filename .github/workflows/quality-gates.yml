@@ -71,11 +71,16 @@ jobs:
       - name: Run responsive browser smoke
         run: node scripts/browser-responsive-smoke.mjs
 
-      - name: Upload responsive browser screenshots
+      - name: Run keyboard and focus QA
+        run: node scripts/phase-9-keyboard-focus-qa.mjs
+
+      - name: Upload responsive and accessibility QA evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-responsive-smoke
-          path: output/browser-smoke/
+          name: phase-9-browser-accessibility-qa
+          path: |
+            output/browser-smoke/
+            output/phase-9/
           if-no-files-found: ignore
           retention-days: 7
