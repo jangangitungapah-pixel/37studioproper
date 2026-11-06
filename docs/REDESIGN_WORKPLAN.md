@@ -214,6 +214,9 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - Booking, payment-proof, calendar-slot, and notification subscriptions now expose loading/error states with retry actions. The calendar remains non-actionable when slot availability has not been verified.
   - Booking request submission rechecks the latest available slot snapshot and blocks known occupied slots before writing.
   - Booking conversation now has explicit loading/error/retry states, preserves the draft after send failure, and follows PRD keyboard behavior: Enter sends; Shift+Enter inserts a line break.
+  - Dashboard, Account, Bookings Hub and Billing summaries now distinguish unavailable data from true empty/zero states. Booking and payment proof loading failures do not present a false “no booking / no payment” message.
+  - Payment proof submission is blocked until the current client's proof subscription has been read successfully; the detail and billing surfaces expose loading/error states and retry without mutating payment records.
+  - Detail proof action now uses the canonical open-payment selector, and action badge counts are derived after their source memo declarations.
   - Dashboard and booking history now show canonical request, payment, and session lifecycle labels separately through booking selectors and status metadata; history filters expose aria-pressed state.
   - Booking detail surfaces now separate request, payment, session, and proof-review states. The invoice balance no longer describes the payment status as “Lunas / Selesai”.
   - Mobile booking conversation composer receives sticky positioning and safe-area padding within the booking detail surface.
@@ -223,6 +226,9 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - package.json
   - scripts/client-portal-phase-7-contract-test.mjs
   - src/components/booking/BookingConversationPanel.jsx
+  - src/components/client/ClientAccountTab.jsx
+  - src/components/client/ClientBillingTab.jsx
+  - src/components/client/ClientBookingsHub.jsx
   - src/components/client/ClientCalendarTab.jsx
   - src/components/client/ClientDashboardTab.jsx
   - src/components/client/ClientHistoryTab.jsx
@@ -233,7 +239,7 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - src/styles/modules/client-portal-overhaul.css
 - Business and security contracts deliberately preserved:
   - No Firestore rules, collections, indexes, schemas, Worker, account-role mapping, or canonical booking/payment writes changed.
-  - No payment proof status is displayed as paid/success by this work.
+  - Payment proof review status remains the existing pending/approved/rejected contract. Canonical invoice payment status is displayed separately; the UI does not infer a paid transaction from a proof upload.
   - Notification feed is read-only and does not invent an unread state.
   - Calendar revalidation is client-side against the latest subscription snapshot, not a transactional reservation lock. The existing createClientBookingRequest write is unchanged; atomic concurrent slot reservation remains a known domain-level limitation and must not be claimed as solved by this UI work.
   - No production data, proof upload, payment, or booking mutation was run.
