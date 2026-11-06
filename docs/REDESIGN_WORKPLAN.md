@@ -320,10 +320,38 @@ Known limitations carried forward:
 Acceptance: the documented route/viewport/theme matrix and automated/source contracts pass; no unexplained P0/P1 issue remains in the tested public and unauthenticated surfaces. Authenticated staging coverage is explicitly recorded as a release-readiness carry-forward. Start Phase 10 in a separate session using the dedicated handoff prompt. Do not merge, deploy, or alter production configuration without explicit authorization.
 
 ## Phase 10 — Regression, cleanup & release readiness
-- Run all build/lint/test/PRD/Firestore rules gates.
-- Review diff, dependency licenses/bundle, route ownership and CSS imports.
-- Produce full inventory and handoff report with evidence.
-- Open PR only after all agreed phase gates, never merge or deploy without explicit authorization.
+
+Status: **COMPLETE — audit, source/branch review, CI evidence, dependency/license inventory, bundle review, route/CSS ownership review, and release-readiness report completed. Production release remains on HOLD / NO-GO until the outstanding security and authenticated-staging gates are resolved or formally accepted by the release owner.**
+
+Evidence report: `docs/PHASE_10_REGRESSION_CLEANUP_RELEASE_READINESS_2026-11-07.md`  
+Next-session handoff: `HANDOFF_POST_PHASE_10_RELEASE_GATE_RESOLUTION_2026-11-07.txt`
+
+Verified baseline:
+- Branch: `feature/ui-overhaul-premium-enterprise-2026-11-06`
+- Baseline HEAD: `92dfa6ca790927837fb7f65dfb3972f7adaaba71`
+- Quality Gates run #313 on the baseline HEAD — **SUCCESS**: https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42291337900
+- Phase 9 source evidence remains run #312: https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42289681693
+
+Completed:
+- Verified the remote branch and CI status; reviewed all 166 commits ahead of base, 0 behind, no merge commits, and the 122-file branch diff.
+- Reconciled protected source paths: no Firestore rules, Worker, Firebase initialization, or auth/role repository changes in the reviewed diff. Existing automated role, client-ownership, Worker, Spark, and Firestore contracts passed.
+- Reviewed package/lockfile counts, declared license metadata, package deprecation/audit findings, build chunk sizes, route definitions, 37 CSS files, and the route/feature stylesheet ownership contracts.
+- Confirmed the approved nine UI library layers remain represented in the code and their relevant integration contracts pass.
+- No unsupported dead-code or dependency deletion was made. No mass dependency update, audit fix, source change, Firebase change, or deployment was performed.
+
+Release carry-forward:
+- `npm ci` reported 17 vulnerabilities (2 low, 7 moderate, 8 high); exact advisory-level triage remains open.
+- One transitive lockfile package, `buffers@0.1.1`, has no license metadata. License expressions for selected transitive dependencies need review.
+- ExcelJS (929.91 KB minified) and ECharts renderer (556.90 KB) remain above the 500 KB warning threshold.
+- Authenticated Admin/Client/Guard walkthroughs and live booking submit/availability acceptance require isolated Firebase Spark staging, isolated Hosting/Worker targets, and synthetic data.
+- Client availability recheck remains snapshot-level, not a transactional reservation lock.
+- GitHub Actions v4 / setup-java@v4 deprecation warnings remain; branch protection has no required status checks configured.
+- Reduced-motion behavior was not browser-emulated for all routes; no full accessibility certification is claimed.
+- Local user working tree could not be inspected from this session.
+
+Release decision: **NOT APPROVED FOR PRODUCTION RELEASE** until security findings are triaged and authenticated staging acceptance is completed safely, or the remaining risks are explicitly accepted by the release owner.
+
+No PR was opened, no merge was performed, no deployment was performed, and no production data was written. Do not start another redesign phase in the next session; use the dedicated release-gate handoff.
 
 ## Quality gates after each phase
 - npm run build
