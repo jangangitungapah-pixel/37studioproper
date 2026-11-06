@@ -872,3 +872,347 @@ button.client-booking-slot { cursor: pointer; }
   .client-portal-skip-link { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
   .client-portal-skip-link:focus-visible { outline: 2px solid Highlight; }
 }
+
+/* Phase 7 — Client data clarity, recipient-scoped notifications and slot readiness. */
+.client-notifications-trigger {
+  width: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--client-line);
+  border-radius: 12px;
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-primary);
+  cursor: pointer;
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard),
+    border-color var(--studio-duration-fast) var(--studio-ease-standard),
+    color var(--studio-duration-fast) var(--studio-ease-standard);
+}
+
+.client-notifications-trigger[aria-expanded='true'] {
+  border-color: var(--client-accent);
+  background: var(--client-accent-soft);
+  color: var(--client-accent);
+}
+
+.client-notifications-trigger:focus-visible,
+.client-notifications-close:focus-visible,
+.client-notification-open:focus-visible,
+.client-notifications-state button:focus-visible,
+.client-data-status button:focus-visible,
+.client-calendar-data-state button:focus-visible {
+  outline: 2px solid var(--client-accent);
+  outline-offset: 2px;
+}
+
+.client-portal-mobile-actions .client-notifications-trigger {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.client-notifications-panel {
+  position: fixed;
+  top: calc(76px + env(safe-area-inset-top));
+  right: 16px;
+  z-index: calc(var(--z-menu) + 30);
+  width: min(410px, calc(100vw - 32px));
+  max-height: min(72dvh, 640px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: var(--studio-radius-surface);
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-primary);
+  box-shadow: var(--studio-shadow-floating);
+}
+
+.client-notifications-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--client-line);
+}
+
+.client-notifications-panel-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.client-notifications-panel-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--client-accent);
+  font-size: var(--studio-text-xs);
+  font-weight: 760;
+}
+
+.client-notifications-panel-head h2,
+.client-notifications-panel-head p {
+  margin: 0;
+}
+
+.client-notifications-panel-head h2 {
+  color: var(--studio-text-primary);
+  font-size: var(--studio-text-lg);
+  line-height: 1.2;
+}
+
+.client-notifications-panel-head p {
+  color: var(--studio-text-secondary);
+  font-size: var(--studio-text-xs);
+  line-height: 1.45;
+}
+
+.client-notifications-close {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--client-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--studio-text-secondary);
+  cursor: pointer;
+}
+
+.client-notifications-panel-body {
+  min-height: 120px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+}
+
+.client-notifications-state {
+  min-height: 132px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 18px;
+  color: var(--studio-text-secondary);
+  font-size: var(--studio-text-sm);
+  text-align: center;
+}
+
+.client-notifications-state strong {
+  color: var(--studio-text-primary);
+  font-size: var(--studio-text-sm);
+}
+
+.client-notifications-state span {
+  max-width: 34ch;
+  line-height: 1.45;
+}
+
+.client-notifications-state.is-error {
+  color: var(--studio-text-secondary);
+}
+
+.client-notifications-state button,
+.client-data-status button,
+.client-calendar-data-state button {
+  min-height: 38px;
+  border: 1px solid var(--client-line);
+  border-radius: 10px;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.client-notifications-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.client-notification-item {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--client-line);
+  border-radius: 12px;
+  background: var(--studio-surface-1);
+  padding: 12px;
+}
+
+.client-notification-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--studio-text-secondary);
+  font-size: var(--studio-text-xs);
+}
+
+.client-notification-item-meta > span {
+  border: 1px solid var(--client-line);
+  border-radius: var(--studio-radius-full);
+  padding: 3px 7px;
+  font-weight: 700;
+}
+
+.client-notification-item h3,
+.client-notification-item p {
+  margin: 0;
+}
+
+.client-notification-item h3 {
+  color: var(--studio-text-primary);
+  font-size: var(--studio-text-sm);
+  line-height: 1.3;
+}
+
+.client-notification-item p {
+  color: var(--studio-text-secondary);
+  font-size: var(--studio-text-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.client-notification-item > small {
+  color: var(--studio-text-secondary);
+  font-size: var(--studio-text-xs);
+}
+
+.client-notification-open {
+  width: max-content;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--client-line);
+  border-radius: 9px;
+  background: var(--studio-surface-2);
+  color: var(--studio-text-primary);
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--studio-text-xs);
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.client-data-status-group {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.client-data-status-group:empty {
+  display: none;
+}
+
+.client-data-status,
+.client-calendar-data-state {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--client-line);
+  border-radius: 12px;
+  background: var(--studio-surface-1);
+  color: var(--studio-text-secondary);
+  padding: 10px 12px;
+  font-size: var(--studio-text-xs);
+  line-height: 1.45;
+}
+
+.client-data-status.is-error,
+.client-calendar-data-state.is-error {
+  border-color: color-mix(in srgb, var(--studio-status-danger) 42%, var(--client-line));
+  background: var(--studio-status-danger-soft);
+  color: var(--studio-status-danger);
+}
+
+.client-data-status > span,
+.client-calendar-data-state > span {
+  min-width: 0;
+}
+
+.client-booking-slot:disabled {
+  cursor: not-allowed;
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+@media (max-width: 899px) {
+  .client-notifications-panel {
+    top: calc(72px + env(safe-area-inset-top));
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-height: min(68dvh, 560px);
+  }
+
+  .client-data-status-group {
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .client-notifications-panel-head {
+    padding: 13px;
+  }
+
+  .client-notifications-panel-body {
+    padding: 6px;
+  }
+
+  .client-data-status,
+  .client-calendar-data-state {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-notifications-trigger {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .client-notifications-panel,
+  .client-notification-item,
+  .client-data-status,
+  .client-calendar-data-state {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: none;
+  }
+
+  .client-notifications-trigger,
+  .client-notifications-close,
+  .client-notification-open,
+  .client-notifications-state button,
+  .client-data-status button,
+  .client-calendar-data-state button {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .client-notification-item h3,
+  .client-notification-item p,
+  .client-notification-item-meta,
+  .client-notifications-panel-head h2,
+  .client-notifications-panel-head p {
+    color: CanvasText;
+  }
+}
