@@ -1288,10 +1288,35 @@ button.client-booking-slot { cursor: pointer; }
 .client-history-status.is-upcoming,
 .client-home-status-chip.is-upcoming,
 .client-home-status-chip.is-pending,
-.client-home-status-chip.is-attention {
+.client-home-status-chip.is-attention,
+.client-home-status-chip.is-upcoming {
   border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--client-line));
   background: var(--auth-warning-soft);
   color: var(--auth-warning);
+}
+
+.client-home-status-chip.is-confirmed,
+.client-home-status-chip.is-paid,
+.client-home-status-chip.is-completed,
+.client-home-status-chip.is-active {
+  border-color: color-mix(in srgb, var(--auth-success) 34%, var(--client-line));
+  background: var(--auth-success-soft);
+  color: var(--auth-success);
+}
+
+.client-home-status-chip.is-rejected,
+.client-home-status-chip.is-cancelled,
+.client-home-status-chip.is-void,
+.client-home-status-chip.is-no-show {
+  border-color: color-mix(in srgb, var(--auth-danger) 34%, var(--client-line));
+  background: var(--auth-danger-soft);
+  color: var(--auth-danger);
+}
+
+.client-home-status-chip.is-partial {
+  border-color: color-mix(in srgb, var(--client-accent) 34%, var(--client-line));
+  background: var(--client-accent-soft);
+  color: var(--client-accent);
 }
 
 .client-history-status.is-confirmed,
