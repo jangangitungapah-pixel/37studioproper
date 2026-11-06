@@ -138,6 +138,7 @@ try {
         const requestFailures = [];
         const expectedOfflineConsoleErrors = [];
         const expectedOfflineRequestFailures = [];
+        const expectedEnvironmentConsoleErrors = [];
         let isIntentionalOffline = false;
 
         page.on('pageerror', (error) => {
@@ -145,8 +146,17 @@ try {
         });
         page.on('console', (message) => {
           if (message.type() !== 'error') return;
-          if (isIntentionalOffline) expectedOfflineConsoleErrors.push(message.text());
-          else consoleErrors.push(message.text());
+          const text = message.text();
+          if (isIntentionalOffline) {
+            expectedOfflineConsoleErrors.push(text);
+          } else if (
+            route.name === 'public-booking' &&
+            text.includes('[public-booking] Gagal membaca availability: Error: Firebase belum dikonfigurasi.')
+          ) {
+            expectedEnvironmentConsoleErrors.push(text);
+          } else {
+            consoleErrors.push(text);
+          }
         });
         page.on('requestfailed', (request) => {
           const failure = request.failure()?.errorText || 'unknown network failure';
@@ -295,6 +305,16 @@ try {
       }
 
       if (route.name === 'public-booking') {
+        if (expectedEnvironmentConsoleErrors.length) {
+          const availabilityError = page.locator('.public-booking-state.is-error[role="alert"]');
+          await availabilityError.waitFor({ state: 'visible', timeout: 5_000 });
+          const availabilityText = await availabilityError.innerText();
+          assert.ok(
+            availabilityText.includes('Jadwal belum dapat dimuat'),
+            'Firebase-unconfigured console error must be paired with its visible availability error state.',
+          );
+        }
+
         const offlineNotice = page.locator('.public-booking-offline-notice');
         isIntentionalOffline = true;
         await page.context().setOffline(true);
@@ -329,7 +349,8 @@ try {
         ' — consoleErrors=' + consoleErrors.length +
         ', failedRequests=' + requestFailures.length +
         ', expectedOfflineConsoleErrors=' + expectedOfflineConsoleErrors.length +
-        ', expectedOfflineRequestFailures=' + expectedOfflineRequestFailures.length,
+        ', expectedOfflineRequestFailures=' + expectedOfflineRequestFailures.length +
+        ', expectedEnvironmentConsoleErrors=' + expectedEnvironmentConsoleErrors.length,
       );
 
       console.log(

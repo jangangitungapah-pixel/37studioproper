@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const tokens = read('src/index.css');
+const baseTokens = read('src/styles/modules/base.css');
 const shared = read('src/styles/modules/shared.css');
 const booking = read('src/styles/modules/booking.css');
 const auth = read('src/styles/modules/auth.css');
@@ -50,11 +51,13 @@ assert.ok(lightEnd > lightStart, 'Light theme token block must be bounded');
 const light = tokens.slice(lightStart, lightEnd);
 
 const lightAccentText = token(light, '--studio-accent-text');
+const lightTextSubtle = token(light, '--studio-text-subtle');
 const lightAccentStrong = token(light, '--studio-accent-strong');
 const lightWarning = token(light, '--studio-warning');
 const lightWarningSoft = token(light, '--studio-warning-soft');
 const lightInverseText = token(light, '--studio-text-inverse');
 const lightSurface2 = token(light, '--studio-surface-2');
+const lightPage = token(light, '--studio-bg-page');
 const lightAccent = token(light, '--studio-accent');
 const accentSoftBackground = mixHex(lightAccent, lightSurface2, 0.13);
 
@@ -70,6 +73,15 @@ assert.ok(
   contrastRatio(lightInverseText, lightAccentStrong) >= 4.5,
   'Light primary button label must meet WCAG AA on accent-strong fill',
 );
+assert.ok(
+  contrastRatio(lightTextSubtle, lightPage) >= 4.5,
+  'Light subtle text must meet WCAG AA on page background',
+);
+assert.ok(
+  contrastRatio(lightTextSubtle, lightSurface2) >= 4.5,
+  'Light subtle text must meet WCAG AA on secondary surface',
+);
+assert.match(baseTokens, /--auth-text-subtle:\s*var\(--studio-text-subtle\)/);
 
 assert.match(booking, /\.booking-price-note\s*\{[^}]*color:\s*var\(--studio-accent-text\)/s);
 assert.match(booking, /\.booking-detail-compact-status\.is-pending strong\s*\{[^}]*color:\s*var\(--studio-warning\)/s);
