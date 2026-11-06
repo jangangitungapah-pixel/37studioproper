@@ -17,12 +17,15 @@ import {
   BOOKING_REQUEST_STATUS_META,
   getBookingPaymentStatus,
   getBookingRequestStatus,
+  BOOKING_SESSION_STATUS_META,
+  getBookingSessionStatus,
 } from '../../domain/booking/bookingSelectors.js';
 
 function getClientBookingStatusMeta(booking) {
   return {
     payment: BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
     request: BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+    session: BOOKING_SESSION_STATUS_META[getBookingSessionStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
   };
 }
 
