@@ -333,6 +333,15 @@ try {
             (await page.locator('.public-booking-summary-hint').innerText()).includes('Jadwal belum terverifikasi'),
             'The summary must explain that its proposed slot is not verified.',
           );
+          const liveIndicator = page.locator('.public-booking-live');
+          assert.ok(
+            (await liveIndicator.innerText()).includes('Status jadwal tidak diketahui'),
+            'The header must not claim realtime while availability subscription has failed.',
+          );
+          assert.ok(
+            (await liveIndicator.getAttribute('class')).includes('is-error'),
+            'The unavailable live indicator must use its error visual state.',
+          );
         }
 
         const offlineNotice = page.locator('.public-booking-offline-notice');

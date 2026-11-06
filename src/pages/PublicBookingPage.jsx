@@ -332,10 +332,26 @@ export default function PublicBookingPage() {
           </span>
         </button>
 
-        <div className={`public-booking-live ${isOnline ? '' : 'is-offline'}`} role="status" aria-live="polite">
+        <div
+          className={`public-booking-live ${!isOnline ? 'is-offline' : loadError ? 'is-error' : isLoading ? 'is-loading' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           <span aria-hidden="true" />
-          {isOnline ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}
-          {isOnline ? 'Jadwal realtime' : 'Perangkat offline'}
+          {!isOnline
+            ? <WifiOff size={14} aria-hidden="true" />
+            : loadError
+              ? <Info size={14} aria-hidden="true" />
+              : isLoading
+                ? <LoaderCircle className="is-spinning" size={14} aria-hidden="true" />
+                : <Wifi size={14} aria-hidden="true" />}
+          {!isOnline
+            ? 'Perangkat offline'
+            : loadError
+              ? 'Status jadwal tidak diketahui'
+              : isLoading
+                ? 'Memeriksa jadwal'
+                : 'Jadwal realtime'}
         </div>
       </header>
 

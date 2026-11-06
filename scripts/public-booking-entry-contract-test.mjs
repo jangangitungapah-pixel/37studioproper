@@ -210,6 +210,16 @@ assert.match(
 );
 assert.match(
   publicPageSource,
+  /loadError\s*\?\s*'Status jadwal tidak diketahui'[\s\S]*?isLoading\s*\?\s*'Memeriksa jadwal'[\s\S]*?:\s*'Jadwal realtime'/,
+  'The public header must only claim realtime after availability subscription succeeds.',
+);
+assert.match(
+  publicPageSource,
+  /loadError\s*\?\s*<Info[\s\S]*?isLoading[\s\S]*?<LoaderCircle/,
+  'The public header indicator must visually distinguish error and loading states.',
+);
+assert.match(
+  publicPageSource,
   /Jadwal belum terverifikasi\. Pilihan ini belum dapat dikirim\./,
   'The summary must explain that an unverified slot cannot be submitted.',
 );

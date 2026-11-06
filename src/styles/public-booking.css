@@ -160,14 +160,34 @@
   box-shadow: 0 0 0 5px rgba(127, 193, 138, 0.11);
 }
 
-.public-booking-live.is-offline {
+.public-booking-live.is-offline,
+.public-booking-live.is-error {
   border-color: color-mix(in srgb, var(--public-danger) 42%, var(--public-line));
   color: #f2b0b7;
 }
 
-.public-booking-live.is-offline > span {
+.public-booking-live.is-offline > span,
+.public-booking-live.is-error > span {
   background: var(--public-danger);
   box-shadow: 0 0 0 5px var(--public-danger-soft);
+}
+
+.public-booking-live.is-loading {
+  border-color: color-mix(in srgb, var(--public-accent) 40%, var(--public-line));
+  color: var(--public-text-muted);
+}
+
+.public-booking-live.is-loading > span {
+  background: var(--public-accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--public-accent) 14%, transparent);
+}
+
+.public-booking-live.is-error svg {
+  color: var(--public-danger);
+}
+
+.public-booking-live.is-loading svg {
+  color: var(--public-accent);
 }
 
 .public-booking-offline-notice {
