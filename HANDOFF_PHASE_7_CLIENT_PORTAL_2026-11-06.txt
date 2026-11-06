@@ -1,0 +1,343 @@
+HANDOFF PROMPT — 37STUDIO PROPER
+PHASE 7: CLIENT PORTAL
+Tanggal handoff: 2026-11-06
+
+BACA SELURUH HANDOFF INI SEBELUM MELAKUKAN PERUBAHAN.
+
+============================================================
+1. INSTRUKSI UTAMA UNTUK SESI BARU
+============================================================
+
+Lanjutkan repository:
+https://github.com/jangangitungapah-pixel/37studioproper
+
+Repository: jangangitungapah-pixel/37studioproper
+GitHub account: jangangitungapah-pixel
+GitHub link ID: link_6a7549af82dc8191900cf259369aec96
+
+Kerjakan TEPAT SATU PHASE dalam sesi ini:
+PHASE 7 — CLIENT PORTAL.
+
+Jangan mulai Phase 8 dalam sesi yang sama. Setelah Phase 7 benar-benar selesai dan seluruh quality gates terverifikasi, buat prompt handoff Phase 8 dalam format .txt untuk sesi chat baru.
+
+Jangan hanya membuat audit/rekomendasi. Audit source ownership, route, components, styles, hooks, repositories, auth/permission boundaries, Worker, tests, dan PRD. Lalu implementasikan Phase 7 pada owner files yang benar.
+
+Komunikasi Bahasa Indonesia informal, jelas, dan langsung.
+
+Gunakan Git biasa, bukan GitHub CLI (gh). Jangan merge PR, jangan deploy, jangan checkout atau mengubah main tanpa izin eksplisit. Jangan force push.
+
+============================================================
+2. KONDISI GIT DAN COMMAND AWAL
+============================================================
+
+Work branch:
+feature/ui-overhaul-premium-enterprise-2026-11-06
+
+Phase 6 implementation commit:
+a1a3fd8048717760ebc92981b5507f15162e2484
+
+Commit message:
+feat(admin): refine phase 6 gallery notifications and settings UX
+
+Phase 6 automated Quality Gates:
+Run #220
+Run ID: 42152760568
+https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42152760568
+Head SHA: a1a3fd8048717760ebc92981b5507f15162e2484
+Result: SUCCESS
+
+Dokumentasi penutupan Phase 6 dan handoff ini ditambahkan setelah implementation commit. Pada sesi baru, verifikasi HEAD remote dan working tree lokal terlebih dahulu.
+
+PowerShell:
+
+git fetch origin
+git switch feature/ui-overhaul-premium-enterprise-2026-11-06
+git pull --ff-only origin feature/ui-overhaul-premium-enterprise-2026-11-06
+git status
+git log -5 --oneline
+
+Jangan checkout main.
+
+============================================================
+3. ROADMAP DAN STATUS
+============================================================
+
+Source of truth:
+- docs/REDESIGN_WORKPLAN.md
+- docs/ui-rewrite-code-map.md
+- PRD_37Studio_Admin_Portal_UI_UX_Complete_v3.0.md
+
+Status roadmap:
+- Phase 0 — Audit & baseline: COMPLETE.
+- Phase 1 — Design system foundation: COMPLETE.
+- Phase 2 — Global shells & navigation: COMPLETE WITH DOCUMENTED AUTHENTICATED-VISUAL-QA LIMITATION.
+- Phase 3 — Authentication & public experience: COMPLETE WITH DOCUMENTED LIVE-AUTH/STAGING LIMITATION.
+- Phase 3A — Client landing conversion UX hardening: COMPLETE.
+- Phase 4 — Admin core operations: COMPLETE.
+- Phase 5 — Admin finance & operations: COMPLETE.
+- Phase 6 — Content, notifications & settings: COMPLETE per 2026-11-06.
+- Phase 7 — Client Portal: CURRENT SCOPE.
+- Phase 8 — Cross-app completion: NOT STARTED.
+- Phase 9 — Responsive, accessibility & visual QA: NOT STARTED.
+- Phase 10 — Regression, cleanup & release readiness: NOT STARTED.
+
+Jangan mengubah urutan roadmap atau menandai phase lain selesai tanpa implementasi dan bukti QA.
+
+============================================================
+4. RINGKASAN PHASE 6 YANG HARUS DIPERTAHANKAN
+============================================================
+
+Phase 6 implementation:
+a1a3fd8048717760ebc92981b5507f15162e2484
+
+Files changed:
+- src/pages/admin/GalleryPage.jsx
+- src/components/gallery/GalleryAlerts.jsx
+- src/styles/modules/gallery.css
+- src/pages/admin/NotificationsPage.jsx
+- src/styles/modules/notifications.css
+- src/styles/modules/settings.css
+- scripts/content-notification-settings-interaction-contract-test.mjs
+- package.json
+
+Hasil:
+- Gallery: Firestore subscription error dapat dicoba ulang dengan membuat subscription baru; retry hanya ditampilkan untuk kegagalan listener. Focus/press/reduced-motion/forced-colors diperbaiki.
+- Notification Center: filter status menyatakan selected state, loading state ketika berganti filter, retry untuk subscription error, empty state pencarian/filter dibedakan, fokus dan reduced motion diperbaiki.
+- Notification Center adalah immutable in-app Firestore activity feed berdasarkan kontrak repository/PRD. BUKAN read/unread inbox. Tidak menambahkan mark-as-read, OneSignal, push delivery, retry/cancel mutation, atau schema baru.
+- Settings: focus-visible lintas control/link dan press feedback untuk navigation/action; URL area resolution, Owner-only query guard, form draft, persistence, Danger Zone, dan ownership guards tidak diubah.
+- Added regression contract scripts/content-notification-settings-interaction-contract-test.mjs and registered in npm test.
+- Tidak ada perubahan collection, Firestore rules, repository/service, Cloudinary payload, notification event schema, Worker, role/permission, settings persistence, atau production data/media.
+
+Quality Gates run #220 SUCCESS:
+- production build PASS
+- ESLint PASS
+- npm test PASS
+- npm run test:prd PASS
+- Playwright responsive browser smoke PASS
+- artifact browser-responsive-smoke uploaded (artifact ID 13472683710)
+
+Batas bukti:
+- Automated smoke menguji public landing/booking, login entry points, dan signed-out direct Admin redirect pada viewport terkonfigurasi.
+- Smoke tersebut BUKAN authenticated visual QA Gallery, Notifications, Settings, atau Owner-only workflows.
+- Authenticated staging visual QA tetap ditunda ke Phase 9 karena environment staging terisolasi belum dikonfigurasi.
+- Existing Firebase/Worker configuration production-facing: project studio-proper, Hosting studio-37.web.app, APP_ENVIRONMENT=production.
+- Jangan lakukan write/mutation acceptance ke production.
+- Jangan upgrade Firebase Blaze, aktifkan Cloud Billing, atau memakai production Cloudinary assets.
+
+============================================================
+5. SEMBILAN LAYER UI LIBRARY YANG WAJIB DIPERTAHANKAN
+============================================================
+
+Pertahankan sebagai arsitektur target; gunakan selektif dan audit consumer sebelum migrasi:
+
+1. UI Foundation: shadcn/ui + Base UI
+2. Styling: Tailwind CSS v4
+3. Animation: Motion
+4. Visual Components: Magic UI
+5. Icons: Lucide React
+6. Notifications: Sonner
+7. Table: TanStack Table
+8. Charts: Apache ECharts
+9. Forms: React Hook Form + Zod
+
+Ketentuan:
+- Jangan mengganti library tanpa inventaris imports, consumers, compatibility, bundle, lazy-loading, dan test impact.
+- Hindari duplicate styling/animation engines.
+- Semantic tokens adalah source of truth.
+- Light/Dark harus menggunakan markup yang sama.
+- Hormati prefers-reduced-motion, keyboard, focus, contrast, forced-colors, dan responsive layout.
+- Modernisasi boleh agresif setelah kontrak dan compatibility terbukti aman.
+
+============================================================
+6. ARAH TEKNIS DAN BATASAN KERAS
+============================================================
+
+Stack:
+- React
+- Vite
+- JavaScript / JSX / CSS
+- Firebase / Firestore existing
+- Firebase Spark plan tetap batasan.
+
+DILARANG:
+- Mengaktifkan billing atau upgrade Firebase ke Blaze.
+- Mengubah Firebase Auth, Firestore rules/collections/document schema, repository/data contract, Worker authorization, role/permission boundaries demi UI.
+- Memakai production data untuk acceptance mutation.
+- Menghapus library/file/style tanpa consumer audit.
+- Membuat duplicate override stylesheet layer.
+- Mengubah business logic tanpa alasan/phase khusus dan kontrak yang jelas.
+- Merge/deploy tanpa persetujuan eksplisit.
+
+Staging-readiness audit:
+docs/audits/STAGING-ACCEPTANCE-READINESS-2026-10-29.md
+
+Existing environment dianggap production-facing. Staging Firebase Spark project, isolated Admin Operations Worker environment, staging Hosting origin, and synthetic accounts/data perlu diverifikasi atau disiapkan secara eksplisit sebelum authenticated mutation QA. Jangan gunakan current default target untuk data mutation.
+
+============================================================
+7. SCOPE PHASE 7 — CLIENT PORTAL
+============================================================
+
+Workplan scope:
+- Overview / dashboard client.
+- Client bookings.
+- Booking detail and conversation.
+- Payments and payment proof.
+- Account/profile.
+- Client notifications.
+- Responsive client shell.
+- Plain-language booking/payment statuses and clear next actions.
+- Preserve client ownership and isolation.
+
+Source-grounded code map yang sudah ada:
+Route:
+- /client/portal
+
+Page:
+- src/pages/ClientPortalPage.jsx
+
+Dependencies yang dicatat di docs/ui-rewrite-code-map.md:
+- Firebase Auth
+- adminBookingRepository
+- clientProfileRepository
+- accountRoleRepository
+- bookingCommunicationRepository
+- pricingSettings
+- invoiceSettings
+- studioSettings
+- cloudinaryUploadService
+- paymentProofRepository
+- scheduleConfig
+- StudioSelect
+- BookingConversationPanel
+- ClientDashboardTab
+- ClientCalendarTab
+- ClientHistoryTab
+- ClientBillingTab
+
+Client portal stylesheet imports pada code map:
+- src/styles/admin-auth.css
+- src/styles/client-portal.css
+
+PENTING: inventory di atas adalah titik awal, bukan asumsi bahwa file/contract tidak berubah sejak map dibuat. Pada awal Phase 7, baca ulang source dan branch terkini, cek import aktual, route, CSS owner, component folders, repository, hooks, tests, dan PRD. Jangan menebak file child tab atau class names.
+
+Sebelum perubahan:
+- Catat route/page/component/style ownership secara aktual.
+- Petakan booking/client ownership, identity/session, notification, invoice, payment proof, conversation, calendar availability, data repositories, Worker, Firestore rules, dan test contracts.
+- Identifikasi behavior yang harus tetap identik.
+- Audit responsive behavior di 320–430 mobile, 768 tablet, dan desktop lebar.
+- Tentukan targeted tests per modul.
+
+A. Client overview
+- Perjelas summary booking aktif/yang akan datang, status permintaan, pembayaran, dan tindakan berikutnya sesuai data model yang ada.
+- Jangan membuat metrics/status yang tidak punya canonical source.
+- Loading/empty/error/denied state harus jujur.
+
+B. Bookings and calendar
+- Booking history, upcoming, calendar, detail, reschedule/cancellation requests sesuai behavior existing.
+- Pertahankan booking ID/code, slot/date/time consistency, lifecycle, request/approval, calendar mirror, pricing snapshot, and availability.
+- Jangan membuat double-booking atau menampilkan availability dari data stale.
+- Mobile list/card lebih nyaman satu tangan. Calendar/table horizontal behavior harus punya cue, tidak memaksa page overflow.
+
+C. Booking detail and conversation
+- Pertahankan message identity, actor role, readByAdmin semantics, timestamp, delivery/error state, send idempotency, and error/retry tanpa duplicate.
+- Enter/Shift+Enter behavior sesuai PRD.
+- Loading, empty, error, disconnected states harus jelas.
+- Sticky mobile composer harus menghormati keyboard/safe area.
+- Conversation tidak boleh mengungkap booking/customer lain.
+
+D. Payments and proof
+- Pertahankan invoice identity, amount, paid/refund/outstanding math, payment status, proof asset identity, upload and approval flow.
+- Jangan menampilkan paid/success sebelum canonical transaction selesai.
+- Tidak boleh double-submit/duplicate payment proof.
+- Retry dan loading state harus menjaga input/context.
+- Tidak ada real payment gateway atau real customer proof untuk QA.
+
+E. Client profile/account
+- Pertahankan Firebase UID identity, ownership, profile fields, preferences, and auth session boundaries.
+- Jangan ubah account-role mapping atau account provision behavior.
+
+F. Notifications
+- Audit client-visible notification source dan ownership. Jangan mengasumsikan push/read/unread semantics.
+- Pertahankan destination safety, event identity, read receipt/state jika memang ada di source, dan existing routing.
+- Jangan menambahkan OneSignal/push delivery baru tanpa scope/contract eksplisit.
+- Hindari cross-user notification leakage.
+
+G. Shared components / design
+- Reuse primitives dan tokens yang sudah ada.
+- Jangan membuat override CSS baru.
+- Pastikan Light/Dark, focus, keyboard, forced colors, reduced motion, empty/loading/error/success, dan viewport compact.
+- Tidak perlu animasi ornamental; prioritaskan action feedback dan clarity.
+
+============================================================
+8. ACCEPTANCE CRITERIA PHASE 7
+============================================================
+
+Phase 7 hanya COMPLETE jika:
+- Route/page/component/style/repository/Worker/data ownership terpetakan.
+- Client overview, booking, calendar/detail, conversation, payment/proof, profile, and notification surfaces yang termasuk scope sudah dimodernisasi pada owner files.
+- Client ownership/isolation tetap benar pada direct URL, query, subscriptions, mutations, and server/Firestore authorization.
+- Booking lifecycle, slot conflict/calendar sync, pricing snapshot, invoice identity, payment/refund/proof, and conversation idempotency tetap benar.
+- Build dan lint pass.
+- Targeted Client tests pass.
+- npm test dan npm run test:prd pass.
+- Responsive browser smoke/screenshot evidence pass bila tooling mendukung.
+- Authenticated client walkthrough dijelaskan terpisah dari signed-out/source contracts.
+- Tidak ada production write/mutation atau data/media production.
+- docs/REDESIGN_WORKPLAN.md diperbarui dengan owner files, changes, tests, run evidence, commit, and known issues.
+- Handoff Phase 8 dibuat dalam .txt untuk sesi baru.
+
+Jangan mengklaim authenticated visual QA jika hanya Playwright public/signed-out smoke yang dijalankan.
+
+============================================================
+9. TESTS YANG SUDAH ADA — VERIFIKASI ULANG DI BRANCH
+============================================================
+
+Beberapa existing regression contracts yang relevan dan tercatat di npm test:
+- scripts/client-booking-handoff-security-regression-test.mjs
+- scripts/booking-lifecycle-regression-test.mjs
+- scripts/booking-domain-status-test.mjs
+- scripts/booking-normalization-test.mjs
+- scripts/booking-selector-consumer-test.mjs
+- scripts/client-navigation-v2-contract-test.mjs
+- scripts/client-portal-visual-overhaul-contract-test.mjs
+- scripts/payment-accounting-core-contract-test.mjs
+- scripts/payment-proof-command-center-contract-test.mjs
+- scripts/finance-reconciliation-contract-test.mjs
+- scripts/refund-lifecycle-contract-test.mjs
+- scripts/account-role-test.mjs
+- scripts/guard-wrong-portal-auth-ux-contract-test.mjs
+
+Jangan mengandalkan daftar statis ini tanpa membaca package.json aktual.
+
+============================================================
+10. OUTPUT WAJIB SESI PHASE 7
+============================================================
+
+Sebelum implementasi:
+- Verifikasi remote/local branch and working tree.
+- Baca docs/REDESIGN_WORKPLAN.md, docs/ui-rewrite-code-map.md, PRD, current audit, staging readiness.
+- Audit Client Portal route, owners, style, components, repositories, Worker, rules, and tests.
+- Map acceptance criteria and known gap.
+
+Selama:
+- Implementasi bertahap pada owner files.
+- Pertahankan contracts dan role boundaries.
+- Jalankan targeted tests per area.
+- Beri ringkasan perubahan konkret.
+
+Penutupan:
+- Run build/lint/npm test/npm run test:prd dan responsive smoke.
+- Cek output test dan CI, bukan sekadar workflow trigger.
+- Update workplan dengan commit, files, CI evidence, and QA limitation.
+- Buat HANDOFF_PHASE_8_CROSS_APP_COMPLETION_2026-11-06.txt.
+- Jangan merge, deploy, atau mengubah main.
+- Sertakan pull command di jawaban akhir.
+
+COMMAND PULL:
+
+git fetch origin
+git switch feature/ui-overhaul-premium-enterprise-2026-11-06
+git pull --ff-only origin feature/ui-overhaul-premium-enterprise-2026-11-06
+git status
+
+Mulai Phase 7 hanya setelah verifikasi branch dan audit source terkini.

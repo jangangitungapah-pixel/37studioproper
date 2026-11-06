@@ -150,11 +150,50 @@ Status: COMPLETE — owner surfaces audited, UI interaction refinements implemen
 Acceptance: source ownership and existing finance/procurement/guard contracts audited; interaction implementation is present in owner stylesheets; build, lint, npm test, npm run test:prd, and responsive browser smoke pass; screenshot evidence is uploaded; business/financial/Worker/attendance contracts remain unchanged; authenticated visual/staging limitations are documented and carried into Phase 9. Use emulators and synthetic fixtures only for any future operation-contract testing.
 
 ## Phase 6 — Content, notifications & settings
-- Gallery, notification center, all settings subpages and Owner-only workflows.
-- Shared upload, confirmation, destructive-action, and settings form patterns.
-- Keep media deletion and dangerous actions protected.
+Status: COMPLETE — Gallery, Notification Center, and Settings owner surfaces audited and interaction/state refinements implemented on 2026-11-06. Existing security, media, notification-event, Owner-only, and settings persistence contracts were preserved.
 
-Acceptance: gallery/security/notification/settings contracts pass.
+- Audited actual owners and source contracts:
+  - Gallery: src/pages/admin/GalleryPage.jsx, gallery components including src/components/gallery/GalleryAlerts.jsx, src/styles/modules/gallery.css, galleryRepository, and cloudinaryUploadService.
+  - Notification Center: src/pages/admin/NotificationsPage.jsx, src/styles/modules/notifications.css, notificationEventRepository, plus existing Admin navigation and notification badge ownership.
+  - Settings: src/pages/admin/SettingsPage.jsx, src/styles/modules/settings.css, existing settings hooks/utilities and Owner-only operations.
+- Gallery refinements:
+  - A failed Firestore Gallery subscription now exposes a retry action that creates a fresh subscription; the retry control appears only for that subscription failure.
+  - Added keyboard focus and press feedback for Gallery actions, with reduced-motion and forced-colors support.
+  - Existing Gallery component ownership, Cloudinary upload contract (12 MB gallery limit and existing folder/tags), metadata identity, soft-delete/restore behavior, and protected Owner-only permanent delete remain unchanged.
+- Notification Center refinements:
+  - Status filters expose their selected state with aria-pressed, and subscription changes show loading feedback.
+  - Added an explicit retry action after feed subscription errors and clarified the empty state for search versus a status with no events.
+  - Added focus/focus-within feedback, shared-token transitions, reduced-motion handling, and forced-colors styling.
+  - The actual product contract is an immutable in-app Firestore activity feed with event statuses. No read/unread model, OneSignal/push delivery, retry/cancel mutation, or event schema was introduced.
+- Settings refinements:
+  - Added consistent keyboard focus visibility across controls and links plus press feedback for navigation and action controls.
+  - Existing URL-backed area resolution, Owner-only query guards, Danger Zone/ownership protections, form draft state, and persistence behavior were not changed.
+- Added scripts/content-notification-settings-interaction-contract-test.mjs and registered it in npm test.
+- Files changed:
+  - src/pages/admin/GalleryPage.jsx
+  - src/components/gallery/GalleryAlerts.jsx
+  - src/styles/modules/gallery.css
+  - src/pages/admin/NotificationsPage.jsx
+  - src/styles/modules/notifications.css
+  - src/styles/modules/settings.css
+  - scripts/content-notification-settings-interaction-contract-test.mjs
+  - package.json
+- Implementation commit: a1a3fd8048717760ebc92981b5507f15162e2484 — feat(admin): refine phase 6 gallery notifications and settings UX.
+- Quality Gates run #220, run ID 42152760568, completed SUCCESS on the implementation commit:
+  - npm run build — success.
+  - npm run lint — success.
+  - npm test — success, including existing Gallery, Notification Console, Settings, permission, media safety, and the new Phase 6 interaction contract.
+  - npm run test:prd — success, including PRD, Worker, and Firestore security contracts.
+  - Playwright responsive browser smoke — success.
+  - Screenshot artifact browser-responsive-smoke uploaded successfully (artifact ID 13472683710).
+- The automated browser smoke exercises existing public landing/booking routes, login entry points, and the signed-out direct Admin route redirect at configured viewport sizes. It does not authenticate into Gallery, Notification Center, or Settings and is not authenticated visual QA for those pages.
+- Contract boundaries deliberately preserved: no changes to Gallery repository/service, Cloudinary payload/configuration, Firestore rules/collections, notification event repository/schema, OneSignal retirement, Admin role/permission logic, settings persistence, account provisioning, Danger Zone, Worker/API, or production data/media. No merge or deployment was performed.
+- Known QA limitation carried forward:
+  - Authenticated visual walkthrough of Gallery, Notification Center, and every Settings subpage remains unverified.
+  - Staging-readiness audit still identifies the existing default Firebase/Worker configuration as production-facing (studio-proper, studio-37.web.app, APP_ENVIRONMENT=production). Do not run mutating live acceptance against those targets.
+  - Complete authenticated visual QA in Phase 9 after a separate Firebase Spark staging project, isolated Worker environment, and synthetic identities/data are available. Do not enable billing or upgrade to Blaze.
+
+Acceptance: Gallery subscription retry and protected media actions, immutable in-app notification feed/state, Settings persistence and Owner-only access, and shared interaction/reduced-motion behavior are covered by source contracts; production build, lint, npm test, npm run test:prd, and responsive browser smoke pass; screenshot evidence is uploaded; no production mutation occurred; authenticated/staging limitations are recorded for Phase 9.
 
 ## Phase 7 — Client Portal
 - Overview, bookings, details/conversation, payments/proof, account and notifications.
