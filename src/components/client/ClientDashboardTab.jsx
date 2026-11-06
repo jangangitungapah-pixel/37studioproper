@@ -15,9 +15,11 @@ import {
 import {
   BOOKING_PAYMENT_STATUS_META,
   BOOKING_REQUEST_STATUS_META,
+  BOOKING_SESSION_STATUS_META,
+} from '../../domain/booking/bookingStatus.js';
+import {
   getBookingPaymentStatus,
   getBookingRequestStatus,
-  BOOKING_SESSION_STATUS_META,
   getBookingSessionStatus,
 } from '../../domain/booking/bookingSelectors.js';
 
