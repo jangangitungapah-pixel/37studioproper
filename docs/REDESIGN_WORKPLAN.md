@@ -85,11 +85,28 @@ Status: COMPLETE — implementation, automated regression, responsive browser sm
 Acceptance: landing selection and pricing states are deterministic, empty package state is safe, booking handoff remains date/startHour only, previous user booking state is cleared on auth changes, reduced-motion is respected, and mobile CTA/menu remain usable.
 
 ## Phase 4 — Admin core operations
-- Dashboard, Booking Requests, Calendar, All Bookings, Customers.
-- Shared booking detail drawer, booking form/modal, filters and data-grid families.
-- Preserve booking occupancy/date coordination and customer follow-up behavior.
+Status: COMPLETE — required regression contracts and CI quality gates passed; manual responsive testing was also confirmed by the user on 2026-11-06.
 
-Acceptance: booking lifecycle, calendar sync, route/query filters, customer contracts pass.
+- Scope covered the existing Admin core operations surfaces: Dashboard, Booking Requests, Calendar, All Bookings, Customers, shared booking detail drawer, and booking form/modal.
+- Refined interaction feedback using the existing Motion/token system: staged page entrances, action hover/press/focus states, booking/request row feedback, calendar card interactions, drawer and mobile bottom-sheet transitions, booking form focus-within states, and improved All Bookings table text legibility.
+- Added or extended `prefers-reduced-motion` handling for the new interaction effects so hover/press movement and transitions are suppressed when reduced motion is requested.
+- All changes in this Phase 4 pass were scoped to the owning page/component stylesheets. No page JSX, business logic, routes, permissions, APIs, repositories, data models, Firestore contracts, booking lifecycle, or calendar synchronization behavior was changed.
+- Files touched:
+  - `src/styles/modules/dashboard.css`
+  - `src/styles/modules/booking-requests.css`
+  - `src/styles/modules/schedule.css`
+  - `src/styles/modules/all-bookings.css`
+  - `src/styles/modules/customer.css`
+  - `src/styles/modules/booking-detail-drawer.css`
+  - `src/styles/modules/booking.css`
+- Implementation commits:
+  - `3596846365f363561767ecb9a85e0aa42be15afc` — `feat(admin): refine phase 4 core operations UX`
+  - `c770cbde4662347b8932245978214037aff4dafc` — `fix(admin): honor reduced motion in phase 4 interactions`
+- Quality Gates run #216, run ID `42124939739`, on commit `c770cbde4662347b8932245978214037aff4dafc` completed successfully: production build, lint, regression contracts, PRD/Firestore security contracts, responsive browser smoke, and screenshot artifact upload.
+- Manual responsive testing was confirmed by the user on 2026-11-06. The automated responsive browser smoke also passed.
+- Authenticated Admin workspace visual inspection is not claimed complete. Capture/review of authenticated Admin screens, including the full responsive/theme matrix, remains explicitly scheduled for Phase 9.
+
+Acceptance: Phase 4 regression contracts and booking/customer/calendar contract coverage pass; production build and lint pass; responsive browser smoke passes; user confirms manual responsive testing. Authenticated visual QA evidence remains a Phase 9 item and does not block this phase's automated/source-contract acceptance.
 
 ## Phase 5 — Admin finance & operations
 - Invoices & Payments, payment proof review, Bookkeeping, Operator Fee, Inventory/Procurement/Maintenance, Guard Attendance.
