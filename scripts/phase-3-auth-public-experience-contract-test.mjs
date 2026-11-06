@@ -48,7 +48,10 @@ for (const marker of [
   'isPastSlot(selectedDate, startHour)',
   'buildClientBookingResumePath({',
   "navigate('/client/login?next=' + encodeURIComponent(resumePath))",
-  "isOnline ? 'Jadwal realtime' : 'Perangkat offline'",
+  "'Status jadwal tidak diketahui'",
+  "'Memeriksa jadwal'",
+  "'Jadwal realtime'",
+  "'Perangkat offline'",
   'public-booking-offline-notice',
 ]) {
   assert.ok(publicBooking.includes(marker), 'Public booking availability / offline marker missing: ' + marker);
@@ -70,6 +73,8 @@ assert.doesNotMatch(clientCss, /color-scheme:\s*light|--studio-(?:bg-page|surfac
 assert.ok(clientCss.includes('.client-auth-alert.is-warning'), 'Client login offline state needs a semantic warning treatment.');
 assert.ok(landingCss.includes('.client-landing-planner-note'), 'Landing must visually explain exactly which planner values are handed off.');
 assert.ok(publicCss.includes('.public-booking-live.is-offline'), 'Public calendar live indicator must switch when offline.');
+assert.ok(publicCss.includes('.public-booking-live.is-error'), 'Public calendar live indicator must distinguish an availability subscription error.');
+assert.ok(publicCss.includes('.public-booking-live.is-loading'), 'Public calendar live indicator must distinguish an in-progress availability subscription.');
 assert.ok(publicCss.includes('.public-booking-offline-notice'), 'Public booking must disclose when displayed availability may be stale.');
 assert.ok(publicCss.includes('@media (max-width: 620px)'), 'Public booking mobile layout must remain scoped.');
 assert.ok(publicCss.includes('@media (prefers-reduced-motion: reduce)'), 'Public booking must preserve reduced-motion support.');
