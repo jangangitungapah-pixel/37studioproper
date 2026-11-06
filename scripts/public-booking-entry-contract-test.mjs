@@ -162,7 +162,7 @@ assert.equal(
 
 assert.equal(
   appSource.includes(
-    '<Route path="/book" element={<PublicBookingPage />} />',
+    '<Route path="/book" element={<ThemeProvider><PublicBookingPage /></ThemeProvider>} />',
   ),
   true,
 );
