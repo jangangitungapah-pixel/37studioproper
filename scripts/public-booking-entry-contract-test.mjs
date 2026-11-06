@@ -183,6 +183,37 @@ assert.equal(
   'Public booking page must read the public-safe availability mirror.',
 );
 
+assert.match(
+  publicPageSource,
+  /const hasAvailabilityData = !isLoading && !loadError;/,
+  'Public availability must remain unverified until the subscription succeeds.',
+);
+assert.match(
+  publicPageSource,
+  /available: hasAvailabilityData && !occupied && !past/,
+  'Loading and error states must never fabricate available slots.',
+);
+assert.match(
+  publicPageSource,
+  /availabilityStatus: isLoading \? 'loading' : loadError \? 'error' : 'ready'/,
+  'AI context must receive the availability lifecycle state.',
+);
+assert.match(
+  publicPageSource,
+  /availableStartHours: hasAvailabilityData[\s\S]*?: \[\]/,
+  'AI context must not receive slot suggestions before availability is verified.',
+);
+assert.match(
+  publicPageSource,
+  /Status tidak diketahui/,
+  'An unavailable calendar must not display an available-slot count.',
+);
+assert.match(
+  publicPageSource,
+  /Jadwal belum terverifikasi\. Pilihan ini belum dapat dikirim\./,
+  'The summary must explain that an unverified slot cannot be submitted.',
+);
+
 assert.equal(
   publicPageSource.includes(
     'buildClientBookingResumePath',

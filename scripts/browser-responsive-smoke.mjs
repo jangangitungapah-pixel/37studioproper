@@ -313,6 +313,26 @@ try {
             availabilityText.includes('Jadwal belum dapat dimuat'),
             'Firebase-unconfigured console error must be paired with its visible availability error state.',
           );
+          const availabilitySummary = page.locator('.public-booking-availability-head > span');
+          assert.equal(
+            await availabilitySummary.innerText(),
+            'Status tidak diketahui',
+            'An unavailable calendar must not display an available-slot count.',
+          );
+          assert.equal(
+            await page.locator('.public-booking-slot-list').count(),
+            0,
+            'An unavailable calendar must not render selectable slot groups.',
+          );
+          assert.equal(
+            await page.locator('.public-booking-legend').count(),
+            0,
+            'An unavailable calendar must not display the availability legend.',
+          );
+          assert.ok(
+            (await page.locator('.public-booking-summary-hint').innerText()).includes('Jadwal belum terverifikasi'),
+            'The summary must explain that its proposed slot is not verified.',
+          );
         }
 
         const offlineNotice = page.locator('.public-booking-offline-notice');

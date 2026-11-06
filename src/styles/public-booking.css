@@ -516,6 +516,12 @@
   font-weight: 800;
 }
 
+.public-booking-availability-head > span.is-status {
+  border: 1px solid var(--public-paper-line);
+  background: var(--public-paper-strong);
+  color: var(--public-ink-muted);
+}
+
 .public-booking-slot-list {
   display: grid;
   gap: 29px;

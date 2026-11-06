@@ -197,6 +197,7 @@ export default function PublicBookingPage() {
     typeof navigator === 'undefined' || navigator.onLine
   ));
   const [subscriptionVersion, setSubscriptionVersion] = useState(0);
+  const hasAvailabilityData = !isLoading && !loadError;
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -242,10 +243,10 @@ export default function PublicBookingPage() {
         startHour,
         occupied,
         past,
-        available: !occupied && !past,
+        available: hasAvailabilityData && !occupied && !past,
       };
     }),
-    [selectedDate, slots],
+    [hasAvailabilityData, selectedDate, slots],
   );
 
   const availableCount = availability.filter((item) => item.available).length;
@@ -257,16 +258,17 @@ export default function PublicBookingPage() {
   const canContinue = Boolean(selectedSlot);
   const publicAiContext = useMemo(() => ({
     calendar: {
-      availableStartHours: availability
-        .filter((item) => item.available)
-        .map((item) => item.startHour),
+      availabilityStatus: isLoading ? 'loading' : loadError ? 'error' : 'ready',
+      availableStartHours: hasAvailabilityData
+        ? availability.filter((item) => item.available).map((item) => item.startHour)
+        : [],
       date: selectedDate,
       selectedStartHour,
       timezone: 'Asia/Jakarta',
     },
     journey: 'Pilih waktu, masuk akun Client, lengkapi detail, lalu kirim request booking.',
     privacy: 'Konteks publik tanpa identitas pengunjung atau data booking customer lain.',
-  }), [availability, selectedDate, selectedStartHour]);
+  }), [availability, hasAvailabilityData, isLoading, loadError, selectedDate, selectedStartHour]);
 
   function changeDate(value) {
     if (!value || value < todayKey) {
@@ -450,7 +452,9 @@ export default function PublicBookingPage() {
               </div>
             </div>
 
-            <span>{availableCount} tersedia</span>
+            <span className={!hasAvailabilityData ? 'is-status' : ''} role="status">
+              {isLoading ? 'Memeriksa jadwal' : loadError ? 'Status tidak diketahui' : `${availableCount} tersedia`}
+            </span>
           </div>
 
           {isLoading ? (
@@ -486,11 +490,13 @@ export default function PublicBookingPage() {
             </div>
           )}
 
-          <footer className="public-booking-legend" aria-label="Keterangan status slot">
-            <span><i className="is-available" /> Tersedia</span>
-            <span><i className="is-selected" /> Dipilih</span>
-            <span><i className="is-unavailable" /> Terisi / lewat</span>
-          </footer>
+          {hasAvailabilityData ? (
+            <footer className="public-booking-legend" aria-label="Keterangan status slot">
+              <span><i className="is-available" /> Tersedia</span>
+              <span><i className="is-selected" /> Dipilih</span>
+              <span><i className="is-unavailable" /> Terisi / lewat</span>
+            </footer>
+          ) : null}
         </section>
 
         <aside className="public-booking-summary" aria-label="Ringkasan pilihan booking">
@@ -523,7 +529,11 @@ export default function PublicBookingPage() {
             </div>
 
             <p className="public-booking-summary-hint">
-              Harga dan durasi dipilih setelah Anda masuk ke akun client.
+              {isLoading
+                ? 'Memeriksa availability sebelum Anda melanjutkan.'
+                : loadError
+                  ? 'Jadwal belum terverifikasi. Pilihan ini belum dapat dikirim.'
+                  : 'Harga dan durasi dipilih setelah Anda masuk ke akun client.'}
             </p>
 
             <button disabled={!canContinue} type="button" onClick={continueBooking}>
