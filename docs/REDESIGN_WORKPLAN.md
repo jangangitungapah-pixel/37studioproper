@@ -214,6 +214,7 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - Booking, payment-proof, calendar-slot, and notification subscriptions now expose loading/error states with retry actions. The calendar remains non-actionable when slot availability has not been verified.
   - Booking request submission rechecks the latest available slot snapshot and blocks known occupied slots before writing.
   - Booking conversation now has explicit loading/error/retry states, preserves the draft after send failure, and follows PRD keyboard behavior: Enter sends; Shift+Enter inserts a line break.
+  - Dashboard and booking history now show canonical request, payment, and session lifecycle labels separately through booking selectors and status metadata; history filters expose aria-pressed state.
   - Mobile booking conversation composer receives sticky positioning and safe-area padding within the booking detail surface.
   - Added scripts/client-portal-phase-7-contract-test.mjs and registered it in npm test.
 - Current changed owner files:
