@@ -73,6 +73,8 @@ export default function ClientDashboardTab({
   onOpenPayments,
   handleBookingBlockClick,
   downloadCalendarEvent,
+  bookingsLoading = false,
+  bookingsError = '',
 }) {
   return (
     <div className="client-home-dashboard">
@@ -132,7 +134,12 @@ export default function ClientDashboardTab({
             ) : null}
           </div>
 
-          {upcomingBooking ? (
+          {bookingsLoading || bookingsError ? (
+            <div className="client-home-data-state" role={bookingsError ? 'alert' : 'status'}>
+              <strong>{bookingsError ? 'Jadwal belum dapat dimuat' : 'Memuat jadwal booking…'}</strong>
+              <p>{bookingsError ? 'Ringkasan sesi ditampilkan kembali setelah koneksi pulih.' : 'Mengambil jadwal terbaru dari akun Anda.'}</p>
+            </div>
+          ) : upcomingBooking ? (
             <>
               <div className="client-home-session-main">
                 <div className="client-home-session-icon">
