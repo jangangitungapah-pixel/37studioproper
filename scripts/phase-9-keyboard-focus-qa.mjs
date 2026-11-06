@@ -1,3 +1,5 @@
+/* global document, window */
+
 import { chromium } from 'playwright';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -13,6 +15,7 @@ const results = [];
 const runtimeErrors = [];
 let server;
 let browser;
+let lastConnectionError;
 
 function record(name, status, details = '') {
   results.push({ name, status, details: String(details || '') });
@@ -44,10 +47,15 @@ async function waitForServer() {
         signal: AbortSignal.timeout(800),
       });
       if (response.ok) return;
-    } catch {}
+    } catch (error) {
+      lastConnectionError = error;
+    }
     await delay(500);
   }
-  throw new Error('Timeout menunggu Vite di ' + baseUrl);
+  throw new Error(
+    'Timeout menunggu Vite di ' + baseUrl +
+    (lastConnectionError ? ': ' + lastConnectionError.message : ''),
+  );
 }
 
 async function writeHarness() {
@@ -172,6 +180,13 @@ async function runLandingMenuTests() {
         ?.getAttribute('aria-expanded') === 'true'
     );
 
+    const firstLink = page.locator('.client-landing-nav-link').first();
+    await firstLink.focus();
+
+    if (!await firstLink.evaluate(e => e === document.activeElement)) {
+      throw new Error('Fokus tidak masuk ke link navigasi');
+    }
+
     await page.keyboard.press('Escape');
 
     await page.waitForFunction(() =>
@@ -182,7 +197,7 @@ async function runLandingMenuTests() {
     if (!await menu.evaluate(e => e === document.activeElement)) {
       throw new Error('Fokus tidak tertahan pada trigger setelah Escape');
     }
-    return 'Enter membuka dan Escape menutup menu';
+    return 'Escape dari link navigasi menutup menu dan memulihkan fokus ke trigger';
   });
 
   await test('Landing navigation keyboard focus', async () => {
@@ -204,20 +219,23 @@ async function runLandingMenuTests() {
     return 'Link navigasi dapat difokuskan';
   });
 
-  await test('Landing navigation focus restoration', async () => {
-    const firstLink = page.locator('.client-landing-nav-link').first();
-    await firstLink.focus();
+  await test('Landing navigation destination focus', async () => {
+    const studioLink = page.locator('.client-landing-nav-link').filter({ hasText: 'Studio' });
+    await studioLink.focus();
     await page.keyboard.press('Enter');
 
+    await page.waitForFunction(() => window.location.hash === '#services');
     await page.waitForFunction(() =>
       document.querySelector('.client-landing-menu-button')
         ?.getAttribute('aria-expanded') === 'false'
     );
 
-    if (!await menu.evaluate(e => e === document.activeElement)) {
-      throw new Error('Fokus tidak kembali ke tombol menu');
+    const destination = page.locator('#services');
+    if (!await destination.evaluate(e => e === document.activeElement)) {
+      throw new Error('Fokus tidak berpindah ke section tujuan setelah anchor navigation');
     }
-    return 'Fokus kembali ke tombol menu';
+
+    return 'Anchor navigation memindahkan fokus ke section tujuan';
   });
 
   await page.close();

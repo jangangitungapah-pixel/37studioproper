@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring } from 'motion/react';
 import {
@@ -118,6 +118,7 @@ export default function ClientLandingPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuButtonRef = useRef(null);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
   const [bookingSelectionError, setBookingSelectionError] = useState('');
   const [plannerMode, setPlannerMode] = useState('regular');
@@ -195,7 +196,11 @@ export default function ClientLandingPage() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setIsMenuOpen(false);
+      if (event.key !== 'Escape') return;
+
+      event.preventDefault();
+      setIsMenuOpen(false);
+      menuButtonRef.current?.focus();
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => {
@@ -356,6 +361,20 @@ export default function ClientLandingPage() {
     }
   }
 
+  function handleNavigationLinkClick(event) {
+    const href = event.currentTarget.getAttribute('href') || '';
+    setIsMenuOpen(false);
+
+    if (!href.startsWith('#')) return;
+
+    const target = document.getElementById(href.slice(1));
+    if (!target) return;
+
+    window.requestAnimationFrame(() => {
+      if (target.isConnected) target.focus({ preventScroll: true });
+    });
+  }
+
   return (
     <motion.div className="client-landing-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.28 }}>
       <motion.div aria-hidden="true" className="client-landing-scroll-progress" style={{ scaleX: shouldReduceMotion ? 0 : scrollProgress }} />
@@ -375,10 +394,10 @@ export default function ClientLandingPage() {
           className={`client-landing-nav ${isMenuOpen ? 'is-open' : ''}`}
           id="client-landing-navigation"
         >
-          <a href="#services" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Studio</a>
-          <a href="#pricelist" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Harga</a>
-          <a href="/book" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Booking Slot</a>
-          <a href="#location" className="client-landing-nav-link" onClick={() => setIsMenuOpen(false)}>Lokasi</a>
+          <a href="#services" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Studio</a>
+          <a href="#pricelist" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Harga</a>
+          <a href="/book" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Booking Slot</a>
+          <a href="#location" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Lokasi</a>
         </nav>
 
         <div className="client-landing-header-actions">
@@ -408,6 +427,7 @@ export default function ClientLandingPage() {
             aria-expanded={isMenuOpen}
             aria-label={isMenuOpen ? 'Tutup navigasi' : 'Buka navigasi'}
             className="client-landing-menu-button"
+            ref={menuButtonRef}
             type="button"
             onClick={() => setIsMenuOpen((value) => !value)}
             {...interactionMotionProps}
@@ -465,7 +485,7 @@ export default function ClientLandingPage() {
           </p>
         </motion.section>
 
-        <motion.section className="client-landing-services" {...sectionRevealProps} id="services" aria-labelledby="client-services-title">
+        <motion.section className="client-landing-services" {...sectionRevealProps} id="services" tabIndex={-1} aria-labelledby="client-services-title">
           <header className="client-landing-section-heading">
             <span>01 / Services</span>
             <h2 id="client-services-title">Satu ruang.<br />Tiga cara berkarya.</h2>
@@ -489,7 +509,7 @@ export default function ClientLandingPage() {
           </div>
         </motion.section>
 
-        <motion.section className="client-landing-planner" {...sectionRevealProps} id="pricelist" aria-labelledby="client-planner-title">
+        <motion.section className="client-landing-planner" {...sectionRevealProps} id="pricelist" tabIndex={-1} aria-labelledby="client-planner-title">
           <div className="client-landing-planner-story">
             <span>02 / Plan your session</span>
             <h2 id="client-planner-title">Harga transparan sebelum Anda datang.</h2>
@@ -669,7 +689,7 @@ export default function ClientLandingPage() {
           </div>
         </motion.section>
 
-        <motion.section className="client-landing-location" {...sectionRevealProps} id="location" aria-labelledby="client-location-title">
+        <motion.section className="client-landing-location" {...sectionRevealProps} id="location" tabIndex={-1} aria-labelledby="client-location-title">
           <div className="client-landing-location-heading">
             <span>05 / Visit</span>
             <h2 id="client-location-title">Temukan ruang<br />untuk sesi berikutnya.</h2>
