@@ -196,7 +196,7 @@ Status: COMPLETE — Gallery, Notification Center, and Settings owner surfaces a
 Acceptance: Gallery subscription retry and protected media actions, immutable in-app notification feed/state, Settings persistence and Owner-only access, and shared interaction/reduced-motion behavior are covered by source contracts; production build, lint, npm test, npm run test:prd, and responsive browser smoke pass; screenshot evidence is uploaded; no production mutation occurred; authenticated/staging limitations are recorded for Phase 9.
 
 ## Phase 7 — Client Portal
-Status: IN PROGRESS — recipient-scoped notifications, explicit client data subscription states, availability gating, and conversation interaction hardening implemented on 2026-11-06. Full quality gates and completion evidence remain pending.
+Status: COMPLETE — implementation and local quality gates completed on 2026-11-06, including responsive browser smoke confirmed by the user.
 
 - Audited current source ownership:
   - Route boundary: src/App.jsx and src/components/client/ClientSpatialRoute.jsx.
@@ -245,13 +245,13 @@ Status: IN PROGRESS — recipient-scoped notifications, explicit client data sub
   - No production data, proof upload, payment, or booking mutation was run.
 - Targeted Phase 7 source contract is registered in `npm test`. A connector-driven source inspection exercised its key contracts successfully, including recipient UID scoping, Firestore immutability, canonical lifecycle selectors, calendar availability gating, conversation keyboard/retry behavior, and accessibility selectors. This is not equivalent to executing the Node test file locally.
 - Latest implementation source commit reviewed before this documentation checkpoint: `77b4575f471a51c58182393d3c1af7a709ffbc91` (`test(client): protect canonical lifecycle detail tone mapping`). At that check, the feature branch was 59 commits ahead and 0 behind the Phase 6 handoff commit. The GitHub connector returned no combined status contexts and no PR-triggered workflow runs; no PR exists. Push-triggered Quality Gates outcome remains unverified.
-- Full `npm run build`, `npm run lint`, `npm test`, `npm run test:prd`, and Playwright responsive smoke have not been executed in this environment. The container cannot resolve github.com for a repository clone, and the GitHub connector exposes no push-triggered workflow run/check-run listing. Do not mark acceptance passed based on source inspection alone.
+- User confirmation on 2026-11-06: local `npm run build`, `npm run lint`, `npm test`, `npm run test:prd`, and `node scripts/browser-responsive-smoke.mjs` completed successfully through the responsive smoke test. Treat this as user-reported local test evidence; raw terminal output was not attached in this session and was not independently reproduced by the connector.
 - Known verification limitations:
   - Local working tree on the user's PC is not observable from the GitHub connector.
-  - The connector does not expose push-triggered workflow-run listing; commit status query currently returns no status contexts. Confirm actual Quality Gates run/checks before marking Phase 7 complete.
+  - GitHub push-triggered CI/workflow status remains independently unverified: the connector previously returned no status contexts and does not expose a push-triggered workflow-run listing. This does not override the user's successful local quality-gate confirmation.
   - Authenticated browser walkthrough remains blocked until an isolated Firebase Spark staging project, staging Worker and Hosting environment, and synthetic accounts/data are available. Do not use the production-facing default Firebase/Worker targets for write acceptance.
 
-Acceptance: overview, bookings, calendar/detail, conversation, payment/proof, account and notifications must be source-audited and modernized; client ownership/isolation and business contracts must remain correct; targeted Client contracts, build, lint, npm test, npm run test:prd and responsive browser smoke must pass; authenticated staging limitations must be explicitly documented.
+Acceptance: overview, bookings, calendar/detail, conversation, payment/proof, account and notifications were source-audited and modernized; client ownership/isolation and business contracts remain correct; targeted Client contracts, build, lint, npm test, npm run test:prd and responsive browser smoke are user-confirmed successful locally; authenticated staging limitations remain explicitly documented for Phase 9.
 - Responsive client shell, plain-language statuses and clear task actions.
 - Preserve client ownership and isolation.
 
