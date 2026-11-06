@@ -1286,6 +1286,7 @@ button.client-booking-slot { cursor: pointer; }
 .client-history-status.is-pending,
 .client-history-status.is-attention,
 .client-history-status.is-upcoming,
+.client-home-status-chip.is-upcoming,
 .client-home-status-chip.is-pending,
 .client-home-status-chip.is-attention {
   border-color: color-mix(in srgb, var(--auth-warning) 34%, var(--client-line));
