@@ -965,6 +965,12 @@ export default function ClientPortalPage() {
   }
 
   function openPaymentProofModal(booking, initialCategory) {
+    if (paymentProofsLoading || paymentProofsError) {
+      setActionFeedback('Status bukti pembayaran belum dapat diverifikasi. Muat ulang data sebelum mengirim bukti.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return;
+    }
+
     const status = getBookingPaymentStatus(booking);
     const nextCategory = initialCategory || (status === 'partial' ? 'pelunasan' : 'dp');
 
@@ -1015,6 +1021,12 @@ export default function ClientPortalPage() {
 
   async function submitStandalonePaymentProof() {
     if (!selectedProofBooking || isSubmittingProof) return;
+
+    if (paymentProofsLoading || paymentProofsError) {
+      setActionFeedback('Status bukti pembayaran belum dapat diverifikasi. Muat ulang data sebelum mengirim bukti.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return;
+    }
 
     setIsSubmittingProof(true);
     setActionFeedback('');
@@ -1814,7 +1826,17 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               );
             })()}
 
-            {getLatestPaymentProof(selectedBookingDetail) ? (
+            {paymentProofsLoading || paymentProofsError ? (
+              <section className="client-request-state is-attention" role={paymentProofsError ? 'alert' : 'status'}>
+                <span>Status bukti pembayaran</span>
+                <strong>{paymentProofsLoading ? 'Memuat status bukti…' : 'Status bukti belum dapat diperiksa'}</strong>
+                {paymentProofsError ? (
+                  <button type="button" onClick={() => setPaymentProofsRetryVersion((value) => value + 1)}>
+                    Coba lagi
+                  </button>
+                ) : null}
+              </section>
+            ) : getLatestPaymentProof(selectedBookingDetail) ? (
               <section className={'client-payment-proof-detail ' + getProofTone(getLatestPaymentProof(selectedBookingDetail).status)}>
                 <span>Status bukti pembayaran</span>
                 <strong>{getPaymentProofStatusLabel(getLatestPaymentProof(selectedBookingDetail).status)}</strong>
@@ -1916,7 +1938,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 Tutup
               </button>
 
-              {getBookingStatus(selectedBookingDetail) !== 'lunas' && !['cancelled', 'canceled', 'void', 'deleted'].includes(getBookingStatus(selectedBookingDetail).toLowerCase()) && (
+              {!paymentProofsLoading && !paymentProofsError && getBookingStatus(selectedBookingDetail) !== 'lunas' && !['cancelled', 'canceled', 'void', 'deleted'].includes(getBookingStatus(selectedBookingDetail).toLowerCase()) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2019,8 +2041,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <button type="button" onClick={closePaymentProofModal} disabled={isSubmittingProof}>
                 Batal
               </button>
-              <button type="button" onClick={submitStandalonePaymentProof} disabled={isSubmittingProof || !proofFile}>
-                {isSubmittingProof ? 'Mengirim...' : 'Submit Bukti'}
+              <button
+                type="button"
+                onClick={submitStandalonePaymentProof}
+                disabled={isSubmittingProof || !proofFile || paymentProofsLoading || Boolean(paymentProofsError)}
+              >
+                {isSubmittingProof ? 'Mengirim...' : paymentProofsLoading ? 'Memuat status...' : paymentProofsError ? 'Status belum tersedia' : 'Submit Bukti'}
               </button>
             </footer>
           </section>
