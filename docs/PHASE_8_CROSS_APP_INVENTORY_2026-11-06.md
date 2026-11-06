@@ -220,9 +220,9 @@ The branch tree contains 96 `scripts/` files matching test, smoke, audit, or con
 
 ### Quality gate separation
 
-- Latest independently observed workflow: [Quality Gates run 42174286586](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42174286586), triggered by push to the work branch and testing commit `c9381dd`.
-- Build, lint, regression contracts, and PRD/Firestore security contracts completed successfully in that run.
-- Responsive smoke must be treated according to the final workflow step conclusion. If the Chromium install or browser smoke step did not complete, record it as blocked, not passed.
+- Final independently observed workflow: [Quality Gates run 42175183336](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42175183336), triggered by push to the work branch and checking branch HEAD `4aeef9c5e765526045c3c1aa9e473c3ac2f5494b`.
+- Final run conclusion: **success**. Locked dependency install, Firebase CLI setup, production build, lint, full regression contracts, PRD/Firestore security contracts, Playwright install, Chromium install, responsive browser smoke, and screenshot artifact upload all completed successfully.
+- Screenshot artifact: `browser-responsive-smoke`, artifact ID `13483012642`, approximately 8.6 MB, uploaded successfully by run 42175183336. It is retained in GitHub Actions artifacts; no local visual inspection of the uploaded images is claimed.
 - Prior phase visual screenshot evidence exists for selected public/auth/signed-out surfaces as described in `docs/REDESIGN_WORKPLAN.md`; Phase 8 did not add a new screenshot set or claim new visual inspections.
 - User-reported local Phase 7 responsive smoke result remains user-reported evidence and is not substituted for Phase 8 CI.
 
@@ -260,4 +260,4 @@ The branch tree contains 96 `scripts/` files matching test, smoke, audit, or con
 
 ## 11. Phase 8 completion statement
 
-Phase 8 source inventory has been classified across every tracked page, component, stylesheet, hook, and service in the snapshot; scoped lifecycle and CSS token-alignment fixes are implemented; and the automated build/lint/regression/PRD-security gates passed at `c9381dd`. Visual QA and authenticated staging remain explicitly blocked/deferred to Phase 9. The responsive smoke gate must be recorded from the final GitHub Actions result before marking Phase 8 fully accepted.
+Phase 8 is **COMPLETE**. The cross-app source inventory is classified across all tracked page files, components, stylesheets, hooks, and services in snapshot `c9381dd`; lifecycle and CSS token-alignment fixes are implemented; build, lint, full regression, PRD/Firestore security, and responsive browser smoke gates all passed in final Quality Gates run `42175183336` on branch HEAD `4aeef9c5e765526045c3c1aa9e473c3ac2f5494b`. Screenshot artifact `browser-responsive-smoke` (ID `13483012642`) uploaded successfully. This acceptance closes source inventory and automated responsive smoke only. Full route × viewport × theme visual inspection and authenticated Admin/Client/Guard walkthroughs remain Phase 9 work, blocked on safe isolated staging.

@@ -258,35 +258,39 @@ Acceptance: overview, bookings, calendar/detail, conversation, payment/proof, ac
 Acceptance: client portal isolation, booking handoff and payment contracts pass.
 
 ## Phase 8 — Cross-app completion
-Status: IN PROGRESS — complete source inventory and targeted fixes are recorded at `docs/PHASE_8_CROSS_APP_INVENTORY_2026-11-06.md`. Build, lint, regression contracts and PRD/Firestore security gates passed on code commit `c9381ddacb07c805bff3d0da4cb99bfa991bb059`. The responsive browser smoke gate is NOT yet passed: Quality Gates run [42174286586](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42174286586) remains in the Chromium installation step, and the responsive smoke and screenshot-upload steps are still pending at this checkpoint. Do not mark Phase 8 complete or start Phase 9 until the smoke gate is green or equivalent local execution is confirmed.
+Status: **COMPLETE** — final source inventory and evidence: `docs/PHASE_8_CROSS_APP_INVENTORY_2026-11-06.md`.
 
-- Audited the branch Git tree and mapped all 22 tracked page files, 56 React components, 37 stylesheets (including `src/index.css`), 2 hooks, 20 services/repositories and 96 test/audit/smoke scripts. The route matrix contains 24 route/alias entries. Detailed owner/consumer, classification, evidence, known issue and Phase 8 action are in the cross-app inventory document.
+- Audited the branch Git tree and mapped all 22 tracked page files, 56 React components, 37 stylesheets (including `src/index.css`), 2 hooks, 20 services/repositories and 96 test/audit/smoke scripts. The route matrix contains 24 route/alias entries. Owner/consumer, classification, evidence, known issue and next action are recorded in the inventory.
 - Reconciled actual source ownership against `docs/ui-rewrite-code-map.md`, `docs/css-module-map.md`, `package.json`, route sources and current contract tests. Legacy June precision-audit dead-class counts were treated as stale and not used as deletion evidence.
 - Fixed Client Portal subscription lifecycle lint issues: auth identity changes still clear prior-client data; retry actions own their explicit reset state; subscription setup errors defer state updates and are guarded against stale cleanup; conversation state is keyed to user/booking/role/retry identity; URL notification booking resolution is deferred and cancellable.
 - Added `scripts/phase-8-cross-app-completion-contract-test.mjs` and registered it in `npm test`.
-- Migrated 150 legacy `--auth-*` references in `src/styles/modules/booking.css` across 20 verified alias mappings to their exact `--studio-*` semantic tokens. No token values, dimensions, layout, or raw hex colors changed. The UI-3C booking modal contract now passes.
+- Migrated 150 legacy `--auth-*` references in `src/styles/modules/booking.css` across 20 verified alias mappings to their exact `--studio-*` semantic tokens. No token values, dimensions, layout, or raw hex colors changed. The UI-3C booking modal contract passes.
 - No page-wide redesign, stylesheet deletion, dependency deletion, route/auth/role/Firestore/Worker contract change, production data mutation, merge or deployment was performed.
 
-Quality gates on code commit `c9381ddacb07c805bff3d0da4cb99bfa991bb059`:
-- `npm ci` — passed.
+Final Quality Gates evidence:
+- Branch: `feature/ui-overhaul-premium-enterprise-2026-11-06`
+- Tested branch HEAD: `4aeef9c5e765526045c3c1aa9e473c3ac2f5494b`
+- Workflow: [Quality Gates run 42175183336 — SUCCESS](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42175183336)
+- `npm ci` / locked dependency install — passed.
 - `npm run build` — passed.
 - `npm run lint` — passed.
 - `npm test` — passed, including the new Phase 8 cross-app lifecycle contract and all existing regression contracts.
-- `npm run test:prd` — passed, including CSS route ownership, Worker security and Firestore emulator rules contracts.
-- Playwright package installation — passed.
-- Chromium installation — still in progress in run 42174286586 at this documentation checkpoint.
-- `node scripts/browser-responsive-smoke.mjs` in CI — NOT RUN / pending because Chromium installation has not completed.
-- Screenshot artifact upload — pending. No Phase 8 screenshot was visually inspected; do not claim visual verification based on build, route HTTP status or source review.
+- `npm run test:prd` — passed, including CSS route ownership, Worker security and Firestore rules emulator contracts.
+- Playwright install — passed.
+- Chromium install — passed.
+- `node scripts/browser-responsive-smoke.mjs` — passed in CI.
+- Screenshot artifact `browser-responsive-smoke`, artifact ID `13483012642`, uploaded successfully (about 8.6 MB).
+- The responsive smoke covers the routes and viewports defined in the script. It is not a substitute for authenticated Admin/Client/Guard workflow QA or the full route × viewport × theme visual inspection.
 
-Known issues / blockers carried forward:
-- Authenticated Admin, Client and Guard visual walkthroughs still require an isolated Firebase Spark project, staging Hosting origin, isolated staging Worker, and synthetic test identities/data. Current defaults are production-facing. No production acceptance writes.
-- Full responsive/theme/accessibility visual matrix remains Phase 9 scope.
-- `src/pages/admin/AutoApprovePage.jsx` retains an existing targeted effect lint suppression in an Owner approval workflow; deferred rather than changing sensitive auth/approval behavior.
+Known issues / Phase 9 carry-forward:
+- Authenticated Admin, Client and Guard visual walkthroughs still require an isolated Firebase Spark project, staging Hosting origin, isolated staging Worker, and synthetic test identities/data. Current default Firebase/Worker targets are production-facing. No production acceptance writes.
+- Full route × viewport × theme visual inspection, visual comparison and accessibility review remain Phase 9 scope. CI screenshot artifact upload passed, but this session did not visually inspect every screenshot.
+- `src/pages/admin/AutoApprovePage.jsx` retains an existing targeted effect lint suppression in an Owner approval workflow; defer changes unless a separate auth/security contract is prepared.
 - `src/App.jsx` retains one inline Suspense fallback style; defer safe owner-style cleanup.
-- Build emitted large-chunk warnings for ECharts and ExcelJS. `npm ci` reported 17 dependency audit findings (2 low, 7 moderate, 8 high); no package upgrade or audit fix was attempted.
+- Build emits large-chunk warnings for ECharts and ExcelJS. `npm ci` reported 17 dependency audit findings (2 low, 7 moderate, 8 high); no package upgrade or audit fix was attempted.
 - Client availability recheck remains snapshot-level, not a transactional reservation lock.
 
-Acceptance: every inventory item is classified in `docs/PHASE_8_CROSS_APP_INVENTORY_2026-11-06.md` as redesigned, tested, visually verified or blocked with evidence and action. Phase 8 remains IN PROGRESS until responsive smoke is executed and recorded. Once it passes, update this section to COMPLETE, record the final workflow/artifact evidence, then create a Phase 9 handoff in a separate session. Do not begin Phase 9 here.
+Acceptance: Phase 8 inventory and automated gates are complete. Start Phase 9 in a separate session using a dedicated handoff prompt. Do not merge, deploy, or alter production configuration without explicit authorization.
 
 ## Phase 9 — Responsive, accessibility & visual QA
 - Test 360, 390, 430, 768, 900, 1024, 1280, 1440, 1920 widths.
