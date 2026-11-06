@@ -6,6 +6,8 @@ const repository = read('../src/services/notificationEventRepository.js');
 const panel = read('../src/components/client/ClientNotificationsPanel.jsx');
 const page = read('../src/pages/ClientPortalPage.jsx');
 const calendar = read('../src/components/client/ClientCalendarTab.jsx');
+const dashboard = read('../src/components/client/ClientDashboardTab.jsx');
+const history = read('../src/components/client/ClientHistoryTab.jsx');
 const conversation = read('../src/components/booking/BookingConversationPanel.jsx');
 const portalStyles = read('../src/styles/modules/client-portal-overhaul.css');
 const bookingStyles = read('../src/styles/modules/booking.css');
@@ -39,6 +41,16 @@ assert.match(page, /isBookingStartOccupied\(calendarSlots, simulatorDate, Number
 assert.match(page, /Data jadwal belum siap atau belum dapat diverifikasi/);
 assert.match(page, /setCalendarSlotsReady\(false\);\s*setCalendarSlotsLoading\(false\)/);
 
+assert.match(dashboard, /BOOKING_REQUEST_STATUS_META/);
+assert.match(dashboard, /BOOKING_PAYMENT_STATUS_META/);
+assert.match(dashboard, /getBookingRequestStatus\(booking\)/);
+assert.match(dashboard, /getBookingPaymentStatus\(booking\)/);
+assert.match(dashboard, /client-home-status-stack/);
+assert.match(history, /getBookingRequestStatus\(booking\)/);
+assert.match(history, /getBookingPaymentStatus\(booking\)/);
+assert.match(history, /getBookingSessionStatus\(booking\)/);
+assert.match(history, /aria-pressed=\{historyFilter === option\.key\}/);
+assert.match(history, /client-history-status-list/);
 assert.match(calendar, /calendarSlotsReady = false/);
 assert.match(calendar, /disabled=\{!calendarSlotsReady\}/);
 assert.match(calendar, /data belum siap/);
