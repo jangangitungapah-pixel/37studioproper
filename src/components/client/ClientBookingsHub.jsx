@@ -64,9 +64,7 @@ export default function ClientBookingsHub({
               </small>
 
               <strong>
-                {
-                  unreadCount
-                }
+                {typeof unreadCount === 'number' ? unreadCount : '—'}
               </strong>
             </span>
           </div>
@@ -82,9 +80,7 @@ export default function ClientBookingsHub({
               </small>
 
               <strong>
-                {
-                  pendingPaymentCount
-                }
+                {typeof pendingPaymentCount === 'number' ? pendingPaymentCount : '—'}
               </strong>
             </span>
           </div>
