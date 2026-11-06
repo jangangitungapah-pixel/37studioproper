@@ -68,7 +68,7 @@ async function writeHarness() {
 </head>
 <body>
 <div id="root"></div>
-<script type="module" src="/.phase-9-qa-harness.jsx"></script>
+<script type="module" src="/phase-9-qa-harness.jsx"></script>
 </body>
 </html>`;
 
@@ -248,7 +248,7 @@ async function runStudioSelectTests() {
 
   page.on('pageerror', e => runtimeErrors.push('StudioSelect: ' + e.message));
 
-  await page.goto(baseUrl + '/.phase-9-qa-harness.html', {
+  await page.goto(baseUrl + '/phase-9-qa-harness.html', {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
@@ -411,7 +411,7 @@ async function runConfirmDialogTests() {
 
   page.on('pageerror', e => runtimeErrors.push('ConfirmDialog: ' + e.message));
 
-  await page.goto(baseUrl + '/.phase-9-qa-harness.html', {
+  await page.goto(baseUrl + '/phase-9-qa-harness.html', {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
