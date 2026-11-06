@@ -689,6 +689,10 @@ export default function ClientPortalPage() {
     [userBookings]
   );
 
+  const clientActionBadgeCount = bookingsLoading || bookingsError || paymentProofsLoading || paymentProofsError
+    ? null
+    : unreadAdminMessages + pendingPaymentProofs.length;
+
   const calendarBookings = useMemo(() => {
     const ownBookingsById = new Map(
       userBookings
@@ -1461,9 +1465,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             <ClipboardList size={16} />
             <span>Bookings</span>
 
-            {unreadAdminMessages + pendingPaymentProofs.length ? (
+            {clientActionBadgeCount > 0 ? (
               <b>
-                {unreadAdminMessages + pendingPaymentProofs.length}
+                {clientActionBadgeCount}
               </b>
             ) : null}
           </button>
@@ -1637,11 +1641,11 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
         {activeTab === 'bookings' && (
           <ClientBookingsHub
-            bookingCount={userBookings.length}
+            bookingCount={bookingsLoading || bookingsError ? '—' : userBookings.length}
             section={bookingsSection}
             setSection={setBookingsSection}
-            unreadCount={unreadAdminMessages}
-            pendingPaymentCount={pendingPaymentProofs.length}
+            unreadCount={bookingsLoading || bookingsError ? null : unreadAdminMessages}
+            pendingPaymentCount={paymentProofsLoading || paymentProofsError ? null : pendingPaymentProofs.length}
             bookingsContent={(
               <ClientHistoryTab
                 filteredHistoryBookings={filteredHistoryBookings}
@@ -1728,9 +1732,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           >
             <ClipboardList size={18} />
             <span>Bookings</span>
-            {unreadAdminMessages + pendingPaymentProofs.length ? (
+            {clientActionBadgeCount > 0 ? (
               <b className="client-nav-badge">
-                {unreadAdminMessages + pendingPaymentProofs.length}
+                {clientActionBadgeCount}
               </b>
             ) : null}
           </button>
