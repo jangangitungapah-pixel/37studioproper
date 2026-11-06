@@ -293,12 +293,31 @@ Known issues / Phase 9 carry-forward:
 Acceptance: Phase 8 inventory and automated gates are complete. Start Phase 9 in a separate session using a dedicated handoff prompt. Do not merge, deploy, or alter production configuration without explicit authorization.
 
 ## Phase 9 — Responsive, accessibility & visual QA
-- Test 360, 390, 430, 768, 900, 1024, 1280, 1440, 1920 widths.
-- Light, dark, system; keyboard, focus, contrast, reduced motion, modal/dropdown, overflow, loading/empty/error/offline/success/denied states.
-- Use Playwright screenshots and browser console inspection where environment exists.
-- Distinguish automated/source contracts from actual browser visual verification.
+Status: **COMPLETE — automated browser matrix, public/unauthenticated visual QA, contrast contracts, and keyboard/focus QA passed.** Authenticated Admin/Client/Guard workflows remain a documented staging prerequisite, not a production-write test.
 
-Acceptance: documented route/viewport/theme matrix, no unexplained P0/P1 UX or accessibility issues.
+Evidence report: `docs/PHASE_9_RESPONSIVE_ACCESSIBILITY_QA_2026-11-07.md`
+
+Final verified branch HEAD: `358560724f7e6a0fbc7aa940b50c13dabaad2da6`
+- Quality Gates run #312 — **SUCCESS**: https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42289681693
+- Browser/accessibility artifact: https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42289681693/artifacts/13540255828
+- Responsive matrix: 6 routes × 9 widths (360, 390, 430, 768, 900, 1024, 1280, 1440, 1920) × 3 themes (Light, Dark, System) = **162 screenshots**; 162 diagnostic rows; no horizontal overflow; no unexpected console errors, failed requests, or uncaught runtime errors.
+- System theme was verified against OS Light/Dark changes. Landing mobile menu/scroll lock, service shortcut, Motion reveals, planner handoff, Public Booking error/offline/online state, auth offline/online feedback, and signed-out Admin redirect were exercised.
+- Keyboard/focus browser runner: **16 PASS / 0 FAIL / 0 SKIP**, covering Landing menu/anchor focus, StudioSelect keyboard behavior, and ConfirmDialog ARIA, focus trap, Escape, and pending behavior.
+- Light/Dark semantic token contrast contracts pass WCAG AA (4.5:1) for the tested text/surface pairs. Lowest measured pair in the selected Light set: 4.62:1; lowest selected Dark pair: 4.79:1. These are selected-token checks, not a whole-product accessibility certification.
+- Source contracts verify focus-visible and reduced-motion rules for the audited auth/Guard surfaces. Public Booking and Role AI retain reduced-motion CSS rules; the browser matrix did not emulate reduced motion across every route.
+
+Visual review of representative Public Booking screenshots confirmed:
+- 360px mobile: pending/disabled booking summary returns to document flow below the calendar and no longer covers the custom date picker or availability controls.
+- 1440px desktop: calendar, summary, and AI launcher remain in separate layout regions; the AI launcher no longer floats over the schedule or summary.
+- Availability is not fabricated when the public subscription fails: no “available” count or selectable slots are shown; the header uses an unknown/error state; AI context receives no unverified available hours.
+
+Known limitations carried forward:
+- CI does not configure the production-facing Firebase/Worker or create production writes. Real authenticated Admin/Client/Guard walkthroughs, real live availability loading/empty/success flows, and booking submission acceptance still require an isolated Firebase **Spark** staging project, staging Hosting origin, isolated staging Worker, and synthetic identities/data. Do not switch to Blaze or write acceptance data to production.
+- Client availability recheck remains snapshot-level, not a transactional reservation lock.
+- Existing build warnings for ECharts/ExcelJS large chunks remain. `npm ci` continues to report 17 dependency audit findings (2 low, 7 moderate, 8 high); no dependency upgrade/audit fix was attempted.
+- GitHub Actions v4 runner deprecation warnings were observed; no workflow action upgrade was included in this phase.
+
+Acceptance: the documented route/viewport/theme matrix and automated/source contracts pass; no unexplained P0/P1 issue remains in the tested public and unauthenticated surfaces. Authenticated staging coverage is explicitly recorded as a release-readiness carry-forward. Start Phase 10 in a separate session using the dedicated handoff prompt. Do not merge, deploy, or alter production configuration without explicit authorization.
 
 ## Phase 10 — Regression, cleanup & release readiness
 - Run all build/lint/test/PRD/Firestore rules gates.
