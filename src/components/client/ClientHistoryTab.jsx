@@ -85,7 +85,7 @@ export default function ClientHistoryTab({
             const requestMeta = BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' };
             const paymentMeta = BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' };
             const sessionMeta = BOOKING_SESSION_STATUS_META[getBookingSessionStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' };
-            const isVoid = ['cancelled', 'rejected', 'void'].includes(requestMeta.tone) || ['cancelled', 'void'].includes(paymentMeta.tone);
+            const isVoid = ['cancelled', 'rejected'].includes(requestMeta.tone) || ['cancelled', 'void'].includes(paymentMeta.tone) || sessionMeta.tone === 'cancelled';
             const startHour = Number(booking.startHour || 0);
             const duration = Number(booking.durationHours || booking.duration || 1);
             const endHour = startHour + duration;
