@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
+import {
+  BOOKING_PAYMENT_STATUS_META,
+  BOOKING_SESSION_STATUS_META,
+} from '../domain/booking/bookingStatus.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
 import { notificationEventRepository } from '../services/notificationEventRepository.js';
 import {
@@ -1782,6 +1786,28 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </section>
             ) : null}
 
+            {(() => {
+              const paymentMeta = BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(selectedBookingDetail)];
+              const sessionMeta = BOOKING_SESSION_STATUS_META[getBookingSessionStatus(selectedBookingDetail)];
+
+              return (
+                <>
+                  {paymentMeta ? (
+                    <section className={'client-request-state is-' + paymentMeta.tone}>
+                      <span>Status pembayaran</span>
+                      <strong>{paymentMeta.label}</strong>
+                    </section>
+                  ) : null}
+                  {sessionMeta ? (
+                    <section className={'client-request-state is-' + sessionMeta.tone}>
+                      <span>Status sesi</span>
+                      <strong>{sessionMeta.label}</strong>
+                    </section>
+                  ) : null}
+                </>
+              );
+            })()}
+
             {getLatestPaymentProof(selectedBookingDetail) ? (
               <section className={'client-payment-proof-detail ' + getProofTone(getLatestPaymentProof(selectedBookingDetail).status)}>
                 <span>Status bukti pembayaran</span>
@@ -1850,8 +1876,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   <div>
                     <span>Sisa tagihan</span>
                     <strong className={getBookingStatus(selectedBookingDetail) === 'lunas' ? 'is-paid' : 'is-open'}>
-                      {getBookingStatus(selectedBookingDetail) === 'lunas'
-                        ? 'Lunas / Selesai'
+                      {getBookingPaymentStatus(selectedBookingDetail) === 'paid'
+                        ? 'Lunas'
                         : formatRupiah(Math.max(0, (selectedBookingDetail.total || 0) - (selectedBookingDetail.dpAmount || 0)))}
                     </strong>
                   </div>
