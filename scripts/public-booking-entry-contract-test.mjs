@@ -249,6 +249,11 @@ assert.match(
   /Jadwal belum terverifikasi\. Pilihan ini belum dapat dikirim\./,
   'The summary must explain that an unverified slot cannot be submitted.',
 );
+assert.match(
+  publicPageSource,
+  /className=\{\`public-booking-summary \$\{canContinue \? 'is-ready' : 'is-pending'\`\}/,
+  'The mobile summary must distinguish actionable and pending booking states.',
+);
 
 assert.equal(
   publicPageSource.includes(
@@ -467,6 +472,15 @@ const cssSource =
     ),
     'utf8',
   );
+
+assert.ok(
+  cssSource.includes('.public-booking-summary.is-pending {'),
+  'The disabled mobile booking summary must return to normal document flow.',
+);
+assert.ok(
+  cssSource.includes('.public-booking-summary.is-pending .public-booking-summary-hint'),
+  'The mobile pending summary must keep its availability explanation visible.',
+);
 
 assert.equal(
   cssSource.includes(

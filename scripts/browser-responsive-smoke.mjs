@@ -358,6 +358,25 @@ try {
             (await page.locator('.public-booking-summary-hint').innerText()).includes('Jadwal belum terverifikasi'),
             'The summary must explain that its proposed slot is not verified.',
           );
+          if (viewport.width <= 620) {
+            const pendingSummary = page.locator('.public-booking-summary');
+            const pendingSummaryPosition = await pendingSummary.evaluate((element) => window.getComputedStyle(element).position);
+            assert.equal(
+              pendingSummaryPosition,
+              'static',
+              'A disabled mobile booking summary must not remain fixed over calendar controls.',
+            );
+            assert.ok(
+              (await pendingSummary.getAttribute('class')).includes('is-pending'),
+              'An unverified mobile booking summary must expose its pending state.',
+            );
+            const dateCustomBox = await page.locator('.public-booking-date-custom').boundingBox();
+            const pendingSummaryBox = await pendingSummary.boundingBox();
+            assert.ok(
+              !rectanglesOverlap(dateCustomBox, pendingSummaryBox),
+              'The pending mobile summary must not cover the custom date picker.',
+            );
+          }
           const liveIndicator = page.locator('.public-booking-live');
           assert.ok(
             (await liveIndicator.innerText()).includes('Status jadwal tidak diketahui'),

@@ -1214,6 +1214,44 @@
     padding: 0 13px;
     font-size: 0.7rem;
   }
+
+  .public-booking-summary.is-pending {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    margin: 0;
+    border-bottom: 1px solid var(--public-line);
+    border-radius: 22px;
+    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.2);
+  }
+
+  .public-booking-summary.is-pending .public-booking-summary-hint {
+    display: block;
+  }
+
+  .public-booking-summary.is-pending .public-booking-summary-content > small {
+    display: flex;
+  }
+
+  .public-booking-summary.is-pending .public-booking-summary-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+    padding: 20px;
+  }
+
+  .public-booking-summary.is-pending .public-booking-summary-kicker,
+  .public-booking-summary.is-pending .public-booking-summary-value,
+  .public-booking-summary.is-pending .public-booking-summary-content > button {
+    grid-column: 1;
+  }
+
+  .public-booking-summary.is-pending .public-booking-summary-value:first-of-type {
+    display: grid;
+  }
+
+  .public-booking-summary.is-pending .public-booking-summary-content > button {
+    grid-row: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

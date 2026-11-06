@@ -525,7 +525,7 @@ export default function PublicBookingPage() {
           ) : null}
         </section>
 
-        <aside className="public-booking-summary" aria-label="Ringkasan pilihan booking">
+        <aside className={`public-booking-summary ${canContinue ? 'is-ready' : 'is-pending'}`} aria-label="Ringkasan pilihan booking">
           <div className="public-booking-summary-image" aria-hidden="true">
             <img src="/images/studio_hero_banner.png" alt="" />
             <span><Music2 size={15} /> 37 Music Studio</span>
