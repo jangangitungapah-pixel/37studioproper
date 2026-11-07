@@ -134,6 +134,18 @@ function Get-LockPackageEntries {
     return $matches
 }
 
+function Get-ViteMinimumPatchedVersion {
+    param([Parameter(Mandatory = $true)][version]$Version)
+
+    if ($Version.Major -ne 8) { return $null }
+    switch ($Version.Minor) {
+        0 { return [version]'8.0.16' }
+        1 { return [version]'8.1.6' }
+        2 { return [version]'8.2.4' }
+        default { return [version]'8.3.3' }
+    }
+}
+
 function Assert-TargetedPatches {
     param([switch]$RequireVite)
 
@@ -176,6 +188,18 @@ function Assert-TargetedPatches {
         throw "source-map-js must be at least 1.2.2:`n$(($badSource | ForEach-Object { "$($_.Path)=$($_.Version)" }) -join "`n")"
     }
 
+    $minimatchEntries = @(Get-LockPackageEntries -PackageName 'minimatch')
+    if ($minimatchEntries.Count -eq 0) {
+        throw 'No minimatch entries were found in package-lock.json.'
+    }
+    $badMinimatch = @($minimatchEntries | Where-Object {
+        $version = [version]$_.Version
+        ($version -ge [version]'7.0.0') -and ($version -lt [version]'11.0.1')
+    })
+    if ($badMinimatch.Count -gt 0) {
+        throw "Vulnerable minimatch 7.x-10.x entries remain; require 11.0.1 or later while preserving patched legacy branches:`n$(($badMinimatch | ForEach-Object { "$($_.Path)=$($_.Version)" }) -join "`n")"
+    }
+
     if ($RequireVite) {
         $viteEntries = @(Get-LockPackageEntries -PackageName 'vite')
         if ($viteEntries.Count -eq 0) {
@@ -183,17 +207,20 @@ function Assert-TargetedPatches {
         }
         $badVite = @($viteEntries | Where-Object {
             $viteVersion = [version]$_.Version
-            ($viteVersion.Major -ne 8) -or ($viteVersion -lt [version]'8.1.6')
+            $minimum = Get-ViteMinimumPatchedVersion -Version $viteVersion
+            ($null -eq $minimum) -or ($viteVersion -lt $minimum)
         })
         if ($badVite.Count -gt 0) {
-            throw "Vite must be 8.1.6 or later within major version 8:`n$(($badVite | ForEach-Object { "$($_.Path)=$($_.Version)" }) -join "`n")"
+            throw "Vite contains an unsupported or unpatched major-8 line. Required floors: 8.0.16, 8.1.6, 8.2.4, and 8.3.3 by minor branch:`n$(($badVite | ForEach-Object { "$($_.Path)=$($_.Version)" }) -join "`n")"
         }
     }
 
     $braceSummary = ($braceEntries | ForEach-Object { "$($_.Version) [$($_.Path)]" }) -join '; '
     $sourceSummary = ($sourceEntries | ForEach-Object { "$($_.Version) [$($_.Path)]" }) -join '; '
+    $minimatchSummary = ($minimatchEntries | ForEach-Object { "$($_.Version) [$($_.Path)]" }) -join '; '
     Write-LogLine "Verified brace-expansion entries: $braceSummary"
     Write-LogLine "Verified source-map-js entries: $sourceSummary"
+    Write-LogLine "Verified minimatch entries: $minimatchSummary"
     if ($RequireVite) {
         $viteSummary = ($viteEntries | ForEach-Object { "$($_.Version) [$($_.Path)]" }) -join '; '
         Write-LogLine "Verified Vite entries: $viteSummary"
@@ -207,43 +234,10 @@ function Test-ViteNeedsUpdate {
     }
     $badLockEntries = @($viteEntries | Where-Object {
         $viteVersion = [version]$_.Version
-        ($viteVersion.Major -ne 8) -or ($viteVersion -lt [version]'8.1.6')
+        $minimum = Get-ViteMinimumPatchedVersion -Version $viteVersion
+        ($null -eq $minimum) -or ($viteVersion -lt $minimum)
     })
-
-    $manifest = Get-Content -LiteralPath (Join-Path $RepoRoot 'package.json') -Raw | ConvertFrom-Json -AsHashtable
-    if (-not $manifest.Contains('devDependencies') -or -not $manifest['devDependencies'].Contains('vite')) {
-        throw 'Vite is not declared in package.json devDependencies.'
-    }
-    $viteSpec = [string]$manifest['devDependencies']['vite']
-    $manifestNeedsUpdate = $viteSpec -notmatch '^\^?8\.1\.6$'
-    return [bool]($manifestNeedsUpdate -or ($badLockEntries.Count -gt 0))
-}
-
-function Assert-OnlyViteManifestChange {
-    $beforePath = Join-Path $script:ReportDir 'package.json.before'
-    $currentPath = Join-Path $RepoRoot 'package.json'
-    $before = Get-Content -LiteralPath $beforePath -Raw | ConvertFrom-Json -AsHashtable
-    $current = Get-Content -LiteralPath $currentPath -Raw | ConvertFrom-Json -AsHashtable
-
-    if (-not $before.Contains('devDependencies') -or -not $current.Contains('devDependencies')) {
-        throw 'package.json does not contain devDependencies; refusing to validate the Vite-only manifest change.'
-    }
-    if (-not $before['devDependencies'].Contains('vite') -or -not $current['devDependencies'].Contains('vite')) {
-        throw 'Vite is not present in devDependencies; refusing to validate the manifest change.'
-    }
-
-    $current['devDependencies']['vite'] = $before['devDependencies']['vite']
-    $beforeCanonical = ConvertTo-Json -InputObject $before -Depth 100 -Compress
-    $currentCanonical = ConvertTo-Json -InputObject $current -Depth 100 -Compress
-    if ($beforeCanonical -cne $currentCanonical) {
-        throw 'package.json contains changes beyond devDependencies.vite. Preserve the current files for manual review.'
-    }
-
-    $viteSpec = [string]$((Get-Content -LiteralPath $currentPath -Raw | ConvertFrom-Json -AsHashtable)['devDependencies']['vite'])
-    if ($viteSpec -notmatch '^\^?8\.1\.6$') {
-        throw "Expected package.json devDependencies.vite to be ^8.1.6 or 8.1.6, found '$viteSpec'."
-    }
-    Write-LogLine "Verified package.json change is limited to devDependencies.vite=$viteSpec"
+    return [bool]($badLockEntries.Count -gt 0)
 }
 
 function Get-AuditCounts {
@@ -318,7 +312,7 @@ Write-LogLine "Branch: $branch"
 Write-LogLine "HEAD before changes: $head"
 Write-LogLine "Backups and reports: $script:ReportDir"
 Write-LogLine "npm executable: $script:NpmExecutable"
-Write-LogLine 'Scope: apply npm audit fixed versions within existing semver ranges to package-lock only (no --force), then ensure Vite is 8.1.6 on the Vite 8 line. Firebase major downgrades and unrelated manifest changes are prohibited.'
+Write-LogLine 'Scope: apply compatible npm audit fixes to package-lock only, verify minimatch 11.0.1+ for vulnerable 7.x-10.x entries, preserve patched legacy 3.x/5.x entries, and validate the current patched Vite 8 minor branch. Firebase major downgrades are prohibited.'
 Write-LogLine 'Lockfile strategy: npm audit fix --package-lock-only updates vulnerable transitive packages using npm advisory resolution. It can update multiple semver-compatible vulnerable packages; no semver-major force is used. Vite manifest change is isolated and verified separately.'
 Write-LogLine 'Lifecycle script policy: no approvals or allowScripts changes are made. npm stderr warnings are logged separately and judged by process exit code.'
 
@@ -343,18 +337,17 @@ try {
     Assert-TargetedPatches
 
     if (Test-ViteNeedsUpdate) {
-        Invoke-NpmStep -Name '02-update-vite-lock-and-manifest-to-8.1.6' -Arguments @(
-            'install', '--package-lock-only', '--save-dev', '--save-prefix=^', 'vite@8.1.6'
+        Invoke-NpmStep -Name '02-update-vite-lock-to-patched-8x' -Arguments @(
+            'update', 'vite', '--package-lock-only', '--prefer-online'
         )
     }
     Assert-TargetedPatches -RequireVite
-    Assert-OnlyViteManifestChange
 
     Invoke-NpmStep -Name '03-clean-install' -Arguments @('ci')
     Assert-TargetedPatches -RequireVite
 
     Invoke-NpmStep -Name '04-resolved-package-tree' -Arguments @(
-        'ls', 'brace-expansion', 'source-map-js', 'vite', '--all'
+        'ls', 'brace-expansion', 'source-map-js', 'minimatch', 'vite', '--all'
     )
 
     Invoke-NpmStep -Name '05-build' -Arguments @('run', 'build')
@@ -430,11 +423,12 @@ finally {
         '',
         'Security update actions:',
         '- `npm audit fix --package-lock-only --audit-level=critical` resolves all npm-auditable issues that have compatible fixes in existing semver ranges; no `--force` is used.',
-        '- Verify `brace-expansion` patched branches, `source-map-js` 1.2.2 or later, and Vite 8.1.6 or later.',
-        '- If Vite is still below 8.1.6, update only `devDependencies.vite` and its lock entry to the Vite 8.1.6 line.',
+        '- Verify `brace-expansion` patched branches, `source-map-js` 1.2.2 or later, `minimatch` 11.0.1 or later for vulnerable 7.x-10.x copies, and patched Vite 8 minor-branch floors (8.0.16 / 8.1.6 / 8.2.4 / 8.3.3).',
+        '- If Vite is below its patched floor, update only its package-lock entry within the existing package.json semver range.'
         '',
         'Boundaries:',
-        '- The audit-fix stage must leave package.json byte-identical. Afterward, only devDependencies.vite may change in package.json.',
+        '- The entire helper run must leave package.json byte-identical; Vite remediation is lockfile-only.',
+        '- The minimatch 11 major override is scoped to vulnerable minimatch versions >=7 and <11.0.1. Patched legacy 3.x and 5.x entries remain on their own major lines.'
         '- No semver-major forced updates, Firebase downgrade, lifecycle script approvals, or allowScripts policy changes.',
         '',
         'Safety boundary:',
@@ -442,6 +436,7 @@ finally {
         '- Backups, stdout/stderr logs, audits, and dependency diff are retained in this report folder.',
         '- Any failed gate leaves the current package files in place for inspection; no automatic reset or rollback is performed.',
         '- V8 uses npm audit fix rather than npm update <transitive-package>, which had returned up to date without moving the nested brace-expansion branch.',
+        '- V8 no longer rewrites Vite from 8.3.x to the older 8.1.6 manifest floor; current Vite 8 minor branches are checked against their own patched releases.'
         '- Quality gate success does not mean release approval when production audit findings remain.'
     )
     $summary | Set-Content -LiteralPath (Join-Path $script:ReportDir 'SUMMARY.md') -Encoding utf8
