@@ -203,11 +203,10 @@ for (const forbidden of [
   );
 }
 
-const rulesSource =
-  readFileSync(
-    resolve('firestore.rules'),
-    'utf8',
-  );
+const rulesSource = readFileSync(
+  resolve('firestore.rules'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 
 assert.equal(
   rulesSource.includes(

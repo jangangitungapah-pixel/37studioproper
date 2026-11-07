@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync as rawReadFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
+
+const readFileSync = (...args) => {
+  const value = rawReadFileSync(...args);
+  return typeof value === 'string' ? value.replace(/\r\n/g, '\n') : value;
+};
 
 function read(path) {
   return readFileSync(resolve(path), 'utf8');
