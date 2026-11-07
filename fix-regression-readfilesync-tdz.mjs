@@ -1,3 +1,4 @@
+/* global process, console */
 import {
   copyFileSync,
   existsSync,
