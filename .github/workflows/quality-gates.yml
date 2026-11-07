@@ -56,6 +56,70 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Capture full and production dependency audit
+        run: |
+          mkdir -p output/dependency-audit
+          set +e
+          npm audit --json > output/dependency-audit/full.json 2>&1
+          full_status=$?
+          npm audit --omit=dev --json > output/dependency-audit/production.json 2>&1
+          production_status=$?
+          set -e
+          node --input-type=commonjs - <<'NODE'
+          const fs = require('node:fs');
+
+          for (const [label, file] of [
+            ['full', 'output/dependency-audit/full.json'],
+            ['production-only', 'output/dependency-audit/production.json'],
+          ]) {
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            } catch (error) {
+              console.log(`[${label}] audit output is not valid JSON: ${error.message}`);
+              continue;
+            }
+
+            const totals = report.metadata?.vulnerabilities;
+            if (!totals) {
+              console.log(`[${label}] no npm audit metadata; inspect the raw report for registry or CLI errors.`);
+              continue;
+            }
+
+            console.log(`[${label}] audited=${report.metadata?.dependencies?.total ?? 'unknown'} vulnerabilities=${JSON.stringify(totals)}`);
+            for (const [name, finding] of Object.entries(report.vulnerabilities ?? {})) {
+              const via = (finding.via ?? []).map((item) => typeof item === 'string'
+                ? item
+                : { name: item.name, title: item.title, url: item.url, range: item.range, severity: item.severity });
+              console.log(JSON.stringify({
+                package: name,
+                severity: finding.severity,
+                isDirect: finding.isDirect,
+                range: finding.range,
+                nodes: finding.nodes,
+                via,
+                fixAvailable: finding.fixAvailable,
+              }));
+            }
+          }
+          NODE
+          echo "npm audit exit codes: full=${full_status}, production-only=${production_status}"
+          {
+            echo "### Dependency audit (report-only)"
+            echo "- Full audit exit code: ${full_status}"
+            echo "- Production-only audit exit code: ${production_status}"
+            echo "- Raw JSON reports are attached as the `dependency-audit-report` artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-report
+          path: output/dependency-audit/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Install Firebase CLI for Firestore emulator tests
         run: npm install --global firebase-tools
 
