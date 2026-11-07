@@ -1,3 +1,4 @@
+/* global process, console */
 import {
   copyFileSync,
   existsSync,
@@ -6,7 +7,7 @@ import {
   writeFileSync,
   renameSync,
 } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const root = process.cwd();
