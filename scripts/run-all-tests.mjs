@@ -131,10 +131,8 @@ for (let index = 0; index < tests.length; index += 1) {
 
   if (test.configError) {
     processError = test.configError;
-    exitCode = 2;
   } else if (!existsSync(test.command)) {
     processError = `Test file not found: ${test.command}`;
-    exitCode = 2;
   } else {
     const processResult = spawnSync(process.execPath, [test.command], {
       cwd: rootDir,
