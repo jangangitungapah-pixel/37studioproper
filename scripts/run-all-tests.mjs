@@ -113,7 +113,6 @@ for (let index = 0; index < tests.length; index += 1) {
   let stderr = '';
   let processError = '';
   let exitCode = 0;
-  let status = 'FAIL';
 
   appendFileSync(
     fullReportPath,
@@ -153,7 +152,7 @@ for (let index = 0; index < tests.length; index += 1) {
     exitCode = processResult.error ? 1 : (processResult.status ?? 1);
   }
 
-  status = exitCode === 0 ? 'PASS' : 'FAIL';
+  const status = exitCode === 0 ? 'PASS' : 'FAIL';
   const durationMs = Date.now() - testStart.getTime();
   const section = [
     '===== STDOUT =====',
