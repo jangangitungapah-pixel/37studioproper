@@ -13,6 +13,12 @@ on:
       - audit/**
       - feature/admin-ops-phase-5-procurement-2026-11-05
       - feature/ui-overhaul-premium-enterprise-2026-11-06
+  workflow_run:
+    workflows:
+      - Dependency Lock Refresh
+    types: [completed]
+    branches:
+      - feature/ui-overhaul-premium-enterprise-2026-11-06
   workflow_dispatch:
 
 permissions:
@@ -24,6 +30,7 @@ concurrency:
 
 jobs:
   validate:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Build, lint, regression, and responsive browser smoke
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -31,6 +38,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
