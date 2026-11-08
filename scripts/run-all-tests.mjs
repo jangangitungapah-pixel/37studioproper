@@ -180,6 +180,17 @@ for (let index = 0; index < tests.length; index += 1) {
   });
 
   console.log(`${status} ${label}${status === 'FAIL' ? ` (exit ${exitCode})` : ''} [${durationMs} ms]`);
+  if (status === 'FAIL') {
+    const failureOutput = [
+      stderr,
+      stdout,
+      processError,
+    ].filter(Boolean).join('\\n').slice(-12000);
+
+    console.error(
+      failureOutput || 'Test failed without captured stdout, stderr, or process error.',
+    );
+  }
 }
 
 const completedAt = new Date();
