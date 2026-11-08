@@ -20,6 +20,9 @@ import {
 } from 'firebase/firestore';
 import {
   RepositoryIdempotencyConflictError,
+  createRepositoryOperationId,
+  createRepositoryPayloadHash,
+  createRepositoryWriteBatch,
   runIdempotentFirestoreTransaction,
 } from '../src/lib/firestoreRepositoryFoundation.js';
 
@@ -33,6 +36,7 @@ const environment = await initializeTestEnvironment({
   firestore: { rules },
   projectId,
 });
+await environment.clearFirestore();
 
 const now = '2026-11-09T00:00:00.000Z';
 const ownerEmail = 'marsicprod@gmail.com';
@@ -215,6 +219,51 @@ try {
       { schedule: true },
     ));
   });
+
+
+
+  // Bounded batch API: the wrapper refuses a 2nd write before commit and
+  // still commits only the first valid self-owned marker.
+  const batchRequest = {
+    actorUid: 'owner-1',
+    scope: 'foundation',
+    action: 'batch-probe',
+    requestId: 'req_foundation_batch_01',
+  };
+  const batchOperationId = await createRepositoryOperationId(batchRequest);
+  const batchPayloadHash = await createRepositoryPayloadHash({ purpose: 'bounded batch test' });
+  const batchMarkerRef = doc(
+    ownerDb,
+    'users',
+    'owner-1',
+    'repositoryOperations',
+    batchOperationId,
+  );
+  const boundedBatch = createRepositoryWriteBatch(ownerDb, { maxWrites: 1 });
+  boundedBatch.set(batchMarkerRef, {
+    operationId: batchOperationId,
+    actorUid: 'owner-1',
+    scope: batchRequest.scope,
+    action: batchRequest.action,
+    requestId: batchRequest.requestId,
+    payloadHash: batchPayloadHash,
+    resultCollection: '',
+    resultId: '',
+    createdAt: serverTimestamp(),
+  });
+  assert.equal(boundedBatch.writeCount, 1);
+  assert.throws(
+    () => boundedBatch.delete(doc(ownerDb, 'repositoryFoundationProbes', 'must-not-commit')),
+    /melewati batas 1 writes/,
+  );
+  const batchResult = await boundedBatch.commit();
+  assert.deepEqual(batchResult, { writeCount: 1 });
+  assert.equal((await getDoc(batchMarkerRef)).exists(), true);
+  assert.throws(
+    () => boundedBatch.delete(doc(ownerDb, 'repositoryFoundationProbes', 'after-commit')),
+    /sudah di-commit/,
+  );
+  await assert.rejects(boundedBatch.commit(), /satu kali/);
 
   const roleCases = [
     { uid: 'admin-1', email: 'admin@example.com', actorRole: 'admin', requestId: 'req_foundation_admin_01' },
