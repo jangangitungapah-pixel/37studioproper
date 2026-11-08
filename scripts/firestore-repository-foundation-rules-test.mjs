@@ -362,6 +362,7 @@ try {
   assert.ok(ownerMarkerList.size >= 1);
 
   const unauthenticatedDb = environment.unauthenticatedContext().firestore();
+  await assertFails(getDoc(doc(unauthenticatedDb, 'users', 'owner-1', 'repositoryOperations', replay.operationId)));
   await assertFails(getDoc(ownerMarkerRef));
 
   const forgedMarkerId = 'v1_' + 'a'.repeat(64);
