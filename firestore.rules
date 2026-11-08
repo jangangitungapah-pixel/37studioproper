@@ -1159,18 +1159,19 @@ match /users/{userId} {
     }
 
     function validManualBookingCreate(data, bookingId) {
-      return data.keys().hasOnly([
+      return data.keys().hasAll(['initialPaymentLedgerStatus']) &&
+        data.keys().hasOnly([
           'appliedDiscounts', 'bandName', 'bookingCode', 'bookingId',
           'bookingRequestStatus', 'clientUid', 'createdAt', 'customer',
           'customerId', 'customerIdentityMode', 'customerPhoneKey', 'date',
           'discountAmount', 'dpAmount', 'durationHours', 'email', 'id',
-          'invoiceAmount', 'invoiceNumber', 'lastPaymentAt', 'lastPaymentMethod',
-          'packageId', 'packageLabel', 'paidAmount', 'paymentHistory',
-          'paymentMethod', 'paymentStatus', 'paymentStatusCanonical', 'phone',
-          'pricingMode', 'recordingTypeId', 'recordingTypeLabel', 'refundHistory',
-          'refundedAmount', 'sessionLabel', 'sessionStatus', 'sessionType',
-          'source', 'startHour', 'startTimeLabel', 'status', 'subtotal',
-          'title', 'total', 'updatedAt'
+          'initialPaymentLedgerStatus', 'invoiceAmount', 'invoiceNumber',
+          'lastPaymentAt', 'lastPaymentMethod', 'packageId', 'packageLabel',
+          'paidAmount', 'paymentHistory', 'paymentMethod', 'paymentStatus',
+          'paymentStatusCanonical', 'phone', 'pricingMode', 'recordingTypeId',
+          'recordingTypeLabel', 'refundHistory', 'refundedAmount', 'sessionLabel',
+          'sessionStatus', 'sessionType', 'source', 'startHour', 'startTimeLabel',
+          'status', 'subtotal', 'title', 'total', 'updatedAt'
         ]) &&
         data.id == bookingId &&
         validString(data.customer, 1, 120) &&
@@ -1204,6 +1205,7 @@ match /users/{userId} {
         (
           (
             data.paymentHistory.size() == 0 &&
+            data.initialPaymentLedgerStatus == 'not_required' &&
             data.paymentStatus == 'pending' &&
             data.paymentStatusCanonical == 'unpaid' &&
             data.paymentMethod == '' &&
@@ -1215,6 +1217,7 @@ match /users/{userId} {
           ) ||
           (
             data.paymentHistory.size() == 1 &&
+            data.initialPaymentLedgerStatus == 'pending' &&
             validManualInitialPaymentRecord(data.paymentHistory[0], data) &&
             data.paidAmount == data.paymentHistory[0].amount &&
             data.paymentMethod == data.paymentHistory[0].method &&
@@ -1241,8 +1244,7 @@ match /users/{userId} {
     }
 
     function bookingManualCreateCompanionsAfter(bookingId, data) {
-      return bookingCalendarSlotMatchesAfter(bookingId, data) &&
-        bookingInitialPaymentLedgerMatchesAfter(bookingId, data);
+      return bookingCalendarSlotMatchesAfter(bookingId, data);
     }
 
     function adminBookingManualUpdate(bookingId) {
@@ -1589,16 +1591,41 @@ match /users/{userId} {
         );
     }
 
+    function adminBookingInitialPaymentLedgerUpdate(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let paymentHistory = resource.data.paymentHistory is list
+        ? resource.data.paymentHistory
+        : [];
+      let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
+      let ledgerId = paymentHistory.size() == 1
+        ? 'booking-payment-' + bookingId + '-' + payment.id
+        : '';
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
+      let ledgerAfter = getAfter(ledgerPath).data;
+      return changed.hasOnly(['initialPaymentLedgerStatus']) &&
+        resource.data.source == 'admin' &&
+        resource.data.initialPaymentLedgerStatus == 'pending' &&
+        request.resource.data.initialPaymentLedgerStatus == 'recorded' &&
+        paymentHistory.size() == 1 &&
+        existsAfter(ledgerPath) &&
+        ledgerAfter.id == ledgerId &&
+        ledgerAfter.source == 'booking-payment' &&
+        ledgerAfter.sourceBookingId == bookingId &&
+        ledgerAfter.sourceEventId == payment.id;
+    }
+
     function adminBookingOperationalUpdate(bookingId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return (
-        changed.hasAny([
-          'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
-        ])
-          ? adminBookingDecisionUpdate(bookingId)
-          : changed.hasAny(['lastSessionEventId'])
-            ? adminBookingSessionActionUpdate(bookingId)
-            : adminBookingManualUpdate(bookingId)
+        changed.hasAny(['initialPaymentLedgerStatus'])
+          ? adminBookingInitialPaymentLedgerUpdate(bookingId)
+          : changed.hasAny([
+              'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
+            ])
+            ? adminBookingDecisionUpdate(bookingId)
+            : changed.hasAny(['lastSessionEventId'])
+              ? adminBookingSessionActionUpdate(bookingId)
+              : adminBookingManualUpdate(bookingId)
       );
     }
 
@@ -2284,13 +2311,17 @@ match /users/{userId} {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingExistsBefore = exists(bookingPath);
       let bookingExistsAfter = existsAfter(bookingPath);
+      let bookingBefore = bookingExistsBefore ? get(bookingPath).data : {};
       let bookingAfter = bookingExistsAfter ? getAfter(bookingPath).data : {};
       let paymentHistory = bookingAfter.keys().hasAny(['paymentHistory'])
         ? bookingAfter.paymentHistory
         : [];
       let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
-      return !bookingExistsBefore &&
+      return bookingExistsBefore &&
         bookingExistsAfter &&
+        bookingBefore.source == 'admin' &&
+        bookingBefore.initialPaymentLedgerStatus == 'pending' &&
+        bookingAfter.initialPaymentLedgerStatus == 'recorded' &&
         bookingAfter.source == 'admin' &&
         paymentHistory is list &&
         paymentHistory.size() == 1 &&
