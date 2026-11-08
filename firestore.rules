@@ -1564,6 +1564,9 @@ match /users/{userId} {
         ? 'booking-payment-' + bookingId + '-' + payment.id
         : 'invalid-initial-payment-ledger';
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
+      let ledgerAfter = getAfter(ledgerPath).data;
+      let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      let slotAfter = getAfter(slotPath).data;
       let total = resource.data.total;
       let amount = payment.amount;
       let isPaid = total > 0 && amount >= total;
@@ -1603,7 +1606,33 @@ match /users/{userId} {
         ) &&
         !exists(ledgerPath) &&
         existsAfter(ledgerPath) &&
-        bookingSlotStateMatchesAfter(bookingId, request.resource.data);
+        ledgerAfter.id == ledgerId &&
+        ledgerAfter.source == 'booking-payment' &&
+        ledgerAfter.sourceAction == 'payment' &&
+        ledgerAfter.category == 'booking' &&
+        ledgerAfter.type == 'income' &&
+        ledgerAfter.immutable == true &&
+        ledgerAfter.reversalOf == '' &&
+        ledgerAfter.sourceBookingId == bookingId &&
+        ledgerAfter.sourceEventId == payment.id &&
+        ledgerAfter.actorUid == request.auth.uid &&
+        ledgerAfter.actorName == payment.actorName &&
+        ledgerAfter.amount == amount &&
+        ledgerAfter.paymentMethod == payment.method &&
+        ledgerAfter.date == payment.date &&
+        ledgerAfter.createdAt == payment.createdAt &&
+        ledgerAfter.updatedAt == payment.createdAt &&
+        ledgerAfter.idempotencyKey == payment.idempotencyKey &&
+        ledgerAfter.note == payment.note &&
+        ledgerAfter.title == 'Pembayaran ' + resource.data.invoiceNumber &&
+        (
+          bookingRequiresPublicSlot(request.resource.data)
+            ? existsAfter(slotPath) &&
+              slotAfter.bookingId == bookingId &&
+              slotAfter.date == request.resource.data.date &&
+              slotAfter.status == request.resource.data.paymentStatus
+            : !existsAfter(slotPath)
+        );
     }
 
     function adminBookingOperationalUpdate(bookingId) {
@@ -2301,37 +2330,19 @@ match /users/{userId} {
 
     function bookingInitialPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
-      let bookingExistsBefore = exists(bookingPath);
-      let bookingExistsAfter = existsAfter(bookingPath);
-      let bookingBefore = bookingExistsBefore ? get(bookingPath).data : {};
-      let bookingAfter = bookingExistsAfter ? getAfter(bookingPath).data : {};
-      let paymentHistory = bookingAfter.keys().hasAny(['paymentHistory'])
-        ? bookingAfter.paymentHistory
-        : [];
-      let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
-      return bookingExistsBefore &&
-        bookingExistsAfter &&
+      let bookingBefore = get(bookingPath).data;
+      let bookingAfter = getAfter(bookingPath).data;
+      let payment = bookingAfter.paymentHistory[0];
+      return exists(bookingPath) &&
+        existsAfter(bookingPath) &&
         bookingBefore.source == 'admin' &&
         bookingBefore.initialPaymentLedgerStatus == 'pending' &&
-        bookingBefore.paymentHistory is list &&
-        bookingBefore.paymentHistory.size() == 0 &&
         bookingAfter.initialPaymentLedgerStatus == 'recorded' &&
-        bookingAfter.source == 'admin' &&
-        paymentHistory is list &&
-        paymentHistory.size() == 1 &&
+        bookingAfter.paymentHistory.size() == 1 &&
+        data.id == entryId &&
         data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
         data.sourceBookingId == bookingAfter.id &&
-        payment.id == data.sourceEventId &&
-        payment.amount == data.amount &&
-        payment.method == data.paymentMethod &&
-        payment.date == data.date &&
-        payment.createdAt == data.createdAt &&
-        payment.idempotencyKey == data.idempotencyKey &&
-        payment.actorUid == request.auth.uid &&
-        payment.actorName == data.actorName &&
-        payment.note == data.note &&
-        data.title == 'Pembayaran ' + bookingAfter.invoiceNumber &&
-        bookingAfter.createdAt == data.createdAt;
+        data.sourceEventId == payment.id;
     }
 
     function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
