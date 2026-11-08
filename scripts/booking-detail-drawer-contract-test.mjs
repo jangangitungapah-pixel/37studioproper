@@ -240,7 +240,7 @@ for (const required of [
   'actualEndAt',
   'actualDurationMinutes',
   'performSessionAction',
-  'recordCanonicalBookingSessionAction',
+  'recordBookingSessionAction',
   'Perlu Review',
 ]) {
   assert.equal(drawerSource.includes(required), true, 'Session Operations drawer contract missing ' + required);
