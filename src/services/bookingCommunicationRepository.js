@@ -8,7 +8,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
-import { decideCanonicalBookingRequest } from './adminOperationsRepository.js';
+import { decideBookingRequest } from './bookingOperationsRepository.js';
 import { getBookingRequestStatus } from '../domain/booking/bookingSelectors.js';
 import {
   buildBookingDecisionKey,
@@ -356,7 +356,7 @@ export async function updateBookingRequestStatus({
 
   const decisionKey = buildBookingDecisionKey({ booking, status });
   const decisionNote = status === 'confirmed' ? cleanNote : cleanText(note);
-  const result = await decideCanonicalBookingRequest({
+  const result = await decideBookingRequest({
     bookingId: booking.id,
     decisionKey,
     note: decisionNote,
