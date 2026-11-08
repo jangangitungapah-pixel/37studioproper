@@ -1059,8 +1059,7 @@ match /users/{userId} {
     }
 
     function validBookingScheduleDay(data, dateId) {
-      return data.keys().hasAll(['date', 'lastBookingId', 'revision', 'updatedAt']) &&
-        data.keys().size() == 4 &&
+      return data.keys().hasOnly(['date', 'lastBookingId', 'revision', 'updatedAt']) &&
         data.date == dateId &&
         validIsoDate(data.date) &&
         validString(data.lastBookingId, 1, 160) &&
@@ -1070,19 +1069,11 @@ match /users/{userId} {
     }
 
     function validCalendarSlot(data) {
-      return data.keys().hasAll([
+      return data.keys().hasOnly([
           'bookingId', 'date', 'durationHours', 'sessionLabel',
           'startHour', 'status', 'title', 'updatedAt'
         ]) &&
-        data.keys().size() == 8 &&
-        validString(data.bookingId, 1, 160) &&
-        validIsoDate(data.date) &&
-        validNumber(data.durationHours, 0.5, 24) &&
-        validNumber(data.startHour, 0, 23) &&
-        data.status in ['pending', 'dp', 'lunas'] &&
-        validString(data.sessionLabel, 1, 160) &&
-        validString(data.title, 1, 80) &&
-        validIsoTimestampString(data.updatedAt);
+        validString(data.title, 1, 80);
     }
 
     function bookingIsScheduleBlocking(data) {
@@ -1118,6 +1109,10 @@ match /users/{userId} {
         slotAfter.durationHours == data.durationHours &&
         slotAfter.startHour == data.startHour &&
         slotAfter.sessionLabel == data.sessionLabel &&
+        (
+          slotAfter.title == 'Terisi' ||
+          slotAfter.title == data.sessionLabel
+        ) &&
         slotAfter.status == data.paymentStatus &&
         slotAfter.updatedAt == data.updatedAt &&
         bookingScheduleDayMatchesAfter(data.date, bookingId, data.updatedAt);
@@ -1132,11 +1127,10 @@ match /users/{userId} {
 
     function validManualInitialPaymentRecord(payment, bookingData) {
       return payment is map &&
-        payment.keys().hasAll([
+        payment.keys().hasOnly([
           'actorName', 'actorUid', 'amount', 'createdAt', 'date',
           'id', 'idempotencyKey', 'method', 'note', 'source'
         ]) &&
-        payment.keys().size() == 10 &&
         validString(payment.actorName, 1, 120) &&
         payment.actorUid == request.auth.uid &&
         validNumber(payment.amount, 1, bookingData.total) &&
@@ -1182,7 +1176,7 @@ match /users/{userId} {
     }
 
     function validManualBookingCreate(data, bookingId) {
-      return data.keys().hasAll([
+      return data.keys().hasOnly([
           'appliedDiscounts', 'bandName', 'bookingCode', 'bookingId',
           'bookingRequestStatus', 'clientUid', 'createdAt', 'customer',
           'customerId', 'customerIdentityMode', 'customerPhoneKey', 'date',
@@ -1195,7 +1189,6 @@ match /users/{userId} {
           'source', 'startHour', 'startTimeLabel', 'status', 'subtotal',
           'title', 'total', 'updatedAt'
         ]) &&
-        data.keys().size() == 45 &&
         data.id == bookingId &&
         validString(data.customer, 1, 120) &&
         validString(data.phone, 0, 32) &&
@@ -1300,11 +1293,10 @@ match /users/{userId} {
     }
 
     function validBookingSessionEvent(data, eventId) {
-      return data.keys().hasAll([
+      return data.keys().hasOnly([
           'action', 'actorName', 'actorUid', 'bookingId', 'createdAt',
           'fromStatus', 'id', 'reason', 'toStatus', 'type'
         ]) &&
-        data.keys().size() == 10 &&
         data.id == eventId &&
         data.action in ['check_in', 'start', 'complete', 'no_show', 'cancelled'] &&
         validString(data.actorName, 1, 120) &&
