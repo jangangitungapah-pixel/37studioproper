@@ -732,21 +732,21 @@ try {
     bookingId: 'BKG-SAFE-PAID',
     createdAt: paidAt,
     date: '2026-08-24',
-    dpAmount: 100000,
+    dpAmount: 0,
     id: 'safe-paid',
     initialPaymentLedgerStatus: 'pending',
-    invoiceAmount: 400000,
+    invoiceAmount: 500000,
     invoiceNumber: 'INV-SAFE-PAID',
-    lastPaymentAt: paidAt,
-    lastPaymentMethod: 'cash',
-    paidAmount: 100000,
-    paymentHistory: [initialPayment],
-    paymentMethod: 'cash',
-    paymentStatus: 'dp',
-    paymentStatusCanonical: 'partial',
+    lastPaymentAt: '',
+    lastPaymentMethod: '',
+    paidAmount: 0,
+    paymentHistory: [],
+    paymentMethod: '',
+    paymentStatus: 'pending',
+    paymentStatusCanonical: 'unpaid',
     sessionStatus: 'scheduled',
     startHour: 12,
-    status: 'dp',
+    status: 'pending',
     updatedAt: paidAt,
   };
   const initialLedgerId = 'booking-payment-safe-paid-payment-safe-1';
@@ -788,7 +788,20 @@ try {
   };
   const initialLedgerBatch = writeBatch(schedule);
   initialLedgerBatch.update(doc(schedule, 'bookings', 'safe-paid'), {
+    dpAmount: 100000,
     initialPaymentLedgerStatus: 'recorded',
+    invoiceAmount: 400000,
+    lastPaymentAt: paidAt,
+    lastPaymentMethod: 'cash',
+    paidAmount: 100000,
+    paymentHistory: [initialPayment],
+    paymentMethod: 'cash',
+    paymentStatus: 'dp',
+    paymentStatusCanonical: 'partial',
+    status: 'dp',
+  });
+  initialLedgerBatch.update(doc(schedule, 'clientCalendarSlots', 'safe-paid'), {
+    status: 'dp',
   });
   initialLedgerBatch.set(doc(schedule, 'bookkeepingEntries', initialLedgerId), initialLedger);
   console.log('[rules-behavior] commit initial ledger + booking pending-to-recorded transition');
