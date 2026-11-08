@@ -1501,8 +1501,10 @@ match /users/{userId} {
         bookingAfter.clientUid == request.resource.data.clientUid &&
         bookingAfter.bookingRequestStatus in ['confirmed', 'rejected', 'cancelled'] &&
         bookingAfter.updatedAt == request.resource.data.createdAt &&
-        bookingAfter.updatedAt != bookingBefore.updatedAt &&
-        bookingBefore.lastMessageId != messageId;
+        (
+          !bookingBefore.keys().hasAny(['lastMessageId']) ||
+          bookingBefore.lastMessageId != messageId
+        );
     }
 
     function adminBookingDecisionUpdate(bookingId) {
