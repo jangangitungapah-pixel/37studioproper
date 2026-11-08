@@ -879,7 +879,7 @@ export async function decideBookingRequest(inputValue) {
           const slotSnapshot = snapshots[2];
           const messageSnapshot = snapshots[3];
           const eventSnapshot = eventRef ? snapshots[4] : null;
-          const days = await readTransactionDays(transaction, [date], preflight.daySnapshots);
+          await readTransactionDays(transaction, [date], preflight.daySnapshots);
 
           if (!bookingSnapshot.exists()) throw operationError('booking_not_found', 'Booking tidak ditemukan.');
           const latest = { id: bookingSnapshot.id, ...bookingSnapshot.data() };
