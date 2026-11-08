@@ -36,6 +36,16 @@ Target: Firebase project `studio-proper`, Firestore `(default)` Standard edition
 - Public reads are limited to `settings/pricing` and `settings/invoice` because the unauthenticated client landing page renders those business-facing values.
 - Gallery metadata, status, and real-time lists are admin-only and authoritative in Firestore. Image binaries remain on the existing Cloudinary service because Firebase Storage is not provisioned and billing is disabled on this project.
 
-## Index assessment
+## Index assessment (repository audit 2026-11-09)
 
-All active ordered queries use one field and are covered by automatic single-field indexes. Client booking ownership uses OR equality filters and is sorted in the application. No composite index is currently required.
+The repository currently defines three composite indexes in firestore.indexes.json:
+
+- customerFollowUpTasks: status ASC, dueAt ASC, dueTime ASC for the active task listener.
+- customerFollowUpTasks: status ASC, completedAt DESC for the completed task listener.
+- customerFollowUpEvents: taskId ASC, createdAt DESC for per-task event history.
+
+The active Follow-up listener uses status in [open, in_progress, snoozed], dueAt ASC, dueTime ASC, and limit 200. The completed listener uses status == completed, completedAt DESC, and limit 50. Event history uses taskId equality, createdAt DESC, and limit 30. The required active-task composite is present in the repository, but its production deployment status is unverified.
+
+Other observed query patterns include customer createdAt DESC and phoneKey equality; booking date DESC, clientCalendarSlots date ASC, and client ownership filters by UID/email/phone; bookingMessages bookingId and clientUid equality; paymentProofs clientUid or bookingId equality; guardAttendanceSessions guardUid/date filters; bookkeeping date range and date DESC; inventory updatedAt/createdAt ordering; gallery createdAt DESC; operatorFeeEntries bookingDate DESC; maintenance timestamp ordering; user createdAt DESC; and notificationEvents status or targetUid equality.
+
+This is a source-level query inventory, not proof that every possible filter combination has been exercised against production. Any query that combines filters on different fields with ordering must be checked against the actual Firestore index link. Emulator success alone does not prove that a required production composite index is deployed. The active production Rules and index baselines are tracked separately in docs/architecture/FIRESTORE_PRODUCTION_BASELINE_2026-11-09.md.
