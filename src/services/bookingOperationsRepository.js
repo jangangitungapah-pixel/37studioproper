@@ -362,6 +362,10 @@ function assertNoScheduleConflict(candidate, bookings) {
 }
 
 function currentSessionStatus(booking) {
+  const requestStatus = getBookingRequestStatus(booking);
+  if (requestStatus === 'submitted') return 'pending';
+  if (['rejected', 'cancelled'].includes(requestStatus)) return 'cancelled';
+
   const value = cleanText(booking.sessionStatus || booking.sessionState, 40)
     .toLowerCase().replace(/[-\s]+/g, '_');
   if (['upcoming', 'scheduled'].includes(value)) return 'upcoming';
@@ -369,8 +373,7 @@ function currentSessionStatus(booking) {
   if (['completed', 'complete', 'finished', 'done'].includes(value)) return 'completed';
   if (['no_show', 'noshow', 'absent'].includes(value)) return 'no_show';
   if (['cancelled', 'canceled'].includes(value)) return 'cancelled';
-  const requestStatus = cleanText(booking.requestStatus || booking.bookingRequestStatus, 40).toLowerCase();
-  return ['rejected', 'cancelled', 'canceled'].includes(requestStatus) ? 'cancelled' : 'upcoming';
+  return 'upcoming';
 }
 
 function getScheduledStartTimestamp(booking) {
