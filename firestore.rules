@@ -1171,7 +1171,9 @@ match /users/{userId} {
         data.source == 'admin' &&
         data.bookingRequestStatus == 'confirmed' &&
         data.sessionStatus == 'scheduled' &&
-        data.status == data.paymentStatus &&
+        data.initialPaymentLedgerStatus in ['pending', 'not_required'] &&
+        data.status == 'pending' &&
+        data.bookingRequestStatus == 'confirmed' &&
         validString(data.bookingCode, 1, 120) &&
         data.bookingId == data.bookingCode &&
         validString(data.invoiceNumber, 1, 120) &&
@@ -1182,49 +1184,22 @@ match /users/{userId} {
         validIsoTimestampString(data.updatedAt) &&
         validNumber(data.subtotal, 0, 100000000) &&
         validNumber(data.discountAmount, 0, 100000000) &&
-        data.invoiceAmount == data.total - data.paidAmount &&
+        data.invoiceAmount == data.total &&
         data.refundHistory is list &&
         data.refundHistory.size() == 0 &&
         data.refundedAmount == 0 &&
         data.paymentHistory is list &&
+        data.paymentHistory.size() == 0 &&
+        data.paymentStatus == 'pending' &&
+        data.paymentStatusCanonical == 'unpaid' &&
+        data.paymentMethod == '' &&
+        data.lastPaymentAt == '' &&
+        data.lastPaymentMethod == '' &&
+        data.paidAmount == 0 &&
+        data.dpAmount == 0 &&
         (
-          (
-            data.paymentHistory.size() == 0 &&
-            data.initialPaymentLedgerStatus == 'not_required' &&
-            data.paymentStatus == 'pending' &&
-            data.paymentStatusCanonical == 'unpaid' &&
-            data.paymentMethod == '' &&
-            data.lastPaymentAt == '' &&
-            data.lastPaymentMethod == '' &&
-            data.paidAmount == 0 &&
-            data.dpAmount == 0 &&
-            data.invoiceAmount == data.total
-          ) ||
-          (
-            data.paymentHistory.size() == 1 &&
-            data.initialPaymentLedgerStatus == 'pending' &&
-            validManualInitialPaymentRecord(data.paymentHistory[0], data) &&
-            data.paidAmount == data.paymentHistory[0].amount &&
-            data.paymentMethod == data.paymentHistory[0].method &&
-            data.lastPaymentMethod == data.paymentHistory[0].method &&
-            data.lastPaymentAt == data.paymentHistory[0].createdAt &&
-            (
-              (
-                data.total > 0 &&
-                data.paidAmount >= data.total &&
-                data.paymentStatus == 'lunas' &&
-                data.paymentStatusCanonical == 'paid' &&
-                data.dpAmount == 0
-              ) ||
-              (
-                data.total > 0 &&
-                data.paidAmount < data.total &&
-                data.paymentStatus == 'dp' &&
-                data.paymentStatusCanonical == 'partial' &&
-                data.dpAmount == data.paidAmount
-              )
-            )
-          )
+          data.initialPaymentLedgerStatus == 'pending' ||
+          data.initialPaymentLedgerStatus == 'not_required'
         );
     }
 
@@ -1581,22 +1556,54 @@ match /users/{userId} {
 
     function adminBookingInitialPaymentLedgerUpdate(bookingId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      let paymentHistory = resource.data.paymentHistory is list
-        ? resource.data.paymentHistory
-        : [];
-      let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
-      let ledgerId = paymentHistory.size() == 1
+      let paymentHistory = request.resource.data.paymentHistory;
+      let payment = paymentHistory is list && paymentHistory.size() == 1
+        ? paymentHistory[0]
+        : {};
+      let ledgerId = paymentHistory is list && paymentHistory.size() == 1
         ? 'booking-payment-' + bookingId + '-' + payment.id
         : 'invalid-initial-payment-ledger';
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
-      let ledgerAfter = getAfter(ledgerPath).data;
-      return changed.hasOnly(['initialPaymentLedgerStatus']) &&
+      let total = resource.data.total;
+      let amount = payment.amount;
+      let isPaid = total > 0 && amount >= total;
+      return changed.hasOnly([
+          'dpAmount', 'initialPaymentLedgerStatus', 'invoiceAmount',
+          'lastPaymentAt', 'lastPaymentMethod', 'paidAmount', 'paymentHistory',
+          'paymentMethod', 'paymentStatus', 'paymentStatusCanonical', 'status'
+        ]) &&
         resource.data.source == 'admin' &&
         resource.data.initialPaymentLedgerStatus == 'pending' &&
+        resource.data.paymentHistory is list &&
+        resource.data.paymentHistory.size() == 0 &&
         request.resource.data.initialPaymentLedgerStatus == 'recorded' &&
+        paymentHistory is list &&
         paymentHistory.size() == 1 &&
+        validManualInitialPaymentRecord(payment, resource.data) &&
+        request.resource.data.paidAmount == amount &&
+        request.resource.data.paymentMethod == payment.method &&
+        request.resource.data.lastPaymentAt == payment.createdAt &&
+        request.resource.data.lastPaymentMethod == payment.method &&
+        request.resource.data.invoiceAmount == total - amount &&
+        request.resource.data.status == request.resource.data.paymentStatus &&
+        (
+          (
+            isPaid &&
+            request.resource.data.dpAmount == 0 &&
+            request.resource.data.paymentStatus == 'lunas' &&
+            request.resource.data.paymentStatusCanonical == 'paid'
+          ) ||
+          (
+            total > 0 &&
+            amount < total &&
+            request.resource.data.dpAmount == amount &&
+            request.resource.data.paymentStatus == 'dp' &&
+            request.resource.data.paymentStatusCanonical == 'partial'
+          )
+        ) &&
         !exists(ledgerPath) &&
-        existsAfter(ledgerPath);
+        existsAfter(ledgerPath) &&
+        bookingSlotStateMatchesAfter(bookingId, request.resource.data);
     }
 
     function adminBookingOperationalUpdate(bookingId) {
@@ -2306,6 +2313,8 @@ match /users/{userId} {
         bookingExistsAfter &&
         bookingBefore.source == 'admin' &&
         bookingBefore.initialPaymentLedgerStatus == 'pending' &&
+        bookingBefore.paymentHistory is list &&
+        bookingBefore.paymentHistory.size() == 0 &&
         bookingAfter.initialPaymentLedgerStatus == 'recorded' &&
         bookingAfter.source == 'admin' &&
         paymentHistory is list &&
