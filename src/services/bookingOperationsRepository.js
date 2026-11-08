@@ -749,7 +749,7 @@ export async function createManualBooking(inputValue) {
     } catch (error) {
       const pending = operationError(
         'booking_payment_ledger_pending',
-        'Booking sudah tersimpan, tetapi pencatatan pembayaran awal belum selesai. Coba ulangi penyimpanan booking yang sama untuk melanjutkan ledger tanpa membuat booking duplikat.',
+        'Booking sudah tersimpan, tetapi pencatatan pembayaran awal belum selesai. Coba ulangi Simpan dengan isi yang sama. Jika form tertutup atau halaman dimuat ulang, buka booking pending dari Jadwal, pilih Edit, lalu Simpan untuk memulihkan payment history dan ledger.',
       );
       pending.cause = error;
       throw pending;
