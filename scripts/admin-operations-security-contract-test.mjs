@@ -110,7 +110,7 @@ assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'")
 assert.match(workerIndex, /pathname === '\/v1\/bookings\/sessions\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'schedule' \}\);[\s\S]*?body = await readJson\(request\);/);
 assert.match(
   rules,
-  /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApprovedAdmin\(\) && canManageBookingData\(\);[\s\S]*?allow create: if isApprovedAdmin\(\)[\s\S]*?bookingSessionEventReferencesBookingAfter\(eventId\);[\s\S]*?allow update, delete: if false;/,
+  /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApprovedScheduleAdmin\(\);[\s\S]*?allow create: if isApprovedScheduleAdmin\(\)[\s\S]*?bookingSessionEventReferencesBookingAfter\(eventId\);[\s\S]*?allow update, delete: if false;/,
   'Session history must be schedule-admin readable, paired with its booking update, and append-only.',
 );
 assert.match(
