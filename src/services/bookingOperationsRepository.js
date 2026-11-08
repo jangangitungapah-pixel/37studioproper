@@ -467,6 +467,7 @@ function buildManualBooking(input, actor, requestId, operationId, timestamp) {
     durationHours,
     email: cleanText(input.email, 254),
     id,
+    initialPaymentLedgerStatus: payment ? 'pending' : 'not_required',
     invoiceAmount: Math.max(0, total - initialAmount),
     invoiceNumber,
     lastPaymentAt: payment?.createdAt || '',
@@ -526,6 +527,82 @@ function buildInitialBookingPaymentLedger({ actor, booking, payment }) {
   };
 }
 
+function matchesInitialPaymentLedger(actual, expected) {
+  if (!actual || typeof actual !== 'object' || !expected) return false;
+  const expectedEntries = Object.entries(expected);
+  return Object.keys(actual).length === expectedEntries.length &&
+    expectedEntries.every(([key, value]) => actual[key] === value);
+}
+
+function matchesInitialPaymentToLedger(booking, ledger) {
+  const payment = Array.isArray(booking?.paymentHistory) ? booking.paymentHistory[0] : null;
+  return Boolean(payment) &&
+    booking.initialPaymentLedgerStatus === 'pending' &&
+    booking.source === 'admin' &&
+    payment.id === ledger.sourceEventId &&
+    payment.actorUid === ledger.actorUid &&
+    payment.actorName === ledger.actorName &&
+    payment.amount === ledger.amount &&
+    payment.method === ledger.paymentMethod &&
+    payment.date === ledger.date &&
+    payment.createdAt === ledger.createdAt &&
+    payment.idempotencyKey === ledger.idempotencyKey &&
+    payment.note === ledger.note &&
+    payment.source === 'manual-booking-create' &&
+    ledger.sourceBookingId === booking.id &&
+    ledger.title === 'Pembayaran ' + booking.invoiceNumber;
+}
+
+async function ensureInitialBookingPaymentLedger({ actor, bookingId, ledger }) {
+  if (!ledger) return { duplicate: false, status: 'not_required' };
+
+  const bookingRef = doc(firestoreDb, 'bookings', bookingId);
+  const ledgerRef = doc(firestoreDb, 'bookkeepingEntries', ledger.id);
+  const scope = 'bookings';
+  const action = 'initial-payment-ledger';
+  const requestId = 'initial-payment-ledger-' + bookingId;
+
+  const committed = await runIdempotentFirestoreTransaction({
+    db: firestoreDb,
+    actorUid: actor.uid,
+    scope,
+    action,
+    requestId,
+    payload: { bookingId, ledger },
+    execute: async (transaction) => {
+      const [bookingSnapshot, ledgerSnapshot] = await Promise.all([
+        transaction.get(bookingRef),
+        transaction.get(ledgerRef),
+      ]);
+      if (!bookingSnapshot.exists()) {
+        throw operationError('booking_not_found_for_initial_ledger', 'Booking tidak ditemukan saat menyelesaikan pencatatan pembayaran awal.');
+      }
+
+      const current = { id: bookingSnapshot.id, ...bookingSnapshot.data() };
+      if (current.initialPaymentLedgerStatus === 'recorded') {
+        if (!ledgerSnapshot.exists() || !matchesInitialPaymentLedger(ledgerSnapshot.data(), ledger)) {
+          throw operationError('booking_payment_ledger_integrity_error', 'Status ledger tercatat tetapi dokumen ledger tidak cocok. Hubungi Owner sebelum melakukan perubahan manual.');
+        }
+        return { collection: 'bookings', id: bookingId };
+      }
+
+      if (!matchesInitialPaymentToLedger(current, ledger)) {
+        throw operationError('booking_payment_ledger_payload_mismatch', 'Data pembayaran awal tidak cocok dengan booking. Ledger tidak dibuat.');
+      }
+
+      if (ledgerSnapshot.exists() && !matchesInitialPaymentLedger(ledgerSnapshot.data(), ledger)) {
+        throw operationError('booking_payment_ledger_conflict', 'ID ledger sudah digunakan oleh data lain. Hubungi Owner sebelum melanjutkan.');
+      }
+
+      if (!ledgerSnapshot.exists()) transaction.set(ledgerRef, ledger);
+      transaction.update(bookingRef, { initialPaymentLedgerStatus: 'recorded' });
+      return { collection: 'bookings', id: bookingId };
+    },
+  });
+
+  return { duplicate: committed.replayed, status: 'recorded' };
+}
+
 export async function createManualBooking(inputValue) {
   requireFirestore();
   const input = manualBookingInputSchema.parse(inputValue);
@@ -543,7 +620,6 @@ export async function createManualBooking(inputValue) {
   const { booking, payment } = buildManualBooking(input, actor, requestId, operationId, timestamp);
   const slot = buildCalendarSlot(booking, timestamp, { manualCreate: true });
   const ledger = buildInitialBookingPaymentLedger({ actor, booking, payment });
-  const ledgerId = ledger?.id || '';
   const dates = [booking.date];
   const replay = await readCompletedOperation({
     actorUid: actor.uid,
@@ -552,71 +628,88 @@ export async function createManualBooking(inputValue) {
     requestId,
     payload: { booking, ledger },
   });
-  if (replay) return { booking: replay.booking, duplicate: true };
 
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const preflight = await readSchedulePreflight(dates, slot ? booking.date : '');
-    if (slot) assertNoScheduleConflict(booking, preflight.bookings);
+  const bookingRef = doc(firestoreDb, 'bookings', booking.id);
+  let duplicate = Boolean(replay);
 
-    try {
-      const bookingRef = doc(firestoreDb, 'bookings', booking.id);
-      const slotRef = doc(firestoreDb, 'clientCalendarSlots', booking.id);
-      const dayRef = doc(firestoreDb, 'bookingScheduleDays', booking.date);
-      const ledgerRef = ledgerId ? doc(firestoreDb, 'bookkeepingEntries', ledgerId) : null;
+  if (!replay) {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const preflight = await readSchedulePreflight(dates, slot ? booking.date : '');
+      if (slot) assertNoScheduleConflict(booking, preflight.bookings);
 
-      const committed = await runIdempotentFirestoreTransaction({
-        db: firestoreDb,
-        actorUid: actor.uid,
-        scope,
-        action,
-        requestId,
-        payload: { booking, ledger },
-        execute: async (transaction) => {
-          const references = [bookingRef, dayRef, slotRef];
-          if (ledgerRef) references.push(ledgerRef);
-          const snapshots = await Promise.all(references.map((reference) => transaction.get(reference)));
-          const bookingSnapshot = snapshots[0];
-          const daySnapshot = snapshots[1];
-          const slotSnapshot = snapshots[2];
-          const ledgerSnapshot = ledgerRef ? snapshots[3] : null;
+      try {
+        const slotRef = doc(firestoreDb, 'clientCalendarSlots', booking.id);
+        const dayRef = doc(firestoreDb, 'bookingScheduleDays', booking.date);
 
-          const expectedDay = preflight.daySnapshots.get(booking.date);
-          const dayRevision = daySnapshot.exists() ? Number(daySnapshot.data().revision || 0) : 0;
-          if (!expectedDay || dayRevision !== expectedDay.revision || daySnapshot.exists() !== expectedDay.exists) {
-            throw operationError('schedule_revision_changed', 'Jadwal berubah saat operasi diproses. Muat ulang kalender dan coba kembali.');
-          }
-          if (bookingSnapshot.exists()) {
-            throw operationError('booking_id_conflict', 'ID booking sudah digunakan. Muat ulang formulir sebelum menyimpan kembali.');
-          }
-          if (slot && slotSnapshot.exists()) {
-            throw operationError('calendar_slot_conflict', 'Slot kalender sudah memiliki mirror. Periksa data jadwal sebelum melanjutkan.');
-          }
-          if (ledgerSnapshot?.exists()) {
-            throw operationError('booking_payment_ledger_conflict', 'Ledger pembayaran awal sudah ada untuk booking ini.');
-          }
+        const committed = await runIdempotentFirestoreTransaction({
+          db: firestoreDb,
+          actorUid: actor.uid,
+          scope,
+          action,
+          requestId,
+          payload: { booking, ledger },
+          execute: async (transaction) => {
+            const [bookingSnapshot, daySnapshot, slotSnapshot] = await Promise.all([
+              transaction.get(bookingRef),
+              transaction.get(dayRef),
+              transaction.get(slotRef),
+            ]);
 
-          transaction.set(bookingRef, booking);
-          writeScheduleDay(transaction, booking.date, booking.id, timestamp, daySnapshot);
-          if (slot) transaction.set(slotRef, slot);
-          if (ledger) transaction.set(ledgerRef, ledger);
+            const expectedDay = preflight.daySnapshots.get(booking.date);
+            const dayRevision = daySnapshot.exists() ? Number(daySnapshot.data().revision || 0) : 0;
+            if (!expectedDay || dayRevision !== expectedDay.revision || daySnapshot.exists() !== expectedDay.exists) {
+              throw operationError('schedule_revision_changed', 'Jadwal berubah saat operasi diproses. Muat ulang kalender dan coba kembali.');
+            }
+            if (bookingSnapshot.exists()) {
+              throw operationError('booking_id_conflict', 'ID booking sudah digunakan. Muat ulang formulir sebelum menyimpan kembali.');
+            }
+            if (slot && slotSnapshot.exists()) {
+              throw operationError('calendar_slot_conflict', 'Slot kalender sudah memiliki mirror. Periksa data jadwal sebelum melanjutkan.');
+            }
 
-          return { collection: 'bookings', id: booking.id };
-        },
-      });
+            transaction.set(bookingRef, booking);
+            writeScheduleDay(transaction, booking.date, booking.id, timestamp, daySnapshot);
+            if (slot) transaction.set(slotRef, slot);
 
-      const saved = await getDoc(bookingRef);
-      if (!saved.exists()) throw operationError('booking_commit_missing', 'Booking berhasil diproses tetapi dokumennya belum dapat dibaca.');
-      return {
-        booking: { id: saved.id, ...saved.data() },
-        duplicate: committed.replayed,
-      };
-    } catch (error) {
-      if (error?.code === 'schedule_revision_changed' && attempt < 3) continue;
-      throw error;
+            return { collection: 'bookings', id: booking.id };
+          },
+        });
+
+        duplicate = committed.replayed;
+        break;
+      } catch (error) {
+        if (error?.code === 'schedule_revision_changed' && attempt < 3) continue;
+        throw error;
+      }
     }
   }
 
-  throw operationError('booking_conflict', 'Jadwal berubah berulang kali. Muat ulang kalender lalu coba kembali.');
+  let saved = await getDoc(bookingRef);
+  if (!saved.exists()) {
+    throw operationError('booking_commit_missing', 'Booking berhasil diproses tetapi dokumennya belum dapat dibaca.');
+  }
+
+  if (ledger) {
+    try {
+      await ensureInitialBookingPaymentLedger({ actor, bookingId: booking.id, ledger });
+    } catch (error) {
+      const pending = operationError(
+        'booking_payment_ledger_pending',
+        'Booking sudah tersimpan, tetapi pencatatan pembayaran awal belum selesai. Coba ulangi penyimpanan booking yang sama untuk melanjutkan ledger tanpa membuat booking duplikat.',
+      );
+      pending.cause = error;
+      throw pending;
+    }
+    saved = await getDoc(bookingRef);
+    if (!saved.exists() || saved.data().initialPaymentLedgerStatus !== 'recorded') {
+      throw operationError('booking_payment_ledger_pending', 'Booking tersimpan, tetapi ledger pembayaran awal masih menunggu penyelesaian. Coba ulangi operasi yang sama.');
+    }
+  }
+
+  return {
+    booking: { id: saved.id, ...saved.data() },
+    duplicate,
+  };
 }
 
 export async function updateManualBooking(inputValue) {
