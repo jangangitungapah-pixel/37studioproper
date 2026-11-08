@@ -360,7 +360,7 @@ export async function deleteManualBooking(bookingId) {
   const batch = writeBatch(firestoreDb);
 
   batch.delete(docRef);
-  batch.delete(getClientCalendarSlotRef(bookingId));
+  batch.delete(doc(firestoreDb, 'clientCalendarSlots', bookingId));
 
   await batch.commit();
 }
