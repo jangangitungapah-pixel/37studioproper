@@ -31,6 +31,11 @@ const adminPageSource = readFileSync(
   'utf8',
 );
 
+const bookingOperationsSource = readFileSync(
+  resolve('src/services/bookingOperationsRepository.js'),
+  'utf8',
+);
+
 const requestItem = ADMIN_NAV_ITEMS.find(
   (item) => item.key === 'requests',
 );
@@ -204,8 +209,24 @@ assert.equal(
   adminPageSource.includes(
     'syncClientCalendarSlotsFromBookings(data)',
   ),
-  true,
-  'Global Admin shell reconciliation must remain intact.',
+  false,
+  'Booking mirror reconciliation must not run as a global client-side side effect.',
+);
+
+assert.match(
+  bookingOperationsSource,
+  /doc\(firestoreDb,\s*'clientCalendarSlots',\s*bookingId\)/,
+  'Booking operations must address public calendar mirrors by deterministic booking ID.',
+);
+assert.match(
+  bookingOperationsSource,
+  /writeScheduleDay\(transaction,/,
+  'Schedule-day revisions must be written atomically inside the booking transaction.',
+);
+assert.equal(
+  bookingOperationsSource.includes("collection(firestoreDb, 'clientCalendarSlots')"),
+  false,
+  'Booking operations must not perform collection-wide public calendar mirror scans.',
 );
 
 /**
