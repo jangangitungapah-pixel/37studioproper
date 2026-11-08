@@ -1132,7 +1132,8 @@ match /users/{userId} {
           'id', 'idempotencyKey', 'method', 'note', 'source'
         ]) &&
         validString(payment.actorName, 1, 120) &&
-        payment.actorUid == request.auth.uid &&
+        payment.actorName == bookingData.initialPaymentIntent.actorName &&
+        payment.actorUid == bookingData.initialPaymentIntent.actorUid &&
         validNumber(payment.amount, 1, bookingData.total) &&
         payment.createdAt == bookingData.createdAt &&
         payment.date == bookingData.createdAt[0:10] &&
@@ -1144,19 +1145,19 @@ match /users/{userId} {
     }
 
     function validManualBookingCreate(data, bookingId) {
-      return data.keys().hasAll(['initialPaymentLedgerStatus']) &&
+      return data.keys().hasAll(['initialPaymentLedgerStatus', 'initialPaymentIntent']) &&
         data.keys().hasOnly([
           'appliedDiscounts', 'bandName', 'bookingCode', 'bookingId',
           'bookingRequestStatus', 'clientUid', 'createdAt', 'customer',
           'customerId', 'customerIdentityMode', 'customerPhoneKey', 'date',
           'discountAmount', 'dpAmount', 'durationHours', 'email', 'id',
-          'initialPaymentLedgerStatus', 'invoiceAmount', 'invoiceNumber',
-          'lastPaymentAt', 'lastPaymentMethod', 'packageId', 'packageLabel',
-          'paidAmount', 'paymentHistory', 'paymentMethod', 'paymentStatus',
-          'paymentStatusCanonical', 'phone', 'pricingMode', 'recordingTypeId',
-          'recordingTypeLabel', 'refundHistory', 'refundedAmount', 'sessionLabel',
-          'sessionStatus', 'sessionType', 'source', 'startHour', 'startTimeLabel',
-          'status', 'subtotal', 'title', 'total', 'updatedAt'
+          'initialPaymentIntent', 'initialPaymentLedgerStatus', 'invoiceAmount',
+          'invoiceNumber', 'lastPaymentAt', 'lastPaymentMethod', 'packageId',
+          'packageLabel', 'paidAmount', 'paymentHistory', 'paymentMethod',
+          'paymentStatus', 'paymentStatusCanonical', 'phone', 'pricingMode',
+          'recordingTypeId', 'recordingTypeLabel', 'refundHistory', 'refundedAmount',
+          'sessionLabel', 'sessionStatus', 'sessionType', 'source', 'startHour',
+          'startTimeLabel', 'status', 'subtotal', 'title', 'total', 'updatedAt'
         ]) &&
         data.id == bookingId &&
         validString(data.customer, 1, 120) &&
@@ -1171,7 +1172,6 @@ match /users/{userId} {
         data.source == 'admin' &&
         data.bookingRequestStatus == 'confirmed' &&
         data.sessionStatus == 'scheduled' &&
-        data.initialPaymentLedgerStatus in ['pending', 'not_required'] &&
         data.status == 'pending' &&
         data.bookingRequestStatus == 'confirmed' &&
         validString(data.bookingCode, 1, 120) &&
@@ -1198,8 +1198,16 @@ match /users/{userId} {
         data.paidAmount == 0 &&
         data.dpAmount == 0 &&
         (
-          data.initialPaymentLedgerStatus == 'pending' ||
-          data.initialPaymentLedgerStatus == 'not_required'
+          (
+            data.initialPaymentIntent == null &&
+            data.initialPaymentLedgerStatus == 'not_required'
+          ) ||
+          (
+            data.initialPaymentIntent is map &&
+            data.initialPaymentIntent.actorUid == request.auth.uid &&
+            validManualInitialPaymentRecord(data.initialPaymentIntent, data) &&
+            data.initialPaymentLedgerStatus == 'pending'
+          )
         );
     }
 
@@ -1588,6 +1596,7 @@ match /users/{userId} {
         request.resource.data.initialPaymentLedgerStatus == 'recorded' &&
         paymentHistory is list &&
         paymentHistory.size() == 1 &&
+        payment == resource.data.initialPaymentIntent &&
         validManualInitialPaymentRecord(payment, resource.data) &&
         request.resource.data.paidAmount == amount &&
         request.resource.data.paymentMethod == payment.method &&
@@ -1621,7 +1630,7 @@ match /users/{userId} {
         ledgerAfter.reversalOf == '' &&
         ledgerAfter.sourceBookingId == bookingId &&
         ledgerAfter.sourceEventId == payment.id &&
-        ledgerAfter.actorUid == request.auth.uid &&
+        ledgerAfter.actorUid == payment.actorUid &&
         ledgerAfter.actorName == payment.actorName &&
         ledgerAfter.amount == amount &&
         ledgerAfter.paymentMethod == payment.method &&
@@ -2345,10 +2354,13 @@ match /users/{userId} {
         bookingBefore.initialPaymentLedgerStatus == 'pending' &&
         bookingAfter.initialPaymentLedgerStatus == 'recorded' &&
         bookingAfter.paymentHistory.size() == 1 &&
+        bookingBefore.initialPaymentIntent == payment &&
         data.id == entryId &&
         data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
         data.sourceBookingId == bookingAfter.id &&
-        data.sourceEventId == payment.id;
+        data.sourceEventId == payment.id &&
+        data.actorUid == payment.actorUid &&
+        data.actorName == payment.actorName;
     }
 
     function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
@@ -2358,7 +2370,6 @@ match /users/{userId} {
         data.sourceAction == 'payment' &&
         data.category == 'booking' &&
         data.type == 'income' &&
-        data.actorUid == request.auth.uid &&
         data.immutable == true &&
         validString(data.sourceBookingId, 1, 160) &&
         validString(data.sourceEventId, 1, 80) &&
