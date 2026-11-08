@@ -79,7 +79,7 @@ function authenticatedDb(uid, email) {
   }).firestore();
 }
 
-function notificationRecord({ id, uid, email, actorRole, title = 'Foundation test' }) {
+function notificationRecord({ id, uid, email, actorRole }) {
   return {
     actorEmail: email,
     actorRole,
