@@ -7,7 +7,6 @@ import {
   orderBy,
   query,
   where,
-  writeBatch,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import {
@@ -351,26 +350,11 @@ export async function updateManualBooking(booking) {
   return normalizeBookingBillingIdentity(result, booking.id);
 }
 
-export async function deleteManualBooking(bookingId) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  const docRef = doc(firestoreDb, 'bookings', bookingId);
-  const batch = writeBatch(firestoreDb);
-
-  batch.delete(docRef);
-  batch.delete(doc(firestoreDb, 'clientCalendarSlots', bookingId));
-
-  await batch.commit();
-}
-
 export const adminBookingRepository = {
   subscribeManualBookings,
   createManualBooking,
   createClientBookingRequest,
   updateManualBooking,
-  deleteManualBooking,
   subscribeClientBookingsForUser,
   subscribeClientCalendarSlots,
 };
