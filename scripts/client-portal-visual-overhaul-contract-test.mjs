@@ -181,7 +181,8 @@ for (const portalShellContract of [
   'client-view-stage',
   'client-detail-invoice',
   'client-detail-modal-actions',
-  'client-proof-file-field',
+  'client-proof-reference-field',
+  'client-proof-payer-field',
 ]) {
   assert.equal(
     portalSource.includes(portalShellContract),
@@ -189,6 +190,10 @@ for (const portalShellContract of [
     'Client portal is missing the v3 workspace contract: ' + portalShellContract,
   );
 }
+
+assert.equal(portalSource.includes('proofFile'), false, 'Client portal payment references must not retain an image upload state.');
+assert.equal(portalSource.includes('uploadPaymentProofFile'), false, 'Client portal must not upload proof images to Cloudinary.');
+assert.equal(portalSource.includes('transactionReference'), true, 'Client portal must collect the bank/QRIS transaction reference.');
 
 assert.equal(
   portalSource.includes('className="p-5 rounded-xl'),

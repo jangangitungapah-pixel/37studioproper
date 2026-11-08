@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ClipboardCheck, FileClock, LockKeyhole, RefreshCw, ShieldCheck, Wallet, XCircle } from 'lucide-react';
-import { adminOperationsRepository } from '../../services/adminOperationsRepository.js';
+import { dailyClosingRepository } from '../../services/firestoreFinanceRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 import { adminAuthRepository } from '../../services/adminAuthRepository.js';
 import '../../styles/modules/bookkeeping-daily-closing.css';
 
@@ -98,6 +99,8 @@ export default function DailyClosingWorkspace() {
   const [isPasswordPromptOpen, setIsPasswordPromptOpen] = useState(false);
   const [reauthPassword, setReauthPassword] = useState('');
   const [pendingReopenReason, setPendingReopenReason] = useState('');
+  const [closeRequestId, setCloseRequestId] = useState(() => createRepositoryRequestId());
+  const [reopenRequestId, setReopenRequestId] = useState(() => createRepositoryRequestId());
 
   const countedCash = useMemo(
     () => DENOMINATIONS.reduce((total, item) => total + item.value * safeNumber(denominations[String(item.value)]), 0),
@@ -128,7 +131,7 @@ export default function DailyClosingWorkspace() {
     setIsLoading(true);
     if (!preserveFeedback) setFeedback(null);
     try {
-      const result = await adminOperationsRepository.previewDailyClosing({
+      const result = await dailyClosingRepository.preview({
         businessDate,
         registerId,
         openingCash: Number(openingCash || 0),
@@ -156,13 +159,14 @@ export default function DailyClosingWorkspace() {
     setIsSubmitting(true);
     setFeedback(null);
     try {
-      const result = await adminOperationsRepository.closeDailyClosing(payload);
+      const result = await dailyClosingRepository.close(payload, closeRequestId);
       setFeedback({
         type: 'success',
         message: result.duplicate
           ? 'Request sebelumnya sudah tercatat. Tidak ada closing ganda.'
           : 'Closing tersimpan dan snapshot transaksi berhasil dikunci.',
       });
+      setCloseRequestId(createRepositoryRequestId());
       await loadPreview({ preserveFeedback: true });
     } catch (error) {
       setFeedback({ type: 'error', message: error?.message || 'Closing belum berhasil disimpan.' });
@@ -176,11 +180,12 @@ export default function DailyClosingWorkspace() {
     setFeedback(null);
     try {
       await adminAuthRepository.reauthenticateCurrentAdmin(password ? { password } : {});
-      await adminOperationsRepository.reopenDailyClosing({
+      await dailyClosingRepository.reopen({
         businessDate,
         registerId,
         reason,
-      });
+      }, reopenRequestId);
+      setReopenRequestId(createRepositoryRequestId());
       setIsPasswordPromptOpen(false);
       setReauthPassword('');
       setPendingReopenReason('');

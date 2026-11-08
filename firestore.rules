@@ -918,6 +918,18 @@ match /users/{userId} {
         validOptionalString(data, 'lastRefundReason', 600) &&
         validOptionalString(data, 'refundCompletedAt', 40) &&
         validOptionalString(data, 'paymentStatusBeforeRefund', 40) &&
+        validOptionalString(data, 'invoiceStatus', 40) &&
+        validOptionalString(data, 'paymentStatusCanonical', 40) &&
+        validOptionalString(data, 'lastFinanceAction', 40) &&
+        validOptionalString(data, 'lastFinanceBusinessDate', 10) &&
+        validOptionalString(data, 'lastFinanceEventId', 180) &&
+        validOptionalString(data, 'lastFinanceLedgerEntryId', 160) &&
+        validOptionalString(data, 'lastFinanceOperationId', 80) &&
+        validOptionalString(data, 'lastFinanceProofId', 160) &&
+        validOptionalString(data, 'voidedAt', 40) &&
+        validOptionalString(data, 'voidedByName', 120) &&
+        validOptionalString(data, 'voidedByUid', 128) &&
+        validOptionalString(data, 'voidReason', 600) &&
         (!data.keys().hasAny(['appliedDiscounts']) || (data.appliedDiscounts is list && data.appliedDiscounts.size() <= 50));
     }
 
@@ -929,6 +941,8 @@ match /users/{userId} {
           'lastPaymentAt', 'lastPaymentMethod', 'lastRefundAt',
           'lastRefundMethod', 'lastRefundReason', 'refundCompletedAt',
           'paymentStatusBeforeRefund', 'voidReason', 'voidedAt',
+          'lastFinanceAction', 'lastFinanceBusinessDate', 'lastFinanceEventId',
+          'lastFinanceLedgerEntryId', 'lastFinanceOperationId', 'lastFinanceProofId',
           'voidedByName', 'voidedByUid', 'paymentMethod', 'total',
           'subtotal', 'discountAmount', 'appliedDiscounts',
           'bookingCode', 'bookingId', 'invoiceNumber'
@@ -1079,18 +1093,18 @@ match /users/{userId} {
     function bookingIsScheduleBlocking(data) {
       return (
           !data.keys().hasAny(['bookingRequestStatus']) ||
-          !(data.bookingRequestStatus in ['submitted', 'rejected', 'cancelled'])
+          !(data.bookingRequestStatus in ['submitted', 'rejected', 'cancelled', 'void'])
         ) &&
         (
           !data.keys().hasAny(['requestStatus']) ||
-          !(data.requestStatus in ['submitted', 'rejected', 'cancelled', 'canceled', 'deleted'])
+          !(data.requestStatus in ['submitted', 'rejected', 'cancelled', 'canceled', 'deleted', 'void'])
         ) &&
         (
           !data.keys().hasAny(['sessionStatus']) ||
-          !(data.sessionStatus in ['cancelled', 'canceled', 'rejected', 'deleted'])
+          !(data.sessionStatus in ['cancelled', 'canceled', 'rejected', 'deleted', 'void'])
         ) &&
-        !(data.status in ['cancelled', 'canceled', 'rejected', 'deleted']) &&
-        !(data.paymentStatus in ['cancelled', 'canceled', 'rejected', 'deleted']);
+        !(data.status in ['cancelled', 'canceled', 'rejected', 'deleted', 'void']) &&
+        !(data.paymentStatus in ['cancelled', 'canceled', 'rejected', 'deleted', 'void']);
     }
 
     function bookingRequiresPublicSlot(data) {
@@ -1264,6 +1278,209 @@ match /users/{userId} {
             ) &&
             bookingSlotStateMatchesAfter(bookingId, request.resource.data)
           )
+        );
+    }
+
+
+    function repositoryOperationMatchesAfter(operationId, scope, action, resultCollection, resultId) {
+      let markerPath = /databases/$(database)/documents/users/$(request.auth.uid)/repositoryOperations/$(operationId);
+      let markerAfter = getAfter(markerPath).data;
+      return existsAfter(markerPath) &&
+        markerAfter.operationId == operationId &&
+        markerAfter.actorUid == request.auth.uid &&
+        markerAfter.scope == scope &&
+        markerAfter.action == action &&
+        markerAfter.resultCollection == resultCollection &&
+        markerAfter.resultId == resultId;
+    }
+
+    function financeBookingPaymentUpdateAllowed(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let bookingAfter = request.resource.data;
+      let history = bookingAfter.paymentHistory;
+      let event = history[history.size() - 1];
+      let previousCount = ('paymentHistory' in resource.data) ? resource.data.paymentHistory.size() : 0;
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(bookingAfter.lastFinanceLedgerEntryId);
+      let ledgerAfter = getAfter(ledgerPath).data;
+      let closingId = bookingAfter.lastFinanceBusinessDate + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingAfter = getAfter(closingPath).data;
+      return changed.hasOnly([
+          'paymentHistory', 'invoiceAmount', 'paidAmount', 'paymentStatus',
+          'paymentStatusCanonical', 'dpAmount', 'lastPaymentAt',
+          'lastPaymentMethod', 'updatedAt', 'lastFinanceAction',
+          'lastFinanceBusinessDate', 'lastFinanceEventId',
+          'lastFinanceLedgerEntryId', 'lastFinanceOperationId',
+          'lastFinanceProofId'
+        ]) &&
+        bookingAfter.id == bookingId &&
+        bookingAfter.lastFinanceAction in ['payment', 'proof-approve'] &&
+        validIsoDate(bookingAfter.lastFinanceBusinessDate) &&
+        bookingAfter.lastFinanceOperationId is string &&
+        bookingAfter.lastFinanceEventId is string &&
+        bookingAfter.lastFinanceLedgerEntryId is string &&
+        bookingAfter.lastFinanceProofId is string &&
+        history is list &&
+        history.size() == previousCount + 1 &&
+        event.id == bookingAfter.lastFinanceEventId &&
+        event.operationId == bookingAfter.lastFinanceOperationId &&
+        event.ledgerEntryId == bookingAfter.lastFinanceLedgerEntryId &&
+        event.actorUid == request.auth.uid &&
+        event.amount is number &&
+        event.amount > 0 &&
+        event.date == bookingAfter.lastFinanceBusinessDate &&
+        event.method in ['cash', 'transfer', 'qris', 'other'] &&
+        existsAfter(ledgerPath) &&
+        ledgerAfter.id == bookingAfter.lastFinanceLedgerEntryId &&
+        ledgerAfter.operationId == bookingAfter.lastFinanceOperationId &&
+        ledgerAfter.source == 'booking-payment' &&
+        ledgerAfter.sourceAction == 'payment' &&
+        ledgerAfter.sourceBookingId == bookingId &&
+        ledgerAfter.sourceEventId == event.id &&
+        ledgerAfter.amount == event.amount &&
+        ledgerAfter.paymentMethod == event.method &&
+        ledgerAfter.sourceProofId == bookingAfter.lastFinanceProofId &&
+        ledgerAfter.actorUid == request.auth.uid &&
+        existsAfter(closingPath) &&
+        closingAfter.lastOperationAction == bookingAfter.lastFinanceAction &&
+        closingAfter.lastOperationId == bookingAfter.lastFinanceOperationId &&
+        closingAfter.lastBookingId == bookingId &&
+        closingAfter.lastLedgerEntryId == bookingAfter.lastFinanceLedgerEntryId &&
+        closingAfter.lastProofId == bookingAfter.lastFinanceProofId &&
+        repositoryOperationMatchesAfter(
+          bookingAfter.lastFinanceOperationId,
+          'finance',
+          bookingAfter.lastFinanceAction,
+          'bookings',
+          bookingId
+        );
+    }
+
+    function financeBookingRefundUpdateAllowed(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let bookingAfter = request.resource.data;
+      let history = bookingAfter.refundHistory;
+      let event = history[history.size() - 1];
+      let previousCount = ('refundHistory' in resource.data) ? resource.data.refundHistory.size() : 0;
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(bookingAfter.lastFinanceLedgerEntryId);
+      let ledgerAfter = getAfter(ledgerPath).data;
+      let closingId = bookingAfter.lastFinanceBusinessDate + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingAfter = getAfter(closingPath).data;
+      return changed.hasOnly([
+          'refundHistory', 'invoiceAmount', 'paidAmount', 'paymentStatus',
+          'paymentStatusCanonical', 'refundedAmount', 'lastRefundAt',
+          'lastRefundMethod', 'lastRefundReason', 'refundStatus',
+          'updatedAt', 'lastFinanceAction', 'lastFinanceBusinessDate',
+          'lastFinanceEventId', 'lastFinanceLedgerEntryId',
+          'lastFinanceOperationId', 'lastFinanceProofId'
+        ]) &&
+        bookingAfter.id == bookingId &&
+        bookingAfter.lastFinanceAction == 'refund' &&
+        validIsoDate(bookingAfter.lastFinanceBusinessDate) &&
+        bookingAfter.lastFinanceOperationId is string &&
+        bookingAfter.lastFinanceEventId is string &&
+        bookingAfter.lastFinanceLedgerEntryId is string &&
+        bookingAfter.lastFinanceProofId == '' &&
+        history is list &&
+        history.size() == previousCount + 1 &&
+        event.id == bookingAfter.lastFinanceEventId &&
+        event.operationId == bookingAfter.lastFinanceOperationId &&
+        event.ledgerEntryId == bookingAfter.lastFinanceLedgerEntryId &&
+        event.actorUid == request.auth.uid &&
+        event.amount is number &&
+        event.amount > 0 &&
+        event.date == bookingAfter.lastFinanceBusinessDate &&
+        event.method in ['cash', 'transfer', 'qris', 'other'] &&
+        existsAfter(ledgerPath) &&
+        ledgerAfter.id == bookingAfter.lastFinanceLedgerEntryId &&
+        ledgerAfter.operationId == bookingAfter.lastFinanceOperationId &&
+        ledgerAfter.source == 'booking-refund' &&
+        ledgerAfter.sourceAction == 'refund' &&
+        ledgerAfter.sourceBookingId == bookingId &&
+        ledgerAfter.sourceEventId == event.id &&
+        ledgerAfter.amount == event.amount &&
+        ledgerAfter.paymentMethod == event.method &&
+        ledgerAfter.sourceProofId == '' &&
+        ledgerAfter.actorUid == request.auth.uid &&
+        existsAfter(closingPath) &&
+        closingAfter.lastOperationAction == 'refund' &&
+        closingAfter.lastOperationId == bookingAfter.lastFinanceOperationId &&
+        closingAfter.lastBookingId == bookingId &&
+        closingAfter.lastLedgerEntryId == bookingAfter.lastFinanceLedgerEntryId &&
+        closingAfter.lastProofId == '' &&
+        repositoryOperationMatchesAfter(
+          bookingAfter.lastFinanceOperationId,
+          'finance',
+          'refund',
+          'bookings',
+          bookingId
+        );
+    }
+
+    function financeBookingVoidScheduleMatchesAfter(bookingId, bookingAfter) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      let dayPath = /databases/$(database)/documents/bookingScheduleDays/$(bookingAfter.date);
+      let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      let dayAfter = getAfter(dayPath).data;
+      let bookingBefore = get(bookingPath).data;
+      return exists(bookingPath) &&
+        existsAfter(dayPath) &&
+        validBookingScheduleDay(dayAfter, bookingAfter.date) &&
+        dayAfter.lastBookingId == bookingId &&
+        dayAfter.updatedAt == bookingAfter.updatedAt &&
+        bookingBefore.updatedAt != bookingAfter.updatedAt &&
+        !existsAfter(slotPath);
+    }
+
+    function financeBookingVoidUpdateAllowed(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let bookingAfter = request.resource.data;
+      let closingId = bookingAfter.lastFinanceBusinessDate + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingAfter = getAfter(closingPath).data;
+      return changed.hasOnly([
+          'invoiceAmount', 'invoiceStatus', 'paymentStatus',
+          'paymentStatusCanonical', 'updatedAt', 'voidReason',
+          'voidedAt', 'voidedByName', 'voidedByUid',
+          'lastFinanceAction', 'lastFinanceBusinessDate',
+          'lastFinanceEventId', 'lastFinanceLedgerEntryId',
+          'lastFinanceOperationId', 'lastFinanceProofId'
+        ]) &&
+        bookingAfter.id == bookingId &&
+        bookingAfter.lastFinanceAction == 'void' &&
+        bookingAfter.lastFinanceLedgerEntryId == '' &&
+        bookingAfter.lastFinanceProofId == '' &&
+        bookingAfter.paymentStatus == 'void' &&
+        bookingAfter.paymentStatusCanonical == 'void' &&
+        validString(bookingAfter.voidReason, 4, 600) &&
+        validIsoTimestampString(bookingAfter.voidedAt) &&
+        bookingAfter.voidedByUid == request.auth.uid &&
+        validIsoDate(bookingAfter.lastFinanceBusinessDate) &&
+        existsAfter(closingPath) &&
+        closingAfter.lastOperationAction == 'void' &&
+        closingAfter.lastOperationId == bookingAfter.lastFinanceOperationId &&
+        closingAfter.lastBookingId == bookingId &&
+        closingAfter.lastLedgerEntryId == '' &&
+        closingAfter.lastProofId == '' &&
+        repositoryOperationMatchesAfter(
+          bookingAfter.lastFinanceOperationId,
+          'finance',
+          'void',
+          'bookings',
+          bookingId
+        ) &&
+        financeBookingVoidScheduleMatchesAfter(bookingId, bookingAfter);
+    }
+
+    function adminBookingFinanceUpdateAllowed(bookingId) {
+      return isApprovedAdmin() &&
+        hasPermission('billing') &&
+        validBooking(request.resource.data) &&
+        (
+          financeBookingPaymentUpdateAllowed(bookingId) ||
+          financeBookingRefundUpdateAllowed(bookingId) ||
+          financeBookingVoidUpdateAllowed(bookingId)
         );
     }
 
@@ -1663,20 +1880,22 @@ match /users/{userId} {
     function adminBookingOperationalUpdate(bookingId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return (
-        changed.hasAny(['initialPaymentLedgerStatus'])
-          ? adminBookingInitialPaymentLedgerUpdate(bookingId)
-          : changed.hasAny([
-              'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
-            ])
-            ? adminBookingDecisionUpdate(bookingId)
-            : changed.hasAny(['lastSessionEventId'])
-              ? adminBookingSessionActionUpdate(bookingId)
-              : adminBookingManualUpdate(bookingId)
+        changed.hasAny(['lastFinanceAction', 'paymentHistory', 'refundHistory'])
+          ? adminBookingFinanceUpdateAllowed(bookingId)
+          : changed.hasAny(['initialPaymentLedgerStatus'])
+            ? adminBookingInitialPaymentLedgerUpdate(bookingId)
+            : changed.hasAny([
+                'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
+              ])
+              ? adminBookingDecisionUpdate(bookingId)
+              : changed.hasAny(['lastSessionEventId'])
+                ? adminBookingSessionActionUpdate(bookingId)
+                : adminBookingManualUpdate(bookingId)
       );
     }
 
     match /bookings/{bookingId} {
-      allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner(resource.data);
+      allow read: if (isApproved() && (canAccessBookingData() || hasPermission('bookkeeping'))) || isClientBookingOwner(resource.data);
       allow create: if (
           isApprovedScheduleAdmin() &&
           validManualBookingCreate(request.resource.data, bookingId) &&
@@ -1690,6 +1909,7 @@ match /users/{userId} {
           isApprovedScheduleAdmin() &&
           adminBookingOperationalUpdate(bookingId)
         ) ||
+        adminBookingFinanceUpdateAllowed(bookingId) ||
         (
           isClientBookingOwner(resource.data) &&
           request.resource.data.clientUid == resource.data.clientUid &&
@@ -1710,7 +1930,8 @@ match /users/{userId} {
           'status', 'proofUrl', 'proofPublicId', 'proofFileName',
           'proofMimeType', 'clientNote', 'adminNote', 'createdAt',
           'updatedAt', 'reviewedAt', 'reviewedByUid', 'reviewedByName'
-          , 'approvedAmount', 'approvedMethod'
+          , 'approvedAmount', 'approvedMethod', 'payerName',
+          'transactionReference', 'reviewDecision', 'reviewOperationId'
         ]) &&
         data.id == proofId &&
         validString(data.bookingId, 1, 128) &&
@@ -1722,8 +1943,8 @@ match /users/{userId} {
         validNumber(data.amount, 1, 100000000) &&
         data.method in ['transfer', 'qris'] &&
         data.status in ['pending', 'approved', 'rejected'] &&
-        validString(data.proofUrl, 1, 1200) &&
-        validString(data.proofPublicId, 1, 240) &&
+        validString(data.proofUrl, 0, 1200) &&
+        validString(data.proofPublicId, 0, 240) &&
         validString(data.proofFileName, 0, 240) &&
         validString(data.proofMimeType, 0, 120) &&
         validString(data.clientNote, 0, 600) &&
@@ -1734,7 +1955,11 @@ match /users/{userId} {
         validOptionalString(data, 'reviewedByUid', 128) &&
         validOptionalString(data, 'reviewedByName', 120) &&
         (!data.keys().hasAny(['approvedAmount']) || validNumber(data.approvedAmount, 1, 100000000)) &&
-        (!data.keys().hasAny(['approvedMethod']) || validString(data.approvedMethod, 1, 80));
+        (!data.keys().hasAny(['approvedMethod']) || validString(data.approvedMethod, 1, 80)) &&
+        validOptionalString(data, 'payerName', 120) &&
+        validOptionalString(data, 'transactionReference', 120) &&
+        validOptionalString(data, 'reviewDecision', 20) &&
+        validOptionalString(data, 'reviewOperationId', 80);
     }
 
     function clientCreatesPaymentProof(data, proofId) {
@@ -1746,6 +1971,12 @@ match /users/{userId} {
         data.reviewedAt == '' &&
         data.reviewedByUid == '' &&
         data.reviewedByName == '' &&
+        data.reviewDecision == '' &&
+        data.reviewOperationId == '' &&
+        data.proofUrl == '' &&
+        data.proofPublicId == '' &&
+        validString(data.transactionReference, 4, 120) &&
+        validString(data.payerName, 0, 120) &&
         bookingExists(data.bookingId) &&
         bookingData(data.bookingId).clientUid == request.auth.uid &&
         bookingData(data.bookingId).status != 'void' &&
@@ -1778,11 +2009,81 @@ match /users/{userId} {
       return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
     }
 
+
+    function approvedPaymentProofMatchesAfter(proofId) {
+      let proof = request.resource.data;
+      let bookingPath = /databases/$(database)/documents/bookings/$(proof.bookingId);
+      let bookingAfter = getAfter(bookingPath).data;
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(bookingAfter.lastFinanceLedgerEntryId);
+      let ledgerAfter = getAfter(ledgerPath).data;
+      let history = bookingAfter.paymentHistory;
+      let payment = history[history.size() - 1];
+      return existsAfter(bookingPath) &&
+        bookingAfter.lastFinanceAction == 'proof-approve' &&
+        bookingAfter.lastFinanceProofId == proofId &&
+        bookingAfter.lastFinanceOperationId == proof.reviewOperationId &&
+        bookingAfter.lastFinanceLedgerEntryId == ledgerAfter.id &&
+        payment.proofId == proofId &&
+        payment.proofReference == proof.transactionReference &&
+        payment.payerName == proof.payerName &&
+        payment.amount == proof.approvedAmount &&
+        payment.method == proof.approvedMethod &&
+        payment.operationId == proof.reviewOperationId &&
+        existsAfter(ledgerPath) &&
+        ledgerAfter.source == 'booking-payment' &&
+        ledgerAfter.sourceProofId == proofId &&
+        ledgerAfter.sourceBookingId == proof.bookingId &&
+        ledgerAfter.sourceEventId == payment.id &&
+        ledgerAfter.operationId == proof.reviewOperationId &&
+        ledgerAfter.amount == proof.approvedAmount &&
+        ledgerAfter.paymentMethod == proof.approvedMethod;
+    }
+
+    function paymentProofReviewUpdateAllowed(proofId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let proof = request.resource.data;
+      return isApprovedAdmin() &&
+        hasPermission('billing') &&
+        resource.data.status == 'pending' &&
+        validPaymentProof(proof, proofId) &&
+        changed.hasOnly([
+          'adminNote', 'approvedAmount', 'approvedMethod', 'reviewedAt',
+          'reviewedByUid', 'reviewedByName', 'reviewDecision',
+          'reviewOperationId', 'status', 'updatedAt'
+        ]) &&
+        proof.id == resource.data.id &&
+        proof.bookingId == resource.data.bookingId &&
+        proof.clientUid == resource.data.clientUid &&
+        proof.amount == resource.data.amount &&
+        proof.transactionReference == resource.data.transactionReference &&
+        proof.payerName == resource.data.payerName &&
+        proof.reviewedByUid == request.auth.uid &&
+        validIsoTimestampString(proof.reviewedAt) &&
+        validIsoTimestampString(proof.updatedAt) &&
+        validString(proof.reviewOperationId, 8, 80) &&
+        (
+          (
+            proof.status == 'rejected' &&
+            proof.reviewDecision == 'rejected' &&
+            validString(proof.adminNote, 4, 600) &&
+            !proof.keys().hasAny(['approvedAmount', 'approvedMethod'])
+          ) ||
+          (
+            proof.status == 'approved' &&
+            proof.reviewDecision == 'approved' &&
+            validNumber(proof.approvedAmount, 1, 100000000) &&
+            proof.approvedMethod in ['cash', 'transfer', 'qris', 'other'] &&
+            approvedPaymentProofMatchesAfter(proofId)
+          )
+        );
+    }
+
     match /paymentProofs/{proofId} {
       allow read: if (isApproved() && canAccessBookingData()) ||
         (isClientAccount() && resource.data.clientUid == request.auth.uid);
       allow create: if clientCreatesPaymentProof(request.resource.data, proofId);
-      allow update, delete: if false;
+      allow update: if paymentProofReviewUpdateAllowed(proofId);
+      allow delete: if false;
     }
 
     match /bookingMessages/{messageId} {
@@ -1836,20 +2137,36 @@ match /users/{userId} {
       allow update, delete: if false;
     }
 
+    function financeVoidScheduleSlotDeleteAllowed(bookingId) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      let bookingAfter = getAfter(bookingPath).data;
+      return isApprovedAdmin() &&
+        hasPermission('billing') &&
+        existsAfter(bookingPath) &&
+        bookingAfter.lastFinanceAction == 'void' &&
+        bookingAfter.lastFinanceLedgerEntryId == '' &&
+        bookingAfter.lastFinanceProofId == '' &&
+        bookingAfter.paymentStatus == 'void' &&
+        !bookingRequiresPublicSlot(bookingAfter) &&
+        financeBookingVoidScheduleMatchesAfter(bookingId, bookingAfter);
+    }
+
     match /clientCalendarSlots/{slotId} {
       // Public availability exposes generic occupied-slot metadata only.
       allow read: if true;
       allow create, update: if isApprovedScheduleAdmin() &&
         existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
         bookingCalendarSlotMatchesAfter(slotId, getAfter(/databases/$(database)/documents/bookings/$(slotId)).data);
-      allow delete: if isApprovedScheduleAdmin() &&
-        existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
-        !bookingRequiresPublicSlot(getAfter(/databases/$(database)/documents/bookings/$(slotId)).data) &&
-        bookingScheduleDayMatchesAfter(
-          getAfter(/databases/$(database)/documents/bookings/$(slotId)).data.date,
-          slotId,
-          getAfter(/databases/$(database)/documents/bookings/$(slotId)).data.updatedAt
-        );
+      allow delete: if (
+          isApprovedScheduleAdmin() &&
+          existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
+          !bookingRequiresPublicSlot(getAfter(/databases/$(database)/documents/bookings/$(slotId)).data) &&
+          bookingScheduleDayMatchesAfter(
+            getAfter(/databases/$(database)/documents/bookings/$(slotId)).data.date,
+            slotId,
+            getAfter(/databases/$(database)/documents/bookings/$(slotId)).data.updatedAt
+          )
+        ) || financeVoidScheduleSlotDeleteAllowed(slotId);
     }
 
     function bookingDocumentChangesAfter(bookingId, updatedAt) {
@@ -1863,17 +2180,55 @@ match /users/{userId} {
         );
     }
 
+    function financeVoidScheduleDayCompanionAllowed(dateId, dayData) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(dayData.lastBookingId);
+      let bookingAfter = getAfter(bookingPath).data;
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(bookingAfter.lastFinanceBusinessDate + '__main');
+      let closingAfter = getAfter(closingPath).data;
+      return isApprovedAdmin() &&
+        hasPermission('billing') &&
+        existsAfter(bookingPath) &&
+        bookingAfter.lastFinanceAction == 'void' &&
+        bookingAfter.date == dateId &&
+        bookingAfter.updatedAt == dayData.updatedAt &&
+        bookingDocumentChangesAfter(dayData.lastBookingId, dayData.updatedAt) &&
+        financeBookingVoidScheduleMatchesAfter(dayData.lastBookingId, bookingAfter) &&
+        closingAfter.lastOperationAction == 'void' &&
+        closingAfter.lastOperationId == bookingAfter.lastFinanceOperationId &&
+        closingAfter.lastBookingId == dayData.lastBookingId &&
+        repositoryOperationMatchesAfter(
+          bookingAfter.lastFinanceOperationId,
+          'finance',
+          'void',
+          'bookings',
+          dayData.lastBookingId
+        );
+    }
+
     match /bookingScheduleDays/{dateId} {
-      allow read: if isApprovedAdmin() && canManageBookingData();
-      allow create: if isApprovedScheduleAdmin() &&
-        validBookingScheduleDay(request.resource.data, dateId) &&
-        request.resource.data.revision == 1 &&
-        bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt);
-      allow update: if isApprovedScheduleAdmin() &&
-        validBookingScheduleDay(request.resource.data, dateId) &&
-        resource.data.date == dateId &&
-        request.resource.data.revision == resource.data.revision + 1 &&
-        bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt);
+      allow read: if isApprovedAdmin() && (canManageBookingData() || hasPermission('billing'));
+      allow create: if (
+          isApprovedScheduleAdmin() &&
+          validBookingScheduleDay(request.resource.data, dateId) &&
+          request.resource.data.revision == 1 &&
+          bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt)
+        ) || (
+          validBookingScheduleDay(request.resource.data, dateId) &&
+          request.resource.data.revision == 1 &&
+          financeVoidScheduleDayCompanionAllowed(dateId, request.resource.data)
+        );
+      allow update: if (
+          isApprovedScheduleAdmin() &&
+          validBookingScheduleDay(request.resource.data, dateId) &&
+          resource.data.date == dateId &&
+          request.resource.data.revision == resource.data.revision + 1 &&
+          bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt)
+        ) || (
+          validBookingScheduleDay(request.resource.data, dateId) &&
+          resource.data.date == dateId &&
+          request.resource.data.revision == resource.data.revision + 1 &&
+          financeVoidScheduleDayCompanionAllowed(dateId, request.resource.data)
+        );
       allow delete: if false;
     }
 
@@ -2230,7 +2585,7 @@ match /users/{userId} {
           'sourceGuardPersonId', 'sourceBookingId',
           'sourceFeeEntryId', 'sourceEventId', 'sourceAction', 'sourceWorkOrderId',
           'actorName', 'actorUid', 'idempotencyKey', 'immutable',
-          'reversalOf', 'createdAt', 'updatedAt'
+          'operationId', 'sourceProofId', 'reversalOf', 'createdAt', 'updatedAt'
         ]) &&
         data.id == entryId &&
         data.type in ['income', 'expense'] &&
@@ -2252,6 +2607,8 @@ match /users/{userId} {
         validOptionalString(data, 'actorName', 120) &&
         validOptionalString(data, 'actorUid', 128) &&
         validOptionalString(data, 'idempotencyKey', 240) &&
+        validOptionalString(data, 'operationId', 80) &&
+        validOptionalString(data, 'sourceProofId', 160) &&
         (!data.keys().hasAny(['immutable']) || data.immutable is bool) &&
         validOptionalString(data, 'reversalOf', 240) &&
         validIsoTimestampString(data.createdAt) &&
@@ -2353,6 +2710,185 @@ match /users/{userId} {
       return !exists(closingPath) || get(closingPath).data.status != 'closed';
     }
 
+
+    function financeBookingPaymentLedgerPairMatchesAfter(data, entryId) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
+      let bookingBefore = get(bookingPath).data;
+      let bookingAfter = getAfter(bookingPath).data;
+      let history = bookingAfter.paymentHistory;
+      let event = history[history.size() - 1];
+      let beforeCount = ('paymentHistory' in bookingBefore) ? bookingBefore.paymentHistory.size() : 0;
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(data.date + '__main');
+      let closingAfter = getAfter(closingPath).data;
+      return exists(bookingPath) &&
+        existsAfter(bookingPath) &&
+        history.size() == beforeCount + 1 &&
+        bookingAfter.lastFinanceAction in ['payment', 'proof-approve'] &&
+        bookingAfter.lastFinanceBusinessDate == data.date &&
+        bookingAfter.lastFinanceOperationId == data.operationId &&
+        bookingAfter.lastFinanceLedgerEntryId == entryId &&
+        bookingAfter.lastFinanceEventId == event.id &&
+        bookingAfter.lastFinanceProofId == data.sourceProofId &&
+        event.ledgerEntryId == entryId &&
+        event.operationId == data.operationId &&
+        event.id == data.sourceEventId &&
+        event.amount == data.amount &&
+        event.method == data.paymentMethod &&
+        event.date == data.date &&
+        event.actorUid == request.auth.uid &&
+        (data.sourceProofId == '' ? !event.keys().hasAny(['proofId']) : event.proofId == data.sourceProofId) &&
+        data.id == entryId &&
+        data.source == 'booking-payment' &&
+        data.sourceAction == 'payment' &&
+        data.type == 'income' &&
+        data.category == 'booking' &&
+        data.immutable == true &&
+        data.actorUid == request.auth.uid &&
+        data.operationId is string &&
+        data.idempotencyKey == event.idempotencyKey &&
+        existsAfter(closingPath) &&
+        closingAfter.lastOperationAction == bookingAfter.lastFinanceAction &&
+        closingAfter.lastOperationId == data.operationId &&
+        closingAfter.lastBookingId == data.sourceBookingId &&
+        closingAfter.lastLedgerEntryId == entryId &&
+        closingAfter.lastProofId == data.sourceProofId;
+    }
+
+    function financeBookingRefundLedgerPairMatchesAfter(data, entryId) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
+      let bookingBefore = get(bookingPath).data;
+      let bookingAfter = getAfter(bookingPath).data;
+      let history = bookingAfter.refundHistory;
+      let event = history[history.size() - 1];
+      let beforeCount = ('refundHistory' in bookingBefore) ? bookingBefore.refundHistory.size() : 0;
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(data.date + '__main');
+      let closingAfter = getAfter(closingPath).data;
+      return exists(bookingPath) &&
+        existsAfter(bookingPath) &&
+        history.size() == beforeCount + 1 &&
+        bookingAfter.lastFinanceAction == 'refund' &&
+        bookingAfter.lastFinanceBusinessDate == data.date &&
+        bookingAfter.lastFinanceOperationId == data.operationId &&
+        bookingAfter.lastFinanceLedgerEntryId == entryId &&
+        bookingAfter.lastFinanceEventId == event.id &&
+        bookingAfter.lastFinanceProofId == '' &&
+        event.ledgerEntryId == entryId &&
+        event.operationId == data.operationId &&
+        event.id == data.sourceEventId &&
+        event.amount == data.amount &&
+        event.method == data.paymentMethod &&
+        event.date == data.date &&
+        event.actorUid == request.auth.uid &&
+        data.id == entryId &&
+        data.source == 'booking-refund' &&
+        data.sourceAction == 'refund' &&
+        data.type == 'expense' &&
+        data.category == 'refund' &&
+        data.sourceProofId == '' &&
+        data.immutable == true &&
+        data.actorUid == request.auth.uid &&
+        data.idempotencyKey == event.idempotencyKey &&
+        existsAfter(closingPath) &&
+        closingAfter.lastOperationAction == 'refund' &&
+        closingAfter.lastOperationId == data.operationId &&
+        closingAfter.lastBookingId == data.sourceBookingId &&
+        closingAfter.lastLedgerEntryId == entryId &&
+        closingAfter.lastProofId == '';
+    }
+
+    function financeBookingLedgerCreateAllowed(data, entryId) {
+      return isApprovedAdmin() &&
+        hasPermission('billing') &&
+        validBookkeepingEntry(data, entryId) &&
+        bookkeepingBusinessDateOpen(data) &&
+        (
+          (
+            data.source == 'booking-payment' &&
+            data.sourceAction == 'payment' &&
+            data.type == 'income' &&
+            data.category == 'booking' &&
+            financeBookingPaymentLedgerPairMatchesAfter(data, entryId)
+          ) ||
+          (
+            data.source == 'booking-refund' &&
+            data.sourceAction == 'refund' &&
+            data.type == 'expense' &&
+            data.category == 'refund' &&
+            financeBookingRefundLedgerPairMatchesAfter(data, entryId)
+          )
+        );
+    }
+
+    function manualBookkeepingFenceMatchesAfter(entryId, operationId, action, businessDate) {
+      let closingId = businessDate + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingAfter = getAfter(closingPath).data;
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(entryId);
+      let entryAfter = existsAfter(entryPath) ? getAfter(entryPath).data : {};
+      let entryBefore = exists(entryPath) ? get(entryPath).data : {};
+      return existsAfter(closingPath) &&
+        closingAfter.lastOperationId == operationId &&
+        closingAfter.lastOperationAction == action &&
+        closingAfter.lastLedgerEntryId == entryId &&
+        closingAfter.businessDate == businessDate &&
+        (
+          action == 'manual-delete'
+            ? (!existsAfter(entryPath) && exists(entryPath) && entryBefore.source in ['', 'manual'] && entryBefore.date == businessDate)
+            : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
+                entryAfter.operationId == operationId &&
+                (entryAfter.date == businessDate || (exists(entryPath) && entryBefore.date == businessDate)))
+        );
+    }
+
+    function manualBookkeepingCreateOrUpdateAllowed(data, entryId, action) {
+      return data.operationId is string &&
+        manualBookkeepingFenceMatchesAfter(entryId, data.operationId, action, data.date) &&
+        repositoryOperationMatchesAfter(
+          data.operationId,
+          'bookkeeping',
+          action,
+          'bookkeepingEntries',
+          entryId
+        );
+    }
+
+    function manualBookkeepingUpdateAllowed(data, entryId) {
+      return manualBookkeepingCreateOrUpdateAllowed(
+          data,
+          entryId,
+          'manual-update'
+        ) &&
+        (
+          resource.data.date == data.date ||
+          manualBookkeepingFenceMatchesAfter(
+            entryId,
+            data.operationId,
+            'manual-update',
+            resource.data.date
+          )
+        );
+    }
+
+    function manualBookkeepingDeleteAllowed(entryId) {
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(resource.data.date + '__main');
+      let closingAfter = existsAfter(closingPath) ? getAfter(closingPath).data : {};
+      let operationId = closingAfter.lastOperationId;
+      return isApprovedAdmin() &&
+        canManageBookkeepingData() &&
+        resource.data.source in ['', 'manual'] &&
+        !isReconciledBookkeepingSource(resource.data) &&
+        bookkeepingBusinessDateOpen(resource.data) &&
+        existsAfter(closingPath) &&
+        manualBookkeepingFenceMatchesAfter(entryId, operationId, 'manual-delete', resource.data.date) &&
+        repositoryOperationMatchesAfter(
+          operationId,
+          'bookkeeping',
+          'manual-delete',
+          '',
+          ''
+        );
+    }
+
     function bookingInitialPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingBefore = get(bookingPath).data;
@@ -2405,76 +2941,324 @@ match /users/{userId} {
         if (
           bookingInitialPaymentLedgerCreateAllowed(request.resource.data, entryId) &&
           bookkeepingBusinessDateOpen(request.resource.data)
+        ) || financeBookingLedgerCreateAllowed(request.resource.data, entryId) || (
+          isApprovedAdmin() &&
+          canManageBookkeepingData() &&
+          validBookkeepingEntry(request.resource.data, entryId) &&
+          bookkeepingBusinessDateOpen(request.resource.data) &&
+          request.resource.data.source in ['', 'manual'] &&
+          manualBookkeepingCreateOrUpdateAllowed(request.resource.data, entryId, 'manual-create')
         ) || (
           isApprovedAdmin() &&
-          (
-            canManageBookkeepingData() ||
-            hasPermission('operator-fee')
-          ) &&
-          validBookkeepingEntry(
-            request.resource.data,
-            entryId
-          ) &&
+          hasPermission('operator-fee') &&
+          validBookkeepingEntry(request.resource.data, entryId) &&
           bookkeepingBusinessDateOpen(request.resource.data) &&
-          request.resource.data.source in ['', 'manual', 'operatorFee', 'guardAttendanceMeal'] &&
-          reconciledBookkeepingWriteAllowed(
-            request.resource.data
-          )
+          request.resource.data.source in ['operatorFee', 'guardAttendanceMeal'] &&
+          reconciledBookkeepingWriteAllowed(request.resource.data)
         );
 
       allow update:
         if isApprovedAdmin() &&
-        (
-          canManageBookkeepingData() ||
-          hasPermission('operator-fee')
-        ) &&
-        validBookkeepingEntry(
-          request.resource.data,
-          entryId
-        ) &&
+        canManageBookkeepingData() &&
+        validBookkeepingEntry(request.resource.data, entryId) &&
         bookkeepingBusinessDateOpen(resource.data) &&
         bookkeepingBusinessDateOpen(request.resource.data) &&
         resource.data.source in ['', 'manual'] &&
         request.resource.data.source in ['', 'manual'] &&
-        (
-          (
-            !isReconciledBookkeepingSource(
-              resource.data
-            ) &&
-            !isReconciledBookkeepingSource(
-              request.resource.data
-            )
-          ) ||
-          (
-            resource.data.source ==
-              request.resource.data.source &&
-            reconciledBookkeepingWriteAllowed(
-              request.resource.data
-            )
-          )
-        );
+        manualBookkeepingUpdateAllowed(request.resource.data, entryId);
 
-      allow delete:
-        if isApprovedAdmin() &&
-        canManageBookkeepingData() &&
-        bookkeepingBusinessDateOpen(resource.data) &&
-        !isReconciledBookkeepingSource(
-          resource.data
-        ) &&
-        resource.data.source in ['', 'manual'];
+      allow delete: if manualBookkeepingDeleteAllowed(entryId);
     }
 
 
+
+    function validCashClosingSession(data, closingId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+          'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+          'lastOperationId', 'lastOperationAction', 'lastBookingId',
+          'lastLedgerEntryId', 'lastProofId', 'revision', 'cashVariance',
+          'closedAt', 'closedByName', 'closedByUid', 'cashDenominations',
+          'countedCash', 'cutoffAt', 'digitalCounts', 'digitalReconciliation',
+          'expectedCash', 'lastEventAt', 'lastEventId', 'lastEventType',
+          'openingCash', 'reviewNote', 'sourceFingerprint', 'sourceWatermark',
+          'totalsByMethod', 'transactionCount', 'transactionReferences',
+          'varianceReason', 'lastFinanceOperationId', 'reopenReason',
+          'reopenedAt', 'reopenedByName', 'reopenedByUid'
+        ]) &&
+        data.keys().hasAll([
+          'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['open', 'reopened', 'closed'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 0 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validOptionalString(data, 'lastActivityAt', 40) &&
+        validOptionalString(data, 'lastActivityByUid', 128) &&
+        validOptionalString(data, 'lastOperationId', 80) &&
+        validOptionalString(data, 'lastOperationAction', 40) &&
+        validOptionalString(data, 'lastBookingId', 160) &&
+        validOptionalString(data, 'lastLedgerEntryId', 160) &&
+        validOptionalString(data, 'lastProofId', 160) &&
+        validOptionalString(data, 'lastFinanceOperationId', 80) &&
+        (!data.keys().hasAny(['revision']) || (data.revision is int && data.revision >= 0)) &&
+        (!data.keys().hasAny(['transactionCount']) || (data.transactionCount is int && data.transactionCount >= 0 && data.transactionCount <= 1000)) &&
+        (!data.keys().hasAny(['transactionReferences']) || (data.transactionReferences is list && data.transactionReferences.size() <= 1000)) &&
+        (!data.keys().hasAny(['totalsByMethod']) || data.totalsByMethod is map) &&
+        (!data.keys().hasAny(['digitalCounts']) || data.digitalCounts is map) &&
+        (!data.keys().hasAny(['digitalReconciliation']) || data.digitalReconciliation is map) &&
+        (!data.keys().hasAny(['cashDenominations']) || data.cashDenominations is map) &&
+        validOptionalString(data, 'closedAt', 40) &&
+        validOptionalString(data, 'closedByName', 120) &&
+        validOptionalString(data, 'closedByUid', 128) &&
+        validOptionalString(data, 'cutoffAt', 40) &&
+        validOptionalString(data, 'lastEventAt', 40) &&
+        validOptionalString(data, 'lastEventId', 160) &&
+        validOptionalString(data, 'lastEventType', 40) &&
+        validOptionalString(data, 'sourceFingerprint', 64) &&
+        validOptionalString(data, 'sourceWatermark', 50) &&
+        validOptionalString(data, 'reviewNote', 1000) &&
+        validOptionalString(data, 'varianceReason', 600) &&
+        validOptionalString(data, 'reopenReason', 600) &&
+        validOptionalString(data, 'reopenedAt', 40) &&
+        validOptionalString(data, 'reopenedByName', 120) &&
+        validOptionalString(data, 'reopenedByUid', 128);
+    }
+
+    function activityRevisionIncrements(closingId, data) {
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return exists(closingPath)
+        ? data.activityRevision == get(closingPath).data.get('activityRevision', 0) + 1
+        : data.activityRevision == 1;
+    }
+
+    function financeActivityLedgerCompanionMatchesAfter(data, bookingAfter) {
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
+      let ledgerAfter = getAfter(ledgerPath).data;
+      return data.lastLedgerEntryId is string &&
+        data.lastLedgerEntryId.size() > 0 &&
+        existsAfter(ledgerPath) &&
+        ledgerAfter.operationId == data.lastOperationId &&
+        ledgerAfter.sourceBookingId == data.lastBookingId &&
+        ledgerAfter.sourceEventId == bookingAfter.lastFinanceEventId &&
+        ledgerAfter.sourceProofId == data.lastProofId &&
+        ledgerAfter.amount is number &&
+        ledgerAfter.actorUid == request.auth.uid &&
+        ledgerAfter.date == data.businessDate;
+    }
+
+    function financeActivityVoidCompanionMatchesAfter(data, bookingAfter) {
+      return data.lastLedgerEntryId == '' &&
+        data.lastProofId == '' &&
+        bookingAfter.lastFinanceAction == 'void' &&
+        bookingAfter.lastFinanceLedgerEntryId == '' &&
+        bookingAfter.lastFinanceProofId == '';
+    }
+
+    function financeActivityBookingCompanionMatchesAfter(data, action) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(data.lastBookingId);
+      let bookingAfter = getAfter(bookingPath).data;
+      return existsAfter(bookingPath) &&
+        bookingAfter.lastFinanceAction == action &&
+        bookingAfter.lastFinanceBusinessDate == data.businessDate &&
+        bookingAfter.lastFinanceOperationId == data.lastOperationId &&
+        bookingAfter.lastFinanceLedgerEntryId == data.lastLedgerEntryId &&
+        bookingAfter.lastFinanceProofId == data.lastProofId &&
+        (
+          action == 'void'
+            ? financeActivityVoidCompanionMatchesAfter(data, bookingAfter)
+            : financeActivityLedgerCompanionMatchesAfter(data, bookingAfter)
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'finance',
+          action,
+          'bookings',
+          data.lastBookingId
+        );
+    }
+
+    function financeActivityFenceUpdateAllowed(closingId) {
+      let data = request.resource.data;
+      let action = data.lastOperationAction;
+      return isApprovedAdmin() &&
+        hasPermission('billing') &&
+        validCashClosingSession(data, closingId) &&
+        data.status in ['open', 'reopened'] &&
+        action in ['payment', 'proof-approve', 'refund', 'void'] &&
+        data.lastActivityByUid == request.auth.uid &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastOperationId is string &&
+        data.lastBookingId is string &&
+        data.lastBookingId.size() > 0 &&
+        activityRevisionIncrements(closingId, data) &&
+        (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
+          get(/databases/$(database)/documents/cashClosingSessions/$(closingId)).data.status != 'closed') &&
+        financeActivityBookingCompanionMatchesAfter(data, action);
+    }
+
+    function manualBookkeepingFenceCompanionMatchesAfter(data, action) {
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
+      let entryAfter = existsAfter(entryPath) ? getAfter(entryPath).data : {};
+      let entryBefore = exists(entryPath) ? get(entryPath).data : {};
+      let resultCollection = action == 'manual-delete' ? '' : 'bookkeepingEntries';
+      let resultId = action == 'manual-delete' ? '' : data.lastLedgerEntryId;
+      return (
+          action == 'manual-delete'
+            ? (!existsAfter(entryPath) && exists(entryPath) &&
+                entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
+            : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
+                entryAfter.operationId == data.lastOperationId &&
+                (entryAfter.date == data.businessDate ||
+                  (exists(entryPath) && entryBefore.date == data.businessDate)))
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'bookkeeping',
+          action,
+          resultCollection,
+          resultId
+        );
+    }
+
+    function manualBookkeepingFenceUpdateAllowed(closingId) {
+      let data = request.resource.data;
+      let action = data.lastOperationAction;
+      return isApprovedAdmin() &&
+        canManageBookkeepingData() &&
+        validCashClosingSession(data, closingId) &&
+        data.status in ['open', 'reopened'] &&
+        action in ['manual-create', 'manual-update', 'manual-delete'] &&
+        data.lastActivityByUid == request.auth.uid &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastOperationId is string &&
+        data.lastLedgerEntryId is string &&
+        data.lastLedgerEntryId.size() > 0 &&
+        activityRevisionIncrements(closingId, data) &&
+        (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
+          get(/databases/$(database)/documents/cashClosingSessions/$(closingId)).data.status != 'closed') &&
+        manualBookkeepingFenceCompanionMatchesAfter(data, action);
+    }
+
+    function validCashClosingEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'action', 'actorName', 'actorUid', 'businessDate', 'closingId',
+          'createdAt', 'id', 'reason', 'registerId', 'revision',
+          'sourceFingerprint', 'snapshot', 'summary', 'type', 'operationId'
+        ]) &&
+        data.id == eventId &&
+        data.action in ['closed', 'reopened'] &&
+        validString(data.actorName, 1, 120) &&
+        data.actorUid == request.auth.uid &&
+        validIsoDate(data.businessDate) &&
+        validString(data.closingId, 1, 80) &&
+        data.closingId == data.businessDate + '__main' &&
+        validIsoTimestampString(data.createdAt) &&
+        validString(data.reason, 0, 600) &&
+        data.registerId == 'main' &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validString(data.sourceFingerprint, 0, 64) &&
+        data.type == 'cash-closing-event' &&
+        validString(data.operationId, 8, 80) &&
+        (!data.keys().hasAny(['snapshot']) || data.snapshot is map) &&
+        (!data.keys().hasAny(['summary']) || data.summary is map);
+    }
+
+    function cashClosingEventReferencesSessionAfter(eventId) {
+      let event = request.resource.data;
+      let sessionPath = /databases/$(database)/documents/cashClosingSessions/$(event.closingId);
+      let sessionAfter = getAfter(sessionPath).data;
+      let expectedAction = event.action == 'closed' ? 'daily-close' : 'daily-reopen';
+      return existsAfter(sessionPath) &&
+        sessionAfter.lastEventId == eventId &&
+        sessionAfter.lastEventType == event.action &&
+        sessionAfter.lastOperationId == event.operationId &&
+        sessionAfter.lastOperationAction == expectedAction &&
+        sessionAfter.businessDate == event.businessDate &&
+        sessionAfter.revision == event.revision &&
+        sessionAfter.status == (event.action == 'closed' ? 'closed' : 'reopened');
+    }
+
+    function dailyClosingSessionTransitionCompanionsMatchAfter(closingId, data) {
+      let sessionPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let hasPrevious = exists(sessionPath);
+      let previous = hasPrevious ? get(sessionPath).data : {};
+      let eventId = data.lastEventId;
+      let eventPath = /databases/$(database)/documents/cashClosingEvents/$(eventId);
+      let eventAfter = existsAfter(eventPath) ? getAfter(eventPath).data : {};
+      let action = data.lastOperationAction;
+      return (
+        (
+          action == 'daily-close' &&
+          data.status == 'closed' &&
+          (!hasPrevious || previous.status in ['open', 'reopened']) &&
+          data.revision == previous.get('revision', 0) + 1 &&
+          data.activityRevision == previous.get('activityRevision', 0) &&
+          data.lastEventType == 'closed' &&
+          existsAfter(eventPath) &&
+          eventAfter.action == 'closed' &&
+          eventAfter.operationId == data.lastOperationId &&
+          eventAfter.closingId == closingId
+        ) ||
+        (
+          action == 'daily-reopen' &&
+          isOwner() &&
+          hasPrevious &&
+          previous.status == 'closed' &&
+          data.status == 'reopened' &&
+          data.revision == previous.revision &&
+          data.activityRevision == previous.get('activityRevision', 0) + 1 &&
+          data.lastEventType == 'reopened' &&
+          existsAfter(eventPath) &&
+          eventAfter.action == 'reopened' &&
+          eventAfter.operationId == data.lastOperationId &&
+          eventAfter.closingId == closingId
+        )
+      );
+    }
+
+    function dailyClosingSessionTransitionAllowed(closingId) {
+      let data = request.resource.data;
+      let action = data.lastOperationAction;
+      return isApprovedAdmin() &&
+        canManageBookkeepingData() &&
+        validCashClosingSession(data, closingId) &&
+        action in ['daily-close', 'daily-reopen'] &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'finance',
+          action,
+          'cashClosingSessions',
+          closingId
+        ) &&
+        dailyClosingSessionTransitionCompanionsMatchAfter(closingId, data);
+    }
+
     match /cashClosingSessions/{closingId} {
-      allow read: if isApproved() && canAccessBookkeepingData();
-      // Closing snapshots are written only by the Admin Operations Worker.
-      allow create, update, delete: if false;
+      allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
+      allow create, update: if
+        financeActivityFenceUpdateAllowed(closingId) ||
+        manualBookkeepingFenceUpdateAllowed(closingId) ||
+        dailyClosingSessionTransitionAllowed(closingId);
+      allow delete: if false;
     }
 
     match /cashClosingEvents/{eventId} {
-      allow read: if isApproved() && canAccessBookkeepingData();
-      // Audit events are append-only server records.
-      allow create, update, delete: if false;
+      allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
+      allow create: if isApprovedAdmin() &&
+        canManageBookkeepingData() &&
+        validCashClosingEvent(request.resource.data, eventId) &&
+        cashClosingEventReferencesSessionAfter(eventId);
+      allow update, delete: if false;
     }
 
     function validInventoryItem(data, itemId) {

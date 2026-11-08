@@ -12,14 +12,14 @@ import {
   Check,
   MessageCircle,
   Moon,
-  UploadCloud,
+  CreditCard,
   Sun,
-  Image,
   Bell,
   X
 } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
+import { createRepositoryRequestId } from '../lib/firestoreRepositoryFoundation.js';
 import {
   BOOKING_PAYMENT_STATUS_META,
   BOOKING_SESSION_STATUS_META,
@@ -63,7 +63,6 @@ import {
   getStudioPaymentTerms,
   useStudioSettings,
 } from '../settings/studioSettings.js';
-import { uploadPaymentProofFile } from '../services/cloudinaryUploadService.js';
 import {
   buildPaymentProofPayload,
   getPaymentProofStatusLabel,
@@ -304,13 +303,17 @@ export default function ClientPortalPage() {
   const [proofCategory, setProofCategory] = useState('dp');
   const [proofMethod, setProofMethod] = useState('transfer');
   const [proofAmount, setProofAmount] = useState('');
-  const [proofFile, setProofFile] = useState(null);
+  const [proofReference, setProofReference] = useState('');
+  const [proofPayerName, setProofPayerName] = useState('');
+  const [proofRequestId, setProofRequestId] = useState(() => createRepositoryRequestId());
   const [proofNote, setProofNote] = useState('');
   const [simProofEnabled, setSimProofEnabled] = useState(false);
   const [simProofCategory, setSimProofCategory] = useState('dp');
   const [simProofMethod, setSimProofMethod] = useState('transfer');
   const [simProofAmount, setSimProofAmount] = useState('');
-  const [simProofFile, setSimProofFile] = useState(null);
+  const [simProofReference, setSimProofReference] = useState('');
+  const [simProofPayerName, setSimProofPayerName] = useState('');
+  const [simProofRequestId, setSimProofRequestId] = useState(() => createRepositoryRequestId());
   const [simProofNote, setSimProofNote] = useState('');
 
   function retryClientBookings() {
@@ -994,7 +997,9 @@ export default function ClientPortalPage() {
     setProofCategory('dp');
     setProofMethod('transfer');
     setProofAmount('');
-    setProofFile(null);
+    setProofReference('');
+    setProofPayerName('');
+    setProofRequestId(createRepositoryRequestId());
     setProofNote('');
   }
 
@@ -1003,7 +1008,9 @@ export default function ClientPortalPage() {
     setSimProofCategory('dp');
     setSimProofMethod('transfer');
     setSimProofAmount('');
-    setSimProofFile(null);
+    setSimProofReference('');
+    setSimProofPayerName('');
+    setSimProofRequestId(createRepositoryRequestId());
     setSimProofNote('');
   }
 
@@ -1021,7 +1028,9 @@ export default function ClientPortalPage() {
     setProofCategory(nextCategory);
     setProofMethod('transfer');
     setProofAmount(String(getDefaultProofAmount(booking, nextCategory)));
-    setProofFile(null);
+    setProofReference('');
+    setProofPayerName('');
+    setProofRequestId(createRepositoryRequestId());
     setProofNote('');
   }
 
@@ -1031,34 +1040,14 @@ export default function ClientPortalPage() {
     resetStandaloneProofForm();
   }
 
-  async function submitProofForBooking({ amount, booking, category, clientNote, file, method }) {
-    if (!currentUser) {
-      throw new Error('Client wajib login untuk upload bukti pembayaran.');
-    }
-
-    if (!file) {
-      throw new Error('Pilih file bukti pembayaran terlebih dahulu.');
-    }
-
-    const uploadResult = await uploadPaymentProofFile(file, {
-      bookingId: booking.id,
-      category,
-      clientUid: currentUser.uid,
-    });
-
+  async function submitProofForBooking({ amount, booking, category, clientNote, method, payerName, requestId, transactionReference }) {
+    if (!currentUser) throw new Error('Client wajib login untuk mengirim referensi pembayaran.');
     const payload = buildPaymentProofPayload({
       booking,
       clientUser: currentUser,
-      file,
-      form: {
-        amount,
-        category,
-        clientNote,
-        method,
-      },
-      uploadResult,
+      requestId,
+      form: { amount, category, clientNote, method, payerName, transactionReference },
     });
-
     return paymentProofRepository.submitPaymentProof(payload);
   }
 
@@ -1080,17 +1069,19 @@ export default function ClientPortalPage() {
         booking: selectedProofBooking,
         category: proofCategory,
         clientNote: proofNote,
-        file: proofFile,
         method: proofMethod,
+        payerName: proofPayerName,
+        requestId: proofRequestId,
+        transactionReference: proofReference,
       });
 
       setSelectedProofBooking(null);
       resetStandaloneProofForm();
-      setActionFeedback('Bukti pembayaran berhasil dikirim. Menunggu review admin.');
+      setActionFeedback('Referensi pembayaran berhasil dikirim. Menunggu review admin.');
       window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
-      console.error('Gagal upload bukti pembayaran:', error);
-      setActionFeedback(error?.message || 'Bukti pembayaran gagal dikirim.');
+      console.error('Gagal mengirim referensi pembayaran:', error);
+      setActionFeedback(error?.message || 'Referensi pembayaran gagal dikirim.');
       window.setTimeout(() => setActionFeedback(''), 5200);
     } finally {
       setIsSubmittingProof(false);
@@ -1133,6 +1124,12 @@ export default function ClientPortalPage() {
     if (!simCustomerPhone.trim()) {
       setActionFeedback('Nomor HP / WhatsApp wajib diisi.');
       window.setTimeout(() => setActionFeedback(''), 3600);
+      return null;
+    }
+
+    if (simProofEnabled && String(simProofReference || '').trim().length < 4) {
+      setActionFeedback('Nomor referensi transaksi minimal 4 karakter sebelum booking dikirim.');
+      window.setTimeout(() => setActionFeedback(''), 4200);
       return null;
     }
 
@@ -1244,8 +1241,8 @@ export default function ClientPortalPage() {
         };
 
         if (simProofEnabled) {
-          if (!simProofFile) {
-            throw new Error('Request tersimpan, tetapi bukti pembayaran belum dipilih.');
+          if (String(simProofReference || '').trim().length < 4) {
+            throw new Error('Request tersimpan, tetapi nomor referensi transaksi belum lengkap.');
           }
 
           await submitProofForBooking({
@@ -1259,15 +1256,17 @@ export default function ClientPortalPage() {
             booking: createdBooking,
             category: simProofCategory,
             clientNote: simProofNote,
-            file: simProofFile,
             method: simProofMethod,
+            payerName: simProofPayerName,
+            requestId: simProofRequestId + ':' + createdBooking.id,
+            transactionReference: simProofReference,
           });
         }
       } catch (innerError) {
         if (createdBooking) {
           const warning =
             innerError?.message ||
-            'Request tersimpan, tetapi bukti pembayaran gagal dikirim.';
+            'Request tersimpan, tetapi referensi pembayaran gagal dikirim.';
 
           resetSimulatorProofForm();
 
@@ -1864,7 +1863,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           proofAmount={simProofAmount}
           proofCategory={simProofCategory}
           proofEnabled={simProofEnabled}
-          proofFile={simProofFile}
+          proofPayerName={simProofPayerName}
+          proofReference={simProofReference}
           proofMethod={simProofMethod}
           proofNote={simProofNote}
           recordingTypeId={simRecordingTypeId}
@@ -1878,7 +1878,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           setProofAmount={setSimProofAmount}
           setProofCategory={setSimProofCategory}
           setProofEnabled={setSimProofEnabled}
-          setProofFile={setSimProofFile}
+          setProofPayerName={setSimProofPayerName}
+          setProofReference={setSimProofReference}
           setProofMethod={setSimProofMethod}
           setProofNote={setSimProofNote}
           setRecordingTypeId={setSimRecordingTypeId}
@@ -2047,8 +2048,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   }}
                   className="is-primary"
                 >
-                  <UploadCloud size={12} />
-                  <span>Kirim Bukti</span>
+                  <CreditCard size={12} />
+                  <span>Kirim Referensi</span>
                 </button>
               )}
             </div>
@@ -2058,16 +2059,16 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
       {selectedProofBooking ? (
         <div className="client-proof-modal-backdrop" role="presentation">
-          <section className="client-proof-modal" role="dialog" aria-modal="true" aria-label="Upload bukti pembayaran">
+          <section className="client-proof-modal" role="dialog" aria-modal="true" aria-label="Kirim referensi pembayaran">
             <header>
-              <span><UploadCloud size={16} />Upload Bukti</span>
-              <button aria-label="Tutup upload bukti" type="button" onClick={closePaymentProofModal}>
+              <span><CreditCard size={16} />Referensi Pembayaran</span>
+              <button aria-label="Tutup referensi pembayaran" type="button" onClick={closePaymentProofModal}>
                 <X size={17} />
               </button>
             </header>
 
             <div className="client-proof-modal-booking">
-              <Image size={16} />
+              <CreditCard size={16} />
               <span>
                 <strong>{selectedProofBooking.sessionLabel || selectedProofBooking.packageLabel || selectedProofBooking.title || 'Sesi Studio'}</strong>
                 <small>{selectedProofBooking.date} • {String(selectedProofBooking.startHour).padStart(2, '0')}.00 WIB</small>
@@ -2111,21 +2112,27 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 />
               </label>
 
-              <div className="client-proof-file-field">
-                <span>File bukti</span>
-                <label>
-                  <UploadCloud size={15} />
-                  <span>
-                    {proofFile ? proofFile.name : 'Pilih Foto Bukti Transfer'}
-                  </span>
-                  <input
-                    accept="image/*"
-                    type="file"
-                    onChange={(event) => setProofFile(event.target.files?.[0] || null)}
-                  />
-                </label>
-                <small>JPG, PNG, WEBP maks 8 MB</small>
-              </div>
+              <label className="client-proof-reference-field">
+                <span>No. referensi / kode transaksi</span>
+                <input
+                  autoComplete="off"
+                  maxLength={120}
+                  placeholder="Masukkan nomor referensi dari bank atau QRIS"
+                  required
+                  value={proofReference}
+                  onChange={(event) => setProofReference(event.target.value)}
+                />
+              </label>
+              <label className="client-proof-payer-field">
+                <span>Nama pemilik rekening / pengirim</span>
+                <input
+                  autoComplete="name"
+                  maxLength={120}
+                  placeholder="Nama sesuai rekening pengirim"
+                  value={proofPayerName}
+                  onChange={(event) => setProofPayerName(event.target.value)}
+                />
+              </label>
 
               <label className="client-proof-note-field">
                 <span>Catatan Client</span>
@@ -2144,9 +2151,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <button
                 type="button"
                 onClick={submitStandalonePaymentProof}
-                disabled={isSubmittingProof || !proofFile || paymentProofsLoading || Boolean(paymentProofsError)}
+                disabled={isSubmittingProof || proofReference.trim().length < 4 || paymentProofsLoading || Boolean(paymentProofsError)}
               >
-                {isSubmittingProof ? 'Mengirim...' : paymentProofsLoading ? 'Memuat status...' : paymentProofsError ? 'Status belum tersedia' : 'Submit Bukti'}
+                {isSubmittingProof ? 'Mengirim...' : paymentProofsLoading ? 'Memuat status...' : paymentProofsError ? 'Status belum tersedia' : 'Kirim Referensi'}
               </button>
             </footer>
           </section>

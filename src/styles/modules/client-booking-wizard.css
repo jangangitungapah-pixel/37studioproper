@@ -292,38 +292,6 @@
   padding-top: 11px;
 }
 
-.client-booking-wizard-file {
-  grid-column: 1 / -1;
-}
-
-.client-booking-wizard-file-button {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  overflow: hidden;
-  border: 1px dashed var(--auth-border);
-  border-radius: var(--studio-radius-md);
-  background: var(--auth-bg-control);
-  color: var(--auth-accent) !important;
-  cursor: pointer;
-  padding: 0 10px;
-}
-
-.client-booking-wizard-file-button b {
-  max-width: 80%;
-  overflow: hidden;
-  color: var(--auth-text-main);
-  font-size: var(--studio-text-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.client-booking-wizard-file-button input {
-  display: none;
-}
-
 .client-booking-wizard-proof-note {
   grid-column: 1 / -1;
 }
@@ -555,7 +523,8 @@
     grid-template-columns: 1fr;
   }
 
-  .client-booking-wizard-file,
+  .client-booking-wizard-proof-reference,
+  .client-booking-wizard-proof-payer,
   .client-booking-wizard-proof-note {
     grid-column: auto;
   }

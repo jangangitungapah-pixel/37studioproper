@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/modules/bookkeeping.css';
 import { Dialog } from 'radix-ui';
 import {
@@ -24,6 +24,7 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { bookkeepingRepository } from '../../services/bookkeepingRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 import DailyClosingWorkspace from '../../components/bookkeeping/DailyClosingWorkspace.jsx';
 import {
   buildBookingFinanceTransactions,
@@ -1432,6 +1433,16 @@ export default function BookkeepingPage() {
   const [bookingLoadError, setBookingLoadError] = useState('');
   const [entriesLoadError, setEntriesLoadError] = useState('');
   const [toast, setToast] = useState(null);
+  const manualSaveOperationRef = useRef(null);
+  const manualDeleteOperationsRef = useRef(new Map());
+
+  function resetManualSaveOperation() {
+    manualSaveOperationRef.current = {
+      fingerprint: '',
+      requestId: createRepositoryRequestId(),
+    };
+  }
+
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeManualBookings(
@@ -1608,6 +1619,7 @@ export default function BookkeepingPage() {
   }
 
   function openAddTransaction() {
+    resetManualSaveOperation();
     setEditingExpense(null);
     setEntryFormMode('expense');
     setIsExpenseFormOpen(true);
@@ -1617,6 +1629,7 @@ export default function BookkeepingPage() {
     setIsExpenseFormOpen(false);
     setEditingExpense(null);
     setEntryFormMode('expense');
+    resetManualSaveOperation();
   }
 
   function openEditExpense(transaction) {
@@ -1630,6 +1643,7 @@ export default function BookkeepingPage() {
       return;
     }
 
+    resetManualSaveOperation();
     setEditingExpense(targetEntry);
     setEntryFormMode(targetEntry.type === 'income' ? 'income' : 'expense');
     setIsExpenseFormOpen(true);
@@ -1637,10 +1651,20 @@ export default function BookkeepingPage() {
 
   async function saveExpense(entry) {
     try {
+      const fingerprint = JSON.stringify(entry);
+      if (!manualSaveOperationRef.current) resetManualSaveOperation();
+      if (
+        manualSaveOperationRef.current.fingerprint &&
+        manualSaveOperationRef.current.fingerprint !== fingerprint
+      ) {
+        resetManualSaveOperation();
+      }
+      manualSaveOperationRef.current.fingerprint = fingerprint;
+      const operationRequestId = manualSaveOperationRef.current.requestId;
       const isEditing = Boolean(entry.id);
       const savedEntry = isEditing
-        ? await bookkeepingRepository.updateBookkeepingEntry(entry)
-        : await bookkeepingRepository.createBookkeepingEntry(entry);
+        ? await bookkeepingRepository.updateBookkeepingEntry(entry, operationRequestId)
+        : await bookkeepingRepository.createBookkeepingEntry(entry, operationRequestId);
       const typeLabel = getEntryTypeLabel(savedEntry.type);
 
       closeExpenseForm();
@@ -1652,7 +1676,7 @@ export default function BookkeepingPage() {
       console.error('Gagal menyimpan transaksi pembukuan:', error);
       setToast({
         title: 'Gagal menyimpan',
-        message: 'Transaksi belum berhasil disimpan ke Firestore.',
+        message: error?.message || 'Transaksi belum berhasil disimpan ke Firestore.',
       });
     }
   }
@@ -1667,7 +1691,13 @@ export default function BookkeepingPage() {
 
       if (!confirmed) return;
 
-      await bookkeepingRepository.deleteBookkeepingEntry(transaction.entryId);
+      const entryId = transaction.entryId;
+      if (!manualDeleteOperationsRef.current.has(entryId)) {
+        manualDeleteOperationsRef.current.set(entryId, createRepositoryRequestId());
+      }
+      const operationRequestId = manualDeleteOperationsRef.current.get(entryId);
+      await bookkeepingRepository.deleteBookkeepingEntry(entryId, operationRequestId);
+      manualDeleteOperationsRef.current.delete(entryId);
 
       setToast({
         title: getEntryTypeLabel(transaction.type) + ' dihapus',
@@ -1677,7 +1707,7 @@ export default function BookkeepingPage() {
       console.error('Gagal menghapus transaksi pembukuan:', error);
       setToast({
         title: 'Gagal menghapus',
-        message: 'Transaksi belum berhasil dihapus dari Firestore.',
+        message: error?.message || 'Transaksi belum berhasil dihapus dari Firestore.',
       });
     }
   }

@@ -1684,18 +1684,11 @@ function BookingDetailDrawerContent({
                             }
                           </p>
 
-                          {payment
-                            ?.proofUrl ? (
-                            <a
-                              href={
-                                payment
-                                  .proofUrl
-                              }
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              Lihat bukti
-                            </a>
+                          {payment?.proofReference ? (
+                            <small className="booking-detail-drawer-payment-reference">
+                              Referensi: {payment.proofReference}
+                              {payment.payerName ? ' • ' + payment.payerName : ''}
+                            </small>
                           ) : null}
                         </article>
                       ),

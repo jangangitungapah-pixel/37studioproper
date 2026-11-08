@@ -5,7 +5,7 @@ import {
 import {
   CheckCircle2,
   Clock3,
-  Image,
+  CreditCard,
   Search,
   UploadCloud,
   XCircle,
@@ -249,6 +249,8 @@ function getProofSearchHaystack(
     proof?.status,
     proof?.adminNote,
     proof?.clientNote,
+    proof?.transactionReference,
+    proof?.payerName,
     proof?.reviewedByName,
 
     booking?.customer,
@@ -409,13 +411,17 @@ export default function PaymentProofCommandCenter({
                 onClick={() => onOpenProof(proof)}
               >
                 <span className="billing-proof-command-thumb">
-                  {proof.proofUrl ? <img alt="" loading="lazy" src={proof.proofUrl} /> : <Image size={16} />}
+                  <CreditCard size={16} />
                 </span>
 
                 <span className="billing-proof-command-main">
                   <strong>{proof.customer || booking?.customer || 'Client'}</strong>
                   <small>{getInvoiceNumber(proof, booking)} · {getBookingCode(proof, booking)}</small>
                   <em>{getCategoryLabel(proof.category)} · {getMethodLabel(proof.method)}</em>
+                  <small className="billing-proof-command-reference">
+                    Ref: {proof.transactionReference || 'Referensi historis tidak tersedia'}
+                    {proof.payerName ? ' · ' + proof.payerName : ''}
+                  </small>
                 </span>
 
                 <span className="billing-proof-command-audit">

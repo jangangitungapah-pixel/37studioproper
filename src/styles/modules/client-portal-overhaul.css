@@ -660,20 +660,17 @@ button.client-booking-slot { cursor: pointer; }
 .client-proof-modal-booking strong { color: var(--auth-text-strong); font-size: 10px; }
 .client-proof-modal-booking small { color: var(--auth-text-muted); font-size: 8px; }
 .client-proof-modal-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
-.client-proof-modal-grid > label,
-.client-proof-file-field { min-width: 0; display: grid; gap: 5px; }
-.client-proof-modal-grid > label > span,
-.client-proof-file-field > span { color: var(--auth-text-muted); font-size: 8px; font-weight: 720; }
+.client-proof-modal-grid > label { min-width: 0; display: grid; gap: 5px; }
+.client-proof-modal-grid > label > span { color: var(--auth-text-muted); font-size: 8px; font-weight: 720; }
 .client-proof-modal-grid input,
 .client-proof-modal-grid select,
 .client-proof-modal-grid textarea { width: 100%; min-width: 0; min-height: 46px; border: 1px solid var(--client-line); border-radius: 10px; outline: 0; background: var(--auth-bg-control); color: var(--auth-text-main); padding: 0 10px; font: inherit; font-size: 10px; }
 .client-proof-modal-grid textarea { min-height: 82px; resize: vertical; padding-block: 10px; }
-.client-proof-note-field,
-.client-proof-file-field { grid-column: 1 / -1; }
-.client-proof-file-field > label { min-height: 54px; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px dashed color-mix(in srgb, var(--client-accent) 38%, var(--client-line)); border-radius: 10px; background: var(--client-accent-soft); color: var(--client-accent); padding: 0 12px; cursor: pointer; }
-.client-proof-file-field > label > span { overflow: hidden; color: var(--auth-text-main); font-size: 9px; font-weight: 720; text-overflow: ellipsis; white-space: nowrap; }
-.client-proof-file-field input { display: none; }
-.client-proof-file-field small { color: var(--auth-text-subtle); font-size: 7px; }
+.client-proof-note-field { grid-column: 1 / -1; }
+.client-proof-reference-field input,
+.client-proof-payer-field input { font-variant-numeric: tabular-nums; }
+.client-proof-reference-field input::placeholder,
+.client-proof-payer-field input::placeholder { color: var(--auth-text-subtle); }
 .client-proof-modal > footer { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .client-proof-modal > footer button { min-height: 44px; border: 1px solid var(--client-line); border-radius: 10px; background: transparent; color: var(--auth-text-main); font: inherit; font-size: 9px; font-weight: 780; cursor: pointer; }
 .client-proof-modal > footer button:last-child { border-color: var(--client-accent); background: var(--client-accent); color: var(--studio-text-inverse); }
@@ -749,8 +746,7 @@ button.client-booking-slot { cursor: pointer; }
   .client-detail-invoice-meta > div:first-child { border-right: 0; border-bottom: 1px solid var(--client-line); padding: 9px 0; }
   .client-detail-invoice-meta > div:last-child { border-bottom: 0; }
   .client-proof-modal-grid { grid-template-columns: 1fr; }
-  .client-proof-modal-grid > label,
-  .client-proof-file-field { grid-column: 1; }
+  .client-proof-modal-grid > label { grid-column: 1; }
   .client-portal-main { padding-inline: 14px; }
   .client-home-dashboard,
   .client-booking-board,

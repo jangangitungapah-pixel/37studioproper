@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   MessageCircle,
   Send,
-  UploadCloud,
   X,
 } from 'lucide-react';
 import StudioSelect from '../ui/StudioSelect.jsx';
@@ -192,9 +191,10 @@ export default function ClientBookingWizard({
   proofAmount,
   proofCategory,
   proofEnabled,
-  proofFile,
   proofMethod,
   proofNote,
+  proofPayerName,
+  proofReference,
   recordingTypeId,
   recordingTypeOptions,
   sessionOptions,
@@ -206,9 +206,10 @@ export default function ClientBookingWizard({
   setProofAmount,
   setProofCategory,
   setProofEnabled,
-  setProofFile,
   setProofMethod,
   setProofNote,
+  setProofPayerName,
+  setProofReference,
   setRecordingTypeId,
   startHour,
 }) {
@@ -811,7 +812,7 @@ export default function ClientBookingWizard({
 
                 <span>
                   <strong>
-                    Upload bukti pembayaran sekarang
+                    Kirim referensi pembayaran sekarang
                   </strong>
 
                   <small>
@@ -919,38 +920,26 @@ export default function ClientBookingWizard({
                     />
                   </label>
 
-                  <label className="client-booking-wizard-file">
-                    <span>
-                      File Bukti
-                    </span>
-
-                    <span className="client-booking-wizard-file-button">
-                      <UploadCloud
-                        size={14}
-                      />
-
-                      <b>
-                        {proofFile
-                          ? proofFile.name
-                          : 'Pilih Foto'}
-                      </b>
-
-                      <input
-                        accept="image/*"
-                        type="file"
-                        onChange={(
-                          event,
-                        ) =>
-                          setProofFile(
-                            event.target
-                              .files?.[
-                              0
-                            ] ||
-                              null,
-                          )
-                        }
-                      />
-                    </span>
+                  <label className="client-booking-wizard-proof-reference">
+                    <span>No. Referensi Transaksi</span>
+                    <input
+                      autoComplete="off"
+                      maxLength={120}
+                      placeholder="Nomor referensi bank / QRIS"
+                      required
+                      value={proofReference}
+                      onChange={(event) => setProofReference(event.target.value)}
+                    />
+                  </label>
+                  <label className="client-booking-wizard-proof-payer">
+                    <span>Nama Pengirim</span>
+                    <input
+                      autoComplete="name"
+                      maxLength={120}
+                      placeholder="Nama pemilik rekening"
+                      value={proofPayerName}
+                      onChange={(event) => setProofPayerName(event.target.value)}
+                    />
                   </label>
 
                   <label className="client-booking-wizard-proof-note">

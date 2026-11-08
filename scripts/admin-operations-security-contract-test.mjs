@@ -220,9 +220,9 @@ for (const forbidden of [
   assert.equal(billing.includes(forbidden), false, `Billing still performs ${forbidden}.`);
 }
 for (const required of [
-  'recordCanonicalPayment(',
-  'recordCanonicalRefund(',
-  'voidCanonicalInvoice(',
+  'financeRepository.recordPayment(',
+  'financeRepository.recordRefund(',
+  'financeRepository.voidInvoice(',
   'createAdminOperationKey(',
 ]) {
   assert.equal(billing.includes(required), true, `Billing missing ${required}.`);
@@ -230,7 +230,13 @@ for (const required of [
 
 assert.equal(paymentProofRepository.includes('writeBatch('), false);
 assert.equal(paymentProofRepository.includes('updateDoc('), false);
-assert.equal(paymentProofRepository.includes('reviewCanonicalPaymentProof('), true);
+assert.equal(paymentProofRepository.includes('runIdempotentFirestoreTransaction('), true);
+assert.equal(paymentProofRepository.includes('approvePaymentProofDirect('), true);
+assert.equal(paymentProofRepository.includes('rejectPaymentProofDirect('), true);
+assert.equal(paymentProofRepository.includes('reviewCanonicalPaymentProof('), false);
+assert.equal(billing.includes('recordCanonicalPayment('), false);
+assert.equal(billing.includes('recordCanonicalRefund('), false);
+assert.equal(billing.includes('voidCanonicalInvoice('), false);
 assert.equal(
   inventoryRepository.includes('createInventoryMovement') && billing.length > 0,
   true,

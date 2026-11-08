@@ -3,11 +3,11 @@ import {
   doc,
   onSnapshot,
   query,
-  setDoc,
   where,
 } from 'firebase/firestore';
-import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
-import { reviewCanonicalPaymentProof } from './adminOperationsRepository.js';
+import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { approvePaymentProofDirect, rejectPaymentProofDirect } from './firestoreFinanceRepository.js';
+import { createRepositoryRequestId, runIdempotentFirestoreTransaction } from '../lib/firestoreRepositoryFoundation.js';
 import {
   createAdminNotificationEvent,
   createClientNotificationEvent,
@@ -38,8 +38,8 @@ function assertFirebaseReady() {
   }
 }
 
-function cleanText(value) {
-  return String(value || '').trim();
+function cleanText(value, maxLength = 600) {
+  return String(value || '').trim().slice(0, maxLength);
 }
 
 function normalizeCategory(value) {
@@ -48,10 +48,6 @@ function normalizeCategory(value) {
 
 function normalizeMethod(value) {
   return value === 'qris' ? 'qris' : 'transfer';
-}
-
-function createPaymentProofId() {
-  return 'proof_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
 function getBookingDisplayCode(booking) {
@@ -158,6 +154,10 @@ export function normalizePaymentProof(proof) {
     id: cleanText(source.id),
     invoiceNumber: cleanText(source.invoiceNumber),
     method: normalizeMethod(source.method),
+    payerName: cleanText(source.payerName, 120),
+    transactionReference: cleanText(source.transactionReference, 120),
+    reviewDecision: cleanText(source.reviewDecision, 20),
+    reviewOperationId: cleanText(source.reviewOperationId, 80),
     proofFileName: cleanText(source.proofFileName),
     proofMimeType: cleanText(source.proofMimeType),
     proofPublicId: cleanText(source.proofPublicId),
@@ -170,65 +170,91 @@ export function normalizePaymentProof(proof) {
   };
 }
 
-export function buildPaymentProofPayload({ booking, clientUser, file, form, uploadResult }) {
-  if (!booking?.id) {
-    throw new Error('Booking tidak valid untuk upload bukti pembayaran.');
-  }
-
-  if (!clientUser?.uid) {
-    throw new Error('Client wajib login untuk upload bukti pembayaran.');
-  }
-
-  if (!uploadResult?.secureUrl) {
-    throw new Error('Upload bukti pembayaran belum berhasil.');
-  }
-
-  const now = new Date().toISOString();
-  const proofId = createPaymentProofId();
+export function buildPaymentProofPayload({ booking, clientUser, form, requestId }) {
+  if (!booking?.id) throw new Error('Booking tidak valid untuk mengirim referensi pembayaran.');
+  if (!clientUser?.uid) throw new Error('Client wajib login untuk mengirim referensi pembayaran.');
+  const reference = cleanText(form?.transactionReference, 120);
+  if (reference.length < 4) throw new Error('Nomor referensi transaksi minimal 4 karakter.');
+  const stableRequestId = cleanText(requestId || createRepositoryRequestId(), 128);
+  const proofId = 'proof_' + stableRequestId.replace(/[^a-z0-9_-]/gi, '_').slice(0, 120);
   const amount = Math.max(0, Number(form?.amount) || 0);
-
-  if (!amount) {
-    throw new Error('Nominal pembayaran wajib lebih dari 0.');
-  }
-
-  return normalizePaymentProof({
-    adminNote: '',
-    amount,
-    bookingCode: getBookingDisplayCode(booking),
-    bookingId: booking.id,
-    category: normalizeCategory(form?.category),
-    clientNote: form?.clientNote,
-    clientUid: clientUser.uid,
-    createdAt: now,
-    customer: booking.customer || clientUser.displayName || clientUser.email || 'Client',
-    id: proofId,
-    invoiceNumber: getInvoiceDisplayNumber(booking),
-    method: normalizeMethod(form?.method),
-    proofFileName: file?.name || '',
-    proofMimeType: file?.type || '',
-    proofPublicId: uploadResult.publicId || '',
-    proofUrl: uploadResult.secureUrl,
-    reviewedAt: '',
-    reviewedByName: '',
-    reviewedByUid: '',
-    status: 'pending',
-    updatedAt: now,
-  });
+  if (!amount) throw new Error('Nominal pembayaran wajib lebih dari 0.');
+  return {
+    ...normalizePaymentProof({
+      adminNote: '',
+      amount,
+      bookingCode: getBookingDisplayCode(booking),
+      bookingId: booking.id,
+      category: normalizeCategory(form?.category),
+      clientNote: form?.clientNote,
+      clientUid: clientUser.uid,
+      createdAt: new Date().toISOString(),
+      customer: booking.customer || clientUser.displayName || clientUser.email || 'Client',
+      id: proofId,
+      invoiceNumber: getInvoiceDisplayNumber(booking),
+      method: normalizeMethod(form?.method),
+      payerName: cleanText(form?.payerName, 120),
+      proofFileName: '',
+      proofMimeType: '',
+      proofPublicId: '',
+      proofUrl: '',
+      reviewedAt: '',
+      reviewedByName: '',
+      reviewedByUid: '',
+      reviewDecision: '',
+      reviewOperationId: '',
+      status: 'pending',
+      transactionReference: reference,
+      updatedAt: new Date().toISOString(),
+    }),
+    requestId: stableRequestId,
+  };
 }
 
 export async function submitPaymentProof(payload) {
   assertFirebaseReady();
-
   const proof = normalizePaymentProof(payload);
-
-  if (!proof.id || !proof.bookingId || !proof.clientUid || !proof.proofUrl || !proof.amount) {
-    throw new Error('Data bukti pembayaran belum lengkap.');
+  const user = firebaseAuth?.currentUser;
+  if (!user?.uid || proof.clientUid !== user.uid) {
+    throw new Error('Sesi client tidak sesuai dengan pemilik referensi pembayaran.');
   }
-
+  if (!proof.id || !proof.bookingId || !proof.clientUid || !proof.amount || proof.transactionReference.length < 4) {
+    throw new Error('Data referensi pembayaran belum lengkap.');
+  }
+  const requestId = cleanText(payload?.requestId, 128) || proof.id.slice(6);
   const proofRef = doc(firestoreDb, PAYMENT_PROOFS_COLLECTION, proof.id);
-  await setDoc(proofRef, proof);
-  await safeCreatePaymentProofSubmittedEvent(proof, { uid: proof.clientUid, email: '' });
-
+  const operation = await runIdempotentFirestoreTransaction({
+    db: firestoreDb,
+    actorUid: user.uid,
+    scope: 'payment-proof',
+    action: 'submit',
+    requestId,
+    payload: {
+      amount: proof.amount,
+      bookingId: proof.bookingId,
+      category: proof.category,
+      clientNote: proof.clientNote,
+      method: proof.method,
+      payerName: proof.payerName,
+      transactionReference: proof.transactionReference,
+    },
+    execute: async (transaction) => {
+      const bookingRef = doc(firestoreDb, 'bookings', proof.bookingId);
+      const bookingSnapshot = await transaction.get(bookingRef);
+      if (!bookingSnapshot.exists() || bookingSnapshot.data().clientUid !== user.uid) {
+        throw new Error('Booking bukan milik akun client ini.');
+      }
+      if (['void', 'refunded'].includes(bookingSnapshot.data().paymentStatusCanonical) ||
+          bookingSnapshot.data().paymentStatus === 'void') {
+        throw new Error('Invoice tidak menerima referensi pembayaran baru.');
+      }
+      transaction.set(proofRef, proof);
+      return { collection: PAYMENT_PROOFS_COLLECTION, id: proof.id };
+    },
+  });
+  if (!operation.replayed) {
+    await safeCreatePaymentProofSubmittedEvent(proof, { uid: proof.clientUid, email: user.email || '' });
+  }
   return proof;
 }
 
@@ -445,27 +471,21 @@ export function subscribePendingPaymentProofs(callback, onError) {
 
 export async function rejectPaymentProof(proof, reviewer, adminNote = '') {
   assertFirebaseReady();
-
   const cleanProof = normalizePaymentProof(proof);
-
-  if (!cleanProof.id) {
-    throw new Error('Bukti pembayaran tidak valid.');
-  }
-  const result = await reviewCanonicalPaymentProof(
+  if (!cleanProof.id) throw new Error('Bukti pembayaran tidak valid.');
+  const rejected = await rejectPaymentProofDirect(
     cleanProof.id,
-    'reject',
-    { reason: cleanText(adminNote) },
-    `payment-proof:reject:${cleanProof.id}`,
+    reviewer,
+    cleanText(adminNote),
+    'payment-proof:reject:' + cleanProof.id,
   );
-  const rejectedProof = normalizePaymentProof({ ...cleanProof, ...result.proof });
-
+  const rejectedProof = normalizePaymentProof({ ...cleanProof, ...rejected });
   await safeCreatePaymentProofReviewEvent({
     booking: null,
     proof: rejectedProof,
     reviewer,
     status: 'rejected',
   });
-
   return rejectedProof;
 }
 
@@ -478,42 +498,27 @@ export async function approvePaymentProofAndRecordPayment({
   reviewer,
 }) {
   assertFirebaseReady();
-
   const cleanProof = normalizePaymentProof(proof);
-
-  if (!booking?.id || !cleanProof.id) {
-    throw new Error('Booking atau bukti pembayaran tidak valid.');
-  }
-
-  if (cleanProof.status !== 'pending') {
-    throw new Error('Bukti pembayaran sudah pernah direview.');
-  }
-  if (!(Number(amount) > 0)) {
-    throw new Error('Konfirmasi nominal pembayaran wajib diisi.');
-  }
+  if (!booking?.id || !cleanProof.id) throw new Error('Booking atau referensi pembayaran tidak valid.');
+  if (cleanProof.status !== 'pending') throw new Error('Referensi pembayaran sudah pernah direview.');
+  if (!(Number(amount) > 0)) throw new Error('Konfirmasi nominal pembayaran wajib diisi.');
   if (!['cash', 'transfer', 'qris', 'other'].includes(cleanText(method).toLowerCase())) {
     throw new Error('Konfirmasi metode pembayaran wajib dipilih.');
   }
-
-  const result = await reviewCanonicalPaymentProof(
-    cleanProof.id,
-    'approve',
-    {
-      amount: Number(amount),
-      method: cleanText(method).toLowerCase(),
-      note: cleanText(adminNote),
-    },
-    `payment-proof:approve:${cleanProof.id}`,
-  );
-  const approvedProof = normalizePaymentProof({ ...cleanProof, ...result.proof });
-
-  await safeCreatePaymentProofReviewEvent({
+  const result = await approvePaymentProofDirect({
+    adminNote: cleanText(adminNote),
+    amount: Number(amount),
     booking,
+    method: cleanText(method).toLowerCase(),
+    proof: cleanProof,
+  }, 'payment-proof:approve:' + cleanProof.id);
+  const approvedProof = normalizePaymentProof({ ...cleanProof, ...result.proof });
+  await safeCreatePaymentProofReviewEvent({
+    booking: result.booking || booking,
     proof: approvedProof,
     reviewer,
     status: 'approved',
   });
-
   return { ...result, proof: approvedProof };
 }
 
