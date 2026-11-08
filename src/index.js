@@ -257,7 +257,11 @@ export default {
   method: request.method,
   status: publicError.status,
   errorMessage: String(error?.message || '').slice(0, 200),
-  requestPath: String(error?.requestPath || '').slice(0, 240),
+  requestPath: String(error?.requestPath || '')
+    .replace(/\/users\/[^/?]+/g, '/users/{uid}')
+    .slice(0, 240),
+  upstreamStatus: error?.status || null,
+  upstreamCode: error?.payload?.error?.status || null,
   upstreamDetails: error?.payload?.error?.details || null,
 });
       return json(request, env, publicError.payload, { status: publicError.status });

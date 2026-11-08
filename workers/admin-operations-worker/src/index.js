@@ -253,11 +253,26 @@ export default {
       return await handleRequest(request, env);
     } catch (error) {
       const publicError = toPublicError(error);
-      console.error('admin-operation-failed', {
-        code: publicError.payload.code,
-        method: request.method,
-        status: publicError.status,
-      });
+      console.error('admin-operation-diagnostic', {
+  method: request.method,
+  status: publicError.status,
+  errorMessage: String(error?.message || '').slice(0, 200),
+  requestPath: String(error?.requestPath || '')
+    .replace(/\/users\/[^/?]+/g, '/users/{uid}')
+    .slice(0, 240),
+  upstreamStatus: error?.status || null,
+  upstreamCode: error?.payload?.error?.status || null,
+  upstreamMessage: String(error?.payload?.error?.message || '').slice(0, 240),
+  upstreamDetails: Array.isArray(error?.payload?.error?.details)
+    ? error.payload.error.details.map((detail) => ({
+        reason: detail?.reason || null,
+        domain: detail?.domain || null,
+        permission: detail?.metadata?.permission || null,
+        service: detail?.metadata?.service || null,
+        method: detail?.metadata?.method || null,
+      }))
+    : [],
+});
       return json(request, env, publicError.payload, { status: publicError.status });
     }
   },

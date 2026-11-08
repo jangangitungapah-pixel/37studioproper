@@ -186,6 +186,7 @@ export function createFirestoreClient(env) {
       const error = new Error(payload?.error?.message || `Firestore request failed (${response.status}).`);
       error.status = response.status;
       error.payload = payload;
+      error.requestPath = path;
       throw error;
     }
 
