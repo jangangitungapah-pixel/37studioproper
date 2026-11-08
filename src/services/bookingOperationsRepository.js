@@ -631,6 +631,7 @@ export async function createManualBooking(inputValue) {
 
   const bookingRef = doc(firestoreDb, 'bookings', booking.id);
   let duplicate = Boolean(replay);
+  let coreCommitted = Boolean(replay);
 
   if (!replay) {
     for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -676,11 +677,15 @@ export async function createManualBooking(inputValue) {
         });
 
         duplicate = committed.replayed;
+        coreCommitted = true;
         break;
       } catch (error) {
         if (error?.code === 'schedule_revision_changed' && attempt < 3) continue;
         throw error;
       }
+    }
+    if (!coreCommitted) {
+      throw operationError('booking_conflict', 'Jadwal berubah berulang kali. Muat ulang kalender lalu coba kembali.');
     }
   }
 
