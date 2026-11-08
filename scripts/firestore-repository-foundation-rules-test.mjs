@@ -398,6 +398,20 @@ try {
     extraPrivilegedField: true,
   }));
 
+  await assertFails(setDoc(doc(
+    ownerDb,
+    'users',
+    'owner-1',
+    'repositoryOperations',
+    'v1_' + 'd'.repeat(64),
+  ), {
+    ...forgedMarker,
+    operationId: 'v1_' + 'e'.repeat(64),
+    actorUid: 'owner-1',
+    requestId: 'req_forged_id_01',
+    createdAt: serverTimestamp(),
+  }));
+
   const pendingDb = authenticatedDb('pending-admin', 'pending@example.com');
   await assertFails(operationCall({
     db: pendingDb,
