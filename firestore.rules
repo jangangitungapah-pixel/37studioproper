@@ -1697,21 +1697,29 @@ match /users/{userId} {
         );
     }
 
+    function bookingDocumentChangesAfter(bookingId, updatedAt) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      return existsAfter(bookingPath) &&
+        getAfter(bookingPath).data.updatedAt == updatedAt &&
+        (
+          !exists(bookingPath) ||
+          get(bookingPath).data.updatedAt != updatedAt
+        );
+    }
+
     match /bookingScheduleDays/{dateId} {
       allow read: if isApprovedAdmin() && canManageBookingData();
       allow create: if isApprovedAdmin() &&
         canManageBookingData() &&
         validBookingScheduleDay(request.resource.data, dateId) &&
         request.resource.data.revision == 1 &&
-        existsAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)) &&
-        getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)).data.updatedAt == request.resource.data.updatedAt;
+        bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt);
       allow update: if isApprovedAdmin() &&
         canManageBookingData() &&
         validBookingScheduleDay(request.resource.data, dateId) &&
         resource.data.date == dateId &&
         request.resource.data.revision == resource.data.revision + 1 &&
-        existsAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)) &&
-        getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)).data.updatedAt == request.resource.data.updatedAt;
+        bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt);
       allow delete: if false;
     }
 
