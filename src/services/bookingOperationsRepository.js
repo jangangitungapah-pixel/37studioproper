@@ -648,7 +648,8 @@ export async function updateManualBooking(inputValue) {
   const scheduleChanged = (
     cleanDate(current.date) !== nextBooking.date ||
     Number(current.startHour) !== nextBooking.startHour ||
-    Number(current.durationHours ?? current.duration ?? 0) !== nextBooking.durationHours
+    Number(current.durationHours ?? current.duration ?? 0) !== nextBooking.durationHours ||
+    String(current.sessionLabel || '') !== String(nextBooking.sessionLabel || '')
   );
   const dateSet = scheduleChanged
     ? [...new Set([cleanDate(current.date), nextBooking.date])].sort()
