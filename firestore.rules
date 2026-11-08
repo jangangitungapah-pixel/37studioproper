@@ -1130,7 +1130,7 @@ match /users/{userId} {
         payment.source == 'manual-booking-create';
     }
 
-    function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
+    function bookingSingleInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
       let payment = bookingData.paymentHistory[0];
       let ledgerId = 'booking-payment-' + bookingId + '-' + payment.id;
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
@@ -1155,7 +1155,7 @@ match /users/{userId} {
       return bookingData.paymentHistory.size() == 0 ||
         (
           bookingData.paymentHistory.size() == 1 &&
-          bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData)
+          bookingSingleInitialPaymentLedgerMatchesAfter(bookingId, bookingData)
         );
     }
 
@@ -1684,6 +1684,7 @@ match /users/{userId} {
         canManageBookingData() &&
         validCalendarSlot(request.resource.data) &&
         request.resource.data.bookingId == slotId &&
+        existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
         bookingCalendarSlotMatchesAfter(slotId, getAfter(/databases/$(database)/documents/bookings/$(slotId)).data);
       allow delete: if isApprovedAdmin() &&
         canManageBookingData() &&
@@ -2191,6 +2192,8 @@ match /users/{userId} {
       return isApprovedAdmin() &&
         canManageBookingData() &&
         data.id == entryId &&
+        data.actorUid == request.auth.uid &&
+        data.immutable == true &&
         data.type == 'income' &&
         data.category == 'booking' &&
         data.source == 'booking-payment' &&
