@@ -465,12 +465,26 @@ assert.equal(
   'Only approved administrators may remove an obsolete availability mirror.',
 );
 
-assert.equal(
-  rulesSource.includes(
-    "data.keys().hasOnly(['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt'])",
-  ),
-  true,
+const publicSlotValidatorStart = rulesSource.indexOf(
+  'function validCalendarSlot(data)',
+);
+const publicSlotValidatorEnd = rulesSource.indexOf(
+  'function bookingIsScheduleBlocking(data)',
+  publicSlotValidatorStart,
+);
+const publicSlotValidatorSource = rulesSource.slice(
+  publicSlotValidatorStart,
+  publicSlotValidatorEnd,
+);
+assert.match(
+  publicSlotValidatorSource,
+  /data\\.keys\\(\\)\\.hasOnly\\(\\[\\s*'bookingId',\\s*'date',\\s*'durationHours',\\s*'sessionLabel',\\s*'startHour',\\s*'status',\\s*'title',\\s*'updatedAt'\\s*\\]\\)/,
   'Public slot mirror must remain restricted to generic safe fields.',
+);
+assert.match(
+  publicSlotValidatorSource,
+  /data\\.keys\\(\\)\\.hasAll\\(\\[/,
+  'Public slot mirror must require its complete generic metadata shape.',
 );
 
 const cssSource =
