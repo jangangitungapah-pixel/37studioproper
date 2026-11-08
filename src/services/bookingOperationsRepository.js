@@ -590,11 +590,11 @@ async function ensureInitialBookingPaymentLedger({ actor, bookingId, ledger }) {
         throw operationError('booking_payment_ledger_payload_mismatch', 'Data pembayaran awal tidak cocok dengan booking. Ledger tidak dibuat.');
       }
 
-      if (ledgerSnapshot.exists() && !matchesInitialPaymentLedger(ledgerSnapshot.data(), ledger)) {
-        throw operationError('booking_payment_ledger_conflict', 'ID ledger sudah digunakan oleh data lain. Hubungi Owner sebelum melanjutkan.');
+      if (ledgerSnapshot.exists()) {
+        throw operationError('booking_payment_ledger_conflict', 'Ledger sudah ada sementara status booking masih pending. Periksa integritas data sebelum melanjutkan.');
       }
 
-      if (!ledgerSnapshot.exists()) transaction.set(ledgerRef, ledger);
+      transaction.set(ledgerRef, ledger);
       transaction.update(bookingRef, { initialPaymentLedgerStatus: 'recorded' });
       return { collection: 'bookings', id: bookingId };
     },
