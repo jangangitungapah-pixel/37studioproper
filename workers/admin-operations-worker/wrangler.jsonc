@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "studio37-admin-operations-worker",
+  "account_id": "2180decfefcd96d35e221e97de46e5cf",
   "main": "src/index.js",
   "compatibility_date": "2026-08-12",
   "compatibility_flags": ["nodejs_compat"],
