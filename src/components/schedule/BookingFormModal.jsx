@@ -450,6 +450,7 @@ export default function BookingFormModal({
       invoiceAmount,
       createdAt: editingBooking?.createdAt || now,
       updatedAt: editingBooking ? now : '',
+      expectedUpdatedAt: editingBooking?.updatedAt || '',
       });
     } catch (saveError) {
       console.error(
