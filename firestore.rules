@@ -1134,9 +1134,7 @@ match /users/{userId} {
         validString(payment.actorName, 1, 120) &&
         payment.actorUid == request.auth.uid &&
         validNumber(payment.amount, 1, bookingData.total) &&
-        validIsoTimestampString(payment.createdAt) &&
         payment.createdAt == bookingData.createdAt &&
-        validIsoDate(payment.date) &&
         payment.date == bookingData.createdAt[0:10] &&
         validString(payment.id, 1, 80) &&
         validString(payment.idempotencyKey, 8, 128) &&
@@ -1152,19 +1150,13 @@ match /users/{userId} {
       let ledgerAfter = getAfter(ledgerPath).data;
       return existsAfter(ledgerPath) &&
         ledgerAfter.id == ledgerId &&
-        ledgerAfter.type == 'income' &&
-        ledgerAfter.category == 'booking' &&
-        ledgerAfter.amount == payment.amount &&
-        ledgerAfter.date == payment.date &&
-        ledgerAfter.paymentMethod == payment.method &&
         ledgerAfter.source == 'booking-payment' &&
-        ledgerAfter.sourceAction == 'payment' &&
         ledgerAfter.sourceBookingId == bookingId &&
         ledgerAfter.sourceEventId == payment.id &&
-        ledgerAfter.actorUid == request.auth.uid &&
+        ledgerAfter.amount == payment.amount &&
+        ledgerAfter.paymentMethod == payment.method &&
         ledgerAfter.idempotencyKey == payment.idempotencyKey &&
-        ledgerAfter.createdAt == payment.createdAt &&
-        ledgerAfter.updatedAt == payment.createdAt;
+        ledgerAfter.createdAt == payment.createdAt;
     }
 
     function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
@@ -2311,7 +2303,6 @@ match /users/{userId} {
         paymentHistory.size() == 1 &&
         data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
         data.sourceBookingId == bookingAfter.id &&
-        validNumber(data.amount, 1, bookingAfter.total) &&
         payment.id == data.sourceEventId &&
         payment.amount == data.amount &&
         payment.method == data.paymentMethod &&
@@ -2321,7 +2312,6 @@ match /users/{userId} {
         payment.actorUid == request.auth.uid &&
         payment.actorName == data.actorName &&
         payment.note == data.note &&
-        payment.source == 'manual-booking-create' &&
         data.title == 'Pembayaran ' + bookingAfter.invoiceNumber &&
         bookingAfter.createdAt == data.createdAt;
     }
@@ -2346,15 +2336,16 @@ match /users/{userId} {
         ]) &&
         data.keys().size() == 19 &&
         data.id == entryId &&
-        validString(data.actorName, 1, 120) &&
-        validIsoTimestampString(data.createdAt) &&
-        validIsoDate(data.date) &&
-        validString(data.idempotencyKey, 8, 128) &&
-        validString(data.note, 0, 600) &&
+        data.actorName is string &&
+        data.actorName.size() >= 1 &&
+        data.actorName.size() <= 120 &&
+        data.idempotencyKey.size() >= 8 &&
+        data.idempotencyKey.size() <= 128 &&
+        data.note is string &&
+        data.note.size() <= 600 &&
         data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
         data.reversalOf == '' &&
-        validString(data.title, 1, 160) &&
-        validIsoTimestampString(data.updatedAt) &&
+        data.title == 'Pembayaran ' + getAfter(/databases/$(database)/documents/bookings/$(data.sourceBookingId)).data.invoiceNumber &&
         data.updatedAt == data.createdAt &&
         bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
