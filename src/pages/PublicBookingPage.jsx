@@ -215,8 +215,12 @@ export default function PublicBookingPage() {
     [dateWindowOffset, todayKey],
   );
 
+  const calendarStartDate = dateWindow[0];
+  const calendarEndDate = dateWindow[6];
+
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
+      { startDate: calendarStartDate, endDate: calendarEndDate, limitCount: 500 },
       (data) => {
         setSlots(data);
         setLoadError('');
@@ -230,7 +234,7 @@ export default function PublicBookingPage() {
     );
 
     return unsubscribe;
-  }, [subscriptionVersion, dateWindow[0], dateWindow[6]]);
+  }, [subscriptionVersion, calendarStartDate, calendarEndDate]);
 
   const availability = useMemo(
     () => businessHours.map((hour) => {
