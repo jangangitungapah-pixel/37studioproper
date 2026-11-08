@@ -1305,8 +1305,20 @@ match /users/{userId} {
         getAfter(bookingPath).data.updatedAt == request.resource.data.createdAt;
     }
 
-    function bookingSessionIsUpcoming(data) {
+    function bookingRequestAllowsSession(data) {
       return (
+          !data.keys().hasAny(['bookingRequestStatus']) ||
+          !(data.bookingRequestStatus in ['submitted', 'rejected', 'cancelled', 'canceled'])
+        ) &&
+        (
+          !data.keys().hasAny(['requestStatus']) ||
+          !(data.requestStatus in ['submitted', 'rejected', 'cancelled', 'canceled', 'deleted'])
+        );
+    }
+
+    function bookingSessionIsUpcoming(data) {
+      return bookingRequestAllowsSession(data) && (
+        (
           data.keys().hasAny(['sessionStatus']) &&
           data.sessionStatus in ['upcoming', 'scheduled']
         ) ||
@@ -1315,16 +1327,14 @@ match /users/{userId} {
           (
             !data.keys().hasAny(['sessionState']) ||
             data.sessionState in ['upcoming', 'scheduled']
-          ) &&
-          (
-            !data.keys().hasAny(['bookingRequestStatus']) ||
-            !(data.bookingRequestStatus in ['rejected', 'cancelled'])
           )
-        );
+        )
+      );
     }
 
     function bookingSessionIsInProgress(data) {
-      return (
+      return bookingRequestAllowsSession(data) && (
+        (
           data.keys().hasAny(['sessionStatus']) &&
           data.sessionStatus in ['in_progress', 'active', 'ongoing']
         ) ||
@@ -1332,7 +1342,8 @@ match /users/{userId} {
           !data.keys().hasAny(['sessionStatus']) &&
           data.keys().hasAny(['sessionState']) &&
           data.sessionState in ['in_progress', 'active', 'ongoing']
-        );
+        )
+      );
     }
 
     function bookingNoShowGraceElapsed(data) {
@@ -1376,6 +1387,10 @@ match /users/{userId} {
         (
           (
             getAfter(eventPath).data.action == 'check_in' &&
+            changed.hasOnly([
+              'checkedInAt', 'checkedInByUid', 'checkedInByName', 'updatedAt',
+              'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
+            ]) &&
             bookingSessionIsUpcoming(resource.data) &&
             (
               !resource.data.keys().hasAny(['checkedInAt']) ||
@@ -1390,6 +1405,10 @@ match /users/{userId} {
           ) ||
           (
             getAfter(eventPath).data.action == 'start' &&
+            changed.hasOnly([
+              'sessionStatus', 'actualStartAt', 'actualStartByUid', 'actualStartByName',
+              'updatedAt', 'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
+            ]) &&
             bookingSessionIsUpcoming(resource.data) &&
             request.resource.data.sessionStatus == 'in_progress' &&
             request.resource.data.actualStartAt == getAfter(eventPath).data.createdAt &&
@@ -1401,6 +1420,11 @@ match /users/{userId} {
           ) ||
           (
             getAfter(eventPath).data.action == 'complete' &&
+            changed.hasOnly([
+              'sessionStatus', 'actualEndAt', 'actualEndByUid', 'actualEndByName',
+              'actualDurationMinutes', 'updatedAt', 'lastSessionEventAt',
+              'lastSessionEventType', 'lastSessionEventId'
+            ]) &&
             bookingSessionIsInProgress(resource.data) &&
             request.resource.data.sessionStatus == 'completed' &&
             request.resource.data.actualEndAt == getAfter(eventPath).data.createdAt &&
@@ -1415,6 +1439,11 @@ match /users/{userId} {
           ) ||
           (
             getAfter(eventPath).data.action == 'no_show' &&
+            changed.hasOnly([
+              'sessionStatus', 'noShowAt', 'noShowByUid', 'noShowByName',
+              'noShowReason', 'updatedAt', 'lastSessionEventAt',
+              'lastSessionEventType', 'lastSessionEventId'
+            ]) &&
             bookingSessionIsUpcoming(resource.data) &&
             (
               !resource.data.keys().hasAny(['checkedInAt']) ||
@@ -1454,6 +1483,28 @@ match /users/{userId} {
         request.resource.data.lastMessageReadByClient == false;
     }
 
+
+    function bookingMessageDecisionReferencesBookingAfter(bookingId, messageId) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      let bookingBefore = get(bookingPath).data;
+      let bookingAfter = getAfter(bookingPath).data;
+      return exists(bookingPath) &&
+        existsAfter(bookingPath) &&
+        bookingAfter.lastMessageId == messageId &&
+        bookingAfter.lastMessageAt == request.resource.data.createdAt &&
+        bookingAfter.lastMessagePreview == request.resource.data.text.substring(0, 180) &&
+        bookingAfter.lastMessageSenderRole == 'admin' &&
+        bookingAfter.lastMessageReadByAdmin == true &&
+        bookingAfter.lastMessageReadByClient == false &&
+        bookingAfter.adminResponseNote == request.resource.data.text &&
+        bookingAfter.adminResponseAt == request.resource.data.createdAt &&
+        bookingAfter.clientUid == request.resource.data.clientUid &&
+        bookingAfter.bookingRequestStatus in ['confirmed', 'rejected', 'cancelled'] &&
+        bookingAfter.updatedAt == request.resource.data.createdAt &&
+        bookingAfter.updatedAt != bookingBefore.updatedAt &&
+        bookingBefore.lastMessageId != messageId;
+    }
+
     function adminBookingDecisionUpdate(bookingId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let nextStatus = request.resource.data.bookingRequestStatus;
@@ -1468,6 +1519,12 @@ match /users/{userId} {
           'lastMessageReadByClient', 'updatedAt', 'sessionStatus',
           'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
         ]) &&
+        (
+          nextStatus == 'cancelled' ||
+          !changed.hasAny([
+            'sessionStatus', 'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
+          ])
+        ) &&
         validString(request.resource.data.lastRequestDecisionKey, 8, 128) &&
         messageId == 'request-' + request.resource.data.lastRequestDecisionKey &&
         validIsoTimestampString(request.resource.data.updatedAt) &&
@@ -1638,7 +1695,7 @@ match /users/{userId} {
             request.resource.data.clientUid == bookingData(request.resource.data.bookingId).clientUid &&
             request.resource.data.readByAdmin == true &&
             request.resource.data.readByClient == false &&
-            (request.resource.data.type != 'status' || bookingDecisionMessageMatchesAfter(request.resource.data.bookingId, messageId))
+            (request.resource.data.type != 'status' || bookingMessageDecisionReferencesBookingAfter(request.resource.data.bookingId, messageId))
           ) ||
           (
             isClientAccount() &&
