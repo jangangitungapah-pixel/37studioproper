@@ -565,6 +565,7 @@ try {
     sessionLabel: 'Rehearsal', startHour: 11, status: 'pending',
     title: 'Terisi', updatedAt: now,
   });
+  console.log('[rules-behavior] commit safe unpaid booking + slot + day');
   await assertSucceeds(safeBookingBatch.commit());
   await assertSucceeds(getDoc(doc(schedule, 'bookingScheduleDays', '2026-08-22')));
   await assertSucceeds(getDoc(doc(schedule, 'clientCalendarSlots', 'safe-unpaid')));
@@ -592,6 +593,7 @@ try {
     startHour: 12,
     updatedAt: rescheduledAt,
   });
+  console.log('[rules-behavior] commit atomic reschedule');
   await assertSucceeds(rescheduleBatch.commit());
   await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-unpaid'), {
     startHour: 13,
@@ -624,6 +626,7 @@ try {
     toStatus: 'in_progress',
     type: 'booking-session-event',
   });
+  console.log('[rules-behavior] commit session start + event');
   await assertSucceeds(startBatch.commit());
   await assertSucceeds(getDoc(doc(schedule, 'bookingSessionEvents', startEventId)));
   await assertFails(updateDoc(doc(schedule, 'bookingSessionEvents', startEventId), { reason: 'Mutated' }));
@@ -655,6 +658,7 @@ try {
     toStatus: 'completed',
     type: 'booking-session-event',
   });
+  console.log('[rules-behavior] commit session completion + event');
   await assertSucceeds(completeBatch.commit());
 
   const noShowBooking = {
@@ -676,6 +680,7 @@ try {
     bookingId: 'safe-no-show', date: '2026-08-25', durationHours: 1,
     sessionLabel: 'Rehearsal', startHour: 13, status: 'pending', title: 'Terisi', updatedAt: now,
   });
+  console.log('[rules-behavior] commit no-show booking creation');
   await assertSucceeds(noShowCreateBatch.commit());
 
   const noShowAt = '2026-08-25T07:30:00.000Z';
@@ -704,6 +709,7 @@ try {
     toStatus: 'no_show',
     type: 'booking-session-event',
   });
+  console.log('[rules-behavior] commit no-show action + event');
   await assertSucceeds(noShowBatch.commit());
 
   const paidAt = '2026-08-24T08:00:00.000Z';
@@ -772,6 +778,7 @@ try {
     type: 'income',
     updatedAt: paidAt,
   });
+  console.log('[rules-behavior] commit paid booking + initial ledger');
   await assertSucceeds(paidBookingBatch.commit());
   await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), { total: 400000 }));
   await assertFails(setDoc(doc(schedule, 'bookkeepingEntries', 'forged-booking-payment'), {
@@ -951,6 +958,7 @@ try {
   };
   const safeClientBooking = { ...clientBooking };
   delete safeClientBooking.refundHistory;
+  console.log('[rules-behavior] create client booking request');
   await assertSucceeds(setDoc(doc(client, 'bookings', 'client-safe'), {
     ...safeClientBooking,
     id: 'client-safe',
@@ -1006,6 +1014,7 @@ try {
     title: 'Sesi Studio',
     updatedAt: decisionAt,
   });
+  console.log('[rules-behavior] commit admin decision + message + slot + day');
   await assertSucceeds(decisionBatch.commit());
   await assertSucceeds(getDoc(doc(schedule, 'bookingMessages', decisionMessageId)));
   await assertFails(updateDoc(doc(schedule, 'bookings', 'client-safe'), {
