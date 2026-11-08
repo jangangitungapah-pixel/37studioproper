@@ -1285,12 +1285,12 @@ match /users/{userId} {
         data.type == 'booking-session-event';
     }
 
-    function bookingSessionEventMatchesAfter(eventId, bookingId, timestamp, action, toStatus) {
+    function bookingSessionEventMatchesAfter(eventId, bookingId, eventTimestamp, action, toStatus) {
       let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
       return existsAfter(eventPath) &&
         getAfter(eventPath).data.id == eventId &&
         getAfter(eventPath).data.bookingId == bookingId &&
-        getAfter(eventPath).data.createdAt == timestamp &&
+        getAfter(eventPath).data.createdAt == eventTimestamp &&
         getAfter(eventPath).data.action == action &&
         getAfter(eventPath).data.toStatus == toStatus;
     }
