@@ -1204,8 +1204,18 @@ match /users/{userId} {
           ) ||
           (
             data.initialPaymentIntent is map &&
+            data.initialPaymentIntent.keys().hasOnly([
+              'actorName', 'actorUid', 'amount', 'createdAt', 'date',
+              'id', 'idempotencyKey', 'method', 'note', 'source'
+            ]) &&
             data.initialPaymentIntent.actorUid == request.auth.uid &&
-            validManualInitialPaymentRecord(data.initialPaymentIntent, data) &&
+            data.initialPaymentIntent.actorName is string &&
+            data.initialPaymentIntent.amount is number &&
+            data.initialPaymentIntent.amount > 0 &&
+            data.initialPaymentIntent.amount <= data.total &&
+            data.initialPaymentIntent.method in ['cash', 'transfer', 'qris', 'other'] &&
+            data.initialPaymentIntent.createdAt == data.createdAt &&
+            data.initialPaymentIntent.date == data.createdAt[0:10] &&
             data.initialPaymentLedgerStatus == 'pending'
           )
         );
