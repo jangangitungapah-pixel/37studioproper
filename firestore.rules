@@ -2286,11 +2286,47 @@ match /users/{userId} {
       return !exists(closingPath) || get(closingPath).data.status != 'closed';
     }
 
-    function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
+    function bookingInitialPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
-      let bookingAfter = getAfter(bookingPath).data;
-      let payment = bookingAfter.paymentHistory[0];
-      return isApprovedScheduleAdmin() &&
+      let bookingExistsAfter = existsAfter(bookingPath);
+      let bookingAfter = bookingExistsAfter ? getAfter(bookingPath).data : {};
+      let paymentHistory = bookingAfter.keys().hasAny(['paymentHistory'])
+        ? bookingAfter.paymentHistory
+        : [];
+      let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
+      return bookingExistsAfter &&
+        bookingAfter.source == 'admin' &&
+        paymentHistory is list &&
+        paymentHistory.size() == 1 &&
+        data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
+        data.sourceBookingId == bookingAfter.id &&
+        validNumber(data.amount, 1, bookingAfter.total) &&
+        payment.id == data.sourceEventId &&
+        payment.amount == data.amount &&
+        payment.method == data.paymentMethod &&
+        payment.date == data.date &&
+        payment.createdAt == data.createdAt &&
+        payment.idempotencyKey == data.idempotencyKey &&
+        payment.actorUid == request.auth.uid &&
+        payment.actorName == data.actorName &&
+        payment.note == data.note &&
+        payment.source == 'manual-booking-create' &&
+        data.title == 'Pembayaran ' + bookingAfter.invoiceNumber &&
+        bookingAfter.createdAt == data.createdAt;
+    }
+
+    function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
+      // Cheap, document-local discriminator first. Generic manual/Worker-owned
+      // bookkeeping writes must not trigger a cross-document booking lookup.
+      return data.source == 'booking-payment' &&
+        data.sourceAction == 'payment' &&
+        data.category == 'booking' &&
+        data.type == 'income' &&
+        data.actorUid == request.auth.uid &&
+        data.immutable == true &&
+        validString(data.sourceBookingId, 1, 160) &&
+        validString(data.sourceEventId, 1, 80) &&
+        isApprovedScheduleAdmin() &&
         data.keys().hasAll([
           'id', 'actorName', 'actorUid', 'amount', 'category', 'createdAt',
           'date', 'idempotencyKey', 'immutable', 'note', 'paymentMethod',
@@ -2300,40 +2336,16 @@ match /users/{userId} {
         data.keys().size() == 19 &&
         data.id == entryId &&
         validString(data.actorName, 1, 120) &&
-        data.actorUid == request.auth.uid &&
-        validNumber(data.amount, 1, bookingAfter.total) &&
-        data.category == 'booking' &&
         validIsoTimestampString(data.createdAt) &&
         validIsoDate(data.date) &&
         validString(data.idempotencyKey, 8, 128) &&
-        data.immutable == true &&
         validString(data.note, 0, 600) &&
         data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
         data.reversalOf == '' &&
-        data.source == 'booking-payment' &&
-        data.sourceAction == 'payment' &&
-        validString(data.sourceBookingId, 1, 160) &&
-        validString(data.sourceEventId, 1, 80) &&
         validString(data.title, 1, 160) &&
-        data.type == 'income' &&
         validIsoTimestampString(data.updatedAt) &&
-        existsAfter(bookingPath) &&
-        bookingAfter.source == 'admin' &&
-        bookingAfter.paymentHistory is list &&
-        bookingAfter.paymentHistory.size() == 1 &&
-        data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
-        data.sourceBookingId == bookingAfter.id &&
-        payment.id == data.sourceEventId &&
-        payment.amount == data.amount &&
-        payment.method == data.paymentMethod &&
-        payment.date == data.date &&
-        payment.createdAt == data.createdAt &&
-        payment.idempotencyKey == data.idempotencyKey &&
-        payment.actorUid == request.auth.uid &&
-        payment.note == data.note &&
-        data.title == 'Pembayaran ' + bookingAfter.invoiceNumber &&
-        bookingAfter.createdAt == data.createdAt &&
-        data.updatedAt == data.createdAt;
+        data.updatedAt == data.createdAt &&
+        bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
 
     match /bookkeepingEntries/{entryId} {
