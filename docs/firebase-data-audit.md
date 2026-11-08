@@ -13,8 +13,8 @@ Target: Firebase project `studio-proper`, Firestore `(default)` Standard edition
 | Path | Readers | Writers | Queries |
 | --- | --- | --- | --- |
 | `users/{uid}` | own user, owner | self-safe fields, owner admin fields | owner list ordered by `createdAt desc` |
-| `bookings/{id}` | permitted admin, owning client | permitted admin; owning client creates strict pending requests | admin `date desc`; client OR by `clientUid`, email, phone, phone key |
-| `clientCalendarSlots/{id}` | authenticated users | permitted admin | `date asc` |
+| `bookings/{id}` | permitted booking admin, owning client | approved Schedule admin through strict Firebase-native booking operations; owning Client creates strict pending requests and may write only owner-safe message/cancellation/read fields | date equality/range for bounded schedule checks and subscriptions; Client OR by UID/email/phone compatibility |
+| `clientCalendarSlots/{id}` | public, reduced availability metadata only | approved Schedule admin only, paired atomically with booking and date revision | `date asc`, public listener bounded to the visible seven-day window (max 500) |
 | `customers/{id}` | customer admin, owning client profile | customer admin, owning client profile | `createdAt desc`; equality by `phoneKey` |
 | `settings/pricing` | public | settings admin | document listener |
 | `settings/invoice` | public | settings admin | document listener |
@@ -23,7 +23,12 @@ Target: Firebase project `studio-proper`, Firestore `(default)` Standard edition
 | `inventoryItems/{id}` | inventory admin | inventory admin | `updatedAt desc` |
 | `inventoryMovements/{id}` | inventory admin | create-only by inventory admin | `createdAt desc`, limit |
 | `mail/{id}` | none via client SDK | signed-in pending admin, constrained approval email only | none |
-| `bookingMessages/{id}` | permitted booking admin, owning client | participants create; each participant may only mark its own read flag | equality by `bookingId`; client also filters by `clientUid` |
+| `bookingMessages/{id}` | permitted booking admin, owning client | participants create; each participant may only mark its own read flag; Admin status/decision messages must match the same booking decision transaction | equality by `bookingId`; Client also filters by `clientUid` |
+
+
+- `bookingScheduleDays/{date}`: Schedule admin read/write only. A create or incremented revision is accepted only in the same atomic operation as a booking create/update, and is used as the optimistic-concurrency guard for date occupancy.
+- `bookingSessionEvents/{id}`: Schedule admin read; append-only create paired with the booking's last-session-event pointer. Direct update and delete are denied.
+- `users/{uid}/repositoryOperations/{operationId}`: per-user immutable operation markers under the Phase 1 repository security contract; marker access does not grant access to the linked business document.
 
 ## Integration decisions
 
@@ -49,3 +54,11 @@ The active Follow-up listener uses status in [open, in_progress, snoozed], dueAt
 Other observed query patterns include customer createdAt DESC and phoneKey equality; booking date DESC, clientCalendarSlots date ASC, and client ownership filters by UID/email/phone; bookingMessages bookingId and clientUid equality; paymentProofs clientUid or bookingId equality; guardAttendanceSessions guardUid/date filters; bookkeeping date range and date DESC; inventory updatedAt/createdAt ordering; gallery createdAt DESC; operatorFeeEntries bookingDate DESC; maintenance timestamp ordering; user createdAt DESC; and notificationEvents status or targetUid equality.
 
 This is a source-level query inventory, not proof that every possible filter combination has been exercised against production. Any query that combines filters on different fields with ordering must be checked against the actual Firestore index link. Emulator success alone does not prove that a required production composite index is deployed. The active production Rules and index baselines are tracked separately in docs/architecture/FIRESTORE_PRODUCTION_BASELINE_2026-11-09.md.
+
+## Phase 2 Booking/Schedule query and write audit (2026-11-09)
+
+- Manual create/update, reschedule, Admin request decisions, and session actions use the Firebase Web SDK repository in `src/services/bookingOperationsRepository.js`; UI wrappers no longer call the Worker for these operations.
+- Booking create and schedule updates write the booking, date revision, calendar mirror and any required message/session-event companion atomically. The first-payment ledger companion is limited to the existing `booking-payment` source on manual booking creation; general Finance writes remain outside Phase 2.
+- Public availability reads only the reduced `clientCalendarSlots` documents and are bounded to the displayed seven-day range (500 maximum). Admin booking listeners are bounded to 500 by default (1,000 maximum); Client booking OR queries are capped at 250.
+- Schedule collision checks read at most 251 booking documents for the target date and fail closed above 250. The query uses one `date ==` field constraint and the repository's existing single-field index; no new composite index is identified for Phase 2's audited query shapes.
+- This audit describes repository/source query requirements only. It does not prove production index deployment, and it does not replace the required production Rules export/merge review before any deployment.
