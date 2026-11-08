@@ -292,6 +292,7 @@ export default function ClientPortalPage() {
   const [clientNotificationsRetryVersion, setClientNotificationsRetryVersion] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const publicBookingResumeKeyRef = useRef('');
+  const clientBookingRequestIdentityRef = useRef(null);
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
   const [historyQuery, setHistoryQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
@@ -1165,6 +1166,64 @@ export default function ClientPortalPage() {
       return null;
     }
 
+    const requestPayload = {
+      customer: simCustomerName.trim(),
+      phone: simCustomerPhone.trim(),
+      packageId: simPackageId,
+      packageLabel: selectedPackage?.label || '',
+      pricingMode: pricingBreakdown.mode,
+      sessionType: selectedPackage ? 'package' : simSessionType,
+      sessionLabel,
+      recordingTypeId: simRecordingTypeId === 'none' ? '' : simRecordingTypeId,
+      recordingTypeLabel: selectedRecording?.label || '',
+      title: sessionLabel,
+      date: simulatorDate,
+      startHour: Number(simulatorStartHour),
+      startTimeLabel: String(simulatorStartHour).padStart(2, '0') + '.00',
+      durationHours: actualDuration,
+      subtotal: pricingBreakdown.subtotal,
+      discountAmount: pricingBreakdown.discountAmount,
+      appliedDiscounts: pricingBreakdown.appliedDiscounts,
+      total: pricingBreakdown.total,
+    };
+    const requestFingerprint = JSON.stringify({
+      clientUid: currentUser.uid,
+      ...requestPayload,
+    });
+    const previousRequestIdentity = clientBookingRequestIdentityRef.current;
+    const previousRequestBooking = previousRequestIdentity
+      ? userBookings.find((booking) => booking.id === previousRequestIdentity.id)
+      : null;
+    const previousRequestStatus = previousRequestBooking
+      ? getBookingRequestStatus(previousRequestBooking)
+      : '';
+    const previousRequestWasRejected = ['rejected', 'cancelled'].includes(previousRequestStatus);
+
+    if (
+      previousRequestIdentity?.pendingRecovery &&
+      previousRequestIdentity.fingerprint !== requestFingerprint &&
+      !previousRequestWasRejected
+    ) {
+      setActionFeedback('Permintaan sebelumnya belum dapat dipastikan tersimpan atau tidak. Kirim ulang dengan data yang sama terlebih dahulu agar tidak membuat permintaan booking duplikat.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return null;
+    }
+
+    const requestIdentity =
+      !previousRequestIdentity ||
+      previousRequestIdentity.fingerprint !== requestFingerprint ||
+      previousRequestWasRejected
+        ? {
+            id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : 'client-' + Date.now() + '-' + Math.random().toString(16).slice(2),
+            fingerprint: requestFingerprint,
+            pendingRecovery: false,
+            committed: false,
+          }
+        : previousRequestIdentity;
+    clientBookingRequestIdentityRef.current = requestIdentity;
+
     setIsSubmittingRequest(true);
     setActionFeedback('');
 
@@ -1175,25 +1234,14 @@ export default function ClientPortalPage() {
 
       try {
         createdBooking = await adminBookingRepository.createClientBookingRequest(currentUser, {
-          customer: simCustomerName.trim(),
-          phone: simCustomerPhone.trim(),
-          packageId: simPackageId,
-          packageLabel: selectedPackage?.label || '',
-          pricingMode: pricingBreakdown.mode,
-          sessionType: selectedPackage ? 'package' : simSessionType,
-          sessionLabel,
-          recordingTypeId: simRecordingTypeId === 'none' ? '' : simRecordingTypeId,
-          recordingTypeLabel: selectedRecording?.label || '',
-          title: sessionLabel,
-          date: simulatorDate,
-          startHour: Number(simulatorStartHour),
-          startTimeLabel: String(simulatorStartHour).padStart(2, '0') + '.00',
-          durationHours: actualDuration,
-          subtotal: pricingBreakdown.subtotal,
-          discountAmount: pricingBreakdown.discountAmount,
-          appliedDiscounts: pricingBreakdown.appliedDiscounts,
-          total: pricingBreakdown.total,
+          ...requestPayload,
+          requestId: requestIdentity.id,
         });
+        clientBookingRequestIdentityRef.current = {
+          ...requestIdentity,
+          pendingRecovery: false,
+          committed: true,
+        };
 
         if (simProofEnabled) {
           if (!simProofFile) {
@@ -1239,6 +1287,12 @@ export default function ClientPortalPage() {
         warning: '',
       };
     } catch (error) {
+      if (clientBookingRequestIdentityRef.current?.id === requestIdentity.id) {
+        clientBookingRequestIdentityRef.current = {
+          ...requestIdentity,
+          pendingRecovery: true,
+        };
+      }
       const errorCode = error?.code || error?.name || 'unknown';
       const errorMessage = error?.message || String(error || 'Unknown error');
 
