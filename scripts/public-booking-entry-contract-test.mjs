@@ -492,10 +492,15 @@ assert.equal(
   'Calendar mirror writes must be paired with the matching booking transaction.',
 );
 
-assert.equal(
-  publicSlotRules.includes('allow delete: if isApprovedScheduleAdmin()'),
-  true,
-  'Only approved administrators may remove an obsolete availability mirror.',
+assert.match(
+  publicSlotRules,
+  /allow delete: if \([\s\S]*isApprovedScheduleAdmin\(\)[\s\S]*\) \|\| financeVoidScheduleSlotDeleteAllowed\(slotId\);/,
+  'Availability mirrors may be removed by schedule admins or by the paired, guarded finance-void operation.',
+);
+assert.match(
+  publicSlotRules,
+  /function financeVoidScheduleSlotDeleteAllowed\(bookingId\)[\s\S]*?isApprovedAdmin\(\)[\s\S]*?hasPermission\('billing'\)[\s\S]*?lastFinanceAction == 'void'[\s\S]*?financeBookingVoidScheduleMatchesAfter/,
+  'Finance slot deletion must be restricted to an approved Billing admin and the paired invoice-void transaction.',
 );
 
 const publicSlotValidatorStart = rulesSource.indexOf(

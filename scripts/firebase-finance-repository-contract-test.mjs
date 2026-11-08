@@ -58,8 +58,11 @@ for (const [name, source] of [['ClientPortalPage', portal], ['ClientBookingWizar
   assert.equal(source.includes('uploadPaymentProofFile'), false, name + ' must not upload payment images.');
   assert.equal(source.includes('proofFile'), false, name + ' must not carry payment file state.');
   assert.equal(source.includes('setProofFile'), false, name + ' must not expose payment file input state.');
-  assert.equal(source.includes('transactionReference'), true, name + ' must collect transaction reference.');
 }
+assert.equal(portal.includes('transactionReference'), true, 'ClientPortalPage must submit the Firestore transaction-reference field.');
+assert.equal(wizard.includes('proofReference'), true, 'ClientBookingWizard must collect the transaction reference through its controlled prop.');
+assert.equal(wizard.includes('proofPayerName'), true, 'ClientBookingWizard must collect the payer name.');
+assert.equal(wizard.includes('setProofReference'), true, 'ClientBookingWizard must update the controlled reference field.');
 assert.equal(portal.includes('proofPayerName'), true);
 assert.equal(portal.includes('simProofPayerName'), true);
 
