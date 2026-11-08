@@ -2336,16 +2336,8 @@ match /users/{userId} {
         ]) &&
         data.keys().size() == 19 &&
         data.id == entryId &&
-        data.actorName is string &&
-        data.actorName.size() >= 1 &&
-        data.actorName.size() <= 120 &&
-        data.idempotencyKey.size() >= 8 &&
-        data.idempotencyKey.size() <= 128 &&
-        data.note is string &&
-        data.note.size() <= 600 &&
         data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
         data.reversalOf == '' &&
-        data.title == 'Pembayaran ' + getAfter(/databases/$(database)/documents/bookings/$(data.sourceBookingId)).data.invoiceNumber &&
         data.updatedAt == data.createdAt &&
         bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
