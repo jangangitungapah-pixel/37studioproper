@@ -1609,7 +1609,7 @@ match /users/{userId} {
           validManualBookingCreate(request.resource.data, bookingId) &&
           bookingManualCreateCompanionsAfter(bookingId, request.resource.data)
         ) || (
-          isSignedIn() &&
+          isClientAccount() &&
           isSafeClientBookingRequestCreate(request.resource.data, bookingId)
         );
       allow update: if (
