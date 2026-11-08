@@ -12,13 +12,13 @@ This inventory covers only Booking, Schedule/availability, and Booking Session o
 
 The following remain out of scope: general Finance/payment posting and reconciliation, payment-proof review/binaries, daily closing, Follow-up, Inventory, Procurement, Maintenance, account lifecycle, Danger Zone, Gallery, global Worker/EmailJS retirement, production Rules/index changes, Hosting deployment, and production data mutation.
 
-The one narrow Finance-shaped companion retained in this phase is the initial payment history and `booking-payment` ledger entry that the existing manual-booking flow creates at the same time as a booking. It is not a general Finance write API and does not authorize payment posting, refund, void, proof review, or daily closing.
+The one narrow Finance-shaped companion retained in this phase is the initial payment history plus its immutable `booking-payment` ledger entry. The payment history is committed with the manual booking; the ledger is then created by a separate idempotent Firebase transaction that changes the booking's internal `initialPaymentLedgerStatus` from `pending` to `recorded`. A failed second step leaves a recoverable pending marker so retry can complete the ledger without creating another booking. It is not a general Finance write API and does not authorize later payment posting, refund, void, proof review, or daily closing.
 
 ## 2. Operation matrix
 
 | Operation | UI entry point | Firebase path | Actor / boundary | Atomic documents and invariants |
 | --- | --- | --- | --- | --- |
-| Manual booking create | `src/pages/admin/SchedulePage.jsx` → `adminBookingRepository.createManualBooking` | `src/services/bookingOperationsRepository.js:createManualBooking` | Approved Owner/Admin with `schedule` permission | Creates `bookings/{id}`, increments `bookingScheduleDays/{date}`, creates/removes `clientCalendarSlots/{id}` according to blocking duration/status, creates the narrow initial `bookkeepingEntries/{id}` companion only when an initial payment exists, and writes the per-user repository-operation marker. Rejects reused booking IDs, occupied slots, malformed values, and initial payment above total. |
+| Manual booking create | `src/pages/admin/SchedulePage.jsx` → `adminBookingRepository.createManualBooking` | `src/services/bookingOperationsRepository.js:createManualBooking` | Approved Owner/Admin with `schedule` permission | The first idempotent transaction creates `bookings/{id}` (including payment history and an internal ledger status), increments `bookingScheduleDays/{date}`, conditionally creates `clientCalendarSlots/{id}`, and writes the per-user operation marker. When an initial payment exists, a second idempotent transaction creates the immutable `bookkeepingEntries/{id}` companion and changes the booking ledger status from `pending` to `recorded` atomically. If that second step fails, the booking remains committed with a visible pending ledger state and can be retried without duplicating the booking. Rejects reused booking IDs, occupied slots, malformed values, and initial payment above total. |
 | Manual booking metadata edit | `SchedulePage.jsx` and customer identity maintenance through `CustomerPage.jsx` | `updateManualBooking` | Approved Owner/Admin with `schedule` permission | Updates only the explicit editable-field allow-list. Payment, refund, request decision, session lifecycle, and other protected fields cannot be patched through this path. Uses expected `updatedAt` to reject stale writes. |
 | Manual booking reschedule / slot edit | `SchedulePage.jsx` booking form | `updateManualBooking` | Approved Owner/Admin with `schedule` permission | Transaction reads booking, old/new date revision documents and calendar mirror; checks bounded target-date bookings for overlap; updates booking, old/new `bookingScheduleDays` revisions and the public slot mirror atomically. Retries only when a preflight revision changed, then revalidates. |
 | Client booking request create | Authenticated Client Portal booking submit | `adminBookingRepository.createClientBookingRequest` → `createClientBookingRequestOperation` | Firebase Auth Client; the UID must match canonical Client identity and immutable `clientUid` | Creates only a strict pending `bookings/{id}` request with no payment history, no paid amount and no calendar slot. Notification event creation remains a separate best-effort Firestore side effect after the request commit. |
@@ -43,13 +43,13 @@ The one narrow Finance-shaped companion retained in this phase is the initial pa
 | `bookingMessages/{id}` | Booking conversation and decision messages | Booking admin and owning Client | Participant message/read rules retained; Admin `type=status` messages must match the paired booking decision |
 | `bookingSessionEvents/{id}` | Append-only check-in/start/complete/no-show/cancel history | Approved Schedule admin | Schedule admin create only when the booking's latest-event pointer is updated atomically; update/delete denied |
 | `users/{uid}/repositoryOperations/{operationId}` | Per-user replay/conflict marker | Same UID under Phase 1 contract | Client SDK can create only the strict immutable marker contract; it grants no permission to read/write the booking result |
-| `bookkeepingEntries/{id}` | Existing ledger | Finance readers | This phase adds only a narrow Schedule-admin create exception for an immutable `source='booking-payment'` entry whose source payment is part of the same manual booking create. Other Finance writes remain unchanged. |
+| `bookkeepingEntries/{id}` | Existing ledger | Finance readers | This phase adds only a narrow create exception for an immutable `source='booking-payment'` entry paired atomically with the existing manual booking's `pending → recorded` ledger-status transition. The entry must match that booking's single initial payment record. Other Finance writes remain unchanged. |
 
 ### Rules invariants
 
 - A mirror slot cannot be created, changed, or removed independently of the booking and schedule-day revision that justify it.
 - A schedule-day revision cannot be bumped independently of a booking create/update in the same atomic operation.
-- Booking creation validates a strict key set, payment summary consistency, and the optional first-payment ledger companion.
+- Booking creation validates a strict key set and payment summary consistency. When an initial payment exists, a separate, idempotent transaction writes the matching ledger entry and changes the internal ledger status to `recorded`; Rules reject the status transition without that ledger companion.
 - Booking manual updates use an allow-list and preserve Finance/payment/session/request fields.
 - Decision message, booking request state, day revision, slot state and cancellation event are linked using `getAfter()` / `existsAfter()`.
 - Session state transitions have explicit prior-state checks. A session event is append-only and must match the booking's post-write last-event pointer.
@@ -59,7 +59,7 @@ The one narrow Finance-shaped companion retained in this phase is the initial pa
 ## 4. Transaction, idempotency, retry and query behavior
 
 - All operation IDs, request IDs, operation timestamps, message IDs and event IDs are prepared before transaction callbacks. Transaction callbacks contain Firestore reads/writes only.
-- Manual create, manual update, decisions, and session actions reuse `runIdempotentFirestoreTransaction` and the Phase 1 marker collection.
+- Manual create, manual update, decisions, and session actions reuse `runIdempotentFirestoreTransaction` and the Phase 1 marker collection. Initial payment ledger completion uses its own deterministic `initial-payment-ledger` operation marker so a retry can finish the second step without replaying the booking/calendar transaction.
 - Committed retries validate actor/scope/action/request ID/payload hash and read back the recorded booking result instead of repeating the transition.
 - Schedule preflight reads are bounded to at most 251 booking documents for one date. More than 250 yields a visible, fail-closed error before writes.
 - Public slot listener: displayed seven-day date range, maximum 500.
