@@ -1383,7 +1383,7 @@ match /users/{userId} {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let eventId = request.resource.data.lastSessionEventId;
       let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
-      let eventAfter = eventAfter;
+      let eventAfter = getAfter(eventPath).data;
       return adminBookingFinanceFieldsUnchanged() &&
         changed.hasOnly([
           'checkedInAt', 'checkedInByUid', 'checkedInByName',
