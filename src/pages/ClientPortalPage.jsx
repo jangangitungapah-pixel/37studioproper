@@ -573,7 +573,6 @@ export default function ClientPortalPage() {
       setSimProofCategory('dp');
       setSimProofMethod('transfer');
       setSimProofAmount('');
-      setSimProofFile(null);
       setSimProofNote('');
       setIsSimulatorOpen(true);
       navigate('/client/portal', { replace: true });

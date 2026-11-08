@@ -1,6 +1,5 @@
 import {
   collection,
-  doc,
   limit,
   onSnapshot,
   where,
@@ -26,7 +25,7 @@ function toNumber(value, fallback = 0) {
 
 export function normalizeBookkeepingEntry(entry, fallbackId = '') {
   const source = entry && typeof entry === 'object' ? entry : {};
-  const id = cleanText(source.id, fallbackId || makeEntryId());
+  const id = cleanText(source.id, fallbackId);
   const now = new Date().toISOString();
 
   return {

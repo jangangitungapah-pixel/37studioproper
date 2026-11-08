@@ -72,13 +72,6 @@ function validBusinessDate(value) {
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? '' : date;
 }
 
-function normalizeRegisterId(value) {
-  const registerId = cleanText(value || 'main', 40).toLowerCase();
-  if (!/^[a-z0-9_-]{1,40}$/.test(registerId) || registerId !== 'main') {
-    throw new Error('Phase 3 hanya mendukung register main.');
-  }
-  return registerId;
-}
 
 function assertFirebase() {
   if (!isFirebaseConfigured || !firestoreDb) throw new Error('Firebase belum dikonfigurasi.');
