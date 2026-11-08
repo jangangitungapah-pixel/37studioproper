@@ -1065,18 +1065,18 @@ match /users/{userId} {
     function bookingIsScheduleBlocking(data) {
       return (
           !data.keys().hasAny(['bookingRequestStatus']) ||
-          data.bookingRequestStatus not in ['submitted', 'rejected', 'cancelled']
+          !(data.bookingRequestStatus in ['submitted', 'rejected', 'cancelled'])
         ) &&
         (
           !data.keys().hasAny(['requestStatus']) ||
-          data.requestStatus not in ['submitted', 'rejected', 'cancelled', 'canceled', 'deleted']
+          !(data.requestStatus in ['submitted', 'rejected', 'cancelled', 'canceled', 'deleted'])
         ) &&
         (
           !data.keys().hasAny(['sessionStatus']) ||
-          data.sessionStatus not in ['cancelled', 'canceled', 'rejected', 'deleted']
+          !(data.sessionStatus in ['cancelled', 'canceled', 'rejected', 'deleted'])
         ) &&
-        data.status not in ['cancelled', 'canceled', 'rejected', 'deleted'] &&
-        data.paymentStatus not in ['cancelled', 'canceled', 'rejected', 'deleted'];
+        !(data.status in ['cancelled', 'canceled', 'rejected', 'deleted']) &&
+        !(data.paymentStatus in ['cancelled', 'canceled', 'rejected', 'deleted']);
     }
 
     function bookingRequiresPublicSlot(data) {
@@ -1318,7 +1318,7 @@ match /users/{userId} {
           ) &&
           (
             !data.keys().hasAny(['bookingRequestStatus']) ||
-            data.bookingRequestStatus not in ['rejected', 'cancelled']
+            !(data.bookingRequestStatus in ['rejected', 'cancelled'])
           )
         );
     }
