@@ -28,7 +28,7 @@ import {
   isBookingNoShowEligible,
 } from '../../domain/booking/normalizeBooking.js';
 import { firebaseAuth } from '../../lib/firebase.js';
-import { recordCanonicalBookingSessionAction } from '../../services/adminOperationsRepository.js';
+import { recordBookingSessionAction } from '../../services/bookingOperationsRepository.js';
 import {
   getBookingRequestStatusMeta,
 } from '../../services/bookingCommunicationRepository.js';
@@ -997,12 +997,12 @@ function BookingDetailDrawerContent({
     setIsUpdatingSession(true);
     updateSessionUi({ error: '', feedback: '' });
     try {
-      const result = await recordCanonicalBookingSessionAction({
+      const result = await recordBookingSessionAction({
         action,
         bookingId: booking.id,
         ...(reason ? { reason } : {}),
       });
-      if (!result?.booking?.id) throw new Error('Worker tidak mengembalikan status sesi yang tersimpan.');
+      if (!result?.booking?.id) throw new Error('Repository Firebase tidak mengembalikan status sesi yang tersimpan.');
       updateSessionUi({
         snapshot: { bookingId: booking.id, booking: result.booking },
         feedback: {
