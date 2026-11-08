@@ -447,7 +447,7 @@ assert.equal(
 
 assert.equal(
   publicSlotRules.includes(
-    'allow create, update: if isApprovedAdmin()',
+    'allow create, update: if isApprovedScheduleAdmin()',
   ),
   true,
   'Public users must never gain write access to availability mirror.',
@@ -460,7 +460,7 @@ assert.equal(
 );
 
 assert.equal(
-  publicSlotRules.includes('allow delete: if isApprovedAdmin()'),
+  publicSlotRules.includes('allow delete: if isApprovedScheduleAdmin()'),
   true,
   'Only approved administrators may remove an obsolete availability mirror.',
 );
