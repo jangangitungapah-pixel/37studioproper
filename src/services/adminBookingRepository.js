@@ -179,7 +179,7 @@ export function subscribeClientBookingsForUser(user, callback, onError) {
   const email = String(user.email || '').trim();
   const emailLower = email.toLowerCase();
   const phoneRaw = String(user.phoneNumber || '').trim();
-  const phoneNoPlus = phoneRaw.replace(/^\\+/, '');
+  const phoneNoPlus = phoneRaw.replace(/^\+/, '');
   const filters = [];
 
   if (user.uid) filters.push(where('clientUid', '==', user.uid));
