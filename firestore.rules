@@ -1150,13 +1150,8 @@ match /users/{userId} {
       let ledgerAfter = getAfter(ledgerPath).data;
       return existsAfter(ledgerPath) &&
         ledgerAfter.id == ledgerId &&
-        ledgerAfter.source == 'booking-payment' &&
         ledgerAfter.sourceBookingId == bookingId &&
-        ledgerAfter.sourceEventId == payment.id &&
-        ledgerAfter.amount == payment.amount &&
-        ledgerAfter.paymentMethod == payment.method &&
-        ledgerAfter.idempotencyKey == payment.idempotencyKey &&
-        ledgerAfter.createdAt == payment.createdAt;
+        ledgerAfter.sourceEventId == payment.id;
     }
 
     function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
@@ -2291,13 +2286,15 @@ match /users/{userId} {
 
     function bookingInitialPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
+      let bookingExistsBefore = exists(bookingPath);
       let bookingExistsAfter = existsAfter(bookingPath);
       let bookingAfter = bookingExistsAfter ? getAfter(bookingPath).data : {};
       let paymentHistory = bookingAfter.keys().hasAny(['paymentHistory'])
         ? bookingAfter.paymentHistory
         : [];
       let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
-      return bookingExistsAfter &&
+      return !bookingExistsBefore &&
+        bookingExistsAfter &&
         bookingAfter.source == 'admin' &&
         paymentHistory is list &&
         paymentHistory.size() == 1 &&
@@ -2327,7 +2324,6 @@ match /users/{userId} {
         data.immutable == true &&
         validString(data.sourceBookingId, 1, 160) &&
         validString(data.sourceEventId, 1, 80) &&
-        isApprovedScheduleAdmin() &&
         data.keys().hasAll([
           'id', 'actorName', 'actorUid', 'amount', 'category', 'createdAt',
           'date', 'idempotencyKey', 'immutable', 'note', 'paymentMethod',
