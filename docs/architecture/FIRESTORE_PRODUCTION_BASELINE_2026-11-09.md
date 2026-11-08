@@ -16,8 +16,8 @@ This ID is the production baseline identifier supplied in the approved handoff. 
 ## 2. Local repository rules file
 
 - Path: firestore.rules
-- Git blob SHA observed on the migration branch and main: 54d2fe73096f44bce66be66712508d7a01aeaaf3
-- The branch copy matches the main copy at capture time.
+- Git blob SHA observed on the migration branch and main: 1c902e8ce1eae4fafb63261e107b37b62d8f8158
+- The pre-Phase-1 branch copy matched main at capture time. Phase 1 added only the owner-scoped repository operation marker contract; the resulting local Rules blob SHA is recorded above.
 - This SHA identifies the repository file only. It is not asserted to be the source of the active production ruleset above.
 - The handoff explicitly warns that production rules have drifted significantly from the local file.
 
