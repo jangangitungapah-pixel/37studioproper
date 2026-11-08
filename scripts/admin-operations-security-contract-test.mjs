@@ -16,6 +16,7 @@ const settings = read('src/pages/admin/SettingsPage.jsx');
 const accountRoleRepository = read('src/services/accountRoleRepository.js');
 const dangerWorker = read('workers/admin-operations-worker/src/domain/danger.js');
 const bookingWorker = read('workers/admin-operations-worker/src/domain/bookings.js');
+const bookingOperationsRepository = read('src/services/bookingOperationsRepository.js');
 const galleryWorker = read('workers/admin-operations-worker/src/domain/gallery.js');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
@@ -104,6 +105,21 @@ assert.match(
 assert.equal(galleryWorker.includes("studio37/gallery/"), true);
 assert.equal(galleryWorker.includes("permanentDeleteStatus: 'deleting'"), true);
 assert.equal(bookingWorker.includes("type: 'manual-booking-create'"), true);
+assert.match(
+  bookingOperationsRepository,
+  /initialPaymentIntent: payment/,
+  'A pending initial payment must be durably stored as an intent on the booking.',
+);
+assert.match(
+  bookingOperationsRepository,
+  /current\.initialPaymentLedgerStatus === 'pending' && current\.initialPaymentIntent/,
+  'Editing a pending booking must recover its initial payment ledger after a page reload.',
+);
+assert.match(
+  rules,
+  /payment == resource\.data\.initialPaymentIntent/,
+  'Rules must bind the posted payment history to the immutable initial payment intent.',
+);
 assert.equal(bookingSessionsWorker.includes('commitIdempotentOperation'), true);
 assert.equal(bookingSessionsWorker.includes("'bookingSessionEvents'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'"), true);
