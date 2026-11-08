@@ -308,6 +308,14 @@ const portalSource =
     'utf8',
   );
 
+const adminBookingRepositorySource =
+  readFileSync(
+    resolve(
+      'src/services/adminBookingRepository.js',
+    ),
+    'utf8',
+  );
+
 assert.equal(
   portalSource.includes(
     'parseClientBookingResume(location.search)',
@@ -359,6 +367,31 @@ assert.equal(
   ),
   true,
   'Final booking submit must remain inside authenticated Client Portal.',
+);
+assert.match(
+  portalSource,
+  /const clientBookingRequestIdentityRef = useRef\(null\)/,
+  'Client booking retries must retain one stable request identity.',
+);
+assert.match(
+  portalSource,
+  /const requestFingerprint = JSON\.stringify\(/,
+  'Client booking request identity must be tied to the submitted payload.',
+);
+assert.match(
+  portalSource,
+  /requestId: requestIdentity\.id/,
+  'Client booking submission must pass the stable request ID to the repository.',
+);
+assert.match(
+  portalSource,
+  /previousRequestIdentity\?\.pendingRecovery/,
+  'An uncertain commit must require retrying the same payload before starting a different request.',
+);
+assert.match(
+  adminBookingRepositorySource,
+  /const requestedBookingId = String\(booking\.requestId \|\| ''\)\.trim\(\)/,
+  'The repository must preserve a validated request ID supplied for idempotent retry.',
 );
 
 const landingSource =
