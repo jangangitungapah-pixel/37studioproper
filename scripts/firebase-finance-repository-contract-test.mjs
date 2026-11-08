@@ -82,6 +82,11 @@ assert.equal(paymentCore.includes('payerName:'), true);
 assert.equal(bookkeeping.includes('financeRepository.createManualBookkeepingEntry('), true);
 assert.equal(bookkeeping.includes('financeRepository.updateManualBookkeepingEntry('), true);
 assert.equal(bookkeeping.includes('financeRepository.deleteManualBookkeepingEntry('), true);
+assert.match(
+  finance,
+  /action: 'manual-create', requestId,[\s\S]*?payload: \{[\s\S]*?amount: entry\.amount,[\s\S]*?paymentMethod: entry\.paymentMethod,[\s\S]*?type: entry\.type,[\s\S]*?\},[\s\S]*?execute: async \(transaction\)/,
+  'Manual create idempotency must hash stable user fields, not generated IDs or timestamps.',
+);
 assert.equal(bookkeepingPage.includes('createRepositoryRequestId()'), true);
 assert.equal(bookkeepingPage.includes('manualSaveOperationRef'), true);
 assert.equal(bookkeepingPage.includes('manualDeleteOperationsRef'), true);

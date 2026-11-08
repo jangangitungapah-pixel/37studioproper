@@ -72,6 +72,13 @@ function validBusinessDate(value) {
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? '' : date;
 }
 
+function normalizeRegisterId(value) {
+  const registerId = cleanText(value || 'main', 40).toLowerCase();
+  if (!/^[a-z0-9_-]{1,40}$/.test(registerId) || registerId !== 'main') {
+    throw new Error('Phase 3 hanya mendukung register main.');
+  }
+  return registerId;
+}
 
 function assertFirebase() {
   if (!isFirebaseConfigured || !firestoreDb) throw new Error('Firebase belum dikonfigurasi.');
@@ -1137,7 +1144,18 @@ export async function createManualBookkeepingEntry(input = {}, operationRequestI
   const fenceRef = doc(firestoreDb, CLOSINGS, date + '__main');
   const result = await runIdempotentFirestoreTransaction({
     db: firestoreDb, actorUid: actor.uid, scope: 'bookkeeping', action: 'manual-create', requestId,
-    payload: entry,
+    // Exclude generated document IDs, timestamps, and actor metadata from the
+    // idempotency hash. A retry with the same request ID must replay the
+    // original document even when the first response was lost after commit.
+    payload: {
+      amount: entry.amount,
+      category: entry.category,
+      date: entry.date,
+      note: entry.note,
+      paymentMethod: entry.paymentMethod,
+      title: entry.title,
+      type: entry.type,
+    },
     execute: async (transaction) => {
       const [existing, fenceSnapshot] = await Promise.all([
         transaction.get(entryRef),
