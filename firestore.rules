@@ -1229,7 +1229,10 @@ match /users/{userId} {
     }
 
     function bookingManualCreateCompanionsAfter(bookingId, data) {
-      return bookingSlotStateMatchesAfter(bookingId, data);
+      let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      return data.durationHours > 0
+        ? bookingCalendarSlotMatchesAfter(bookingId, data)
+        : !existsAfter(slotPath);
     }
 
     function adminBookingManualUpdate(bookingId) {
