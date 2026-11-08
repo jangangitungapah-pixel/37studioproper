@@ -486,6 +486,9 @@ try {
     limit(30),
   );
 
+  await assertSucceeds(getDocs(activeFollowUpQuery(owner)));
+  await assertSucceeds(getDocs(completedFollowUpQuery(owner)));
+  await assertSucceeds(getDocs(followUpEventsQuery(owner)));
   await assertSucceeds(getDocs(activeFollowUpQuery(dashboard)));
   await assertSucceeds(getDocs(completedFollowUpQuery(dashboard)));
   await assertSucceeds(getDocs(followUpEventsQuery(dashboard)));
