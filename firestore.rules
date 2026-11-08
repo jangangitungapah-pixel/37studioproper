@@ -1275,6 +1275,15 @@ match /users/{userId} {
           'sessionLabel', 'sessionType', 'startHour', 'startTimeLabel',
           'title', 'updatedAt'
         ]) &&
+        validString(request.resource.data.customer, 1, 120) &&
+        validString(request.resource.data.phone, 0, 32) &&
+        validIsoDate(request.resource.data.date) &&
+        validNumber(request.resource.data.startHour, 0, 23) &&
+        validNumber(request.resource.data.durationHours, 0, 24) &&
+        validOptionalString(request.resource.data, 'clientUid', 128) &&
+        validOptionalString(request.resource.data, 'email', 254) &&
+        validOptionalString(request.resource.data, 'title', 160) &&
+        validOptionalString(request.resource.data, 'sessionLabel', 160) &&
         validIsoTimestampString(request.resource.data.updatedAt) &&
         (
           !scheduleChanged ||
@@ -1603,19 +1612,10 @@ match /users/{userId} {
         changed.hasAny([
           'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
         ])
-          ? (
-              validBooking(request.resource.data) &&
-              adminBookingDecisionUpdate(bookingId)
-            )
+          ? adminBookingDecisionUpdate(bookingId)
           : changed.hasAny(['lastSessionEventId'])
-            ? (
-                validBooking(request.resource.data) &&
-                adminBookingSessionActionUpdate(bookingId)
-              )
-            : (
-                validBooking(request.resource.data) &&
-                adminBookingManualUpdate(bookingId)
-              )
+            ? adminBookingSessionActionUpdate(bookingId)
+            : adminBookingManualUpdate(bookingId)
       );
     }
 
@@ -1637,7 +1637,6 @@ match /users/{userId} {
         (
           isClientBookingOwner(resource.data) &&
           request.resource.data.clientUid == resource.data.clientUid &&
-          validBooking(request.resource.data) &&
           (
             clientSendsBookingMessage(bookingId) ||
             clientRequestsBookingCancellation(bookingId) ||
