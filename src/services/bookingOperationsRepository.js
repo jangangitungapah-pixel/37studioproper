@@ -627,10 +627,6 @@ export async function updateManualBooking(inputValue) {
 
   const current = { id: currentSnapshot.id, ...currentSnapshot.data() };
   const expectedUpdatedAt = cleanText(input.expectedUpdatedAt || input.updatedAt || current.updatedAt || '', 40);
-  if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) {
-    throw operationError('stale_booking', 'Booking sudah berubah. Muat ulang data sebelum menyimpan kembali.');
-  }
-
   const patch = Object.fromEntries(
     Object.entries(input).filter(([key]) => EDITABLE_BOOKING_FIELDS.has(key)),
   );
@@ -997,7 +993,7 @@ export async function recordBookingSessionAction(inputValue) {
   const currentSnapshot = await getDoc(bookingRef);
   if (!currentSnapshot.exists()) throw operationError('booking_not_found', 'Booking tidak ditemukan.');
   const currentBooking = { id: currentSnapshot.id, ...currentSnapshot.data() };
-  const requestId = 'session-' + input.bookingId + '-' + input.action;
+  const requestId = 'session-' + await createRepositoryPayloadHash({ bookingId: input.bookingId }) + '-' + input.action;
   const scope = 'bookings';
   const action = 'session-action';
   const operationId = await createRepositoryOperationId({
@@ -1146,7 +1142,7 @@ export async function createClientBookingRequestOperation({ user, booking }) {
     throw operationError('invalid_client_booking_request', 'Data permintaan booking Client tidak memenuhi kontrak.');
   }
 
-  const requestId = 'client-request-' + id;
+  const requestId = 'client-request-' + await createRepositoryPayloadHash({ bookingId: id });
   const committed = await runIdempotentFirestoreTransaction({
     db: firestoreDb,
     actorUid: actor.uid,
