@@ -478,7 +478,7 @@ const publicSlotValidatorSource = rulesSource.slice(
 );
 assert.match(
   publicSlotValidatorSource,
-  /data\.keys\(\)\.hasAll\(\[\s*'bookingId',\s*'date',\s*'durationHours',\s*'sessionLabel',\s*'startHour',\s*'status',\s*'title',\s*'updatedAt'\s*\]\)[\s\S]*?data\.keys\(\)\.size\(\)\s*==\s*8/,
+  /data\.keys\(\)\.hasOnly\(\[\s*'bookingId',\s*'date',\s*'durationHours',\s*'sessionLabel',\s*'startHour',\s*'status',\s*'title',\s*'updatedAt'\s*\]\)[\s\S]*?validString\(data\.title,\s*1,\s*80\)/,
   'Public slot mirror must remain restricted to generic safe fields.',
 );
 assert.match(
