@@ -12,6 +12,20 @@ Baseline HEAD before Phase 10 documentation: 92dfa6ca790927837fb7f65dfb3972f7ada
 Phase 10 report: docs/PHASE_10_REGRESSION_CLEANUP_RELEASE_READINESS_2026-11-07.md
 Roadmap: docs/REDESIGN_WORKPLAN.md
 
+STATUS UPDATE — 2026-11-08 (supersedes the original Gate A/B status below)
+- Latest branch HEAD at time of this update: 8372cd7f9f31a53d257c633ce543b7f2ea67ee6e (release-gate progress documentation).
+- Evidence report: docs/POST_PHASE_10_RELEASE_GATE_PROGRESS_2026-11-08.md.
+- Quality Gates #324 and #326: SUCCESS. #326 completed install, audit, build, lint, regression, PRD/Firestore security, responsive browser smoke, keyboard/focus QA, and both evidence uploads.
+- Gate A: targeted @grpc/grpc-js override 1.14.7 is locked; production-only npm audit is 0 (zero findings). Full audit contains three LOW entries, all propagated from one dev-only deepmerge@4.3.1 advisory through shadcn/@shadcn/registry. The upstream advisory has no patched deepmerge version; do not blindly downgrade shadcn to npm's suggested 1.0.0 major version. Residual low risk remains disclosed and requires release-owner acceptance or upstream fix.
+- Gate B: license evidence reviewed. buffers@0.1.1 upstream package metadata declares MIT/X11 and Debian's node-buffers 0.1.1-2 record maps the upstream source license to MIT; the npm lockfile metadata remains blank. JSZip 3.10.1 elects MIT from MIT OR GPL-3.0-or-later; pako 1.0.11 requires MIT AND Zlib notices; type-fest 4.41.0 elects MIT from MIT OR CC0-1.0. See the progress report for source URLs and rationale. This is a technical license inventory, not legal advice.
+- Gate C remains open: authenticated Admin/Client/Guard and live Public Booking acceptance require a separate Firebase Spark staging project, isolated Hosting origin, isolated Worker endpoint, and synthetic identities/data. Nothing was provisioned or written in production.
+
+NEXT ACTIONS
+1. Verify the current remote branch HEAD and CI before proceeding. The user's local working tree is not observable from the remote connector.
+2. Before any local pull, inspect `git status --short --branch`. Preserve local changes; never reset, clean, stash, or overwrite. Only if the local worktree is clean should `git pull --ff-only` be considered.
+3. Continue release-gate resolution with Gate C prerequisite inspection. Do not provision or mutate Firebase/Worker environments without confirmed separate Spark staging project, isolated Hosting/Worker targets, and synthetic identities/data.
+4. Do not repeat Phase 9/10 or start a new redesign phase.
+
 FIRST ACTIONS IN NEXT SESSION
 1. Fetch the branch HEAD and verify its CI after the Phase 10 documentation commit. Do not assume the local checkout is synchronized.
 2. Inspect local status before any pull. If there are local modifications/untracked user files, preserve them and do not reset, clean, stash, or overwrite. If clean, switch to the branch and use git pull --ff-only.
