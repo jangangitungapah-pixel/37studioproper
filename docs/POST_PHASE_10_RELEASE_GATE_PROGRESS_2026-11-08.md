@@ -132,7 +132,7 @@ The existing readiness checklist at [STAGING-ACCEPTANCE-READINESS-2026-10-29.md]
 5. **GitHub Actions runtime maintenance:** Node 20 deprecation warnings from v4 actions remain; update supported action versions in a controlled CI-only change, then rerun gates.
 6. **Performance/accessibility follow-up:** ExcelJS and ECharts chunk warnings remain. Reduced-motion was not browser-emulated across every route; no full accessibility certification is claimed.
 
-## 6. Guardrails
+## 7. Guardrails
 
 - Keep Firebase on Spark/free tier. Do not enable Blaze or billing.
 - Do not point acceptance writes at production.
