@@ -1592,11 +1592,8 @@ match /users/{userId} {
         resource.data.initialPaymentLedgerStatus == 'pending' &&
         request.resource.data.initialPaymentLedgerStatus == 'recorded' &&
         paymentHistory.size() == 1 &&
-        existsAfter(ledgerPath) &&
-        ledgerAfter.id == ledgerId &&
-        ledgerAfter.source == 'booking-payment' &&
-        ledgerAfter.sourceBookingId == bookingId &&
-        ledgerAfter.sourceEventId == payment.id;
+        !exists(ledgerPath) &&
+        existsAfter(ledgerPath);
     }
 
     function adminBookingOperationalUpdate(bookingId) {
