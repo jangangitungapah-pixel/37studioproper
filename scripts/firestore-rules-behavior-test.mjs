@@ -11,6 +11,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -507,19 +508,207 @@ try {
     createdAt: now, fromStatus: 'upcoming', id: 'session-event-client-write', reason: '',
     toStatus: 'in_progress', type: 'booking-session-event',
   }));
-  await assertSucceeds(setDoc(doc(schedule, 'bookings', 'safe-unpaid'), {
+  const safeBooking = {
+    appliedDiscounts: [],
+    bandName: '',
+    bookingCode: 'BKG-SAFE-UNPAID',
+    bookingId: 'BKG-SAFE-UNPAID',
+    bookingRequestStatus: 'confirmed',
+    clientUid: '',
+    createdAt: now,
     customer: 'Safe',
+    customerId: '',
+    customerIdentityMode: '',
+    customerPhoneKey: '',
     date: '2026-08-22',
+    discountAmount: 0,
     dpAmount: 0,
     durationHours: 1,
+    email: '',
+    id: 'safe-unpaid',
     invoiceAmount: 500000,
+    invoiceNumber: 'INV-SAFE-UNPAID',
+    lastPaymentAt: '',
+    lastPaymentMethod: '',
+    packageId: 'none',
+    packageLabel: '',
     paidAmount: 0,
     paymentHistory: [],
+    paymentMethod: '',
     paymentStatus: 'pending',
+    paymentStatusCanonical: 'unpaid',
     phone: '',
+    pricingMode: 'session',
+    recordingTypeId: '',
+    recordingTypeLabel: '',
+    refundHistory: [],
+    refundedAmount: 0,
+    sessionLabel: 'Rehearsal',
+    sessionStatus: 'scheduled',
+    sessionType: 'rehearsal',
+    source: 'admin',
     startHour: 11,
+    startTimeLabel: '11:00',
     status: 'pending',
+    subtotal: 500000,
+    title: 'Safe Booking',
     total: 500000,
+    updatedAt: now,
+  };
+  const safeBookingBatch = writeBatch(schedule);
+  safeBookingBatch.set(doc(schedule, 'bookings', 'safe-unpaid'), safeBooking);
+  safeBookingBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-22'), {
+    date: '2026-08-22', lastBookingId: 'safe-unpaid', revision: 1, updatedAt: now,
+  });
+  safeBookingBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-unpaid'), {
+    bookingId: 'safe-unpaid', date: '2026-08-22', durationHours: 1,
+    sessionLabel: 'Rehearsal', startHour: 11, status: 'pending',
+    title: 'Terisi', updatedAt: now,
+  });
+  await assertSucceeds(safeBookingBatch.commit());
+  await assertSucceeds(getDoc(doc(schedule, 'bookingScheduleDays', '2026-08-22')));
+  await assertSucceeds(getDoc(doc(schedule, 'clientCalendarSlots', 'safe-unpaid')));
+  await assertFails(setDoc(doc(schedule, 'bookingScheduleDays', 'orphan-day'), {
+    date: '2026-08-25', lastBookingId: 'missing-booking', revision: 1, updatedAt: now,
+  }));
+  await assertFails(setDoc(doc(schedule, 'clientCalendarSlots', 'orphan-slot'), {
+    bookingId: 'orphan-slot', date: '2026-08-25', durationHours: 1,
+    sessionLabel: 'Orphan', startHour: 10, status: 'pending', title: 'Terisi', updatedAt: now,
+  }));
+
+  const startedAt = '2026-08-14T08:30:00.000Z';
+  const startEventId = 'session-safe-start';
+  const startBatch = writeBatch(schedule);
+  startBatch.update(doc(schedule, 'bookings', 'safe-unpaid'), {
+    actualStartAt: startedAt,
+    actualStartByName: 'Schedule Admin',
+    actualStartByUid: 'schedule-admin',
+    lastSessionEventAt: startedAt,
+    lastSessionEventId: startEventId,
+    lastSessionEventType: 'start',
+    sessionStatus: 'in_progress',
+    updatedAt: startedAt,
+  });
+  startBatch.set(doc(schedule, 'bookingSessionEvents', startEventId), {
+    action: 'start',
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    bookingId: 'safe-unpaid',
+    createdAt: startedAt,
+    fromStatus: 'upcoming',
+    id: startEventId,
+    reason: '',
+    toStatus: 'in_progress',
+    type: 'booking-session-event',
+  });
+  await assertSucceeds(startBatch.commit());
+  await assertSucceeds(getDoc(doc(schedule, 'bookingSessionEvents', startEventId)));
+  await assertFails(updateDoc(doc(schedule, 'bookingSessionEvents', startEventId), { reason: 'Mutated' }));
+  await assertFails(deleteDoc(doc(schedule, 'bookingSessionEvents', startEventId)));
+
+  const completedAt = '2026-08-14T09:30:00.000Z';
+  const completeEventId = 'session-safe-complete';
+  const completeBatch = writeBatch(schedule);
+  completeBatch.update(doc(schedule, 'bookings', 'safe-unpaid'), {
+    actualDurationMinutes: 60,
+    actualEndAt: completedAt,
+    actualEndByName: 'Schedule Admin',
+    actualEndByUid: 'schedule-admin',
+    lastSessionEventAt: completedAt,
+    lastSessionEventId: completeEventId,
+    lastSessionEventType: 'complete',
+    sessionStatus: 'completed',
+    updatedAt: completedAt,
+  });
+  completeBatch.set(doc(schedule, 'bookingSessionEvents', completeEventId), {
+    action: 'complete',
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    bookingId: 'safe-unpaid',
+    createdAt: completedAt,
+    fromStatus: 'in_progress',
+    id: completeEventId,
+    reason: '',
+    toStatus: 'completed',
+    type: 'booking-session-event',
+  });
+  await assertSucceeds(completeBatch.commit());
+
+  const paidAt = '2026-08-24T08:00:00.000Z';
+  const initialPayment = {
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    amount: 100000,
+    createdAt: paidAt,
+    date: '2026-08-24',
+    id: 'payment-safe-1',
+    idempotencyKey: 'manual-create-safe-paid',
+    method: 'cash',
+    note: 'Pembayaran awal booking',
+    source: 'manual-booking-create',
+  };
+  const safePaidBooking = {
+    ...safeBooking,
+    bookingCode: 'BKG-SAFE-PAID',
+    bookingId: 'BKG-SAFE-PAID',
+    createdAt: paidAt,
+    date: '2026-08-24',
+    dpAmount: 100000,
+    id: 'safe-paid',
+    invoiceAmount: 400000,
+    invoiceNumber: 'INV-SAFE-PAID',
+    lastPaymentAt: paidAt,
+    lastPaymentMethod: 'cash',
+    paidAmount: 100000,
+    paymentHistory: [initialPayment],
+    paymentMethod: 'cash',
+    paymentStatus: 'dp',
+    paymentStatusCanonical: 'partial',
+    sessionStatus: 'scheduled',
+    startHour: 12,
+    status: 'dp',
+    updatedAt: paidAt,
+  };
+  const initialLedgerId = 'booking-payment-safe-paid-payment-safe-1';
+  const paidBookingBatch = writeBatch(schedule);
+  paidBookingBatch.set(doc(schedule, 'bookings', 'safe-paid'), safePaidBooking);
+  paidBookingBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-24'), {
+    date: '2026-08-24', lastBookingId: 'safe-paid', revision: 1, updatedAt: paidAt,
+  });
+  paidBookingBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-paid'), {
+    bookingId: 'safe-paid', date: '2026-08-24', durationHours: 1,
+    sessionLabel: 'Rehearsal', startHour: 12, status: 'dp', title: 'Terisi', updatedAt: paidAt,
+  });
+  paidBookingBatch.set(doc(schedule, 'bookkeepingEntries', initialLedgerId), {
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    amount: 100000,
+    category: 'booking',
+    createdAt: paidAt,
+    date: '2026-08-24',
+    id: initialLedgerId,
+    idempotencyKey: 'manual-create-safe-paid',
+    immutable: true,
+    note: 'Pembayaran awal booking',
+    paymentMethod: 'cash',
+    reversalOf: '',
+    source: 'booking-payment',
+    sourceAction: 'payment',
+    sourceBookingId: 'safe-paid',
+    sourceEventId: 'payment-safe-1',
+    title: 'Pembayaran INV-SAFE-PAID',
+    type: 'income',
+    updatedAt: paidAt,
+  });
+  await assertSucceeds(paidBookingBatch.commit());
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), { total: 400000 }));
+  await assertFails(setDoc(doc(schedule, 'bookkeepingEntries', 'forged-booking-payment'), {
+    actorName: 'Schedule Admin', actorUid: 'schedule-admin', amount: 100000,
+    category: 'booking', createdAt: paidAt, date: '2026-08-24',
+    id: 'forged-booking-payment', idempotencyKey: 'forged-payment', immutable: true,
+    note: '', paymentMethod: 'cash', reversalOf: '', source: 'booking-payment',
+    sourceAction: 'payment', sourceBookingId: 'safe-paid', sourceEventId: 'forged',
+    title: 'Forged booking payment', type: 'income', updatedAt: paidAt,
   }));
   await assertFails(setDoc(doc(schedule, 'bookings', 'forged-paid'), {
     customer: 'Forged',
