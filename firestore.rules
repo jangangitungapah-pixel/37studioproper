@@ -1035,10 +1035,11 @@ match /users/{userId} {
 
     function bookingScheduleDayMatchesAfter(dateId, bookingId, updatedAt) {
       let dayPath = /databases/$(database)/documents/bookingScheduleDays/$(dateId);
+      let dayAfter = getAfter(dayPath).data;
       return existsAfter(dayPath) &&
-        getAfter(dayPath).data.date == dateId &&
-        getAfter(dayPath).data.lastBookingId == bookingId &&
-        getAfter(dayPath).data.updatedAt == updatedAt;
+        dayAfter.date == dateId &&
+        dayAfter.lastBookingId == bookingId &&
+        dayAfter.updatedAt == updatedAt;
     }
 
     function validBookingScheduleDay(data, dateId) {
@@ -1093,15 +1094,16 @@ match /users/{userId} {
 
     function bookingCalendarSlotMatchesAfter(bookingId, data) {
       let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      let slotAfter = getAfter(slotPath).data;
       return existsAfter(slotPath) &&
-        validCalendarSlot(getAfter(slotPath).data) &&
-        getAfter(slotPath).data.bookingId == bookingId &&
-        getAfter(slotPath).data.date == data.date &&
-        getAfter(slotPath).data.durationHours == data.durationHours &&
-        getAfter(slotPath).data.startHour == data.startHour &&
-        getAfter(slotPath).data.sessionLabel == data.sessionLabel &&
-        getAfter(slotPath).data.status == data.paymentStatus &&
-        getAfter(slotPath).data.updatedAt == data.updatedAt &&
+        validCalendarSlot(slotAfter) &&
+        slotAfter.bookingId == bookingId &&
+        slotAfter.date == data.date &&
+        slotAfter.durationHours == data.durationHours &&
+        slotAfter.startHour == data.startHour &&
+        slotAfter.sessionLabel == data.sessionLabel &&
+        slotAfter.status == data.paymentStatus &&
+        slotAfter.updatedAt == data.updatedAt &&
         bookingScheduleDayMatchesAfter(data.date, bookingId, data.updatedAt);
     }
 
@@ -1137,21 +1139,22 @@ match /users/{userId} {
       let payment = bookingData.paymentHistory[0];
       let ledgerId = 'booking-payment-' + bookingId + '-' + payment.id;
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
+      let ledgerAfter = getAfter(ledgerPath).data;
       return existsAfter(ledgerPath) &&
-        getAfter(ledgerPath).data.id == ledgerId &&
-        getAfter(ledgerPath).data.type == 'income' &&
-        getAfter(ledgerPath).data.category == 'booking' &&
-        getAfter(ledgerPath).data.amount == payment.amount &&
-        getAfter(ledgerPath).data.date == payment.date &&
-        getAfter(ledgerPath).data.paymentMethod == payment.method &&
-        getAfter(ledgerPath).data.source == 'booking-payment' &&
-        getAfter(ledgerPath).data.sourceAction == 'payment' &&
-        getAfter(ledgerPath).data.sourceBookingId == bookingId &&
-        getAfter(ledgerPath).data.sourceEventId == payment.id &&
-        getAfter(ledgerPath).data.actorUid == request.auth.uid &&
-        getAfter(ledgerPath).data.idempotencyKey == payment.idempotencyKey &&
-        getAfter(ledgerPath).data.createdAt == payment.createdAt &&
-        getAfter(ledgerPath).data.updatedAt == payment.createdAt;
+        ledgerAfter.id == ledgerId &&
+        ledgerAfter.type == 'income' &&
+        ledgerAfter.category == 'booking' &&
+        ledgerAfter.amount == payment.amount &&
+        ledgerAfter.date == payment.date &&
+        ledgerAfter.paymentMethod == payment.method &&
+        ledgerAfter.source == 'booking-payment' &&
+        ledgerAfter.sourceAction == 'payment' &&
+        ledgerAfter.sourceBookingId == bookingId &&
+        ledgerAfter.sourceEventId == payment.id &&
+        ledgerAfter.actorUid == request.auth.uid &&
+        ledgerAfter.idempotencyKey == payment.idempotencyKey &&
+        ledgerAfter.createdAt == payment.createdAt &&
+        ledgerAfter.updatedAt == payment.createdAt;
     }
 
     function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
@@ -1295,25 +1298,27 @@ match /users/{userId} {
 
     function bookingSessionEventMatchesAfter(eventId, bookingId, eventTimestamp, action, toStatus) {
       let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
+      let eventAfter = getAfter(eventPath).data;
       return existsAfter(eventPath) &&
-        getAfter(eventPath).data.id == eventId &&
-        getAfter(eventPath).data.bookingId == bookingId &&
-        getAfter(eventPath).data.createdAt == eventTimestamp &&
-        getAfter(eventPath).data.action == action &&
-        getAfter(eventPath).data.toStatus == toStatus;
+        eventAfter.id == eventId &&
+        eventAfter.bookingId == bookingId &&
+        eventAfter.createdAt == eventTimestamp &&
+        eventAfter.action == action &&
+        eventAfter.toStatus == toStatus;
     }
 
     function bookingSessionEventReferencesBookingAfter(eventId) {
       let bookingId = request.resource.data.bookingId;
       let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      let bookingAfter = getAfter(bookingPath).data;
       return existsAfter(bookingPath) &&
-        getAfter(bookingPath).data.keys().hasAll([
+        bookingAfter.keys().hasAll([
           'lastSessionEventId', 'lastSessionEventType', 'lastSessionEventAt', 'updatedAt'
         ]) &&
-        getAfter(bookingPath).data.lastSessionEventId == eventId &&
-        getAfter(bookingPath).data.lastSessionEventType == request.resource.data.action &&
-        getAfter(bookingPath).data.lastSessionEventAt == request.resource.data.createdAt &&
-        getAfter(bookingPath).data.updatedAt == request.resource.data.createdAt;
+        bookingAfter.lastSessionEventId == eventId &&
+        bookingAfter.lastSessionEventType == request.resource.data.action &&
+        bookingAfter.lastSessionEventAt == request.resource.data.createdAt &&
+        bookingAfter.updatedAt == request.resource.data.createdAt;
     }
 
     function bookingRequestAllowsSession(data) {
@@ -1378,6 +1383,7 @@ match /users/{userId} {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let eventId = request.resource.data.lastSessionEventId;
       let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
+      let eventAfter = eventAfter;
       return adminBookingFinanceFieldsUnchanged() &&
         changed.hasOnly([
           'checkedInAt', 'checkedInByUid', 'checkedInByName',
@@ -1388,16 +1394,16 @@ match /users/{userId} {
           'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
         ]) &&
         existsAfter(eventPath) &&
-        validBookingSessionEvent(getAfter(eventPath).data, eventId) &&
-        getAfter(eventPath).data.bookingId == bookingId &&
-        getAfter(eventPath).data.actorUid == request.auth.uid &&
-        request.resource.data.updatedAt == getAfter(eventPath).data.createdAt &&
-        request.resource.data.lastSessionEventAt == getAfter(eventPath).data.createdAt &&
-        request.resource.data.lastSessionEventType == getAfter(eventPath).data.action &&
-        getAfter(eventPath).data.id == eventId &&
+        validBookingSessionEvent(eventAfter, eventId) &&
+        eventAfter.bookingId == bookingId &&
+        eventAfter.actorUid == request.auth.uid &&
+        request.resource.data.updatedAt == eventAfter.createdAt &&
+        request.resource.data.lastSessionEventAt == eventAfter.createdAt &&
+        request.resource.data.lastSessionEventType == eventAfter.action &&
+        eventAfter.id == eventId &&
         (
           (
-            getAfter(eventPath).data.action == 'check_in' &&
+            eventAfter.action == 'check_in' &&
             changed.hasOnly([
               'checkedInAt', 'checkedInByUid', 'checkedInByName', 'updatedAt',
               'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
@@ -1407,30 +1413,30 @@ match /users/{userId} {
               !resource.data.keys().hasAny(['checkedInAt']) ||
               resource.data.checkedInAt == ''
             ) &&
-            request.resource.data.checkedInAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.checkedInAt == eventAfter.createdAt &&
             request.resource.data.checkedInByUid == request.auth.uid &&
             request.resource.data.checkedInByName is string &&
-            getAfter(eventPath).data.fromStatus == 'upcoming' &&
-            getAfter(eventPath).data.toStatus == 'upcoming' &&
-            getAfter(eventPath).data.reason == ''
+            eventAfter.fromStatus == 'upcoming' &&
+            eventAfter.toStatus == 'upcoming' &&
+            eventAfter.reason == ''
           ) ||
           (
-            getAfter(eventPath).data.action == 'start' &&
+            eventAfter.action == 'start' &&
             changed.hasOnly([
               'sessionStatus', 'actualStartAt', 'actualStartByUid', 'actualStartByName',
               'updatedAt', 'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
             ]) &&
             bookingSessionIsUpcoming(resource.data) &&
             request.resource.data.sessionStatus == 'in_progress' &&
-            request.resource.data.actualStartAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.actualStartAt == eventAfter.createdAt &&
             request.resource.data.actualStartByUid == request.auth.uid &&
             request.resource.data.actualStartByName is string &&
-            getAfter(eventPath).data.fromStatus == 'upcoming' &&
-            getAfter(eventPath).data.toStatus == 'in_progress' &&
-            getAfter(eventPath).data.reason == ''
+            eventAfter.fromStatus == 'upcoming' &&
+            eventAfter.toStatus == 'in_progress' &&
+            eventAfter.reason == ''
           ) ||
           (
-            getAfter(eventPath).data.action == 'complete' &&
+            eventAfter.action == 'complete' &&
             changed.hasOnly([
               'sessionStatus', 'actualEndAt', 'actualEndByUid', 'actualEndByName',
               'actualDurationMinutes', 'updatedAt', 'lastSessionEventAt',
@@ -1438,18 +1444,18 @@ match /users/{userId} {
             ]) &&
             bookingSessionIsInProgress(resource.data) &&
             request.resource.data.sessionStatus == 'completed' &&
-            request.resource.data.actualEndAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.actualEndAt == eventAfter.createdAt &&
             request.resource.data.actualEndByUid == request.auth.uid &&
             request.resource.data.actualEndByName is string &&
             request.resource.data.actualDurationMinutes is int &&
             request.resource.data.actualDurationMinutes >= 1 &&
             request.resource.data.actualDurationMinutes <= 1440 &&
-            getAfter(eventPath).data.fromStatus == 'in_progress' &&
-            getAfter(eventPath).data.toStatus == 'completed' &&
-            getAfter(eventPath).data.reason == ''
+            eventAfter.fromStatus == 'in_progress' &&
+            eventAfter.toStatus == 'completed' &&
+            eventAfter.reason == ''
           ) ||
           (
-            getAfter(eventPath).data.action == 'no_show' &&
+            eventAfter.action == 'no_show' &&
             changed.hasOnly([
               'sessionStatus', 'noShowAt', 'noShowByUid', 'noShowByName',
               'noShowReason', 'updatedAt', 'lastSessionEventAt',
@@ -1461,13 +1467,13 @@ match /users/{userId} {
               resource.data.checkedInAt == ''
             ) &&
             request.resource.data.sessionStatus == 'no_show' &&
-            request.resource.data.noShowAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.noShowAt == eventAfter.createdAt &&
             request.resource.data.noShowByUid == request.auth.uid &&
             request.resource.data.noShowByName is string &&
             validString(request.resource.data.noShowReason, 4, 600) &&
-            request.resource.data.noShowReason == getAfter(eventPath).data.reason &&
-            getAfter(eventPath).data.fromStatus == 'upcoming' &&
-            getAfter(eventPath).data.toStatus == 'no_show' &&
+            request.resource.data.noShowReason == eventAfter.reason &&
+            eventAfter.fromStatus == 'upcoming' &&
+            eventAfter.toStatus == 'no_show' &&
             bookingNoShowGraceElapsed(resource.data)
           )
         );
@@ -1475,20 +1481,21 @@ match /users/{userId} {
 
     function bookingDecisionMessageMatchesAfter(bookingId, messageId) {
       let messagePath = /databases/$(database)/documents/bookingMessages/$(messageId);
+      let messageAfter = getAfter(messagePath).data;
       return existsAfter(messagePath) &&
-        getAfter(messagePath).data.id == messageId &&
-        getAfter(messagePath).data.bookingId == bookingId &&
-        getAfter(messagePath).data.clientUid == request.resource.data.clientUid &&
-        getAfter(messagePath).data.senderUid == request.auth.uid &&
-        getAfter(messagePath).data.senderRole == 'admin' &&
-        getAfter(messagePath).data.type == 'status' &&
-        getAfter(messagePath).data.text == request.resource.data.adminResponseNote &&
-        getAfter(messagePath).data.createdAt == request.resource.data.adminResponseAt &&
-        getAfter(messagePath).data.readByAdmin == true &&
-        getAfter(messagePath).data.readByClient == false &&
+        messageAfter.id == messageId &&
+        messageAfter.bookingId == bookingId &&
+        messageAfter.clientUid == request.resource.data.clientUid &&
+        messageAfter.senderUid == request.auth.uid &&
+        messageAfter.senderRole == 'admin' &&
+        messageAfter.type == 'status' &&
+        messageAfter.text == request.resource.data.adminResponseNote &&
+        messageAfter.createdAt == request.resource.data.adminResponseAt &&
+        messageAfter.readByAdmin == true &&
+        messageAfter.readByClient == false &&
         request.resource.data.lastMessageId == messageId &&
-        request.resource.data.lastMessageAt == getAfter(messagePath).data.createdAt &&
-        request.resource.data.lastMessagePreview == getAfter(messagePath).data.text.substring(0, 180) &&
+        request.resource.data.lastMessageAt == messageAfter.createdAt &&
+        request.resource.data.lastMessagePreview == messageAfter.text.substring(0, 180) &&
         request.resource.data.lastMessageSenderRole == 'admin' &&
         request.resource.data.lastMessageReadByAdmin == true &&
         request.resource.data.lastMessageReadByClient == false;
@@ -1582,8 +1589,7 @@ match /users/{userId} {
     match /bookings/{bookingId} {
       allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner(resource.data);
       allow create: if (
-          isApprovedAdmin() &&
-          canManageBookingData() &&
+          isApprovedScheduleAdmin() &&
           validManualBookingCreate(request.resource.data, bookingId) &&
           bookingManualCreateCompanionsAfter(bookingId, request.resource.data)
         ) || (
@@ -1592,8 +1598,7 @@ match /users/{userId} {
         );
       allow update: if (
         (
-          isApprovedAdmin() &&
-          canManageBookingData() &&
+          isApprovedScheduleAdmin() &&
           validBooking(request.resource.data) &&
           (
             adminBookingManualUpdate(bookingId) ||
@@ -1766,8 +1771,9 @@ match /users/{userId} {
 
     function bookingDocumentChangesAfter(bookingId, updatedAt) {
       let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      let bookingAfter = getAfter(bookingPath).data;
       return existsAfter(bookingPath) &&
-        getAfter(bookingPath).data.updatedAt == updatedAt &&
+        bookingAfter.updatedAt == updatedAt &&
         (
           !exists(bookingPath) ||
           get(bookingPath).data.updatedAt != updatedAt
