@@ -757,7 +757,7 @@ try {
   });
   paidBookingBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-paid'), {
     bookingId: 'safe-paid', date: '2026-08-24', durationHours: 1,
-    sessionLabel: 'Rehearsal', startHour: 12, status: 'dp', title: 'Terisi', updatedAt: paidAt,
+    sessionLabel: 'Rehearsal', startHour: 12, status: 'pending', title: 'Terisi', updatedAt: paidAt,
   });
   console.log('[rules-behavior] create paid booking + slot before initial ledger');
   await assertSucceeds(paidBookingBatch.commit());
