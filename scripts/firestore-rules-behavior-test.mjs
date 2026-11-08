@@ -576,6 +576,29 @@ try {
     sessionLabel: 'Orphan', startHour: 10, status: 'pending', title: 'Terisi', updatedAt: now,
   }));
 
+  const rescheduledAt = '2026-08-14T08:15:00.000Z';
+  const rescheduleBatch = writeBatch(schedule);
+  rescheduleBatch.update(doc(schedule, 'bookings', 'safe-unpaid'), {
+    startHour: 12,
+    startTimeLabel: '12:00',
+    updatedAt: rescheduledAt,
+  });
+  rescheduleBatch.update(doc(schedule, 'bookingScheduleDays', '2026-08-22'), {
+    lastBookingId: 'safe-unpaid',
+    revision: 2,
+    updatedAt: rescheduledAt,
+  });
+  rescheduleBatch.update(doc(schedule, 'clientCalendarSlots', 'safe-unpaid'), {
+    startHour: 12,
+    updatedAt: rescheduledAt,
+  });
+  await assertSucceeds(rescheduleBatch.commit());
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-unpaid'), {
+    startHour: 13,
+    startTimeLabel: '13:00',
+    updatedAt: '2026-08-14T08:20:00.000Z',
+  }));
+
   const startedAt = '2026-08-14T08:30:00.000Z';
   const startEventId = 'session-safe-start';
   const startBatch = writeBatch(schedule);
@@ -633,6 +656,55 @@ try {
     type: 'booking-session-event',
   });
   await assertSucceeds(completeBatch.commit());
+
+  const noShowBooking = {
+    ...safeBooking,
+    bookingCode: 'BKG-SAFE-NO-SHOW',
+    bookingId: 'BKG-SAFE-NO-SHOW',
+    date: '2026-08-25',
+    id: 'safe-no-show',
+    invoiceNumber: 'INV-SAFE-NO-SHOW',
+    startHour: 13,
+    updatedAt: now,
+  };
+  const noShowCreateBatch = writeBatch(schedule);
+  noShowCreateBatch.set(doc(schedule, 'bookings', 'safe-no-show'), noShowBooking);
+  noShowCreateBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-25'), {
+    date: '2026-08-25', lastBookingId: 'safe-no-show', revision: 1, updatedAt: now,
+  });
+  noShowCreateBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-no-show'), {
+    bookingId: 'safe-no-show', date: '2026-08-25', durationHours: 1,
+    sessionLabel: 'Rehearsal', startHour: 13, status: 'pending', title: 'Terisi', updatedAt: now,
+  });
+  await assertSucceeds(noShowCreateBatch.commit());
+
+  const noShowAt = '2026-08-25T07:30:00.000Z';
+  const noShowEventId = 'session-safe-no-show';
+  const noShowBatch = writeBatch(schedule);
+  noShowBatch.update(doc(schedule, 'bookings', 'safe-no-show'), {
+    lastSessionEventAt: noShowAt,
+    lastSessionEventId: noShowEventId,
+    lastSessionEventType: 'no_show',
+    noShowAt,
+    noShowByName: 'Schedule Admin',
+    noShowByUid: 'schedule-admin',
+    noShowReason: 'Client tidak hadir',
+    sessionStatus: 'no_show',
+    updatedAt: noShowAt,
+  });
+  noShowBatch.set(doc(schedule, 'bookingSessionEvents', noShowEventId), {
+    action: 'no_show',
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    bookingId: 'safe-no-show',
+    createdAt: noShowAt,
+    fromStatus: 'upcoming',
+    id: noShowEventId,
+    reason: 'Client tidak hadir',
+    toStatus: 'no_show',
+    type: 'booking-session-event',
+  });
+  await assertSucceeds(noShowBatch.commit());
 
   const paidAt = '2026-08-24T08:00:00.000Z';
   const initialPayment = {
@@ -884,6 +956,62 @@ try {
     id: 'client-safe',
   }));
   await assertFails(setDoc(doc(client, 'bookings', clientBooking.id), clientBooking));
+
+  const decisionAt = '2026-08-14T08:45:00.000Z';
+  const decisionKey = 'decision-client-safe';
+  const decisionMessageId = 'request-' + decisionKey;
+  const decisionNote = 'Approved for requested slot';
+  const decisionBatch = writeBatch(schedule);
+  decisionBatch.update(doc(schedule, 'bookings', 'client-safe'), {
+    adminResponseAt: decisionAt,
+    adminResponseBy: 'schedule-admin',
+    adminResponseNote: decisionNote,
+    bookingRequestStatus: 'confirmed',
+    requestStatus: 'confirmed',
+    lastRequestDecisionKey: decisionKey,
+    lastMessageId: decisionMessageId,
+    lastMessageAt: decisionAt,
+    lastMessagePreview: decisionNote,
+    lastMessageSenderRole: 'admin',
+    lastMessageReadByAdmin: true,
+    lastMessageReadByClient: false,
+    updatedAt: decisionAt,
+  });
+  decisionBatch.set(doc(schedule, 'bookingMessages', decisionMessageId), {
+    id: decisionMessageId,
+    bookingId: 'client-safe',
+    clientUid: 'client-1',
+    senderUid: 'schedule-admin',
+    senderRole: 'admin',
+    senderName: 'Schedule Admin',
+    text: decisionNote,
+    type: 'status',
+    createdAt: decisionAt,
+    readByAdmin: true,
+    readByClient: false,
+  });
+  decisionBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-23'), {
+    date: '2026-08-23',
+    lastBookingId: 'client-safe',
+    revision: 1,
+    updatedAt: decisionAt,
+  });
+  decisionBatch.set(doc(schedule, 'clientCalendarSlots', 'client-safe'), {
+    bookingId: 'client-safe',
+    date: '2026-08-23',
+    durationHours: 1,
+    sessionLabel: 'Sesi Studio',
+    startHour: 13,
+    status: 'pending',
+    title: 'Sesi Studio',
+    updatedAt: decisionAt,
+  });
+  await assertSucceeds(decisionBatch.commit());
+  await assertSucceeds(getDoc(doc(schedule, 'bookingMessages', decisionMessageId)));
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'client-safe'), {
+    paymentStatus: 'lunas',
+    status: 'lunas',
+  }));
 
   assert.equal(true, true);
   console.log('firestore-rules-behavior-test: PASS');
