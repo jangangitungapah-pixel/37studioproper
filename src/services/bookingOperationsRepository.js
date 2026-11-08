@@ -569,13 +569,6 @@ function matchesInitialPayment(actual, expected) {
     expectedEntries.every(([key, value]) => actual[key] === value);
 }
 
-function matchesInitialPaymentLedger(actual, expected) {
-  if (!actual || typeof actual !== 'object' || !expected) return false;
-  const expectedEntries = Object.entries(expected);
-  return Object.keys(actual).length === expectedEntries.length &&
-    expectedEntries.every(([key, value]) => actual[key] === value);
-}
-
 function buildInitialPaymentBookingPatch(booking, payment) {
   const amount = Number(payment.amount);
   const total = Number(booking.total);
