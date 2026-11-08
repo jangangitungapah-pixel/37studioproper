@@ -151,6 +151,16 @@ service cloud.firestore {
       return hasPermission('schedule');
     }
 
+    function isApprovedScheduleAdmin() {
+      return isOwner() || (
+        userDocExists() &&
+        getUserData().role == 'admin' &&
+        getUserData().status == 'approved' &&
+        getUserData().permissions is map &&
+        getUserData().permissions.schedule == true
+      );
+    }
+
     function canAccessCustomerData() {
       return hasPermission('dashboard') || hasPermission('customers');
     }
@@ -1234,8 +1244,7 @@ match /users/{userId} {
     }
 
     function bookingManualCreateCompanionsAfter(bookingId, data) {
-      return bookingScheduleDayMatchesAfter(data.date, bookingId, data.updatedAt) &&
-        bookingSlotStateMatchesAfter(bookingId, data) &&
+      return bookingSlotStateMatchesAfter(bookingId, data) &&
         bookingInitialPaymentLedgerMatchesAfter(bookingId, data);
     }
 
@@ -1734,8 +1743,7 @@ match /users/{userId} {
 
     match /bookingSessionEvents/{eventId} {
       allow read: if isApprovedAdmin() && canManageBookingData();
-      allow create: if isApprovedAdmin() &&
-        canManageBookingData() &&
+      allow create: if isApprovedScheduleAdmin() &&
         validBookingSessionEvent(request.resource.data, eventId) &&
         bookingSessionEventReferencesBookingAfter(eventId);
       allow update, delete: if false;
@@ -1744,14 +1752,12 @@ match /users/{userId} {
     match /clientCalendarSlots/{slotId} {
       // Public availability exposes generic occupied-slot metadata only.
       allow read: if true;
-      allow create, update: if isApprovedAdmin() &&
-        canManageBookingData() &&
+      allow create, update: if isApprovedScheduleAdmin() &&
         validCalendarSlot(request.resource.data) &&
         request.resource.data.bookingId == slotId &&
         existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
         bookingCalendarSlotMatchesAfter(slotId, getAfter(/databases/$(database)/documents/bookings/$(slotId)).data);
-      allow delete: if isApprovedAdmin() &&
-        canManageBookingData() &&
+      allow delete: if isApprovedScheduleAdmin() &&
         existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
         !bookingRequiresPublicSlot(getAfter(/databases/$(database)/documents/bookings/$(slotId)).data) &&
         bookingScheduleDayMatchesAfter(
@@ -1773,13 +1779,11 @@ match /users/{userId} {
 
     match /bookingScheduleDays/{dateId} {
       allow read: if isApprovedAdmin() && canManageBookingData();
-      allow create: if isApprovedAdmin() &&
-        canManageBookingData() &&
+      allow create: if isApprovedScheduleAdmin() &&
         validBookingScheduleDay(request.resource.data, dateId) &&
         request.resource.data.revision == 1 &&
         bookingDocumentChangesAfter(request.resource.data.lastBookingId, request.resource.data.updatedAt);
-      allow update: if isApprovedAdmin() &&
-        canManageBookingData() &&
+      allow update: if isApprovedScheduleAdmin() &&
         validBookingScheduleDay(request.resource.data, dateId) &&
         resource.data.date == dateId &&
         request.resource.data.revision == resource.data.revision + 1 &&
@@ -2265,8 +2269,7 @@ match /users/{userId} {
 
     function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
-      return isApprovedAdmin() &&
-        canManageBookingData() &&
+      return isApprovedScheduleAdmin() &&
         data.id == entryId &&
         data.actorUid == request.auth.uid &&
         data.immutable == true &&
