@@ -733,6 +733,7 @@ try {
     date: '2026-08-24',
     dpAmount: 100000,
     id: 'safe-paid',
+    initialPaymentLedgerStatus: 'pending',
     invoiceAmount: 400000,
     invoiceNumber: 'INV-SAFE-PAID',
     lastPaymentAt: paidAt,
@@ -757,7 +758,13 @@ try {
     bookingId: 'safe-paid', date: '2026-08-24', durationHours: 1,
     sessionLabel: 'Rehearsal', startHour: 12, status: 'dp', title: 'Terisi', updatedAt: paidAt,
   });
-  paidBookingBatch.set(doc(schedule, 'bookkeepingEntries', initialLedgerId), {
+  console.log('[rules-behavior] create paid booking + slot before initial ledger');
+  await assertSucceeds(paidBookingBatch.commit());
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), {
+    initialPaymentLedgerStatus: 'recorded',
+  }));
+
+  const initialLedger = {
     actorName: 'Schedule Admin',
     actorUid: 'schedule-admin',
     amount: 100000,
@@ -777,9 +784,14 @@ try {
     title: 'Pembayaran INV-SAFE-PAID',
     type: 'income',
     updatedAt: paidAt,
+  };
+  const initialLedgerBatch = writeBatch(schedule);
+  initialLedgerBatch.update(doc(schedule, 'bookings', 'safe-paid'), {
+    initialPaymentLedgerStatus: 'recorded',
   });
-  console.log('[rules-behavior] commit paid booking + initial ledger');
-  await assertSucceeds(paidBookingBatch.commit());
+  initialLedgerBatch.set(doc(schedule, 'bookkeepingEntries', initialLedgerId), initialLedger);
+  console.log('[rules-behavior] commit initial ledger + booking pending-to-recorded transition');
+  await assertSucceeds(initialLedgerBatch.commit());
   await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), { total: 400000 }));
   await assertFails(setDoc(doc(schedule, 'bookkeepingEntries', 'forged-booking-payment'), {
     actorName: 'Schedule Admin', actorUid: 'schedule-admin', amount: 100000,
