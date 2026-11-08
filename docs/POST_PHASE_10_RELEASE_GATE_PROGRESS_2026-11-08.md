@@ -107,7 +107,23 @@ Source evidence:
 
 **Gate B status:** upstream provenance and license expressions for the flagged packages have been reviewed and choices are recorded. The lockfile's missing `buffers` field remains unchanged by design; the evidence is recorded here rather than fabricating package metadata. This is a technical license inventory, not a formal legal opinion. A distributable third-party notice/SBOM should carry the elected options and full applicable notices.
 
-## 5. Remaining release gates
+## 5. Current staging environment inspection
+
+The existing staging-readiness audit was rechecked against the current branch configuration on 2026-11-08:
+
+| File / workflow | Current value | Assessment |
+|---|---|---|
+| `.firebaserc` | Only `default: studio-proper` | No separate staging Firebase alias |
+| `firebase.json` | Hosting site `studio-37` | Existing target is production-facing |
+| `workers/admin-operations-worker/wrangler.jsonc` | `APP_ENVIRONMENT=production`, `FIREBASE_PROJECT_ID=studio-proper`, `SITE_ORIGIN=https://studio-37.web.app` | Worker configuration is explicitly production-facing |
+| `.env.example` | Frontend Worker URL and Owner/App Check/Cloudinary variables are blank placeholders | No staging environment values are defined |
+| `.github/workflows/` | Only `quality-gates.yml` and `dependency-lock-refresh.yml` | No staging deployment workflow exists |
+
+The existing readiness checklist at [STAGING-ACCEPTANCE-READINESS-2026-10-29.md](audits/STAGING-ACCEPTANCE-READINESS-2026-10-29.md) still requires a separate Spark project, Hosting origin, isolated Worker environment and secrets, synthetic roles/data, staging rules/index deployment, target verification, and an authorized sign-off owner.
+
+**Gate C decision:** blocked / not run. The current default targets must not be used for acceptance writes. No Firebase or Worker provisioning, deployment, configuration mutation, or data write was performed. A separate Spark project ID, staging Hosting origin, isolated Worker environment, staging-only secret set, and synthetic test identities/data must exist before live acceptance can be performed.
+
+## 6. Remaining release gates
 
 1. **Authenticated staging acceptance:** requires a separate Firebase Spark/free-tier staging project, staging Hosting origin, isolated Worker endpoint, synthetic Admin/Client/Guard identities, and synthetic data. Verify every target before writes. No Blaze, production identities, production data, or production writes.
 2. **Public Booking live acceptance:** verify availability loading/empty/success and final request submission against isolated staging only.
