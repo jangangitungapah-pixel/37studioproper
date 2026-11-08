@@ -1448,6 +1448,12 @@ match /users/{userId} {
         );
     }
 
+    function bookingMessagePreview(messageText) {
+      return messageText.size() > 180
+        ? messageText[0:180]
+        : messageText;
+    }
+
     function bookingDecisionMessageMatchesAfter(bookingId, messageId) {
       let messagePath = /databases/$(database)/documents/bookingMessages/$(messageId);
       let messageAfter = getAfter(messagePath).data;
@@ -1464,7 +1470,7 @@ match /users/{userId} {
         messageAfter.readByClient == false &&
         request.resource.data.lastMessageId == messageId &&
         request.resource.data.lastMessageAt == messageAfter.createdAt &&
-        request.resource.data.lastMessagePreview == messageAfter.text[0:180] &&
+        request.resource.data.lastMessagePreview == bookingMessagePreview(messageAfter.text) &&
         request.resource.data.lastMessageSenderRole == 'admin' &&
         request.resource.data.lastMessageReadByAdmin == true &&
         request.resource.data.lastMessageReadByClient == false;
@@ -1479,7 +1485,7 @@ match /users/{userId} {
         existsAfter(bookingPath) &&
         bookingAfter.lastMessageId == messageId &&
         bookingAfter.lastMessageAt == request.resource.data.createdAt &&
-        bookingAfter.lastMessagePreview == request.resource.data.text[0:180] &&
+        bookingAfter.lastMessagePreview == bookingMessagePreview(request.resource.data.text) &&
         bookingAfter.lastMessageSenderRole == 'admin' &&
         bookingAfter.lastMessageReadByAdmin == true &&
         bookingAfter.lastMessageReadByClient == false &&
