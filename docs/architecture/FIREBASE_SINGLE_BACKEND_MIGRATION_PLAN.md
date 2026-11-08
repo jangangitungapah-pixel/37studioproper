@@ -133,8 +133,8 @@ Do not emulate Admin SDK power by exposing credentials. Where a server-only Auth
 **Implementation in progress (2026-11-09):**
 - The active migration branch now contains `src/services/bookingOperationsRepository.js` for Firebase-native manual create/update, client request creation, booking decisions, and session actions.
 - The Admin Schedule, Request Inbox, booking detail session actions, and public calendar read paths have been switched to the Firebase-native repository/listener path. The public listener is limited to the visible seven-day window; Admin and Client booking listeners are bounded.
-- Firestore Rules now contain strict booking create/edit, decision/message, schedule revision, calendar slot, session-event, and narrow initial booking-payment companion contracts.
-- `scripts/firestore-rules-behavior-test.mjs` and `scripts/admin-operations-security-contract-test.mjs` have expanded coverage for atomic booking, reschedule, Client decision, session transition/no-show, append-only event, and initial payment companion paths.
+- Firestore Rules now contain strict booking create/edit, decision/message, schedule revision, calendar slot, session-event, and a narrow initial booking-payment ledger completion contract. Manual booking plus payment history/calendar state is one transaction; the immutable initial ledger is a second idempotent transaction paired with a `pending → recorded` booking-status update so an interrupted ledger step can be safely retried without duplicating the booking.
+`scripts/firestore-rules-behavior-test.mjs` and `scripts/admin-operations-security-contract-test.mjs` have expanded coverage for atomic booking, reschedule, Client decision, session transition/no-show, append-only event, and the two-step initial-payment ledger completion/retry boundary.
 - The operation/read/write matrix is documented in `docs/architecture/PHASE_2_BOOKING_SCHEDULE_SESSION_OPERATION_INVENTORY.md`.
 - Validation remains pending. Do not mark this phase complete until the full Emulator, regression, build, lint, `npm test`, `npm run test:prd`, and GitHub Quality Gates pass.
 
