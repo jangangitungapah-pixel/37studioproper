@@ -1143,21 +1143,6 @@ match /users/{userId} {
         payment.source == 'manual-booking-create';
     }
 
-    function bookingSingleInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
-      let payment = bookingData.paymentHistory[0];
-      let ledgerId = 'booking-payment-' + bookingId + '-' + payment.id;
-      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
-      return existsAfter(ledgerPath);
-    }
-
-    function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
-      return bookingData.paymentHistory.size() == 0 ||
-        (
-          bookingData.paymentHistory.size() == 1 &&
-          bookingSingleInitialPaymentLedgerMatchesAfter(bookingId, bookingData)
-        );
-    }
-
     function validManualBookingCreate(data, bookingId) {
       return data.keys().hasAll(['initialPaymentLedgerStatus']) &&
         data.keys().hasOnly([
@@ -1244,7 +1229,7 @@ match /users/{userId} {
     }
 
     function bookingManualCreateCompanionsAfter(bookingId, data) {
-      return bookingCalendarSlotMatchesAfter(bookingId, data);
+      return bookingSlotStateMatchesAfter(bookingId, data);
     }
 
     function adminBookingManualUpdate(bookingId) {
@@ -1599,7 +1584,7 @@ match /users/{userId} {
       let payment = paymentHistory.size() == 1 ? paymentHistory[0] : {};
       let ledgerId = paymentHistory.size() == 1
         ? 'booking-payment-' + bookingId + '-' + payment.id
-        : '';
+        : 'invalid-initial-payment-ledger';
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
       let ledgerAfter = getAfter(ledgerPath).data;
       return changed.hasOnly(['initialPaymentLedgerStatus']) &&
