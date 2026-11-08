@@ -1137,7 +1137,7 @@ match /users/{userId} {
         validIsoTimestampString(payment.createdAt) &&
         payment.createdAt == bookingData.createdAt &&
         validIsoDate(payment.date) &&
-        payment.date == bookingData.createdAt.substring(0, 10) &&
+        payment.date == bookingData.createdAt[0:10] &&
         validString(payment.id, 1, 80) &&
         validString(payment.idempotencyKey, 8, 128) &&
         payment.method in ['cash', 'transfer', 'qris', 'other'] &&
@@ -1387,9 +1387,9 @@ match /users/{userId} {
     function bookingNoShowGraceElapsed(data) {
       let localNow = request.time + duration.value(7, 'h');
       let scheduledDate = timestamp.date(
-        int(data.date.substring(0, 4)),
-        int(data.date.substring(5, 7)),
-        int(data.date.substring(8, 10))
+        int(data.date[0:4]),
+        int(data.date[5:7]),
+        int(data.date[8:10])
       );
       return data.startHour is int &&
         (
@@ -1516,7 +1516,7 @@ match /users/{userId} {
         messageAfter.readByClient == false &&
         request.resource.data.lastMessageId == messageId &&
         request.resource.data.lastMessageAt == messageAfter.createdAt &&
-        request.resource.data.lastMessagePreview == messageAfter.text.substring(0, 180) &&
+        request.resource.data.lastMessagePreview == messageAfter.text[0:180] &&
         request.resource.data.lastMessageSenderRole == 'admin' &&
         request.resource.data.lastMessageReadByAdmin == true &&
         request.resource.data.lastMessageReadByClient == false;
@@ -1531,7 +1531,7 @@ match /users/{userId} {
         existsAfter(bookingPath) &&
         bookingAfter.lastMessageId == messageId &&
         bookingAfter.lastMessageAt == request.resource.data.createdAt &&
-        bookingAfter.lastMessagePreview == request.resource.data.text.substring(0, 180) &&
+        bookingAfter.lastMessagePreview == request.resource.data.text[0:180] &&
         bookingAfter.lastMessageSenderRole == 'admin' &&
         bookingAfter.lastMessageReadByAdmin == true &&
         bookingAfter.lastMessageReadByClient == false &&
