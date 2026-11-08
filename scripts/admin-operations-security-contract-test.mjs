@@ -22,7 +22,7 @@ const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
 const dailyClosingWorker = read('workers/admin-operations-worker/src/domain/dailyClosings.js');
 const adminBookingRepository = read('src/services/adminBookingRepository.js');
-const bookingOperationsRepository = read('src/services/bookingOperationsRepository.js');
+
 const bookingCommunicationRepository = read('src/services/bookingCommunicationRepository.js');
 const bookingDetailDrawer = read('src/components/booking/BookingDetailDrawer.jsx');
 const publicBookingPage = read('src/pages/PublicBookingPage.jsx');
