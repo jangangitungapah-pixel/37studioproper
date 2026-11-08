@@ -156,7 +156,7 @@ assert.equal(adminBookingRepository.includes('updateCanonicalManualBooking'), fa
 assert.equal(adminBookingRepository.includes('syncClientCalendarSlotsFromBookings'), false);
 assert.match(
   bookingOperationsRepository,
-  /const EDITABLE_BOOKING_FIELDS = new Set\\([\\s\\S]*?'title',?\\s*\\n\\]\\);,
+  /const EDITABLE_BOOKING_FIELDS = new Set\(\[[\s\S]*?'title',?\s*\n\]\);/,
   'Firebase booking updates must use a narrow editable-field allow-list.',
 );
 assert.equal(bookingOperationsRepository.includes('runIdempotentFirestoreTransaction'), true);
