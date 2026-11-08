@@ -46,6 +46,12 @@ The marker contains the actor, operation scope/action, request ID, payload hash,
 
 The marker is an idempotency record, not an authorization grant. Every domain write and result read must independently pass its own Firestore Rules. The current contract permits an active user to create/read only their own marker; markers cannot be updated or deleted by clients. Product code must not expose a marker as a source of financial truth.
 
+### Batch write helper
+
+\`createRepositoryWriteBatch()\` wraps a Firestore WriteBatch with a configurable write ceiling (default 450, absolute maximum 500). It refuses empty commits, a second commit, and additions after commit. The wrapper counts document writes only; it does **not** replace Firestore Rules' 10/20 document-access-call budgets.
+
+Use a batch only when the complete write set is already known and no read-dependent decision is needed. For state transitions, collision checks, ownership checks, idempotency, or any operation that must inspect current snapshots, use a transaction. Domain inputs must still pass strict validation before writes. Use deterministic document IDs and Rules that reject overwrites of append-only events so an ambiguous retry cannot mutate history.
+
 ### Transaction callback purity
 
 Firestore can rerun a transaction callback. The callback must be deterministic and must not perform network calls, send notifications, emit analytics, modify application/UI state, mutate objects shared outside the callback, or generate IDs/timestamps that change across retries. Prepare document IDs, request IDs, timestamps, normalized payloads, and hashes before entering the transaction. Complete all transaction reads before the first transaction write.
