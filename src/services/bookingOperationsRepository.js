@@ -532,7 +532,7 @@ function matchesInitialPaymentLedger(actual, expected) {
 }
 
 function matchesInitialPaymentToLedger(booking, payment, ledger) {
-  return Boolean(payment) &&
+  return Boolean(payment && ledger) &&
     booking.initialPaymentLedgerStatus === 'pending' &&
     booking.source === 'admin' &&
     Array.isArray(booking.paymentHistory) &&
@@ -549,7 +549,54 @@ function matchesInitialPaymentToLedger(booking, payment, ledger) {
     Number(payment.amount) > 0 &&
     Number(payment.amount) <= Number(booking.total) &&
     payment.id === ledger.sourceEventId &&
-    payment.actorUid === ledger.actorUid async function ensureInitialBookingPaymentLedger({ actor, bookingId, payment, ledger }) {
+    payment.actorUid === ledger.actorUid &&
+    payment.actorName === ledger.actorName &&
+    payment.amount === ledger.amount &&
+    payment.method === ledger.paymentMethod &&
+    payment.date === ledger.date &&
+    payment.createdAt === ledger.createdAt &&
+    payment.idempotencyKey === ledger.idempotencyKey &&
+    payment.note === ledger.note &&
+    payment.source === 'manual-booking-create' &&
+    ledger.sourceBookingId === booking.id &&
+    ledger.title === 'Pembayaran ' + booking.invoiceNumber;
+}
+
+function matchesInitialPayment(actual, expected) {
+  if (!actual || typeof actual !== 'object' || !expected) return false;
+  const expectedEntries = Object.entries(expected);
+  return Object.keys(actual).length === expectedEntries.length &&
+    expectedEntries.every(([key, value]) => actual[key] === value);
+}
+
+function matchesInitialPaymentLedger(actual, expected) {
+  if (!actual || typeof actual !== 'object' || !expected) return false;
+  const expectedEntries = Object.entries(expected);
+  return Object.keys(actual).length === expectedEntries.length &&
+    expectedEntries.every(([key, value]) => actual[key] === value);
+}
+
+function buildInitialPaymentBookingPatch(booking, payment) {
+  const amount = Number(payment.amount);
+  const total = Number(booking.total);
+  const isPaid = total > 0 && amount >= total;
+  const paymentStatus = isPaid ? 'lunas' : 'dp';
+  return {
+    dpAmount: isPaid ? 0 : amount,
+    initialPaymentLedgerStatus: 'recorded',
+    invoiceAmount: Math.max(0, total - amount),
+    lastPaymentAt: payment.createdAt,
+    lastPaymentMethod: payment.method,
+    paidAmount: amount,
+    paymentHistory: [payment],
+    paymentMethod: payment.method,
+    paymentStatus,
+    paymentStatusCanonical: isPaid ? 'paid' : 'partial',
+    status: paymentStatus,
+  };
+}
+
+async function ensureInitialBookingPaymentLedger({ actor, bookingId, payment, ledger }) {
   if (!payment || !ledger) return { duplicate: false, status: 'not_required' };
 
   const bookingRef = doc(firestoreDb, 'bookings', bookingId);
@@ -578,8 +625,13 @@ function matchesInitialPaymentToLedger(booking, payment, ledger) {
 
       const current = { id: bookingSnapshot.id, ...bookingSnapshot.data() };
       if (current.initialPaymentLedgerStatus === 'recorded') {
-        if (!ledgerSnapshot.exists() || !matchesInitialPaymentLedger(ledgerSnapshot.data(), ledger)) {
-          throw operationError('booking_payment_ledger_integrity_error', 'Status ledger tercatat tetapi dokumen ledger tidak cocok. Hubungi Owner sebelum melakukan perubahan manual.');
+        const recordedPayment = Array.isArray(current.paymentHistory) ? current.paymentHistory[0] : null;
+        if (
+          !ledgerSnapshot.exists() ||
+          !matchesInitialPaymentLedger(ledgerSnapshot.data(), ledger) ||
+          !matchesInitialPayment(recordedPayment, payment)
+        ) {
+          throw operationError('booking_payment_ledger_integrity_error', 'Status ledger tercatat tetapi dokumen ledger atau riwayat pembayaran tidak cocok. Hubungi Owner sebelum melakukan perubahan manual.');
         }
         return { collection: 'bookings', id: bookingId };
       }
