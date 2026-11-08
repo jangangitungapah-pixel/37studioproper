@@ -292,7 +292,11 @@ export async function createClientBookingRequest(user, booking) {
     throw new Error('Client harus login untuk mengirim permintaan booking.');
   }
 
-  const bookingId = doc(collection(firestoreDb, 'bookings')).id;
+  const requestedBookingId = String(booking.requestId || '').trim();
+  if (requestedBookingId && !/^[A-Za-z0-9_-]{1,160}$/.test(requestedBookingId)) {
+    throw new Error('ID permintaan booking tidak valid.');
+  }
+  const bookingId = requestedBookingId || doc(collection(firestoreDb, 'bookings')).id;
   const now = new Date().toISOString();
   const phone = String(user.phoneNumber || booking.phone || '').trim();
   const total = Math.max(0, Number(booking.total) || 0);
