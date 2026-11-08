@@ -210,6 +210,11 @@ export default function PublicBookingPage() {
     };
   }, []);
 
+  const dateWindow = useMemo(
+    () => getDateWindow(todayKey, dateWindowOffset),
+    [dateWindowOffset, todayKey],
+  );
+
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
       (data) => {
@@ -225,12 +230,7 @@ export default function PublicBookingPage() {
     );
 
     return unsubscribe;
-  }, [subscriptionVersion]);
-
-  const dateWindow = useMemo(
-    () => getDateWindow(todayKey, dateWindowOffset),
-    [dateWindowOffset, todayKey],
-  );
+  }, [subscriptionVersion, dateWindow[0], dateWindow[6]]);
 
   const availability = useMemo(
     () => businessHours.map((hour) => {
