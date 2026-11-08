@@ -275,7 +275,11 @@ export default function BookingFormModal({
 
     const frameId = window.requestAnimationFrame(() => {
       setForm(createInitialForm(initialSlot, editingBooking));
-      setError('');
+      setError(
+        editingBooking?.initialPaymentLedgerStatus === 'pending' && editingBooking?.initialPaymentIntent
+          ? 'Pembayaran awal booking ini masih menunggu pencatatan ledger. Klik Simpan untuk memulihkan payment history dan ledger secara aman.'
+          : ''
+      );
       setIsSaving(false);
     });
 
@@ -354,6 +358,14 @@ export default function BookingFormModal({
 
       if (error) setError('');
     };
+  }
+
+  function requestClose() {
+    if (!editingBooking && submissionIdentityRef.current?.pendingLedgerRecovery) {
+      setError('Pencatatan pembayaran awal belum selesai. Selesaikan retry Simpan terlebih dahulu atau buka kembali booking pending dari Jadwal untuk memulihkan ledger.');
+      return;
+    }
+    onClose();
   }
 
   async function handleSubmit(event) {
@@ -698,7 +710,7 @@ export default function BookingFormModal({
         if (
           !nextOpen
         ) {
-          onClose();
+          requestClose();
         }
       }}
     >
