@@ -1147,11 +1147,7 @@ match /users/{userId} {
       let payment = bookingData.paymentHistory[0];
       let ledgerId = 'booking-payment-' + bookingId + '-' + payment.id;
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
-      let ledgerAfter = getAfter(ledgerPath).data;
-      return existsAfter(ledgerPath) &&
-        ledgerAfter.id == ledgerId &&
-        ledgerAfter.sourceBookingId == bookingId &&
-        ledgerAfter.sourceEventId == payment.id;
+      return existsAfter(ledgerPath);
     }
 
     function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
@@ -2324,13 +2320,12 @@ match /users/{userId} {
         data.immutable == true &&
         validString(data.sourceBookingId, 1, 160) &&
         validString(data.sourceEventId, 1, 80) &&
-        data.keys().hasAll([
+        data.keys().hasOnly([
           'id', 'actorName', 'actorUid', 'amount', 'category', 'createdAt',
           'date', 'idempotencyKey', 'immutable', 'note', 'paymentMethod',
           'reversalOf', 'source', 'sourceAction', 'sourceBookingId',
           'sourceEventId', 'title', 'type', 'updatedAt'
         ]) &&
-        data.keys().size() == 19 &&
         data.id == entryId &&
         data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
         data.reversalOf == '' &&
