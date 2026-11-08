@@ -481,10 +481,21 @@ assert.match(
   /data\.keys\(\)\.hasOnly\(\[\s*'bookingId',\s*'date',\s*'durationHours',\s*'sessionLabel',\s*'startHour',\s*'status',\s*'title',\s*'updatedAt'\s*\]\)[\s\S]*?validString\(data\.title,\s*1,\s*80\)/,
   'Public slot mirror must remain restricted to generic safe fields.',
 );
+const calendarSlotPairingStart = rulesSource.indexOf(
+  'function bookingCalendarSlotMatchesAfter',
+);
+const calendarSlotPairingEnd = rulesSource.indexOf(
+  'function bookingSlotStateMatchesAfter',
+  calendarSlotPairingStart,
+);
+const calendarSlotPairingSource = rulesSource.slice(
+  calendarSlotPairingStart,
+  calendarSlotPairingEnd,
+);
 assert.match(
-  publicSlotValidatorSource,
-  /data\.keys\(\)\.hasAll\(\[/,
-  'Public slot mirror must require its complete generic metadata shape.',
+  calendarSlotPairingSource,
+  /slotAfter\.bookingId == bookingId[\s\S]*?slotAfter\.date == data\.date[\s\S]*?slotAfter\.durationHours == data\.durationHours[\s\S]*?slotAfter\.startHour == data\.startHour[\s\S]*?slotAfter\.sessionLabel == data\.sessionLabel[\s\S]*?slotAfter\.status == data\.paymentStatus[\s\S]*?slotAfter\.updatedAt == data\.updatedAt/,
+  'Public slot metadata must be complete through its atomic booking pairing.',
 );
 
 const cssSource =
