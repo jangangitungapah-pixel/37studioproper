@@ -246,6 +246,7 @@ export default function BookingFormModal({
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const bookingFormLayoutRef = useRef(null);
+  const submissionIdentityRef = useRef(null);
 
 
   const pricingSettings = usePricingSettings();
@@ -393,8 +394,36 @@ export default function BookingFormModal({
     const startHourNumber = Number(form.startHour);
     const hourOption = getSelectedOption(businessHours, form.startHour);
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
-    const bookingId = editingBooking?.id || makeBookingId();
-    const now = new Date().toISOString();
+    const submissionFingerprint = JSON.stringify({
+      form,
+      editingBookingId: editingBooking?.id || '',
+      requestedDpAmount,
+      total: totals.total,
+      subtotal: totals.subtotal,
+      discountAmount: totals.discountAmount,
+      durationHours: totals.durationHours,
+      pricingMode: totals.mode,
+      sessionLabel,
+      recordingTypeId: totals.recordingType?.key || '',
+      appliedDiscounts: totals.appliedDiscounts,
+    });
+    const previousSubmission = submissionIdentityRef.current;
+    if (previousSubmission?.pendingLedgerRecovery &&
+        previousSubmission.fingerprint !== submissionFingerprint) {
+      setError('Booking sudah tersimpan, tetapi ledger pembayaran awal masih perlu diselesaikan. Klik Simpan kembali tanpa mengubah isi formulir terlebih dahulu. Setelah berhasil, buka ulang form untuk mengubah booking.');
+      return;
+    }
+    if (!previousSubmission || previousSubmission.fingerprint !== submissionFingerprint) {
+      submissionIdentityRef.current = {
+        fingerprint: submissionFingerprint,
+        id: editingBooking?.id || makeBookingId(),
+        createdAt: new Date().toISOString(),
+        pendingLedgerRecovery: false,
+      };
+    }
+    const submissionIdentity = submissionIdentityRef.current;
+    const bookingId = submissionIdentity.id;
+    const now = submissionIdentity.createdAt;
     const paymentHistory = buildInitialPaymentHistory({
       bookingId,
       editingBooking,
@@ -458,9 +487,17 @@ export default function BookingFormModal({
         saveError
       );
 
-      setError(
-        'Booking belum berhasil disimpan. Coba kembali.'
-      );
+      if (saveError?.code === 'booking_payment_ledger_pending') {
+        submissionIdentityRef.current = {
+          ...submissionIdentity,
+          pendingLedgerRecovery: true,
+        };
+        setError(saveError.message);
+      } else {
+        setError(
+          'Booking belum berhasil disimpan. Coba kembali.'
+        );
+      }
 
       return;
     } finally {
@@ -471,6 +508,7 @@ export default function BookingFormModal({
       return;
     }
 
+    submissionIdentityRef.current = null;
     onClose();
   }
 
