@@ -3,6 +3,7 @@ import {
   doc,
   runTransaction,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 
 export const REPOSITORY_ROLES = Object.freeze({
@@ -249,6 +250,84 @@ export async function createRepositoryOperationId(input) {
 
 export async function createRepositoryPayloadHash(payload) {
   return sha256Hex(canonicalizeRepositoryPayload(payload));
+}
+
+
+/**
+ * Build a bounded Firestore WriteBatch wrapper.
+ *
+ * Use batches only when the caller has already determined the complete write
+ * set and no read-dependent decision is needed. Use a transaction for
+ * optimistic concurrency, state transitions, or idempotency markers.
+ *
+ * The default cap is 450 writes to leave headroom below Firestore's 500-write
+ * batch ceiling. This helper counts document writes, not Rules document-access
+ * calls. Rules' 10/20 access-call budgets still apply independently.
+ */
+export function createRepositoryWriteBatch(db, options = {}) {
+  if (!db) {
+    throw new RepositoryConfigurationError('Firestore Database wajib diberikan.');
+  }
+
+  const maxWrites = options.maxWrites ?? 450;
+  if (!Number.isInteger(maxWrites) || maxWrites < 1 || maxWrites > 500) {
+    throw new RangeError('maxWrites harus berupa integer antara 1 dan 500.');
+  }
+
+  const batch = writeBatch(db);
+  let writeCount = 0;
+  let committed = false;
+  let result = null;
+
+  function reserveWrite() {
+    if (committed) {
+      throw new Error('Repository batch sudah di-commit dan tidak dapat diubah.');
+    }
+    if (writeCount >= maxWrites) {
+      throw new RangeError('Repository batch melewati batas ' + maxWrites + ' writes.');
+    }
+    writeCount += 1;
+  }
+
+  const api = {
+    set(reference, data, setOptions) {
+      reserveWrite();
+      if (setOptions === undefined) {
+        batch.set(reference, data);
+      } else {
+        batch.set(reference, data, setOptions);
+      }
+      return api;
+    },
+    update(reference, data) {
+      reserveWrite();
+      batch.update(reference, data);
+      return api;
+    },
+    delete(reference) {
+      reserveWrite();
+      batch.delete(reference);
+      return api;
+    },
+    get writeCount() {
+      return writeCount;
+    },
+    async commit() {
+      if (committed) {
+        throw new Error('Repository batch hanya dapat di-commit satu kali.');
+      }
+      if (writeCount === 0) {
+        throw new Error('Repository batch kosong tidak dapat di-commit.');
+      }
+
+      committed = true;
+      await batch.commit();
+      result = Object.freeze({ writeCount });
+      return result;
+    },
+  };
+
+  return Object.freeze(api);
 }
 
 /**
