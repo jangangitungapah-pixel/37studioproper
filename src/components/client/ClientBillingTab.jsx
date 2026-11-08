@@ -15,6 +15,10 @@ export default function ClientBillingTab({
   transferAccountNumber,
   studioPaymentTerms,
   copyText,
+  paymentProofsLoading = false,
+  paymentProofsError = '',
+  bookingsLoading = false,
+  bookingsError = '',
 }) {
   return (
     <section className="client-billing-tab" aria-labelledby="client-billing-title">
@@ -24,10 +28,20 @@ export default function ClientBillingTab({
           <h3 id="client-billing-title">Sisa tagihan</h3>
           <p>Transfer sesuai nominal booking, lalu kirim bukti untuk direview admin.</p>
         </div>
-        <strong>{formatRupiah(stats.unpaidAmount)}</strong>
+        <strong>{bookingsLoading || bookingsError ? '—' : formatRupiah(stats.unpaidAmount)}</strong>
       </header>
 
-      {unpaidBookings.length > 0 ? (
+      {bookingsLoading ? (
+        <div className="client-billing-clear" role="status">
+          <span><Info size={22} /></span>
+          <div><strong>Memuat tagihan</strong><small>Memeriksa booking dan sisa pembayaran Anda.</small></div>
+        </div>
+      ) : bookingsError ? (
+        <div className="client-billing-clear is-unavailable" role="alert">
+          <span><Info size={22} /></span>
+          <div><strong>Tagihan belum dapat diperiksa</strong><small>Data booking belum berhasil dimuat. Coba lagi melalui pemberitahuan di atas.</small></div>
+        </div>
+      ) : unpaidBookings.length > 0 ? (
         <section className="client-billing-worklist" aria-labelledby="client-billing-worklist-title">
           <header>
             <div>
@@ -42,6 +56,7 @@ export default function ClientBillingTab({
               const amountToPay = getBookingOutstandingAmount(b);
               const latestProof = getLatestPaymentProof(b);
               const hasPendingProof = latestProof?.status === 'pending';
+              const proofStatusUnavailable = paymentProofsLoading || Boolean(paymentProofsError);
 
               return (
                 <article className="client-billing-item" key={b.id}>
@@ -55,7 +70,11 @@ export default function ClientBillingTab({
                     <strong>{formatRupiah(amountToPay)}</strong>
                   </div>
                   <div className="client-billing-item-state">
-                    {latestProof ? (
+                    {paymentProofsLoading ? (
+                      <span className="client-proof-status is-empty">Memuat status bukti</span>
+                    ) : paymentProofsError ? (
+                      <span className="client-proof-status is-error">Belum dapat diperiksa</span>
+                    ) : latestProof ? (
                       <span className={`client-proof-status ${getProofTone(latestProof.status)}`}>
                         {getPaymentProofStatusLabel(latestProof.status)}
                       </span>
@@ -64,12 +83,12 @@ export default function ClientBillingTab({
                   <div className="client-proof-actions">
                     <button
                       className="client-upload-proof-button"
-                      disabled={hasPendingProof}
+                      disabled={hasPendingProof || proofStatusUnavailable}
                       type="button"
                       onClick={() => openPaymentProofModal(b)}
                     >
-                      {hasPendingProof ? <CheckCircle2 size={14} /> : <UploadCloud size={14} />}
-                      <span>{hasPendingProof ? 'Menunggu review' : 'Kirim bukti'}</span>
+                      {hasPendingProof ? <CheckCircle2 size={14} /> : proofStatusUnavailable ? <Info size={14} /> : <UploadCloud size={14} />}
+                      <span>{paymentProofsLoading ? 'Memuat status' : paymentProofsError ? 'Status belum tersedia' : hasPendingProof ? 'Menunggu review' : 'Kirim bukti'}</span>
                     </button>
                     <a
                       href={getBookingWhatsAppUrl(b)}

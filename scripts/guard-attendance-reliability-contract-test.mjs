@@ -16,6 +16,13 @@ import {
   normalizeGuardAttendanceSession,
 } from '../src/services/guardAttendanceRepository.js';
 
+function readNormalizedSource(relativePath) {
+  return readFileSync(
+    resolve(relativePath),
+    'utf8',
+  ).replace(/\r\n/g, '\n');
+}
+
 const deterministicId =
   makeGuardAttendanceId({
     date:
@@ -202,13 +209,7 @@ assert.throws(
   /Status absen tidak dapat ditutup/,
 );
 
-const repositorySource =
-  readFileSync(
-    resolve(
-      'src/services/guardAttendanceRepository.js',
-    ),
-    'utf8',
-  );
+const repositorySource = readNormalizedSource('src/services/guardAttendanceRepository.js');
 
 for (
   const forbidden
@@ -268,13 +269,7 @@ assert.equal(
   'Attendance document ID must not depend on Date.now().',
 );
 
-const adminSource =
-  readFileSync(
-    resolve(
-      'src/pages/admin/GuardAttendancePage.jsx',
-    ),
-    'utf8',
-  );
+const adminSource = readNormalizedSource('src/pages/admin/GuardAttendancePage.jsx');
 
 for (
   const stale
@@ -314,13 +309,7 @@ for (
   );
 }
 
-const guardPageSource =
-  readFileSync(
-    resolve(
-      'src/pages/guard/GuardAttendancePage.jsx',
-    ),
-    'utf8',
-  );
+const guardPageSource = readNormalizedSource('src/pages/guard/GuardAttendancePage.jsx');
 
 assert.equal(
   guardPageSource.includes(
@@ -338,13 +327,7 @@ assert.equal(
   'Guard page needs optimistic local session state for offline actions.',
 );
 
-const firebaseSource =
-  readFileSync(
-    resolve(
-      'src/lib/firebase.js',
-    ),
-    'utf8',
-  );
+const firebaseSource = readNormalizedSource('src/lib/firebase.js');
 
 assert.equal(
   firebaseSource.includes(
@@ -354,13 +337,7 @@ assert.equal(
   'Firestore persistent cache is the canonical offline write mechanism.',
 );
 
-const rulesSource =
-  readFileSync(
-    resolve(
-      'firestore.rules',
-    ),
-    'utf8',
-  );
+const rulesSource = readNormalizedSource('firestore.rules');
 
 function getGuardAttendanceUpdateRulesBlock(source) {
   const matchStart = source.indexOf(

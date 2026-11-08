@@ -480,6 +480,14 @@
   transform: translateY(-1px);
 }
 
+.guard-portal-topbar-link:active:not(:disabled),
+.guard-portal-icon-button:active:not(:disabled),
+.guard-portal-primary-action:active:not(:disabled),
+.guard-portal-secondary-action:active:not(:disabled),
+.guard-portal-danger-action:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
 .guard-portal-primary-action.is-full,
 .guard-portal-danger-action.is-full {
   width: 100%;
@@ -1134,7 +1142,6 @@
 
 @media (max-width: 640px) {
   .guard-portal-brand-copy small,
-  .guard-portal-topbar-link,
   .guard-portal-history > header > span {
     display: none;
   }
@@ -1289,6 +1296,12 @@
     scroll-behavior: auto;
     transition-duration: 0.01ms !important;
   }
+
+  .guard-portal-topbar-link:active,
+  .guard-portal-icon-button:active,
+  .guard-portal-primary-action:active,
+  .guard-portal-secondary-action:active,
+  .guard-portal-danger-action:active { transform: none; }
 }
 
 @media (forced-colors: active) {
@@ -1300,4 +1313,48 @@
   .guard-portal-note-field textarea {
     border: 1px solid CanvasText;
   }
+}
+
+
+/* Phase 2 — keyboard entry point for the standalone Guard workspace. */
+.guard-portal-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  z-index: 50;
+  transform: translateY(calc(-100% - 16px));
+  border: 1px solid var(--studio-edge-normal);
+  border-radius: 11px;
+  background: var(--studio-surface-floating);
+  color: var(--studio-text-primary);
+  padding: 10px 14px;
+  box-shadow: var(--studio-shadow-contact);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 150ms ease;
+}
+
+.guard-portal-skip-link:focus,
+.guard-portal-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 3px;
+}
+
+#guard-portal-content { scroll-margin-top: 16px; }
+#guard-portal-content:focus { outline: none; }
+
+@media (max-width: 640px) {
+  .guard-portal-topbar-actions { gap: 6px; }
+  .guard-portal-topbar-link { display: flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guard-portal-skip-link { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .guard-portal-skip-link { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .guard-portal-skip-link:focus-visible { outline: 2px solid Highlight; }
 }

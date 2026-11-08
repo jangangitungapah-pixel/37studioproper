@@ -1425,20 +1425,18 @@ function CustomerFollowUpCenter({
                 onChange={(event) => setNewTask((current) => ({ ...current, dueTime: event.target.value }))}
               />
             </label>
-            <label>
-              <span>PIC</span>
-              <select
-                required
-                value={newTask.assignedToUid || assignees[0]?.uid || ''}
+            <div className="customer-followup-task-form-select">
+              <StudioSelect
+                label="PIC"
+                options={[
+                  { key: '', label: 'Pilih PIC' },
+                  ...assignees.map((person) => ({ key: person.uid, label: person.displayName })),
+                ]}
+                selectedKey={newTask.assignedToUid || assignees[0]?.uid || ''}
                 disabled={assigneesLoading || !assignees.length}
-                onChange={(event) => setNewTask((current) => ({ ...current, assignedToUid: event.target.value }))}
-              >
-                <option value="">Pilih PIC</option>
-                {assignees.map((person) => (
-                  <option key={person.uid} value={person.uid}>{person.displayName}</option>
-                ))}
-              </select>
-            </label>
+                onChange={(value) => setNewTask((current) => ({ ...current, assignedToUid: value }))}
+              />
+            </div>
             <label className="customer-followup-task-form-wide">
               <span>Deskripsi</span>
               <textarea
@@ -1610,17 +1608,18 @@ function CustomerFollowUpCenter({
                               >
                                 {savingTask === task.id ? 'Menyimpan...' : 'Snooze'}
                               </button>
-                              <label>
-                                <span>Alihkan PIC</span>
-                                <select
-                                  value={selectedAssignee}
+                              <div className="customer-followup-task-select">
+                                <StudioSelect
+                                  label="Alihkan PIC"
+                                  options={[
+                                    { key: '', label: 'Pilih PIC' },
+                                    ...assignees.map((person) => ({ key: person.uid, label: person.displayName })),
+                                  ]}
+                                  selectedKey={selectedAssignee}
                                   disabled={assigneesLoading || savingTask === task.id}
-                                  onChange={(event) => setTaskAssigneeIds((current) => ({ ...current, [task.id]: event.target.value }))}
-                                >
-                                  <option value="">Pilih PIC</option>
-                                  {assignees.map((person) => <option key={person.uid} value={person.uid}>{person.displayName}</option>)}
-                                </select>
-                              </label>
+                                  onChange={(value) => setTaskAssigneeIds((current) => ({ ...current, [task.id]: value }))}
+                                />
+                              </div>
                               <button
                                 type="button"
                                 disabled={savingTask === task.id || !selectedAssignee || selectedAssignee === task.assignedToUid}
@@ -1628,22 +1627,23 @@ function CustomerFollowUpCenter({
                               >
                                 Simpan PIC
                               </button>
-                              <label>
-                                <span>Outcome</span>
-                                <select
-                                  value={taskOutcome[task.id] || task.outcome || ''}
-                                  onChange={(event) => setTaskOutcome((current) => ({ ...current, [task.id]: event.target.value }))}
-                                >
-                                  <option value="">Pilih hasil...</option>
-                                  <option value="connected">Connected</option>
-                                  <option value="no_answer">No answer</option>
-                                  <option value="rescheduled">Rescheduled</option>
-                                  <option value="not_interested">Not interested</option>
-                                  <option value="paid">Paid</option>
-                                  <option value="booked">Booked</option>
-                                  <option value="other">Other</option>
-                                </select>
-                              </label>
+                              <div className="customer-followup-task-select">
+                                <StudioSelect
+                                  label="Outcome"
+                                  options={[
+                                    { key: '', label: 'Pilih hasil...' },
+                                    { key: 'connected', label: 'Connected' },
+                                    { key: 'no_answer', label: 'No answer' },
+                                    { key: 'rescheduled', label: 'Rescheduled' },
+                                    { key: 'not_interested', label: 'Not interested' },
+                                    { key: 'paid', label: 'Paid' },
+                                    { key: 'booked', label: 'Booked' },
+                                    { key: 'other', label: 'Other' },
+                                  ]}
+                                  selectedKey={taskOutcome[task.id] || task.outcome || ''}
+                                  onChange={(value) => setTaskOutcome((current) => ({ ...current, [task.id]: value }))}
+                                />
+                              </div>
                               <label>
                                 <span>Catatan</span>
                                 <input

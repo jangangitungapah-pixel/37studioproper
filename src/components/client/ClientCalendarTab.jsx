@@ -256,6 +256,10 @@ export default function ClientCalendarTab({
   calendarSelectedDate,
   setCalendarSelectedDate,
   businessHours,
+  calendarSlotsReady = false,
+  calendarSlotsLoading = false,
+  calendarSlotsError = '',
+  onRetryCalendarSlots,
   handleSlotClick,
   bookingBlocks,
   handleBookingBlockClick,
@@ -443,18 +447,33 @@ export default function ClientCalendarTab({
           <span>
             <b>
               {
-                availableSlots
+                calendarSlotsReady ? availableSlots : '—'
               }
             </b>
 
             <small>
-              slot tersedia
+              {
+                calendarSlotsReady ? 'slot tersedia' : 'data belum siap'
+              }
             </small>
 
             minggu ini
           </span>
         </div>
       </header>
+
+      {calendarSlotsLoading ? (
+        <div className="client-calendar-data-state" role="status">
+          Memuat ketersediaan jadwal…
+        </div>
+      ) : null}
+
+      {calendarSlotsError ? (
+        <div className="client-calendar-data-state is-error" role="alert">
+          <span>{calendarSlotsError}</span>
+          <button onClick={onRetryCalendarSlots} type="button">Coba lagi</button>
+        </div>
+      ) : null}
 
       <div className="client-booking-calendar-shell">
         <div className="client-booking-toolbar">
@@ -752,6 +771,7 @@ export default function ClientCalendarTab({
                               hour.label
                             }
                             className="client-booking-slot is-available"
+                            disabled={!calendarSlotsReady}
                             key={
                               dayIso +
                               '-' +

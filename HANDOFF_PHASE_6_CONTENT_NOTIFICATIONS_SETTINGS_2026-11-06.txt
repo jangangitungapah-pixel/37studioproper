@@ -1,0 +1,286 @@
+HANDOFF PROMPT — 37STUDIO PROPER
+PHASE 6: CONTENT, NOTIFICATIONS & SETTINGS
+Tanggal handoff: 2026-11-06
+
+BACA SELURUH HANDOFF INI SEBELUM MELAKUKAN PERUBAHAN.
+
+============================================================
+1. INSTRUKSI UTAMA UNTUK SESI BARU
+============================================================
+
+Lanjutkan pengembangan repository:
+https://github.com/jangangitungapah-pixel/37studioproper
+
+Repository: jangangitungapah-pixel/37studioproper
+GitHub user/account: jangangitungapah-pixel
+GitHub link ID: link_6a7549af82dc8191900cf259369aec96
+
+Kerjakan TEPAT SATU PHASE dalam sesi ini:
+PHASE 6 — CONTENT, NOTIFICATIONS & SETTINGS.
+
+Jangan mulai Phase 7 dalam sesi yang sama. Setelah Phase 6 benar-benar selesai dan quality gates diverifikasi, buat handoff prompt Phase 7 dalam format .txt untuk sesi chat baru.
+
+Jangan hanya membuat audit/rekomendasi. Audit source ownership dan kontrak aktual, lalu implementasikan Phase 6 pada source code owner yang benar dan lakukan QA. Jangan mengklaim selesai sebelum perubahan ada, quality gates sukses, dan hasilnya diverifikasi.
+
+Bahasa komunikasi: Bahasa Indonesia informal, jelas, dan langsung.
+
+Gunakan Git biasa, BUKAN GitHub CLI (gh). Jangan merge PR, jangan deploy, jangan checkout atau mengubah main tanpa izin eksplisit. Jangan force push.
+
+============================================================
+2. KONDISI GIT DAN COMMAND AWAL
+============================================================
+
+Work branch:
+feature/ui-overhaul-premium-enterprise-2026-11-06
+
+Phase 5 implementation commit:
+2f3bb61e649bfda172122ea026d9769ba75b40f6
+
+Commit Phase 5 tersebut:
+feat(admin): refine phase 5 finance and operations interactions
+
+Dokumentasi penutupan Phase 5 dan file handoff ini ditambahkan setelah implementation commit di branch yang sama. Pada sesi baru, JANGAN mengasumsikan local branch berada di HEAD terbaru. Verifikasi remote dan working tree terlebih dahulu.
+
+Perintah awal PowerShell:
+
+git fetch origin
+git switch feature/ui-overhaul-premium-enterprise-2026-11-06
+git pull --ff-only origin feature/ui-overhaul-premium-enterprise-2026-11-06
+git status
+git log -5 --oneline
+
+Jangan checkout atau mengubah main.
+
+============================================================
+3. ROADMAP DAN STATUS PHASE
+============================================================
+
+Source of truth roadmap:
+docs/REDESIGN_WORKPLAN.md
+
+Source of truth kepemilikan kode/UI:
+docs/ui-rewrite-code-map.md
+
+Roadmap:
+- Phase 0 — Audit & baseline: COMPLETE.
+- Phase 1 — Design system foundation: COMPLETE.
+- Phase 2 — Global shells & navigation: COMPLETE WITH DOCUMENTED AUTHENTICATED-VISUAL-QA LIMITATION.
+- Phase 3 — Authentication & public experience: COMPLETE, dengan keterbatasan live Firebase/authenticated session QA yang telah dicatat.
+- Phase 3A — Client landing conversion UX hardening: COMPLETE.
+- Phase 4 — Admin core operations: COMPLETE.
+- Phase 5 — Admin finance & operations: COMPLETE per 2026-11-06.
+- Phase 6 — Content, notifications & settings: CURRENT SCOPE.
+- Phase 7 — Client Portal: NOT STARTED.
+- Phase 8 — Cross-app completion: NOT STARTED.
+- Phase 9 — Responsive, accessibility & visual QA: NOT STARTED.
+- Phase 10 — Regression, cleanup & release readiness: NOT STARTED.
+
+Jangan mengubah urutan roadmap atau menandai phase lain selesai tanpa bukti implementasi dan QA.
+
+Sebelum mengubah source, baca dokumen PRD, architecture, route, CSS ownership, audit, dan staging-readiness yang relevan serta benar-benar tersedia di repository. Jangan menebak nama file atau kontrak.
+
+============================================================
+4. RINGKASAN PHASE 5 YANG HARUS DIPERTAHANKAN
+============================================================
+
+Phase 5 diaudit dan diimplementasikan pada owner stylesheets berikut:
+- src/styles/modules/billing.css
+- src/styles/modules/bookkeeping.css
+- src/styles/modules/operator-fee.css
+- src/styles/modules/inventory.css
+- src/styles/modules/guard-attendance.css
+- src/styles/modules/guard-portal.css
+
+Tambahan regression contract:
+- scripts/admin-finance-operations-interactions-contract-test.mjs
+- package.json: test contract di atas terdaftar dalam npm test.
+
+Implementasi Phase 5 berupa interaction refinement terhadap spatial UI yang sudah ada:
+- Focus-visible untuk Billing actions/fields.
+- Focus-within feedback untuk Billing dan Bookkeeping ledger rows serta Guard review rows.
+- Tactile press feedback untuk payment/proof, bookkeeping, operator fee/meal, inventory/procurement/maintenance, guard review, dan guard self-service actions.
+- Menggunakan shared motion tokens dan menghormati prefers-reduced-motion.
+
+Tidak ada page JSX, route, permission, repository, Worker, Firebase Auth/Firestore, payment transition, invoice identity, idempotency, ledger, refund/void, inventory movement, procurement state transition, atau attendance audit contract yang diubah.
+
+Phase 5 implementation commit:
+2f3bb61e649bfda172122ea026d9769ba75b40f6
+
+Quality Gates run #218:
+https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42146646993
+Run ID: 42146646993
+Head SHA: 2f3bb61e649bfda172122ea026d9769ba75b40f6
+Result: SUCCESS
+- Production build: PASS.
+- Lint: PASS.
+- npm test: PASS, termasuk Phase 5 interaction contract dan existing finance/proof-review/bookkeeping/operator-fee/inventory/procurement/refund-void/guard-attendance contracts.
+- npm run test:prd: PASS.
+- Playwright responsive browser smoke: PASS.
+- Screenshot artifact browser-responsive-smoke uploaded, artifact ID 13470716951.
+
+Known limitation yang wajib dibawa:
+- Responsive smoke hanya memeriksa public landing/booking, login entry points, dan signed-out redirect /admin/finance/invoices.
+- Smoke tidak mengautentikasi atau melakukan visual inspection pada Admin Finance, Bookkeeping, Operator Fee, Procurement, Inventory, Maintenance, atau Guard workspace.
+- Authenticated Admin/Guard visual QA tetap harus diselesaikan sesuai Phase 9.
+- Staging-readiness audit menyatakan current Firebase/Worker config production-facing: Firebase project studio-proper, Hosting studio-37.web.app, Worker APP_ENVIRONMENT=production.
+- Jangan melakukan mutating live acceptance pada production.
+- Dedicated non-production Firebase Spark staging project, isolated Worker staging environment, dan synthetic test accounts/data belum dibuktikan tersedia.
+- Jangan upgrade Firebase ke Blaze atau mengaktifkan billing.
+
+============================================================
+5. SEMBILAN LAYER UI LIBRARY YANG WAJIB DIPERTAHANKAN
+============================================================
+
+Pertahankan sembilan layer berikut sebagai arah arsitektur. Gunakan selektif sesuai kebutuhan:
+
+1. UI Foundation: shadcn/ui + Base UI
+2. Styling: Tailwind CSS v4
+3. Animation: Motion
+4. Visual Components: Magic UI
+5. Icons: Lucide React
+6. Notifications: Sonner
+7. Table: TanStack Table
+8. Charts: Apache ECharts
+9. Forms: React Hook Form + Zod
+
+Ketentuan:
+- Jangan mengganti/menambah library secara membabi buta.
+- Inventarisasi imports, consumers, compatibility, bundle impact, dan lazy-loading sebelum retirement library lama.
+- Modernisasi agresif diperbolehkan setelah terbukti aman.
+- Jangan membuat duplicate animation engine atau duplicate styling layer.
+- Semantic tokens tetap menjadi sumber warna, spacing, radius, typography, elevation, focus, dan motion.
+- Hormati prefers-reduced-motion.
+- Light/Dark harus konsisten.
+- Pertahankan aksesibilitas keyboard, focus, contrast, dan responsive behavior.
+
+============================================================
+6. ARAH TEKNIS DAN BATASAN KERAS
+============================================================
+
+Stack aplikasi:
+- React
+- Vite
+- JavaScript / JSX / CSS
+- Firebase / Firestore yang sudah ada
+- Firebase Spark plan tetap menjadi batasan.
+
+DILARANG:
+- Mengaktifkan billing atau memindahkan proyek ke Firebase Blaze.
+- Mengubah Firebase Auth, Firestore rules, collections, repository/data contracts, Worker authorization, domain ownership, atau role boundaries hanya demi kebutuhan UI.
+- Mengubah permission, route ownership, atau isolasi data tanpa kebutuhan Phase 6 yang terverifikasi.
+- Menggunakan production data untuk test tulis/mutasi.
+- Menghapus file/style/library berdasarkan asumsi.
+- Membuat duplicate override stylesheet layer.
+- Menambahkan !important kecuali emergency hotfix yang benar-benar diperlukan dan terdokumentasi.
+- Merusak behavior yang sudah berjalan.
+- Merge atau deploy tanpa izin eksplisit.
+
+Untuk test upload/delete/media/settings destructive actions, gunakan emulator, disposable staging assets, dan synthetic fixtures saja. Jangan menyentuh media atau data produksi.
+
+Prinsip UI:
+- Modern Premium Enterprise SaaS.
+- Data-first, rapi, flowless, konsisten, dan responsif.
+- Perbaiki hierarchy, usability, state clarity, form flow, feedback, dan density.
+- Mobile-first tanpa mengorbankan desktop workflow.
+- Hindari horizontal overflow dan komponen bertumpuk.
+- Sediakan empty/loading/error/success/denied states.
+- Animasi relevan harus halus dan tidak mengganggu performa.
+- Hormati keyboard, focus, contrast, reduced-motion, dan Light/Dark.
+
+============================================================
+7. SCOPE PHASE 6 — CONTENT, NOTIFICATIONS & SETTINGS
+============================================================
+
+Fokus sesuai docs/REDESIGN_WORKPLAN.md:
+
+A. Gallery / Content
+- Audit dan modernisasi Gallery/content management sesuai page dan owner aktual.
+- Audit media listing, preview, upload, metadata, selection, edit, delete, error/retry, dan empty/loading states yang benar-benar ada.
+- Pertahankan media ownership, storage provider, upload contract, asset identity, metadata persistence, deletion safeguards, dan retry/rollback behavior.
+- Jangan membuat status atau workflow baru yang tidak didukung model.
+
+B. Notification Center
+- Audit dan modernisasi Notification Center/inbox.
+- Pertahankan notification identity, unread/read state, filtering, routing/deep-link, delivery source, dan authorization.
+- Jangan mengubah mekanisme delivery, backend trigger, atau subscription contract demi UI.
+- Pastikan empty/loading/error/unread states jelas.
+
+C. Settings Subpages
+- Audit seluruh settings subpages dan ownership aktual.
+- Modernisasi navigation, section hierarchy, forms, validation feedback, save/cancel state, unsaved changes, and success/error feedback.
+- Pertahankan field names, defaults, validation, Firestore persistence, settings scope, owner role restrictions, dan backward compatibility.
+
+D. Owner-only Workflows
+- Audit semua workflow yang membutuhkan Owner role.
+- Jaga permission boundary dan denied state.
+- Pastikan UI tidak mengiklankan atau menampilkan aksi yang tidak diizinkan.
+- Jangan mengubah authorization backend.
+
+E. Shared Patterns
+- Reuse shared primitives yang sudah tersedia untuk:
+  - Upload controls/progress/preview.
+  - Confirmation dan destructive-action protection.
+  - Settings forms/validation.
+  - Notification list/read state.
+  - Empty/loading/error/denied/success feedback.
+  - Responsive command/action layouts.
+- Hindari abstraksi berlebihan dan duplicate patterns.
+
+PENTING:
+Daftar di atas adalah cakupan bisnis, BUKAN izin untuk mengasumsikan nama file, route, collection, provider, atau model. Audit source code, route, components, CSS owner, hooks, repositories, Worker, contracts, dan tests yang benar-benar ada di branch. Buat mapping sebelum implementasi.
+
+============================================================
+8. ACCEPTANCE CRITERIA PHASE 6
+============================================================
+
+Phase 6 hanya boleh ditandai COMPLETE jika:
+- Seluruh scope Gallery/content, Notification Center, settings subpages, dan Owner-only workflows yang relevan telah diaudit.
+- Mapping route/page/component/style/hook/repository/Worker/test telah dicatat.
+- Implementasi UI/UX selesai pada owner files tanpa merusak behavior.
+- Upload, asset identity/ownership, media deletion safeguards, notification state/routing/delivery, settings validation/persistence, dan Owner-only authorization tetap benar.
+- Tidak ada perubahan domain, security, data contract, production data, atau production media tanpa persetujuan eksplisit.
+- Build dan lint berhasil.
+- Targeted tests, npm test, dan npm run test:prd berhasil.
+- Content/media/notification/settings/owner permission contracts yang tersedia berhasil.
+- Responsive browser smoke dan screenshot evidence dijalankan bila workflow/tooling mendukung.
+- Known issues serta authenticated visual/staging QA limitations ditulis eksplisit.
+- docs/REDESIGN_WORKPLAN.md diperbarui dengan status, files changed, tests, evidence, commit, dan known issues.
+- Handoff Phase 7 dibuat sebagai file .txt untuk sesi chat baru.
+
+Jangan mengklaim test berhasil bila belum dijalankan. Jangan menganggap signed-out responsive smoke sebagai bukti authenticated Gallery/Notification/Settings/Owner workflows.
+
+============================================================
+9. OUTPUT WAJIB SELAMA PHASE 6
+============================================================
+
+Sebelum implementasi:
+- Verifikasi remote branch HEAD, local branch, dan working tree.
+- Baca workplan dan code map.
+- Audit source ownership untuk seluruh modul Phase 6.
+- Catat route/page/component/styles/hooks/repository/Worker/tests.
+- Daftarkan acceptance tests yang tersedia dan gap yang perlu ditutup.
+- Tentukan urutan implementasi aman berdasarkan dependensi.
+
+Selama implementasi:
+- Kerjakan bertahap pada owner files.
+- Jaga domain/data/authz contracts.
+- Jalankan targeted tests setelah perubahan modul.
+- Beri ringkasan perubahan konkret.
+
+Saat Phase 6 selesai:
+- Verifikasi semua test dan CI result.
+- Perbarui docs/REDESIGN_WORKPLAN.md.
+- Catat commit hash dan file changes.
+- Catat keterbatasan authenticated/staging QA.
+- Jangan merge atau deploy.
+- Buat HANDOFF_PHASE_7_...txt untuk sesi baru.
+- Sertakan command Git pull pada jawaban akhir.
+
+COMMAND PULL BRANCH:
+
+git fetch origin
+git switch feature/ui-overhaul-premium-enterprise-2026-11-06
+git pull --ff-only origin feature/ui-overhaul-premium-enterprise-2026-11-06
+git status
+
+Mulai sesi baru dengan memverifikasi kondisi repository, membaca workplan dan code map, lalu implementasikan Phase 6 saja.

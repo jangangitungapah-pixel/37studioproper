@@ -53,6 +53,8 @@ for (const required of [
   'admin-login-primary-action',
   'admin-login-google',
   'admin-login-form-footer',
+  'data-auth-network-state="offline"',
+  'aria-busy={isSubmitting}',
   'onSubmit={handleEmailAuth}',
 ]) {
   assert.equal(
@@ -135,32 +137,32 @@ for (const required of [
 }
 
 /*
- * Admin Login must own a local light palette independent of root theme.
+ * Admin Login inherits the global Light / Dark / System theme.
  * ThemeProvider / global preference must not be mutated by this page.
  */
+const adminCssStart = cssSource.indexOf('/* >>> ADMIN LOGIN SPATIAL GATEWAY START */');
+const adminCssEnd = cssSource.indexOf('/* <<< ADMIN LOGIN SPATIAL GATEWAY END */');
+assert.ok(adminCssStart >= 0 && adminCssEnd > adminCssStart, 'Admin Login CSS scope must remain explicit.');
+const adminScopedCss = cssSource.slice(adminCssStart, adminCssEnd);
+
 for (const required of [
-  '/* Admin Login is intentionally light-first regardless of root theme. */',
-  'color-scheme: light;',
-  '--studio-bg-page: #f7f1e8;',
-  '--studio-surface-1: #fffaf2;',
-  '--studio-text-strong: #201812;',
-  '--studio-text-main: #382c22;',
-  '--studio-text-muted: #756657;',
-  '--studio-accent: #b66b19;',
-  '--studio-accent-strong: #934f10;',
-  '--auth-bg-card: var(--studio-surface-1);',
-  '--auth-text-strong: var(--studio-text-strong);',
-  '--auth-accent: var(--studio-accent);',
+  '/* Admin Login inherits Light / Dark / System tokens from the root ThemeProvider. */',
+  'var(--auth-bg-page);',
+  '@media (max-width: 900px)',
+  '@media (max-width: 520px)',
 ]) {
   assert.equal(
-    cssSource.includes(
-      required,
-    ),
+    adminScopedCss.includes(required),
     true,
-    'Admin Login light-first CSS marker missing: ' +
-      required,
+    'Admin Login theme-aware CSS marker missing: ' + required,
   );
 }
+
+assert.doesNotMatch(
+  adminScopedCss,
+  /color-scheme:\s*light|--studio-(?:bg-page|surface-1|text-strong|text-main|text-muted|accent):\s*#[\da-f]{3,8}/i,
+  'Admin Login must not override the active global semantic palette.',
+);
 
 assert.equal(
   loginSource.includes(

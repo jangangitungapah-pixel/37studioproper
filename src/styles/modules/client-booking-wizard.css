@@ -184,6 +184,11 @@
   border-color: var(--auth-accent);
 }
 
+.client-booking-wizard :where(input, select, textarea, button):focus-visible {
+  outline: var(--studio-focus-outline);
+  outline-offset: var(--studio-focus-offset);
+}
+
 .client-booking-wizard-mode {
   display: grid;
   grid-template-columns: 1fr 1fr;

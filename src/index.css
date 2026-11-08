@@ -7,9 +7,29 @@
   font-display: swap;
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme inline {
+  --font-sans: var(--ui-font-sans);
+  --color-background: var(--studio-bg-page);
+  --color-foreground: var(--studio-text-main);
+  --color-card: var(--studio-surface-1);
+  --color-card-foreground: var(--studio-text-main);
+  --color-popover: var(--studio-surface-glass);
+  --color-popover-foreground: var(--studio-text-main);
+  --color-primary: var(--studio-accent);
+  --color-primary-foreground: var(--studio-text-inverse);
+  --color-muted: var(--studio-surface-2);
+  --color-muted-foreground: var(--studio-text-muted);
+  --color-border: var(--studio-border);
+  --color-input: var(--studio-border);
+  --color-ring: var(--studio-accent);
+  --radius-sm: var(--studio-radius-sm);
+  --radius-md: var(--studio-radius-md);
+  --radius-lg: var(--studio-radius-lg);
+  --radius-xl: var(--studio-radius-xl);
+}
 
 :root {
   --ui-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -30,7 +50,7 @@
   --studio-text-strong: #fff8ed;
   --studio-text-main: #eadfcc;
   --studio-text-muted: #b8a995;
-  --studio-text-subtle: #8f806f;
+  --studio-text-subtle: #a09282;
   --studio-text-inverse: #1b1510;
 
   --studio-border-soft: rgba(255, 244, 228, 0.1);
@@ -38,6 +58,7 @@
   --studio-border-strong: rgba(255, 204, 128, 0.36);
 
   --studio-accent: #d98b2b;
+  --studio-accent-text: var(--studio-accent);
   --studio-accent-strong: #f0a64a;
   --studio-accent-muted: #a86117;
   --studio-accent-soft: rgba(217, 139, 43, 0.16);
@@ -86,6 +107,76 @@
   --z-modal-backdrop: 1000;
   --z-modal-panel: 1010;
   --z-critical: 2000;
+  /* Premium Enterprise tokens: typography */
+  --studio-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --studio-font-size-2xs: 0.6875rem;
+  --studio-font-size-xs: var(--studio-text-xs);
+  --studio-font-size-sm: var(--studio-text-sm);
+  --studio-font-size-md: var(--studio-text-body);
+  --studio-font-size-base: var(--studio-text-md);
+  --studio-font-size-lg: var(--studio-text-lg);
+  --studio-font-size-xl: 1.25rem;
+  --studio-font-size-2xl: 1.5rem;
+  --studio-font-size-3xl: 1.875rem;
+  --studio-font-weight-regular: 400;
+  --studio-font-weight-medium: 500;
+  --studio-font-weight-semibold: 600;
+  --studio-font-weight-bold: 700;
+  --studio-leading-tight: 1.2;
+  --studio-leading-normal: 1.45;
+  --studio-leading-relaxed: 1.6;
+  --studio-tracking-tight: -0.035em;
+  --studio-tracking-normal: -0.01em;
+  --studio-tracking-label: 0.02em;
+
+  /* Spacing, control geometry and layout */
+  --studio-space-0: 0;
+  --studio-space-1: 4px;
+  --studio-space-2: 8px;
+  --studio-space-3: 12px;
+  --studio-space-4: 16px;
+  --studio-space-5: 20px;
+  --studio-space-6: 24px;
+  --studio-space-8: 32px;
+  --studio-space-10: 40px;
+  --studio-space-12: 48px;
+  --studio-control-height-xs: 32px;
+  --studio-control-height-sm: 36px;
+  --studio-control-height-md: 42px;
+  --studio-control-height-lg: 46px;
+  --studio-control-size-icon: 40px;
+  --studio-control-radius: 11px;
+  --studio-card-radius: 16px;
+  --studio-dialog-radius: 20px;
+  --studio-content-width: 1440px;
+  --studio-content-width-wide: 1680px;
+  --studio-sidebar-width-expanded: 240px;
+  --studio-sidebar-width-collapsed: 72px;
+  --studio-breakpoint-mobile: 680px;
+  --studio-breakpoint-tablet: 899px;
+  --studio-breakpoint-desktop: 900px;
+
+  /* Focus, elevation and motion */
+  --studio-focus-outline: 2px solid var(--studio-accent-strong);
+  --studio-focus-offset: 2px;
+  --studio-focus-shadow: 0 0 0 3px var(--studio-accent-soft);
+  --studio-motion-fast: 120ms;
+  --studio-motion-normal: 180ms;
+  --studio-motion-slow: 260ms;
+  --studio-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --studio-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --studio-shadow-card-subtle: 0 1px 2px rgba(0, 0, 0, 0.16), 0 8px 22px rgba(0, 0, 0, 0.08);
+  --studio-overlay-backdrop: rgba(14, 11, 9, 0.58);
+
+  /* Charts: stable semantic order */
+  --studio-chart-1: #e3a45c;
+  --studio-chart-2: #83a7df;
+  --studio-chart-3: #69bb98;
+  --studio-chart-4: #d47f88;
+  --studio-chart-5: #a296db;
+  --studio-chart-6: #c5ad78;
+
+
 
   /* Backward compatible ui aliases */
   --ui-bg-page: var(--studio-bg-page);
@@ -127,7 +218,7 @@
   --studio-text-strong: #201812;
   --studio-text-main: #382c22;
   --studio-text-muted: #756657;
-  --studio-text-subtle: #968675;
+  --studio-text-subtle: #6a5b4d;
   --studio-text-inverse: #fff8ed;
 
   --studio-border-soft: rgba(48, 35, 24, 0.08);
@@ -135,6 +226,7 @@
   --studio-border-strong: rgba(164, 95, 24, 0.28);
 
   --studio-accent: #b66b19;
+  --studio-accent-text: #934f10;
   --studio-accent-strong: #934f10;
   --studio-accent-muted: #d8953c;
   --studio-accent-soft: rgba(182, 107, 25, 0.13);
@@ -142,7 +234,7 @@
 
   --studio-success: #16805c;
   --studio-success-soft: #e5f7ee;
-  --studio-warning: #a96505;
+  --studio-warning: #805000;
   --studio-warning-soft: #fff4db;
   --studio-danger: #c33b4a;
   --studio-danger-soft: #fff0f1;
@@ -152,6 +244,17 @@
   --studio-shadow-card: 0 16px 42px rgba(72, 48, 25, 0.1);
   --studio-shadow-soft: 0 8px 24px rgba(72, 48, 25, 0.08);
   --studio-shadow-float: 0 24px 70px rgba(72, 48, 25, 0.16);
+
+  --studio-focus-outline: 2px solid var(--studio-accent-strong);
+  --studio-focus-shadow: 0 0 0 3px rgba(182, 107, 25, 0.16);
+  --studio-shadow-card-subtle: 0 1px 2px rgba(72, 48, 25, 0.05), 0 8px 22px rgba(72, 48, 25, 0.035);
+  --studio-overlay-backdrop: rgba(32, 24, 18, 0.42);
+  --studio-chart-1: #a96318;
+  --studio-chart-2: #356dbb;
+  --studio-chart-3: #16805c;
+  --studio-chart-4: #b84d5b;
+  --studio-chart-5: #6b5ab0;
+  --studio-chart-6: #92702e;
 }
 * {
   box-sizing: border-box;

@@ -4,11 +4,21 @@ on:
   pull_request:
     branches:
       - main
+      - feature/admin-ops-phase-4-customer-follow-up-2026-11-05
+      - feature/admin-ops-phase-5-procurement-2026-11-05
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - main
       - audit/**
+      - feature/admin-ops-phase-5-procurement-2026-11-05
+      - feature/ui-overhaul-premium-enterprise-2026-11-06
+  workflow_run:
+    workflows:
+      - Dependency Lock Refresh
+    types: [completed]
+    branches:
+      - feature/ui-overhaul-premium-enterprise-2026-11-06
   workflow_dispatch:
 
 permissions:
@@ -20,28 +30,95 @@ concurrency:
 
 jobs:
   validate:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     name: Build, lint, regression, and responsive browser smoke
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Set up Java for Firestore emulator
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Install locked dependencies
         run: npm ci
+
+      - name: Capture full and production dependency audit
+        run: |
+          mkdir -p output/dependency-audit
+          set +e
+          npm audit --json > output/dependency-audit/full.json 2>&1
+          full_status=$?
+          npm audit --omit=dev --json > output/dependency-audit/production.json 2>&1
+          production_status=$?
+          set -e
+          node --input-type=commonjs - <<'NODE'
+          const fs = require('node:fs');
+
+          for (const [label, file] of [
+            ['full', 'output/dependency-audit/full.json'],
+            ['production-only', 'output/dependency-audit/production.json'],
+          ]) {
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            } catch (error) {
+              console.log(`[${label}] audit output is not valid JSON: ${error.message}`);
+              continue;
+            }
+
+            const totals = report.metadata?.vulnerabilities;
+            if (!totals) {
+              console.log(`[${label}] no npm audit metadata; inspect the raw report for registry or CLI errors.`);
+              continue;
+            }
+
+            console.log(`[${label}] audited=${report.metadata?.dependencies?.total ?? 'unknown'} vulnerabilities=${JSON.stringify(totals)}`);
+            for (const [name, finding] of Object.entries(report.vulnerabilities ?? {})) {
+              const via = (finding.via ?? []).map((item) => typeof item === 'string'
+                ? item
+                : { name: item.name, title: item.title, url: item.url, range: item.range, severity: item.severity });
+              console.log(JSON.stringify({
+                package: name,
+                severity: finding.severity,
+                isDirect: finding.isDirect,
+                range: finding.range,
+                nodes: finding.nodes,
+                via,
+                fixAvailable: finding.fixAvailable,
+              }));
+            }
+          }
+          NODE
+          echo "npm audit exit codes: full=${full_status}, production-only=${production_status}"
+          {
+            echo "### Dependency audit (report-only)"
+            echo "- Full audit exit code: ${full_status}"
+            echo "- Production-only audit exit code: ${production_status}"
+            echo "- Raw JSON reports are attached as the `dependency-audit-report` artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: dependency-audit-report
+          path: output/dependency-audit/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Install Firebase CLI for Firestore emulator tests
         run: npm install --global firebase-tools
@@ -67,11 +144,16 @@ jobs:
       - name: Run responsive browser smoke
         run: node scripts/browser-responsive-smoke.mjs
 
-      - name: Upload responsive browser screenshots
+      - name: Run keyboard and focus QA
+        run: node scripts/phase-9-keyboard-focus-qa.mjs
+
+      - name: Upload responsive and accessibility QA evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: browser-responsive-smoke
-          path: output/browser-smoke/
+          name: phase-9-browser-accessibility-qa
+          path: |
+            output/browser-smoke/
+            output/phase-9/
           if-no-files-found: ignore
           retention-days: 7

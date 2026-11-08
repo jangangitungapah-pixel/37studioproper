@@ -28,16 +28,8 @@ import {
   Wrench,
 } from 'lucide-react';
 
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import StudioChart from '../../components/ui/StudioChart.jsx';
+import { NumberTicker } from '../../components/magicui/number-ticker.jsx';
 
 import StudioSelect from '../../components/ui/StudioSelect.jsx';
 
@@ -1671,6 +1663,7 @@ function DashboardTodayTimeline({
 }
 
 function DashboardMetricObject({
+  formatter,
   helper,
   icon: Icon,
   label,
@@ -1700,7 +1693,9 @@ function DashboardMetricObject({
         </small>
 
         <strong>
-          {value}
+          {typeof value === 'number'
+            ? <NumberTicker value={value} formatter={formatter} />
+            : value}
         </strong>
 
         <em>
@@ -1752,11 +1747,8 @@ function DashboardMetricStrip({
         icon={CreditCard}
         label="Outstanding"
         tone="is-billing"
-        value={
-          formatCurrency(
-            stats.outstanding,
-          )
-        }
+        formatter={formatCurrency}
+        value={stats.outstanding}
       />
 
       <DashboardMetricObject
@@ -1769,11 +1761,8 @@ function DashboardMetricStrip({
         icon={WalletCards}
         label="Net bulan ini"
         tone="is-finance"
-        value={
-          formatCurrency(
-            stats.net,
-          )
-        }
+        formatter={formatCurrency}
+        value={stats.net}
       />
     </section>
   );
@@ -1784,15 +1773,79 @@ function DashboardChart({
   range,
   onRangeChange,
 }) {
-  const hasActivity =
-    chartData.some(
-      (
-        item,
-      ) =>
-        item.pemasukan ||
-        item.pengeluaran ||
-        item.saldo,
-    );
+  const hasActivity = chartData.some((item) => (
+    item.pemasukan || item.pengeluaran || item.saldo
+  ));
+
+  const option = {
+    animationDuration: 320,
+    grid: { left: 6, right: 12, top: 34, bottom: 26, containLabel: true },
+    legend: {
+      top: 0,
+      right: 0,
+      itemWidth: 9,
+      itemHeight: 9,
+      textStyle: { fontSize: 11 },
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (items) => {
+        const rows = Array.isArray(items) ? items : [items];
+        const label = rows[0]?.axisValueLabel || rows[0]?.name || '';
+        const values = rows.map((item) => (
+          item.marker + item.seriesName + ': ' + formatCurrency(item.value)
+        ));
+        return ['Periode ' + label, ...values].join('<br/>');
+      },
+    },
+    xAxis: {
+      type: 'category',
+      data: chartData.map((item) => item.label),
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { fontSize: 10, margin: 10 },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { fontSize: 9, formatter: formatCompactCurrency },
+      splitLine: { show: true, lineStyle: { type: 'dashed' } },
+    },
+    series: [
+      {
+        name: 'Pemasukan',
+        type: 'bar',
+        data: chartData.map((item) => item.pemasukan),
+        itemStyle: {
+          color: 'var(--studio-chart-3)',
+          borderColor: 'var(--studio-chart-3)',
+          borderWidth: 1,
+          borderRadius: [7, 7, 2, 2],
+        },
+      },
+      {
+        name: 'Pengeluaran',
+        type: 'bar',
+        data: chartData.map((item) => item.pengeluaran),
+        itemStyle: {
+          color: 'var(--studio-chart-4)',
+          borderColor: 'var(--studio-chart-4)',
+          borderWidth: 1,
+          borderRadius: [7, 7, 2, 2],
+        },
+      },
+      {
+        name: 'Saldo',
+        type: 'line',
+        data: chartData.map((item) => item.saldo),
+        smooth: 0.25,
+        showSymbol: false,
+        lineStyle: { color: 'var(--studio-chart-1)', width: 2 },
+      },
+    ],
+  };
 
   return (
     <section
@@ -1801,199 +1854,33 @@ function DashboardChart({
     >
       <header className="dashboard-secondary-heading">
         <div>
-          <span className="dashboard-kicker">
-            Cashflow
-          </span>
-
-          <h3>
-            Arus kas studio
-          </h3>
-
-          <p>
-            Tren masuk, keluar, dan saldo untuk keputusan operasional.
-          </p>
+          <span className="dashboard-kicker">Cashflow</span>
+          <h3>Arus kas studio</h3>
+          <p>Tren masuk, keluar, dan saldo untuk keputusan operasional.</p>
         </div>
-
         <div className="dashboard-chart-filter">
           <StudioSelect
             label="Periode"
-            options={
-              chartRangeOptions
-            }
-            selectedKey={
-              range
-            }
-            onChange={
-              onRangeChange
-            }
+            options={chartRangeOptions}
+            selectedKey={range}
+            onChange={onRangeChange}
           />
         </div>
       </header>
 
       {hasActivity ? (
         <div className="dashboard-chart-shell">
-          <ResponsiveContainer
+          <StudioChart
+            ariaLabel="Grafik pemasukan, pengeluaran, dan saldo studio"
             height={214}
-            width="100%"
-          >
-            <ComposedChart
-              data={
-                chartData
-              }
-              margin={{
-                bottom:
-                  14,
-
-                left:
-                  -8,
-
-                right:
-                  8,
-
-                top:
-                  8,
-              }}
-            >
-              <CartesianGrid
-                stroke="var(--dashboard-chart-grid)"
-                strokeDasharray="3 5"
-                vertical={false}
-              />
-
-              <XAxis
-                axisLine={false}
-                dataKey="label"
-                height={28}
-                tick={{
-                  fill:
-                    'var(--studio-text-tertiary)',
-
-                  fontSize:
-                    10,
-
-                  fontWeight:
-                    560,
-                }}
-                tickLine={false}
-                tickMargin={8}
-              />
-
-              <YAxis
-                axisLine={false}
-                tick={{
-                  fill:
-                    'var(--studio-text-tertiary)',
-
-                  fontSize:
-                    9,
-
-                  fontWeight:
-                    540,
-                }}
-                tickFormatter={
-                  formatCompactCurrency
-                }
-                tickLine={false}
-                width={48}
-              />
-
-              <Tooltip
-                cursor={{
-                  fill:
-                    'var(--dashboard-chart-cursor)',
-                }}
-                contentStyle={{
-                  background:
-                    'var(--studio-surface-floating)',
-
-                  border:
-                    '1px solid var(--studio-edge-normal)',
-
-                  borderRadius:
-                    '14px',
-
-                  boxShadow:
-                    'var(--studio-shadow-floating)',
-
-                  color:
-                    'var(--studio-text-primary)',
-
-                  fontSize:
-                    '12px',
-                }}
-                formatter={
-                  (
-                    value,
-                    name,
-                  ) => [
-                    formatCurrency(
-                      value,
-                    ),
-                    name,
-                  ]
-                }
-                labelFormatter={
-                  (
-                    label,
-                  ) =>
-                    'Periode ' +
-                    label
-                }
-              />
-
-              <Bar
-                dataKey="pemasukan"
-                fill="var(--dashboard-income-soft)"
-                name="Pemasukan"
-                radius={[
-                  7,
-                  7,
-                  2,
-                  2,
-                ]}
-                stroke="var(--dashboard-income)"
-                strokeWidth={1}
-              />
-
-              <Bar
-                dataKey="pengeluaran"
-                fill="var(--dashboard-expense-soft)"
-                name="Pengeluaran"
-                radius={[
-                  7,
-                  7,
-                  2,
-                  2,
-                ]}
-                stroke="var(--dashboard-expense)"
-                strokeWidth={1}
-              />
-
-              <Line
-                dataKey="saldo"
-                dot={false}
-                name="Saldo"
-                stroke="var(--dashboard-net)"
-                strokeWidth={2}
-                type="monotone"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+            option={option}
+          />
         </div>
       ) : (
         <div className="dashboard-chart-empty">
-          <ReceiptText
-            aria-hidden="true"
-            size={19}
-          />
-
-          <strong>
-            Belum ada arus kas di periode ini.
-          </strong>
-
-          <span>
-            Grafik muncul saat transaksi mulai tercatat.
-          </span>
+          <ReceiptText aria-hidden="true" size={19} />
+          <strong>Belum ada arus kas di periode ini.</strong>
+          <span>Grafik muncul saat transaksi mulai tercatat.</span>
         </div>
       )}
     </section>

@@ -106,6 +106,11 @@ for (
   );
 }
 
+const themePreferenceContextSource =
+  read(
+    'src/theme/ThemePreferenceContext.jsx',
+  );
+
 const themeProviderSource =
   read(
     'src/theme/ThemeProvider.jsx',
@@ -116,21 +121,31 @@ for (
   of [
     'getInitialThemePreference',
     'getSystemTheme',
-    "window.matchMedia(\n        '(prefers-color-scheme: dark)'",
-    "media.addEventListener(\n        'change'",
-    'dataset.theme =',
-    '.style.colorScheme =',
-    'window.localStorage.setItem(',
-    'THEME_STORAGE_KEY',
+    "window.matchMedia('(prefers-color-scheme: dark)')",
+    'media.addEventListener(',
+    'document.documentElement.dataset.theme = resolvedTheme',
+    'document.documentElement.style.colorScheme = resolvedTheme',
+    'window.localStorage.setItem(THEME_STORAGE_KEY, preference)',
   ]
 ) {
   assert.equal(
-    themeProviderSource.includes(
+    themePreferenceContextSource.includes(
       invariant,
     ),
     true,
-    'ThemeProvider invariant missing: ' +
+    'Theme preference context invariant missing: ' +
       invariant,
+  );
+}
+
+for (const invariant of [
+  "from './ThemePreferenceContext.jsx'",
+  '<ThemePreferenceContextProvider adminThemeActive>',
+]) {
+  assert.equal(
+    themeProviderSource.includes(invariant),
+    true,
+    'Admin ThemeProvider boundary missing: ' + invariant,
   );
 }
 

@@ -13,7 +13,7 @@ const portalSource =
       'src/pages/ClientPortalPage.jsx',
     ),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
 
 const landingSource =
   readFileSync(

@@ -1,8 +1,11 @@
 export default function GalleryAlerts({
+  canRetry = false,
   CloseIcon,
   error,
   onClearError,
   onClearSuccess,
+  onRetry,
+  RefreshIcon,
   success,
 }) {
   if (!error && !success) {
@@ -20,6 +23,18 @@ export default function GalleryAlerts({
           role="alert"
         >
           <span>{error}</span>
+
+          {canRetry && RefreshIcon ? (
+            <button
+              className="gallery-alert-retry"
+              type="button"
+              onClick={onRetry}
+              aria-label="Coba muat galeri kembali"
+            >
+              <RefreshIcon size={14} aria-hidden="true" />
+              <span>Coba lagi</span>
+            </button>
+          ) : null}
 
           <button
             type="button"

@@ -1,6 +1,33 @@
 import { forwardRef } from 'react';
+import { cva } from 'class-variance-authority';
 import { LoaderCircle } from 'lucide-react';
+import { cn } from '../../lib/utils.js';
 import '../../styles/modules/shared.css';
+
+const studioButtonVariants = cva(
+  'studio-button',
+  {
+    variants: {
+      variant: {
+        primary: 'is-primary',
+        secondary: 'is-secondary',
+        ghost: 'is-ghost',
+        danger: 'is-danger',
+        warning: 'is-warning',
+      },
+      size: {
+        sm: 'is-size-sm',
+        md: 'is-size-md',
+        lg: 'is-size-lg',
+        icon: 'is-size-icon',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  },
+);
 
 const Button = forwardRef(function Button(
   {
@@ -15,15 +42,11 @@ const Button = forwardRef(function Button(
   },
   ref
 ) {
-  const combinedClassName = [
-    'studio-button',
-    `is-${variant}`,
-    `is-size-${size}`,
-    isLoading ? 'is-loading' : '',
+  const combinedClassName = cn(
+    studioButtonVariants({ variant, size }),
+    isLoading && 'is-loading',
     className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  );
 
   return (
     <button

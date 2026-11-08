@@ -714,14 +714,25 @@
   gap: 10px;
   border-bottom: 1px solid var(--studio-edge-soft);
   padding: 10px 12px;
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard);
 }
 
 .guard-review-row:last-child {
   border-bottom: 0;
 }
 
-.guard-review-row:hover {
+.guard-review-row:hover,
+.guard-review-row:focus-within {
   background: color-mix(in srgb, var(--studio-accent) 3%, transparent);
+}
+
+.guard-review-priority-link:active:not(:disabled),
+.guard-review-priority-actions button:active:not(:disabled),
+.guard-review-filter-context button:active:not(:disabled),
+.guard-review-row-actions button:active:not(:disabled),
+.guard-review-dialog button:active:not(:disabled),
+.guard-review-attention-modal button:active:not(:disabled) {
+  transform: scale(0.985);
 }
 
 .guard-review-row-mark {
@@ -1539,7 +1550,24 @@ html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-attention-
   }
 }
 
+.guard-review-priority-link:focus-visible,
+.guard-review-priority-actions button:focus-visible,
+.guard-review-filter-context button:focus-visible,
+.guard-review-row-actions button:focus-visible,
+.guard-review-dialog button:focus-visible,
+.guard-review-attention-modal button:focus-visible {
+  outline: var(--studio-focus-outline);
+  outline-offset: var(--studio-focus-offset);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .pulse-dot,
+  .guard-shift-status-chip.is-offline,
+  .guard-attendance-approval-backdrop,
+  .guard-attendance-approval-modal {
+    animation: none !important;
+  }
+
   .guard-review-dialog-backdrop,
   .guard-review-attention-backdrop,
   .guard-review-dialog,
@@ -1547,6 +1575,7 @@ html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-attention-
     animation: none;
   }
 
+  .guard-review-row,
   .guard-review-priority-link,
   .guard-review-priority-actions button,
   .guard-review-filter-context button,
@@ -1555,6 +1584,13 @@ html[data-admin-theme-active='true'][data-theme='dark'] .guard-review-attention-
   .guard-review-attention-modal button {
     transition: none;
   }
+
+  .guard-review-priority-link:active,
+  .guard-review-priority-actions button:active,
+  .guard-review-filter-context button:active,
+  .guard-review-row-actions button:active,
+  .guard-review-dialog button:active,
+  .guard-review-attention-modal button:active { transform: none; }
 }
 
 @media (forced-colors: active) {

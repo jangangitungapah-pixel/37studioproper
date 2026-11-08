@@ -298,6 +298,11 @@
   font-weight: 690;
   line-height: 1.2;
   cursor: pointer;
+  transition:
+    transform var(--studio-duration-fast) var(--studio-ease-out),
+    border-color var(--studio-duration-fast) var(--studio-ease-standard),
+    background var(--studio-duration-fast) var(--studio-ease-standard),
+    color var(--studio-duration-fast) var(--studio-ease-standard);
 }
 
 .bookkeeping-command-actions button:hover,
@@ -486,6 +491,18 @@
   background: var(--studio-surface-2);
 }
 
+.bookkeeping-ledger-row:focus-within {
+  background: var(--studio-surface-2);
+}
+
+.bookkeeping-command-actions button:active:not(:disabled),
+.bookkeeping-filter-context button:active:not(:disabled),
+.bookkeeping-ledger-actions button:active:not(:disabled),
+.bookkeeping-form footer button:active:not(:disabled),
+.bookkeeping-modal-head > button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
 .bookkeeping-ledger-main {
   min-width: 0;
   display: flex;
@@ -644,6 +661,10 @@
   color: var(--studio-text-secondary);
   padding: 0;
   cursor: pointer;
+  transition:
+    transform var(--studio-duration-fast) var(--studio-ease-out),
+    border-color var(--studio-duration-fast) var(--studio-ease-standard),
+    color var(--studio-duration-fast) var(--studio-ease-standard);
 }
 
 .bookkeeping-ledger-actions button:hover {
@@ -1150,8 +1171,21 @@ html[data-admin-theme-active='true'][data-theme='dark'] .bookkeeping-ledger-surf
 
 @media (prefers-reduced-motion: reduce) {
   .bookkeeping-search-shell,
-  .bookkeeping-ledger-row {
+  .bookkeeping-ledger-row,
+  .bookkeeping-command-actions button,
+  .bookkeeping-filter-context button,
+  .bookkeeping-ledger-actions button,
+  .bookkeeping-form footer button,
+  .bookkeeping-modal-head > button {
     transition: none;
+  }
+
+  .bookkeeping-command-actions button:active,
+  .bookkeeping-filter-context button:active,
+  .bookkeeping-ledger-actions button:active,
+  .bookkeeping-form footer button:active,
+  .bookkeeping-modal-head > button:active {
+    transform: none;
   }
 
   .bookkeeping-ledger-skeleton i {

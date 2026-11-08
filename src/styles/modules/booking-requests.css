@@ -60,6 +60,8 @@
     5px
     3px
     3px;
+
+  animation: request-inbox-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
 }
 
 .booking-requests-heading {
@@ -362,6 +364,8 @@ em {
     var(
       --studio-shadow-contact
     );
+
+  animation: request-inbox-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 55ms both;
 }
 
 .booking-request-overview-object {
@@ -563,6 +567,8 @@ span {
     var(
       --studio-shadow-surface
     );
+
+  animation: request-inbox-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 105ms both;
 }
 
 .booking-request-filter-tabs {
@@ -1032,6 +1038,8 @@ button {
     var(
       --studio-shadow-contact
     );
+
+  animation: request-inbox-phase4-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 155ms both;
 }
 
 .booking-request-queue-heading {
@@ -1168,14 +1176,7 @@ p {
       --studio-surface-1
     );
 
-  transition:
-    background
-    var(
-      --studio-duration-fast
-    )
-    var(
-      --studio-ease-standard
-    );
+  transition: background var(--studio-duration-fast) var(--studio-ease-standard), transform var(--studio-duration-fast) var(--studio-ease-out);
 }
 
 .booking-request-queue-row:last-child {
@@ -1317,6 +1318,8 @@ p {
 
   cursor:
     pointer;
+
+  transition: color var(--studio-duration-fast) var(--studio-ease-standard), transform var(--studio-duration-fast) var(--studio-ease-out);
 }
 
 .booking-request-row-icon {
@@ -2939,5 +2942,40 @@ html[
   ) {
     transform:
       none;
+  }
+}
+
+.booking-request-row-open:active {
+  transform: scale(0.997)
+}
+
+.booking-request-row-actions button:hover:not(:disabled) {
+  transform: translateY(-1px)
+}
+
+.booking-request-row-actions button:active:not(:disabled) {
+  transform: scale(0.98)
+}
+
+@keyframes request-inbox-phase4-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-requests-editorial-header { animation: none; }
+  .booking-request-overview-strip { animation: none; }
+  .booking-request-command-shelf { animation: none; }
+  .booking-request-queue { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-request-row-open,
+  .booking-request-row-open:active,
+  .booking-request-row-actions button:hover:not(:disabled),
+  .booking-request-row-actions button:active:not(:disabled),
+  .booking-request-queue-row:hover {
+    transition: none;
+    transform: none;
   }
 }

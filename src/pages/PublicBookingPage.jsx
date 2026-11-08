@@ -20,6 +20,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Wifi,
+  WifiOff,
 } from 'lucide-react';
 import {
   useLocation,
@@ -192,7 +193,22 @@ export default function PublicBookingPage() {
   const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [isOnline, setIsOnline] = useState(() => (
+    typeof navigator === 'undefined' || navigator.onLine
+  ));
   const [subscriptionVersion, setSubscriptionVersion] = useState(0);
+  const hasAvailabilityData = !isLoading && !loadError;
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
@@ -227,10 +243,10 @@ export default function PublicBookingPage() {
         startHour,
         occupied,
         past,
-        available: !occupied && !past,
+        available: hasAvailabilityData && !occupied && !past,
       };
     }),
-    [selectedDate, slots],
+    [hasAvailabilityData, selectedDate, slots],
   );
 
   const availableCount = availability.filter((item) => item.available).length;
@@ -242,16 +258,17 @@ export default function PublicBookingPage() {
   const canContinue = Boolean(selectedSlot);
   const publicAiContext = useMemo(() => ({
     calendar: {
-      availableStartHours: availability
-        .filter((item) => item.available)
-        .map((item) => item.startHour),
+      availabilityStatus: isLoading ? 'loading' : loadError ? 'error' : 'ready',
+      availableStartHours: hasAvailabilityData
+        ? availability.filter((item) => item.available).map((item) => item.startHour)
+        : [],
       date: selectedDate,
       selectedStartHour,
       timezone: 'Asia/Jakarta',
     },
     journey: 'Pilih waktu, masuk akun Client, lengkapi detail, lalu kirim request booking.',
     privacy: 'Konteks publik tanpa identitas pengunjung atau data booking customer lain.',
-  }), [availability, selectedDate, selectedStartHour]);
+  }), [availability, hasAvailabilityData, isLoading, loadError, selectedDate, selectedStartHour]);
 
   function changeDate(value) {
     if (!value || value < todayKey) {
@@ -315,12 +332,35 @@ export default function PublicBookingPage() {
           </span>
         </button>
 
-        <div className="public-booking-live" role="status">
+        <div
+          className={`public-booking-live ${!isOnline ? 'is-offline' : loadError ? 'is-error' : isLoading ? 'is-loading' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           <span aria-hidden="true" />
-          <Wifi size={14} />
-          Jadwal realtime
+          {!isOnline
+            ? <WifiOff size={14} aria-hidden="true" />
+            : loadError
+              ? <Info size={14} aria-hidden="true" />
+              : isLoading
+                ? <LoaderCircle className="is-spinning" size={14} aria-hidden="true" />
+                : <Wifi size={14} aria-hidden="true" />}
+          {!isOnline
+            ? 'Perangkat offline'
+            : loadError
+              ? 'Status jadwal tidak diketahui'
+              : isLoading
+                ? 'Memeriksa jadwal'
+                : 'Jadwal realtime'}
         </div>
       </header>
+
+      {!isOnline ? (
+        <div className="public-booking-offline-notice" role="status">
+          <WifiOff size={16} aria-hidden="true" />
+          <span>Koneksi perangkat terputus. Jadwal yang tampil mungkin belum mencerminkan availability terbaru.</span>
+        </div>
+      ) : null}
 
       <section className="public-booking-intro" aria-labelledby="public-booking-title">
         <div>
@@ -334,20 +374,30 @@ export default function PublicBookingPage() {
           </p>
         </div>
 
-        <ol className="public-booking-progress" aria-label="Tahapan booking">
-          <li className="is-active">
-            <span>01</span>
-            <strong>Pilih waktu</strong>
-          </li>
-          <li>
-            <span>02</span>
-            <strong>Masuk akun</strong>
-          </li>
-          <li>
-            <span>03</span>
-            <strong>Kirim request</strong>
-          </li>
-        </ol>
+        <div className="public-booking-intro-aside">
+          <ol className="public-booking-progress" aria-label="Tahapan booking">
+            <li className="is-active">
+              <span>01</span>
+              <strong>Pilih waktu</strong>
+            </li>
+            <li>
+              <span>02</span>
+              <strong>Masuk akun</strong>
+            </li>
+            <li>
+              <span>03</span>
+              <strong>Kirim request</strong>
+            </li>
+          </ol>
+          <Suspense fallback={null}>
+            <RoleAiAssistant
+              context={publicAiContext}
+              role="client"
+              surface="public-booking"
+              user={firebaseAuth?.currentUser || null}
+            />
+          </Suspense>
+        </div>
       </section>
 
       <div className="public-booking-workspace">
@@ -428,7 +478,9 @@ export default function PublicBookingPage() {
               </div>
             </div>
 
-            <span>{availableCount} tersedia</span>
+            <span className={!hasAvailabilityData ? 'is-status' : ''} role="status">
+              {isLoading ? 'Memeriksa jadwal' : loadError ? 'Status tidak diketahui' : `${availableCount} tersedia`}
+            </span>
           </div>
 
           {isLoading ? (
@@ -464,14 +516,16 @@ export default function PublicBookingPage() {
             </div>
           )}
 
-          <footer className="public-booking-legend" aria-label="Keterangan status slot">
-            <span><i className="is-available" /> Tersedia</span>
-            <span><i className="is-selected" /> Dipilih</span>
-            <span><i className="is-unavailable" /> Terisi / lewat</span>
-          </footer>
+          {hasAvailabilityData ? (
+            <footer className="public-booking-legend" aria-label="Keterangan status slot">
+              <span><i className="is-available" /> Tersedia</span>
+              <span><i className="is-selected" /> Dipilih</span>
+              <span><i className="is-unavailable" /> Terisi / lewat</span>
+            </footer>
+          ) : null}
         </section>
 
-        <aside className="public-booking-summary" aria-label="Ringkasan pilihan booking">
+        <aside className={`public-booking-summary ${canContinue ? 'is-ready' : 'is-pending'}`} aria-label="Ringkasan pilihan booking">
           <div className="public-booking-summary-image" aria-hidden="true">
             <img src="/images/studio_hero_banner.png" alt="" />
             <span><Music2 size={15} /> 37 Music Studio</span>
@@ -501,7 +555,11 @@ export default function PublicBookingPage() {
             </div>
 
             <p className="public-booking-summary-hint">
-              Harga dan durasi dipilih setelah Anda masuk ke akun client.
+              {isLoading
+                ? 'Memeriksa availability sebelum Anda melanjutkan.'
+                : loadError
+                  ? 'Jadwal belum terverifikasi. Pilihan ini belum dapat dikirim.'
+                  : 'Harga dan durasi dipilih setelah Anda masuk ke akun client.'}
             </p>
 
             <button disabled={!canContinue} type="button" onClick={continueBooking}>
@@ -525,14 +583,6 @@ export default function PublicBookingPage() {
         </aside>
       </div>
 
-      <Suspense fallback={null}>
-        <RoleAiAssistant
-          context={publicAiContext}
-          role="client"
-          surface="public-booking"
-          user={firebaseAuth?.currentUser || null}
-        />
-      </Suspense>
     </main>
   );
 }

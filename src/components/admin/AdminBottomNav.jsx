@@ -168,8 +168,13 @@ export default function AdminBottomNav({
 
     const desktopMedia =
       window.matchMedia(
-        '(min-width: 768px)',
+        '(min-width: 900px)',
       );
+
+    if (desktopMedia.matches) {
+      setIsMoreMenuOpen(false);
+      return undefined;
+    }
 
     function closeSheetOnDesktop(
       event,

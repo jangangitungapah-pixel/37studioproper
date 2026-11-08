@@ -94,6 +94,8 @@ export default function GalleryPage({ currentUser = null }) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [galleryLoadError, setGalleryLoadError] = useState('');
+  const [gallerySubscriptionRetry, setGallerySubscriptionRetry] = useState(0);
   const [permanentDeleteIds, setPermanentDeleteIds] = useState(() => new Set());
   const permanentDeleteIdsRef = useRef(new Set());
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
@@ -174,16 +176,27 @@ export default function GalleryPage({ currentUser = null }) {
   const [editorCropPreset, setEditorCropPreset] = useState('free'); // 'free' | '1:1' | '16:9' | '4:3'
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  // Fetch all gallery items (live updates)
+  const handleRetryGallerySubscription = useCallback(() => {
+    setError('');
+    setGalleryLoadError('');
+    setIsLoading(true);
+    setGallerySubscriptionRetry((current) => current + 1);
+  }, []);
+
+  // Fetch all gallery items (live updates). Firestore listeners terminate after
+  // an error, so retry explicitly creates a fresh subscription.
   useEffect(() => {
     const unsubscribe = galleryRepository.subscribeGalleryItems(
       (list) => {
         setRawImages(list);
+        setGalleryLoadError('');
         setIsLoading(false);
       },
       (err) => {
         console.error('Error fetching gallery:', err);
-        setError('Gagal memuat daftar foto galeri.');
+        const message = 'Gagal memuat daftar foto galeri.';
+        setGalleryLoadError(message);
+        setError(message);
         setIsLoading(false);
       }
     );
@@ -194,7 +207,7 @@ export default function GalleryPage({ currentUser = null }) {
         synthRef.current.stop();
       }
     };
-  }, []);
+  }, [gallerySubscriptionRetry]);
 
   // Filter rawImages based on active tab and status
   const filteredActiveImages = useMemo(() => getFilteredActiveImages(rawImages), [rawImages]);
@@ -960,10 +973,16 @@ export default function GalleryPage({ currentUser = null }) {
 
       {/* Global Alerts */}
       <GalleryAlerts
+        canRetry={Boolean(galleryLoadError && error === galleryLoadError)}
         CloseIcon={X}
         error={error}
-        onClearError={() => setError('')}
+        onClearError={() => {
+          setError('');
+          setGalleryLoadError('');
+        }}
         onClearSuccess={() => setSuccess('')}
+        onRetry={handleRetryGallerySubscription}
+        RefreshIcon={RefreshCw}
         success={success}
       />
 

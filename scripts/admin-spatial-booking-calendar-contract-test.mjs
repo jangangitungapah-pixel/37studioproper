@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 
 import {
-  readFileSync,
+  readFileSync as rawReadFileSync,
 } from 'node:fs';
 
 import {
   resolve,
 } from 'node:path';
+
+const readFileSync = (...args) => {
+  const value = rawReadFileSync(...args);
+  return typeof value === 'string' ? value.replace(/\r\n/g, '\n') : value;
+};
 
 function read(path) {
   return readFileSync(

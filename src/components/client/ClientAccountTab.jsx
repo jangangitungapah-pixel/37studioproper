@@ -34,6 +34,7 @@ export default function ClientAccountTab({
   stats,
   studioMapsUrl,
   whatsappPhone,
+  statsUnavailable = false,
 }) {
   const accountName =
     getAccountName(
@@ -127,44 +128,18 @@ export default function ClientAccountTab({
 
           <section className="client-account-summary">
             <div>
-              <span>
-                Total booking
-              </span>
-
-              <strong>
-                {
-                  stats.totalBookings
-                }
-              </strong>
+              <span>Total booking</span>
+              <strong>{statsUnavailable ? '—' : stats.totalBookings}</strong>
             </div>
 
             <div>
-              <span>
-                Jam studio
-              </span>
-
-              <strong>
-                {
-                  stats.totalDuration
-                }
-                <small>
-                  {' '}jam
-                </small>
-              </strong>
+              <span>Jam studio</span>
+              <strong>{statsUnavailable ? '—' : stats.totalDuration}{!statsUnavailable ? <small>{' '}jam</small> : null}</strong>
             </div>
 
             <div>
-              <span>
-                Sisa tagihan
-              </span>
-
-              <strong>
-                {
-                  formatRupiah(
-                    stats.unpaidAmount,
-                  )
-                }
-              </strong>
+              <span>Sisa tagihan</span>
+              <strong>{statsUnavailable ? '—' : formatRupiah(stats.unpaidAmount)}</strong>
             </div>
           </section>
         </div>

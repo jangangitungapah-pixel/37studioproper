@@ -43,6 +43,7 @@
   --auth-text-main: var(--studio-text-main);
   --auth-text-strong: var(--studio-text-strong);
   --auth-text-muted: var(--studio-text-muted);
+  --auth-text-subtle: var(--studio-text-subtle);
   --auth-muted: var(--studio-text-muted);
   --auth-border: var(--studio-border);
   --auth-border-strong: var(--studio-border-strong);

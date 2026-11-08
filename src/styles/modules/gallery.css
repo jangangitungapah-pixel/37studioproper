@@ -1535,6 +1535,23 @@
   cursor: pointer;
 }
 
+.gallery-alert .gallery-alert-retry {
+  width: auto;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: var(--gallery-radius-control);
+  background: color-mix(in srgb, currentColor 7%, var(--gallery-surface));
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
 .gallery-batch-banner-fixed {
   position: fixed;
   left: 50%;
@@ -2488,6 +2505,11 @@ html[
     animation: none !important;
     transition: none !important;
   }
+
+  .gallery-page[data-gallery-ui='ui-11-spatial'] button:active,
+  .gallery-page[data-gallery-ui='ui-11-spatial'] a:active {
+    transform: none !important;
+  }
 }
 
 @media (forced-colors: active) {
@@ -2515,5 +2537,49 @@ html[
       Highlight;
 
     outline-offset: 2px;
+  }
+}
+
+
+/* UI-11.1 — Keyboard and action feedback */
+.gallery-page[data-gallery-ui='ui-11-spatial'] button:focus-visible,
+.gallery-page[data-gallery-ui='ui-11-spatial'] a:focus-visible,
+.gallery-page[data-gallery-ui='ui-11-spatial'] input:focus-visible,
+.gallery-page[data-gallery-ui='ui-11-spatial'] select:focus-visible,
+.gallery-page[data-gallery-ui='ui-11-spatial'] textarea:focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 3px;
+}
+
+.gallery-page[data-gallery-ui='ui-11-spatial'] .gallery-command-search input:focus-visible {
+  outline: 0;
+}
+
+.gallery-page[data-gallery-ui='ui-11-spatial'] button:active:not(:disabled),
+.gallery-page[data-gallery-ui='ui-11-spatial'] a:active {
+  transform: scale(0.985);
+}
+
+.gallery-page[data-gallery-ui='ui-11-spatial'] .gallery-alert-retry {
+  transition:
+    transform var(--studio-duration-fast, 140ms) var(--studio-ease-out, ease-out),
+    background var(--studio-duration-fast, 140ms) var(--studio-ease-standard, ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-page[data-gallery-ui='ui-11-spatial'] button:active,
+  .gallery-page[data-gallery-ui='ui-11-spatial'] a:active {
+    transform: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .gallery-page[data-gallery-ui='ui-11-spatial'] button:focus-visible,
+  .gallery-page[data-gallery-ui='ui-11-spatial'] a:focus-visible,
+  .gallery-page[data-gallery-ui='ui-11-spatial'] input:focus-visible,
+  .gallery-page[data-gallery-ui='ui-11-spatial'] select:focus-visible,
+  .gallery-page[data-gallery-ui='ui-11-spatial'] textarea:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 3px;
   }
 }

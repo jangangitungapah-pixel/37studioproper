@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-11-06T18:55:47.225Z",
+  "note": "Pengujian memakai local Vite dan callback dialog lokal. Tidak ada production writes.",
+  "totals": {
+    "passed": 15,
+    "failed": 1,
+    "skipped": 0
+  },
+  "runtimeErrors": [],
+  "results": [
+    {
+      "name": "Landing menu ARIA disclosure",
+      "status": "PASS",
+      "details": "ARIA controls dan expanded valid"
+    },
+    {
+      "name": "Landing menu Enter dan Escape",
+      "status": "PASS",
+      "details": "Enter membuka dan Escape menutup menu"
+    },
+    {
+      "name": "Landing navigation keyboard focus",
+      "status": "PASS",
+      "details": "Link navigasi dapat difokuskan"
+    },
+    {
+      "name": "Landing navigation focus restoration",
+      "status": "FAIL",
+      "details": "Fokus tidak kembali ke tombol menu"
+    },
+    {
+      "name": "StudioSelect ArrowDown opens listbox",
+      "status": "PASS",
+      "details": "Listbox terbuka dan active descendant tersedia"
+    },
+    {
+      "name": "StudioSelect skips disabled option",
+      "status": "PASS",
+      "details": "Opsi disabled dilewati"
+    },
+    {
+      "name": "StudioSelect Home dan End",
+      "status": "PASS",
+      "details": "Home=Alpha dan End=Gamma"
+    },
+    {
+      "name": "StudioSelect typeahead",
+      "status": "PASS",
+      "details": "Typeahead b memilih Beta"
+    },
+    {
+      "name": "StudioSelect Enter memilih opsi",
+      "status": "PASS",
+      "details": "Beta dipilih dan listbox tertutup"
+    },
+    {
+      "name": "StudioSelect Escape",
+      "status": "PASS",
+      "details": "Escape menutup dan memulihkan fokus"
+    },
+    {
+      "name": "StudioSelect Tab",
+      "status": "PASS",
+      "details": "Tab menutup listbox dan memindahkan fokus"
+    },
+    {
+      "name": "StudioSelect multi-select",
+      "status": "PASS",
+      "details": "Multi-select memilih Alpha tanpa menutup listbox"
+    },
+    {
+      "name": "ConfirmDialog ARIA dan initial focus",
+      "status": "PASS",
+      "details": "ARIA valid, fokus awal Cancel, scroll terkunci"
+    },
+    {
+      "name": "ConfirmDialog focus trap dua arah",
+      "status": "PASS",
+      "details": "Shift+Tab dan Tab membungkus fokus"
+    },
+    {
+      "name": "ConfirmDialog Escape dan focus restoration",
+      "status": "PASS",
+      "details": "Escape menutup dialog dan memulihkan fokus"
+    },
+    {
+      "name": "ConfirmDialog pending blocks Escape",
+      "status": "PASS",
+      "details": "Pending menahan Escape hingga callback lokal selesai"
+    }
+  ]
+}

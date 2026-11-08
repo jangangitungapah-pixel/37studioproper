@@ -156,7 +156,12 @@ function GuardPortalHeader({
 
       <div className="guard-portal-topbar-actions">
         {(isOwnerOversight || isAdminCrossPortal) && authUser ? (
-          <Link className="guard-portal-topbar-link" to={adminReturnPath}>
+          <Link
+            aria-label="Buka Admin Portal"
+            className="guard-portal-topbar-link"
+            title="Buka Admin Portal"
+            to={adminReturnPath}
+          >
             <ShieldCheck size={15} aria-hidden="true" />
             <span>Admin Portal</span>
           </Link>
@@ -675,6 +680,9 @@ function GuardAttendancePageContent() {
       data-auth-surface="guard"
       data-guard-portal-ui="ui-guard-spatial-v2"
     >
+      <a className="guard-portal-skip-link" href="#guard-portal-content">
+        Lewati navigasi Guard
+      </a>
       <GuardPortalHeader
         adminReturnPath={adminReturnPath}
         authUser={authUser}
@@ -686,7 +694,11 @@ function GuardAttendancePageContent() {
         todayLabel={todayLabel}
       />
 
-      <div className="guard-portal-canvas">
+      <div
+        className="guard-portal-canvas"
+        id="guard-portal-content"
+        tabIndex={-1}
+      >
         {!isReady ? (
           <GuardPortalAccessState
             description="Menyiapkan identitas, permission, dan riwayat attendance Anda."

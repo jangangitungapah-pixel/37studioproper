@@ -40,6 +40,7 @@ import AdminSidebar from '../components/admin/AdminSidebar.jsx';
 import AdminTopbar from '../components/admin/AdminTopbar.jsx';
 import AdminBottomNav from '../components/admin/AdminBottomNav.jsx';
 import SpatialUiProvider from '../components/ui/SpatialUiProvider.jsx';
+import StudioToaster from '../components/ui/StudioToaster.jsx';
 import { ThemeProvider } from '../theme/ThemeProvider.jsx';
 import '../styles/routes/admin.css';
 import '../styles/spatial-foundation.css';
@@ -196,7 +197,7 @@ function renderAdminContent(activeKey, currentUser) {
   if (activeKey === 'bookkeeping') return <BookkeepingPage />;
   if (activeKey === 'operator-fee') return <OperatorFeePage currentUser={currentUser} />;
   if (activeKey === 'guard-attendance') return <GuardAttendancePage currentUser={currentUser} />;
-  if (activeKey === 'inventory') return <InventoryPage />;
+  if (activeKey === 'inventory') return <InventoryPage currentUser={currentUser} />;
   if (activeKey === 'gallery') return <GalleryPage currentUser={currentUser} />;
 
   return <SchedulePage currentUser={currentUser} />;
@@ -252,6 +253,7 @@ export default function AdminPage() {
   return (
     <ThemeProvider>
       <SpatialUiProvider>
+        <StudioToaster />
         <AdminPageContent />
       </SpatialUiProvider>
     </ThemeProvider>
@@ -733,6 +735,9 @@ function AdminPageContent() {
           data-admin-active={activeItem.key}
           data-admin-spatial-root="true"
         >
+      <a className="admin-shell-skip-link" href="#admin-workspace-content">
+        Lewati navigasi admin
+      </a>
       {isOwnerAdminUser(authState.user) && (
         <GuardAttendanceApprovalModal
           currentUser={authState.user}
@@ -766,6 +771,8 @@ function AdminPageContent() {
             <section
               className="admin-stage"
               aria-labelledby="admin-title"
+              id="admin-workspace-content"
+              tabIndex={-1}
             >
               <AdminTopbar
                 activeItem={activeItem}

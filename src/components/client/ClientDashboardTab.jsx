@@ -13,31 +13,22 @@ import {
   formatRupiah,
 } from '../../settings/pricingSettings.js';
 import {
-  statusFilters,
-} from '../../constants/scheduleConfig.js';
+  BOOKING_PAYMENT_STATUS_META,
+  BOOKING_REQUEST_STATUS_META,
+  BOOKING_SESSION_STATUS_META,
+} from '../../domain/booking/bookingStatus.js';
 import {
-  getLegacyBookingPaymentStatus,
+  getBookingPaymentStatus,
+  getBookingRequestStatus,
+  getBookingSessionStatus,
 } from '../../domain/booking/bookingSelectors.js';
 
-function getBookingStatus(
-  booking,
-) {
-  return getLegacyBookingPaymentStatus(
-    booking,
-  );
-}
-
-function getStatusLabel(
-  status,
-) {
-  return (
-    statusFilters.find(
-      (item) =>
-        item.key ===
-        status,
-    )?.label ||
-    status
-  );
+function getClientBookingStatusMeta(booking) {
+  return {
+    request: BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+    payment: BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+    session: BOOKING_SESSION_STATUS_META[getBookingSessionStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+  };
 }
 
 function formatBookingDate(
@@ -82,7 +73,11 @@ export default function ClientDashboardTab({
   onOpenPayments,
   handleBookingBlockClick,
   downloadCalendarEvent,
+  bookingsLoading = false,
+  bookingsError = '',
 }) {
+  const bookingDataUnavailable = bookingsLoading || Boolean(bookingsError);
+
   return (
     <div className="client-home-dashboard">
       <header className="client-home-heading">
@@ -129,27 +124,24 @@ export default function ClientDashboardTab({
               Next Session
             </span>
 
-            {upcomingBooking ? (
-              <span
-                className={
-                  'client-payment-state is-' +
-                  getBookingStatus(
-                    upcomingBooking,
-                  )
-                }
-              >
-                {
-                  getStatusLabel(
-                    getBookingStatus(
-                      upcomingBooking,
-                    ),
-                  )
-                }
-              </span>
+            {!bookingDataUnavailable && upcomingBooking ? (
+              <div aria-label="Status booking" className="client-home-status-stack">
+                {Object.entries(getClientBookingStatusMeta(upcomingBooking)).map(([key, status]) => (
+                  <span className={`client-home-status-chip is-${status.tone}`} key={key}>
+                    <small>{key === 'request' ? 'Request' : key === 'payment' ? 'Pembayaran' : 'Sesi'}</small>
+                    <strong>{status.label}</strong>
+                  </span>
+                ))}
+              </div>
             ) : null}
           </div>
 
-          {upcomingBooking ? (
+          {bookingsLoading || bookingsError ? (
+            <div className="client-home-data-state" role={bookingsError ? 'alert' : 'status'}>
+              <strong>{bookingsError ? 'Jadwal belum dapat dimuat' : 'Memuat jadwal booking…'}</strong>
+              <p>{bookingsError ? 'Ringkasan sesi ditampilkan kembali setelah koneksi pulih.' : 'Mengambil jadwal terbaru dari akun Anda.'}</p>
+            </div>
+          ) : upcomingBooking ? (
             <>
               <div className="client-home-session-main">
                 <div className="client-home-session-icon">
@@ -292,11 +284,7 @@ export default function ClientDashboardTab({
               Total Booking
             </span>
 
-            <strong>
-              {
-                stats.totalBookings
-              }
-            </strong>
+            <strong>{bookingDataUnavailable ? '—' : stats.totalBookings}</strong>
 
             <small>
               seluruh request
@@ -309,12 +297,8 @@ export default function ClientDashboardTab({
             </span>
 
             <strong>
-              {
-                stats.totalDuration
-              }
-              <b>
-                {' '}jam
-              </b>
+              {bookingDataUnavailable ? '—' : stats.totalDuration}
+              {!bookingDataUnavailable ? <b>{' '}jam</b> : null}
             </strong>
 
             <small>
@@ -329,9 +313,7 @@ export default function ClientDashboardTab({
 
             <strong>
               {
-                formatRupiah(
-                  stats.unpaidAmount,
-                )
+                bookingDataUnavailable ? '—' : formatRupiah(stats.unpaidAmount)
               }
             </strong>
 
@@ -340,32 +322,20 @@ export default function ClientDashboardTab({
             </small>
           </div>
 
-          {stats.unpaidAmount > 0 ? (
-            <button
-              className="client-home-payment-cta"
-              type="button"
-              onClick={
-                onOpenPayments
-              }
-            >
-              <CreditCard
-                size={15}
-              />
-
-              <span>
-                Lihat Tagihan
-              </span>
-
-              <ChevronRight
-                size={15}
-              />
+          {bookingDataUnavailable ? (
+            <div className="client-home-payment-clear">
+              <CreditCard size={15} />
+              Status pembayaran belum tersedia
+            </div>
+          ) : stats.unpaidAmount > 0 ? (
+            <button className="client-home-payment-cta" type="button" onClick={onOpenPayments}>
+              <CreditCard size={15} />
+              <span>Lihat Tagihan</span>
+              <ChevronRight size={15} />
             </button>
           ) : (
             <div className="client-home-payment-clear">
-              <CreditCard
-                size={15}
-              />
-
+              <CreditCard size={15} />
               Tidak ada tagihan aktif
             </div>
           )}
@@ -399,7 +369,12 @@ export default function ClientDashboardTab({
             </button>
           </header>
 
-          {recentBookings.length ? (
+          {bookingsLoading || bookingsError ? (
+            <div className="client-home-data-state" role={bookingsError ? 'alert' : 'status'}>
+              <strong>{bookingsError ? 'Aktivitas belum dapat dimuat' : 'Memuat aktivitas…'}</strong>
+              <p>{bookingsError ? 'Riwayat booking akan muncul setelah data berhasil dibaca.' : 'Mengambil booking terbaru dari akun Anda.'}</p>
+            </div>
+          ) : recentBookings.length ? (
             <div className="client-home-recent-list">
               {recentBookings.map(
                 (
@@ -452,21 +427,13 @@ export default function ClientDashboardTab({
                       </small>
                     </span>
 
-                    <span
-                      className={
-                        'client-home-recent-status is-' +
-                        getBookingStatus(
-                          booking,
-                        )
-                      }
-                    >
-                      {
-                        getStatusLabel(
-                          getBookingStatus(
-                            booking,
-                          ),
-                        )
-                      }
+                    <span className="client-home-recent-statuses" aria-label="Status request dan pembayaran">
+                      <small className={`client-home-recent-status is-${getClientBookingStatusMeta(booking).request.tone}`}>
+                        Request · {getClientBookingStatusMeta(booking).request.label}
+                      </small>
+                      <small className={`client-home-recent-status is-${getClientBookingStatusMeta(booking).payment.tone}`}>
+                        Bayar · {getClientBookingStatusMeta(booking).payment.label}
+                      </small>
                     </span>
 
                     <ChevronRight

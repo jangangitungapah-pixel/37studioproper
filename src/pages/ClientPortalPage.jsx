@@ -15,11 +15,17 @@ import {
   UploadCloud,
   Sun,
   Image,
+  Bell,
   X
 } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
+import {
+  BOOKING_PAYMENT_STATUS_META,
+  BOOKING_SESSION_STATUS_META,
+} from '../domain/booking/bookingStatus.js';
 import { adminBookingRepository } from '../services/adminBookingRepository.js';
+import { notificationEventRepository } from '../services/notificationEventRepository.js';
 import {
   getBookingPaymentStatus,
   getBookingRequestStatus,
@@ -74,6 +80,7 @@ import ClientBookingWizard from '../components/client/ClientBookingWizard.jsx';
 import ClientBillingTab from '../components/client/ClientBillingTab.jsx';
 import ClientBookingsHub from '../components/client/ClientBookingsHub.jsx';
 import ClientAccountTab from '../components/client/ClientAccountTab.jsx';
+import ClientNotificationsPanel from '../components/client/ClientNotificationsPanel.jsx';
 import {
   createClientAiContext,
 } from '../utils/roleAiContext.js';
@@ -268,8 +275,22 @@ export default function ClientPortalPage() {
 
   // Booking Data State
   const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(Boolean(firebaseAuth));
+  const [bookingsError, setBookingsError] = useState('');
+  const [bookingsRetryVersion, setBookingsRetryVersion] = useState(0);
   const [calendarSlots, setCalendarSlots] = useState([]);
   const [calendarSlotsReady, setCalendarSlotsReady] = useState(false);
+  const [calendarSlotsLoading, setCalendarSlotsLoading] = useState(Boolean(firebaseAuth));
+  const [calendarSlotsError, setCalendarSlotsError] = useState('');
+  const [calendarRetryVersion, setCalendarRetryVersion] = useState(0);
+  const [paymentProofsLoading, setPaymentProofsLoading] = useState(Boolean(firebaseAuth));
+  const [paymentProofsError, setPaymentProofsError] = useState('');
+  const [paymentProofsRetryVersion, setPaymentProofsRetryVersion] = useState(0);
+  const [clientNotifications, setClientNotifications] = useState([]);
+  const [clientNotificationsLoading, setClientNotificationsLoading] = useState(Boolean(firebaseAuth));
+  const [clientNotificationsError, setClientNotificationsError] = useState('');
+  const [clientNotificationsRetryVersion, setClientNotificationsRetryVersion] = useState(0);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const publicBookingResumeKeyRef = useRef('');
   const [selectedBookingDetail, setSelectedBookingDetail] = useState(null);
   const [historyQuery, setHistoryQuery] = useState('');
@@ -290,6 +311,35 @@ export default function ClientPortalPage() {
   const [simProofAmount, setSimProofAmount] = useState('');
   const [simProofFile, setSimProofFile] = useState(null);
   const [simProofNote, setSimProofNote] = useState('');
+
+  function retryClientBookings() {
+    setBookings([]);
+    setBookingsLoading(true);
+    setBookingsError('');
+    setBookingsRetryVersion((value) => value + 1);
+  }
+
+  function retryCalendarSlots() {
+    setCalendarSlots([]);
+    setCalendarSlotsReady(false);
+    setCalendarSlotsLoading(true);
+    setCalendarSlotsError('');
+    setCalendarRetryVersion((value) => value + 1);
+  }
+
+  function retryPaymentProofs() {
+    setPaymentProofs([]);
+    setPaymentProofsLoading(true);
+    setPaymentProofsError('');
+    setPaymentProofsRetryVersion((value) => value + 1);
+  }
+
+  function retryClientNotifications() {
+    setClientNotifications([]);
+    setClientNotificationsLoading(true);
+    setClientNotificationsError('');
+    setClientNotificationsRetryVersion((value) => value + 1);
+  }
 
   // Calendar parameters
   const [calendarViewMode, setCalendarViewMode] = useState('week'); // 'day' | 'week' | 'month'
@@ -314,6 +364,26 @@ export default function ClientPortalPage() {
 
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       const currentSequence = ++checkSequence;
+      // Clear the previous account's data before resolving a new auth session.
+      // This prevents a brief cross-account display during token/account changes.
+      setAuthLoading(true);
+      setCurrentUser(null);
+      setBookings([]);
+      setBookingsLoading(Boolean(user));
+      setBookingsError('');
+      setCalendarSlots([]);
+      setCalendarSlotsReady(false);
+      setCalendarSlotsLoading(Boolean(user));
+      setCalendarSlotsError('');
+      setPaymentProofs([]);
+      setPaymentProofsLoading(Boolean(user));
+      setPaymentProofsError('');
+      setClientNotifications([]);
+      setClientNotificationsLoading(Boolean(user));
+      setClientNotificationsError('');
+      setSelectedBookingDetail(null);
+      setIsNotificationsOpen(false);
+
       if (!user) {
         navigate('/client/login', { replace: true });
         setAuthLoading(false);
@@ -346,37 +416,89 @@ export default function ClientPortalPage() {
         if (currentSequence === checkSequence) setAuthLoading(false);
       }
     });
-    return unsubscribe;
+    return () => {
+      checkSequence += 1;
+      unsubscribe();
+    };
   }, [navigate]);
 
-  // Load client-owned bookings from Firestore
+  // Load client-owned bookings from Firestore with an explicit retryable state.
   useEffect(() => {
-    if (!currentUser) return;
-    const unsubscribe = adminBookingRepository.subscribeClientBookingsForUser(
-      currentUser,
-      (data) => setBookings(data),
-      (err) => console.error('Gagal mengambil booking client:', err)
-    );
-    return unsubscribe;
-  }, [currentUser]);
+    if (!currentUser) return undefined;
 
-  // Load public-safe occupied slots mirrored from admin schedule
+    let active = true;
+    let unsubscribe;
+
+    try {
+      unsubscribe = adminBookingRepository.subscribeClientBookingsForUser(
+        currentUser,
+        (data) => {
+          if (!active) return;
+          setBookings(data);
+          setBookingsLoading(false);
+          setBookingsError('');
+        },
+        (err) => {
+          console.error('Gagal mengambil booking client:', err);
+          if (!active) return;
+          setBookingsLoading(false);
+          setBookingsError('Data booking belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+        }
+      );
+    } catch (error) {
+      console.error('Gagal memasang subscription booking client:', error);
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setBookingsLoading(false);
+        setBookingsError('Data booking belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      });
+    }
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [currentUser, bookingsRetryVersion]);
+
+  // Availability is actionable only after the public-safe slot mirror emits a snapshot.
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) return undefined;
 
-    const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
-      (data) => {
-        setCalendarSlots(data);
-        setCalendarSlotsReady(true);
-      },
-      (err) => {
-        console.error('Gagal mengambil slot calendar client:', err);
-        setCalendarSlotsReady(true);
-      }
-    );
+    let active = true;
+    let unsubscribe;
 
-    return unsubscribe;
-  }, [currentUser]);
+    try {
+      unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
+        (data) => {
+          if (!active) return;
+          setCalendarSlots(data);
+          setCalendarSlotsReady(true);
+          setCalendarSlotsLoading(false);
+          setCalendarSlotsError('');
+        },
+        (err) => {
+          console.error('Gagal mengambil slot calendar client:', err);
+          if (!active) return;
+          setCalendarSlotsReady(false);
+          setCalendarSlotsLoading(false);
+          setCalendarSlotsError('Ketersediaan jadwal belum dapat diverifikasi. Slot booking dinonaktifkan sampai data berhasil dimuat.');
+        }
+      );
+    } catch (error) {
+      console.error('Gagal memasang subscription slot calendar client:', error);
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setCalendarSlotsReady(false);
+        setCalendarSlotsLoading(false);
+        setCalendarSlotsError('Ketersediaan jadwal belum dapat diverifikasi. Slot booking dinonaktifkan sampai data berhasil dimuat.');
+      });
+    }
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [currentUser, calendarRetryVersion]);
 
   // Resume a slot selected from the public /book entry after authentication.
   useEffect(() => {
@@ -464,16 +586,92 @@ export default function ClientPortalPage() {
     navigate,
   ]);
 
-  // Load payment proofs submitted by current client
+  // Load payment proofs belonging to the authenticated client.
   useEffect(() => {
-    if (!currentUser) return;
-    const unsubscribe = paymentProofRepository.subscribeClientPaymentProofs(
-      currentUser,
-      (data) => setPaymentProofs(data),
-      (err) => console.error('Gagal mengambil bukti pembayaran client:', err)
-    );
-    return unsubscribe;
-  }, [currentUser]);
+    if (!currentUser) return undefined;
+
+    let active = true;
+    let unsubscribe;
+
+    try {
+      unsubscribe = paymentProofRepository.subscribeClientPaymentProofs(
+        currentUser,
+        (data) => {
+          if (!active) return;
+          setPaymentProofs(data);
+          setPaymentProofsLoading(false);
+          setPaymentProofsError('');
+        },
+        (err) => {
+          console.error('Gagal mengambil bukti pembayaran client:', err);
+          if (!active) return;
+          setPaymentProofsLoading(false);
+          setPaymentProofsError('Riwayat bukti pembayaran belum dapat dimuat. Coba ulang tanpa mengirim bukti baru.');
+        }
+      );
+    } catch (error) {
+      console.error('Gagal memasang subscription bukti pembayaran client:', error);
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setPaymentProofsLoading(false);
+        setPaymentProofsError('Riwayat bukti pembayaran belum dapat dimuat. Coba ulang tanpa mengirim bukti baru.');
+      });
+    }
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [currentUser, paymentProofsRetryVersion]);
+
+  // Client notifications are an immutable, recipient-scoped activity feed.
+  useEffect(() => {
+    if (!currentUser) return undefined;
+
+    let active = true;
+    let unsubscribe;
+
+    try {
+      unsubscribe = notificationEventRepository.subscribeClientNotificationEvents(
+        currentUser,
+        (events) => {
+          if (!active) return;
+          setClientNotifications(events);
+          setClientNotificationsLoading(false);
+          setClientNotificationsError('');
+        },
+        (err) => {
+          console.error('Gagal mengambil notifikasi client:', err);
+          if (!active) return;
+          setClientNotificationsLoading(false);
+          setClientNotificationsError('Aktivitas belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+        }
+      );
+    } catch (error) {
+      console.error('Gagal memasang subscription notifikasi client:', error);
+      Promise.resolve().then(() => {
+        if (!active) return;
+        setClientNotificationsLoading(false);
+        setClientNotificationsError('Aktivitas belum dapat dimuat. Periksa koneksi lalu coba lagi.');
+      });
+    }
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [currentUser, clientNotificationsRetryVersion]);
+
+  useEffect(() => {
+    if (!isNotificationsOpen) return undefined;
+
+    function handleNotificationEscape(event) {
+      if (event.key === 'Escape') setIsNotificationsOpen(false);
+    }
+
+    window.addEventListener('keydown', handleNotificationEscape);
+    return () => window.removeEventListener('keydown', handleNotificationEscape);
+  }, [isNotificationsOpen]);
 
   // Filter Bookings belonging to Current Client
   const userBookings = useMemo(() => {
@@ -495,6 +693,34 @@ export default function ClientPortalPage() {
       );
     });
   }, [bookings, currentUser]);
+
+  // Notification destinations are resolved only against the already-scoped
+  // client booking query; arbitrary event URLs are never navigated to.
+  useEffect(() => {
+    const bookingId = new URLSearchParams(location.search).get('bookingId');
+    if (!bookingId || !currentUser || bookingsLoading || bookingsError) return undefined;
+
+    let active = true;
+    const resolveNotificationBooking = window.setTimeout(() => {
+      if (!active) return;
+
+      const ownedBooking = userBookings.find((booking) => booking.id === bookingId);
+      if (ownedBooking) {
+        setBookingsSection('bookings');
+        setActiveTab('bookings');
+        setSelectedBookingDetail(ownedBooking);
+      } else {
+        setActionFeedback('Booking dari notifikasi tidak tersedia di data akun ini.');
+      }
+
+      navigate('/client/portal', { replace: true });
+    }, 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(resolveNotificationBooking);
+    };
+  }, [bookingsError, bookingsLoading, currentUser, location.search, navigate, userBookings]);
 
   const unreadAdminMessages = useMemo(
     () => userBookings.filter((booking) => booking.lastMessageSenderRole === 'admin' && booking.lastMessageReadByClient === false).length,
@@ -638,6 +864,10 @@ export default function ClientPortalPage() {
     [paymentProofs]
   );
 
+  const clientActionBadgeCount = bookingsLoading || bookingsError || paymentProofsLoading || paymentProofsError
+    ? null
+    : unreadAdminMessages + pendingPaymentProofs.length;
+
   const clientAiContext = useMemo(
     () => createClientAiContext({
       activeTab,
@@ -777,6 +1007,12 @@ export default function ClientPortalPage() {
   }
 
   function openPaymentProofModal(booking, initialCategory) {
+    if (paymentProofsLoading || paymentProofsError) {
+      setActionFeedback('Status bukti pembayaran belum dapat diverifikasi. Muat ulang data sebelum mengirim bukti.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return;
+    }
+
     const status = getBookingPaymentStatus(booking);
     const nextCategory = initialCategory || (status === 'partial' ? 'pelunasan' : 'dp');
 
@@ -828,6 +1064,12 @@ export default function ClientPortalPage() {
   async function submitStandalonePaymentProof() {
     if (!selectedProofBooking || isSubmittingProof) return;
 
+    if (paymentProofsLoading || paymentProofsError) {
+      setActionFeedback('Status bukti pembayaran belum dapat diverifikasi. Muat ulang data sebelum mengirim bukti.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return;
+    }
+
     setIsSubmittingProof(true);
     setActionFeedback('');
 
@@ -841,7 +1083,8 @@ export default function ClientPortalPage() {
         method: proofMethod,
       });
 
-      closePaymentProofModal();
+      setSelectedProofBooking(null);
+      resetStandaloneProofForm();
       setActionFeedback('Bukti pembayaran berhasil dikirim. Menunggu review admin.');
       window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
@@ -865,6 +1108,20 @@ export default function ClientPortalPage() {
 
   async function submitBookingRequest() {
     if (!currentUser || !simulatorDate || isSubmittingRequest) return null;
+
+    if (!calendarSlotsReady || calendarSlotsError || bookingsLoading || bookingsError) {
+      setActionFeedback('Data jadwal belum siap atau belum dapat diverifikasi. Muat ulang data sebelum mengirim booking.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return null;
+    }
+
+    if (isBookingStartOccupied(calendarSlots, simulatorDate, Number(simulatorStartHour))) {
+      setIsSimulatorOpen(false);
+      setActiveTab('book');
+      setActionFeedback('Slot ini baru saja terisi. Pilih jadwal lain yang masih tersedia.');
+      window.setTimeout(() => setActionFeedback(''), 5200);
+      return null;
+    }
 
     if (!simCustomerName.trim()) {
       setActionFeedback('Nama pelanggan wajib diisi.');
@@ -1112,6 +1369,15 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   const bookingBlocks = useMemo(() => getVisibleBookingBlocks(calendarBookings, visibleDays), [calendarBookings, visibleDays]);
 
   const handleSlotClick = (slot) => {
+    if (!calendarSlotsReady || calendarSlotsError) {
+      showActionFeedback(
+        calendarSlotsError
+          ? 'Jadwal belum dapat diverifikasi. Coba muat ulang sebelum memilih slot.'
+          : 'Sedang memuat ketersediaan jadwal. Silakan tunggu sebentar.'
+      );
+      return;
+    }
+
     setSimulatorDate(slot.date);
     setSimulatorStartHour(slot.startHour);
     setSimSessionType('rehearsal');
@@ -1128,6 +1394,20 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
   const handleBookingBlockClick = (booking) => {
     setSelectedBookingDetail(booking);
   };
+
+  function handleClientNotificationOpen(event) {
+    setIsNotificationsOpen(false);
+    const booking = userBookings.find((item) => item.id === event?.bookingId);
+
+    if (!booking) {
+      showActionFeedback('Booking terkait tidak tersedia di data akun ini.');
+      return;
+    }
+
+    setBookingsSection('bookings');
+    setActiveTab('bookings');
+    setSelectedBookingDetail(booking);
+  }
 
   function handleCreatedBookingView(booking) {
     setIsSimulatorOpen(false);
@@ -1167,6 +1447,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   return (
     <div className="client-portal-page theme-container">
+      <a className="client-portal-skip-link" href="#client-portal-main">
+        Lewati navigasi client
+      </a>
       {/* Background Radial Glow */}
       <div className="client-portal-bg-glow" aria-hidden="true" />
       
@@ -1189,6 +1472,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         >
           <span className="client-desktop-nav-label">Workspace</span>
           <button
+            aria-current={activeTab === 'home' ? 'page' : undefined}
             className={activeTab === 'home' ? 'is-active' : ''}
             type="button"
             onClick={() => setActiveTab('home')}
@@ -1198,6 +1482,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </button>
 
           <button
+            aria-current={activeTab === 'book' ? 'page' : undefined}
             className={activeTab === 'book' ? 'is-active' : ''}
             type="button"
             onClick={() => setActiveTab('book')}
@@ -1207,6 +1492,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
           </button>
 
           <button
+            aria-current={activeTab === 'bookings' ? 'page' : undefined}
             className={activeTab === 'bookings' ? 'is-active' : ''}
             type="button"
             onClick={() => {
@@ -1217,14 +1503,15 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             <ClipboardList size={16} />
             <span>Bookings</span>
 
-            {unreadAdminMessages + pendingPaymentProofs.length ? (
+            {clientActionBadgeCount > 0 ? (
               <b>
-                {unreadAdminMessages + pendingPaymentProofs.length}
+                {clientActionBadgeCount}
               </b>
             ) : null}
           </button>
 
           <button
+            aria-current={activeTab === 'account' ? 'page' : undefined}
             className={activeTab === 'account' ? 'is-active' : ''}
             type="button"
             onClick={() => setActiveTab('account')}
@@ -1235,6 +1522,16 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         </nav>
 
         <div className="client-header-actions">
+          <button
+            aria-controls="client-notifications-panel"
+            aria-expanded={isNotificationsOpen}
+            aria-label={isNotificationsOpen ? 'Tutup notifikasi' : 'Buka notifikasi'}
+            className="client-notifications-trigger"
+            onClick={() => setIsNotificationsOpen((open) => !open)}
+            type="button"
+          >
+            <Bell size={17} aria-hidden="true" />
+          </button>
           <div className="client-header-profile">
             <span>{(currentUser?.displayName || currentUser?.email || 'C').slice(0, 1).toUpperCase()}</span>
             <div>
@@ -1264,8 +1561,24 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         </div>
       </header>
 
+      {isNotificationsOpen ? (
+        <ClientNotificationsPanel
+          events={clientNotifications}
+          error={clientNotificationsError}
+          isLoading={clientNotificationsLoading}
+          onClose={() => setIsNotificationsOpen(false)}
+          onOpenBooking={handleClientNotificationOpen}
+          onRetry={retryClientNotifications}
+        />
+      ) : null}
+
       {/* Client Navigation V2 content */}
-      <main className="client-portal-main" data-view={activeTab}>
+      <main
+        className="client-portal-main"
+        data-view={activeTab}
+        id="client-portal-main"
+        tabIndex={-1}
+      >
         <header className="client-portal-mobile-heading">
           <span className="client-header-mark">37</span>
           <div>
@@ -1273,6 +1586,16 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             <strong>Halo, {currentUser?.displayName?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'Client'}</strong>
           </div>
           <div className="client-portal-mobile-actions">
+            <button
+              aria-controls="client-notifications-panel"
+              aria-expanded={isNotificationsOpen}
+              aria-label={isNotificationsOpen ? 'Tutup notifikasi' : 'Buka notifikasi'}
+              className="client-notifications-trigger"
+              onClick={() => setIsNotificationsOpen((open) => !open)}
+              type="button"
+            >
+              <Bell size={17} aria-hidden="true" />
+            </button>
             <button type="button" onClick={toggleTheme} aria-label={isDark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} aria-pressed={isDark}>
               {isDark ? <Sun size={17} /> : <Moon size={17} />}
             </button>
@@ -1281,6 +1604,27 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             </button>
           </div>
         </header>
+
+        <div className="client-data-status-group">
+          {bookingsLoading ? (
+            <p className="client-data-status" role="status">Memuat data booking…</p>
+          ) : null}
+          {bookingsError ? (
+            <div className="client-data-status is-error" role="alert">
+              <span>{bookingsError}</span>
+              <button onClick={retryClientBookings} type="button">Coba lagi</button>
+            </div>
+          ) : null}
+          {activeTab === 'bookings' && bookingsSection === 'payments' && paymentProofsLoading ? (
+            <p className="client-data-status" role="status">Memuat riwayat bukti pembayaran…</p>
+          ) : null}
+          {activeTab === 'bookings' && bookingsSection === 'payments' && paymentProofsError ? (
+            <div className="client-data-status is-error" role="alert">
+              <span>{paymentProofsError}</span>
+              <button onClick={retryPaymentProofs} type="button">Coba lagi</button>
+            </div>
+          ) : null}
+        </div>
 
         <div className="client-view-stage" key={activeTab}>
         {activeTab === 'home' && (
@@ -1302,6 +1646,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             }}
             handleBookingBlockClick={handleBookingBlockClick}
             downloadCalendarEvent={downloadCalendarEvent}
+            bookingsLoading={bookingsLoading}
+            bookingsError={bookingsError}
           />
         )}
 
@@ -1313,6 +1659,10 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             setCalendarViewMode={setCalendarViewMode}
             visibleDays={visibleDays}
             businessHours={businessHours}
+            calendarSlotsReady={calendarSlotsReady}
+            calendarSlotsLoading={calendarSlotsLoading}
+            calendarSlotsError={calendarSlotsError}
+            onRetryCalendarSlots={retryCalendarSlots}
             handleSlotClick={handleSlotClick}
             bookingBlocks={bookingBlocks}
             handleBookingBlockClick={handleBookingBlockClick}
@@ -1329,11 +1679,11 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
         {activeTab === 'bookings' && (
           <ClientBookingsHub
-            bookingCount={userBookings.length}
+            bookingCount={bookingsLoading || bookingsError ? '—' : userBookings.length}
             section={bookingsSection}
             setSection={setBookingsSection}
-            unreadCount={unreadAdminMessages}
-            pendingPaymentCount={pendingPaymentProofs.length}
+            unreadCount={bookingsLoading || bookingsError ? null : unreadAdminMessages}
+            pendingPaymentCount={paymentProofsLoading || paymentProofsError ? null : pendingPaymentProofs.length}
             bookingsContent={(
               <ClientHistoryTab
                 filteredHistoryBookings={filteredHistoryBookings}
@@ -1344,8 +1694,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 setHistoryFilter={setHistoryFilter}
                 historyFilterOptions={historyFilterOptions}
                 handleBookingBlockClick={handleBookingBlockClick}
-                getBookingStatus={getBookingStatus}
                 copyText={copyText}
+                bookingsLoading={bookingsLoading}
+                bookingsError={bookingsError}
               />
             )}
             paymentsContent={(
@@ -1360,6 +1711,10 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 transferAccountNumber={transferAccountNumber}
                 studioPaymentTerms={studioPaymentTerms}
                 copyText={copyText}
+                paymentProofsLoading={paymentProofsLoading}
+                paymentProofsError={paymentProofsError}
+                bookingsLoading={bookingsLoading}
+                bookingsError={bookingsError}
               />
             )}
           />
@@ -1378,6 +1733,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               setBookingsSection('payments');
               setActiveTab('bookings');
             }}
+            statsUnavailable={bookingsLoading || Boolean(bookingsError)}
           />
         )}
         </div>
@@ -1411,13 +1767,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             }}
             className={'client-bottom-item ' + (activeTab === 'bookings' ? 'is-active' : '')}
             aria-current={activeTab === 'bookings' ? 'page' : undefined}
-            style={{ position: 'relative' }}
           >
             <ClipboardList size={18} />
             <span>Bookings</span>
-            {unreadAdminMessages + pendingPaymentProofs.length ? (
+            {clientActionBadgeCount > 0 ? (
               <b className="client-nav-badge">
-                {unreadAdminMessages + pendingPaymentProofs.length}
+                {clientActionBadgeCount}
               </b>
             ) : null}
           </button>
@@ -1494,7 +1849,39 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               </section>
             ) : null}
 
-            {getLatestPaymentProof(selectedBookingDetail) ? (
+            {(() => {
+              const paymentMeta = BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(selectedBookingDetail)];
+              const sessionMeta = BOOKING_SESSION_STATUS_META[getBookingSessionStatus(selectedBookingDetail)];
+
+              return (
+                <>
+                  {paymentMeta ? (
+                    <section className={'client-request-state is-' + paymentMeta.tone}>
+                      <span>Status pembayaran</span>
+                      <strong>{paymentMeta.label}</strong>
+                    </section>
+                  ) : null}
+                  {sessionMeta ? (
+                    <section className={'client-request-state is-' + sessionMeta.tone}>
+                      <span>Status sesi</span>
+                      <strong>{sessionMeta.label}</strong>
+                    </section>
+                  ) : null}
+                </>
+              );
+            })()}
+
+            {paymentProofsLoading || paymentProofsError ? (
+              <section className="client-request-state is-attention" role={paymentProofsError ? 'alert' : 'status'}>
+                <span>Status bukti pembayaran</span>
+                <strong>{paymentProofsLoading ? 'Memuat status bukti…' : 'Status bukti belum dapat diperiksa'}</strong>
+                {paymentProofsError ? (
+                  <button type="button" onClick={retryPaymentProofs}>
+                    Coba lagi
+                  </button>
+                ) : null}
+              </section>
+            ) : getLatestPaymentProof(selectedBookingDetail) ? (
               <section className={'client-payment-proof-detail ' + getProofTone(getLatestPaymentProof(selectedBookingDetail).status)}>
                 <span>Status bukti pembayaran</span>
                 <strong>{getPaymentProofStatusLabel(getLatestPaymentProof(selectedBookingDetail).status)}</strong>
@@ -1562,8 +1949,8 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   <div>
                     <span>Sisa tagihan</span>
                     <strong className={getBookingStatus(selectedBookingDetail) === 'lunas' ? 'is-paid' : 'is-open'}>
-                      {getBookingStatus(selectedBookingDetail) === 'lunas'
-                        ? 'Lunas / Selesai'
+                      {getBookingPaymentStatus(selectedBookingDetail) === 'paid'
+                        ? 'Lunas'
                         : formatRupiah(Math.max(0, (selectedBookingDetail.total || 0) - (selectedBookingDetail.dpAmount || 0)))}
                     </strong>
                   </div>
@@ -1573,6 +1960,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
             {selectedBookingDetail.clientUid ? (
               <BookingConversationPanel
+                key={`${currentUser.uid}:${selectedBookingDetail.id}`}
                 booking={selectedBookingDetail}
                 role="client"
                 user={currentUser}
@@ -1596,7 +1984,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                 Tutup
               </button>
 
-              {getBookingStatus(selectedBookingDetail) !== 'lunas' && !['cancelled', 'canceled', 'void', 'deleted'].includes(getBookingStatus(selectedBookingDetail).toLowerCase()) && (
+              {!paymentProofsLoading && !paymentProofsError && isBookingPaymentOpen(selectedBookingDetail) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1699,8 +2087,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               <button type="button" onClick={closePaymentProofModal} disabled={isSubmittingProof}>
                 Batal
               </button>
-              <button type="button" onClick={submitStandalonePaymentProof} disabled={isSubmittingProof || !proofFile}>
-                {isSubmittingProof ? 'Mengirim...' : 'Submit Bukti'}
+              <button
+                type="button"
+                onClick={submitStandalonePaymentProof}
+                disabled={isSubmittingProof || !proofFile || paymentProofsLoading || Boolean(paymentProofsError)}
+              >
+                {isSubmittingProof ? 'Mengirim...' : paymentProofsLoading ? 'Memuat status...' : paymentProofsError ? 'Status belum tersedia' : 'Submit Bukti'}
               </button>
             </footer>
           </section>
