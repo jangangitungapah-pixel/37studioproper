@@ -498,7 +498,7 @@ assert.match(
   'Availability mirrors may be removed by schedule admins or by the paired, guarded finance-void operation.',
 );
 assert.match(
-  publicSlotRules,
+  rulesSource,
   /function financeVoidScheduleSlotDeleteAllowed\(bookingId\)[\s\S]*?isApprovedAdmin\(\)[\s\S]*?hasPermission\('billing'\)[\s\S]*?lastFinanceAction == 'void'[\s\S]*?financeBookingVoidScheduleMatchesAfter/,
   'Finance slot deletion must be restricted to an approved Billing admin and the paired invoice-void transaction.',
 );
