@@ -443,9 +443,6 @@ function buildManualBooking(input, actor, requestId, operationId, timestamp) {
     source: 'manual-booking-create',
   } : null;
 
-  const paymentStatus = total > 0 && initialAmount >= total
-    ? 'lunas'
-    : initialAmount > 0 ? 'dp' : 'pending';
   const bookingCode = cleanText(input.bookingCode || input.bookingId, 120) || 'BKG-' + id;
   const invoiceNumber = cleanText(input.invoiceNumber, 120) || 'INV-' + bookingCode.replace(/^BKG-/, '');
 
@@ -463,22 +460,22 @@ function buildManualBooking(input, actor, requestId, operationId, timestamp) {
     customerPhoneKey: cleanText(input.customerPhoneKey, 32),
     date,
     discountAmount: cleanMoney(input.discountAmount || 0),
-    dpAmount: paymentStatus === 'dp' ? initialAmount : 0,
+    dpAmount: 0,
     durationHours,
     email: cleanText(input.email, 254),
     id,
     initialPaymentLedgerStatus: payment ? 'pending' : 'not_required',
-    invoiceAmount: Math.max(0, total - initialAmount),
+    invoiceAmount: total,
     invoiceNumber,
-    lastPaymentAt: payment?.createdAt || '',
-    lastPaymentMethod: method,
+    lastPaymentAt: '',
+    lastPaymentMethod: '',
     packageId: cleanText(input.packageId, 80),
     packageLabel: cleanText(input.packageLabel, 160),
-    paidAmount: initialAmount,
-    paymentHistory: payment ? [payment] : [],
-    paymentMethod: method,
-    paymentStatus,
-    paymentStatusCanonical: paymentStatus === 'lunas' ? 'paid' : paymentStatus === 'dp' ? 'partial' : 'unpaid',
+    paidAmount: 0,
+    paymentHistory: [],
+    paymentMethod: '',
+    paymentStatus: 'pending',
+    paymentStatusCanonical: 'unpaid',
     phone: cleanText(input.phone, 32),
     pricingMode,
     recordingTypeId: cleanText(input.recordingTypeId, 80),
@@ -491,7 +488,7 @@ function buildManualBooking(input, actor, requestId, operationId, timestamp) {
     source: 'admin',
     startHour,
     startTimeLabel: cleanText(input.startTimeLabel, 40),
-    status: paymentStatus,
+    status: 'pending',
     subtotal: cleanMoney(input.subtotal ?? total),
     title: cleanText(input.title || input.bandName || input.sessionLabel || 'Sesi Studio', 160),
     total,
@@ -534,30 +531,30 @@ function matchesInitialPaymentLedger(actual, expected) {
     expectedEntries.every(([key, value]) => actual[key] === value);
 }
 
-function matchesInitialPaymentToLedger(booking, ledger) {
-  const payment = Array.isArray(booking?.paymentHistory) ? booking.paymentHistory[0] : null;
+function matchesInitialPaymentToLedger(booking, payment, ledger) {
   return Boolean(payment) &&
     booking.initialPaymentLedgerStatus === 'pending' &&
     booking.source === 'admin' &&
+    Array.isArray(booking.paymentHistory) &&
+    booking.paymentHistory.length === 0 &&
+    booking.paymentStatus === 'pending' &&
+    booking.paymentStatusCanonical === 'unpaid' &&
+    booking.status === 'pending' &&
+    Number(booking.paidAmount || 0) === 0 &&
+    Number(booking.dpAmount || 0) === 0 &&
+    Number(booking.invoiceAmount) === Number(booking.total) &&
+    !booking.paymentMethod &&
+    !booking.lastPaymentAt &&
+    !booking.lastPaymentMethod &&
+    Number(payment.amount) > 0 &&
+    Number(payment.amount) <= Number(booking.total) &&
     payment.id === ledger.sourceEventId &&
-    payment.actorUid === ledger.actorUid &&
-    payment.actorName === ledger.actorName &&
-    payment.amount === ledger.amount &&
-    payment.method === ledger.paymentMethod &&
-    payment.date === ledger.date &&
-    payment.createdAt === ledger.createdAt &&
-    payment.idempotencyKey === ledger.idempotencyKey &&
-    payment.note === ledger.note &&
-    payment.source === 'manual-booking-create' &&
-    ledger.sourceBookingId === booking.id &&
-    ledger.title === 'Pembayaran ' + booking.invoiceNumber;
-}
-
-async function ensureInitialBookingPaymentLedger({ actor, bookingId, ledger }) {
-  if (!ledger) return { duplicate: false, status: 'not_required' };
+    payment.actorUid === ledger.actorUid async function ensureInitialBookingPaymentLedger({ actor, bookingId, payment, ledger }) {
+  if (!payment || !ledger) return { duplicate: false, status: 'not_required' };
 
   const bookingRef = doc(firestoreDb, 'bookings', bookingId);
   const ledgerRef = doc(firestoreDb, 'bookkeepingEntries', ledger.id);
+  const slotRef = doc(firestoreDb, 'clientCalendarSlots', bookingId);
   const scope = 'bookings';
   const action = 'initial-payment-ledger';
   const requestId = 'initial-payment-ledger-' + bookingId;
@@ -568,11 +565,12 @@ async function ensureInitialBookingPaymentLedger({ actor, bookingId, ledger }) {
     scope,
     action,
     requestId,
-    payload: { bookingId, ledger },
+    payload: { bookingId, payment, ledger },
     execute: async (transaction) => {
-      const [bookingSnapshot, ledgerSnapshot] = await Promise.all([
+      const [bookingSnapshot, ledgerSnapshot, slotSnapshot] = await Promise.all([
         transaction.get(bookingRef),
         transaction.get(ledgerRef),
+        transaction.get(slotRef),
       ]);
       if (!bookingSnapshot.exists()) {
         throw operationError('booking_not_found_for_initial_ledger', 'Booking tidak ditemukan saat menyelesaikan pencatatan pembayaran awal.');
@@ -586,7 +584,7 @@ async function ensureInitialBookingPaymentLedger({ actor, bookingId, ledger }) {
         return { collection: 'bookings', id: bookingId };
       }
 
-      if (!matchesInitialPaymentToLedger(current, ledger)) {
+      if (!matchesInitialPaymentToLedger(current, payment, ledger)) {
         throw operationError('booking_payment_ledger_payload_mismatch', 'Data pembayaran awal tidak cocok dengan booking. Ledger tidak dibuat.');
       }
 
@@ -594,8 +592,12 @@ async function ensureInitialBookingPaymentLedger({ actor, bookingId, ledger }) {
         throw operationError('booking_payment_ledger_conflict', 'Ledger sudah ada sementara status booking masih pending. Periksa integritas data sebelum melanjutkan.');
       }
 
+      const bookingPatch = buildInitialPaymentBookingPatch(current, payment);
+      transaction.update(bookingRef, bookingPatch);
+      if (slotSnapshot.exists()) {
+        transaction.update(slotRef, { status: bookingPatch.paymentStatus });
+      }
       transaction.set(ledgerRef, ledger);
-      transaction.update(bookingRef, { initialPaymentLedgerStatus: 'recorded' });
       return { collection: 'bookings', id: bookingId };
     },
   });
@@ -696,7 +698,7 @@ export async function createManualBooking(inputValue) {
 
   if (ledger) {
     try {
-      await ensureInitialBookingPaymentLedger({ actor, bookingId: booking.id, ledger });
+      await ensureInitialBookingPaymentLedger({ actor, bookingId: booking.id, payment, ledger });
     } catch (error) {
       const pending = operationError(
         'booking_payment_ledger_pending',
