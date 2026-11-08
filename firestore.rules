@@ -1023,32 +1023,513 @@ match /users/{userId} {
         );
     }
 
+    function bookingScheduleDayMatchesAfter(dateId, bookingId, updatedAt) {
+      let dayPath = /databases/$(database)/documents/bookingScheduleDays/$(dateId);
+      return validIsoDate(dateId) &&
+        existsAfter(dayPath) &&
+        getAfter(dayPath).data.date == dateId &&
+        getAfter(dayPath).data.lastBookingId == bookingId &&
+        getAfter(dayPath).data.updatedAt == updatedAt;
+    }
+
+    function validBookingScheduleDay(data, dateId) {
+      return data.keys().hasOnly(['date', 'lastBookingId', 'revision', 'updatedAt']) &&
+        data.keys().hasAll(['date', 'lastBookingId', 'revision', 'updatedAt']) &&
+        data.date == dateId &&
+        validIsoDate(data.date) &&
+        validString(data.lastBookingId, 1, 160) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    function validCalendarSlot(data) {
+      return data.keys().hasOnly([
+          'bookingId', 'date', 'durationHours', 'sessionLabel',
+          'startHour', 'status', 'title', 'updatedAt'
+        ]) &&
+        data.keys().hasAll([
+          'bookingId', 'date', 'durationHours', 'sessionLabel',
+          'startHour', 'status', 'title', 'updatedAt'
+        ]) &&
+        validString(data.bookingId, 1, 160) &&
+        validIsoDate(data.date) &&
+        validNumber(data.durationHours, 0.5, 24) &&
+        validNumber(data.startHour, 0, 23) &&
+        data.status in ['pending', 'dp', 'lunas'] &&
+        validString(data.sessionLabel, 1, 160) &&
+        validString(data.title, 1, 80) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    function bookingIsScheduleBlocking(data) {
+      return (
+          !data.keys().hasAny(['bookingRequestStatus']) ||
+          data.bookingRequestStatus not in ['submitted', 'rejected', 'cancelled']
+        ) &&
+        (
+          !data.keys().hasAny(['requestStatus']) ||
+          data.requestStatus not in ['submitted', 'rejected', 'cancelled', 'canceled', 'deleted']
+        ) &&
+        (
+          !data.keys().hasAny(['sessionStatus']) ||
+          data.sessionStatus not in ['cancelled', 'canceled', 'rejected', 'deleted']
+        ) &&
+        data.status not in ['cancelled', 'canceled', 'rejected', 'deleted'] &&
+        data.paymentStatus not in ['cancelled', 'canceled', 'rejected', 'deleted'];
+    }
+
+    function bookingRequiresPublicSlot(data) {
+      return data.durationHours is number &&
+        data.durationHours > 0 &&
+        bookingIsScheduleBlocking(data);
+    }
+
+    function bookingCalendarSlotMatchesAfter(bookingId, data) {
+      let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      return existsAfter(slotPath) &&
+        validCalendarSlot(getAfter(slotPath).data) &&
+        getAfter(slotPath).data.bookingId == bookingId &&
+        getAfter(slotPath).data.date == data.date &&
+        getAfter(slotPath).data.durationHours == data.durationHours &&
+        getAfter(slotPath).data.startHour == data.startHour &&
+        getAfter(slotPath).data.sessionLabel == data.sessionLabel &&
+        getAfter(slotPath).data.status == data.paymentStatus &&
+        getAfter(slotPath).data.updatedAt == data.updatedAt &&
+        bookingScheduleDayMatchesAfter(data.date, bookingId, data.updatedAt);
+    }
+
+    function bookingSlotStateMatchesAfter(bookingId, data) {
+      let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      return bookingRequiresPublicSlot(data)
+        ? bookingCalendarSlotMatchesAfter(bookingId, data)
+        : !existsAfter(slotPath);
+    }
+
+    function validManualInitialPaymentRecord(payment, bookingData) {
+      return payment is map &&
+        payment.keys().hasOnly([
+          'actorName', 'actorUid', 'amount', 'createdAt', 'date',
+          'id', 'idempotencyKey', 'method', 'note', 'source'
+        ]) &&
+        payment.keys().hasAll([
+          'actorName', 'actorUid', 'amount', 'createdAt', 'date',
+          'id', 'idempotencyKey', 'method', 'note', 'source'
+        ]) &&
+        validString(payment.actorName, 1, 120) &&
+        payment.actorUid == request.auth.uid &&
+        validNumber(payment.amount, 1, bookingData.total) &&
+        validIsoTimestampString(payment.createdAt) &&
+        payment.createdAt == bookingData.createdAt &&
+        validIsoDate(payment.date) &&
+        payment.date == bookingData.createdAt.substring(0, 10) &&
+        validString(payment.id, 1, 80) &&
+        validString(payment.idempotencyKey, 8, 128) &&
+        payment.method in ['cash', 'transfer', 'qris', 'other'] &&
+        validString(payment.note, 0, 600) &&
+        payment.source == 'manual-booking-create';
+    }
+
+    function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
+      let payment = bookingData.paymentHistory[0];
+      let ledgerId = 'booking-payment-' + bookingId + '-' + payment.id;
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(ledgerId);
+      return existsAfter(ledgerPath) &&
+        getAfter(ledgerPath).data.id == ledgerId &&
+        getAfter(ledgerPath).data.type == 'income' &&
+        getAfter(ledgerPath).data.category == 'booking' &&
+        getAfter(ledgerPath).data.amount == payment.amount &&
+        getAfter(ledgerPath).data.date == payment.date &&
+        getAfter(ledgerPath).data.paymentMethod == payment.method &&
+        getAfter(ledgerPath).data.source == 'booking-payment' &&
+        getAfter(ledgerPath).data.sourceAction == 'payment' &&
+        getAfter(ledgerPath).data.sourceBookingId == bookingId &&
+        getAfter(ledgerPath).data.sourceEventId == payment.id &&
+        getAfter(ledgerPath).data.actorUid == request.auth.uid &&
+        getAfter(ledgerPath).data.idempotencyKey == payment.idempotencyKey &&
+        getAfter(ledgerPath).data.createdAt == payment.createdAt &&
+        getAfter(ledgerPath).data.updatedAt == payment.createdAt;
+    }
+
+    function bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData) {
+      return bookingData.paymentHistory.size() == 0 ||
+        (
+          bookingData.paymentHistory.size() == 1 &&
+          bookingInitialPaymentLedgerMatchesAfter(bookingId, bookingData)
+        );
+    }
+
+    function validManualBookingCreate(data, bookingId) {
+      return data.keys().hasOnly([
+          'appliedDiscounts', 'bandName', 'bookingCode', 'bookingId',
+          'bookingRequestStatus', 'clientUid', 'createdAt', 'customer',
+          'customerId', 'customerIdentityMode', 'customerPhoneKey', 'date',
+          'discountAmount', 'dpAmount', 'durationHours', 'email', 'id',
+          'invoiceAmount', 'invoiceNumber', 'lastPaymentAt', 'lastPaymentMethod',
+          'packageId', 'packageLabel', 'paidAmount', 'paymentHistory',
+          'paymentMethod', 'paymentStatus', 'paymentStatusCanonical', 'phone',
+          'pricingMode', 'recordingTypeId', 'recordingTypeLabel', 'refundHistory',
+          'refundedAmount', 'sessionLabel', 'sessionStatus', 'sessionType',
+          'source', 'startHour', 'startTimeLabel', 'status', 'subtotal',
+          'title', 'total', 'updatedAt'
+        ]) &&
+        data.id == bookingId &&
+        validBooking(data) &&
+        data.source == 'admin' &&
+        data.bookingRequestStatus == 'confirmed' &&
+        data.sessionStatus == 'scheduled' &&
+        data.status == data.paymentStatus &&
+        validString(data.bookingCode, 1, 120) &&
+        data.bookingId == data.bookingCode &&
+        validString(data.invoiceNumber, 1, 120) &&
+        validString(data.pricingMode, 1, 40) &&
+        validString(data.sessionType, 1, 80) &&
+        validString(data.sessionLabel, 1, 160) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validNumber(data.subtotal, 0, 100000000) &&
+        validNumber(data.discountAmount, 0, 100000000) &&
+        data.invoiceAmount == data.total - data.paidAmount &&
+        data.refundHistory is list &&
+        data.refundHistory.size() == 0 &&
+        data.refundedAmount == 0 &&
+        data.paymentHistory is list &&
+        (
+          (
+            data.paymentHistory.size() == 0 &&
+            data.paymentStatus == 'pending' &&
+            data.paymentStatusCanonical == 'unpaid' &&
+            data.paymentMethod == '' &&
+            data.lastPaymentAt == '' &&
+            data.lastPaymentMethod == '' &&
+            data.paidAmount == 0 &&
+            data.dpAmount == 0 &&
+            data.invoiceAmount == data.total
+          ) ||
+          (
+            data.paymentHistory.size() == 1 &&
+            validManualInitialPaymentRecord(data.paymentHistory[0], data) &&
+            data.paidAmount == data.paymentHistory[0].amount &&
+            data.paymentMethod == data.paymentHistory[0].method &&
+            data.lastPaymentMethod == data.paymentHistory[0].method &&
+            data.lastPaymentAt == data.paymentHistory[0].createdAt &&
+            (
+              (
+                data.total > 0 &&
+                data.paidAmount >= data.total &&
+                data.paymentStatus == 'lunas' &&
+                data.paymentStatusCanonical == 'paid' &&
+                data.dpAmount == 0
+              ) ||
+              (
+                data.total > 0 &&
+                data.paidAmount < data.total &&
+                data.paymentStatus == 'dp' &&
+                data.paymentStatusCanonical == 'partial' &&
+                data.dpAmount == data.paidAmount
+              )
+            )
+          )
+        );
+    }
+
+    function bookingManualCreateCompanionsAfter(bookingId, data) {
+      return bookingScheduleDayMatchesAfter(data.date, bookingId, data.updatedAt) &&
+        bookingSlotStateMatchesAfter(bookingId, data) &&
+        bookingInitialPaymentLedgerMatchesAfter(bookingId, data);
+    }
+
+    function adminBookingManualUpdate(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let scheduleChanged = changed.hasAny([
+        'date', 'startHour', 'durationHours', 'duration', 'sessionLabel'
+      ]);
+      return adminBookingFinanceFieldsUnchanged() &&
+        changed.hasOnly([
+          'bandName', 'clientUid', 'customer', 'customerId',
+          'customerIdentityMode', 'customerPhoneKey', 'date', 'duration',
+          'durationHours', 'email', 'internalNotes', 'notes', 'packageId',
+          'packageLabel', 'pricingMode', 'recordingTypeId', 'recordingTypeLabel',
+          'sessionLabel', 'sessionType', 'startHour', 'startTimeLabel',
+          'title', 'updatedAt'
+        ]) &&
+        validIsoTimestampString(request.resource.data.updatedAt) &&
+        (
+          !scheduleChanged ||
+          (
+            bookingScheduleDayMatchesAfter(resource.data.date, bookingId, request.resource.data.updatedAt) &&
+            bookingScheduleDayMatchesAfter(request.resource.data.date, bookingId, request.resource.data.updatedAt) &&
+            bookingSlotStateMatchesAfter(bookingId, request.resource.data)
+          )
+        );
+    }
+
+    function validBookingSessionEvent(data, eventId) {
+      return data.keys().hasOnly([
+          'action', 'actorName', 'actorUid', 'bookingId', 'createdAt',
+          'fromStatus', 'id', 'reason', 'toStatus', 'type'
+        ]) &&
+        data.keys().hasAll([
+          'action', 'actorName', 'actorUid', 'bookingId', 'createdAt',
+          'fromStatus', 'id', 'reason', 'toStatus', 'type'
+        ]) &&
+        data.id == eventId &&
+        data.action in ['check_in', 'start', 'complete', 'no_show', 'cancelled'] &&
+        validString(data.actorName, 1, 120) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.bookingId, 1, 160) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.fromStatus in ['upcoming', 'in_progress'] &&
+        validString(data.reason, 0, 600) &&
+        data.toStatus in ['upcoming', 'in_progress', 'completed', 'no_show', 'cancelled'] &&
+        data.type == 'booking-session-event';
+    }
+
+    function bookingSessionEventMatchesAfter(eventId, bookingId, timestamp, action, toStatus) {
+      let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
+      return existsAfter(eventPath) &&
+        getAfter(eventPath).data.id == eventId &&
+        getAfter(eventPath).data.bookingId == bookingId &&
+        getAfter(eventPath).data.createdAt == timestamp &&
+        getAfter(eventPath).data.action == action &&
+        getAfter(eventPath).data.toStatus == toStatus;
+    }
+
+    function bookingSessionEventReferencesBookingAfter(eventId) {
+      let bookingId = request.resource.data.bookingId;
+      let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
+      return existsAfter(bookingPath) &&
+        getAfter(bookingPath).data.lastSessionEventId == eventId &&
+        getAfter(bookingPath).data.lastSessionEventType == request.resource.data.action &&
+        getAfter(bookingPath).data.lastSessionEventAt == request.resource.data.createdAt &&
+        getAfter(bookingPath).data.updatedAt == request.resource.data.createdAt;
+    }
+
+    function bookingSessionIsUpcoming(data) {
+      return (
+          data.keys().hasAny(['sessionStatus']) &&
+          data.sessionStatus in ['upcoming', 'scheduled']
+        ) ||
+        (
+          !data.keys().hasAny(['sessionStatus']) &&
+          (
+            !data.keys().hasAny(['sessionState']) ||
+            data.sessionState in ['upcoming', 'scheduled']
+          ) &&
+          (
+            !data.keys().hasAny(['bookingRequestStatus']) ||
+            data.bookingRequestStatus not in ['rejected', 'cancelled']
+          )
+        );
+    }
+
+    function bookingSessionIsInProgress(data) {
+      return (
+          data.keys().hasAny(['sessionStatus']) &&
+          data.sessionStatus in ['in_progress', 'active', 'ongoing']
+        ) ||
+        (
+          !data.keys().hasAny(['sessionStatus']) &&
+          data.keys().hasAny(['sessionState']) &&
+          data.sessionState in ['in_progress', 'active', 'ongoing']
+        );
+    }
+
+    function bookingNoShowGraceElapsed(data) {
+      let localNow = request.time + duration.value(7, 'h');
+      let scheduledDate = timestamp.date(
+        int(data.date.substring(0, 4)),
+        int(data.date.substring(5, 7)),
+        int(data.date.substring(8, 10))
+      );
+      return data.startHour is int &&
+        (
+          localNow.date() > scheduledDate ||
+          (
+            localNow.date() == scheduledDate &&
+            localNow.time() >= duration.time(data.startHour, 15, 0, 0)
+          )
+        );
+    }
+
+    function adminBookingSessionActionUpdate(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let eventId = request.resource.data.lastSessionEventId;
+      let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
+      return adminBookingFinanceFieldsUnchanged() &&
+        changed.hasOnly([
+          'checkedInAt', 'checkedInByUid', 'checkedInByName',
+          'sessionStatus', 'actualStartAt', 'actualStartByUid',
+          'actualStartByName', 'actualEndAt', 'actualEndByUid',
+          'actualEndByName', 'actualDurationMinutes', 'noShowAt',
+          'noShowByUid', 'noShowByName', 'noShowReason', 'updatedAt',
+          'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
+        ]) &&
+        existsAfter(eventPath) &&
+        validBookingSessionEvent(getAfter(eventPath).data, eventId) &&
+        getAfter(eventPath).data.bookingId == bookingId &&
+        getAfter(eventPath).data.actorUid == request.auth.uid &&
+        request.resource.data.updatedAt == getAfter(eventPath).data.createdAt &&
+        request.resource.data.lastSessionEventAt == getAfter(eventPath).data.createdAt &&
+        request.resource.data.lastSessionEventType == getAfter(eventPath).data.action &&
+        getAfter(eventPath).data.id == eventId &&
+        (
+          (
+            getAfter(eventPath).data.action == 'check_in' &&
+            bookingSessionIsUpcoming(resource.data) &&
+            (
+              !resource.data.keys().hasAny(['checkedInAt']) ||
+              resource.data.checkedInAt == ''
+            ) &&
+            request.resource.data.checkedInAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.checkedInByUid == request.auth.uid &&
+            request.resource.data.checkedInByName is string &&
+            getAfter(eventPath).data.fromStatus == 'upcoming' &&
+            getAfter(eventPath).data.toStatus == 'upcoming' &&
+            getAfter(eventPath).data.reason == ''
+          ) ||
+          (
+            getAfter(eventPath).data.action == 'start' &&
+            bookingSessionIsUpcoming(resource.data) &&
+            request.resource.data.sessionStatus == 'in_progress' &&
+            request.resource.data.actualStartAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.actualStartByUid == request.auth.uid &&
+            request.resource.data.actualStartByName is string &&
+            getAfter(eventPath).data.fromStatus == 'upcoming' &&
+            getAfter(eventPath).data.toStatus == 'in_progress' &&
+            getAfter(eventPath).data.reason == ''
+          ) ||
+          (
+            getAfter(eventPath).data.action == 'complete' &&
+            bookingSessionIsInProgress(resource.data) &&
+            request.resource.data.sessionStatus == 'completed' &&
+            request.resource.data.actualEndAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.actualEndByUid == request.auth.uid &&
+            request.resource.data.actualEndByName is string &&
+            request.resource.data.actualDurationMinutes is int &&
+            request.resource.data.actualDurationMinutes >= 1 &&
+            request.resource.data.actualDurationMinutes <= 1440 &&
+            getAfter(eventPath).data.fromStatus == 'in_progress' &&
+            getAfter(eventPath).data.toStatus == 'completed' &&
+            getAfter(eventPath).data.reason == ''
+          ) ||
+          (
+            getAfter(eventPath).data.action == 'no_show' &&
+            bookingSessionIsUpcoming(resource.data) &&
+            (
+              !resource.data.keys().hasAny(['checkedInAt']) ||
+              resource.data.checkedInAt == ''
+            ) &&
+            request.resource.data.sessionStatus == 'no_show' &&
+            request.resource.data.noShowAt == getAfter(eventPath).data.createdAt &&
+            request.resource.data.noShowByUid == request.auth.uid &&
+            request.resource.data.noShowByName is string &&
+            validString(request.resource.data.noShowReason, 4, 600) &&
+            request.resource.data.noShowReason == getAfter(eventPath).data.reason &&
+            getAfter(eventPath).data.fromStatus == 'upcoming' &&
+            getAfter(eventPath).data.toStatus == 'no_show' &&
+            bookingNoShowGraceElapsed(resource.data)
+          )
+        );
+    }
+
+    function bookingDecisionMessageMatchesAfter(bookingId, messageId) {
+      let messagePath = /databases/$(database)/documents/bookingMessages/$(messageId);
+      return existsAfter(messagePath) &&
+        getAfter(messagePath).data.id == messageId &&
+        getAfter(messagePath).data.bookingId == bookingId &&
+        getAfter(messagePath).data.clientUid == request.resource.data.clientUid &&
+        getAfter(messagePath).data.senderUid == request.auth.uid &&
+        getAfter(messagePath).data.senderRole == 'admin' &&
+        getAfter(messagePath).data.type == 'status' &&
+        getAfter(messagePath).data.text == request.resource.data.adminResponseNote &&
+        getAfter(messagePath).data.createdAt == request.resource.data.adminResponseAt &&
+        getAfter(messagePath).data.readByAdmin == true &&
+        getAfter(messagePath).data.readByClient == false &&
+        request.resource.data.lastMessageId == messageId &&
+        request.resource.data.lastMessageAt == getAfter(messagePath).data.createdAt &&
+        request.resource.data.lastMessagePreview == getAfter(messagePath).data.text.substring(0, 180) &&
+        request.resource.data.lastMessageSenderRole == 'admin' &&
+        request.resource.data.lastMessageReadByAdmin == true &&
+        request.resource.data.lastMessageReadByClient == false;
+    }
+
+    function adminBookingDecisionUpdate(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let nextStatus = request.resource.data.bookingRequestStatus;
+      let messageId = request.resource.data.lastMessageId;
+      let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
+      return adminBookingFinanceFieldsUnchanged() &&
+        changed.hasOnly([
+          'adminResponseAt', 'adminResponseBy', 'adminResponseNote',
+          'bookingRequestStatus', 'requestStatus', 'lastRequestDecisionKey',
+          'lastMessageId', 'lastMessageAt', 'lastMessagePreview',
+          'lastMessageSenderRole', 'lastMessageReadByAdmin',
+          'lastMessageReadByClient', 'updatedAt', 'sessionStatus',
+          'lastSessionEventAt', 'lastSessionEventType', 'lastSessionEventId'
+        ]) &&
+        validString(request.resource.data.lastRequestDecisionKey, 8, 128) &&
+        messageId == 'request-' + request.resource.data.lastRequestDecisionKey &&
+        validIsoTimestampString(request.resource.data.updatedAt) &&
+        request.resource.data.adminResponseAt == request.resource.data.updatedAt &&
+        request.resource.data.adminResponseBy == request.auth.uid &&
+        validString(request.resource.data.adminResponseNote, 0, 600) &&
+        request.resource.data.requestStatus == nextStatus &&
+        (
+          (
+            resource.data.bookingRequestStatus == 'submitted' &&
+            nextStatus in ['confirmed', 'rejected']
+          ) ||
+          (
+            resource.data.bookingRequestStatus == 'cancellation_requested' &&
+            nextStatus in ['cancelled', 'confirmed']
+          )
+        ) &&
+        bookingDecisionMessageMatchesAfter(bookingId, messageId) &&
+        bookingScheduleDayMatchesAfter(resource.data.date, bookingId, request.resource.data.updatedAt) &&
+        (
+          nextStatus == 'confirmed'
+            ? bookingSlotStateMatchesAfter(bookingId, request.resource.data)
+            : !existsAfter(slotPath)
+        ) &&
+        (
+          nextStatus != 'cancelled' ||
+          (
+            request.resource.data.sessionStatus == 'cancelled' &&
+            bookingSessionEventMatchesAfter(
+              request.resource.data.lastSessionEventId,
+              bookingId,
+              request.resource.data.updatedAt,
+              'cancelled',
+              'cancelled'
+            ) &&
+            getAfter(/databases/$(database)/documents/bookingSessionEvents/$(request.resource.data.lastSessionEventId)).data.fromStatus == 'upcoming' &&
+            getAfter(/databases/$(database)/documents/bookingSessionEvents/$(request.resource.data.lastSessionEventId)).data.reason == request.resource.data.adminResponseNote
+          )
+        );
+    }
+
     match /bookings/{bookingId} {
       allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner(resource.data);
       allow create: if (
-          isApproved() && canManageBookingData() && validBooking(request.resource.data) &&
-          request.resource.data.paymentStatus == 'pending' &&
-          request.resource.data.status == 'pending' &&
-          request.resource.data.invoiceAmount == request.resource.data.total &&
-          request.resource.data.paidAmount == 0 &&
-          request.resource.data.dpAmount == 0 &&
-          request.resource.data.paymentHistory is list &&
-          request.resource.data.paymentHistory.size() == 0 &&
-          (!request.resource.data.keys().hasAny(['refundHistory']) || request.resource.data.refundHistory.size() == 0) &&
-          (!request.resource.data.keys().hasAny(['refundedAmount']) || request.resource.data.refundedAmount == 0) &&
-          !request.resource.data.keys().hasAny([
-            'paymentStatusCanonical', 'invoiceStatus', 'refundStatus',
-            'lastPaymentAt', 'lastPaymentMethod', 'lastRefundAt',
-            'lastRefundMethod', 'lastRefundReason', 'refundCompletedAt',
-            'paymentStatusBeforeRefund', 'voidReason', 'voidedAt',
-            'voidedByName', 'voidedByUid'
-          ])
+          isApprovedAdmin() &&
+          canManageBookingData() &&
+          validManualBookingCreate(request.resource.data, bookingId) &&
+          bookingManualCreateCompanionsAfter(bookingId, request.resource.data)
         ) || (
           isSignedIn() &&
           isSafeClientBookingRequestCreate(request.resource.data, bookingId)
         );
       allow update: if validBooking(request.resource.data) && (
-        (isApproved() && canManageBookingData() && adminBookingFinanceFieldsUnchanged()) ||
+        (
+          isApprovedAdmin() &&
+          canManageBookingData() &&
+          (
+            adminBookingManualUpdate(bookingId) ||
+            adminBookingDecisionUpdate(bookingId) ||
+            adminBookingSessionActionUpdate(bookingId)
+          )
+        ) ||
         (
           isClientBookingOwner(resource.data) &&
           request.resource.data.clientUid == resource.data.clientUid &&
@@ -1156,7 +1637,8 @@ match /users/{userId} {
             request.resource.data.senderRole == 'admin' &&
             request.resource.data.clientUid == bookingData(request.resource.data.bookingId).clientUid &&
             request.resource.data.readByAdmin == true &&
-            request.resource.data.readByClient == false
+            request.resource.data.readByClient == false &&
+            (request.resource.data.type != 'status' || bookingDecisionMessageMatchesAfter(request.resource.data.bookingId, messageId))
           ) ||
           (
             isClientAccount() &&
@@ -1187,33 +1669,49 @@ match /users/{userId} {
     }
 
     match /bookingSessionEvents/{eventId} {
-      allow read: if isApproved() && hasPermission('schedule');
-      // Session events are append-only server records created atomically by the Admin Operations Worker.
-      allow create, update, delete: if false;
-    }
-
-    function validCalendarSlot(data) {
-      return data.keys().hasOnly(['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt']) &&
-        validString(data.bookingId, 1, 160) &&
-        validIsoDate(data.date) &&
-        validNumber(data.durationHours, 0.5, 24) &&
-        validNumber(data.startHour, 0, 23) &&
-        data.status in ['pending', 'dp', 'lunas'] &&
-        validString(data.sessionLabel, 1, 160) &&
-        validString(data.title, 1, 80) &&
-        validIsoTimestampString(data.updatedAt);
+      allow read: if isApprovedAdmin() && canManageBookingData();
+      allow create: if isApprovedAdmin() &&
+        canManageBookingData() &&
+        validBookingSessionEvent(request.resource.data, eventId) &&
+        bookingSessionEventReferencesBookingAfter(eventId);
+      allow update, delete: if false;
     }
 
     match /clientCalendarSlots/{slotId} {
-      // Public availability mirror only contains generic occupied-slot metadata.
-      // Customer identity, contact, payment proof, and private booking data stay in protected collections.
+      // Public availability exposes generic occupied-slot metadata only.
       allow read: if true;
-      allow create, update: if isApproved() && canManageBookingData() && validCalendarSlot(request.resource.data);
-      allow delete: if isApproved() && canManageBookingData();
+      allow create, update: if isApprovedAdmin() &&
+        canManageBookingData() &&
+        validCalendarSlot(request.resource.data) &&
+        request.resource.data.bookingId == slotId &&
+        bookingCalendarSlotMatchesAfter(slotId, getAfter(/databases/$(database)/documents/bookings/$(slotId)).data);
+      allow delete: if isApprovedAdmin() &&
+        canManageBookingData() &&
+        existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
+        !bookingRequiresPublicSlot(getAfter(/databases/$(database)/documents/bookings/$(slotId)).data) &&
+        bookingScheduleDayMatchesAfter(
+          getAfter(/databases/$(database)/documents/bookings/$(slotId)).data.date,
+          slotId,
+          getAfter(/databases/$(database)/documents/bookings/$(slotId)).data.updatedAt
+        );
     }
 
     match /bookingScheduleDays/{dateId} {
-      allow read, create, update, delete: if false;
+      allow read: if isApprovedAdmin() && canManageBookingData();
+      allow create: if isApprovedAdmin() &&
+        canManageBookingData() &&
+        validBookingScheduleDay(request.resource.data, dateId) &&
+        request.resource.data.revision == 1 &&
+        existsAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)) &&
+        getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)).data.updatedAt == request.resource.data.updatedAt;
+      allow update: if isApprovedAdmin() &&
+        canManageBookingData() &&
+        validBookingScheduleDay(request.resource.data, dateId) &&
+        resource.data.date == dateId &&
+        request.resource.data.revision == resource.data.revision + 1 &&
+        existsAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)) &&
+        getAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId)).data.updatedAt == request.resource.data.updatedAt;
+      allow delete: if false;
     }
 
     function validCustomer(data, customerId) {
@@ -1688,25 +2186,56 @@ match /users/{userId} {
       return !exists(closingPath) || get(closingPath).data.status != 'closed';
     }
 
+    function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
+      return isApprovedAdmin() &&
+        canManageBookingData() &&
+        data.id == entryId &&
+        data.type == 'income' &&
+        data.category == 'booking' &&
+        data.source == 'booking-payment' &&
+        data.sourceAction == 'payment' &&
+        validString(data.sourceBookingId, 1, 160) &&
+        existsAfter(bookingPath) &&
+        getAfter(bookingPath).data.source == 'admin' &&
+        getAfter(bookingPath).data.paymentHistory is list &&
+        getAfter(bookingPath).data.paymentHistory.size() == 1 &&
+        data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
+        getAfter(bookingPath).data.paymentHistory[0].id == data.sourceEventId &&
+        getAfter(bookingPath).data.paymentHistory[0].amount == data.amount &&
+        getAfter(bookingPath).data.paymentHistory[0].method == data.paymentMethod &&
+        getAfter(bookingPath).data.paymentHistory[0].date == data.date &&
+        getAfter(bookingPath).data.paymentHistory[0].createdAt == data.createdAt &&
+        getAfter(bookingPath).data.paymentHistory[0].idempotencyKey == data.idempotencyKey &&
+        getAfter(bookingPath).data.paymentHistory[0].actorUid == request.auth.uid &&
+        getAfter(bookingPath).data.createdAt == data.createdAt;
+    }
+
     match /bookkeepingEntries/{entryId} {
       allow read:
         if isApproved() &&
         canAccessBookkeepingData();
 
       allow create:
-        if isApprovedAdmin() &&
-        (
-          canManageBookkeepingData() ||
-          hasPermission('operator-fee')
-        ) &&
-        validBookkeepingEntry(
-          request.resource.data,
-          entryId
-        ) &&
-        bookkeepingBusinessDateOpen(request.resource.data) &&
-        request.resource.data.source in ['', 'manual', 'operatorFee', 'guardAttendanceMeal'] &&
-        reconciledBookkeepingWriteAllowed(
-          request.resource.data
+        if (
+          isApprovedAdmin() &&
+          (
+            canManageBookkeepingData() ||
+            hasPermission('operator-fee')
+          ) &&
+          validBookkeepingEntry(
+            request.resource.data,
+            entryId
+          ) &&
+          bookkeepingBusinessDateOpen(request.resource.data) &&
+          request.resource.data.source in ['', 'manual', 'operatorFee', 'guardAttendanceMeal'] &&
+          reconciledBookkeepingWriteAllowed(
+            request.resource.data
+          )
+        ) || (
+          validBookkeepingEntry(request.resource.data, entryId) &&
+          bookkeepingBusinessDateOpen(request.resource.data) &&
+          bookingInitialPaymentLedgerCreateAllowed(request.resource.data, entryId)
         );
 
       allow update:
