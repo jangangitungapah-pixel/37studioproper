@@ -3,7 +3,7 @@
 **Date:** 2026-11-08 (Asia/Jakarta)  
 **Repository:** `jangangitungapah-pixel/37studioproper`  
 **Branch:** `feature/ui-overhaul-premium-enterprise-2026-11-06`  
-**Verified branch HEAD:** `3ab53fb4b457539763d531e21e59baa8b72e0ed5`
+**Latest source/workflow commit validated by Quality Gates #333:** `2fe2a317013371d5d18430794cbbbaf1f4a0b796`
 
 This document records post-Phase-10 release-gate evidence. It does not replace the historical Phase 10 audit, authorize a merge/deployment, or change the production release decision.
 
@@ -21,28 +21,32 @@ This document records post-Phase-10 release-gate evidence. It does not replace t
 
 | Item | Result |
 |---|---|
-| Latest branch HEAD | `3ab53fb4b457539763d531e21e59baa8b72e0ed5` |
-| Previous CI fix | `862b34b6d57a058423c86196d34515205c8fe2cf` |
-| Audit-report workflow commit | `28936d8ade1aa9e1a4dfce8fdab01e8f7dda1e8d` |
+| Latest source/workflow commit validated by CI | `2fe2a317013371d5d18430794cbbbaf1f4a0b796` |
 | gRPC dependency override commit | `34f7fd175126defd4aba4eaa6c723110aca6f47b` |
 | Lockfile refresh commit | `3ab53fb4b457539763d531e21e59baa8b72e0ed5` |
+| CI runtime migration commit | `17719475149fa6203a3132da25e078244ccf0089` |
+| Dependency Lock Refresh self-validation commit | `2fe2a317013371d5d18430794cbbbaf1f4a0b796` |
 | Quality Gates #324 | PASS |
 | Quality Gates #326 | PASS |
-| Dependency Lock Refresh #13 | SUCCESS |
+| Quality Gates #333 | PASS |
+| Dependency Lock Refresh #14 | SUCCESS |
 
-Quality Gates #326 passed locked install, the full and production dependency audit/report upload, production build, lint, all regression contracts, PRD/Firestore security contracts, responsive browser smoke, keyboard/focus QA, and QA evidence upload.
+Quality Gates #333 passed locked install, report-only full/production dependency audit and upload, production build, lint, all regression contracts, PRD/Firestore security contracts, responsive browser smoke, keyboard/focus QA, and both evidence uploads. The responsive matrix covered 162 route/viewport/theme combinations (6 routes × 9 widths × 3 themes); all cases returned HTTP 200 with no horizontal overflow, console errors, or failed requests. Keyboard/focus QA finished 16 PASS / 0 FAIL / 0 SKIP. The run emitted no Node 20 or setup-java@v4 deprecation warning.
+
+CI actions now use `actions/checkout@v7`, `actions/setup-node@v7`, `actions/setup-java@v6`, and `actions/upload-artifact@v6`. The dependency lock refresh workflow uses checkout@v7/setup-node@v7 and self-validates when its own workflow file changes.
 
 - [Quality Gates #324](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42407795455)
 - [Quality Gates #326](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42409210836)
-- [Dependency Lock Refresh #13](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42409210938)
-- [Dependency audit artifact from #326](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42409210836/artifacts/13588388910)
-- [Responsive/accessibility artifact from #326](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42409210836/artifacts/13588723795)
+- [Quality Gates #333](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42471760212)
+- [Dependency Lock Refresh #14](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42471760089)
+- [Dependency audit artifact from #333](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42471760212/artifacts/13613971014)
+- [Responsive/accessibility artifact from #333](https://github.com/jangangitungapah-pixel/37studioproper/actions/runs/42471760212/artifacts/13614530231)
 
 ## 3. Gate A — Security and dependencies
 
 ### 3.1 Current audit result
 
-The #326 audit artifact reports:
+The #333 audit artifact and workflow log report:
 
 | Scope | Total | Critical | High | Moderate | Low |
 |---|---:|---:|---:|---:|---:|
@@ -66,7 +70,7 @@ The affected dependency was `@grpc/grpc-js@1.9.16`, nested under Firebase Firest
 
 The refreshed lockfile resolves `@grpc/grpc-js@1.14.7`. Its nested `@grpc/proto-loader@0.8.1` is isolated under the upgraded gRPC package; the separate `@grpc/proto-loader@0.7.15` path remains for other consumers. The targeted override did not downgrade Firebase, change Firebase configuration, or change application source.
 
-After the override, the production-only audit changed from four high findings to **zero findings**.
+After the override, the production-only audit changed from four high findings to **zero findings**. The same result was independently reproduced by Quality Gates #333 after the CI runtime migration: full audit 3 low / 0 moderate / 0 high / 0 critical; production-only audit 0 findings.
 
 ### 3.3 Residual low dev-tooling advisory
 
@@ -129,7 +133,7 @@ The existing readiness checklist at [STAGING-ACCEPTANCE-READINESS-2026-10-29.md]
 2. **Public Booking live acceptance:** verify availability loading/empty/success and final request submission against isolated staging only.
 3. **Booking concurrency decision:** client availability recheck remains snapshot-level, not a transactional reservation lock. Product/backend owner must decide whether atomic reservation/slot claim is required.
 4. **CI governance:** branch protection is still disabled with no required status checks. Quality Gates pass, but merge-time enforcement is not active.
-5. **GitHub Actions runtime maintenance:** Node 20 deprecation warnings from v4 actions remain; update supported action versions in a controlled CI-only change, then rerun gates.
+5. **GitHub Actions runtime maintenance:** COMPLETE. Quality Gates now uses checkout@v7, setup-node@v7, setup-java@v6, and upload-artifact@v6. Dependency Lock Refresh uses checkout@v7/setup-node@v7. Quality Gates #333 and Dependency Lock Refresh #14 passed; no Node 20 / setup-java@v4 deprecation warning was found in #333 logs.
 6. **Performance/accessibility follow-up:** ExcelJS and ECharts chunk warnings remain. Reduced-motion was not browser-emulated across every route; no full accessibility certification is claimed.
 
 ## 7. Guardrails

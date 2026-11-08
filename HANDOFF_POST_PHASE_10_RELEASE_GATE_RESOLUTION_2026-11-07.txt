@@ -12,19 +12,25 @@ Baseline HEAD before Phase 10 documentation: 92dfa6ca790927837fb7f65dfb3972f7ada
 Phase 10 report: docs/PHASE_10_REGRESSION_CLEANUP_RELEASE_READINESS_2026-11-07.md
 Roadmap: docs/REDESIGN_WORKPLAN.md
 
-STATUS UPDATE — 2026-11-08 (supersedes the original Gate A/B status below)
-- Latest branch HEAD at time of this update: 8372cd7f9f31a53d257c633ce543b7f2ea67ee6e (release-gate progress documentation).
-- Evidence report: docs/POST_PHASE_10_RELEASE_GATE_PROGRESS_2026-11-08.md.
-- Quality Gates #324 and #326: SUCCESS. #326 completed install, audit, build, lint, regression, PRD/Firestore security, responsive browser smoke, keyboard/focus QA, and both evidence uploads.
-- Gate A: targeted @grpc/grpc-js override 1.14.7 is locked; production-only npm audit is 0 (zero findings). Full audit contains three LOW entries, all propagated from one dev-only deepmerge@4.3.1 advisory through shadcn/@shadcn/registry. The upstream advisory has no patched deepmerge version; do not blindly downgrade shadcn to npm's suggested 1.0.0 major version. Residual low risk remains disclosed and requires release-owner acceptance or upstream fix.
-- Gate B: license evidence reviewed. buffers@0.1.1 upstream package metadata declares MIT/X11 and Debian's node-buffers 0.1.1-2 record maps the upstream source license to MIT; the npm lockfile metadata remains blank. JSZip 3.10.1 elects MIT from MIT OR GPL-3.0-or-later; pako 1.0.11 requires MIT AND Zlib notices; type-fest 4.41.0 elects MIT from MIT OR CC0-1.0. See the progress report for source URLs and rationale. This is a technical license inventory, not legal advice.
-- Gate C remains open: authenticated Admin/Client/Guard and live Public Booking acceptance require a separate Firebase Spark staging project, isolated Hosting origin, isolated Worker endpoint, and synthetic identities/data. Nothing was provisioned or written in production.
+STATUS UPDATE — 2026-11-08 (supersedes the original Gate A/B, CI, and runtime status below)
+- Latest source/workflow commit validated by Quality Gates #333: `2fe2a317013371d5d18430794cbbbaf1f4a0b796`. The release progress report records the Gate A/B/C evidence and current blocker list.
+- Quality Gates #324, #326, and #333: SUCCESS. #333 completed `npm ci`, full/production audit report, build, lint, all 84 regression contracts (0 failures), PRD/Firestore security contracts, responsive smoke (162/162 HTTP 200; no overflow/console/request failures), keyboard/focus QA (16 PASS / 0 FAIL / 0 SKIP), and QA artifact upload.
+- Dependency Lock Refresh #14: SUCCESS. Self-validation used checkout@v7/setup-node@v7, confirmed package-lock is synchronized with package.json, and made no lockfile commit.
+- CI runtime migration: COMPLETE. Quality Gates now pins actions/checkout@v7, actions/setup-node@v7, actions/setup-java@v6, actions/upload-artifact@v6. Dependency Lock Refresh pins checkout@v7 and setup-node@v7. No Node 20 or setup-java@v4 deprecation warning appears in Quality Gates #333 logs.
+- Gate A: @grpc/grpc-js is locked at 1.14.7. Quality Gates #333 reports full audit 3 LOW / 0 MODERATE / 0 HIGH / 0 CRITICAL; production-only audit is 0 findings. The remaining 3 low entries are one dev-only deepmerge@4.3.1 advisory propagated by shadcn/@shadcn/registry; the advisory currently has no patched version. Do not apply npm's suggested shadcn@1.0.0 major upgrade without compatibility validation. Residual low risk stays disclosed.
+- Gate B: source license evidence reviewed. buffers@0.1.1 upstream declares MIT/X11 and Debian classifies its package license as MIT; package-lock metadata itself stays blank. JSZip 3.10.1 elects MIT; pako 1.0.11 requires MIT AND Zlib notices; type-fest 4.41.0 elects MIT. See the progress report for evidence URLs. This is a technical license inventory, not a formal legal opinion.
+- Gate C: BLOCKED / NOT RUN. `.firebaserc` only has `studio-proper`; `firebase.json` targets Hosting site `studio-37`; Admin Operations Worker is `APP_ENVIRONMENT=production`, project `studio-proper`, origin `https://studio-37.web.app`. No separate Spark staging project, Hosting origin, Worker environment/secrets, or synthetic identities/data are configured. Do not run acceptance mutations against these targets.
+- Branch protection remains disabled with no required status checks. No PR, merge, deployment, Firebase config change, Worker deployment, or production write was performed.
+
 
 NEXT ACTIONS
-1. Verify the current remote branch HEAD and CI before proceeding. The user's local working tree is not observable from the remote connector.
-2. Before any local pull, inspect `git status --short --branch`. Preserve local changes; never reset, clean, stash, or overwrite. Only if the local worktree is clean should `git pull --ff-only` be considered.
-3. Continue release-gate resolution with Gate C prerequisite inspection. Do not provision or mutate Firebase/Worker environments without confirmed separate Spark staging project, isolated Hosting/Worker targets, and synthetic identities/data.
-4. Do not repeat Phase 9/10 or start a new redesign phase.
+1. Continue only with release-gate work. Phase 0–10 are complete; do not invent Phase 11 or repeat the redesign.
+2. Gate C needs a separate Firebase Spark project ID (no billing/Blaze), isolated Hosting origin, isolated Worker environment and staging-only secrets, synthetic Owner/Admin/Client/Guard accounts, and synthetic booking/payment/inventory/media records. Identify and verify every target before any acceptance write. Do not reuse production Firebase/Worker targets.
+3. Review branch protection separately. It is currently disabled and Quality Gates is not enforced as a required check. Confirm the correct required check context before enabling; do not disable or weaken any existing protection.
+4. Booking concurrency remains a product/backend decision: the current client-side availability recheck is a snapshot, not an atomic reservation/slot lock.
+5. Performance follow-up: inspect ExcelJS import/export consumers for dynamic import at the action boundary, and inspect ECharts registrations before splitting further. Keep the existing chunk warnings visible; do not raise the threshold just to hide them.
+6. Before any local pull, inspect `git status --short --branch`. Preserve local changes; never reset, clean, stash, or overwrite. Only use `git pull --ff-only` after confirming the local worktree is clean and the branch matches.
+7. No PR, merge, or deployment without explicit user approval. Keep Firebase on Spark; no billing enablement or production writes.
 
 FIRST ACTIONS IN NEXT SESSION
 1. Fetch the branch HEAD and verify its CI after the Phase 10 documentation commit. Do not assume the local checkout is synchronized.
@@ -33,38 +39,32 @@ FIRST ACTIONS IN NEXT SESSION
 
 RELEASE GATES STILL OPEN
 A. SECURITY / DEPENDENCIES
-- Quality Gates #313 npm ci reported 17 vulnerabilities: 2 low, 7 moderate, 8 high.
-- Obtain the full npm audit --json / Dependabot advisory detail. Identify package path, runtime/dev scope, advisory severity, patched version, exploitability and compatibility.
-- Fix high-severity items with targeted, minimal upgrades only where evidence supports them. Keep a lockfile review and run npm ci, build, lint, npm test and npm run test:prd afterwards.
-- Do not run blanket npm audit fix or mass upgrades.
+- Production-only npm audit: 0 findings at Quality Gates #333.
+- Three LOW full-audit entries remain from one dev-only deepmerge@4.3.1 advisory via shadcn/@shadcn/registry; no patched deepmerge version is currently published. Keep disclosed and revisit when upstream fixes it or a safe tooling replacement is proven.
+- Do not run blanket npm audit fix or major shadcn upgrades without source/consumer and regression evidence.
 
 B. LICENSE REVIEW
-- package-lock has 641 package records, 640 with license metadata.
-- Investigate buffers@0.1.1, whose lockfile record lacks a license declaration.
-- Review license expressions for jszip, pako and type-fest and confirm the selected allowed option.
-- Do not claim full legal clearance from lockfile metadata alone.
+- Upstream evidence for buffers@0.1.1, JSZip 3.10.1, pako 1.0.11, and type-fest 4.41.0 is recorded in docs/POST_PHASE_10_RELEASE_GATE_PROGRESS_2026-11-08.md.
+- npm lockfile still omits the buffers license field; upstream declares MIT/X11 and Debian maps it to MIT. Preserve applicable third-party notices; do not falsify package-lock metadata.
+- Technical review is not a formal legal opinion.
 
 C. AUTHENTICATED STAGING ACCEPTANCE
-- No Admin, Client or Guard authenticated browser walkthrough has been completed.
-- Create/use only an isolated Firebase Spark/free-tier staging project, staging Hosting origin, isolated staging Worker, synthetic identities and synthetic data.
-- Validate the target project/origin/Worker before use. No Blaze, no production configuration, no production write, no production user.
-- Test Admin, Client ownership/portal boundaries and Guard role boundaries; verify live Public Booking availability loading/empty/success and final booking submit using staging only.
+- Still blocked by lack of a separate Firebase Spark project, isolated Hosting origin, Worker environment/secrets, and synthetic identities/data.
+- Do not write to current production-facing project/site/Worker. No Blaze, no production test identities or data.
+- Use docs/audits/STAGING-ACCEPTANCE-READINESS-2026-10-29.md as the acceptance checklist after isolated targets exist.
 
 D. PERFORMANCE / CHUNK FOLLOW-UP
 - ExcelJS chunk: 929.91 KB minified / 256.47 KB gzip.
 - ECharts renderer chunk: 556.90 KB minified / 188.15 KB gzip.
-- ECharts already has a lazy StudioChart boundary. Inspect registrations/consumers before a further split.
-- Evaluate dynamic import for ExcelJS at the actual import/export action boundary.
-- Compare build output and browser behavior. Do not raise chunkSizeWarningLimit just to silence the warning.
+- Check ExcelJS dynamic import at its import/export action boundary. Inspect ECharts registrations/consumers before further split. Never raise chunkSizeWarningLimit just to silence warning.
 
 E. CI GOVERNANCE
-- CI #313 passed, but branch protection was disabled and no required status checks were configured.
-- Workflow logs showed Node 20 deprecation warnings for GitHub Actions v4 actions and a setup-java@v4 deprecation warning.
-- Plan a controlled CI maintenance change: update supported action versions, test on GitHub Actions, then configure required Quality Gates checks through repository settings/admin approval.
+- Runtime migration is COMPLETE and Quality Gates #333 passed on the new action versions.
+- Branch protection remains disabled, with no required status checks. Confirm the exact check context, then configure required Quality Gates using authorized repository settings.
 
 F. BOOKING CONCURRENCY RISK
 - Client availability recheck remains snapshot-level, not a transactional reservation lock.
-- Do not describe this as atomic reservation protection. Product/backend owner must decide whether a transactional hold/lock is required before real booking launch.
+- Product/backend owner must decide whether atomic reservation/slot claim is required before real booking launch.
 
 ACCESSIBILITY CLAIMS
 - Phase 9 tested 162 route/viewport/theme combinations and 16 keyboard/focus cases.
