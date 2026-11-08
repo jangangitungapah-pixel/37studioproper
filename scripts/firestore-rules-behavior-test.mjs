@@ -526,6 +526,7 @@ try {
     durationHours: 1,
     email: '',
     id: 'safe-unpaid',
+    initialPaymentLedgerStatus: 'not_required',
     invoiceAmount: 500000,
     invoiceNumber: 'INV-SAFE-UNPAID',
     lastPaymentAt: '',
