@@ -4,7 +4,7 @@
 **Target Firebase project:** `studio-proper`  
 **Target Hosting site:** `studio-37` (`https://studio-37.web.app`)  
 **Architecture decision date:** 2026-11-09  
-**Status:** Approved direction; migration not yet implemented
+**Status:** Approved direction; Phase 1 complete; Phase 2 implementation in progress and validation pending
 
 ## 1. Objective
 
@@ -129,6 +129,14 @@ Do not emulate Admin SDK power by exposing credentials. Where a server-only Auth
 - Migrate manual booking creation/update, booking-request decisions, and session lifecycle actions.
 - Preserve request/confirmation/cancellation states, immutable client ownership, schedule collision checks, calendar slot mirrors, and message history.
 - Use atomic writes for every cross-document invariant.
+
+**Implementation in progress (2026-11-09):**
+- The active migration branch now contains `src/services/bookingOperationsRepository.js` for Firebase-native manual create/update, client request creation, booking decisions, and session actions.
+- The Admin Schedule, Request Inbox, booking detail session actions, and public calendar read paths have been switched to the Firebase-native repository/listener path. The public listener is limited to the visible seven-day window; Admin and Client booking listeners are bounded.
+- Firestore Rules now contain strict booking create/edit, decision/message, schedule revision, calendar slot, session-event, and narrow initial booking-payment companion contracts.
+- `scripts/firestore-rules-behavior-test.mjs` and `scripts/admin-operations-security-contract-test.mjs` have expanded coverage for atomic booking, reschedule, Client decision, session transition/no-show, append-only event, and initial payment companion paths.
+- The operation/read/write matrix is documented in `docs/architecture/PHASE_2_BOOKING_SCHEDULE_SESSION_OPERATION_INVENTORY.md`.
+- Validation remains pending. Do not mark this phase complete until the full Emulator, regression, build, lint, `npm test`, `npm run test:prd`, and GitHub Quality Gates pass.
 
 **Exit:** booking lifecycle regression suite and emulator rules tests pass.
 
