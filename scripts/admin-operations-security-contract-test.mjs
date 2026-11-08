@@ -166,7 +166,11 @@ assert.equal(bookingOperationsRepository.includes('MAX_BOOKINGS_PER_DATE = 250')
 assert.equal(bookingOperationsRepository.includes('validateNoShowEligibility'), true);
 assert.equal(bookingCommunicationRepository.includes("import { decideBookingRequest } from './bookingOperationsRepository.js'"), true);
 assert.equal(bookingDetailDrawer.includes("import { recordBookingSessionAction } from '../../services/bookingOperationsRepository.js'"), true);
-assert.equal(publicBookingPage.includes('endDate: dateWindow[6]'), true);
+assert.equal(publicBookingPage.includes('const calendarStartDate = dateWindow[0]'), true);
+assert.equal(publicBookingPage.includes('const calendarEndDate = dateWindow[6]'), true);
+assert.equal(publicBookingPage.includes('startDate: calendarStartDate'), true);
+assert.equal(publicBookingPage.includes('endDate: calendarEndDate'), true);
+assert.equal(publicBookingPage.includes('limitCount: 500'), true);
 assert.equal(adminPage.includes('syncClientCalendarSlotsFromBookings'), false);
 assert.equal(bookingWorker.includes("'sessionStatus',\n  'sessionType'"), false, 'Generic booking updates must not accept sessionStatus.');
 
