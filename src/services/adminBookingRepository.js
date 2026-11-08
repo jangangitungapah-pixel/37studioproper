@@ -111,6 +111,18 @@ export function createInvoiceNumber(booking, fallbackId = '') {
   return 'INV-' + bookingCode.replace(/^BKG-/, '');
 }
 
+function normalizeBookingBillingIdentity(booking, fallbackId = '') {
+  const bookingCode = booking.bookingCode || booking.bookingId || createBookingCode(booking, fallbackId);
+  const invoiceNumber = booking.invoiceNumber || createInvoiceNumber({ ...booking, bookingCode }, fallbackId);
+
+  return {
+    ...booking,
+    bookingCode,
+    bookingId: bookingCode,
+    invoiceNumber,
+  };
+}
+
 export function subscribeClientCalendarSlots(options, callback, onError) {
   let opts = {};
   let cb = callback;
