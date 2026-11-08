@@ -1274,8 +1274,7 @@ match /users/{userId} {
       let scheduleChanged = changed.hasAny([
         'date', 'startHour', 'durationHours', 'duration', 'sessionLabel'
       ]);
-      return adminBookingFinanceFieldsUnchanged() &&
-        changed.hasOnly([
+      return changed.hasOnly([
           'bandName', 'clientUid', 'customer', 'customerId',
           'customerIdentityMode', 'customerPhoneKey', 'date', 'duration',
           'durationHours', 'email', 'internalNotes', 'notes', 'packageId',
@@ -1287,8 +1286,14 @@ match /users/{userId} {
         (
           !scheduleChanged ||
           (
-            bookingScheduleDayMatchesAfter(resource.data.date, bookingId, request.resource.data.updatedAt) &&
-            bookingScheduleDayMatchesAfter(request.resource.data.date, bookingId, request.resource.data.updatedAt) &&
+            (
+              resource.data.date == request.resource.data.date
+                ? bookingScheduleDayMatchesAfter(request.resource.data.date, bookingId, request.resource.data.updatedAt)
+                : (
+                    bookingScheduleDayMatchesAfter(resource.data.date, bookingId, request.resource.data.updatedAt) &&
+                    bookingScheduleDayMatchesAfter(request.resource.data.date, bookingId, request.resource.data.updatedAt)
+                  )
+            ) &&
             bookingSlotStateMatchesAfter(bookingId, request.resource.data)
           )
         );
@@ -1400,8 +1405,7 @@ match /users/{userId} {
       let eventId = request.resource.data.lastSessionEventId;
       let eventPath = /databases/$(database)/documents/bookingSessionEvents/$(eventId);
       let eventAfter = getAfter(eventPath).data;
-      return adminBookingFinanceFieldsUnchanged() &&
-        changed.hasOnly([
+      return changed.hasOnly([
           'checkedInAt', 'checkedInByUid', 'checkedInByName',
           'sessionStatus', 'actualStartAt', 'actualStartByUid',
           'actualStartByName', 'actualEndAt', 'actualEndByUid',
@@ -1546,8 +1550,7 @@ match /users/{userId} {
       let nextStatus = request.resource.data.bookingRequestStatus;
       let messageId = request.resource.data.lastMessageId;
       let slotPath = /databases/$(database)/documents/clientCalendarSlots/$(bookingId);
-      return adminBookingFinanceFieldsUnchanged() &&
-        changed.hasOnly([
+      return changed.hasOnly([
           'adminResponseAt', 'adminResponseBy', 'adminResponseNote',
           'bookingRequestStatus', 'requestStatus', 'lastRequestDecisionKey',
           'lastMessageId', 'lastMessageAt', 'lastMessagePreview',
@@ -1602,6 +1605,28 @@ match /users/{userId} {
         );
     }
 
+    function adminBookingOperationalUpdate(bookingId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return (
+        changed.hasAny([
+          'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
+        ])
+          ? (
+              validBooking(request.resource.data) &&
+              adminBookingDecisionUpdate(bookingId)
+            )
+          : changed.hasAny(['lastSessionEventId'])
+            ? (
+                validBooking(request.resource.data) &&
+                adminBookingSessionActionUpdate(bookingId)
+              )
+            : (
+                validBooking(request.resource.data) &&
+                adminBookingManualUpdate(bookingId)
+              )
+      );
+    }
+
     match /bookings/{bookingId} {
       allow read: if (isApproved() && canAccessBookingData()) || isClientBookingOwner(resource.data);
       allow create: if (
@@ -1615,12 +1640,7 @@ match /users/{userId} {
       allow update: if (
         (
           isApprovedScheduleAdmin() &&
-          validBooking(request.resource.data) &&
-          (
-            adminBookingManualUpdate(bookingId) ||
-            adminBookingDecisionUpdate(bookingId) ||
-            adminBookingSessionActionUpdate(bookingId)
-          )
+          adminBookingOperationalUpdate(bookingId)
         ) ||
         (
           isClientBookingOwner(resource.data) &&
