@@ -11,7 +11,6 @@ import { z } from 'zod';
 import {
   buildRepositoryPrincipal,
   createRepositoryOperationId,
-  createRepositoryRequestId,
   runIdempotentFirestoreTransaction,
 } from '../lib/firestoreRepositoryFoundation.js';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -85,6 +84,7 @@ const manualBookingInputSchema = z.object({
   invoiceAmount: moneyInputSchema.optional(),
   createdAt: z.string().max(40).optional(),
   updatedAt: z.string().max(40).optional(),
+  expectedUpdatedAt: z.string().max(40).optional(),
   customerId: z.string().max(160).optional(),
   customerPhoneKey: z.string().max(32).optional(),
   email: z.string().max(254).optional(),
@@ -503,7 +503,7 @@ export async function createManualBooking(inputValue) {
     action,
     requestId,
   });
-  const timestamp = new Date().toISOString();
+  const timestamp = cleanText(input.createdAt, 40) || new Date().toISOString();
   const { booking, payment } = buildManualBooking(input, actor, requestId, operationId, timestamp);
   const slot = buildCalendarSlot(booking, timestamp, { manualCreate: true });
   const ledger = buildInitialBookingPaymentLedger({ actor, booking, payment });
@@ -581,7 +581,7 @@ export async function updateManualBooking(inputValue) {
   if (!currentSnapshot.exists()) throw operationError('booking_not_found', 'Booking tidak ditemukan.');
 
   const current = { id: currentSnapshot.id, ...currentSnapshot.data() };
-  const expectedUpdatedAt = cleanText(input.updatedAt || current.updatedAt || '', 40);
+  const expectedUpdatedAt = cleanText(input.expectedUpdatedAt || input.updatedAt || current.updatedAt || '', 40);
   if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) {
     throw operationError('stale_booking', 'Booking sudah berubah. Muat ulang data sebelum menyimpan kembali.');
   }
@@ -604,19 +604,22 @@ export async function updateManualBooking(inputValue) {
     nextBooking.startHour,
   );
 
-  const dateSet = [...new Set([cleanDate(current.date), nextBooking.date])].sort();
+  const scheduleChanged = (
+    cleanDate(current.date) !== nextBooking.date ||
+    Number(current.startHour) !== nextBooking.startHour ||
+    Number(current.durationHours ?? current.duration ?? 0) !== nextBooking.durationHours
+  );
+  const dateSet = scheduleChanged
+    ? [...new Set([cleanDate(current.date), nextBooking.date])].sort()
+    : [];
   const requestId = 'manual-update-' + bookingId + '-' + hashText(expectedUpdatedAt || current.updatedAt || 'legacy');
   const scope = 'bookings';
   const action = 'manual-update';
-  const operationPayload = {
-    expectedUpdatedAt,
-    id: bookingId,
-    patch,
-  };
+  const operationPayload = { expectedUpdatedAt, id: bookingId, patch };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const preflight = await readSchedulePreflight(dateSet, nextBooking.date);
-    assertNoScheduleConflict(nextBooking, preflight.bookings);
+    const preflight = await readSchedulePreflight(dateSet, scheduleChanged ? nextBooking.date : '');
+    if (scheduleChanged) assertNoScheduleConflict(nextBooking, preflight.bookings);
 
     try {
       const slotRef = doc(firestoreDb, 'clientCalendarSlots', bookingId);
@@ -633,20 +636,35 @@ export async function updateManualBooking(inputValue) {
           const snapshots = await Promise.all(references.map((reference) => transaction.get(reference)));
           const bookingSnapshot = snapshots[0];
           const slotSnapshot = snapshots[1];
-          const days = await readTransactionDays(transaction, dateSet, preflight.daySnapshots);
+          const daySnapshots = snapshots.slice(2);
+          const days = new Map(dateSet.map((date, index) => [date, daySnapshots[index]]));
 
           if (!bookingSnapshot.exists()) throw operationError('booking_not_found', 'Booking tidak ditemukan.');
           const latest = bookingSnapshot.data();
-          if (expectedUpdatedAt && latest.updatedAt !== expectedUpdatedAt) {
+          if ((latest.updatedAt || '') !== (current.updatedAt || '') ||
+              (expectedUpdatedAt && latest.updatedAt !== expectedUpdatedAt)) {
             throw operationError('stale_booking', 'Booking sudah berubah. Muat ulang data sebelum menyimpan kembali.');
           }
 
-          transaction.set(bookingRef, nextBooking);
-          dateSet.forEach((date) => writeScheduleDay(transaction, date, bookingId, timestamp, days.get(date)));
+          if (scheduleChanged) {
+            for (const date of dateSet) {
+              const expected = preflight.daySnapshots.get(date);
+              const snapshot = days.get(date);
+              const revision = snapshot?.exists() ? Number(snapshot.data().revision || 0) : 0;
+              if (!expected || !snapshot || revision !== expected.revision || snapshot.exists() !== expected.exists) {
+                throw operationError('schedule_revision_changed', 'Jadwal berubah saat operasi diproses. Muat ulang kalender dan coba kembali.');
+              }
+            }
+          }
 
-          const slot = buildCalendarSlot(nextBooking, timestamp);
-          if (slot) transaction.set(slotRef, slot);
-          else if (slotSnapshot.exists()) transaction.delete(slotRef);
+          transaction.set(bookingRef, nextBooking);
+
+          if (scheduleChanged) {
+            dateSet.forEach((date) => writeScheduleDay(transaction, date, bookingId, timestamp, days.get(date)));
+            const slot = buildCalendarSlot(nextBooking, timestamp);
+            if (slot) transaction.set(slotRef, slot);
+            else if (slotSnapshot.exists()) transaction.delete(slotRef);
+          }
 
           return { collection: 'bookings', id: bookingId };
         },
@@ -660,7 +678,6 @@ export async function updateManualBooking(inputValue) {
       throw error;
     }
   }
-
   throw operationError('booking_conflict', 'Jadwal berubah berulang kali. Muat ulang kalender lalu coba kembali.');
 }
 
@@ -1021,68 +1038,22 @@ export async function recordBookingSessionAction(inputValue) {
   };
 }
 
-export async function createClientBookingRequestOperation({ user, booking, bookingId }) {
+export async function createClientBookingRequestOperation({ user, booking }) {
   requireFirestore();
   const actor = await resolveActor({ clientOnly: true });
-  if (!user?.uid || user.uid !== actor.uid) {
+  if (!user?.uid || user.uid !== actor.uid || booking?.clientUid !== actor.uid) {
     throw operationError('authentication_required', 'Client harus login untuk mengirim permintaan booking.');
   }
-  const id = cleanText(bookingId || booking?.id || '', 80);
-  if (!id) throw operationError('booking_id_required', 'ID permintaan booking wajib tersedia.');
-  const input = {
-    id,
-    customer: cleanText(booking.customer || user.displayName || 'Client', 120),
-    date: cleanDate(booking.date),
-    startHour: cleanStartHour(booking.startHour),
-    durationHours: Number(booking.durationHours),
-    title: cleanText(booking.title || booking.sessionLabel || 'Permintaan Booking', 160),
-    total: cleanMoney(booking.total || 0),
-  };
-  if (!Number.isFinite(input.durationHours) || input.durationHours < 0 || input.durationHours > 24) {
-    throw operationError('invalid_duration', 'Durasi booking tidak valid.');
+
+  const id = cleanText(booking?.id, 160);
+  if (!id || booking?.source !== 'clientPortal' || booking?.customerId !== 'auth_' + actor.uid ||
+      booking?.bookingRequestStatus !== 'submitted' || booking?.paymentStatus !== 'pending' ||
+      booking?.status !== 'pending' || !Array.isArray(booking?.paymentHistory) ||
+      booking.paymentHistory.length !== 0 || Number(booking?.paidAmount) !== 0 ||
+      Number(booking?.dpAmount) !== 0 || Number(booking?.invoiceAmount) !== Number(booking?.total)) {
+    throw operationError('invalid_client_booking_request', 'Data permintaan booking Client tidak memenuhi kontrak.');
   }
-  const timestamp = new Date().toISOString();
-  const phone = cleanText(user.phoneNumber || booking.phone || '', 32);
-  const invoiceAmount = input.total;
-  const cleanBooking = {
-    id,
-    customer: input.customer,
-    phone,
-    customerPhoneKey: phone.replace(/\D/g, ''),
-    email: cleanText(user.email || '', 254),
-    clientUid: actor.uid,
-    customerId: 'auth_' + actor.uid,
-    source: 'clientPortal',
-    bookingRequestStatus: 'submitted',
-    clientRequestUpdatedAt: timestamp,
-    packageId: cleanText(booking.packageId || 'none', 80),
-    packageLabel: cleanText(booking.packageLabel, 160),
-    pricingMode: cleanText(booking.pricingMode || 'session', 40),
-    sessionType: cleanText(booking.sessionType || 'rehearsal', 80),
-    sessionLabel: cleanText(booking.sessionLabel || 'Sesi Studio', 160),
-    recordingTypeId: cleanText(booking.recordingTypeId, 80),
-    recordingTypeLabel: cleanText(booking.recordingTypeLabel, 160),
-    title: input.title,
-    date: input.date,
-    startHour: input.startHour,
-    startTimeLabel: cleanText(booking.startTimeLabel, 40),
-    durationHours: input.durationHours,
-    paymentMethod: '',
-    paymentHistory: [],
-    paidAmount: 0,
-    lastPaymentAt: '',
-    lastPaymentMethod: '',
-    paymentStatus: 'pending',
-    status: 'pending',
-    subtotal: cleanMoney(booking.subtotal ?? input.total),
-    discountAmount: cleanMoney(booking.discountAmount || 0),
-    appliedDiscounts: Array.isArray(booking.appliedDiscounts) ? booking.appliedDiscounts.slice(0, 50) : [],
-    total: input.total,
-    dpAmount: 0,
-    invoiceAmount,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
+
   const requestId = 'client-request-' + id;
   const committed = await runIdempotentFirestoreTransaction({
     db: firestoreDb,
@@ -1090,15 +1061,16 @@ export async function createClientBookingRequestOperation({ user, booking, booki
     scope: 'bookings',
     action: 'client-request-create',
     requestId,
-    payload: cleanBooking,
+    payload: booking,
     execute: async (transaction) => {
       const bookingRef = doc(firestoreDb, 'bookings', id);
       const existing = await transaction.get(bookingRef);
       if (existing.exists()) throw operationError('booking_id_conflict', 'ID permintaan booking sudah digunakan.');
-      transaction.set(bookingRef, cleanBooking);
+      transaction.set(bookingRef, booking);
       return { collection: 'bookings', id };
     },
   });
+
   const snapshot = await getDoc(doc(firestoreDb, 'bookings', id));
   if (!snapshot.exists()) throw operationError('booking_commit_missing', 'Permintaan booking belum dapat dibaca kembali.');
   return { booking: { id: snapshot.id, ...snapshot.data() }, duplicate: committed.replayed };
