@@ -11,6 +11,7 @@ import { z } from 'zod';
 import {
   buildRepositoryPrincipal,
   createRepositoryOperationId,
+  createRepositoryPayloadHash,
   runIdempotentFirestoreTransaction,
 } from '../lib/firestoreRepositoryFoundation.js';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -115,6 +116,38 @@ function requireFirestore() {
   if (!isFirebaseConfigured || !firestoreDb) {
     throw new Error('Firebase belum dikonfigurasi.');
   }
+}
+
+async function readCompletedOperation({ actorUid, scope, action, requestId, payload }) {
+  const operationId = await createRepositoryOperationId({ actorUid, scope, action, requestId });
+  const markerRef = doc(firestoreDb, 'users', actorUid, 'repositoryOperations', operationId);
+  const markerSnapshot = await getDoc(markerRef);
+  if (!markerSnapshot.exists()) return null;
+
+  const marker = markerSnapshot.data();
+  const payloadHash = await createRepositoryPayloadHash(payload);
+  if (
+    marker.operationId !== operationId ||
+    marker.actorUid !== actorUid ||
+    marker.scope !== scope ||
+    marker.action !== action ||
+    marker.requestId !== requestId ||
+    marker.payloadHash !== payloadHash ||
+    marker.resultCollection !== 'bookings' ||
+    !marker.resultId
+  ) {
+    throw operationError('idempotency_conflict', 'Request ID sudah digunakan dengan payload atau target yang berbeda.');
+  }
+
+  const resultSnapshot = await getDoc(doc(firestoreDb, marker.resultCollection, marker.resultId));
+  if (!resultSnapshot.exists()) {
+    throw operationError('idempotency_result_missing', 'Marker operasi ditemukan tetapi hasil booking tidak tersedia. Hubungi Owner sebelum mencoba ulang.');
+  }
+
+  return {
+    operationId,
+    booking: { id: resultSnapshot.id, ...resultSnapshot.data() },
+  };
 }
 
 function operationError(code, message) {
@@ -509,6 +542,14 @@ export async function createManualBooking(inputValue) {
   const ledger = buildInitialBookingPaymentLedger({ actor, booking, payment });
   const ledgerId = ledger?.id || '';
   const dates = [booking.date];
+  const replay = await readCompletedOperation({
+    actorUid: actor.uid,
+    scope,
+    action,
+    requestId,
+    payload: { booking, ledger },
+  });
+  if (replay) return { booking: replay.booking, duplicate: true };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const preflight = await readSchedulePreflight(dates, slot ? booking.date : '');
@@ -536,7 +577,11 @@ export async function createManualBooking(inputValue) {
           const slotSnapshot = snapshots[2];
           const ledgerSnapshot = ledgerRef ? snapshots[3] : null;
 
-          const days = await readTransactionDays(transaction, dates, preflight.daySnapshots);
+          const expectedDay = preflight.daySnapshots.get(booking.date);
+          const dayRevision = daySnapshot.exists() ? Number(daySnapshot.data().revision || 0) : 0;
+          if (!expectedDay || dayRevision !== expectedDay.revision || daySnapshot.exists() !== expectedDay.exists) {
+            throw operationError('schedule_revision_changed', 'Jadwal berubah saat operasi diproses. Muat ulang kalender dan coba kembali.');
+          }
           if (bookingSnapshot.exists()) {
             throw operationError('booking_id_conflict', 'ID booking sudah digunakan. Muat ulang formulir sebelum menyimpan kembali.');
           }
@@ -616,6 +661,14 @@ export async function updateManualBooking(inputValue) {
   const scope = 'bookings';
   const action = 'manual-update';
   const operationPayload = { expectedUpdatedAt, id: bookingId, patch };
+  const replay = await readCompletedOperation({
+    actorUid: actor.uid,
+    scope,
+    action,
+    requestId,
+    payload: operationPayload,
+  });
+  if (replay) return { ...replay.booking, duplicate: true };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const preflight = await readSchedulePreflight(dateSet, scheduleChanged ? nextBooking.date : '');
@@ -739,6 +792,34 @@ export async function decideBookingRequest(inputValue) {
     note: input.note,
     status: input.status,
   };
+  const replay = await readCompletedOperation({
+    actorUid: actor.uid,
+    scope,
+    action,
+    requestId,
+    payload: operationPayload,
+  });
+  if (replay) {
+    const messageId = 'request-' + decisionKey;
+    const messageSnapshot = await getDoc(doc(firestoreDb, 'bookingMessages', messageId));
+    const eventId = input.status === 'cancelled' ? 'session-' + replay.operationId.slice(3) : '';
+    const eventSnapshot = eventId
+      ? await getDoc(doc(firestoreDb, 'bookingSessionEvents', eventId))
+      : null;
+    if (!messageSnapshot.exists() || (eventId && !eventSnapshot?.exists())) {
+      throw operationError('booking_decision_commit_missing', 'Keputusan tersimpan tetapi dokumen pendamping belum tersedia.');
+    }
+    return {
+      booking: replay.booking,
+      message: messageSnapshot.data(),
+      event: eventSnapshot?.exists() ? eventSnapshot.data() : null,
+      status: input.status,
+      decisionKey,
+      alreadyApplied: true,
+      duplicate: true,
+    };
+  }
+
   const timestamp = new Date().toISOString();
   const date = cleanDate(currentBooking.date);
   const fromSessionStatus = currentSessionStatus(currentBooking);
@@ -916,10 +997,7 @@ export async function recordBookingSessionAction(inputValue) {
   const currentSnapshot = await getDoc(bookingRef);
   if (!currentSnapshot.exists()) throw operationError('booking_not_found', 'Booking tidak ditemukan.');
   const currentBooking = { id: currentSnapshot.id, ...currentSnapshot.data() };
-  const requestId = 'session-' + input.bookingId + '-' + hashText([
-    input.action,
-    currentBooking.updatedAt || currentBooking.createdAt || 'legacy',
-  ].join('|'));
+  const requestId = 'session-' + input.bookingId + '-' + input.action;
   const scope = 'bookings';
   const action = 'session-action';
   const operationId = await createRepositoryOperationId({
@@ -937,6 +1015,20 @@ export async function recordBookingSessionAction(inputValue) {
     bookingId: input.bookingId,
     reason: input.reason,
   };
+  const replay = await readCompletedOperation({
+    actorUid: actor.uid,
+    scope,
+    action,
+    requestId,
+    payload: operationPayload,
+  });
+  if (replay) {
+    const eventSnapshot = await getDoc(eventRef);
+    if (!eventSnapshot.exists()) {
+      throw operationError('session_action_commit_missing', 'Marker aksi ditemukan tetapi event sesi tidak tersedia.');
+    }
+    return { booking: replay.booking, event: eventSnapshot.data(), duplicate: true };
+  }
 
   const fromStatus = currentSessionStatus(currentBooking);
   if (['completed', 'no_show', 'cancelled'].includes(fromStatus)) {
