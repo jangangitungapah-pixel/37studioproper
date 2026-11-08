@@ -1742,7 +1742,7 @@ match /users/{userId} {
     }
 
     match /bookingSessionEvents/{eventId} {
-      allow read: if isApprovedAdmin() && canManageBookingData();
+      allow read: if isApprovedScheduleAdmin();
       allow create: if isApprovedScheduleAdmin() &&
         validBookingSessionEvent(request.resource.data, eventId) &&
         bookingSessionEventReferencesBookingAfter(eventId);
