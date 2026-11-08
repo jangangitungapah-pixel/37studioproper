@@ -6,6 +6,7 @@ on:
       - feature/ui-overhaul-premium-enterprise-2026-11-06
     paths:
       - package.json
+      - .github/workflows/dependency-lock-refresh.yml
 
 permissions:
   contents: write
