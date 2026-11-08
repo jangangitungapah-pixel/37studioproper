@@ -137,6 +137,18 @@ function markerCollection(db, uid) {
   return collection(db, 'users', uid, 'repositoryOperations');
 }
 
+function markerOnlyOperationCall({ db, uid, requestId, payload }) {
+  return runIdempotentFirestoreTransaction({
+    db,
+    actorUid: uid,
+    scope: 'foundation',
+    action: 'idempotency-probe',
+    requestId,
+    payload,
+    execute: async () => ({ collection: '', id: '' }),
+  });
+}
+
 async function createInvalidOperation(db) {
   const requestId = 'req_foundation_forged_01';
   const payload = { reason: 'forged domain actor' };
@@ -279,9 +291,10 @@ try {
     console.log('repository-foundation: starting role marker ' + roleCase.uid);
     let result;
     try {
-      result = await operationCall({
+      result = await markerOnlyOperationCall({
         db,
-        ...roleCase,
+        uid: roleCase.uid,
+        requestId: roleCase.requestId,
         payload: { note: 'single role matrix operation', uid: roleCase.uid },
       });
     } catch (error) {
@@ -290,8 +303,8 @@ try {
     }
     assert.equal(result.replayed, false);
     assert.match(result.operationId, /^v1_[a-f0-9]{64}$/);
-    assert.equal(result.result.collection, 'notificationEvents');
-    assert.ok(result.result.id);
+    assert.equal(result.result.collection, '');
+    assert.equal(result.result.id, '');
     assert.equal(
       (await getDoc(doc(db, 'users', roleCase.uid, 'repositoryOperations', result.operationId))).exists(),
       true,
@@ -299,20 +312,33 @@ try {
   }
 
   const ownerPayload = { bookingId: 'synthetic-booking-1', decision: 'confirmed' };
+
+  // First prove that an allowed append-only domain event and its idempotency
+  // marker commit together exactly once.
+  const ownerEvent = await operationCall({
+    db: ownerDb,
+    uid: 'owner-1',
+    email: ownerEmail,
+    actorRole: 'admin',
+    requestId: 'req_foundation_owner_event_01',
+    payload: ownerPayload,
+  });
+  assert.equal(ownerEvent.replayed, false);
+  assert.equal(ownerEvent.result.collection, 'notificationEvents');
+
+  // Then isolate concurrent idempotency behavior from the append-only event
+  // collection. Replaying an already-created append-only event is a separate
+  // state transition and must not be disguised as an update.
   const concurrent = await Promise.all([
-    operationCall({
+    markerOnlyOperationCall({
       db: ownerDb,
       uid: 'owner-1',
-      email: ownerEmail,
-      actorRole: 'admin',
       requestId: 'req_foundation_owner_01',
       payload: ownerPayload,
     }),
-    operationCall({
+    markerOnlyOperationCall({
       db: ownerDb,
       uid: 'owner-1',
-      email: ownerEmail,
-      actorRole: 'admin',
       requestId: 'req_foundation_owner_01',
       payload: ownerPayload,
     }),
@@ -323,22 +349,18 @@ try {
   assert.equal(concurrent[0].operationId, concurrent[1].operationId);
   assert.deepEqual(concurrent[0].result, concurrent[1].result);
 
-  const replay = await operationCall({
+  const replay = await markerOnlyOperationCall({
     db: ownerDb,
     uid: 'owner-1',
-    email: ownerEmail,
-    actorRole: 'admin',
     requestId: 'req_foundation_owner_01',
     payload: ownerPayload,
   });
   assert.equal(replay.replayed, true);
 
   await assert.rejects(
-    operationCall({
+    markerOnlyOperationCall({
       db: ownerDb,
       uid: 'owner-1',
-      email: ownerEmail,
-      actorRole: 'admin',
       requestId: 'req_foundation_owner_01',
       payload: { bookingId: 'synthetic-booking-1', decision: 'rejected' },
     }),
@@ -442,7 +464,7 @@ try {
     'A forged domain event must roll back its companion idempotency marker.',
   );
 
-  const eventSnapshot = await getDoc(doc(ownerDb, 'notificationEvents', concurrent[0].result.id));
+  const eventSnapshot = await getDoc(doc(ownerDb, 'notificationEvents', ownerEvent.result.id));
   assert.equal(eventSnapshot.exists(), true);
   await assertFails(updateDoc(eventSnapshot.ref, { message: 'Mutated immutable event.' }));
   await assertFails(deleteDoc(eventSnapshot.ref));
