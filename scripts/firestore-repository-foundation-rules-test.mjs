@@ -85,26 +85,26 @@ function notificationRecord({ id, uid, email, actorRole, title = 'Foundation tes
     actorRole,
     actorUid: uid,
     attempts: 0,
-    bookingId: '',
+    bookingId: 'booking-1',
     channel: 'in_app',
     createdAt: now,
     errorMessage: '',
     id,
-    message: 'Emulator-only repository foundation test.',
+    message: 'Booking baru diterima.',
     metadata: {},
     paymentProofId: '',
     priority: 'normal',
     provider: 'firestore',
     sentAt: now,
-    source: 'repository-foundation-test',
+    source: 'rules-test',
     status: 'sent',
     targetMode: 'role',
     targetRole: 'admin',
     targetUid: '',
-    title,
+    title: 'Booking baru',
     type: actorRole === 'guard' ? 'guard_attendance_submitted' : 'booking_request_created',
     updatedAt: now,
-    url: '',
+    url: '/admin/requests',
   };
 }
 
@@ -189,6 +189,7 @@ try {
       updatedAt: now,
     });
   }));
+  console.log('repository-foundation: owner getAfter pair passed');
 
   await environment.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
@@ -257,6 +258,7 @@ try {
     /melewati batas 1 writes/,
   );
   const batchResult = await boundedBatch.commit();
+  console.log('repository-foundation: bounded batch passed');
   assert.deepEqual(batchResult, { writeCount: 1 });
   assert.equal((await getDoc(batchMarkerRef)).exists(), true);
   assert.throws(
@@ -273,11 +275,19 @@ try {
 
   for (const roleCase of roleCases) {
     const db = authenticatedDb(roleCase.uid, roleCase.email);
-    const result = await operationCall({
-      db,
-      ...roleCase,
-      payload: { note: 'single role matrix operation', uid: roleCase.uid },
-    });
+    await assertSucceeds(getDoc(doc(db, 'users', roleCase.uid)));
+    console.log('repository-foundation: starting role marker ' + roleCase.uid);
+    let result;
+    try {
+      result = await operationCall({
+        db,
+        ...roleCase,
+        payload: { note: 'single role matrix operation', uid: roleCase.uid },
+      });
+    } catch (error) {
+      console.error('repository-foundation: role marker failed for ' + roleCase.uid, error);
+      throw error;
+    }
     assert.equal(result.replayed, false);
     assert.match(result.operationId, /^v1_[a-f0-9]{64}$/);
     assert.equal(result.result.collection, 'notificationEvents');
