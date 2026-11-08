@@ -234,6 +234,14 @@ try {
         status: 'approved',
         uid: 'schedule-admin',
       },
+      'schedule-recovery-admin': {
+        displayName: 'Schedule Recovery Admin',
+        email: 'schedule-recovery@example.com',
+        permissions: permissions({ schedule: true }),
+        role: 'admin',
+        status: 'approved',
+        uid: 'schedule-recovery-admin',
+      },
       'settings-admin': {
         displayName: 'Settings Admin',
         email: 'settings@example.com',
@@ -372,6 +380,7 @@ try {
   const owner = context('new-owner', 'owner@example.com');
   const inventoryAdmin = context('inventory-admin', 'inventory@example.com');
   const procurementBookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
+  const scheduleRecoveryAdmin = context('schedule-recovery-admin', 'schedule-recovery@example.com');
 
   await assertSucceeds(getDoc(doc(inventoryAdmin, 'suppliers', 'supplier-rules-1')));
   await assertSucceeds(getDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1')));
@@ -788,8 +797,8 @@ try {
     type: 'income',
     updatedAt: paidAt,
   };
-  const initialLedgerBatch = writeBatch(schedule);
-  initialLedgerBatch.update(doc(schedule, 'bookings', 'safe-paid'), {
+  const initialLedgerBatch = writeBatch(scheduleRecoveryAdmin);
+  initialLedgerBatch.update(doc(scheduleRecoveryAdmin, 'bookings', 'safe-paid'), {
     dpAmount: 100000,
     initialPaymentLedgerStatus: 'recorded',
     invoiceAmount: 400000,
@@ -802,10 +811,10 @@ try {
     paymentStatusCanonical: 'partial',
     status: 'dp',
   });
-  initialLedgerBatch.update(doc(schedule, 'clientCalendarSlots', 'safe-paid'), {
+  initialLedgerBatch.update(doc(scheduleRecoveryAdmin, 'clientCalendarSlots', 'safe-paid'), {
     status: 'dp',
   });
-  initialLedgerBatch.set(doc(schedule, 'bookkeepingEntries', initialLedgerId), initialLedger);
+  initialLedgerBatch.set(doc(scheduleRecoveryAdmin, 'bookkeepingEntries', initialLedgerId), initialLedger);
   console.log('[rules-behavior] commit initial ledger + booking pending-to-recorded transition');
   await assertSucceeds(initialLedgerBatch.commit());
   await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), { total: 400000 }));
