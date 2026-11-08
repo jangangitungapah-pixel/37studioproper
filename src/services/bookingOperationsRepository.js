@@ -464,6 +464,7 @@ function buildManualBooking(input, actor, requestId, operationId, timestamp) {
     durationHours,
     email: cleanText(input.email, 254),
     id,
+    initialPaymentIntent: payment,
     initialPaymentLedgerStatus: payment ? 'pending' : 'not_required',
     invoiceAmount: total,
     invoiceNumber,
@@ -498,13 +499,13 @@ function buildManualBooking(input, actor, requestId, operationId, timestamp) {
   return { booking, payment };
 }
 
-function buildInitialBookingPaymentLedger({ actor, booking, payment }) {
+function buildInitialBookingPaymentLedger({ booking, payment }) {
   if (!payment) return null;
   const id = 'booking-payment-' + booking.id + '-' + payment.id;
   return {
     id,
-    actorName: actor.displayName,
-    actorUid: actor.uid,
+    actorName: payment.actorName,
+    actorUid: payment.actorUid,
     amount: payment.amount,
     category: 'booking',
     createdAt: payment.createdAt,
@@ -534,6 +535,7 @@ function matchesInitialPaymentLedger(actual, expected) {
 function matchesInitialPaymentToLedger(booking, payment, ledger) {
   return Boolean(payment && ledger) &&
     booking.initialPaymentLedgerStatus === 'pending' &&
+    matchesInitialPayment(payment, booking.initialPaymentIntent) &&
     booking.source === 'admin' &&
     Array.isArray(booking.paymentHistory) &&
     booking.paymentHistory.length === 0 &&
@@ -666,7 +668,7 @@ export async function createManualBooking(inputValue) {
   const timestamp = cleanText(input.createdAt, 40) || new Date().toISOString();
   const { booking, payment } = buildManualBooking(input, actor, requestId, operationId, timestamp);
   const slot = buildCalendarSlot(booking, timestamp, { manualCreate: true });
-  const ledger = buildInitialBookingPaymentLedger({ actor, booking, payment });
+  const ledger = buildInitialBookingPaymentLedger({ booking, payment });
   const dates = [booking.date];
   const replay = await readCompletedOperation({
     actorUid: actor.uid,
@@ -770,10 +772,40 @@ export async function updateManualBooking(inputValue) {
   const actor = await resolveActor({ permission: 'schedule' });
   const bookingId = input.id;
   const bookingRef = doc(firestoreDb, 'bookings', bookingId);
-  const currentSnapshot = await getDoc(bookingRef);
+  let currentSnapshot = await getDoc(bookingRef);
   if (!currentSnapshot.exists()) throw operationError('booking_not_found', 'Booking tidak ditemukan.');
 
-  const current = { id: currentSnapshot.id, ...currentSnapshot.data() };
+  let current = { id: currentSnapshot.id, ...currentSnapshot.data() };
+  if (current.initialPaymentLedgerStatus === 'pending' && current.initialPaymentIntent) {
+    const pendingPayment = current.initialPaymentIntent;
+    const pendingLedger = buildInitialBookingPaymentLedger({
+      booking: current,
+      payment: pendingPayment,
+    });
+    try {
+      await ensureInitialBookingPaymentLedger({
+        actor,
+        bookingId,
+        payment: pendingPayment,
+        ledger: pendingLedger,
+      });
+    } catch (error) {
+      const pending = operationError(
+        'booking_payment_ledger_pending',
+        'Pembayaran awal booking masih menunggu pencatatan ledger. Simpan ulang booking ini setelah koneksi pulih untuk menyelesaikan pencatatan tanpa membuat booking baru.',
+      );
+      pending.cause = error;
+      throw pending;
+    }
+    currentSnapshot = await getDoc(bookingRef);
+    if (!currentSnapshot.exists()) {
+      throw operationError('booking_commit_missing', 'Booking tidak dapat dibaca kembali setelah pemulihan ledger pembayaran.');
+    }
+    current = { id: currentSnapshot.id, ...currentSnapshot.data() };
+    if (current.initialPaymentLedgerStatus !== 'recorded') {
+      throw operationError('booking_payment_ledger_pending', 'Pembayaran awal masih menunggu penyelesaian ledger. Coba simpan kembali booking ini.');
+    }
+  }
   const expectedUpdatedAt = cleanText(input.expectedUpdatedAt || input.updatedAt || current.updatedAt || '', 40);
   const patch = Object.fromEntries(
     Object.entries(input).filter(([key]) => EDITABLE_BOOKING_FIELDS.has(key)),
