@@ -6,11 +6,17 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -302,9 +308,24 @@ try {
       customerId: 'customer-1',
       customerName: 'Customer',
       dueAt: '2026-11-05',
+      dueTime: '09:00',
       id: 'follow-up-rules-task',
       revision: 1,
       status: 'open',
+      updatedAt: now,
+    });
+    await setDoc(doc(db, 'customerFollowUpTasks', 'follow-up-rules-completed-task'), {
+      assignedToName: 'Customer Admin',
+      assignedToUid: 'customers-admin',
+      completedAt: now,
+      createdAt: now,
+      customerId: 'customer-1',
+      customerName: 'Customer',
+      dueAt: '2026-11-04',
+      dueTime: '09:00',
+      id: 'follow-up-rules-completed-task',
+      revision: 2,
+      status: 'completed',
       updatedAt: now,
     });
     await setDoc(doc(db, 'customerFollowUpEvents', 'follow-up-rules-event'), {
@@ -442,9 +463,42 @@ try {
   await assertFails(getDoc(doc(closingSettingsAdmin, 'customerFollowUpTasks', 'follow-up-rules-task')));
   await assertFails(getDoc(doc(closingSettingsAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
 
+  // Exercise the same three Firestore query shapes used by the Customer Follow-up
+  // live subscriptions. Document reads alone do not prove that list queries pass.
+  const followUpTasks = (firestore) => collection(firestore, 'customerFollowUpTasks');
+  const activeFollowUpQuery = (firestore) => query(
+    followUpTasks(firestore),
+    where('status', 'in', ['open', 'in_progress', 'snoozed']),
+    orderBy('dueAt', 'asc'),
+    orderBy('dueTime', 'asc'),
+    limit(200),
+  );
+  const completedFollowUpQuery = (firestore) => query(
+    followUpTasks(firestore),
+    where('status', '==', 'completed'),
+    orderBy('completedAt', 'desc'),
+    limit(50),
+  );
+  const followUpEventsQuery = (firestore) => query(
+    collection(firestore, 'customerFollowUpEvents'),
+    where('taskId', '==', 'follow-up-rules-task'),
+    orderBy('createdAt', 'desc'),
+    limit(30),
+  );
+
+  await assertSucceeds(getDocs(activeFollowUpQuery(dashboard)));
+  await assertSucceeds(getDocs(completedFollowUpQuery(dashboard)));
+  await assertSucceeds(getDocs(followUpEventsQuery(dashboard)));
+  await assertFails(getDocs(activeFollowUpQuery(closingSettingsAdmin)));
+  await assertFails(getDocs(completedFollowUpQuery(closingSettingsAdmin)));
+  await assertFails(getDocs(followUpEventsQuery(closingSettingsAdmin)));
+
   const customersAdmin = context('customers-admin', 'customer-admin@example.com');
   await assertSucceeds(getDoc(doc(customersAdmin, 'customerFollowUpTasks', 'follow-up-rules-task')));
   await assertSucceeds(getDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
+  await assertSucceeds(getDocs(activeFollowUpQuery(customersAdmin)));
+  await assertSucceeds(getDocs(completedFollowUpQuery(customersAdmin)));
+  await assertSucceeds(getDocs(followUpEventsQuery(customersAdmin)));
   await assertFails(setDoc(doc(customersAdmin, 'customerFollowUpTasks', 'forged-follow-up-task'), {
     assignedToName: 'Forged',
     assignedToUid: 'customers-admin',
