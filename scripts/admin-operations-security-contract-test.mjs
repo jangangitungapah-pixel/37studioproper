@@ -21,6 +21,11 @@ const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
 const dailyClosingWorker = read('workers/admin-operations-worker/src/domain/dailyClosings.js');
 const adminBookingRepository = read('src/services/adminBookingRepository.js');
+const bookingOperationsRepository = read('src/services/bookingOperationsRepository.js');
+const bookingCommunicationRepository = read('src/services/bookingCommunicationRepository.js');
+const bookingDetailDrawer = read('src/components/booking/BookingDetailDrawer.jsx');
+const publicBookingPage = read('src/pages/PublicBookingPage.jsx');
+const adminPage = read('src/pages/AdminPage.jsx');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
 const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
 const inventoryWorker = read('workers/admin-operations-worker/src/domain/inventory.js');
@@ -103,7 +108,21 @@ assert.equal(bookingSessionsWorker.includes('commitIdempotentOperation'), true);
 assert.equal(bookingSessionsWorker.includes("'bookingSessionEvents'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'"), true);
 assert.match(workerIndex, /pathname === '\/v1\/bookings\/sessions\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'schedule' \}\);[\s\S]*?body = await readJson\(request\);/);
-assert.match(rules, /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && hasPermission\('schedule'\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(
+  rules,
+  /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApprovedAdmin\(\) && canManageBookingData\(\);[\s\S]*?allow create: if isApprovedAdmin\(\)[\s\S]*?bookingSessionEventReferencesBookingAfter\(eventId\);[\s\S]*?allow update, delete: if false;/,
+  'Session history must be schedule-admin readable, paired with its booking update, and append-only.',
+);
+assert.match(
+  rules,
+  /match \/bookingScheduleDays\/\{dateId\} \{[\s\S]*?bookingDocumentChangesAfter\(request\.resource\.data\.lastBookingId, request\.resource\.data\.updatedAt\)/,
+  'Schedule revision markers must accompany a booking write.',
+);
+assert.match(
+  rules,
+  /match \/clientCalendarSlots\/\{slotId\} \{[\s\S]*?allow read: if true;[\s\S]*?bookingCalendarSlotMatchesAfter/,
+  'Public calendar slots must be generic and match the paired booking state.',
+);
 
 assert.match(
   workerIndex,
@@ -132,7 +151,23 @@ assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read
 assert.equal(rules.includes('bookkeepingBusinessDateOpen(request.resource.data)'), true);
 assert.equal(rules.includes('bookkeepingBusinessDateOpen(resource.data)'), true);
 
-assert.equal(adminBookingRepository.includes("'sessionStatus', 'sessionState', 'checkedInAt'"), true);
+assert.equal(adminBookingRepository.includes('createCanonicalManualBooking'), false);
+assert.equal(adminBookingRepository.includes('updateCanonicalManualBooking'), false);
+assert.equal(adminBookingRepository.includes('syncClientCalendarSlotsFromBookings'), false);
+assert.match(
+  bookingOperationsRepository,
+  /const EDITABLE_BOOKING_FIELDS = new Set\([\s\S]*?'title'\s*\n\]\);/,
+  'Firebase booking updates must use a narrow editable-field allow-list.',
+);
+assert.equal(bookingOperationsRepository.includes('runIdempotentFirestoreTransaction'), true);
+assert.equal(bookingOperationsRepository.includes('readCompletedOperation'), true);
+assert.equal(bookingOperationsRepository.includes('createRepositoryOperationId'), true);
+assert.equal(bookingOperationsRepository.includes('MAX_BOOKINGS_PER_DATE = 250'), true);
+assert.equal(bookingOperationsRepository.includes('validateNoShowEligibility'), true);
+assert.equal(bookingCommunicationRepository.includes("import { decideBookingRequest } from './bookingOperationsRepository.js'"), true);
+assert.equal(bookingDetailDrawer.includes("import { recordBookingSessionAction } from '../../services/bookingOperationsRepository.js'"), true);
+assert.equal(publicBookingPage.includes('endDate: dateWindow[6]'), true);
+assert.equal(adminPage.includes('syncClientCalendarSlotsFromBookings'), false);
 assert.equal(bookingWorker.includes("'sessionStatus',\n  'sessionType'"), false, 'Generic booking updates must not accept sessionStatus.');
 
 assert.equal(bookingWorker.includes("'bookkeepingEntries'"), true);
