@@ -1299,6 +1299,9 @@ match /users/{userId} {
       let bookingId = request.resource.data.bookingId;
       let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
       return existsAfter(bookingPath) &&
+        getAfter(bookingPath).data.keys().hasAll([
+          'lastSessionEventId', 'lastSessionEventType', 'lastSessionEventAt', 'updatedAt'
+        ]) &&
         getAfter(bookingPath).data.lastSessionEventId == eventId &&
         getAfter(bookingPath).data.lastSessionEventType == request.resource.data.action &&
         getAfter(bookingPath).data.lastSessionEventAt == request.resource.data.createdAt &&
@@ -1579,10 +1582,11 @@ match /users/{userId} {
           isSignedIn() &&
           isSafeClientBookingRequestCreate(request.resource.data, bookingId)
         );
-      allow update: if validBooking(request.resource.data) && (
+      allow update: if (
         (
           isApprovedAdmin() &&
           canManageBookingData() &&
+          validBooking(request.resource.data) &&
           (
             adminBookingManualUpdate(bookingId) ||
             adminBookingDecisionUpdate(bookingId) ||
@@ -1592,6 +1596,7 @@ match /users/{userId} {
         (
           isClientBookingOwner(resource.data) &&
           request.resource.data.clientUid == resource.data.clientUid &&
+          validBooking(request.resource.data) &&
           (
             clientSendsBookingMessage(bookingId) ||
             clientRequestsBookingCancellation(bookingId) ||
@@ -1823,23 +1828,27 @@ match /users/{userId} {
     match /customers/{customerId} {
       allow read: if (isApproved() && canAccessCustomerData()) ||
         (isClientAccount() && customerId == ('auth_' + request.auth.uid));
-      allow create: if validCustomer(request.resource.data, customerId) && (
-        (isApproved() && canManageCustomerData()) ||
-        (
-          isOwnClientProfile(customerId, request.resource.data) &&
-          clientProfileIdentityMatches(request.resource.data) &&
-          request.resource.data.followUpStatus == 'normal'
-        )
+      allow create: if (
+        isApproved() &&
+        canManageCustomerData() &&
+        validCustomer(request.resource.data, customerId)
+      ) || (
+        isOwnClientProfile(customerId, request.resource.data) &&
+        clientProfileIdentityMatches(request.resource.data) &&
+        request.resource.data.followUpStatus == 'normal' &&
+        validCustomer(request.resource.data, customerId)
       );
-      allow update: if validCustomer(request.resource.data, customerId) && (
-        (isApproved() && canManageCustomerData()) ||
-        (
-          isOwnClientProfile(customerId, request.resource.data) &&
-          clientProfileIdentityMatches(request.resource.data) &&
-          resource.data.authUid == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['name', 'phone', 'phoneKey', 'email', 'updatedAt'])
-        )
+      allow update: if (
+        isApproved() &&
+        canManageCustomerData() &&
+        validCustomer(request.resource.data, customerId)
+      ) || (
+        isOwnClientProfile(customerId, request.resource.data) &&
+        clientProfileIdentityMatches(request.resource.data) &&
+        resource.data.authUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'phone', 'phoneKey', 'email', 'updatedAt']) &&
+        validCustomer(request.resource.data, customerId)
       );
       allow delete: if isApproved() && canManageCustomerData();
     }
