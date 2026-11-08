@@ -152,13 +152,29 @@ service cloud.firestore {
     }
 
     function isApprovedScheduleAdmin() {
-      return isOwner() || (
-        userDocExists() &&
-        getUserData().role == 'admin' &&
-        getUserData().status == 'approved' &&
-        getUserData().permissions is map &&
-        getUserData().permissions.schedule == true
-      );
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let signedIn = isSignedIn();
+      let userExists = signedIn && exists(userPath);
+      let ownershipExists = signedIn && exists(ownershipPath);
+      let userData = userExists ? get(userPath).data : {};
+      let bootstrapOwner = signedIn &&
+        !ownershipExists &&
+        !userExists &&
+        isBootstrapOwnerEmail();
+      let approvedOwner = userExists &&
+        userData.role == 'owner' &&
+        userData.status == 'approved' &&
+        (
+          !ownershipExists ||
+          get(ownershipPath).data.currentOwnerUid == request.auth.uid
+        );
+      let approvedScheduleAdmin = userExists &&
+        userData.role == 'admin' &&
+        userData.status == 'approved' &&
+        userData.permissions is map &&
+        userData.permissions.schedule == true;
+      return bootstrapOwner || approvedOwner || approvedScheduleAdmin;
     }
 
     function canAccessCustomerData() {
@@ -2272,6 +2288,7 @@ match /users/{userId} {
 
     function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
+      let bookingAfter = getAfter(bookingPath).data;
       return isApprovedScheduleAdmin() &&
         data.id == entryId &&
         data.actorUid == request.auth.uid &&
@@ -2282,18 +2299,18 @@ match /users/{userId} {
         data.sourceAction == 'payment' &&
         validString(data.sourceBookingId, 1, 160) &&
         existsAfter(bookingPath) &&
-        getAfter(bookingPath).data.source == 'admin' &&
-        getAfter(bookingPath).data.paymentHistory is list &&
-        getAfter(bookingPath).data.paymentHistory.size() == 1 &&
+        bookingAfter.source == 'admin' &&
+        bookingAfter.paymentHistory is list &&
+        bookingAfter.paymentHistory.size() == 1 &&
         data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
-        getAfter(bookingPath).data.paymentHistory[0].id == data.sourceEventId &&
-        getAfter(bookingPath).data.paymentHistory[0].amount == data.amount &&
-        getAfter(bookingPath).data.paymentHistory[0].method == data.paymentMethod &&
-        getAfter(bookingPath).data.paymentHistory[0].date == data.date &&
-        getAfter(bookingPath).data.paymentHistory[0].createdAt == data.createdAt &&
-        getAfter(bookingPath).data.paymentHistory[0].idempotencyKey == data.idempotencyKey &&
-        getAfter(bookingPath).data.paymentHistory[0].actorUid == request.auth.uid &&
-        getAfter(bookingPath).data.createdAt == data.createdAt;
+        bookingAfter.paymentHistory[0].id == data.sourceEventId &&
+        bookingAfter.paymentHistory[0].amount == data.amount &&
+        bookingAfter.paymentHistory[0].method == data.paymentMethod &&
+        bookingAfter.paymentHistory[0].date == data.date &&
+        bookingAfter.paymentHistory[0].createdAt == data.createdAt &&
+        bookingAfter.paymentHistory[0].idempotencyKey == data.idempotencyKey &&
+        bookingAfter.paymentHistory[0].actorUid == request.auth.uid &&
+        bookingAfter.createdAt == data.createdAt;
     }
 
     match /bookkeepingEntries/{entryId} {
@@ -2303,6 +2320,10 @@ match /users/{userId} {
 
       allow create:
         if (
+          validBookkeepingEntry(request.resource.data, entryId) &&
+          bookkeepingBusinessDateOpen(request.resource.data) &&
+          bookingInitialPaymentLedgerCreateAllowed(request.resource.data, entryId)
+        ) || (
           isApprovedAdmin() &&
           (
             canManageBookkeepingData() ||
@@ -2317,10 +2338,6 @@ match /users/{userId} {
           reconciledBookkeepingWriteAllowed(
             request.resource.data
           )
-        ) || (
-          validBookkeepingEntry(request.resource.data, entryId) &&
-          bookkeepingBusinessDateOpen(request.resource.data) &&
-          bookingInitialPaymentLedgerCreateAllowed(request.resource.data, entryId)
         );
 
       allow update:
