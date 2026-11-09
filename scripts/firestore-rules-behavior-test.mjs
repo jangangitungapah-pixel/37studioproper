@@ -394,9 +394,209 @@ try {
   await assertFails(getDoc(doc(inventoryAdmin, 'procurementPayments', 'payment-rules-1')));
   await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementPayments', 'payment-rules-1')));
 
-  await assertFails(setDoc(doc(inventoryAdmin, 'suppliers', 'supplier-browser-create'), {
-    id: 'supplier-browser-create', name: 'Forged Supplier', status: 'active', createdAt: now, updatedAt: now,
+  const supplierRequestId = 'supplier-direct-rules-001';
+  const supplierOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'supplier-create',
+    requestId: supplierRequestId,
+  });
+  const directSupplierId = 'sup_' + supplierOperationId.slice(3);
+  const directSupplierEventId = 'pev_' + supplierOperationId.slice(3);
+  const supplierPayload = {
+    name: 'Direct Rules Supplier',
+    contactName: 'Supplier Contact',
+    phone: '08123456789',
+    email: 'supplier@example.com',
+    address: 'Tangerang',
+    notes: 'Created from Firestore Web SDK',
+  };
+  const directSupplier = {
+    id: directSupplierId,
+    ...supplierPayload,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+    createdByUid: 'inventory-admin',
+    createdByName: 'Inventory Admin',
+    lastOperationId: supplierOperationId,
+    lastOperationAction: 'create',
+    lastEventId: directSupplierEventId,
+  };
+  const directSupplierEvent = {
+    id: directSupplierEventId,
+    entityType: 'supplier',
+    entityId: directSupplierId,
+    action: 'created',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: now,
+    operationId: supplierOperationId,
+  };
+  const supplierBatch = writeBatch(inventoryAdmin);
+  supplierBatch.set(doc(inventoryAdmin, 'suppliers', directSupplierId), directSupplier);
+  supplierBatch.set(doc(inventoryAdmin, 'procurementEvents', directSupplierEventId), directSupplierEvent);
+  supplierBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', supplierOperationId),
+    {
+      operationId: supplierOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'supplier-create',
+      requestId: supplierRequestId,
+      payloadHash: await createRepositoryPayloadHash(supplierPayload),
+      resultCollection: 'suppliers',
+      resultId: directSupplierId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(supplierBatch.commit());
+  await assertFails(updateDoc(doc(inventoryAdmin, 'suppliers', directSupplierId), { status: 'inactive' }));
+  await assertFails(deleteDoc(doc(inventoryAdmin, 'suppliers', directSupplierId)));
+  await assertFails(updateDoc(doc(inventoryAdmin, 'procurementEvents', directSupplierEventId), {
+    action: 'forged',
   }));
+
+  const poRequestId = 'purchase-order-direct-rules-001';
+  const poOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'purchase-order-create',
+    requestId: poRequestId,
+  });
+  const directPoId = 'po_' + poOperationId.slice(3);
+  const directPoEventId = 'pev_' + poOperationId.slice(3);
+  const directPoItems = [{
+    lineId: 'line_' + poOperationId.slice(3, 15) + '_001',
+    inventoryItemId: 'item-1',
+    name: 'Cable',
+    category: 'Cable',
+    quantity: 2,
+    receivedQuantity: 0,
+    unit: 'pcs',
+    unitPrice: 10000,
+    lineTotal: 20000,
+  }];
+  const poPayload = {
+    supplierId: directSupplierId,
+    orderDate: '2026-08-14',
+    expectedAt: '',
+    notes: 'Direct Firestore PO',
+    items: [{
+      lineId: directPoItems[0].lineId,
+      inventoryItemId: 'item-1',
+      quantity: 2,
+      unitPrice: 10000,
+    }],
+  };
+  const directPurchaseOrder = {
+    id: directPoId,
+    poNumber: 'PO-20260814-' + directPoId.slice(-8).toUpperCase(),
+    supplierId: directSupplierId,
+    supplierName: 'Direct Rules Supplier',
+    items: directPoItems,
+    totalAmount: 20000,
+    paidAmount: 0,
+    status: 'draft',
+    orderDate: '2026-08-14',
+    expectedAt: '',
+    notes: 'Direct Firestore PO',
+    createdAt: now,
+    updatedAt: now,
+    createdByUid: 'inventory-admin',
+    createdByName: 'Inventory Admin',
+    lastOperationId: poOperationId,
+    lastOperationAction: 'create',
+    lastEventId: directPoEventId,
+  };
+  const directPoEvent = {
+    id: directPoEventId,
+    entityType: 'purchase_order',
+    entityId: directPoId,
+    action: 'created',
+    fromStatus: '',
+    toStatus: 'draft',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: now,
+    amount: 20000,
+    operationId: poOperationId,
+  };
+  const poBatch = writeBatch(inventoryAdmin);
+  poBatch.set(doc(inventoryAdmin, 'purchaseOrders', directPoId), directPurchaseOrder);
+  poBatch.set(doc(inventoryAdmin, 'procurementEvents', directPoEventId), directPoEvent);
+  poBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', poOperationId),
+    {
+      operationId: poOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'purchase-order-create',
+      requestId: poRequestId,
+      payloadHash: await createRepositoryPayloadHash(poPayload),
+      resultCollection: 'purchaseOrders',
+      resultId: directPoId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(poBatch.commit());
+
+  const transitionRequestId = 'purchase-order-transition-rules-001';
+  const transitionOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'purchase-order-transition',
+    requestId: transitionRequestId,
+  });
+  const transitionEventId = 'pev_' + transitionOperationId.slice(3);
+  const submittedAt = '2026-08-14T08:05:00.000Z';
+  const submittedPo = {
+    ...directPurchaseOrder,
+    status: 'submitted',
+    updatedAt: submittedAt,
+    lastOperationId: transitionOperationId,
+    lastOperationAction: 'transition',
+    lastEventId: transitionEventId,
+  };
+  const transitionEvent = {
+    id: transitionEventId,
+    entityType: 'purchase_order',
+    entityId: directPoId,
+    action: 'status_changed',
+    fromStatus: 'draft',
+    toStatus: 'submitted',
+    reason: '',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: submittedAt,
+    operationId: transitionOperationId,
+  };
+  const transitionPayload = {
+    purchaseOrderId: directPoId,
+    expectedUpdatedAt: now,
+    status: 'submitted',
+    reason: '',
+  };
+  const transitionBatch = writeBatch(inventoryAdmin);
+  transitionBatch.set(doc(inventoryAdmin, 'purchaseOrders', directPoId), submittedPo);
+  transitionBatch.set(doc(inventoryAdmin, 'procurementEvents', transitionEventId), transitionEvent);
+  transitionBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', transitionOperationId),
+    {
+      operationId: transitionOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'purchase-order-transition',
+      requestId: transitionRequestId,
+      payloadHash: await createRepositoryPayloadHash(transitionPayload),
+      resultCollection: 'purchaseOrders',
+      resultId: directPoId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(transitionBatch.commit());
+  await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', directPoId), { status: 'received' }));
+
   await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1'), { status: 'received' }));
   await assertFails(deleteDoc(doc(inventoryAdmin, 'goodsReceipts', 'receipt-rules-1')));
   await assertFails(setDoc(doc(inventoryAdmin, 'procurementEvents', 'procurement-event-browser-create'), {
