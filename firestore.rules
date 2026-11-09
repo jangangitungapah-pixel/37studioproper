@@ -2808,27 +2808,54 @@ match /users/{userId} {
     }
 
 
+    function validFinanceBookkeepingEntry(data, entryId) {
+      return data.keys().hasOnly([
+          'id', 'type', 'category', 'title', 'amount', 'date',
+          'paymentMethod', 'note', 'source', 'sourceAttendanceId',
+          'sourceAttendanceDate', 'sourceGuardPersonId', 'sourceBookingId',
+          'sourceFeeEntryId', 'sourceEventId', 'sourceAction', 'sourceWorkOrderId',
+          'actorName', 'actorUid', 'idempotencyKey', 'immutable',
+          'operationId', 'sourceProofId', 'reversalOf', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == entryId &&
+        data.type in ['income', 'expense'] &&
+        validString(data.category, 1, 80) &&
+        validString(data.title, 1, 160) &&
+        validNumber(data.amount, 1, 1000000000) &&
+        validIsoDate(data.date) &&
+        data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
+        validString(data.note, 0, 2000) &&
+        data.source in ['booking-payment', 'booking-refund'] &&
+        validString(data.sourceBookingId, 1, 160) &&
+        validString(data.sourceEventId, 1, 240) &&
+        validString(data.actorName, 1, 120) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.idempotencyKey, 8, 240) &&
+        validString(data.operationId, 8, 80) &&
+        data.immutable == true &&
+        validOptionalString(data, 'sourceProofId', 160) &&
+        data.reversalOf == '' &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
     function financeBookingPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
-      let bookingBefore = get(bookingPath).data;
       let bookingAfter = getAfter(bookingPath).data;
-      let history = bookingAfter.paymentHistory;
-      let event = history[history.size() - 1];
-      let beforeCount = ('paymentHistory' in bookingBefore) ? bookingBefore.paymentHistory.size() : 0;
+      let paymentHistory = bookingAfter.paymentHistory;
+      let event = paymentHistory[paymentHistory.size() - 1];
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(data.date + '__main');
       let closingAfter = getAfter(closingPath).data;
-      return exists(bookingPath) &&
-        existsAfter(bookingPath) &&
-        history.size() == beforeCount + 1 &&
+      return existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction in ['payment', 'proof-approve'] &&
         bookingAfter.lastFinanceBusinessDate == data.date &&
         bookingAfter.lastFinanceOperationId == data.operationId &&
         bookingAfter.lastFinanceLedgerEntryId == entryId &&
-        bookingAfter.lastFinanceEventId == event.id &&
+        bookingAfter.lastFinanceEventId == data.sourceEventId &&
         bookingAfter.lastFinanceProofId == data.sourceProofId &&
+        event.id == data.sourceEventId &&
         event.ledgerEntryId == entryId &&
         event.operationId == data.operationId &&
-        event.id == data.sourceEventId &&
         event.amount == data.amount &&
         event.method == data.paymentMethod &&
         event.date == data.date &&
@@ -2844,6 +2871,8 @@ match /users/{userId} {
         data.operationId is string &&
         data.idempotencyKey == event.idempotencyKey &&
         existsAfter(closingPath) &&
+        closingAfter.status in ['open', 'reopened'] &&
+        closingAfter.businessDate == data.date &&
         closingAfter.lastOperationAction == bookingAfter.lastFinanceAction &&
         closingAfter.lastOperationId == data.operationId &&
         closingAfter.lastBookingId == data.sourceBookingId &&
@@ -2853,25 +2882,21 @@ match /users/{userId} {
 
     function financeBookingRefundLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
-      let bookingBefore = get(bookingPath).data;
       let bookingAfter = getAfter(bookingPath).data;
-      let history = bookingAfter.refundHistory;
-      let event = history[history.size() - 1];
-      let beforeCount = ('refundHistory' in bookingBefore) ? bookingBefore.refundHistory.size() : 0;
+      let refundHistory = bookingAfter.refundHistory;
+      let event = refundHistory[refundHistory.size() - 1];
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(data.date + '__main');
       let closingAfter = getAfter(closingPath).data;
-      return exists(bookingPath) &&
-        existsAfter(bookingPath) &&
-        history.size() == beforeCount + 1 &&
+      return existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction == 'refund' &&
         bookingAfter.lastFinanceBusinessDate == data.date &&
         bookingAfter.lastFinanceOperationId == data.operationId &&
         bookingAfter.lastFinanceLedgerEntryId == entryId &&
-        bookingAfter.lastFinanceEventId == event.id &&
+        bookingAfter.lastFinanceEventId == data.sourceEventId &&
         bookingAfter.lastFinanceProofId == '' &&
+        event.id == data.sourceEventId &&
         event.ledgerEntryId == entryId &&
         event.operationId == data.operationId &&
-        event.id == data.sourceEventId &&
         event.amount == data.amount &&
         event.method == data.paymentMethod &&
         event.date == data.date &&
@@ -2886,6 +2911,8 @@ match /users/{userId} {
         data.actorUid == request.auth.uid &&
         data.idempotencyKey == event.idempotencyKey &&
         existsAfter(closingPath) &&
+        closingAfter.status in ['open', 'reopened'] &&
+        closingAfter.businessDate == data.date &&
         closingAfter.lastOperationAction == 'refund' &&
         closingAfter.lastOperationId == data.operationId &&
         closingAfter.lastBookingId == data.sourceBookingId &&
@@ -2896,8 +2923,7 @@ match /users/{userId} {
     function financeBookingLedgerCreateAllowed(data, entryId) {
       return isApprovedAdmin() &&
         hasPermission('billing') &&
-        validBookkeepingEntry(data, entryId) &&
-        bookkeepingBusinessDateOpen(data) &&
+        validFinanceBookkeepingEntry(data, entryId) &&
         (
           data.source == 'booking-payment' && data.sourceAction == 'payment'
             ? data.type == 'income' && data.category == 'booking' &&
@@ -3132,18 +3158,10 @@ match /users/{userId} {
     }
 
     function financeActivityLedgerCompanionMatchesAfter(data, bookingAfter) {
-      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
-      let ledgerAfter = getAfter(ledgerPath).data;
       return data.lastLedgerEntryId is string &&
         data.lastLedgerEntryId.size() > 0 &&
-        existsAfter(ledgerPath) &&
-        ledgerAfter.operationId == data.lastOperationId &&
-        ledgerAfter.sourceBookingId == data.lastBookingId &&
-        ledgerAfter.sourceEventId == bookingAfter.lastFinanceEventId &&
-        ledgerAfter.sourceProofId == data.lastProofId &&
-        ledgerAfter.amount is number &&
-        ledgerAfter.actorUid == request.auth.uid &&
-        ledgerAfter.date == data.businessDate;
+        bookingAfter.lastFinanceLedgerEntryId == data.lastLedgerEntryId &&
+        bookingAfter.lastFinanceProofId == data.lastProofId;
     }
 
     function financeActivityVoidCompanionMatchesAfter(data, bookingAfter) {
@@ -3167,14 +3185,45 @@ match /users/{userId} {
           action == 'void'
             ? financeActivityVoidCompanionMatchesAfter(data, bookingAfter)
             : financeActivityLedgerCompanionMatchesAfter(data, bookingAfter)
-        ) &&
-        repositoryOperationMatchesAfter(
-          data.lastOperationId,
-          'finance',
-          action,
-          'bookings',
-          data.lastBookingId
         );
+    }
+
+    function validFinanceActivityFence(data, closingId) {
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let allowedChanges = [
+        'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastBookingId',
+        'lastLedgerEntryId', 'lastProofId'
+      ];
+      return data is map &&
+        (
+          exists(fencePath)
+            ? data.diff(get(fencePath).data).affectedKeys().hasOnly(allowedChanges)
+            : data.keys().hasOnly([
+                'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+                'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+                'lastOperationId', 'lastOperationAction', 'lastBookingId',
+                'lastLedgerEntryId', 'lastProofId'
+              ])
+        ) &&
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['open', 'reopened'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastActivityByUid == request.auth.uid &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() > 0 &&
+        data.lastOperationAction in ['payment', 'proof-approve', 'refund', 'void'] &&
+        data.lastBookingId is string &&
+        data.lastBookingId.size() > 0 &&
+        data.lastLedgerEntryId is string &&
+        data.lastProofId is string;
     }
 
     function financeActivityFenceUpdateAllowed(closingId) {
@@ -3182,14 +3231,7 @@ match /users/{userId} {
       let action = data.lastOperationAction;
       return isApprovedAdmin() &&
         hasPermission('billing') &&
-        validCashClosingSession(data, closingId) &&
-        data.status in ['open', 'reopened'] &&
-        action in ['payment', 'proof-approve', 'refund', 'void'] &&
-        data.lastActivityByUid == request.auth.uid &&
-        validIsoTimestampString(data.lastActivityAt) &&
-        data.lastOperationId is string &&
-        data.lastBookingId is string &&
-        data.lastBookingId.size() > 0 &&
+        validFinanceActivityFence(data, closingId) &&
         activityRevisionIncrements(closingId, data) &&
         (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
           get(/databases/$(database)/documents/cashClosingSessions/$(closingId)).data.status != 'closed') &&
