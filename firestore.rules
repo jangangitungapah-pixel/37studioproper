@@ -203,7 +203,11 @@ service cloud.firestore {
     }
 
     function canAccessInventoryData() {
-      return hasPermission('dashboard') || hasPermission('inventory');
+      return hasPermission('dashboard') || hasPermission('inventory') || canManageInventoryData();
+    }
+
+    function canManageInventoryData() {
+      return hasPermission('inventory');
     }
 
     function validString(value, minSize, maxSize) {
@@ -930,6 +934,22 @@ match /users/{userId} {
         validOptionalString(data, 'voidedByUid', 128) &&
         validOptionalString(data, 'voidReason', 600) &&
         (!data.keys().hasAny(['appliedDiscounts']) || (data.appliedDiscounts is list && data.appliedDiscounts.size() <= 50));
+    }
+
+    function adminBookingFinanceFieldsUnchanged(before, after) {
+      return !after.diff(before).affectedKeys().hasAny([
+          'paymentHistory', 'refundHistory', 'paymentStatus', 'status',
+          'paymentStatusCanonical', 'invoiceStatus', 'invoiceAmount',
+          'paidAmount', 'dpAmount', 'refundedAmount', 'refundStatus',
+          'lastPaymentAt', 'lastPaymentMethod', 'lastRefundAt',
+          'lastRefundMethod', 'lastRefundReason', 'refundCompletedAt',
+          'paymentStatusBeforeRefund', 'voidReason', 'voidedAt',
+          'lastFinanceAction', 'lastFinanceBusinessDate', 'lastFinanceEventId',
+          'lastFinanceLedgerEntryId', 'lastFinanceOperationId', 'lastFinanceProofId',
+          'voidedByName', 'voidedByUid', 'paymentMethod', 'total',
+          'subtotal', 'discountAmount', 'appliedDiscounts',
+          'bookingCode', 'bookingId', 'invoiceNumber'
+        ]);
     }
 
     function validClientMessageSummary(data) {
@@ -1932,7 +1952,9 @@ match /users/{userId} {
             'lastFinanceAction', 'paymentHistory', 'refundHistory'
           ])
           ? adminBookingFinanceUpdateAllowed(bookingId)
-          : isApprovedScheduleAdmin() && adminBookingOperationalUpdate(bookingId);
+          : isApprovedScheduleAdmin() &&
+          adminBookingFinanceFieldsUnchanged(resource.data, request.resource.data) &&
+          adminBookingOperationalUpdate(bookingId);
     }
 
     match /bookings/{bookingId} {
@@ -3355,6 +3377,48 @@ match /users/{userId} {
         validCashClosingEvent(request.resource.data, eventId) &&
         cashClosingEventReferencesSessionAfter(eventId);
       allow update, delete: if false;
+    }
+
+    function validInventoryItem(data, itemId) {
+      return data.keys().hasOnly(['id', 'name', 'category', 'type', 'quantity', 'unit', 'minStock', 'condition', 'status', 'location', 'note', 'createdAt', 'updatedAt']) &&
+        data.id == itemId &&
+        validString(data.name, 1, 160) &&
+        validString(data.category, 1, 80) &&
+        validString(data.type, 1, 40) &&
+        validNumber(data.quantity, 0, 1000000) &&
+        validString(data.unit, 1, 40) &&
+        validNumber(data.minStock, 0, 1000000) &&
+        validString(data.condition, 1, 40) &&
+        validString(data.status, 1, 40) &&
+        validString(data.location, 0, 240) &&
+        validString(data.note, 0, 2000) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
+    match /inventoryItems/{itemId} {
+      allow read: if isApproved() && canAccessInventoryData() ||
+        (false && validInventoryItem(resource.data, itemId));
+      // Canonical inventory writes run through Admin Operations Worker so item
+      // metadata, stock movements, idempotency keys, and audit records commit atomically.
+      allow create, update, delete: if false;
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Work orders and their lifecycle are written only by Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Maintenance history is append-only and server-authoritative.
+      allow create, update, delete: if false;
     }
 
     function validGalleryItem(data) {
