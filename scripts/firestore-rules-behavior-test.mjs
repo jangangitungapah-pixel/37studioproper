@@ -10,9 +10,14 @@ import {
   doc,
   getDoc,
   setDoc,
+  serverTimestamp,
   updateDoc,
   writeBatch,
 } from 'firebase/firestore';
+import {
+  createRepositoryOperationId,
+  createRepositoryPayloadHash,
+} from '../src/lib/firestoreRepositoryFoundation.js';
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   throw new Error('Run this test through `npm run test:rules`.');
@@ -503,12 +508,91 @@ try {
     idempotencyKey: 'late-manual-entry', immutable: false, note: '', paymentMethod: 'cash',
     reversalOf: '', source: 'manual', title: 'Late expense', type: 'expense', updatedAt: now,
   }));
-  await assertSucceeds(setDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-open-date'), {
+  // Browser-style direct journal writes must remain denied. A valid write
+  // needs its journal, activity fence, and immutable operation marker in one batch.
+  await assertFails(setDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-open-date-direct'), {
     actorName: 'Bookkeeping Admin', actorUid: 'bookkeeping-admin', amount: 30000,
-    category: 'Operational', createdAt: now, date: '2026-08-15', id: 'manual-open-date',
-    idempotencyKey: 'manual-open-date', immutable: false, note: '', paymentMethod: 'cash',
+    category: 'Operational', createdAt: now, date: '2026-08-15', id: 'manual-open-date-direct',
+    idempotencyKey: 'manual-open-date-direct', immutable: false, note: '', paymentMethod: 'cash',
     reversalOf: '', source: 'manual', title: 'Open date expense', type: 'expense', updatedAt: now,
   }));
+
+  const manualRequestId = 'manual-open-date-atomic-001';
+  const manualAction = 'manual-create';
+  const manualPayload = {
+    amount: 30000,
+    category: 'Operational',
+    date: '2026-08-15',
+    note: '',
+    paymentMethod: 'cash',
+    title: 'Open date expense',
+    type: 'expense',
+  };
+  const manualOperationId = await createRepositoryOperationId({
+    actorUid: 'bookkeeping-admin',
+    scope: 'bookkeeping',
+    action: manualAction,
+    requestId: manualRequestId,
+  });
+  const manualPayloadHash = await createRepositoryPayloadHash(manualPayload);
+  const manualEntryId = 'manual-open-date-atomic';
+  const manualClosingId = '2026-08-15__main';
+  const manualEntry = {
+    actorName: 'Bookkeeping Admin',
+    actorUid: 'bookkeeping-admin',
+    ...manualPayload,
+    createdAt: now,
+    id: manualEntryId,
+    idempotencyKey: manualRequestId,
+    immutable: false,
+    operationId: manualOperationId,
+    reversalOf: '',
+    source: 'manual',
+    sourceAction: '',
+    sourceAttendanceDate: '',
+    sourceAttendanceId: '',
+    sourceBookingId: '',
+    sourceEventId: '',
+    sourceFeeEntryId: '',
+    sourceGuardPersonId: '',
+    sourceWorkOrderId: '',
+    updatedAt: now,
+  };
+  const manualFence = {
+    activityRevision: 1,
+    businessDate: '2026-08-15',
+    createdAt: now,
+    id: manualClosingId,
+    lastActivityAt: now,
+    lastActivityByUid: 'bookkeeping-admin',
+    lastBookingId: '',
+    lastLedgerEntryId: manualEntryId,
+    lastOperationAction: manualAction,
+    lastOperationId: manualOperationId,
+    lastProofId: '',
+    registerId: 'main',
+    status: 'open',
+    updatedAt: now,
+  };
+  const manualOperationMarker = {
+    action: manualAction,
+    actorUid: 'bookkeeping-admin',
+    createdAt: serverTimestamp(),
+    operationId: manualOperationId,
+    payloadHash: manualPayloadHash,
+    requestId: manualRequestId,
+    resultCollection: 'bookkeepingEntries',
+    resultId: manualEntryId,
+    scope: 'bookkeeping',
+  };
+  const manualWriteBatch = writeBatch(bookkeeping);
+  manualWriteBatch.set(doc(bookkeeping, 'bookkeepingEntries', manualEntryId), manualEntry);
+  manualWriteBatch.set(doc(bookkeeping, 'cashClosingSessions', manualClosingId), manualFence);
+  manualWriteBatch.set(
+    doc(bookkeeping, 'users', 'bookkeeping-admin', 'repositoryOperations', manualOperationId),
+    manualOperationMarker,
+  );
+  await assertSucceeds(manualWriteBatch.commit());
 
   const schedule = context('schedule-admin', 'schedule@example.com');
   await assertSucceeds(getDoc(doc(schedule, 'bookingSessionEvents', 'session-event-1')));

@@ -2066,7 +2066,14 @@ match /users/{userId} {
             proof.status == 'rejected' &&
             proof.reviewDecision == 'rejected' &&
             validString(proof.adminNote, 4, 600) &&
-            !proof.keys().hasAny(['approvedAmount', 'approvedMethod'])
+            !proof.keys().hasAny(['approvedAmount', 'approvedMethod']) &&
+            repositoryOperationMatchesAfter(
+              proof.reviewOperationId,
+              'finance',
+              'proof-reject',
+              'paymentProofs',
+              proofId
+            )
           ) ||
           (
             proof.status == 'approved' &&
@@ -3166,7 +3173,7 @@ match /users/{userId} {
         data.registerId == 'main' &&
         data.revision is int &&
         data.revision >= 1 &&
-        validString(data.sourceFingerprint, 0, 64) &&
+        validString(data.get('sourceFingerprint', ''), 0, 64) &&
         data.type == 'cash-closing-event' &&
         validString(data.operationId, 8, 80) &&
         (!data.keys().hasAny(['snapshot']) || data.snapshot is map) &&

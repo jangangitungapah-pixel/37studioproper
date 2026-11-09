@@ -120,6 +120,8 @@ for (const required of [
 }
 assert.equal(rules.includes("allow create: if clientCreatesPaymentProof(request.resource.data, proofId);"), true);
 assert.equal(rules.includes("allow update: if paymentProofReviewUpdateAllowed(proofId);"), true);
+assert.equal(rules.includes(`'proof-reject',\n              'paymentProofs',\n              proofId`), true,
+  'Payment proof rejection must require the same-transaction repository operation marker.');
 assert.equal(rules.includes('validBooking(request.resource.data, bookingId)'), false);
 assert.equal(rules.includes('proofUrl, 0, 1200'), true);
 assert.equal(rules.includes('data.proofUrl == \'\''), true);
