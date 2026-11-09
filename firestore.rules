@@ -1997,7 +1997,11 @@ match /users/{userId} {
         bookingExists(data.bookingId) &&
         bookingData(data.bookingId).clientUid == request.auth.uid &&
         bookingData(data.bookingId).status != 'void' &&
-        bookingData(data.bookingId).paymentStatus != 'void';
+        bookingData(data.bookingId).invoiceStatus != 'void' &&
+        bookingData(data.bookingId).paymentStatus != 'void' &&
+        bookingData(data.bookingId).paymentStatus != 'refunded' &&
+        bookingData(data.bookingId).paymentStatusCanonical != 'void' &&
+        bookingData(data.bookingId).paymentStatusCanonical != 'refunded';
     }
 
     function validBookingMessage(data, messageId) {
