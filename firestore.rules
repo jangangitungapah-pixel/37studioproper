@@ -1425,9 +1425,7 @@ match /users/{userId} {
       let history = bookingAfter.refundHistory;
       let event = history[history.size() - 1];
       let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(bookingAfter.lastFinanceLedgerEntryId);
-      let ledgerAfter = getAfter(ledgerPath).data;
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(bookingAfter.lastFinanceBusinessDate + '__main');
-      let closingAfter = getAfter(closingPath).data;
       let currentPaid = financeBookingNetPaid(resource.data);
       let currentOutstanding = financeBookingOutstanding(resource.data, currentPaid);
       return changed.hasOnly([
@@ -1467,22 +1465,7 @@ match /users/{userId} {
         event.date == bookingAfter.lastFinanceBusinessDate &&
         event.method in ['cash', 'transfer', 'qris', 'other'] &&
         existsAfter(ledgerPath) &&
-        ledgerAfter.id == bookingAfter.lastFinanceLedgerEntryId &&
-        ledgerAfter.operationId == bookingAfter.lastFinanceOperationId &&
-        ledgerAfter.source == 'booking-refund' &&
-        ledgerAfter.sourceAction == 'refund' &&
-        ledgerAfter.sourceBookingId == bookingId &&
-        ledgerAfter.sourceEventId == event.id &&
-        ledgerAfter.amount == event.amount &&
-        ledgerAfter.paymentMethod == event.method &&
-        ledgerAfter.sourceProofId == '' &&
-        ledgerAfter.actorUid == request.auth.uid &&
         existsAfter(closingPath) &&
-        closingAfter.lastOperationAction == 'refund' &&
-        closingAfter.lastOperationId == bookingAfter.lastFinanceOperationId &&
-        closingAfter.lastBookingId == bookingId &&
-        closingAfter.lastLedgerEntryId == bookingAfter.lastFinanceLedgerEntryId &&
-        closingAfter.lastProofId == '' &&
         repositoryOperationMatchesAfter(
           bookingAfter.lastFinanceOperationId,
           'finance',
@@ -2877,6 +2860,8 @@ match /users/{userId} {
     function financeBookingRefundLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingAfter = getAfter(bookingPath).data;
+      let refundHistory = bookingAfter.refundHistory;
+      let event = refundHistory[refundHistory.size() - 1];
       return existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction == 'refund' &&
         bookingAfter.lastFinanceBusinessDate == data.date &&
@@ -2884,9 +2869,21 @@ match /users/{userId} {
         bookingAfter.lastFinanceLedgerEntryId == entryId &&
         bookingAfter.lastFinanceEventId == data.sourceEventId &&
         bookingAfter.lastFinanceProofId == '' &&
+        event.id == data.sourceEventId &&
+        event.ledgerEntryId == entryId &&
+        event.operationId == data.operationId &&
+        event.amount == data.amount &&
+        event.method == data.paymentMethod &&
+        event.date == data.date &&
+        event.actorUid == request.auth.uid &&
+        event.idempotencyKey == data.idempotencyKey &&
         data.id == entryId &&
         data.source == 'booking-refund' &&
         data.sourceAction == 'refund' &&
+        data.type == 'expense' &&
+        data.category == 'refund' &&
+        data.sourceProofId == '' &&
+        data.immutable == true &&
         data.actorUid == request.auth.uid;
     }
 
