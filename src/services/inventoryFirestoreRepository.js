@@ -4,6 +4,7 @@ import {
   getDocFromServer,
   limit,
   query,
+  setDoc,
   where,
 } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -108,21 +109,48 @@ async function assertNoActiveMaintenance(transaction, itemId) {
   }
 }
 
+function stableSerialize(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + stableSerialize(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
+async function ensureInventoryMovement(movement) {
+  const movementRef = doc(firestoreDb, MOVEMENTS, movement.id);
+  const current = await getDocFromServer(movementRef);
+  if (current.exists()) {
+    if (stableSerialize(current.data()) !== stableSerialize(movement)) {
+      throw new Error('Movement inventory yang tersimpan tidak cocok dengan snapshot item.');
+    }
+    return { id: current.id, ...current.data() };
+  }
+  try {
+    await setDoc(movementRef, movement);
+  } catch (error) {
+    const retry = await getDocFromServer(movementRef);
+    if (!retry.exists() || stableSerialize(retry.data()) !== stableSerialize(movement)) throw error;
+    return { id: retry.id, ...retry.data() };
+  }
+  return { id: movement.id, ...movement };
+}
+
 async function hydrate(operation, action) {
   const itemSnapshot = await getDocFromServer(doc(firestoreDb, ITEMS, operation.result.id));
   if (!itemSnapshot.exists()) throw new Error('Inventory item hasil operasi tidak ditemukan.');
   const item = { id: itemSnapshot.id, ...itemSnapshot.data() };
-  const movementId = item.lastMovementId;
-  const movementSnapshot = movementId
-    ? await getDocFromServer(doc(firestoreDb, MOVEMENTS, movementId))
-    : null;
-  if (!movementSnapshot?.exists()) throw new Error('Movement hasil operasi tidak ditemukan.');
-  return {
-    item,
-    movement: { id: movementSnapshot.id, ...movementSnapshot.data() },
-    duplicate: operation.replayed,
-    action,
-  };
+  let movement;
+  if (item.lastMovementSnapshot?.id === item.lastMovementId) {
+    movement = await ensureInventoryMovement(item.lastMovementSnapshot);
+  } else {
+    const movementSnapshot = item.lastMovementId
+      ? await getDocFromServer(doc(firestoreDb, MOVEMENTS, item.lastMovementId))
+      : null;
+    if (!movementSnapshot?.exists()) throw new Error('Movement hasil operasi tidak ditemukan.');
+    movement = { id: movementSnapshot.id, ...movementSnapshot.data() };
+  }
+  return { item, movement, duplicate: operation.replayed, action };
 }
 
 export async function saveCanonicalInventoryItem(input = {}, idempotencyKey = '') {
@@ -198,6 +226,7 @@ export async function saveCanonicalInventoryItem(input = {}, idempotencyKey = ''
         lastOperationId: marker.operationId,
         lastOperationAction: action,
         lastMovementId: movementId,
+        lastMovementSnapshot: {},
       };
       const movement = {
         id: movementId,
@@ -227,8 +256,8 @@ export async function saveCanonicalInventoryItem(input = {}, idempotencyKey = ''
           unit: item.unit,
         },
       };
+      item.lastMovementSnapshot = movement;
       transaction.set(itemRef, item);
-      transaction.set(movementRef, movement);
       return { collection: ITEMS, id: itemId };
     },
   });
@@ -271,6 +300,7 @@ export async function archiveCanonicalInventoryItem(input = {}, idempotencyKey =
         lastOperationId: marker.operationId,
         lastOperationAction: action,
         lastMovementId: movementId,
+        lastMovementSnapshot: {},
       };
       const movement = {
         id: movementId,
@@ -291,8 +321,8 @@ export async function archiveCanonicalInventoryItem(input = {}, idempotencyKey =
         previousMetadata: { status: current.status, condition: current.condition },
         nextMetadata: { status: 'inactive', condition: current.condition },
       };
+      item.lastMovementSnapshot = movement;
       transaction.set(itemRef, item);
-      transaction.set(movementRef, movement);
       return { collection: ITEMS, id: itemId };
     },
   });
@@ -340,6 +370,7 @@ export async function adjustCanonicalInventory(input = {}, idempotencyKey = '') 
         lastOperationId: marker.operationId,
         lastOperationAction: action,
         lastMovementId: movementId,
+        lastMovementSnapshot: {},
       };
       const movement = {
         id: movementId,
@@ -359,8 +390,8 @@ export async function adjustCanonicalInventory(input = {}, idempotencyKey = '') 
         operationId: marker.operationId,
         operationAction: action,
       };
+      item.lastMovementSnapshot = movement;
       transaction.set(itemRef, item);
-      transaction.set(movementRef, movement);
       return { collection: ITEMS, id: itemId };
     },
   });
