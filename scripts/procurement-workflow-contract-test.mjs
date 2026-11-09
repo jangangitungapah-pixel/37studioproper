@@ -100,16 +100,28 @@ for (const endpoint of [
   assert.equal(operations.includes(endpoint), true, 'Canonical client wrapper missing: ' + endpoint);
 }
 
-for (const collectionName of ['goodsReceipts', 'procurementPayments']) {
-  const escapedCollectionName = collectionName.replace(/[.*+?^$()|[\\]\\\\]/g, '\\\\$&');
-  const pattern = new RegExp(
-    'match /' + escapedCollectionName + '/\\\\{[^}]+\\\\} \\\\{[\\\\s\\\\S]*?allow create, update, delete: if false;',
-  );
-  assert.match(rules, pattern, 'Unmigrated Procurement collection must remain Worker-write-only: ' + collectionName);
+function getCollectionRulesBlock(collectionName, documentId) {
+  const startIndex = rules.indexOf('match /' + collectionName + '/{' + documentId + '} {');
+  if (startIndex < 0) throw new Error('Firestore Rules collection missing: ' + collectionName);
+  const endIndex = rules.indexOf('\\n    match /', startIndex + 1);
+  return rules.slice(startIndex, endIndex < 0 ? rules.length : endIndex);
 }
-assert.match(rules, /match \\/suppliers\\/\\{supplierId\\} \\{[\\s\\S]*?allow create: if procurementSupplierCreateAllowed\\(supplierId\\);[\\s\\S]*?allow update, delete: if false;/);
-assert.match(rules, /match \\/purchaseOrders\\/\\{purchaseOrderId\\} \\{[\\s\\S]*?allow create: if procurementPurchaseOrderCreateAllowed\\(purchaseOrderId\\);[\\s\\S]*?allow update: if procurementPurchaseOrderUpdateAllowed\\(purchaseOrderId\\);[\\s\\S]*?allow delete: if false;/);
-assert.match(rules, /match \\/procurementEvents\\/\\{eventId\\} \\{[\\s\\S]*?allow create: if procurementEventCreateAllowed\\(eventId\\);[\\s\\S]*?allow update, delete: if false;/);
+
+const supplierRules = getCollectionRulesBlock('suppliers', 'supplierId');
+const purchaseOrderRules = getCollectionRulesBlock('purchaseOrders', 'purchaseOrderId');
+const receiptRules = getCollectionRulesBlock('goodsReceipts', 'receiptId');
+const procurementPaymentRules = getCollectionRulesBlock('procurementPayments', 'paymentId');
+const procurementEventRules = getCollectionRulesBlock('procurementEvents', 'eventId');
+
+assert.equal(supplierRules.includes('allow create: if procurementSupplierCreateAllowed(supplierId);'), true);
+assert.equal(supplierRules.includes('allow update, delete: if false;'), true);
+assert.equal(purchaseOrderRules.includes('allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);'), true);
+assert.equal(purchaseOrderRules.includes('allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);'), true);
+assert.equal(purchaseOrderRules.includes('allow delete: if false;'), true);
+assert.equal(receiptRules.includes('allow create, update, delete: if false;'), true);
+assert.equal(procurementPaymentRules.includes('allow create, update, delete: if false;'), true);
+assert.equal(procurementEventRules.includes('allow create: if procurementEventCreateAllowed(eventId);'), true);
+assert.equal(procurementEventRules.includes('allow update, delete: if false;'), true);
 assert.match(
   rules,
   /match \/procurementPayments\/\{paymentId\} \{[\s\S]*?canAccessBookkeepingData\(\)/,
