@@ -879,6 +879,20 @@ try {
   const followUpCreateBatch = writeBatch(customersAdmin);
   followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpTask);
   await assertSucceeds(followUpCreateBatch.commit());
+  await assertFails(setDoc(
+    doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
+    {
+      operationId: followUpCreateOperationId,
+      actorUid: 'customers-admin',
+      scope: 'customer-follow-up',
+      action: 'create',
+      requestId: followUpCreateRequestId,
+      payloadHash: 'a'.repeat(64),
+      resultCollection: 'customerFollowUpTasks',
+      resultId: followUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  ));
   await assertSucceeds(setDoc(
     doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
     {
