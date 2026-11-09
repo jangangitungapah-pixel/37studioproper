@@ -178,7 +178,7 @@ const rulesSource = readFileSync(
 
 assert.match(
   rulesSource,
-  /function hasPermission\(page\) \{[\s\S]*?userDocExists\(\)[\s\S]*?getUserData\(\)\.role == 'admin'[\s\S]*?getUserData\(\)\.status == 'approved'[\s\S]*?getUserData\(\)\.permissions is map[\s\S]*?getUserData\(\)\.permissions\[page\] == true[\s\S]*?\|\| isOwner\(\);/,
+  /function hasPermission\(page\) \{[\s\S]*?let profileExists = userDocExists\(\);[\s\S]*?let profile = profileExists \? getUserData\(\) : \{\};[\s\S]*?profile\.role == 'admin'[\s\S]*?profile\.status == 'approved'[\s\S]*?profile\.permissions is map[\s\S]*?profile\.permissions\[page\] == true[\s\S]*?\|\| isOwner\(\);/,
   'Admin data permissions must accept only approved admins with the requested permission or the canonical Owner.',
 );
 

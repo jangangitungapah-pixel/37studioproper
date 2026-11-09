@@ -137,7 +137,7 @@ assert.equal(rules.includes('function cashClosingSessionWriteAllowed(closingId, 
   'Closing-session authorization must dispatch by operation action.');
 assert.match(
   rules,
-  /function hasPermission\(page\)[\s\S]*?userDocExists\(\)[\s\S]*?getUserData\(\)\.role == 'admin'[\s\S]*?isOwner\(\)/,
+  /function hasPermission\(page\)[\s\S]*?let profileExists = userDocExists\(\);[\s\S]*?let profile = profileExists \? getUserData\(\) : \{\};[\s\S]*?profile\.role == 'admin'[\s\S]*?profile\.status == 'approved'[\s\S]*?profile\.permissions is map[\s\S]*?profile\.permissions\[page\] == true[\s\S]*?\|\| isOwner\(\)/,
   'Approved admins must take the direct permission path while Owner authority remains canonical.',
 );
 assert.equal(rules.includes(`'proof-reject',\n              'paymentProofs',\n              proofId`), true,
