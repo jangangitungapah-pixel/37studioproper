@@ -4,7 +4,7 @@
 **Target Firebase project:** `studio-proper`  
 **Target Hosting site:** `studio-37` (`https://studio-37.web.app`)  
 **Architecture decision date:** 2026-11-09  
-**Status:** Approved direction; Phases 1-2 complete; Phase 3 implementation integrated; Phase 3 acceptance/closure pending targeted validation.
+**Status:** Approved direction; Phases 1-3 complete; Phase 4 not started. Phase 3 closed on 2026-11-09 after Quality Gates #504 passed on final PR HEAD `bd90b2abfa184773366050ac654c98df08bd3ce7`.
 
 ## 1. Objective
 
@@ -151,13 +151,25 @@ Do not emulate Admin SDK power by exposing credentials. Where a server-only Auth
 - Daily closing reconciles canonical ledger rows with legacy booking payment/refund projections, records a source fingerprint and snapshot, and pairs the session/event/operation marker atomically. Reopen requires Owner authorization and the UI reauthenticates the current account. MVP register remains `main` only.
 - Close-out remediation: legacy fallback payment dates now normalize to `Asia/Jakarta`; all three daily-closing entry points explicitly reject an unsupported register; client proof submission and Firestore Rules reject void/refunded invoice states consistently.
 
-**Validation evidence and remaining gates:**
-- Quality Gates run **#476** (run ID `42547166949`) passed on the pre-close-out baseline HEAD `41927a6d1c72b3165542d602b1f9042cd30049ec`. It is not evidence for the subsequent close-out commits.
-- The close-out adds a focused Firestore Rules Emulator case for metadata-only proof creation on an active booking and denial for a refunded booking, alongside the existing initial-payment ledger and manual-bookkeeping fence cases. The source-level finance contract also checks the WIB fallback and `main` register guard.
-- A fresh Quality Gates result for the close-out HEAD must be observed before acceptance. In addition, the current Emulator suite does not yet exercise complete direct-SDK positive/negative transaction fixtures for regular payment, refund, void, and daily-close/reopen as individual business workflows. These remain explicit acceptance-evidence gaps; do not infer coverage from source-level contracts alone.
-- No live production Rules export, production index verification, or production financial-data reconciliation was performed. The production baseline and deployment gates remain unchanged.
+**Validation evidence — final PR HEAD**
 
-**Exit:** implementation is integrated, but Phase 3 is **not yet closed**. Close only after the current HEAD's Quality Gates pass and the remaining critical finance/daily-closing Emulator scenarios have sufficient allow/deny evidence. PR #18 remains Draft and unmerged; no production Rules/index publication, Hosting deployment, or production data mutation is authorized.
+- GitHub Actions Quality Gates **#504** (run ID `42577721924`) completed with overall conclusion **success** on `bd90b2abfa184773366050ac654c98df08bd3ce7`. All 17 workflow steps passed.
+- Production bundle build, ESLint, regression contracts, PRD/security contracts, and Firestore Rules Emulator passed.
+- The `test:prd` command invokes `npm run test:rules`; `test:rules` runs `firestore-rules-behavior-test.mjs`, `firestore-repository-foundation-rules-test.mjs`, and `firebase-finance-rules-invariant-test.mjs`.
+- Finance Rules Emulator invariant fixtures passed: valid partial payment accepted; overpayment denied; valid partial refund accepted; over-refund denied; unpaid invoice void accepted; paid invoice void denied; daily close by Bookkeeping admin accepted; daily reopen by Bookkeeping admin denied; daily reopen by canonical Owner accepted.
+- Payment-proof Rules behavior includes metadata-only submission acceptance for an active booking and denial for a refunded booking. New submissions remain reference-only; no binary proof upload is enabled.
+- Responsive browser smoke and keyboard/focus QA passed. Run #504 uploaded the `phase-9-browser-accessibility-qa` and `dependency-audit-report` artifacts.
+- The final daily-closing Rules simplification in `bd90b2a` retains its field allowlist, required keys, canonical ID/date/register checks, transition status/revision checks, event identity/type, operation identity/action, and empty booking/ledger/proof pointers. Optional display/reconciliation-field type checks remain simplified to stay within Rules expression budget.
+- The Finance invariant results are Rules Emulator allow/deny fixtures for the linked write invariants. They are not a production data reconciliation, deployed Rules parity check, or full production end-to-end exercise of every UI/repository branch.
+
+**Remaining production prerequisites (not Phase 3 code blockers)**
+
+- Export the active production Firestore Rules and compare them with this branch before any publication. The previously recorded active release is `aa6d3469-9101-4c7a-8ede-bcba9894d38a`; live source has not been exported and compared.
+- Verify production deployment of composite index `customerFollowUpTasks(status, dueAt, dueTime)`.
+- Reconcile production financial data and validate production indexes before any release.
+- No production Rules/index deployment, Hosting deployment, Worker deployment, or production data mutation was performed or authorized in this phase.
+
+**Exit: met.** Phase 3 is **CLOSED** as of 2026-11-09 on final validated HEAD `bd90b2abfa184773366050ac654c98df08bd3ce7`. PR #18 remains Draft and unmerged. Phase 4 is not started and must begin in a separate session after this close-out. No production action is implied.
 
 ### Phase 4 — Customer, follow-up, inventory, procurement, and maintenance
 - Migrate follow-up task lifecycle and PIC discovery to direct Auth/Firestore reads/writes.
