@@ -244,8 +244,15 @@ export async function submitPaymentProof(payload) {
       if (!bookingSnapshot.exists() || bookingSnapshot.data().clientUid !== user.uid) {
         throw new Error('Booking bukan milik akun client ini.');
       }
-      if (['void', 'refunded'].includes(bookingSnapshot.data().paymentStatusCanonical) ||
-          bookingSnapshot.data().paymentStatus === 'void') {
+      const booking = bookingSnapshot.data();
+      const canonicalStatus = cleanText(booking.paymentStatusCanonical || booking.paymentStatus, 40).toLowerCase();
+      const legacyStatus = cleanText(booking.paymentStatus, 40).toLowerCase();
+      if (
+        booking.status === 'void' ||
+        booking.invoiceStatus === 'void' ||
+        ['void', 'refunded'].includes(canonicalStatus) ||
+        ['void', 'refunded'].includes(legacyStatus)
+      ) {
         throw new Error('Invoice tidak menerima referensi pembayaran baru.');
       }
       transaction.set(proofRef, proof);
