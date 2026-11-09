@@ -477,8 +477,11 @@ assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\
 assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
 assert.match(directFollowUpRepository, /runIdempotentFirestoreTransaction\(/);
 assert.match(directFollowUpRepository, /scope: SCOPE,[\s\S]*?action,[\s\S]*?requestId,[\s\S]*?execute: async \(transaction, metadata\)/);
-assert.match(directFollowUpRepository, /transaction\.set\(taskRef, task\);[\s\S]*?transaction\.set\(eventRef, event\);/);
+assert.match(directFollowUpRepository, /task\.lastEventSnapshot = event;[\s\S]*?transaction\.set\(taskRef, task\);/);
+assert.match(directFollowUpRepository, /async function ensureFollowUpEvent\([\s\S]*?await setDoc\(eventRef, event\)/);
+assert.doesNotMatch(directFollowUpRepository, /transaction\.set\(eventRef, event\)/);
 assert.match(directFollowUpRepository, /lastOperationId: metadata\.operationId/);
+assert.match(directFollowUpRepository, /lastEventSnapshot: \{\}/);
 assert.match(directFollowUpRepository, /operationAction: action/);
 assert.match(ui, /customerFollowUpFirestoreRepository\.js/);
 assert.match(ui, /createRepositoryRequestId\(\)/);
