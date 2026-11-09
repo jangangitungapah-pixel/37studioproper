@@ -41,16 +41,6 @@ function finiteQuantity(value, label) {
   return Math.round(parsed * 1000) / 1000;
 }
 
-function safeAmount(value, label, allowZero = false) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed > 1000000000000 || (allowZero ? parsed < 0 : parsed <= 0)) {
-    throw new Error(label + ' tidak valid.');
-  }
-  const rounded = Math.round(parsed);
-  if (!Number.isSafeInteger(rounded)) throw new Error(label + ' melebihi batas angka yang aman.');
-  return rounded;
-}
-
 function isoNow() {
   return new Date().toISOString();
 }
