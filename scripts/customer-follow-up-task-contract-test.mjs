@@ -476,6 +476,9 @@ const rulesEvent = rules.slice(rules.indexOf('match /customerFollowUpEvents/'), 
 assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpTaskCreateAllowed\(taskId\);[\s\S]*?allow update: if customerFollowUpTaskUpdateAllowed\(taskId\);[\s\S]*?allow delete: if false;/);
 assert.match(rules, /function repositoryOperationDomainMatches\(data\)[\s\S]*?task\.lastOperationId == data\.operationId[\s\S]*?task\.lastOperationPayloadHash == data\.payloadHash/);
 assert.match(rules, /function customerFollowUpActorAllowed\(\)[\s\S]*?profile\.permissions\.customers == true[\s\S]*?ownership\.currentOwnerUid == request\.auth\.uid/);
+assert.match(rules, /data\.lastEventSnapshot\.keys\(\)\.hasOnly\(\[[\s\S]*?'changes', 'fromStatus', 'toStatus'[\s\S]*?data\.lastEventSnapshot\.createdAt == data\.updatedAt/);
+assert.doesNotMatch(rules, /function validCustomerFollowUpEventSnapshot/);
+
 assert.match(rules, /return uid == request\.auth\.uid \|\| customerFollowUpOtherAssigneeAllowed\(uid\);/);
 
 assert.equal(rules.includes('lastOperationPayloadHash.size() == 64') && rules.includes("data.lastOperationPayloadHash.matches('^[0-9a-f]{64}')"), true);
