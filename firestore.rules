@@ -851,11 +851,15 @@ match /users/{userId} {
     }
 
     function repositoryOperationDomainMatches(data) {
+      return data.scope != 'customer-follow-up' ||
+        customerFollowUpOperationMarkerMatches(data);
+    }
+
+    function customerFollowUpOperationMarkerMatches(data) {
       let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.resultId);
-      let taskExists = data.scope == 'customer-follow-up' && exists(taskPath);
+      let taskExists = exists(taskPath);
       let task = taskExists ? get(taskPath).data : {};
-      return data.scope != 'customer-follow-up' || (
-        data.action in ['create', 'update'] &&
+      return data.action in ['create', 'update'] &&
         data.resultCollection == 'customerFollowUpTasks' &&
         taskExists &&
         task.id == data.resultId &&
@@ -864,8 +868,7 @@ match /users/{userId} {
         task.lastOperationPayloadHash == data.payloadHash &&
         task.lastEventSnapshot.actorUid == data.actorUid &&
         task.lastEventSnapshot.operationId == data.operationId &&
-        task.lastEventSnapshot.operationAction == data.action
-      );
+        task.lastEventSnapshot.operationAction == data.action;
     }
 
     match /users/{userId}/repositoryOperations/{operationId} {
