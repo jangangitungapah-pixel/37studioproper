@@ -519,6 +519,22 @@ assert.match(
   /data\.keys\(\)\.hasOnly\(\[\s*'bookingId',\s*'date',\s*'durationHours',\s*'sessionLabel',\s*'startHour',\s*'status',\s*'title',\s*'updatedAt'\s*\]\)[\s\S]*?validString\(data\.title,\s*1,\s*80\)/,
   'Public slot mirror must remain restricted to generic safe fields.',
 );
+const calendarSlotFieldsStart = rulesSource.indexOf(
+  'function bookingCalendarSlotFieldsMatchAfter',
+);
+const calendarSlotFieldsEnd = rulesSource.indexOf(
+  'function bookingCalendarSlotMatchesAfter',
+  calendarSlotFieldsStart,
+);
+const calendarSlotFieldsSource = rulesSource.slice(
+  calendarSlotFieldsStart,
+  calendarSlotFieldsEnd,
+);
+assert.match(
+  calendarSlotFieldsSource,
+  /slotAfter\.bookingId == bookingId[\s\S]*?slotAfter\.date == data\.date[\s\S]*?slotAfter\.durationHours == data\.durationHours[\s\S]*?slotAfter\.startHour == data\.startHour[\s\S]*?slotAfter\.sessionLabel == data\.sessionLabel[\s\S]*?slotAfter\.status == data\.paymentStatus[\s\S]*?slotAfter\.updatedAt == data\.updatedAt/,
+  'Public slot metadata must remain fully paired with the booking fields.',
+);
 const calendarSlotPairingStart = rulesSource.indexOf(
   'function bookingCalendarSlotMatchesAfter',
 );
@@ -532,8 +548,13 @@ const calendarSlotPairingSource = rulesSource.slice(
 );
 assert.match(
   calendarSlotPairingSource,
-  /slotAfter\.bookingId == bookingId[\s\S]*?slotAfter\.date == data\.date[\s\S]*?slotAfter\.durationHours == data\.durationHours[\s\S]*?slotAfter\.startHour == data\.startHour[\s\S]*?slotAfter\.sessionLabel == data\.sessionLabel[\s\S]*?slotAfter\.status == data\.paymentStatus[\s\S]*?slotAfter\.updatedAt == data\.updatedAt/,
-  'Public slot metadata must be complete through its atomic booking pairing.',
+  /bookingCalendarSlotFieldsMatchAfter\(bookingId, data\)[\s\S]*?bookingScheduleDayMatchesAfter\(data\.date, bookingId, data\.updatedAt\)/,
+  'Slot rules must pair full slot fields with the matching schedule-day revision.',
+);
+assert.match(
+  rulesSource,
+  /function bookingManualCreateCompanionsAfter\(bookingId, data\)[\s\S]*?slotAfter\.bookingId == bookingId[\s\S]*?dayAfter\.lastBookingId == bookingId/,
+  'Booking create must confirm both slot and day companions without repeating the full slot validator.',
 );
 
 const cssSource =

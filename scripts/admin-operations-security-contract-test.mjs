@@ -139,6 +139,19 @@ assert.match(
   /match \/clientCalendarSlots\/\{slotId\} \{[\s\S]*?allow read: if true;[\s\S]*?bookingCalendarSlotMatchesAfter/,
   'Public calendar slots must be generic and match the paired booking state.',
 );
+assert.match(
+  rules,
+  /function adminBookingUpdateAllowed\(bookingId\)[\s\S]*?changed\.hasAny\(\[[\s\S]*?'lastFinanceAction'[\s\S]*?\]\)[\s\S]*?adminBookingFinanceUpdateAllowed\(bookingId\)[\s\S]*?isApprovedScheduleAdmin\(\) && adminBookingOperationalUpdate\(bookingId\)/,
+  'Booking writes must dispatch to exactly one finance or schedule authorization path.',
+);
+const operationalStart = rules.indexOf('function adminBookingOperationalUpdate(bookingId)');
+const operationalEnd = rules.indexOf('function adminBookingUpdateAllowed(bookingId)', operationalStart);
+assert.ok(operationalStart >= 0 && operationalEnd > operationalStart);
+assert.doesNotMatch(
+  rules.slice(operationalStart, operationalEnd),
+  /adminBookingFinanceUpdateAllowed/,
+  'Operational booking validation must not repeat the finance validator.',
+);
 
 assert.match(
   workerIndex,
