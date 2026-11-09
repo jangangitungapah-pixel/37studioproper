@@ -11,6 +11,7 @@ import {
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import {
   buildRepositoryPrincipal,
+  RepositoryIdempotencyConflictError,
   createRepositoryOperationId,
   createRepositoryPayloadHash,
   createRepositoryRequestId,
@@ -347,23 +348,25 @@ export async function createCanonicalCustomerFollowUpTask(input = {}, idempotenc
   const templateKey = boundedText(body.templateKey || 'payment', 'Template', 40, { required: true });
   if (!TEMPLATES.has(templateKey)) throw new Error('Template follow-up tidak dikenal.');
 
+  const operationPayload = {
+    customerId: body.customerId,
+    bookingId: body.bookingId || '',
+    assignedToUid: body.assignedToUid || actor.uid,
+    title,
+    description,
+    notes,
+    dueAt,
+    dueTime,
+    templateKey,
+  };
   const operation = await runIdempotentFirestoreTransaction({
     db: firestoreDb,
     actorUid: actor.uid,
     scope: SCOPE,
     action,
     requestId,
-    payload: {
-      customerId: body.customerId,
-      bookingId: body.bookingId || '',
-      assignedToUid: body.assignedToUid || actor.uid,
-      title,
-      description,
-      notes,
-      dueAt,
-      dueTime,
-      templateKey,
-    },
+    payload: operationPayload,
+    markerWriteMode: 'after',
     execute: async (transaction, metadata) => {
       const taskRef = doc(firestoreDb, TASKS, taskId);
       const eventRef = doc(firestoreDb, EVENTS, eventId);
@@ -371,8 +374,18 @@ export async function createCanonicalCustomerFollowUpTask(input = {}, idempotenc
         transaction.get(taskRef),
         transaction.get(eventRef),
       ]);
-      if (existingTask.exists() || existingEvent.exists()) {
-        throw new Error('ID task follow-up sudah digunakan oleh dokumen lain.');
+      if (existingEvent.exists()) {
+        throw new Error('ID event follow-up sudah digunakan oleh dokumen lain.');
+      }
+      if (existingTask.exists()) {
+        const existing = existingTask.data();
+        if (
+          existing.lastOperationId === metadata.operationId &&
+          existing.lastOperationPayloadHash === metadata.payloadHash
+        ) {
+          return { collection: TASKS, id: taskId };
+        }
+        throw new RepositoryIdempotencyConflictError(metadata.operationId);
       }
       const [customer, assignee] = await Promise.all([
         resolveCustomer(transaction, body),
@@ -406,6 +419,7 @@ export async function createCanonicalCustomerFollowUpTask(input = {}, idempotenc
         cancelReason: '',
         lastOperationId: metadata.operationId,
         lastOperationAction: action,
+        lastOperationPayloadHash: metadata.payloadHash,
         lastEventId: eventId,
         lastEventSnapshot: {},
       };
@@ -452,13 +466,7 @@ export async function updateCanonicalCustomerFollowUpTask(input = {}, idempotenc
   const eventId = 'fue_' + operationId.slice(3);
   const timestamp = isoNow();
 
-  const operation = await runIdempotentFirestoreTransaction({
-    db: firestoreDb,
-    actorUid: actor.uid,
-    scope: SCOPE,
-    action,
-    requestId,
-    payload: JSON.parse(JSON.stringify({
+  const operationPayload = JSON.parse(JSON.stringify({
       taskId,
       expectedUpdatedAt,
       action: body.action || '',
@@ -472,7 +480,15 @@ export async function updateCanonicalCustomerFollowUpTask(input = {}, idempotenc
       description: Object.prototype.hasOwnProperty.call(body, 'description') ? body.description : null,
       contacted: body.contacted === true,
       reason: body.reason || '',
-    })),
+    }));
+  const operation = await runIdempotentFirestoreTransaction({
+    db: firestoreDb,
+    actorUid: actor.uid,
+    scope: SCOPE,
+    action,
+    requestId,
+    payload: operationPayload,
+    markerWriteMode: 'after',
     execute: async (transaction, metadata) => {
       const taskRef = doc(firestoreDb, TASKS, taskId);
       const eventRef = doc(firestoreDb, EVENTS, eventId);
@@ -481,8 +497,14 @@ export async function updateCanonicalCustomerFollowUpTask(input = {}, idempotenc
         transaction.get(eventRef),
       ]);
       if (!taskDocument.exists()) throw new Error('Task follow-up tidak ditemukan.');
-      if (existingEvent.exists()) throw new Error('ID event follow-up sudah digunakan oleh dokumen lain.');
       const current = { id: taskDocument.id, ...taskDocument.data() };
+      if (current.lastOperationId === metadata.operationId) {
+        if (current.lastOperationPayloadHash === metadata.payloadHash) {
+          return { collection: TASKS, id: taskId };
+        }
+        throw new RepositoryIdempotencyConflictError(metadata.operationId);
+      }
+      if (existingEvent.exists()) throw new Error('ID event follow-up sudah digunakan oleh dokumen lain.');
       if (expectedUpdatedAt !== current.updatedAt) {
         throw new Error('Task berubah. Muat ulang sebelum menyimpan.');
       }
@@ -574,6 +596,7 @@ export async function updateCanonicalCustomerFollowUpTask(input = {}, idempotenc
         ...(status === 'snoozed' ? { snoozedAt: timestamp, snoozedByUid: actor.uid } : {}),
         lastOperationId: metadata.operationId,
         lastOperationAction: action,
+        lastOperationPayloadHash: metadata.payloadHash,
         lastEventId: eventId,
         lastEventSnapshot: {},
       };
