@@ -3971,7 +3971,365 @@ match /users/{userId} {
         data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
         data.lastOperationAction in ['create', 'update'] &&
         data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[a-f0-9]{64}        validCustomerFollowUpEventSnapshot(data.lastEventSnapshot, data.lastEventId) &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == 'create';
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      let allowedChanges = [
+        'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+        'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+        'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+        'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+        'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+        'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+        'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId', 'lastEventSnapshot'
+      ];
+      return hasApprovedAdminPermission('customers') &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
+        data.customerId == resource.data.customerId &&
+        data.customerName == resource.data.customerName &&
+        data.customerPhone == resource.data.customerPhone &&
+        data.sourceId == resource.data.sourceId &&
+        data.sourceType == resource.data.sourceType &&
+        data.bookingId == resource.data.bookingId &&
+        data.templateKey == resource.data.templateKey &&
+        data.revision == resource.data.revision + 1 &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'update' &&
         data.lastOperationPayloadHash.matches('^[a-f0-9]{64}
+    }
+
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventId == eventId &&
+        task.lastEventSnapshot == data &&
+        task.lastOperationId == data.operationId &&
+        task.lastOperationAction == data.operationAction &&
+        task.customerId == data.customerId &&
+        task.updatedAt == data.createdAt;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
+        validString(data.lastEventId, 1, 160) &&
+        validCustomerFollowUpEventSnapshot(data.lastEventSnapshot, data.lastEventId) &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'customer-follow-up',
+          'create',
+          'customerFollowUpTasks',
+          taskId
+        );
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      let allowedChanges = [
+        'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+        'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+        'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+        'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+        'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+        'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+        'lastOperationAction', 'lastEventId', 'lastEventSnapshot'
+      ];
+      return hasApprovedAdminPermission('customers') &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
+        data.customerId == resource.data.customerId &&
+        data.customerName == resource.data.customerName &&
+        data.customerPhone == resource.data.customerPhone &&
+        data.sourceId == resource.data.sourceId &&
+        data.sourceType == resource.data.sourceType &&
+        data.bookingId == resource.data.bookingId &&
+        data.templateKey == resource.data.templateKey &&
+        data.revision == resource.data.revision + 1 &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'update' &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'customer-follow-up',
+          'update',
+          'customerFollowUpTasks',
+          taskId
+        );
+    }
+
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventId == eventId &&
+        task.lastEventSnapshot == data &&
+        task.lastOperationId == data.operationId &&
+        task.lastOperationAction == data.operationAction &&
+        task.customerId == data.customerId &&
+        task.updatedAt == data.createdAt;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        ) &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == 'update';
+    }
+
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventId == eventId &&
+        task.lastEventSnapshot == data &&
+        task.lastOperationId == data.operationId &&
+        task.lastOperationAction == data.operationAction &&
+        task.customerId == data.customerId &&
+        task.updatedAt == data.createdAt;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
+        validString(data.lastEventId, 1, 160) &&
+        validCustomerFollowUpEventSnapshot(data.lastEventSnapshot, data.lastEventId) &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'customer-follow-up',
+          'create',
+          'customerFollowUpTasks',
+          taskId
+        );
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      let allowedChanges = [
+        'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+        'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+        'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+        'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+        'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+        'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+        'lastOperationAction', 'lastEventId', 'lastEventSnapshot'
+      ];
+      return hasApprovedAdminPermission('customers') &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
+        data.customerId == resource.data.customerId &&
+        data.customerName == resource.data.customerName &&
+        data.customerPhone == resource.data.customerPhone &&
+        data.sourceId == resource.data.sourceId &&
+        data.sourceType == resource.data.sourceType &&
+        data.bookingId == resource.data.bookingId &&
+        data.templateKey == resource.data.templateKey &&
+        data.revision == resource.data.revision + 1 &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'update' &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'customer-follow-up',
+          'update',
+          'customerFollowUpTasks',
+          taskId
+        );
+    }
+
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return hasApprovedAdminPermission('customers') &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventId == eventId &&
+        task.lastEventSnapshot == data &&
+        task.lastOperationId == data.operationId &&
+        task.lastOperationAction == data.operationAction &&
+        task.customerId == data.customerId &&
+        task.updatedAt == data.createdAt;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
         validCustomerFollowUpEventSnapshot(data.lastEventSnapshot, data.lastEventId) &&
         data.lastEventSnapshot.taskId == data.id &&
         data.lastEventSnapshot.customerId == data.customerId &&
