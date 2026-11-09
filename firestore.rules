@@ -4004,7 +4004,7 @@ match /users/{userId} {
         'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
         'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
         'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
-        'lastOperationAction', 'lastEventId', 'lastEventSnapshot'
+        'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId', 'lastEventSnapshot'
       ];
       return hasApprovedAdminPermission('customers') &&
         customerFollowUpPreviousEventRecorded() &&
