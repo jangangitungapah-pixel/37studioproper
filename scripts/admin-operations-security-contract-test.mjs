@@ -256,9 +256,11 @@ assert.equal(billing.includes('recordCanonicalPayment('), false);
 assert.equal(billing.includes('recordCanonicalRefund('), false);
 assert.equal(billing.includes('voidCanonicalInvoice('), false);
 assert.equal(
-  inventoryRepository.includes('createInventoryMovement') && billing.length > 0,
+  inventoryRepository.includes('subscribeInventoryItems') &&
+    inventoryRepository.includes('subscribeInventoryMovements') &&
+    !inventoryRepository.includes('export async function createInventoryMovement'),
   true,
-  'Inventory repository compatibility API should remain available while Page owns protected adjustment.',
+  'Inventory repository must retain Firestore read subscriptions without exposing unguarded write helpers.',
 );
 assert.equal(read('src/pages/admin/InventoryPage.jsx').includes('adjustCanonicalInventory'), true);
 const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
