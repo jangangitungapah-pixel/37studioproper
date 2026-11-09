@@ -3539,6 +3539,7 @@ match /users/{userId} {
         item.lastOperationId == data.operationId &&
         item.lastOperationAction == data.operationAction &&
         item.quantity == data.nextQuantity &&
+        item.updatedAt == data.createdAt &&
         (
           (
             data.type == 'create' &&
