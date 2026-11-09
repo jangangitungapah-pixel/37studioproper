@@ -142,7 +142,7 @@ function normalizePaymentHistory(booking) {
   return [{
     amount,
     createdAt: at,
-    date: /^\d{4}-\d{2}-\d{2}$/.test(at) ? at : at.slice(0, 10),
+    date: businessDateOf(at) || at.slice(0, 10),
     id: 'legacy_' + cleanText(booking.id || 'booking', 100) + '_payment',
     idempotencyKey: 'legacy:' + cleanText(booking.id || 'booking', 120),
     method: cleanText(booking.lastPaymentMethod || booking.paymentMethod || 'other', 20),
@@ -907,6 +907,7 @@ async function loadDailySnapshot(businessDate, actor, body = {}) {
 
 export async function previewDailyClosingDirect(body = {}) {
   const actor = await requirePrincipal('bookkeeping');
+  normalizeRegisterId(body.registerId);
   const businessDate = validBusinessDate(body.businessDate);
   if (!businessDate) throw new Error('Tanggal bisnis wajib valid (YYYY-MM-DD).');
   const { preview } = await loadDailySnapshot(businessDate, actor, body);
@@ -915,6 +916,7 @@ export async function previewDailyClosingDirect(body = {}) {
 
 export async function closeDailyClosingDirect(body = {}, operationRequestId = '') {
   const actor = await requirePrincipal('bookkeeping');
+  normalizeRegisterId(body.registerId);
   const businessDate = validBusinessDate(body.businessDate);
   if (!businessDate) throw new Error('Tanggal bisnis wajib valid (YYYY-MM-DD).');
   if (businessDate > businessDateOf(isoNow())) throw new Error('Tanggal bisnis di masa depan belum dapat ditutup.');
@@ -1033,6 +1035,7 @@ export async function closeDailyClosingDirect(body = {}, operationRequestId = ''
 
 export async function reopenDailyClosingDirect(body = {}, operationRequestId = '') {
   const actor = await requirePrincipal('bookkeeping');
+  normalizeRegisterId(body.registerId);
   if (!actor.principal.isOwner) throw new Error('Reopen closing hanya dapat dilakukan Owner.');
   const businessDate = validBusinessDate(body.businessDate);
   if (!businessDate) throw new Error('Tanggal bisnis wajib valid (YYYY-MM-DD).');
