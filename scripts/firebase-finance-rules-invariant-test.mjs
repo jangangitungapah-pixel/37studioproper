@@ -295,9 +295,12 @@ try {
     await setDoc(doc(context.firestore(), 'bookings', paymentState.id), paymentState);
   });
   const paidOnce = await paymentBatch(billingDb, paymentState, 40000, 'payment-valid-0001');
+  process.stdout.write('[finance-rules] valid partial payment\n');
   await assertSucceeds(paidOnce.batch.commit());
+  process.stdout.write('[finance-rules] valid partial payment passed\n');
   paymentState = paidOnce.nextState;
   const overPayment = await paymentBatch(billingDb, paymentState, 70000, 'payment-over-0002');
+  process.stdout.write('[finance-rules] overpayment denied\n');
   await assertFails(overPayment.batch.commit());
 
   // Valid partial refund is accepted; a refund above the current net paid amount is denied.
@@ -317,9 +320,12 @@ try {
     await setDoc(doc(context.firestore(), 'bookings', refundState.id), refundState);
   });
   const refundedOnce = await refundBatch(billingDb, refundState, 30000, 'refund-valid-0001');
+  process.stdout.write('[finance-rules] valid partial refund\n');
   await assertSucceeds(refundedOnce.batch.commit());
+  process.stdout.write('[finance-rules] valid partial refund passed\n');
   refundState = refundedOnce.nextState;
   const overRefund = await refundBatch(billingDb, refundState, 80000, 'refund-over-0002');
+  process.stdout.write('[finance-rules] over-refund denied\n');
   await assertFails(overRefund.batch.commit());
 
   // Unpaid invoices can be voided with schedule companions; paid invoices cannot.
@@ -328,13 +334,17 @@ try {
     await seedVoidBooking(db, 'finance-void-unpaid', false, '2026-08-15');
     await seedVoidBooking(db, 'finance-void-paid', true, '2026-08-18');
   });
+  process.stdout.write('[finance-rules] unpaid invoice void\n');
   await assertSucceeds((await voidBatch(billingDb, 'finance-void-unpaid', 'void-unpaid-0001', '2026-08-16', '2026-08-15')).commit());
+  process.stdout.write('[finance-rules] unpaid invoice void passed\n');
   await assertFails((await voidBatch(billingDb, 'finance-void-paid', 'void-paid-0002', '2026-08-17', '2026-08-18')).commit());
 
   // Bookkeeping permission can close a day; only the canonical Owner can reopen it.
   const closingDate = '2026-08-20';
+  process.stdout.write('[finance-rules] bookkeeping daily close\n');
   await assertSucceeds((await closingBatch(bookkeepingDb, 'bookkeeping-admin', 'daily-close',
     'daily-close-valid-0001', closingDate, '')).commit());
+  process.stdout.write('[finance-rules] bookkeeping daily close passed\n');
   await assertFails((await closingBatch(bookkeepingDb, 'bookkeeping-admin', 'daily-reopen',
     'daily-reopen-denied-0002', closingDate, 'Unauthorized reopen')).commit());
   await assertSucceeds((await closingBatch(ownerDb, 'new-owner', 'daily-reopen',
