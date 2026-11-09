@@ -425,7 +425,7 @@ try {
     updatedAt: now,
   }));
 
-  // Inventory create pairs the item, append-only movement and Phase 1 marker.
+  // Inventory commits the canonical item snapshot first, then appends its immutable movement.
   const inventoryCreateRequestId = 'inventory-create-rules-001';
   const inventoryCreatePayload = {
     action: 'create',
@@ -450,24 +450,6 @@ try {
   });
   const inventoryCreatedItemId = 'inv_' + inventoryCreateOperationId.slice(3);
   const inventoryCreateMovementId = 'mov_' + inventoryCreateOperationId.slice(3);
-  const inventoryCreatedItem = {
-    id: inventoryCreatedItemId,
-    name: 'Microphone Cable',
-    category: 'Cable',
-    type: 'equipment',
-    quantity: 5,
-    unit: 'pcs',
-    minStock: 1,
-    condition: 'good',
-    status: 'active',
-    location: 'Studio',
-    note: '',
-    createdAt: now,
-    updatedAt: now,
-    lastOperationId: inventoryCreateOperationId,
-    lastOperationAction: 'create',
-    lastMovementId: inventoryCreateMovementId,
-  };
   const inventoryCreateMovement = {
     id: inventoryCreateMovementId,
     itemId: inventoryCreatedItemId,
@@ -496,9 +478,27 @@ try {
       unit: 'pcs',
     },
   };
+  const inventoryCreatedItem = {
+    id: inventoryCreatedItemId,
+    name: 'Microphone Cable',
+    category: 'Cable',
+    type: 'equipment',
+    quantity: 5,
+    unit: 'pcs',
+    minStock: 1,
+    condition: 'good',
+    status: 'active',
+    location: 'Studio',
+    note: '',
+    createdAt: now,
+    updatedAt: now,
+    lastOperationId: inventoryCreateOperationId,
+    lastOperationAction: 'create',
+    lastMovementId: inventoryCreateMovementId,
+    lastMovementSnapshot: inventoryCreateMovement,
+  };
   const inventoryCreateBatch = writeBatch(inventoryAdmin);
   inventoryCreateBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), inventoryCreatedItem);
-  inventoryCreateBatch.set(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId), inventoryCreateMovement);
   inventoryCreateBatch.set(
     doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', inventoryCreateOperationId),
     {
@@ -514,12 +514,13 @@ try {
     },
   );
   await assertSucceeds(inventoryCreateBatch.commit());
+  await assertSucceeds(setDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId), inventoryCreateMovement));
   await assertFails(updateDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId), {
     reason: 'Edit forbidden movement',
   }));
   await assertFails(deleteDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId)));
 
-  // Stock-in is atomic, and the movement previous/next balance must match the item.
+  // A valid stock-in updates the item snapshot and appends the movement afterwards.
   const inventoryAdjustRequestId = 'inventory-adjust-rules-001';
   const inventoryAdjustPayload = {
     itemId: inventoryCreatedItemId,
@@ -533,14 +534,6 @@ try {
     requestId: inventoryAdjustRequestId,
   });
   const inventoryAdjustMovementId = 'mov_' + inventoryAdjustOperationId.slice(3);
-  const inventoryAdjustedItem = {
-    ...inventoryCreatedItem,
-    quantity: 8,
-    updatedAt: '2026-08-14T08:10:00.000Z',
-    lastOperationId: inventoryAdjustOperationId,
-    lastOperationAction: 'adjust',
-    lastMovementId: inventoryAdjustMovementId,
-  };
   const inventoryAdjustMovement = {
     id: inventoryAdjustMovementId,
     itemId: inventoryCreatedItemId,
@@ -559,9 +552,17 @@ try {
     operationId: inventoryAdjustOperationId,
     operationAction: 'adjust',
   };
+  const inventoryAdjustedItem = {
+    ...inventoryCreatedItem,
+    quantity: 8,
+    updatedAt: '2026-08-14T08:10:00.000Z',
+    lastOperationId: inventoryAdjustOperationId,
+    lastOperationAction: 'adjust',
+    lastMovementId: inventoryAdjustMovementId,
+    lastMovementSnapshot: inventoryAdjustMovement,
+  };
   const inventoryAdjustBatch = writeBatch(inventoryAdmin);
   inventoryAdjustBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), inventoryAdjustedItem);
-  inventoryAdjustBatch.set(doc(inventoryAdmin, 'inventoryMovements', inventoryAdjustMovementId), inventoryAdjustMovement);
   inventoryAdjustBatch.set(
     doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', inventoryAdjustOperationId),
     {
@@ -577,8 +578,9 @@ try {
     },
   );
   await assertSucceeds(inventoryAdjustBatch.commit());
+  await assertSucceeds(setDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryAdjustMovementId), inventoryAdjustMovement));
 
-  // Negative stock is rejected even when all paired records are supplied.
+  // Negative stock is rejected at the item write, before a movement can be posted.
   const negativeRequestId = 'inventory-negative-rules-001';
   const negativeOperationId = await createRepositoryOperationId({
     actorUid: 'inventory-admin',
@@ -587,16 +589,7 @@ try {
     requestId: negativeRequestId,
   });
   const negativeMovementId = 'mov_' + negativeOperationId.slice(3);
-  const negativeBatch = writeBatch(inventoryAdmin);
-  negativeBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), {
-    ...inventoryAdjustedItem,
-    quantity: -1,
-    updatedAt: '2026-08-14T08:15:00.000Z',
-    lastOperationId: negativeOperationId,
-    lastOperationAction: 'adjust',
-    lastMovementId: negativeMovementId,
-  });
-  negativeBatch.set(doc(inventoryAdmin, 'inventoryMovements', negativeMovementId), {
+  const negativeMovement = {
     id: negativeMovementId,
     itemId: inventoryCreatedItemId,
     itemName: 'Microphone Cable',
@@ -613,7 +606,18 @@ try {
     adjustmentKey: negativeRequestId,
     operationId: negativeOperationId,
     operationAction: 'adjust',
-  });
+  };
+  const negativeItem = {
+    ...inventoryAdjustedItem,
+    quantity: -1,
+    updatedAt: '2026-08-14T08:15:00.000Z',
+    lastOperationId: negativeOperationId,
+    lastOperationAction: 'adjust',
+    lastMovementId: negativeMovementId,
+    lastMovementSnapshot: negativeMovement,
+  };
+  const negativeBatch = writeBatch(inventoryAdmin);
+  negativeBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), negativeItem);
   negativeBatch.set(
     doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', negativeOperationId),
     {
@@ -633,8 +637,9 @@ try {
     },
   );
   await assertFails(negativeBatch.commit());
+  await assertFails(setDoc(doc(inventoryAdmin, 'inventoryMovements', negativeMovementId), negativeMovement));
 
-  // Archive is also paired and cannot rewrite the inventory movement history.
+  // Archive is guarded by the prior movement and records a matching snapshot.
   const archiveRequestId = 'inventory-archive-rules-001';
   const archivePayload = { itemId: inventoryCreatedItemId, reason: 'Item dinonaktifkan' };
   const archiveOperationId = await createRepositoryOperationId({
@@ -644,16 +649,7 @@ try {
     requestId: archiveRequestId,
   });
   const archiveMovementId = 'mov_' + archiveOperationId.slice(3);
-  const archiveBatch = writeBatch(inventoryAdmin);
-  archiveBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), {
-    ...inventoryAdjustedItem,
-    status: 'inactive',
-    updatedAt: '2026-08-14T08:20:00.000Z',
-    lastOperationId: archiveOperationId,
-    lastOperationAction: 'archive',
-    lastMovementId: archiveMovementId,
-  });
-  archiveBatch.set(doc(inventoryAdmin, 'inventoryMovements', archiveMovementId), {
+  const archiveMovement = {
     id: archiveMovementId,
     itemId: inventoryCreatedItemId,
     itemName: 'Microphone Cable',
@@ -671,7 +667,18 @@ try {
     operationAction: 'archive',
     previousMetadata: { status: 'active', condition: 'good' },
     nextMetadata: { status: 'inactive', condition: 'good' },
-  });
+  };
+  const archiveItem = {
+    ...inventoryAdjustedItem,
+    status: 'inactive',
+    updatedAt: '2026-08-14T08:20:00.000Z',
+    lastOperationId: archiveOperationId,
+    lastOperationAction: 'archive',
+    lastMovementId: archiveMovementId,
+    lastMovementSnapshot: archiveMovement,
+  };
+  const archiveBatch = writeBatch(inventoryAdmin);
+  archiveBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), archiveItem);
   archiveBatch.set(
     doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', archiveOperationId),
     {
@@ -687,6 +694,7 @@ try {
     },
   );
   await assertSucceeds(archiveBatch.commit());
+  await assertSucceeds(setDoc(doc(inventoryAdmin, 'inventoryMovements', archiveMovementId), archiveMovement));
 
   const dashboardForInventory = context('dashboard-only', 'dashboard@example.com');
   const dashboardInventoryRequestId = 'inventory-dashboard-denied-001';
@@ -696,19 +704,22 @@ try {
     action: 'create',
     requestId: dashboardInventoryRequestId,
   });
-  const dashboardInventoryBatch = writeBatch(dashboardForInventory);
-  dashboardInventoryBatch.set(doc(dashboardForInventory, 'inventoryItems', 'dashboard-inventory-item'), {
+  const dashboardInventoryMovementId = 'mov_' + dashboardInventoryOperationId.slice(3);
+  const dashboardInventoryMovement = {
+    ...inventoryCreateMovement,
+    id: dashboardInventoryMovementId,
+    itemId: 'dashboard-inventory-item',
+    operationId: dashboardInventoryOperationId,
+  };
+  const dashboardInventoryItem = {
     ...inventoryCreatedItem,
     id: 'dashboard-inventory-item',
     lastOperationId: dashboardInventoryOperationId,
-    lastMovementId: 'mov_' + dashboardInventoryOperationId.slice(3),
-  });
-  dashboardInventoryBatch.set(doc(dashboardForInventory, 'inventoryMovements', 'mov_' + dashboardInventoryOperationId.slice(3)), {
-    ...inventoryCreateMovement,
-    id: 'mov_' + dashboardInventoryOperationId.slice(3),
-    itemId: 'dashboard-inventory-item',
-    operationId: dashboardInventoryOperationId,
-  });
+    lastMovementId: dashboardInventoryMovementId,
+    lastMovementSnapshot: dashboardInventoryMovement,
+  };
+  const dashboardInventoryBatch = writeBatch(dashboardForInventory);
+  dashboardInventoryBatch.set(doc(dashboardForInventory, 'inventoryItems', 'dashboard-inventory-item'), dashboardInventoryItem);
   dashboardInventoryBatch.set(
     doc(dashboardForInventory, 'users', 'dashboard-only', 'repositoryOperations', dashboardInventoryOperationId),
     {
