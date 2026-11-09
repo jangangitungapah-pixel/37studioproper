@@ -181,6 +181,7 @@ export async function createCanonicalSupplier(input = {}, idempotencyKey = '') {
         actorUid: actor.uid,
         actorName: actor.displayName,
         createdAt: timestamp,
+        operationId: metadata.operationId,
       };
       transaction.set(supplierRef, supplier);
       transaction.set(eventRef, event);
@@ -310,6 +311,7 @@ export async function createCanonicalPurchaseOrder(input = {}, idempotencyKey = 
         actorName: actor.displayName,
         createdAt: timestamp,
         amount: totalAmount,
+        operationId: metadata.operationId,
       };
       transaction.set(poRef, purchaseOrder);
       transaction.set(eventRef, event);
@@ -397,6 +399,7 @@ export async function transitionCanonicalPurchaseOrder(input = {}, idempotencyKe
         actorUid: actor.uid,
         actorName: actor.displayName,
         createdAt: timestampForOperation,
+        operationId: metadata.operationId,
       };
       transaction.set(poRef, next);
       transaction.set(eventRef, event);
