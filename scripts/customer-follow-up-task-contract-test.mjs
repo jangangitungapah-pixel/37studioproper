@@ -474,8 +474,15 @@ assert.deepEqual(buckets.completed.map((item) => item.id), ['done']);
 const rulesTask = rules.slice(rules.indexOf('match /customerFollowUpTasks/'), rules.indexOf('match /customerFollowUpEvents/'));
 const rulesEvent = rules.slice(rules.indexOf('match /customerFollowUpEvents/'), rules.indexOf('match /{document=**}', rules.indexOf('match /customerFollowUpEvents/')));
 assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpTaskCreateAllowed\(taskId\);[\s\S]*?allow update: if customerFollowUpTaskUpdateAllowed\(taskId\);[\s\S]*?allow delete: if false;/);
+assert.match(rules, /function repositoryOperationDomainMatches\(data\)[\s\S]*?task\.lastOperationId == data\.operationId[\s\S]*?task\.lastOperationPayloadHash == data\.payloadHash/);
+assert.match(rulesTask, /lastOperationPayloadHash/);
+assert.doesNotMatch(rulesTask, /repositoryOperationMatchesAfter/);
 assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
 assert.match(directFollowUpRepository, /runIdempotentFirestoreTransaction\(/);
+assert.equal((directFollowUpRepository.match(/markerWriteMode: 'after'/g) || []).length, 2);
+assert.equal((directFollowUpRepository.match(/lastOperationPayloadHash: metadata\.payloadHash/g) || []).length, 2);
+assert.match(directFollowUpRepository, /current\.lastOperationPayloadHash === metadata\.payloadHash/);
+
 assert.match(directFollowUpRepository, /scope: SCOPE,[\s\S]*?action,[\s\S]*?requestId,[\s\S]*?execute: async \(transaction, metadata\)/);
 assert.match(directFollowUpRepository, /task\.lastEventSnapshot = event;[\s\S]*?transaction\.set\(taskRef, task\);/);
 assert.match(directFollowUpRepository, /async function ensureFollowUpEvent\([\s\S]*?await setDoc\(eventRef, event\)/);
