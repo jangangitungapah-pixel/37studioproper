@@ -10,6 +10,7 @@ const readFileSync = (...args) => {
 const pageSource = readFileSync(resolve('src/pages/admin/InventoryPage.jsx'), 'utf8');
 const cssSource = readFileSync(resolve('src/styles/modules/inventory.css'), 'utf8');
 const repositorySource = readFileSync(resolve('src/services/inventoryRepository.js'), 'utf8');
+const directRepositorySource = readFileSync(resolve('src/services/inventoryFirestoreRepository.js'), 'utf8');
 const operationsRepositorySource = readFileSync(resolve('src/services/adminOperationsRepository.js'), 'utf8');
 const inventoryWorkerSource = readFileSync(resolve('workers/admin-operations-worker/src/domain/inventory.js'), 'utf8');
 const inventoryWorkerRouteSource = readFileSync(resolve('workers/admin-operations-worker/src/index.js'), 'utf8');
@@ -46,10 +47,10 @@ for (const required of [
 for (const required of [
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'saveCanonicalInventoryItem({',
-  'archiveCanonicalInventoryItem({',
+  'saveCanonicalInventoryItem(input, requestId)',
+  'archiveCanonicalInventoryItem(input, requestId)',
   "adjustment.mode === 'in'",
-  'adjustCanonicalInventory({',
+  'adjustCanonicalInventory(input, requestId)',
   'adjustingItemIdsRef',
   'Alasan adjustment wajib diisi minimal 4 karakter.',
   'buildInventoryCsv',
@@ -83,20 +84,22 @@ for (const required of [
 }
 
 assert.equal(
-  pageSource.includes("archiveCanonicalInventoryItem({ itemId: item.id, reason: 'Item dinonaktifkan' })"),
+  pageSource.includes('archiveCanonicalInventoryItem(input, requestId)'),
   true,
-  'Inventory UI must archive items through the canonical Worker wrapper.',
+  'Inventory UI must archive through the direct Firestore repository.',
 );
 assert.equal(
-  operationsRepositorySource.includes("requestOperation('/v1/inventory/items/archive'"),
+  pageSource.includes("from '../../services/inventoryFirestoreRepository.js'") &&
+    pageSource.includes('createRepositoryRequestId()'),
   true,
-  'Inventory archive wrapper must target the canonical Worker route.',
+  'Inventory UI must use direct Firestore writes and stable request IDs.',
 );
 assert.equal(
-  inventoryWorkerRouteSource.includes("pathname === '/v1/inventory/items/archive'") &&
-    inventoryWorkerRouteSource.includes('archiveInventoryItem({ actor, body, firestore, request })'),
+  directRepositorySource.includes('runIdempotentFirestoreTransaction({') &&
+    directRepositorySource.includes('transaction.set(itemRef, item);') &&
+    directRepositorySource.includes('transaction.set(movementRef, movement);'),
   true,
-  'Inventory archive route must authorize and dispatch through the Worker domain.',
+  'Inventory mutations must atomically commit item, movement, and operation marker.',
 );
 for (const required of [
   "status: 'inactive'",
@@ -147,15 +150,31 @@ for (const required of [
   'nextQuantity: toNumber(source.nextQuantity)',
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'createInventoryItem',
-  'updateInventoryItem',
-  'createInventoryMovement',
+  'subscribeSuppliers',
+  'subscribePurchaseOrders',
+  'subscribeGoodsReceipts',
+  'subscribeProcurementPayments',
   'actorName: cleanText(source.actorName)',
   'reason: cleanText(source.reason || source.note)',
-  'await updateDoc(docRef',
 ]) {
   assert.equal(repositorySource.includes(required), true, 'UI-9 repository contract missing: ' + required);
 }
+
+
+for (const required of [
+  "const ITEMS = 'inventoryItems'",
+  "const MOVEMENTS = 'inventoryMovements'",
+  "const SCOPE = 'inventory'",
+  'runIdempotentFirestoreTransaction({',
+  'lastOperationId: marker.operationId',
+  'lastMovementId: movementId',
+  'assertNoActiveMaintenance(transaction, itemId)',
+  'nextQuantity < 0',
+  'transaction.set(movementRef, movement);',
+]) {
+  assert.equal(directRepositorySource.includes(required), true, 'Direct inventory repository contract missing: ' + required);
+}
+assert.equal(directRepositorySource.includes('transaction.delete(movementRef)'), false, 'Inventory movement history must remain append-only.');
 
 for (const forbidden of [
   'deleteDoc(',
