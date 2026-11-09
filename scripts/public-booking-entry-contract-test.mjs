@@ -499,8 +499,13 @@ assert.match(
 );
 assert.match(
   rulesSource,
-  /function financeVoidScheduleSlotDeleteAllowed\(bookingId\)[\s\S]*?isApprovedAdmin\(\)[\s\S]*?hasPermission\('billing'\)[\s\S]*?lastFinanceAction == 'void'[\s\S]*?financeBookingVoidScheduleMatchesAfter/,
+  /function financeVoidScheduleSlotDeleteAllowed\(bookingId\)[\s\S]*?hasApprovedAdminPermission\('billing'\)[\s\S]*?lastFinanceAction == 'void'[\s\S]*?financeBookingVoidScheduleMatchesAfter/,
   'Finance slot deletion must be restricted to an approved Billing admin and the paired invoice-void transaction.',
+);
+assert.match(
+  rulesSource,
+  /function hasApprovedAdminPermission\(page\)[\s\S]*?profile\.role == 'admin'[\s\S]*?profile\.status == 'approved'[\s\S]*?profile\.permissions is map[\s\S]*?profile\.permissions\[page\] == true[\s\S]*?\|\| isOwner\(\)/,
+  'Combined permission evaluation must preserve approved Admin page permissions and canonical Owner access.',
 );
 
 const publicSlotValidatorStart = rulesSource.indexOf(
