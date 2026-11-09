@@ -4195,19 +4195,11 @@ match /users/{userId} {
     }
 
     function validCustomerFollowUpTask(data, taskId) {
+      // All 42 canonical task keys are read and type-checked below. An exact
+      // key count therefore rejects additional fields without an expensive
+      // large-set hasOnly comparison at every update.
       return data is map &&
-        data.keys().hasOnly([
-          'id', 'customerId', 'customerName', 'customerPhone', 'sourceId',
-          'sourceType', 'bookingId', 'assignedToUid', 'assignedToName',
-          'title', 'description', 'templateKey', 'status', 'outcome',
-          'dueAt', 'dueTime', 'notes', 'revision', 'createdAt', 'updatedAt',
-          'createdByUid', 'createdByName', 'lastContactedAt', 'completedAt',
-          'completedByUid', 'completedByName', 'cancelledAt', 'cancelledByUid',
-          'cancelReason', 'lastCompletedAt', 'lastCancelledAt', 'reopenedAt',
-          'reopenedByUid', 'reopenedByName', 'reopenReason', 'snoozedAt',
-          'snoozedByUid', 'lastOperationId', 'lastOperationAction',
-          'lastOperationPayloadHash', 'lastEventId', 'lastEventSnapshot'
-        ]) &&
+        data.keys().size() == 42 &&
         data.id == taskId &&
         validString(data.customerId, 1, 160) &&
         validString(data.customerName, 1, 160) &&
