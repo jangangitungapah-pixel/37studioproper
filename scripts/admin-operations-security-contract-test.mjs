@@ -164,8 +164,13 @@ assert.equal(dailyClosingWorker.includes('commitIdempotentOperation'), true);
 assert.match(rules, /function bookkeepingBusinessDateOpen\(data\)[\s\S]*?cashClosingSessions[\s\S]*?status != 'closed'/);
 assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
 assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.equal(rules.includes('bookkeepingBusinessDateOpen(request.resource.data)'), true);
-assert.equal(rules.includes('bookkeepingBusinessDateOpen(resource.data)'), true);
+assert.equal(rules.includes('bookkeepingBusinessDateOpen(data)'), true,
+  'Manual journal create must reject writes against a closed business date.');
+assert.match(
+  rules,
+  /function manualBookkeepingFenceUpdateAllowed\(closingId\)[\s\S]*?validManualBookkeepingActivityFence\(data, closingId\)[\s\S]*?status != 'closed'/,
+  'Manual journal updates/deletes must be paired with an open activity fence.',
+);
 
 assert.equal(adminBookingRepository.includes('createCanonicalManualBooking'), false);
 assert.equal(adminBookingRepository.includes('updateCanonicalManualBooking'), false);
