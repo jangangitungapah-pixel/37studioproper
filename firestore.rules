@@ -819,20 +819,12 @@ match /users/{userId} {
           'operationId', 'actorUid', 'scope', 'action', 'requestId',
           'payloadHash', 'resultCollection', 'resultId', 'createdAt'
         ]) &&
-        data.keys().hasAll([
-          'operationId', 'actorUid', 'scope', 'action', 'requestId',
-          'payloadHash', 'resultCollection', 'resultId', 'createdAt'
-        ]) &&
         data.operationId == operationId &&
         operationId.matches('^v1_[a-f0-9]{64}$') &&
         data.actorUid == request.auth.uid &&
-        validString(data.scope, 2, 48) &&
         data.scope.matches('^[a-z][a-z0-9-]{1,47}$') &&
-        validString(data.action, 2, 48) &&
         data.action.matches('^[a-z][a-z0-9-]{1,47}$') &&
-        validString(data.requestId, 8, 128) &&
         data.requestId.matches('^[A-Za-z0-9._:-]{8,128}$') &&
-        validString(data.payloadHash, 64, 64) &&
         data.payloadHash.matches('^[a-f0-9]{64}$') &&
         data.resultCollection is string &&
         data.resultId is string &&
@@ -840,7 +832,6 @@ match /users/{userId} {
           (data.resultCollection == '' && data.resultId == '') ||
           (
             data.resultCollection.matches('^[A-Za-z][A-Za-z0-9_]{0,63}$') &&
-            validString(data.resultId, 1, 160) &&
             data.resultId.matches('^[^/]{1,160}$')
           )
         ) &&
@@ -2596,6 +2587,36 @@ match /users/{userId} {
       );
     }
 
+    function validManualBookkeepingEntry(data, entryId) {
+      return data.keys().hasOnly([
+          'id', 'type', 'category', 'title', 'amount', 'date',
+          'paymentMethod', 'note', 'source',
+          'sourceAttendanceId', 'sourceAttendanceDate',
+          'sourceGuardPersonId', 'sourceBookingId',
+          'sourceFeeEntryId', 'sourceEventId', 'sourceAction', 'sourceWorkOrderId',
+          'actorName', 'actorUid', 'idempotencyKey', 'immutable',
+          'operationId', 'sourceProofId', 'reversalOf', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == entryId &&
+        data.source == 'manual' &&
+        data.type in ['income', 'expense'] &&
+        validString(data.category, 1, 80) &&
+        validString(data.title, 1, 160) &&
+        validNumber(data.amount, 1, 1000000000) &&
+        validIsoDate(data.date) &&
+        data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
+        validString(data.note, 0, 2000) &&
+        validString(data.actorUid, 1, 128) &&
+        validString(data.actorName, 1, 120) &&
+        validString(data.idempotencyKey, 8, 240) &&
+        validString(data.operationId, 8, 80) &&
+        data.immutable == false &&
+        data.sourceProofId == '' &&
+        data.reversalOf == '' &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
     function validBookkeepingEntry(data, entryId) {
       return data.keys().hasOnly([
           'id', 'type', 'category', 'title', 'amount', 'date',
@@ -2896,7 +2917,6 @@ match /users/{userId} {
         canManageBookkeepingData() &&
         resource.data.source in ['', 'manual'] &&
         !isReconciledBookkeepingSource(resource.data) &&
-        bookkeepingBusinessDateOpen(resource.data) &&
         existsAfter(closingPath) &&
         manualBookkeepingFenceMatchesAfter(entryId, operationId, 'manual-delete', resource.data.date) &&
         repositoryOperationMatchesAfter(
@@ -2962,11 +2982,12 @@ match /users/{userId} {
           )
         : source == 'booking-refund'
           ? financeBookingLedgerCreateAllowed(data, entryId)
-          : source in ['', 'manual']
+          : source == 'manual'
             ? (
                 isApprovedAdmin() &&
-                canManageBookkeepingData() &&
-                validBookkeepingEntry(data, entryId) &&
+                hasPermission('bookkeeping') &&
+                validManualBookkeepingEntry(data, entryId) &&
+                data.actorUid == request.auth.uid &&
                 bookkeepingBusinessDateOpen(data) &&
                 manualBookkeepingCreateOrUpdateAllowed(data, entryId, 'manual-create')
               )
@@ -2985,17 +3006,12 @@ match /users/{userId} {
       allow read: if isApproved() && canAccessBookkeepingData();
       allow create: if bookkeepingEntryCreateAllowed(request.resource.data, entryId);
       allow update: if isApprovedAdmin() &&
-        canManageBookkeepingData() &&
-        validBookkeepingEntry(request.resource.data, entryId) &&
-        bookkeepingBusinessDateOpen(resource.data) &&
-        bookkeepingBusinessDateOpen(request.resource.data) &&
+        hasPermission('bookkeeping') &&
+        validManualBookkeepingEntry(request.resource.data, entryId) &&
         resource.data.source in ['', 'manual'] &&
-        request.resource.data.source in ['', 'manual'] &&
         manualBookkeepingUpdateAllowed(request.resource.data, entryId);
       allow delete: if manualBookkeepingDeleteAllowed(entryId);
     }
-
-
 
     function validCashClosingSession(data, closingId) {
       return data is map &&
@@ -3133,43 +3149,62 @@ match /users/{userId} {
       let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
       let entryAfter = existsAfter(entryPath) ? getAfter(entryPath).data : {};
       let entryBefore = exists(entryPath) ? get(entryPath).data : {};
-      let resultCollection = action == 'manual-delete' ? '' : 'bookkeepingEntries';
-      let resultId = action == 'manual-delete' ? '' : data.lastLedgerEntryId;
-      return (
-          action == 'manual-delete'
-            ? (!existsAfter(entryPath) && exists(entryPath) &&
-                entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
-            : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
-                entryAfter.operationId == data.lastOperationId &&
-                (entryAfter.date == data.businessDate ||
-                  (exists(entryPath) && entryBefore.date == data.businessDate)))
+      return action == 'manual-delete'
+        ? (!existsAfter(entryPath) && exists(entryPath) &&
+            entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
+        : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
+            entryAfter.operationId == data.lastOperationId &&
+            (entryAfter.date == data.businessDate ||
+              (exists(entryPath) && entryBefore.date == data.businessDate)));
+    }
+
+    function validManualBookkeepingActivityFence(data, closingId) {
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let allowedChanges = [
+        'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastBookingId',
+        'lastLedgerEntryId', 'lastProofId'
+      ];
+      return data is map &&
+        (
+          exists(fencePath)
+            ? data.diff(get(fencePath).data).affectedKeys().hasOnly(allowedChanges)
+            : data.keys().hasOnly([
+                'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+                'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+                'lastOperationId', 'lastOperationAction', 'lastBookingId',
+                'lastLedgerEntryId', 'lastProofId'
+              ])
         ) &&
-        repositoryOperationMatchesAfter(
-          data.lastOperationId,
-          'bookkeeping',
-          action,
-          resultCollection,
-          resultId
-        );
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['open', 'reopened'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastActivityByUid == request.auth.uid &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() > 0 &&
+        data.lastOperationAction in ['manual-create', 'manual-update', 'manual-delete'] &&
+        data.lastLedgerEntryId is string &&
+        data.lastLedgerEntryId.size() > 0 &&
+        data.lastBookingId == '' &&
+        data.lastProofId == '';
     }
 
     function manualBookkeepingFenceUpdateAllowed(closingId) {
       let data = request.resource.data;
-      let action = data.lastOperationAction;
       return isApprovedAdmin() &&
-        canManageBookkeepingData() &&
-        validCashClosingSession(data, closingId) &&
-        data.status in ['open', 'reopened'] &&
-        action in ['manual-create', 'manual-update', 'manual-delete'] &&
-        data.lastActivityByUid == request.auth.uid &&
-        validIsoTimestampString(data.lastActivityAt) &&
-        data.lastOperationId is string &&
-        data.lastLedgerEntryId is string &&
-        data.lastLedgerEntryId.size() > 0 &&
+        hasPermission('bookkeeping') &&
+        validManualBookkeepingActivityFence(data, closingId) &&
         activityRevisionIncrements(closingId, data) &&
         (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
           get(/databases/$(database)/documents/cashClosingSessions/$(closingId)).data.status != 'closed') &&
-        manualBookkeepingFenceCompanionMatchesAfter(data, action);
+        manualBookkeepingFenceCompanionMatchesAfter(data, data.lastOperationAction);
     }
 
     function validCashClosingEvent(data, eventId) {

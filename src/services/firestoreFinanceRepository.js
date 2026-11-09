@@ -1198,6 +1198,12 @@ export async function updateManualBookkeepingEntry(input = {}, operationRequestI
       const next = {
         ...current,
         source: 'manual',
+        actorName: cleanText(current.actorName || actor.displayName, 120),
+        actorUid: cleanText(current.actorUid || actor.uid, 128),
+        idempotencyKey: cleanText(current.idempotencyKey || requestId, 240),
+        immutable: false,
+        sourceProofId: cleanText(current.sourceProofId),
+        reversalOf: cleanText(current.reversalOf),
         amount: money(input.amount),
         category: cleanText(input.category || current.category, 80),
         date: cleanOperationDate(input.date || current.date, timestamp),

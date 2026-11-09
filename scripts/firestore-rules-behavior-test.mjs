@@ -555,6 +555,7 @@ try {
     sourceEventId: '',
     sourceFeeEntryId: '',
     sourceGuardPersonId: '',
+    sourceProofId: '',
     sourceWorkOrderId: '',
     updatedAt: now,
   };

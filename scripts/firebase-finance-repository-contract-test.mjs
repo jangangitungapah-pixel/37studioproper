@@ -124,6 +124,15 @@ assert.equal(rules.includes("data.get('sourceFingerprint', '')"), true,
   'Legacy closing events without a fingerprint must be safely evaluated.');
 assert.equal(rules.includes('function bookkeepingEntryCreateAllowed(data, entryId)'), true,
   'Bookkeeping create authorization must dispatch by reconciled source before running expensive validators.');
+assert.equal(rules.includes('function validManualBookkeepingEntry(data, entryId)'), true,
+  'Manual journals must use a narrow schema-specific validator.');
+assert.equal(rules.includes('function validManualBookkeepingActivityFence(data, closingId)'), true,
+  'Manual journal activity fences must use a lightweight, append-safe validator.');
+assert.doesNotMatch(
+  rules.slice(rules.indexOf('function manualBookkeepingFenceCompanionMatchesAfter'), rules.indexOf('function manualBookkeepingFenceUpdateAllowed')),
+  /repositoryOperationMatchesAfter/,
+  'The operation marker is validated by the journal write; the paired fence must not duplicate that expensive check.',
+);
 assert.equal(rules.includes('function cashClosingSessionWriteAllowed(closingId, data)'), true,
   'Closing-session authorization must dispatch by operation action.');
 assert.match(
