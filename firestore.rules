@@ -4264,6 +4264,63 @@ match /users/{userId} {
         data.lastEventSnapshot.createdAt == data.updatedAt;
     }
 
+    function validCustomerFollowUpTaskUpdate(data, taskId) {
+      return data is map &&
+        data.id == taskId &&
+        validString(data.assignedToUid, 1, 128) &&
+        validString(data.assignedToName, 1, 120) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 0, 1200) &&
+        data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled'] &&
+        data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other'] &&
+        validIsoDate(data.dueAt) &&
+        validString(data.dueTime, 0, 5) &&
+        (
+          data.dueTime == '' ||
+          (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+        ) &&
+        validString(data.notes, 0, 1200) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.updatedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastContactedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.completedAt) &&
+        validString(data.completedByUid, 0, 128) &&
+        validString(data.completedByName, 0, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.cancelledAt) &&
+        validString(data.cancelledByUid, 0, 128) &&
+        validString(data.cancelReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.reopenedAt) &&
+        validString(data.reopenedByUid, 0, 128) &&
+        validString(data.reopenedByName, 0, 120) &&
+        validString(data.reopenReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
+        validString(data.snoozedByUid, 0, 128) &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction == 'update' &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.lastEventSnapshot.id == data.lastEventId &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == 'update' &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
     function customerFollowUpPreviousEventRecorded() {
       let eventId = resource.data.get('lastEventId', '');
       let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
@@ -4295,7 +4352,7 @@ match /users/{userId} {
       ];
       return customerFollowUpActorAllowed() &&
         customerFollowUpPreviousEventRecorded() &&
-        validCustomerFollowUpTask(data, taskId) &&
+        validCustomerFollowUpTaskUpdate(data, taskId) &&
         data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
         data.revision == resource.data.revision + 1 &&
         data.lastOperationId != resource.data.lastOperationId &&
