@@ -137,7 +137,7 @@ function markerCollection(db, uid) {
   return collection(db, 'users', uid, 'repositoryOperations');
 }
 
-function markerOnlyOperationCall({ db, uid, requestId, payload }) {
+function markerOnlyOperationCall({ db, uid, requestId, payload, markerWriteMode = 'transaction' }) {
   return runIdempotentFirestoreTransaction({
     db,
     actorUid: uid,
@@ -145,6 +145,7 @@ function markerOnlyOperationCall({ db, uid, requestId, payload }) {
     action: 'idempotency-probe',
     requestId,
     payload,
+    markerWriteMode,
     execute: async () => ({ collection: '', id: '' }),
   });
 }
@@ -296,6 +297,7 @@ try {
         uid: roleCase.uid,
         requestId: roleCase.requestId,
         payload: { note: 'single role matrix operation', uid: roleCase.uid },
+        markerWriteMode: roleCase.uid === 'admin-1' ? 'after' : 'transaction',
       });
     } catch (error) {
       console.error('repository-foundation: role marker failed for ' + roleCase.uid, error);
