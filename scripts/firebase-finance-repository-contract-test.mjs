@@ -43,6 +43,11 @@ assert.equal(finance.includes('runIdempotentFirestoreTransaction('), true);
 assert.equal(finance.includes('sourceProofId: proofId ||'), true);
 assert.equal(finance.includes('lastOperationAction'), true);
 assert.equal(finance.includes("timeZone: BUSINESS_TIME_ZONE"), true);
+assert.match(finance, /date: businessDateOf\(at\) \|\| at\.slice\(0, 10\)/);
+assert.equal((finance.match(/normalizeRegisterId\(body\.registerId\)/g) || []).length, 3,
+  'All daily-closing operations must reject unsupported registers.');
+assert.match(proof, /canonicalStatus[\s\S]*?\['void', 'refunded'\]\.includes\(canonicalStatus\)/);
+assert.match(proof, /\['void', 'refunded'\]\.includes\(legacyStatus\)/);
 
 assert.equal(proof.includes('runIdempotentFirestoreTransaction('), true);
 assert.equal(proof.includes('transactionReference'), true);
