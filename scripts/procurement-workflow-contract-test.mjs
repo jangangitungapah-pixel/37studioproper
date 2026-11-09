@@ -11,6 +11,7 @@ const inventoryWorker = read('workers/admin-operations-worker/src/domain/invento
 const workerRouter = read('workers/admin-operations-worker/src/index.js');
 const operations = read('src/services/adminOperationsRepository.js');
 const inventoryRepository = read('src/services/inventoryRepository.js');
+const directRepository = read('src/services/procurementFirestoreRepository.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
 
@@ -21,6 +22,18 @@ assert.match(workspace, /Procurement Management/);
 assert.match(workspace, /createCanonicalSupplier/);
 assert.match(workspace, /createCanonicalPurchaseOrder/);
 assert.match(workspace, /transitionCanonicalPurchaseOrder/);
+assert.match(workspace, /from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
+assert.match(workspace, /from '\.\.\/\.\.\/services\/adminOperationsRepository\.js'/);
+assert.match(workspace, /getStableRequestId\('supplier-create'/);
+assert.match(workspace, /getStableRequestId\('purchase-order-create'/);
+assert.match(workspace, /getStableRequestId\('purchase-order-transition'/);
+assert.match(directRepository, /export async function createCanonicalSupplier/);
+assert.match(directRepository, /export async function createCanonicalPurchaseOrder/);
+assert.match(directRepository, /export async function transitionCanonicalPurchaseOrder/);
+assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 3);
+assert.match(directRepository, /transaction\.get\(supplierRef\)/);
+assert.match(directRepository, /transaction\.get\(reference\)/);
+
 assert.match(workspace, /receiveCanonicalPurchaseOrder/);
 assert.match(workspace, /recordCanonicalProcurementPayment/);
 assert.match(workspace, /subscribeSuppliers/);
@@ -87,19 +100,16 @@ for (const endpoint of [
   assert.equal(operations.includes(endpoint), true, 'Canonical client wrapper missing: ' + endpoint);
 }
 
-for (const collectionName of [
-  'suppliers',
-  'purchaseOrders',
-  'goodsReceipts',
-  'procurementPayments',
-  'procurementEvents',
-]) {
-  const escapedCollectionName = collectionName.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+for (const collectionName of ['goodsReceipts', 'procurementPayments']) {
+  const escapedCollectionName = collectionName.replace(/[.*+?^$()|[\\]\\\\]/g, '\\\\$&');
   const pattern = new RegExp(
-    'match /' + escapedCollectionName + '/\\{[^}]+\\} \\{[\\s\\S]*?allow create, update, delete: if false;',
+    'match /' + escapedCollectionName + '/\\\\{[^}]+\\\\} \\\\{[\\\\s\\\\S]*?allow create, update, delete: if false;',
   );
-  assert.match(rules, pattern, 'Procurement collection must be Worker-write-only: ' + collectionName);
+  assert.match(rules, pattern, 'Unmigrated Procurement collection must remain Worker-write-only: ' + collectionName);
 }
+assert.match(rules, /match \\/suppliers\\/\\{supplierId\\} \\{[\\s\\S]*?allow create: if procurementSupplierCreateAllowed\\(supplierId\\);[\\s\\S]*?allow update, delete: if false;/);
+assert.match(rules, /match \\/purchaseOrders\\/\\{purchaseOrderId\\} \\{[\\s\\S]*?allow create: if procurementPurchaseOrderCreateAllowed\\(purchaseOrderId\\);[\\s\\S]*?allow update: if procurementPurchaseOrderUpdateAllowed\\(purchaseOrderId\\);[\\s\\S]*?allow delete: if false;/);
+assert.match(rules, /match \\/procurementEvents\\/\\{eventId\\} \\{[\\s\\S]*?allow create: if procurementEventCreateAllowed\\(eventId\\);[\\s\\S]*?allow update, delete: if false;/);
 assert.match(
   rules,
   /match \/procurementPayments\/\{paymentId\} \{[\s\S]*?canAccessBookkeepingData\(\)/,
@@ -130,8 +140,8 @@ assert.match(
 );
 assert.match(
   rules,
-  /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/,
-  'Procurement must preserve Worker-only inventory stock writes.',
+  /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create: if inventoryItemCreateAllowed\(itemId\);[\s\S]*?allow update: if inventoryItemUpdateAllowed\(itemId\);[\s\S]*?allow delete: if false;/,
+  'Inventory writes must remain protected by direct stock and movement contracts.',
 );
 assert.equal(inventoryRepository.includes('subscribeSuppliers'), true);
 assert.equal(inventoryRepository.includes('subscribePurchaseOrders'), true);
