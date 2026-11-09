@@ -688,6 +688,7 @@ try {
   );
   await assertSucceeds(archiveBatch.commit());
 
+  const dashboardForInventory = context('dashboard-only', 'dashboard@example.com');
   const dashboardInventoryRequestId = 'inventory-dashboard-denied-001';
   const dashboardInventoryOperationId = await createRepositoryOperationId({
     actorUid: 'dashboard-only',
@@ -695,21 +696,21 @@ try {
     action: 'create',
     requestId: dashboardInventoryRequestId,
   });
-  const dashboardInventoryBatch = writeBatch(dashboard);
-  dashboardInventoryBatch.set(doc(dashboard, 'inventoryItems', 'dashboard-inventory-item'), {
+  const dashboardInventoryBatch = writeBatch(dashboardForInventory);
+  dashboardInventoryBatch.set(doc(dashboardForInventory, 'inventoryItems', 'dashboard-inventory-item'), {
     ...inventoryCreatedItem,
     id: 'dashboard-inventory-item',
     lastOperationId: dashboardInventoryOperationId,
     lastMovementId: 'mov_' + dashboardInventoryOperationId.slice(3),
   });
-  dashboardInventoryBatch.set(doc(dashboard, 'inventoryMovements', 'mov_' + dashboardInventoryOperationId.slice(3)), {
+  dashboardInventoryBatch.set(doc(dashboardForInventory, 'inventoryMovements', 'mov_' + dashboardInventoryOperationId.slice(3)), {
     ...inventoryCreateMovement,
     id: 'mov_' + dashboardInventoryOperationId.slice(3),
     itemId: 'dashboard-inventory-item',
     operationId: dashboardInventoryOperationId,
   });
   dashboardInventoryBatch.set(
-    doc(dashboard, 'users', 'dashboard-only', 'repositoryOperations', dashboardInventoryOperationId),
+    doc(dashboardForInventory, 'users', 'dashboard-only', 'repositoryOperations', dashboardInventoryOperationId),
     {
       operationId: dashboardInventoryOperationId,
       actorUid: 'dashboard-only',
