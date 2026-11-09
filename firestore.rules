@@ -2933,9 +2933,11 @@ match /users/{userId} {
     }
 
     function financeBookingLedgerCreateAllowed(data, entryId) {
-      return isApprovedAdmin() &&
-        hasPermission('billing') &&
-        validFinanceBookkeepingEntry(data, entryId) &&
+      // Authorization is enforced by the paired booking update in this atomic
+      // write. This document must match that newly authorized booking event
+      // and its activity fence; duplicating the same role/profile checks here
+      // needlessly consumes the per-operation Rules expression budget.
+      return validFinanceBookkeepingEntry(data, entryId) &&
         (
           data.source == 'booking-payment' && data.sourceAction == 'payment'
             ? data.type == 'income' && data.category == 'booking' &&
@@ -3241,12 +3243,17 @@ match /users/{userId} {
     function financeActivityFenceUpdateAllowed(closingId) {
       let data = request.resource.data;
       let action = data.lastOperationAction;
-      return isApprovedAdmin() &&
-        hasPermission('billing') &&
-        validFinanceActivityFence(data, closingId) &&
-        activityRevisionIncrements(closingId, data) &&
-        (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
-          get(/databases/$(database)/documents/cashClosingSessions/$(closingId)).data.status != 'closed') &&
+      // The paired booking update is the authorization gate for a Finance
+      // operation. This fence is accepted only when it references that exact
+      // actor, booking, operation, and resulting ledger/proof pointers.
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return validFinanceActivityFence(data, closingId) &&
+        (
+          exists(fencePath)
+            ? resource.data.status != 'closed' &&
+              data.activityRevision == resource.data.get('activityRevision', 0) + 1
+            : data.activityRevision == 1
+        ) &&
         financeActivityBookingCompanionMatchesAfter(data, action);
     }
 
