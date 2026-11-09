@@ -3700,7 +3700,7 @@ match /users/{userId} {
         validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
         validString(data.snoozedByUid, 0, 128) &&
         data.lastOperationId.size() == 67 && data.lastOperationId.matches('^v1_[a-f0-9]{64}')
-        ) &&
+        &&
         data.lastOperationAction in ['create', 'update'] &&
         validString(data.lastEventId, 1, 160);
     }
@@ -3731,7 +3731,7 @@ match /users/{userId} {
         validString(data.get('note', ''), 0, 1200) &&
         validIsoTimestampString(data.createdAt) &&
         data.operationId.size() == 67 && data.operationId.matches('^v1_[a-f0-9]{64}')
-        ) &&
+        &&
         data.operationAction in ['create', 'update'];
     }
 
