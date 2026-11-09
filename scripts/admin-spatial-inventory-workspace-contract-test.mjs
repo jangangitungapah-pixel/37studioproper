@@ -11,9 +11,7 @@ const pageSource = readFileSync(resolve('src/pages/admin/InventoryPage.jsx'), 'u
 const cssSource = readFileSync(resolve('src/styles/modules/inventory.css'), 'utf8');
 const repositorySource = readFileSync(resolve('src/services/inventoryRepository.js'), 'utf8');
 const directRepositorySource = readFileSync(resolve('src/services/inventoryFirestoreRepository.js'), 'utf8');
-const operationsRepositorySource = readFileSync(resolve('src/services/adminOperationsRepository.js'), 'utf8');
 const inventoryWorkerSource = readFileSync(resolve('workers/admin-operations-worker/src/domain/inventory.js'), 'utf8');
-const inventoryWorkerRouteSource = readFileSync(resolve('workers/admin-operations-worker/src/index.js'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
 for (const required of [
