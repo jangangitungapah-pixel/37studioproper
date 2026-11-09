@@ -141,8 +141,8 @@ assert.match(
 );
 assert.match(
   rules,
-  /function adminBookingUpdateAllowed\(bookingId\)[\s\S]*?changed\.hasAny\(\[[\s\S]*?'lastFinanceAction'[\s\S]*?\]\)[\s\S]*?adminBookingFinanceUpdateAllowed\(bookingId\)[\s\S]*?isApprovedScheduleAdmin\(\) && adminBookingOperationalUpdate\(bookingId\)/,
-  'Booking writes must dispatch to exactly one finance or schedule authorization path.',
+  /function adminBookingUpdateAllowed\(bookingId\)[\s\S]*?changed\.hasAny\(\['initialPaymentLedgerStatus'\]\)[\s\S]*?adminBookingInitialPaymentLedgerUpdate\(bookingId\)[\s\S]*?changed\.hasAny\(\[[\s\S]*?'lastFinanceAction'[\s\S]*?\]\)[\s\S]*?adminBookingFinanceUpdateAllowed\(bookingId\)[\s\S]*?isApprovedScheduleAdmin\(\) && adminBookingOperationalUpdate\(bookingId\)/,
+  'Initial-payment ledger writes must be routed before ordinary finance mutations, with no duplicate finance evaluation.',
 );
 const operationalStart = rules.indexOf('function adminBookingOperationalUpdate(bookingId)');
 const operationalEnd = rules.indexOf('function adminBookingUpdateAllowed(bookingId)', operationalStart);

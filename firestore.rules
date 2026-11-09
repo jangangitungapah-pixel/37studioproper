@@ -1898,26 +1898,24 @@ match /users/{userId} {
 
     function adminBookingOperationalUpdate(bookingId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return (
-        changed.hasAny(['initialPaymentLedgerStatus'])
-          ? adminBookingInitialPaymentLedgerUpdate(bookingId)
-          : changed.hasAny([
-              'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
-            ])
-            ? adminBookingDecisionUpdate(bookingId)
-            : changed.hasAny(['lastSessionEventId'])
-              ? adminBookingSessionActionUpdate(bookingId)
-              : adminBookingManualUpdate(bookingId)
-      );
+      return changed.hasAny([
+          'bookingRequestStatus', 'adminResponseAt', 'lastRequestDecisionKey'
+        ])
+        ? adminBookingDecisionUpdate(bookingId)
+        : changed.hasAny(['lastSessionEventId'])
+          ? adminBookingSessionActionUpdate(bookingId)
+          : adminBookingManualUpdate(bookingId);
     }
 
     function adminBookingUpdateAllowed(bookingId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return changed.hasAny([
-          'lastFinanceAction', 'paymentHistory', 'refundHistory'
-        ])
-        ? adminBookingFinanceUpdateAllowed(bookingId)
-        : isApprovedScheduleAdmin() && adminBookingOperationalUpdate(bookingId);
+      return changed.hasAny(['initialPaymentLedgerStatus'])
+        ? isApprovedScheduleAdmin() && adminBookingInitialPaymentLedgerUpdate(bookingId)
+        : changed.hasAny([
+            'lastFinanceAction', 'paymentHistory', 'refundHistory'
+          ])
+          ? adminBookingFinanceUpdateAllowed(bookingId)
+          : isApprovedScheduleAdmin() && adminBookingOperationalUpdate(bookingId);
     }
 
     match /bookings/{bookingId} {
