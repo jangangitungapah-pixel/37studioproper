@@ -1315,8 +1315,9 @@ match /users/{userId} {
 
     function repositoryOperationMatchesAfter(operationId, scope, action, resultCollection, resultId) {
       let markerPath = /databases/$(database)/documents/users/$(request.auth.uid)/repositoryOperations/$(operationId);
-      let markerAfter = getAfter(markerPath).data;
-      return existsAfter(markerPath) &&
+      let markerExists = existsAfter(markerPath);
+      let markerAfter = markerExists ? getAfter(markerPath).data : {};
+      return markerExists &&
         markerAfter.operationId == operationId &&
         markerAfter.actorUid == request.auth.uid &&
         markerAfter.scope == scope &&
@@ -3436,8 +3437,9 @@ match /users/{userId} {
 
     function inventoryItemMovementMatchesAfter(data) {
       let movementPath = /databases/$(database)/documents/inventoryMovements/$(data.lastMovementId);
-      let movementAfter = existsAfter(movementPath) ? getAfter(movementPath).data : {};
-      return existsAfter(movementPath) &&
+      let movementExists = existsAfter(movementPath);
+      let movementAfter = movementExists ? getAfter(movementPath).data : {};
+      return movementExists &&
         movementAfter.itemId == data.id &&
         movementAfter.operationId == data.lastOperationId &&
         movementAfter.operationAction == data.lastOperationAction &&
@@ -3447,8 +3449,9 @@ match /users/{userId} {
 
     function inventoryMovementItemMatchesAfter(data) {
       let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
-      let itemAfter = existsAfter(itemPath) ? getAfter(itemPath).data : {};
-      return existsAfter(itemPath) &&
+      let itemExists = existsAfter(itemPath);
+      let itemAfter = itemExists ? getAfter(itemPath).data : {};
+      return itemExists &&
         itemAfter.lastMovementId == data.id &&
         itemAfter.lastOperationId == data.operationId &&
         itemAfter.lastOperationAction == data.operationAction &&
@@ -3535,13 +3538,6 @@ match /users/{userId} {
       return hasApprovedAdminPermission('inventory') &&
         validInventoryMovement(data, movementId) &&
         inventoryMovementItemMatchesAfter(data) &&
-        repositoryOperationMatchesAfter(
-          data.operationId,
-          'inventory',
-          data.operationAction,
-          'inventoryItems',
-          data.itemId
-        ) &&
         (
           (
             data.type == 'create' &&
@@ -3939,8 +3935,9 @@ match /users/{userId} {
 
     function customerFollowUpTaskEventMatchesAfter(data) {
       let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(data.lastEventId);
-      let eventAfter = existsAfter(eventPath) ? getAfter(eventPath).data : {};
-      return existsAfter(eventPath) &&
+      let eventExists = existsAfter(eventPath);
+      let eventAfter = eventExists ? getAfter(eventPath).data : {};
+      return eventExists &&
         eventAfter.taskId == data.id &&
         eventAfter.customerId == data.customerId &&
         eventAfter.operationId == data.lastOperationId &&
@@ -4011,22 +4008,16 @@ match /users/{userId} {
     function customerFollowUpEventCreateAllowed(eventId) {
       let data = request.resource.data;
       let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
-      let taskAfter = existsAfter(taskPath) ? getAfter(taskPath).data : {};
+      let taskExists = existsAfter(taskPath);
+      let taskAfter = taskExists ? getAfter(taskPath).data : {};
       return hasApprovedAdminPermission('customers') &&
         validCustomerFollowUpEvent(data, eventId) &&
-        existsAfter(taskPath) &&
+        taskExists &&
         taskAfter.lastEventId == eventId &&
         taskAfter.lastOperationId == data.operationId &&
         taskAfter.lastOperationAction == data.operationAction &&
         taskAfter.customerId == data.customerId &&
-        taskAfter.updatedAt == data.createdAt &&
-        repositoryOperationMatchesAfter(
-          data.operationId,
-          'customer-follow-up',
-          data.operationAction,
-          'customerFollowUpTasks',
-          data.taskId
-        );
+        taskAfter.updatedAt == data.createdAt;
     }
 
     // Customer Follow-up is written directly by an approved customer manager.
