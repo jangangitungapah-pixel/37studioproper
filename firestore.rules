@@ -3864,6 +3864,22 @@ match /users/{userId} {
         data.operationAction in ['create', 'update'];
     }
 
+    function validCustomerFollowUpEventSnapshot(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.id == eventId &&
+        data.taskId is string &&
+        data.customerId is string &&
+        data.actorUid == request.auth.uid &&
+        data.createdAt is string &&
+        data.operationId is string &&
+        data.operationAction in ['create', 'update'];
+    }
+
     function validCustomerFollowUpTask(data, taskId) {
       return data is map &&
         data.keys().hasOnly([
@@ -3924,7 +3940,7 @@ match /users/{userId} {
         data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
         data.lastOperationAction in ['create', 'update'] &&
         validString(data.lastEventId, 1, 160) &&
-        validCustomerFollowUpEvent(data.lastEventSnapshot, data.lastEventId) &&
+        validCustomerFollowUpEventSnapshot(data.lastEventSnapshot, data.lastEventId) &&
         data.lastEventSnapshot.taskId == data.id &&
         data.lastEventSnapshot.customerId == data.customerId &&
         data.lastEventSnapshot.operationId == data.lastOperationId &&
