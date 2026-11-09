@@ -3801,16 +3801,755 @@ match /users/{userId} {
     }
     // <<< STUDIO37 NOTIFICATION EVENT RULES END
 
-    // Procurement reads follow Inventory/Bookkeeping permission boundaries.
-    // All supplier, PO, receipt, payment, and event writes are Worker-owned.
+    function validProcurementSupplier(data, supplierId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'name', 'contactName', 'phone', 'email', 'address', 'notes',
+          'status', 'createdAt', 'updatedAt', 'createdByUid', 'createdByName',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        data.id == supplierId &&
+        validString(data.name, 2, 160) &&
+        validString(data.contactName, 0, 120) &&
+        validString(data.phone, 0, 40) &&
+        validString(data.email, 0, 160) &&
+        validString(data.address, 0, 500) &&
+        validString(data.notes, 0, 1000) &&
+        data.status == 'active' &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.createdByUid == request.auth.uid &&
+        validString(data.createdByName, 1, 120) &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}
+
+    function validCustomerFollowUpOptionalTimestamp(value) {
+      return value == '' || validIsoTimestampString(value);
+    }
+
+    function customerFollowUpActorAllowed() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let ownershipExists = exists(ownershipPath);
+      let profile = profileExists ? get(userPath).data : {};
+      let ownership = ownershipExists ? get(ownershipPath).data : {};
+      return (
+        profileExists &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            (!ownershipExists || ownership.currentOwnerUid == request.auth.uid)
+          )
+        )
+      ) || (!profileExists && !ownershipExists && isBootstrapOwnerEmail());
+    }
+
+    function customerFollowUpAssigneeAllowed(uid) {
+      // The caller's permission is already checked by the parent task rule.
+      return uid == request.auth.uid || customerFollowUpOtherAssigneeAllowed(uid);
+    }
+
+    function customerFollowUpOtherAssigneeAllowed(uid) {
+      let userPath = /databases/$(database)/documents/users/$(uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let ownershipExists = exists(ownershipPath);
+      let profile = profileExists ? get(userPath).data : {};
+      let ownership = ownershipExists ? get(ownershipPath).data : {};
+      return profileExists &&
+        profile.uid == uid &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            ownershipExists &&
+            ownership.currentOwnerUid == uid
+          )
+        );
+    }
+
+    function validCustomerFollowUpEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.id == eventId &&
+        validString(data.taskId, 1, 160) &&
+        validString(data.customerId, 1, 160) &&
+        data.action in [
+          'created', 'updated', 'reassigned', 'rescheduled', 'snoozed',
+          'completed', 'cancelled', 'reopened', 'contacted', 'open',
+          'in_progress'
+        ] &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        data.changes is map &&
+        validString(data.get('fromStatus', ''), 0, 40) &&
+        validString(data.get('toStatus', ''), 0, 40) &&
+        validString(data.get('outcome', ''), 0, 40) &&
+        validString(data.get('dueAt', ''), 0, 10) &&
+        validString(data.get('reason', ''), 0, 600) &&
+        validString(data.get('note', ''), 0, 1200) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}') &&
+        data.operationAction in ['create', 'update'];
+    }
+
+    function validCustomerFollowUpTask(data, taskId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'customerId', 'customerName', 'customerPhone', 'sourceId',
+          'sourceType', 'bookingId', 'assignedToUid', 'assignedToName',
+          'title', 'description', 'templateKey', 'status', 'outcome',
+          'dueAt', 'dueTime', 'notes', 'revision', 'createdAt', 'updatedAt',
+          'createdByUid', 'createdByName', 'lastContactedAt', 'completedAt',
+          'completedByUid', 'completedByName', 'cancelledAt', 'cancelledByUid',
+          'cancelReason', 'lastCompletedAt', 'lastCancelledAt', 'reopenedAt',
+          'reopenedByUid', 'reopenedByName', 'reopenReason', 'snoozedAt',
+          'snoozedByUid', 'lastOperationId', 'lastOperationAction',
+          'lastOperationPayloadHash', 'lastEventId', 'lastEventSnapshot'
+        ]) &&
+        data.id == taskId &&
+        validString(data.customerId, 1, 160) &&
+        validString(data.customerName, 1, 160) &&
+        validString(data.customerPhone, 0, 40) &&
+        validString(data.sourceId, 1, 160) &&
+        data.sourceType in ['customer', 'client_account', 'booking'] &&
+        validString(data.bookingId, 0, 160) &&
+        validString(data.assignedToUid, 1, 128) &&
+        validString(data.assignedToName, 1, 120) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 0, 1200) &&
+        data.templateKey in ['payment', 'booking', 'comeback'] &&
+        data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled'] &&
+        data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other'] &&
+        validIsoDate(data.dueAt) &&
+        validString(data.dueTime, 0, 5) &&
+        (
+          data.dueTime == '' ||
+          (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+        ) &&
+        validString(data.notes, 0, 1200) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.createdByUid, 1, 128) &&
+        validString(data.createdByName, 1, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastContactedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.completedAt) &&
+        validString(data.completedByUid, 0, 128) &&
+        validString(data.completedByName, 0, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.cancelledAt) &&
+        validString(data.cancelledByUid, 0, 128) &&
+        validString(data.cancelReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.reopenedAt) &&
+        validString(data.reopenedByUid, 0, 128) &&
+        validString(data.reopenedByName, 0, 120) &&
+        validString(data.reopenReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
+        validString(data.snoozedByUid, 0, 128) &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction in ['create', 'update'] &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.lastEventSnapshot.id == data.lastEventId &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        data.lastEventSnapshot.operationAction == 'create';
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      let allowedChanges = [
+        'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+        'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+        'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+        'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+        'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+        'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+        'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
+        'lastEventSnapshot'
+      ];
+      return customerFollowUpActorAllowed() &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
+        data.revision == resource.data.revision + 1 &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'update' &&
+        data.lastEventSnapshot.operationAction == 'update' &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        );
+    }
+
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventId == eventId &&
+        task.lastEventSnapshot == data &&
+        task.lastOperationId == data.operationId &&
+        task.lastOperationAction == data.operationAction &&
+        task.customerId == data.customerId &&
+        task.updatedAt == data.createdAt;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
+        data.lastOperationAction == 'create' &&
+        validString(data.lastEventId, 1, 160);
+    }
+
+    function validProcurementPurchaseOrder(data, purchaseOrderId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'poNumber', 'supplierId', 'supplierName', 'items', 'totalAmount',
+          'paidAmount', 'status', 'orderDate', 'expectedAt', 'notes',
+          'createdAt', 'updatedAt', 'createdByUid', 'createdByName',
+          'approvedAt', 'approvedByUid', 'approvedByName', 'orderedAt',
+          'cancelledAt', 'cancelReason', 'cancelledByUid',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        data.id == purchaseOrderId &&
+        validString(data.poNumber, 12, 64) &&
+        validString(data.supplierId, 1, 160) &&
+        validString(data.supplierName, 1, 160) &&
+        data.items is list &&
+        data.items.size() >= 1 &&
+        data.items.size() <= 100 &&
+        validNumber(data.totalAmount, 1, 1000000000000) &&
+        validNumber(data.paidAmount, 0, 1000000000000) &&
+        data.paidAmount <= data.totalAmount &&
+        data.status in [
+          'draft', 'submitted', 'approved', 'ordered',
+          'partially_received', 'received', 'cancelled'
+        ] &&
+        validIsoDate(data.orderDate) &&
+        (data.expectedAt == '' || validIsoDate(data.expectedAt)) &&
+        validString(data.notes, 0, 1200) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.createdByUid is string &&
+        data.createdByUid.size() > 0 &&
+        validString(data.createdByName, 1, 120) &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}
+
+    function validCustomerFollowUpOptionalTimestamp(value) {
+      return value == '' || validIsoTimestampString(value);
+    }
+
+    function customerFollowUpActorAllowed() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let ownershipExists = exists(ownershipPath);
+      let profile = profileExists ? get(userPath).data : {};
+      let ownership = ownershipExists ? get(ownershipPath).data : {};
+      return (
+        profileExists &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            (!ownershipExists || ownership.currentOwnerUid == request.auth.uid)
+          )
+        )
+      ) || (!profileExists && !ownershipExists && isBootstrapOwnerEmail());
+    }
+
+    function customerFollowUpAssigneeAllowed(uid) {
+      // The caller's permission is already checked by the parent task rule.
+      return uid == request.auth.uid || customerFollowUpOtherAssigneeAllowed(uid);
+    }
+
+    function customerFollowUpOtherAssigneeAllowed(uid) {
+      let userPath = /databases/$(database)/documents/users/$(uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let ownershipExists = exists(ownershipPath);
+      let profile = profileExists ? get(userPath).data : {};
+      let ownership = ownershipExists ? get(ownershipPath).data : {};
+      return profileExists &&
+        profile.uid == uid &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            ownershipExists &&
+            ownership.currentOwnerUid == uid
+          )
+        );
+    }
+
+    function validCustomerFollowUpEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.id == eventId &&
+        validString(data.taskId, 1, 160) &&
+        validString(data.customerId, 1, 160) &&
+        data.action in [
+          'created', 'updated', 'reassigned', 'rescheduled', 'snoozed',
+          'completed', 'cancelled', 'reopened', 'contacted', 'open',
+          'in_progress'
+        ] &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        data.changes is map &&
+        validString(data.get('fromStatus', ''), 0, 40) &&
+        validString(data.get('toStatus', ''), 0, 40) &&
+        validString(data.get('outcome', ''), 0, 40) &&
+        validString(data.get('dueAt', ''), 0, 10) &&
+        validString(data.get('reason', ''), 0, 600) &&
+        validString(data.get('note', ''), 0, 1200) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}') &&
+        data.operationAction in ['create', 'update'];
+    }
+
+    function validCustomerFollowUpTask(data, taskId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'customerId', 'customerName', 'customerPhone', 'sourceId',
+          'sourceType', 'bookingId', 'assignedToUid', 'assignedToName',
+          'title', 'description', 'templateKey', 'status', 'outcome',
+          'dueAt', 'dueTime', 'notes', 'revision', 'createdAt', 'updatedAt',
+          'createdByUid', 'createdByName', 'lastContactedAt', 'completedAt',
+          'completedByUid', 'completedByName', 'cancelledAt', 'cancelledByUid',
+          'cancelReason', 'lastCompletedAt', 'lastCancelledAt', 'reopenedAt',
+          'reopenedByUid', 'reopenedByName', 'reopenReason', 'snoozedAt',
+          'snoozedByUid', 'lastOperationId', 'lastOperationAction',
+          'lastOperationPayloadHash', 'lastEventId', 'lastEventSnapshot'
+        ]) &&
+        data.id == taskId &&
+        validString(data.customerId, 1, 160) &&
+        validString(data.customerName, 1, 160) &&
+        validString(data.customerPhone, 0, 40) &&
+        validString(data.sourceId, 1, 160) &&
+        data.sourceType in ['customer', 'client_account', 'booking'] &&
+        validString(data.bookingId, 0, 160) &&
+        validString(data.assignedToUid, 1, 128) &&
+        validString(data.assignedToName, 1, 120) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 0, 1200) &&
+        data.templateKey in ['payment', 'booking', 'comeback'] &&
+        data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled'] &&
+        data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other'] &&
+        validIsoDate(data.dueAt) &&
+        validString(data.dueTime, 0, 5) &&
+        (
+          data.dueTime == '' ||
+          (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+        ) &&
+        validString(data.notes, 0, 1200) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.createdByUid, 1, 128) &&
+        validString(data.createdByName, 1, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastContactedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.completedAt) &&
+        validString(data.completedByUid, 0, 128) &&
+        validString(data.completedByName, 0, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.cancelledAt) &&
+        validString(data.cancelledByUid, 0, 128) &&
+        validString(data.cancelReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.reopenedAt) &&
+        validString(data.reopenedByUid, 0, 128) &&
+        validString(data.reopenedByName, 0, 120) &&
+        validString(data.reopenReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
+        validString(data.snoozedByUid, 0, 128) &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction in ['create', 'update'] &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.lastEventSnapshot.id == data.lastEventId &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        data.lastEventSnapshot.operationAction == 'create';
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      let allowedChanges = [
+        'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+        'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+        'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+        'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+        'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+        'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+        'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
+        'lastEventSnapshot'
+      ];
+      return customerFollowUpActorAllowed() &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
+        data.revision == resource.data.revision + 1 &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'update' &&
+        data.lastEventSnapshot.operationAction == 'update' &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        );
+    }
+
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventId == eventId &&
+        task.lastEventSnapshot == data &&
+        task.lastOperationId == data.operationId &&
+        task.lastOperationAction == data.operationAction &&
+        task.customerId == data.customerId &&
+        task.updatedAt == data.createdAt;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
+        data.lastOperationAction in ['create', 'transition'] &&
+        validString(data.lastEventId, 1, 160) &&
+        (!data.keys().hasAny(['approvedAt']) || validIsoTimestampString(data.approvedAt)) &&
+        (!data.keys().hasAny(['approvedByUid']) || validString(data.approvedByUid, 1, 128)) &&
+        (!data.keys().hasAny(['approvedByName']) || validString(data.approvedByName, 1, 120)) &&
+        (!data.keys().hasAny(['orderedAt']) || validIsoTimestampString(data.orderedAt)) &&
+        (!data.keys().hasAny(['cancelledAt']) || validIsoTimestampString(data.cancelledAt)) &&
+        (!data.keys().hasAny(['cancelReason']) || validString(data.cancelReason, 0, 600)) &&
+        (!data.keys().hasAny(['cancelledByUid']) || validString(data.cancelledByUid, 1, 128));
+    }
+
+    function validProcurementEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'entityType', 'entityId', 'action', 'fromStatus', 'toStatus',
+          'reason', 'actorUid', 'actorName', 'createdAt', 'amount'
+        ]) &&
+        data.id == eventId &&
+        data.entityType in ['supplier', 'purchase_order'] &&
+        validString(data.entityId, 1, 160) &&
+        data.action in ['created', 'status_changed'] &&
+        validString(data.get('fromStatus', ''), 0, 40) &&
+        validString(data.get('toStatus', ''), 0, 40) &&
+        validString(data.get('reason', ''), 0, 600) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['amount']) || validNumber(data.amount, 1, 1000000000000));
+    }
+
+    function procurementSupplierEventMatchesAfter(data) {
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return eventExists &&
+        event.id == data.lastEventId &&
+        event.entityType == 'supplier' &&
+        event.entityId == data.id &&
+        event.action == 'created' &&
+        event.actorUid == request.auth.uid &&
+        event.createdAt == data.createdAt;
+    }
+
+    function procurementPurchaseOrderEventMatchesAfter(data) {
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return eventExists &&
+        event.id == data.lastEventId &&
+        event.entityType == 'purchase_order' &&
+        event.entityId == data.id &&
+        event.actorUid == request.auth.uid &&
+        event.createdAt == data.updatedAt &&
+        (
+          (
+            data.lastOperationAction == 'create' &&
+            event.action == 'created' &&
+            event.fromStatus == '' &&
+            event.toStatus == 'draft'
+          ) ||
+          (
+            data.lastOperationAction == 'transition' &&
+            event.action == 'status_changed' &&
+            event.fromStatus == resource.data.status &&
+            event.toStatus == data.status
+          )
+        );
+    }
+
+    function procurementSupplierCreateAllowed(supplierId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementSupplier(data, supplierId) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'supplier-create',
+          'suppliers',
+          supplierId
+        ) &&
+        procurementSupplierEventMatchesAfter(data);
+    }
+
+    function procurementPurchaseOrderCreateAllowed(purchaseOrderId) {
+      let data = request.resource.data;
+      let supplierPath = /databases/$(database)/documents/suppliers/$(data.supplierId);
+      let supplierExists = exists(supplierPath);
+      let supplier = supplierExists ? get(supplierPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        data.status == 'draft' &&
+        data.paidAmount == 0 &&
+        data.lastOperationAction == 'create' &&
+        supplierExists &&
+        supplier.status == 'active' &&
+        supplier.name == data.supplierName &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'purchase-order-create',
+          'purchaseOrders',
+          purchaseOrderId
+        ) &&
+        procurementPurchaseOrderEventMatchesAfter(data);
+    }
+
+    function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      let nextStatusAllowed = (
+        resource.data.status == 'draft' && data.status in ['submitted', 'cancelled']
+      ) || (
+        resource.data.status == 'submitted' && data.status in ['approved', 'cancelled']
+      ) || (
+        resource.data.status == 'approved' && data.status in ['ordered', 'cancelled']
+      );
+      let approvalOrCancelAllowed = (
+        data.status in ['approved', 'cancelled']
+          ? hasApprovedAdminPermission('inventory')
+          : true
+      );
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        nextStatusAllowed &&
+        approvalOrCancelAllowed &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'approvedAt', 'approvedByUid', 'approvedByName',
+          'orderedAt', 'cancelledAt', 'cancelReason', 'cancelledByUid',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        data.supplierId == resource.data.supplierId &&
+        data.supplierName == resource.data.supplierName &&
+        data.items == resource.data.items &&
+        data.totalAmount == resource.data.totalAmount &&
+        data.paidAmount == resource.data.paidAmount &&
+        data.orderDate == resource.data.orderDate &&
+        data.expectedAt == resource.data.expectedAt &&
+        data.notes == resource.data.notes &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
+        data.updatedAt != resource.data.updatedAt &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'transition' &&
+        (data.status != 'cancelled' || (
+          data.paidAmount == 0 &&
+          validString(data.cancelReason, 4, 600) &&
+          data.cancelledByUid == request.auth.uid
+        )) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'purchase-order-transition',
+          'purchaseOrders',
+          purchaseOrderId
+        ) &&
+        procurementPurchaseOrderEventMatchesAfter(data);
+    }
+
+    function procurementEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementEvent(data, eventId) &&
+        (
+          (
+            data.entityType == 'supplier' &&
+            data.action == 'created' &&
+            procurementSupplierEventMatchesAfter({
+              id: data.entityId,
+              lastEventId: eventId,
+              createdAt: data.createdAt
+            })
+          ) ||
+          (
+            data.entityType == 'purchase_order' &&
+            procurementPurchaseOrderEventMatchesAfter({
+              id: data.entityId,
+              lastEventId: eventId,
+              updatedAt: data.createdAt,
+              lastOperationAction: data.action == 'created' ? 'create' : 'transition',
+              status: data.get('toStatus', '')
+            })
+          )
+        );
+    }
+
+    // Supplier and PO lifecycle writes use direct Firestore transactions.
+    // Receipts and procurement payments remain Worker-owned until their stock,
+    // Daily Closing, and bookkeeping invariants are migrated.
     match /suppliers/{supplierId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update, delete: if false;
+      allow create: if procurementSupplierCreateAllowed(supplierId);
+      allow update, delete: if false;
     }
 
     match /purchaseOrders/{purchaseOrderId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update, delete: if false;
+      allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);
+      allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);
+      allow delete: if false;
     }
 
     match /goodsReceipts/{receiptId} {
@@ -3825,7 +4564,8 @@ match /users/{userId} {
 
     match /procurementEvents/{eventId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update, delete: if false;
+      allow create: if procurementEventCreateAllowed(eventId);
+      allow update, delete: if false;
     }
 
     function validCustomerFollowUpOptionalTimestamp(value) {
