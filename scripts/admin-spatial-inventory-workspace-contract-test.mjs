@@ -168,10 +168,13 @@ for (const required of [
   'lastMovementId: movementId',
   'assertNoActiveMaintenance(transaction, itemId)',
   'nextQuantity < 0',
-  'transaction.set(movementRef, movement);',
+  'item.lastMovementSnapshot = movement;',
+  'async function ensureInventoryMovement',
+  'await setDoc(movementRef, movement)',
 ]) {
   assert.equal(directRepositorySource.includes(required), true, 'Direct inventory repository contract missing: ' + required);
 }
+assert.equal(directRepositorySource.includes('transaction.set(movementRef, movement)'), false, 'Movement append must not participate in a cyclic cross-document Rules transaction.');
 assert.equal(directRepositorySource.includes('transaction.delete(movementRef)'), false, 'Inventory movement history must remain append-only.');
 
 for (const forbidden of [
