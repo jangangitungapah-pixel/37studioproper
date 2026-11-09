@@ -1349,6 +1349,8 @@ match /users/{userId} {
       let closingId = bookingAfter.lastFinanceBusinessDate + '__main';
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
       let closingAfter = getAfter(closingPath).data;
+      let currentPaid = financeBookingNetPaid(resource.data);
+      let currentOutstanding = financeBookingOutstanding(resource.data);
       return changed.hasOnly([
           'paymentHistory', 'invoiceAmount', 'paidAmount', 'paymentStatus',
           'paymentStatusCanonical', 'dpAmount', 'lastPaymentAt',
@@ -1372,9 +1374,9 @@ match /users/{userId} {
         event.actorUid == request.auth.uid &&
         event.amount is number &&
         event.amount > 0 &&
-        event.amount <= financeBookingOutstanding(resource.data) &&
-        bookingAfter.paidAmount == financeBookingNetPaid(resource.data) + event.amount &&
-        bookingAfter.invoiceAmount == financeBookingOutstanding(resource.data) - event.amount &&
+        event.amount <= currentOutstanding &&
+        bookingAfter.paidAmount == currentPaid + event.amount &&
+        bookingAfter.invoiceAmount == currentOutstanding - event.amount &&
         event.date == bookingAfter.lastFinanceBusinessDate &&
         event.method in ['cash', 'transfer', 'qris', 'other'] &&
         existsAfter(ledgerPath) &&
@@ -1414,6 +1416,8 @@ match /users/{userId} {
       let closingId = bookingAfter.lastFinanceBusinessDate + '__main';
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
       let closingAfter = getAfter(closingPath).data;
+      let currentPaid = financeBookingNetPaid(resource.data);
+      let currentOutstanding = financeBookingOutstanding(resource.data);
       return changed.hasOnly([
           'refundHistory', 'invoiceAmount', 'paidAmount', 'paymentStatus',
           'paymentStatusCanonical', 'refundedAmount', 'lastRefundAt',
@@ -1437,9 +1441,9 @@ match /users/{userId} {
         event.actorUid == request.auth.uid &&
         event.amount is number &&
         event.amount > 0 &&
-        event.amount <= financeBookingNetPaid(resource.data) &&
-        bookingAfter.paidAmount == financeBookingNetPaid(resource.data) - event.amount &&
-        bookingAfter.invoiceAmount == financeBookingOutstanding(resource.data) + event.amount &&
+        event.amount <= currentPaid &&
+        bookingAfter.paidAmount == currentPaid - event.amount &&
+        bookingAfter.invoiceAmount == currentOutstanding + event.amount &&
         event.date == bookingAfter.lastFinanceBusinessDate &&
         event.method in ['cash', 'transfer', 'qris', 'other'] &&
         existsAfter(ledgerPath) &&
@@ -1525,13 +1529,18 @@ match /users/{userId} {
     }
 
     function adminBookingFinanceUpdateAllowed(bookingId) {
+      let action = request.resource.data.get('lastFinanceAction', '');
       return isApprovedAdmin() &&
         hasPermission('billing') &&
         validBooking(request.resource.data) &&
         (
-          financeBookingPaymentUpdateAllowed(bookingId) ||
-          financeBookingRefundUpdateAllowed(bookingId) ||
-          financeBookingVoidUpdateAllowed(bookingId)
+          action in ['payment', 'proof-approve']
+            ? financeBookingPaymentUpdateAllowed(bookingId)
+            : action == 'refund'
+              ? financeBookingRefundUpdateAllowed(bookingId)
+              : action == 'void'
+                ? financeBookingVoidUpdateAllowed(bookingId)
+                : false
         );
     }
 
@@ -2892,20 +2901,13 @@ match /users/{userId} {
         validBookkeepingEntry(data, entryId) &&
         bookkeepingBusinessDateOpen(data) &&
         (
-          (
-            data.source == 'booking-payment' &&
-            data.sourceAction == 'payment' &&
-            data.type == 'income' &&
-            data.category == 'booking' &&
-            financeBookingPaymentLedgerPairMatchesAfter(data, entryId)
-          ) ||
-          (
-            data.source == 'booking-refund' &&
-            data.sourceAction == 'refund' &&
-            data.type == 'expense' &&
-            data.category == 'refund' &&
-            financeBookingRefundLedgerPairMatchesAfter(data, entryId)
-          )
+          data.source == 'booking-payment' && data.sourceAction == 'payment'
+            ? data.type == 'income' && data.category == 'booking' &&
+              financeBookingPaymentLedgerPairMatchesAfter(data, entryId)
+            : data.source == 'booking-refund' && data.sourceAction == 'refund'
+              ? data.type == 'expense' && data.category == 'refund' &&
+                financeBookingRefundLedgerPairMatchesAfter(data, entryId)
+              : false
         );
     }
 
