@@ -3474,9 +3474,6 @@ match /users/{userId} {
     function inventoryItemUpdateAllowed(itemId) {
       let data = request.resource.data;
       let changed = data.diff(resource.data).affectedKeys();
-      let operationFields = [
-        'lastOperationId', 'lastOperationAction', 'lastMovementId', 'updatedAt'
-      ];
       return hasApprovedAdminPermission('inventory') &&
         validInventoryItem(data, itemId) &&
         data.createdAt == resource.data.createdAt &&
@@ -3511,7 +3508,7 @@ match /users/{userId} {
             data.condition == resource.data.condition &&
             data.location == resource.data.location &&
             data.note == resource.data.note &&
-            changed.hasOnly(operationFields.concat(['status']))
+            changed.hasOnly(['status', 'lastOperationId', 'lastOperationAction', 'lastMovementId', 'updatedAt'])
           ) ||
           (
             data.lastOperationAction == 'adjust' &&
@@ -3525,7 +3522,7 @@ match /users/{userId} {
             data.status == resource.data.status &&
             data.location == resource.data.location &&
             data.note == resource.data.note &&
-            changed.hasOnly(operationFields.concat(['quantity']))
+            changed.hasOnly(['quantity', 'lastOperationId', 'lastOperationAction', 'lastMovementId', 'updatedAt'])
           )
         );
     }
