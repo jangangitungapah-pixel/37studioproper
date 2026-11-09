@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import {
   doc,
+  getDocFromServer,
   runTransaction,
   serverTimestamp,
+  setDoc,
   writeBatch,
 } from 'firebase/firestore';
 
@@ -353,12 +355,16 @@ export async function runIdempotentFirestoreTransaction({
   payload,
   execute,
   transactionOptions,
+  markerWriteMode = 'transaction',
 }) {
   if (!db) {
     throw new RepositoryConfigurationError('Firestore Database wajib diberikan.');
   }
   if (typeof execute !== 'function') {
     throw new TypeError('Callback execute wajib berupa function.');
+  }
+  if (!['transaction', 'after'].includes(markerWriteMode)) {
+    throw new TypeError('markerWriteMode harus transaction atau after.');
   }
 
   const operationInput = parseRepositoryInput(
@@ -414,17 +420,19 @@ export async function runIdempotentFirestoreTransaction({
       operationInput.scope + ':' + operationInput.action + ' result',
     );
 
-    transaction.set(markerRef, {
-      operationId,
-      actorUid: operationInput.actorUid,
-      scope: operationInput.scope,
-      action: operationInput.action,
-      requestId: operationInput.requestId,
-      payloadHash,
-      resultCollection: result.collection,
-      resultId: result.id,
-      createdAt: serverTimestamp(),
-    });
+    if (markerWriteMode === 'transaction') {
+      transaction.set(markerRef, {
+        operationId,
+        actorUid: operationInput.actorUid,
+        scope: operationInput.scope,
+        action: operationInput.action,
+        requestId: operationInput.requestId,
+        payloadHash,
+        resultCollection: result.collection,
+        resultId: result.id,
+        createdAt: serverTimestamp(),
+      });
+    }
 
     return {
       operationId,
@@ -433,7 +441,40 @@ export async function runIdempotentFirestoreTransaction({
     };
   };
 
-  return transactionOptions
-    ? runTransaction(db, transactionCallback, transactionOptions)
-    : runTransaction(db, transactionCallback);
+  const operation = transactionOptions
+    ? await runTransaction(db, transactionCallback, transactionOptions)
+    : await runTransaction(db, transactionCallback);
+
+  if (markerWriteMode === 'after' && !operation.replayed) {
+    const marker = {
+      operationId,
+      actorUid: operationInput.actorUid,
+      scope: operationInput.scope,
+      action: operationInput.action,
+      requestId: operationInput.requestId,
+      payloadHash,
+      resultCollection: operation.result.collection,
+      resultId: operation.result.id,
+      createdAt: serverTimestamp(),
+    };
+
+    try {
+      await setDoc(markerRef, marker);
+    } catch (error) {
+      const existingSnapshot = await getDocFromServer(markerRef);
+      const existing = existingSnapshot.exists() ? existingSnapshot.data() : null;
+      const matches = existing &&
+        existing.operationId === operationId &&
+        existing.actorUid === operationInput.actorUid &&
+        existing.scope === operationInput.scope &&
+        existing.action === operationInput.action &&
+        existing.requestId === operationInput.requestId &&
+        existing.payloadHash === payloadHash &&
+        existing.resultCollection === operation.result.collection &&
+        existing.resultId === operation.result.id;
+      if (!matches) throw error;
+    }
+  }
+
+  return operation;
 }
