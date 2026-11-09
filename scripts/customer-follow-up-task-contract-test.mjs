@@ -127,6 +127,7 @@ const rules = read('firestore.rules');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const ui = read('src/pages/admin/CustomerPage.jsx');
 const customerRepository = read('src/services/adminCustomerRepository.js');
+const directFollowUpRepository = read('src/services/customerFollowUpFirestoreRepository.js');
 const operationsRepository = read('src/services/adminOperationsRepository.js');
 const packageJson = JSON.parse(read('package.json'));
 
@@ -472,8 +473,17 @@ assert.deepEqual(buckets.completed.map((item) => item.id), ['done']);
 
 const rulesTask = rules.slice(rules.indexOf('match /customerFollowUpTasks/'), rules.indexOf('match /customerFollowUpEvents/'));
 const rulesEvent = rules.slice(rules.indexOf('match /customerFollowUpEvents/'), rules.indexOf('match /{document=**}', rules.indexOf('match /customerFollowUpEvents/')));
-assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpTaskCreateAllowed\(taskId\);[\s\S]*?allow update: if customerFollowUpTaskUpdateAllowed\(taskId\);[\s\S]*?allow delete: if false;/);
+assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
+assert.match(directFollowUpRepository, /runIdempotentFirestoreTransaction\(/);
+assert.match(directFollowUpRepository, /scope: SCOPE,[\s\S]*?action,[\s\S]*?requestId,[\s\S]*?execute: async \(transaction, metadata\)/);
+assert.match(directFollowUpRepository, /transaction\.set\(taskRef, task\);[\s\S]*?transaction\.set\(eventRef, event\);/);
+assert.match(directFollowUpRepository, /lastOperationId: metadata\.operationId/);
+assert.match(directFollowUpRepository, /operationAction: action/);
+assert.match(ui, /customerFollowUpFirestoreRepository\.js/);
+assert.match(ui, /createRepositoryRequestId\(\)/);
+assert.match(ui, /followUpRequestIdsRef\.current\.set\(requestKey, requestId\)/);
+assert.doesNotMatch(ui, /from '\.\.\/\.\.\/services\/adminOperationsRepository\.js'/);
 assert.match(workerIndex, /pathname === '\/v1\/customers\/follow-ups\/assignees'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'customers' \}\)/);
 assert.match(workerIndex, /pathname === '\/v1\/customers\/follow-ups'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'customers' \}\)/);
 assert.match(customerRepository, /where\('status', 'in', ACTIVE_CUSTOMER_FOLLOW_UP_STATUSES\)[\s\S]*?orderBy\('dueAt', 'asc'\)[\s\S]*?orderBy\('dueTime', 'asc'\)[\s\S]*?limit\(200\)/);
