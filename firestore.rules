@@ -1429,7 +1429,7 @@ match /users/{userId} {
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(bookingAfter.lastFinanceBusinessDate + '__main');
       let closingAfter = getAfter(closingPath).data;
       let currentPaid = financeBookingNetPaid(resource.data);
-      let currentOutstanding = financeBookingOutstanding(resource.data);
+      let currentOutstanding = financeBookingOutstanding(resource.data, currentPaid);
       return changed.hasOnly([
           'refundHistory', 'invoiceAmount', 'paidAmount', 'paymentStatus',
           'paymentStatusCanonical', 'refundedAmount', 'lastRefundAt',
