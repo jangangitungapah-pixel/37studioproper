@@ -936,8 +936,8 @@ match /users/{userId} {
         (!data.keys().hasAny(['appliedDiscounts']) || (data.appliedDiscounts is list && data.appliedDiscounts.size() <= 50));
     }
 
-    function adminBookingFinanceFieldsUnchanged(before, after) {
-      return !after.diff(before).affectedKeys().hasAny([
+    function adminBookingFinanceFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'paymentHistory', 'refundHistory', 'paymentStatus', 'status',
           'paymentStatusCanonical', 'invoiceStatus', 'invoiceAmount',
           'paidAmount', 'dpAmount', 'refundedAmount', 'refundStatus',
@@ -1953,7 +1953,7 @@ match /users/{userId} {
           ])
           ? adminBookingFinanceUpdateAllowed(bookingId)
           : isApprovedScheduleAdmin() &&
-          adminBookingFinanceFieldsUnchanged(resource.data, request.resource.data) &&
+          adminBookingFinanceFieldsUnchanged() &&
           adminBookingOperationalUpdate(bookingId);
     }
 
