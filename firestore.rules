@@ -3370,7 +3370,12 @@ match /users/{userId} {
     }
 
     function validInventoryItem(data, itemId) {
-      return data.keys().hasOnly(['id', 'name', 'category', 'type', 'quantity', 'unit', 'minStock', 'condition', 'status', 'location', 'note', 'createdAt', 'updatedAt']) &&
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'name', 'category', 'type', 'quantity', 'unit', 'minStock',
+          'condition', 'status', 'location', 'note', 'createdAt', 'updatedAt',
+          'lastOperationId', 'lastOperationAction', 'lastMovementId'
+        ]) &&
         data.id == itemId &&
         validString(data.name, 1, 160) &&
         validString(data.category, 1, 80) &&
@@ -3383,20 +3388,220 @@ match /users/{userId} {
         validString(data.location, 0, 240) &&
         validString(data.note, 0, 2000) &&
         validIsoTimestampString(data.createdAt) &&
-        validIsoTimestampString(data.updatedAt);
+        validIsoTimestampString(data.updatedAt) &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction in [
+          'create', 'update', 'archive', 'adjust', 'receive',
+          'maintenance-report', 'maintenance-action', 'maintenance-reopen'
+        ] &&
+        validString(data.lastMovementId, 1, 160);
+    }
+
+    function validInventoryMovement(data, movementId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'itemId', 'itemName', 'type', 'quantity', 'previousQuantity',
+          'nextQuantity', 'unit', 'note', 'reason', 'actorUid', 'actorName',
+          'createdAt', 'metadataSnapshot', 'previousMetadata', 'nextMetadata',
+          'adjustmentKey', 'operationId', 'operationAction'
+        ]) &&
+        data.id == movementId &&
+        validString(data.itemId, 1, 160) &&
+        validString(data.itemName, 1, 160) &&
+        data.type in [
+          'create', 'edit', 'inactive', 'stock-in', 'stock-out',
+          'goods-receipt', 'maintenance'
+        ] &&
+        validNumber(data.quantity, 0, 1000000) &&
+        validNumber(data.previousQuantity, 0, 1000000) &&
+        validNumber(data.nextQuantity, 0, 1000000) &&
+        validString(data.unit, 1, 40) &&
+        validString(data.note, 0, 600) &&
+        validString(data.reason, 0, 600) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['metadataSnapshot']) || data.metadataSnapshot is map) &&
+        (!data.keys().hasAny(['previousMetadata']) || data.previousMetadata is map) &&
+        (!data.keys().hasAny(['nextMetadata']) || data.nextMetadata is map) &&
+        (!data.keys().hasAny(['adjustmentKey']) || validString(data.adjustmentKey, 1, 128)) &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}') &&
+        data.operationAction in [
+          'create', 'update', 'archive', 'adjust', 'receive',
+          'maintenance-report', 'maintenance-action', 'maintenance-reopen'
+        ];
+    }
+
+    function inventoryItemMovementMatchesAfter(data) {
+      let movementPath = /databases/$(database)/documents/inventoryMovements/$(data.lastMovementId);
+      let movementAfter = existsAfter(movementPath) ? getAfter(movementPath).data : {};
+      return existsAfter(movementPath) &&
+        movementAfter.itemId == data.id &&
+        movementAfter.operationId == data.lastOperationId &&
+        movementAfter.operationAction == data.lastOperationAction &&
+        movementAfter.actorUid == request.auth.uid &&
+        movementAfter.nextQuantity == data.quantity;
+    }
+
+    function inventoryMovementItemMatchesAfter(data) {
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
+      let itemAfter = existsAfter(itemPath) ? getAfter(itemPath).data : {};
+      return existsAfter(itemPath) &&
+        itemAfter.lastMovementId == data.id &&
+        itemAfter.lastOperationId == data.operationId &&
+        itemAfter.lastOperationAction == data.operationAction &&
+        itemAfter.quantity == data.nextQuantity;
+    }
+
+    function inventoryItemCreateAllowed(itemId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('inventory') &&
+        validInventoryItem(data, itemId) &&
+        data.lastOperationAction == 'create' &&
+        data.lastOperationId.size() == 67 &&
+        inventoryItemMovementMatchesAfter(data) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'inventory',
+          'create',
+          'inventoryItems',
+          itemId
+        );
+    }
+
+    function inventoryItemUpdateAllowed(itemId) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      let operationFields = [
+        'lastOperationId', 'lastOperationAction', 'lastMovementId', 'updatedAt'
+      ];
+      return hasApprovedAdminPermission('inventory') &&
+        validInventoryItem(data, itemId) &&
+        data.createdAt == resource.data.createdAt &&
+        data.lastOperationId != resource.data.get('lastOperationId', '') &&
+        inventoryItemMovementMatchesAfter(data) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'inventory',
+          data.lastOperationAction,
+          'inventoryItems',
+          itemId
+        ) &&
+        (
+          (
+            data.lastOperationAction == 'update' &&
+            data.quantity == resource.data.quantity &&
+            changed.hasOnly([
+              'name', 'category', 'type', 'unit', 'minStock', 'condition',
+              'status', 'location', 'note', 'updatedAt',
+              'lastOperationId', 'lastOperationAction', 'lastMovementId'
+            ])
+          ) ||
+          (
+            data.lastOperationAction == 'archive' &&
+            data.status == 'inactive' &&
+            data.quantity == resource.data.quantity &&
+            data.name == resource.data.name &&
+            data.category == resource.data.category &&
+            data.type == resource.data.type &&
+            data.unit == resource.data.unit &&
+            data.minStock == resource.data.minStock &&
+            data.condition == resource.data.condition &&
+            data.location == resource.data.location &&
+            data.note == resource.data.note &&
+            changed.hasOnly(operationFields.concat(['status']))
+          ) ||
+          (
+            data.lastOperationAction == 'adjust' &&
+            data.quantity != resource.data.quantity &&
+            data.name == resource.data.name &&
+            data.category == resource.data.category &&
+            data.type == resource.data.type &&
+            data.unit == resource.data.unit &&
+            data.minStock == resource.data.minStock &&
+            data.condition == resource.data.condition &&
+            data.status == resource.data.status &&
+            data.location == resource.data.location &&
+            data.note == resource.data.note &&
+            changed.hasOnly(operationFields.concat(['quantity']))
+          )
+        );
+    }
+
+    function inventoryMovementCreateAllowed(movementId) {
+      let data = request.resource.data;
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
+      let itemBefore = exists(itemPath) ? get(itemPath).data : {};
+      let itemAfter = existsAfter(itemPath) ? getAfter(itemPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        validInventoryMovement(data, movementId) &&
+        inventoryMovementItemMatchesAfter(data) &&
+        repositoryOperationMatchesAfter(
+          data.operationId,
+          'inventory',
+          data.operationAction,
+          'inventoryItems',
+          data.itemId
+        ) &&
+        (
+          (
+            data.type == 'create' &&
+            !exists(itemPath) &&
+            data.operationAction == 'create' &&
+            data.previousQuantity == 0 &&
+            data.quantity == data.nextQuantity &&
+            itemAfter.quantity == data.nextQuantity
+          ) ||
+          (
+            data.type == 'edit' &&
+            exists(itemPath) &&
+            data.operationAction == 'update' &&
+            data.previousQuantity == itemBefore.quantity &&
+            data.nextQuantity == itemBefore.quantity &&
+            data.quantity == 0
+          ) ||
+          (
+            data.type == 'inactive' &&
+            exists(itemPath) &&
+            data.operationAction == 'archive' &&
+            itemBefore.status != 'inactive' &&
+            itemAfter.status == 'inactive' &&
+            data.previousQuantity == itemBefore.quantity &&
+            data.nextQuantity == itemBefore.quantity &&
+            data.quantity == 0
+          ) ||
+          (
+            data.type == 'stock-in' &&
+            exists(itemPath) &&
+            data.operationAction == 'adjust' &&
+            data.previousQuantity == itemBefore.quantity &&
+            data.nextQuantity == itemAfter.quantity &&
+            data.nextQuantity == data.previousQuantity + data.quantity
+          ) ||
+          (
+            data.type == 'stock-out' &&
+            exists(itemPath) &&
+            data.operationAction == 'adjust' &&
+            data.previousQuantity == itemBefore.quantity &&
+            data.nextQuantity == itemAfter.quantity &&
+            data.previousQuantity == data.nextQuantity + data.quantity
+          )
+        );
     }
 
     match /inventoryItems/{itemId} {
-      allow read: if isApproved() && canAccessInventoryData() ||
-        (false && validInventoryItem(resource.data, itemId));
-      // Canonical inventory writes run through Admin Operations Worker so item
-      // metadata, stock movements, idempotency keys, and audit records commit atomically.
-      allow create, update, delete: if false;
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryItemCreateAllowed(itemId);
+      allow update: if inventoryItemUpdateAllowed(itemId);
+      allow delete: if false;
     }
 
     match /inventoryMovements/{movementId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update, delete: if false;
+      allow create: if inventoryMovementCreateAllowed(movementId);
+      allow update, delete: if false;
     }
 
     match /maintenanceWorkOrders/{workOrderId} {
