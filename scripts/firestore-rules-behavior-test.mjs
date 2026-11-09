@@ -490,6 +490,217 @@ try {
   }));
   await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
 
+  // Direct Firestore Follow-up create must atomically pair task, immutable event,
+  // and the caller's Phase 1 operation marker.
+  const followUpCreateRequestId = 'follow-up-create-rules-001';
+  const followUpCreatePayload = {
+    customerId: 'customer-1',
+    assignedToUid: 'customers-admin',
+    dueAt: '2026-11-10',
+    title: 'Hubungi customer',
+  };
+  const followUpCreateOperationId = await createRepositoryOperationId({
+    actorUid: 'customers-admin',
+    scope: 'customer-follow-up',
+    action: 'create',
+    requestId: followUpCreateRequestId,
+  });
+  const followUpTaskId = 'fup_' + followUpCreateOperationId.slice(3);
+  const followUpEventId = 'fue_' + followUpCreateOperationId.slice(3);
+  const followUpCreatedAt = '2026-08-14T08:10:00.000Z';
+  const followUpTask = {
+    id: followUpTaskId,
+    customerId: 'customer-1',
+    customerName: 'Customer',
+    customerPhone: '6281',
+    sourceId: 'customer-1',
+    sourceType: 'customer',
+    bookingId: '',
+    assignedToUid: 'customers-admin',
+    assignedToName: 'Customer Admin',
+    title: 'Hubungi customer',
+    description: '',
+    templateKey: 'payment',
+    status: 'open',
+    outcome: '',
+    dueAt: '2026-11-10',
+    dueTime: '10:00',
+    notes: '',
+    revision: 1,
+    createdAt: followUpCreatedAt,
+    updatedAt: followUpCreatedAt,
+    createdByUid: 'customers-admin',
+    createdByName: 'Customer Admin',
+    lastContactedAt: '',
+    completedAt: '',
+    completedByUid: '',
+    completedByName: '',
+    cancelledAt: '',
+    cancelledByUid: '',
+    cancelReason: '',
+    lastCompletedAt: '',
+    lastCancelledAt: '',
+    reopenedAt: '',
+    reopenedByUid: '',
+    reopenedByName: '',
+    reopenReason: '',
+    snoozedAt: '',
+    snoozedByUid: '',
+    lastOperationId: followUpCreateOperationId,
+    lastOperationAction: 'create',
+    lastEventId: followUpEventId,
+  };
+  const followUpEvent = {
+    id: followUpEventId,
+    taskId: followUpTaskId,
+    customerId: 'customer-1',
+    action: 'created',
+    actorUid: 'customers-admin',
+    actorName: 'Customer Admin',
+    changes: { status: { before: '', after: 'open' } },
+    note: 'Hubungi customer',
+    createdAt: followUpCreatedAt,
+    operationId: followUpCreateOperationId,
+    operationAction: 'create',
+  };
+  const followUpCreateBatch = writeBatch(customersAdmin);
+  followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpTask);
+  followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), followUpEvent);
+  followUpCreateBatch.set(
+    doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
+    {
+      operationId: followUpCreateOperationId,
+      actorUid: 'customers-admin',
+      scope: 'customer-follow-up',
+      action: 'create',
+      requestId: followUpCreateRequestId,
+      payloadHash: await createRepositoryPayloadHash(followUpCreatePayload),
+      resultCollection: 'customerFollowUpTasks',
+      resultId: followUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(followUpCreateBatch.commit());
+  await assertFails(updateDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), {
+    note: 'Riwayat tidak boleh diubah',
+  }));
+  await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId)));
+
+  // A valid update increments the task revision and appends one paired event.
+  const followUpUpdateRequestId = 'follow-up-update-rules-001';
+  const followUpUpdatePayload = {
+    taskId: followUpTaskId,
+    expectedUpdatedAt: followUpCreatedAt,
+    status: 'completed',
+    outcome: 'connected',
+  };
+  const followUpUpdateOperationId = await createRepositoryOperationId({
+    actorUid: 'customers-admin',
+    scope: 'customer-follow-up',
+    action: 'update',
+    requestId: followUpUpdateRequestId,
+  });
+  const followUpUpdateEventId = 'fue_' + followUpUpdateOperationId.slice(3);
+  const followUpUpdatedAt = '2026-08-14T08:15:00.000Z';
+  const followUpUpdatedTask = {
+    ...followUpTask,
+    status: 'completed',
+    outcome: 'connected',
+    notes: 'Sudah dihubungi.',
+    revision: 2,
+    updatedAt: followUpUpdatedAt,
+    completedAt: followUpUpdatedAt,
+    completedByUid: 'customers-admin',
+    completedByName: 'Customer Admin',
+    lastOperationId: followUpUpdateOperationId,
+    lastOperationAction: 'update',
+    lastEventId: followUpUpdateEventId,
+  };
+  const followUpUpdateEvent = {
+    id: followUpUpdateEventId,
+    taskId: followUpTaskId,
+    customerId: 'customer-1',
+    action: 'completed',
+    actorUid: 'customers-admin',
+    actorName: 'Customer Admin',
+    changes: {
+      status: { before: 'open', after: 'completed' },
+      outcome: { before: '', after: 'connected' },
+    },
+    fromStatus: 'open',
+    toStatus: 'completed',
+    outcome: 'connected',
+    dueAt: '2026-11-10',
+    reason: '',
+    note: 'Sudah dihubungi.',
+    createdAt: followUpUpdatedAt,
+    operationId: followUpUpdateOperationId,
+    operationAction: 'update',
+  };
+  const followUpUpdateBatch = writeBatch(customersAdmin);
+  followUpUpdateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpUpdatedTask);
+  followUpUpdateBatch.set(doc(customersAdmin, 'customerFollowUpEvents', followUpUpdateEventId), followUpUpdateEvent);
+  followUpUpdateBatch.set(
+    doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpUpdateOperationId),
+    {
+      operationId: followUpUpdateOperationId,
+      actorUid: 'customers-admin',
+      scope: 'customer-follow-up',
+      action: 'update',
+      requestId: followUpUpdateRequestId,
+      payloadHash: await createRepositoryPayloadHash(followUpUpdatePayload),
+      resultCollection: 'customerFollowUpTasks',
+      resultId: followUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(followUpUpdateBatch.commit());
+
+  // Dashboard-only cannot create Follow-up records, even with a valid marker.
+  const dashboardFollowUpRequestId = 'follow-up-dashboard-denied-001';
+  const dashboardFollowUpOperationId = await createRepositoryOperationId({
+    actorUid: 'dashboard-only',
+    scope: 'customer-follow-up',
+    action: 'create',
+    requestId: dashboardFollowUpRequestId,
+  });
+  const dashboardFollowUpTaskId = 'fup_' + dashboardFollowUpOperationId.slice(3);
+  const dashboardFollowUpEventId = 'fue_' + dashboardFollowUpOperationId.slice(3);
+  const dashboardTask = {
+    ...followUpTask,
+    id: dashboardFollowUpTaskId,
+    lastOperationId: dashboardFollowUpOperationId,
+    lastEventId: dashboardFollowUpEventId,
+    createdByUid: 'dashboard-only',
+    createdByName: 'Dashboard Only',
+  };
+  const dashboardEvent = {
+    ...followUpEvent,
+    id: dashboardFollowUpEventId,
+    taskId: dashboardFollowUpTaskId,
+    actorUid: 'dashboard-only',
+    actorName: 'Dashboard Only',
+    operationId: dashboardFollowUpOperationId,
+  };
+  const dashboardFollowUpBatch = writeBatch(dashboard);
+  dashboardFollowUpBatch.set(doc(dashboard, 'customerFollowUpTasks', dashboardFollowUpTaskId), dashboardTask);
+  dashboardFollowUpBatch.set(doc(dashboard, 'customerFollowUpEvents', dashboardFollowUpEventId), dashboardEvent);
+  dashboardFollowUpBatch.set(
+    doc(dashboard, 'users', 'dashboard-only', 'repositoryOperations', dashboardFollowUpOperationId),
+    {
+      operationId: dashboardFollowUpOperationId,
+      actorUid: 'dashboard-only',
+      scope: 'customer-follow-up',
+      action: 'create',
+      requestId: dashboardFollowUpRequestId,
+      payloadHash: await createRepositoryPayloadHash({ customerId: 'customer-1', title: 'forbidden' }),
+      resultCollection: 'customerFollowUpTasks',
+      resultId: dashboardFollowUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertFails(dashboardFollowUpBatch.commit());
+
   const bookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
   await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingSessions', '2026-08-14__main')));
   await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingEvents', 'closing-event-1')));
