@@ -3675,14 +3675,7 @@ match /users/{userId} {
         validString(data.dueTime, 0, 5) &&
         (
           data.dueTime == '' ||
-          data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-)
+          data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]')
         ) &&
         validString(data.notes, 0, 1200) &&
         data.revision is int &&
@@ -3706,14 +3699,8 @@ match /users/{userId} {
         validString(data.reopenReason, 0, 600) &&
         validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
         validString(data.snoozedByUid, 0, 128) &&
-        data.lastOperationId.matches('^v1_[a-f0-9]{64}
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-) &&
+        data.lastOperationId.size() == 67 && data.lastOperationId.matches('^v1_[a-f0-9]{64}')
+        ) &&
         data.lastOperationAction in ['create', 'update'] &&
         validString(data.lastEventId, 1, 160);
     }
@@ -3743,14 +3730,8 @@ match /users/{userId} {
         validString(data.get('reason', ''), 0, 600) &&
         validString(data.get('note', ''), 0, 1200) &&
         validIsoTimestampString(data.createdAt) &&
-        data.operationId.matches('^v1_[a-f0-9]{64}
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-) &&
+        data.operationId.size() == 67 && data.operationId.matches('^v1_[a-f0-9]{64}')
+        ) &&
         data.operationAction in ['create', 'update'];
     }
 
