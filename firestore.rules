@@ -4419,7 +4419,8 @@ match /users/{userId} {
             data.lastOperationAction == 'transition' &&
             event.action == 'status_changed' &&
             event.fromStatus == resource.data.status &&
-            event.toStatus == data.status
+            event.toStatus == data.status &&
+            (data.status != 'cancelled' || event.reason == data.cancelReason)
           )
         );
     }
@@ -4447,6 +4448,8 @@ match /users/{userId} {
         validProcurementPurchaseOrder(data, purchaseOrderId) &&
         data.status == 'draft' &&
         data.paidAmount == 0 &&
+        data.createdByUid == request.auth.uid &&
+        validString(data.createdByName, 1, 120) &&
         data.lastOperationAction == 'create' &&
         supplierExists &&
         supplier.status == 'active' &&
@@ -4499,11 +4502,28 @@ match /users/{userId} {
         data.updatedAt != resource.data.updatedAt &&
         data.lastOperationId != resource.data.lastOperationId &&
         data.lastOperationAction == 'transition' &&
-        (data.status != 'cancelled' || (
-          data.paidAmount == 0 &&
-          validString(data.cancelReason, 4, 600) &&
-          data.cancelledByUid == request.auth.uid
-        )) &&
+        (
+          data.status != 'approved' ||
+          (
+            validIsoTimestampString(data.approvedAt) &&
+            data.approvedAt == data.updatedAt &&
+            data.approvedByUid == request.auth.uid &&
+            validString(data.approvedByName, 1, 120)
+          )
+        ) &&
+        (
+          data.status != 'ordered' ||
+          (validIsoTimestampString(data.orderedAt) && data.orderedAt == data.updatedAt)
+        ) &&
+        (
+          data.status != 'cancelled' ||
+          (
+            data.paidAmount == 0 &&
+            validString(data.cancelReason, 4, 600) &&
+            data.cancelledByUid == request.auth.uid &&
+            data.cancelledAt == data.updatedAt
+          )
+        ) &&
         repositoryOperationMatchesAfter(
           data.lastOperationId,
           'procurement',
