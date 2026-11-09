@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
@@ -15,12 +15,15 @@ import {
   X,
 } from 'lucide-react';
 import {
-  createCanonicalPurchaseOrder,
-  createCanonicalSupplier,
   receiveCanonicalPurchaseOrder,
   recordCanonicalProcurementPayment,
-  transitionCanonicalPurchaseOrder,
 } from '../../services/adminOperationsRepository.js';
+import {
+  createCanonicalPurchaseOrder,
+  createCanonicalSupplier,
+  transitionCanonicalPurchaseOrder,
+} from '../../services/procurementFirestoreRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 import {
   subscribeGoodsReceipts,
   subscribeProcurementPayments,
@@ -146,6 +149,21 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const [cancelOrderId, setCancelOrderId] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const procurementRequestIdsRef = useRef(new Map());
+
+  function getStableRequestId(action, payload) {
+    const requestKey = action + ':' + JSON.stringify(payload);
+    let requestId = procurementRequestIdsRef.current.get(requestKey);
+    if (!requestId) {
+      requestId = createRepositoryRequestId();
+      procurementRequestIdsRef.current.set(requestKey, requestId);
+    }
+    return { requestKey, requestId };
+  }
+
+  function clearStableRequestId(requestKey) {
+    procurementRequestIdsRef.current.delete(requestKey);
+  }
 
   const canApprovePurchaseOrders = currentUser?.role === 'admin' || (
     currentUser?.role === 'owner' && currentUser?.isOwner !== false
@@ -301,8 +319,10 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       return;
     }
     setIsSubmitting(true);
+    const request = getStableRequestId('supplier-create', supplierDraft);
     try {
-      await createCanonicalSupplier(supplierDraft);
+      await createCanonicalSupplier(supplierDraft, request.requestId);
+      clearStableRequestId(request.requestKey);
       setSupplierDraft({ name: '', contactName: '', phone: '', email: '', address: '', notes: '' });
       setShowSupplierForm(false);
       showFeedback('success', 'Supplier tersimpan', 'Supplier baru sudah masuk ke direktori.');
@@ -330,19 +350,22 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       showFeedback('error', 'Item duplikat', 'Satu item inventory hanya boleh muncul satu kali dalam satu PO.');
       return;
     }
+    const payload = {
+      supplierId: orderDraft.supplierId,
+      orderDate: localDateValue(),
+      expectedAt: orderDraft.expectedAt,
+      notes: orderDraft.notes,
+      items: validLines.map((item) => ({
+        inventoryItemId: item.inventoryItemId,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+      })),
+    };
+    const request = getStableRequestId('purchase-order-create', payload);
     setIsSubmitting(true);
     try {
-      await createCanonicalPurchaseOrder({
-        supplierId: orderDraft.supplierId,
-        orderDate: localDateValue(),
-        expectedAt: orderDraft.expectedAt,
-        notes: orderDraft.notes,
-        items: validLines.map((item) => ({
-          inventoryItemId: item.inventoryItemId,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
-        })),
-      });
+      await createCanonicalPurchaseOrder(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setOrderDraft({
         supplierId: '',
         expectedAt: '',
@@ -360,14 +383,17 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
 
   async function changeOrderStatus(order, status, reason = '') {
     if (isSubmitting) return;
+    const payload = {
+      purchaseOrderId: order.id,
+      status,
+      expectedUpdatedAt: order.updatedAt,
+      reason,
+    };
+    const request = getStableRequestId('purchase-order-transition', payload);
     setIsSubmitting(true);
     try {
-      await transitionCanonicalPurchaseOrder({
-        purchaseOrderId: order.id,
-        status,
-        expectedUpdatedAt: order.updatedAt,
-        reason,
-      });
+      await transitionCanonicalPurchaseOrder(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setCancelOrderId('');
       setCancelReason('');
       showFeedback('success', 'Status PO diperbarui', order.poNumber + ' sekarang berstatus ' + (STATUS_META[status]?.label || status) + '.');
