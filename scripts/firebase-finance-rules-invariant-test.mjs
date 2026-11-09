@@ -314,7 +314,9 @@ try {
       paidAmount: 100000, paymentStatus: 'lunas',
       paymentStatusCanonical: 'paid', paymentHistory: paidHistory,
     }),
-    fenceRevision: 0,
+    // The preceding payment scenario used the same business date and advanced
+    // its activity fence once; the refund must advance revision 1 -> 2.
+    fenceRevision: 1,
   };
   await environment.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'bookings', refundState.id), refundState);
