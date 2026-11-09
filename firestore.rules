@@ -1340,10 +1340,9 @@ match /users/{userId} {
           : projectionPaid);
     }
 
-    function financeBookingOutstanding(data) {
+    function financeBookingOutstanding(data, netPaid) {
       let total = data.get('total', -1);
       let subtotal = data.get('subtotal', -1);
-      let netPaid = financeBookingNetPaid(data);
       let invoiceTotal = total is number ? total : subtotal;
       return invoiceTotal is number && invoiceTotal >= 0
         ? (invoiceTotal > netPaid ? invoiceTotal - netPaid : 0)
@@ -1360,7 +1359,7 @@ match /users/{userId} {
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(bookingAfter.lastFinanceBusinessDate + '__main');
       let closingAfter = getAfter(closingPath).data;
       let currentPaid = financeBookingNetPaid(resource.data);
-      let currentOutstanding = financeBookingOutstanding(resource.data);
+      let currentOutstanding = financeBookingOutstanding(resource.data, currentPaid);
       return changed.hasOnly([
           'paymentHistory', 'invoiceAmount', 'paidAmount', 'paymentStatus',
           'paymentStatusCanonical', 'dpAmount', 'lastPaymentAt',
@@ -2862,10 +2861,6 @@ match /users/{userId} {
     function financeBookingPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingAfter = getAfter(bookingPath).data;
-      let paymentHistory = bookingAfter.paymentHistory;
-      let event = paymentHistory[paymentHistory.size() - 1];
-      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(data.date + '__main');
-      let closingAfter = getAfter(closingPath).data;
       return existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction in ['payment', 'proof-approve'] &&
         bookingAfter.lastFinanceBusinessDate == data.date &&
@@ -2873,40 +2868,15 @@ match /users/{userId} {
         bookingAfter.lastFinanceLedgerEntryId == entryId &&
         bookingAfter.lastFinanceEventId == data.sourceEventId &&
         bookingAfter.lastFinanceProofId == data.sourceProofId &&
-        event.id == data.sourceEventId &&
-        event.ledgerEntryId == entryId &&
-        event.operationId == data.operationId &&
-        event.amount == data.amount &&
-        event.method == data.paymentMethod &&
-        event.date == data.date &&
-        event.actorUid == request.auth.uid &&
-        (data.sourceProofId == '' ? !event.keys().hasAny(['proofId']) : event.proofId == data.sourceProofId) &&
         data.id == entryId &&
         data.source == 'booking-payment' &&
         data.sourceAction == 'payment' &&
-        data.type == 'income' &&
-        data.category == 'booking' &&
-        data.immutable == true &&
-        data.actorUid == request.auth.uid &&
-        data.operationId is string &&
-        data.idempotencyKey == event.idempotencyKey &&
-        existsAfter(closingPath) &&
-        closingAfter.status in ['open', 'reopened'] &&
-        closingAfter.businessDate == data.date &&
-        closingAfter.lastOperationAction == bookingAfter.lastFinanceAction &&
-        closingAfter.lastOperationId == data.operationId &&
-        closingAfter.lastBookingId == data.sourceBookingId &&
-        closingAfter.lastLedgerEntryId == entryId &&
-        closingAfter.lastProofId == data.sourceProofId;
+        data.actorUid == request.auth.uid;
     }
 
     function financeBookingRefundLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingAfter = getAfter(bookingPath).data;
-      let refundHistory = bookingAfter.refundHistory;
-      let event = refundHistory[refundHistory.size() - 1];
-      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(data.date + '__main');
-      let closingAfter = getAfter(closingPath).data;
       return existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction == 'refund' &&
         bookingAfter.lastFinanceBusinessDate == data.date &&
@@ -2914,30 +2884,10 @@ match /users/{userId} {
         bookingAfter.lastFinanceLedgerEntryId == entryId &&
         bookingAfter.lastFinanceEventId == data.sourceEventId &&
         bookingAfter.lastFinanceProofId == '' &&
-        event.id == data.sourceEventId &&
-        event.ledgerEntryId == entryId &&
-        event.operationId == data.operationId &&
-        event.amount == data.amount &&
-        event.method == data.paymentMethod &&
-        event.date == data.date &&
-        event.actorUid == request.auth.uid &&
         data.id == entryId &&
         data.source == 'booking-refund' &&
         data.sourceAction == 'refund' &&
-        data.type == 'expense' &&
-        data.category == 'refund' &&
-        data.sourceProofId == '' &&
-        data.immutable == true &&
-        data.actorUid == request.auth.uid &&
-        data.idempotencyKey == event.idempotencyKey &&
-        existsAfter(closingPath) &&
-        closingAfter.status in ['open', 'reopened'] &&
-        closingAfter.businessDate == data.date &&
-        closingAfter.lastOperationAction == 'refund' &&
-        closingAfter.lastOperationId == data.operationId &&
-        closingAfter.lastBookingId == data.sourceBookingId &&
-        closingAfter.lastLedgerEntryId == entryId &&
-        closingAfter.lastProofId == '';
+        data.actorUid == request.auth.uid;
     }
 
     function financeBookingLedgerCreateAllowed(data, entryId) {
