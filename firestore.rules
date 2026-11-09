@@ -3976,7 +3976,6 @@ match /users/{userId} {
 
     function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
       let data = request.resource.data;
-      let changed = data.diff(resource.data).affectedKeys();
       let nextStatusAllowed = (
         resource.data.status == 'draft' && data.status in ['submitted', 'cancelled']
       ) || (
@@ -3984,38 +3983,25 @@ match /users/{userId} {
       ) || (
         resource.data.status == 'approved' && data.status in ['ordered', 'cancelled']
       );
-      let approvalOrCancelAllowed = (
-        data.status in ['approved', 'cancelled']
-          ? hasApprovedAdminPermission('inventory')
-          : true
-      );
       return hasApprovedAdminPermission('inventory') &&
-        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        data.id == purchaseOrderId &&
         nextStatusAllowed &&
-        approvalOrCancelAllowed &&
         data.diff(resource.data).affectedKeys().hasOnly([
           'status', 'updatedAt', 'approvedAt', 'approvedByUid', 'approvedByName',
           'orderedAt', 'cancelledAt', 'cancelReason', 'cancelledByUid',
           'lastOperationId', 'lastOperationAction', 'lastEventId'
         ]) &&
-        data.supplierId == resource.data.supplierId &&
-        data.supplierName == resource.data.supplierName &&
-        data.items == resource.data.items &&
-        data.totalAmount == resource.data.totalAmount &&
-        data.paidAmount == resource.data.paidAmount &&
-        data.orderDate == resource.data.orderDate &&
-        data.expectedAt == resource.data.expectedAt &&
-        data.notes == resource.data.notes &&
-        data.createdAt == resource.data.createdAt &&
-        data.createdByUid == resource.data.createdByUid &&
-        data.createdByName == resource.data.createdByName &&
+        validIsoTimestampString(data.updatedAt) &&
         data.updatedAt != resource.data.updatedAt &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
         data.lastOperationId != resource.data.lastOperationId &&
         data.lastOperationAction == 'transition' &&
+        validString(data.lastEventId, 1, 160) &&
         (
           data.status != 'approved' ||
           (
-            validIsoTimestampString(data.approvedAt) &&
             data.approvedAt == data.updatedAt &&
             data.approvedByUid == request.auth.uid &&
             validString(data.approvedByName, 1, 120)
@@ -4023,13 +4009,15 @@ match /users/{userId} {
         ) &&
         (
           data.status != 'ordered' ||
-          (validIsoTimestampString(data.orderedAt) && data.orderedAt == data.updatedAt)
+          data.orderedAt == data.updatedAt
         ) &&
         (
           data.status != 'cancelled' ||
           (
-            data.paidAmount == 0 &&
-            validString(data.cancelReason, 4, 600) &&
+            resource.data.paidAmount == 0 &&
+            data.cancelReason is string &&
+            data.cancelReason.size() >= 4 &&
+            data.cancelReason.size() <= 600 &&
             data.cancelledByUid == request.auth.uid &&
             data.cancelledAt == data.updatedAt
           )
