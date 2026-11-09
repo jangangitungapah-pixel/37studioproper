@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - audit/**
+      - architecture/firebase-single-backend-migration-2026-11-09
       - feature/admin-ops-phase-5-procurement-2026-11-05
       - feature/ui-overhaul-premium-enterprise-2026-11-06
   workflow_run:
