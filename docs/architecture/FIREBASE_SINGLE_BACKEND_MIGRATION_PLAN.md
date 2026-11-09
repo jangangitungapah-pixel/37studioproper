@@ -4,7 +4,7 @@
 **Target Firebase project:** `studio-proper`  
 **Target Hosting site:** `studio-37` (`https://studio-37.web.app`)  
 **Architecture decision date:** 2026-11-09  
-**Status:** Approved direction; Phase 1 complete; Phase 2 implementation in progress and validation pending
+**Status:** Approved direction; Phases 1-2 complete; Phase 3 implementation integrated; Phase 3 acceptance/closure pending targeted validation.
 
 ## 1. Objective
 
@@ -141,11 +141,23 @@ Do not emulate Admin SDK power by exposing credentials. Where a server-only Auth
 **Exit:** met. Booking lifecycle regression, Firestore Rules Emulator, build/lint, and full GitHub Quality Gates passed. PR #18 remains Draft and unmerged; production Rules/index changes, Hosting deployment, and production data mutation remain out of scope pending separate baseline review and explicit approval.
 
 ### Phase 3 — Finance, payment, proof review, and daily closing
-- Migrate payment posting, refund, void, payment-proof review, bookkeeping journal, daily closing preview/close/reopen.
-- Preserve ledger immutability, source linkage, idempotency, reconciliation, closed-day write guards, and audit history.
-- Resolve payment-proof binary handling before implementation. Firebase Storage is not allowed on Spark; default plan is proof metadata/reference-only plus manual review, with no image binary stored in Firestore.
 
-**Exit:** payment/bookkeeping reconciliation and concurrent update regression tests pass.
+**Implementation integrated (2026-11-09):**
+- `src/services/firestoreFinanceRepository.js` now owns direct Firestore operations for payment posting, refund, invoice void, payment-proof approval/rejection, manual bookkeeping create/update/delete, and daily-closing preview/close/reopen. The Billing, payment-proof review, bookkeeping, and daily-closing UIs use these Firebase repositories rather than the Admin Operations Worker.
+- Payment/refund operations read the canonical booking and business-date fence in a Firestore transaction, calculate the remaining/refundable balance from the current history, and atomically write the booking projection, immutable linked ledger row, fence revision, and idempotency marker. Proof approval also transitions the pending proof in that same transaction.
+- Refund cannot exceed the remaining net refundable amount. Void is rejected while net payment remains; the booking, schedule-day revision, public calendar-slot removal, fence, and idempotency marker are committed together. Historical payments and ledger rows are retained.
+- New payment-proof submissions are **metadata/reference-only**: payer name and transaction reference, without upload or binary storage. Firestore Rules preserve legacy image metadata fields for historical records but new submissions require empty proof URL/public ID. No historical Cloudinary assets are deleted.
+- Manual bookkeeping writes are restricted to manual entries. Reconciled/system-generated ledger entries remain immutable; manual writes pair the entry, business activity fence, and repository operation marker. Closed-day guards are enforced.
+- Daily closing reconciles canonical ledger rows with legacy booking payment/refund projections, records a source fingerprint and snapshot, and pairs the session/event/operation marker atomically. Reopen requires Owner authorization and the UI reauthenticates the current account. MVP register remains `main` only.
+- Close-out remediation: legacy fallback payment dates now normalize to `Asia/Jakarta`; all three daily-closing entry points explicitly reject an unsupported register; client proof submission and Firestore Rules reject void/refunded invoice states consistently.
+
+**Validation evidence and remaining gates:**
+- Quality Gates run **#476** (run ID `42547166949`) passed on the pre-close-out baseline HEAD `41927a6d1c72b3165542d602b1f9042cd30049ec`. It is not evidence for the subsequent close-out commits.
+- The close-out adds a focused Firestore Rules Emulator case for metadata-only proof creation on an active booking and denial for a refunded booking, alongside the existing initial-payment ledger and manual-bookkeeping fence cases. The source-level finance contract also checks the WIB fallback and `main` register guard.
+- A fresh Quality Gates result for the close-out HEAD must be observed before acceptance. In addition, the current Emulator suite does not yet exercise complete direct-SDK positive/negative transaction fixtures for regular payment, refund, void, and daily-close/reopen as individual business workflows. These remain explicit acceptance-evidence gaps; do not infer coverage from source-level contracts alone.
+- No live production Rules export, production index verification, or production financial-data reconciliation was performed. The production baseline and deployment gates remain unchanged.
+
+**Exit:** implementation is integrated, but Phase 3 is **not yet closed**. Close only after the current HEAD's Quality Gates pass and the remaining critical finance/daily-closing Emulator scenarios have sufficient allow/deny evidence. PR #18 remains Draft and unmerged; no production Rules/index publication, Hosting deployment, or production data mutation is authorized.
 
 ### Phase 4 — Customer, follow-up, inventory, procurement, and maintenance
 - Migrate follow-up task lifecycle and PIC discovery to direct Auth/Firestore reads/writes.
