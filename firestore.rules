@@ -68,10 +68,14 @@ service cloud.firestore {
     }
 
     function isApprovedAdmin() {
-      return isOwner() ||
-        (userDocExists() &&
+      // Check the ordinary admin path first. Most operational requests are
+      // made by admins, so this avoids evaluating the Owner-transfer branch
+      // for every permission check while preserving the canonical Owner gate.
+      return (
+          userDocExists() &&
           getUserData().role == 'admin' &&
-          getUserData().status == 'approved');
+          getUserData().status == 'approved'
+        ) || isOwner();
     }
 
     function isClientAccount() {
@@ -94,11 +98,16 @@ service cloud.firestore {
     }
 
     function hasPermission(page) {
-      return isOwner() || (
-        isApprovedAdmin() &&
+      // Operational admins are the common path. Evaluate their canonical
+      // profile/permission first; reserve the ownership-transfer lookup for
+      // accounts that are not approved admins.
+      return (
+        userDocExists() &&
+        getUserData().role == 'admin' &&
+        getUserData().status == 'approved' &&
         getUserData().permissions is map &&
         getUserData().permissions[page] == true
-      );
+      ) || isOwner();
     }
 
     function canAccessNotifications() {
@@ -790,14 +799,17 @@ match /users/{userId} {
 
 
     function canAccessOwnRepositoryOperations(userId) {
+      let userPath = /databases/$(database)/documents/users/$(userId);
+      let profileExists = exists(userPath);
+      let profile = profileExists ? get(userPath).data : {};
       return isSignedIn() &&
         request.auth.uid == userId &&
-        userDocExists() &&
+        profileExists &&
         (
-          isOwner() ||
-          isApprovedAdmin() ||
-          isClientAccount() ||
-          isStudioGuardAccount()
+          (profile.role == 'owner' && isOwner()) ||
+          (profile.role == 'admin' && profile.status == 'approved') ||
+          (profile.role == 'client' && profile.status == 'active') ||
+          (profile.role == 'studio_guard' && profile.status == 'approved')
         );
     }
 
@@ -2939,33 +2951,40 @@ match /users/{userId} {
         bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
 
+    function bookkeepingEntryCreateAllowed(data, entryId) {
+      let source = data.get('source', '');
+      return source == 'booking-payment'
+        ? (
+            (
+              bookingInitialPaymentLedgerCreateAllowed(data, entryId) &&
+              bookkeepingBusinessDateOpen(data)
+            ) || financeBookingLedgerCreateAllowed(data, entryId)
+          )
+        : source == 'booking-refund'
+          ? financeBookingLedgerCreateAllowed(data, entryId)
+          : source in ['', 'manual']
+            ? (
+                isApprovedAdmin() &&
+                canManageBookkeepingData() &&
+                validBookkeepingEntry(data, entryId) &&
+                bookkeepingBusinessDateOpen(data) &&
+                manualBookkeepingCreateOrUpdateAllowed(data, entryId, 'manual-create')
+              )
+            : source in ['operatorFee', 'guardAttendanceMeal']
+              ? (
+                  isApprovedAdmin() &&
+                  hasPermission('operator-fee') &&
+                  validBookkeepingEntry(data, entryId) &&
+                  bookkeepingBusinessDateOpen(data) &&
+                  reconciledBookkeepingWriteAllowed(data)
+                )
+              : false;
+    }
+
     match /bookkeepingEntries/{entryId} {
-      allow read:
-        if isApproved() &&
-        canAccessBookkeepingData();
-
-      allow create:
-        if (
-          bookingInitialPaymentLedgerCreateAllowed(request.resource.data, entryId) &&
-          bookkeepingBusinessDateOpen(request.resource.data)
-        ) || financeBookingLedgerCreateAllowed(request.resource.data, entryId) || (
-          isApprovedAdmin() &&
-          canManageBookkeepingData() &&
-          validBookkeepingEntry(request.resource.data, entryId) &&
-          bookkeepingBusinessDateOpen(request.resource.data) &&
-          request.resource.data.source in ['', 'manual'] &&
-          manualBookkeepingCreateOrUpdateAllowed(request.resource.data, entryId, 'manual-create')
-        ) || (
-          isApprovedAdmin() &&
-          hasPermission('operator-fee') &&
-          validBookkeepingEntry(request.resource.data, entryId) &&
-          bookkeepingBusinessDateOpen(request.resource.data) &&
-          request.resource.data.source in ['operatorFee', 'guardAttendanceMeal'] &&
-          reconciledBookkeepingWriteAllowed(request.resource.data)
-        );
-
-      allow update:
-        if isApprovedAdmin() &&
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create: if bookkeepingEntryCreateAllowed(request.resource.data, entryId);
+      allow update: if isApprovedAdmin() &&
         canManageBookkeepingData() &&
         validBookkeepingEntry(request.resource.data, entryId) &&
         bookkeepingBusinessDateOpen(resource.data) &&
@@ -2973,7 +2992,6 @@ match /users/{userId} {
         resource.data.source in ['', 'manual'] &&
         request.resource.data.source in ['', 'manual'] &&
         manualBookkeepingUpdateAllowed(request.resource.data, entryId);
-
       allow delete: if manualBookkeepingDeleteAllowed(entryId);
     }
 
@@ -3250,12 +3268,20 @@ match /users/{userId} {
         dailyClosingSessionTransitionCompanionsMatchAfter(closingId, data);
     }
 
+    function cashClosingSessionWriteAllowed(closingId, data) {
+      let action = data.get('lastOperationAction', '');
+      return action in ['payment', 'proof-approve', 'refund', 'void']
+        ? financeActivityFenceUpdateAllowed(closingId)
+        : action in ['manual-create', 'manual-update', 'manual-delete']
+          ? manualBookkeepingFenceUpdateAllowed(closingId)
+          : action in ['daily-close', 'daily-reopen']
+            ? dailyClosingSessionTransitionAllowed(closingId)
+            : false;
+    }
+
     match /cashClosingSessions/{closingId} {
       allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
-      allow create, update: if
-        financeActivityFenceUpdateAllowed(closingId) ||
-        manualBookkeepingFenceUpdateAllowed(closingId) ||
-        dailyClosingSessionTransitionAllowed(closingId);
+      allow create, update: if cashClosingSessionWriteAllowed(closingId, request.resource.data);
       allow delete: if false;
     }
 

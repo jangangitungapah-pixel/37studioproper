@@ -120,6 +120,17 @@ for (const required of [
 }
 assert.equal(rules.includes("allow create: if clientCreatesPaymentProof(request.resource.data, proofId);"), true);
 assert.equal(rules.includes("allow update: if paymentProofReviewUpdateAllowed(proofId);"), true);
+assert.equal(rules.includes("data.get('sourceFingerprint', '')"), true,
+  'Legacy closing events without a fingerprint must be safely evaluated.');
+assert.equal(rules.includes('function bookkeepingEntryCreateAllowed(data, entryId)'), true,
+  'Bookkeeping create authorization must dispatch by reconciled source before running expensive validators.');
+assert.equal(rules.includes('function cashClosingSessionWriteAllowed(closingId, data)'), true,
+  'Closing-session authorization must dispatch by operation action.');
+assert.match(
+  rules,
+  /function hasPermission\(page\)[\s\S]*?userDocExists\(\)[\s\S]*?getUserData\(\)\.role == 'admin'[\s\S]*?isOwner\(\)/,
+  'Approved admins must take the direct permission path while Owner authority remains canonical.',
+);
 assert.equal(rules.includes(`'proof-reject',\n              'paymentProofs',\n              proofId`), true,
   'Payment proof rejection must require the same-transaction repository operation marker.');
 assert.equal(rules.includes('validBooking(request.resource.data, bookingId)'), false);
