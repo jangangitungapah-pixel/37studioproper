@@ -110,6 +110,18 @@ service cloud.firestore {
       ) || isOwner();
     }
 
+    function hasApprovedAdminPermission(page) {
+      let profileExists = userDocExists();
+      let profile = profileExists ? getUserData() : {};
+      return (
+        profileExists &&
+        profile.role == 'admin' &&
+        profile.status == 'approved' &&
+        profile.permissions is map &&
+        profile.permissions[page] == true
+      ) || isOwner();
+    }
+
     function canAccessNotifications() {
       return isOwner() || (
         isApprovedAdmin() &&
@@ -1539,8 +1551,7 @@ match /users/{userId} {
 
     function adminBookingFinanceUpdateAllowed(bookingId) {
       let action = request.resource.data.get('lastFinanceAction', '');
-      return isApprovedAdmin() &&
-        hasPermission('billing') &&
+      return hasApprovedAdminPermission('billing') &&
         (
           action in ['payment', 'proof-approve']
             ? financeBookingPaymentUpdateAllowed(bookingId)
@@ -2114,8 +2125,7 @@ match /users/{userId} {
     function paymentProofReviewUpdateAllowed(proofId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let proof = request.resource.data;
-      return isApprovedAdmin() &&
-        hasPermission('billing') &&
+      return hasApprovedAdminPermission('billing') &&
         resource.data.status == 'pending' &&
         validPaymentProof(proof, proofId) &&
         changed.hasOnly([
@@ -2219,8 +2229,7 @@ match /users/{userId} {
     function financeVoidScheduleSlotDeleteAllowed(bookingId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
       let bookingAfter = getAfter(bookingPath).data;
-      return isApprovedAdmin() &&
-        hasPermission('billing') &&
+      return hasApprovedAdminPermission('billing') &&
         existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction == 'void' &&
         bookingAfter.lastFinanceLedgerEntryId == '' &&
@@ -2264,8 +2273,7 @@ match /users/{userId} {
       let bookingAfter = getAfter(bookingPath).data;
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(bookingAfter.lastFinanceBusinessDate + '__main');
       let closingAfter = getAfter(closingPath).data;
-      return isApprovedAdmin() &&
-        hasPermission('billing') &&
+      return hasApprovedAdminPermission('billing') &&
         existsAfter(bookingPath) &&
         bookingAfter.lastFinanceAction == 'void' &&
         bookingAfter.date == dateId &&
@@ -3003,8 +3011,7 @@ match /users/{userId} {
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(resource.data.date + '__main');
       let closingAfter = existsAfter(closingPath) ? getAfter(closingPath).data : {};
       let operationId = closingAfter.lastOperationId;
-      return isApprovedAdmin() &&
-        canManageBookkeepingData() &&
+      return hasApprovedAdminPermission('bookkeeping') &&
         resource.data.source in ['', 'manual'] &&
         !isReconciledBookkeepingSource(resource.data) &&
         existsAfter(closingPath) &&
@@ -3401,8 +3408,7 @@ match /users/{userId} {
     function dailyClosingSessionTransitionAllowed(closingId) {
       let data = request.resource.data;
       let action = data.lastOperationAction;
-      return isApprovedAdmin() &&
-        canManageBookkeepingData() &&
+      return hasApprovedAdminPermission('bookkeeping') &&
         validCashClosingSession(data, closingId) &&
         action in ['daily-close', 'daily-reopen'] &&
         repositoryOperationMatchesAfter(
@@ -3434,8 +3440,7 @@ match /users/{userId} {
 
     match /cashClosingEvents/{eventId} {
       allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
-      allow create: if isApprovedAdmin() &&
-        canManageBookkeepingData() &&
+      allow create: if hasApprovedAdminPermission('bookkeeping') &&
         validCashClosingEvent(request.resource.data, eventId) &&
         cashClosingEventReferencesSessionAfter(eventId);
       allow update, delete: if false;
