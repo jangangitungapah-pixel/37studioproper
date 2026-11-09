@@ -3832,10 +3832,33 @@ match /users/{userId} {
       return value == '' || validIsoTimestampString(value);
     }
 
+    function customerFollowUpActorAllowed() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let ownershipExists = exists(ownershipPath);
+      let profile = profileExists ? get(userPath).data : {};
+      let ownership = ownershipExists ? get(ownershipPath).data : {};
+      return (
+        profileExists &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            (!ownershipExists || ownership.currentOwnerUid == request.auth.uid)
+          )
+        )
+      ) || (!profileExists && !ownershipExists && isBootstrapOwnerEmail());
+    }
+
     function customerFollowUpAssigneeAllowed(uid) {
-      return uid == request.auth.uid
-        ? hasApprovedAdminPermission('customers')
-        : customerFollowUpOtherAssigneeAllowed(uid);
+      // The caller's permission is already checked by the parent task rule.
+      return uid == request.auth.uid || customerFollowUpOtherAssigneeAllowed(uid);
     }
 
     function customerFollowUpOtherAssigneeAllowed(uid) {
@@ -3987,7 +4010,7 @@ match /users/{userId} {
 
     function customerFollowUpTaskCreateAllowed(taskId) {
       let data = request.resource.data;
-      return hasApprovedAdminPermission('customers') &&
+      return customerFollowUpActorAllowed() &&
         validCustomerFollowUpTask(data, taskId) &&
         data.revision == 1 &&
         data.createdByUid == request.auth.uid &&
@@ -4009,20 +4032,10 @@ match /users/{userId} {
         'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
         'lastEventSnapshot'
       ];
-      return hasApprovedAdminPermission('customers') &&
+      return customerFollowUpActorAllowed() &&
         customerFollowUpPreviousEventRecorded() &&
         validCustomerFollowUpTask(data, taskId) &&
         data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
-        data.createdAt == resource.data.createdAt &&
-        data.createdByUid == resource.data.createdByUid &&
-        data.createdByName == resource.data.createdByName &&
-        data.customerId == resource.data.customerId &&
-        data.customerName == resource.data.customerName &&
-        data.customerPhone == resource.data.customerPhone &&
-        data.sourceId == resource.data.sourceId &&
-        data.sourceType == resource.data.sourceType &&
-        data.bookingId == resource.data.bookingId &&
-        data.templateKey == resource.data.templateKey &&
         data.revision == resource.data.revision + 1 &&
         data.lastOperationId != resource.data.lastOperationId &&
         data.lastOperationAction == 'update' &&
@@ -4039,7 +4052,7 @@ match /users/{userId} {
       let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
       let taskExists = exists(taskPath);
       let task = taskExists ? get(taskPath).data : {};
-      return hasApprovedAdminPermission('customers') &&
+      return customerFollowUpActorAllowed() &&
         validCustomerFollowUpEvent(data, eventId) &&
         taskExists &&
         task.lastEventId == eventId &&
