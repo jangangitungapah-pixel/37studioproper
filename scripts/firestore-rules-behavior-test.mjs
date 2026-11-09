@@ -1085,6 +1085,48 @@ try {
     ...safeClientBooking,
     id: 'client-safe',
   }));
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'bookings', 'client-refunded'), {
+      ...safeClientBooking,
+      id: 'client-refunded',
+      invoiceStatus: 'refunded',
+      paymentStatus: 'refunded',
+      paymentStatusCanonical: 'refunded',
+    });
+  });
+  const proofMetadata = {
+    adminNote: '',
+    amount: 50000,
+    bookingCode: 'BKG-CLIENT-SAFE',
+    bookingId: 'client-safe',
+    category: 'dp',
+    clientNote: '',
+    clientUid: 'client-1',
+    createdAt: now,
+    customer: 'Client',
+    id: 'proof-metadata-open',
+    invoiceNumber: 'INV-CLIENT-SAFE',
+    method: 'transfer',
+    payerName: 'Client Name',
+    proofFileName: '',
+    proofMimeType: '',
+    proofPublicId: '',
+    proofUrl: '',
+    reviewDecision: '',
+    reviewOperationId: '',
+    reviewedAt: '',
+    reviewedByName: '',
+    reviewedByUid: '',
+    status: 'pending',
+    transactionReference: 'TXN-123456',
+    updatedAt: now,
+  };
+  await assertSucceeds(setDoc(doc(client, 'paymentProofs', 'proof-metadata-open'), proofMetadata));
+  await assertFails(setDoc(doc(client, 'paymentProofs', 'proof-metadata-refunded'), {
+    ...proofMetadata,
+    bookingId: 'client-refunded',
+    id: 'proof-metadata-refunded',
+  }));
   await assertFails(setDoc(doc(client, 'bookings', clientBooking.id), clientBooking));
 
   const decisionAt = '2026-08-14T08:45:00.000Z';
