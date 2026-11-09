@@ -790,8 +790,7 @@ try {
   }));
   await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
 
-  // Direct Firestore Follow-up create must atomically pair task, immutable event,
-  // and the caller's Phase 1 operation marker.
+  // Follow-up task snapshots are committed first; the exact event is appended afterwards.
   const followUpCreateRequestId = 'follow-up-create-rules-001';
   const followUpCreatePayload = {
     customerId: 'customer-1',
@@ -808,6 +807,19 @@ try {
   const followUpTaskId = 'fup_' + followUpCreateOperationId.slice(3);
   const followUpEventId = 'fue_' + followUpCreateOperationId.slice(3);
   const followUpCreatedAt = '2026-08-14T08:10:00.000Z';
+  const followUpEvent = {
+    id: followUpEventId,
+    taskId: followUpTaskId,
+    customerId: 'customer-1',
+    action: 'created',
+    actorUid: 'customers-admin',
+    actorName: 'Customer Admin',
+    changes: { status: { before: '', after: 'open' } },
+    note: 'Hubungi customer',
+    createdAt: followUpCreatedAt,
+    operationId: followUpCreateOperationId,
+    operationAction: 'create',
+  };
   const followUpTask = {
     id: followUpTaskId,
     customerId: 'customer-1',
@@ -849,23 +861,10 @@ try {
     lastOperationId: followUpCreateOperationId,
     lastOperationAction: 'create',
     lastEventId: followUpEventId,
-  };
-  const followUpEvent = {
-    id: followUpEventId,
-    taskId: followUpTaskId,
-    customerId: 'customer-1',
-    action: 'created',
-    actorUid: 'customers-admin',
-    actorName: 'Customer Admin',
-    changes: { status: { before: '', after: 'open' } },
-    note: 'Hubungi customer',
-    createdAt: followUpCreatedAt,
-    operationId: followUpCreateOperationId,
-    operationAction: 'create',
+    lastEventSnapshot: followUpEvent,
   };
   const followUpCreateBatch = writeBatch(customersAdmin);
   followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpTask);
-  followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), followUpEvent);
   followUpCreateBatch.set(
     doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
     {
@@ -881,12 +880,12 @@ try {
     },
   );
   await assertSucceeds(followUpCreateBatch.commit());
+  await assertSucceeds(setDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), followUpEvent));
   await assertFails(updateDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), {
     note: 'Riwayat tidak boleh diubah',
   }));
   await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId)));
 
-  // A valid update increments the task revision and appends one paired event.
   const followUpUpdateRequestId = 'follow-up-update-rules-001';
   const followUpUpdatePayload = {
     taskId: followUpTaskId,
@@ -902,20 +901,6 @@ try {
   });
   const followUpUpdateEventId = 'fue_' + followUpUpdateOperationId.slice(3);
   const followUpUpdatedAt = '2026-08-14T08:15:00.000Z';
-  const followUpUpdatedTask = {
-    ...followUpTask,
-    status: 'completed',
-    outcome: 'connected',
-    notes: 'Sudah dihubungi.',
-    revision: 2,
-    updatedAt: followUpUpdatedAt,
-    completedAt: followUpUpdatedAt,
-    completedByUid: 'customers-admin',
-    completedByName: 'Customer Admin',
-    lastOperationId: followUpUpdateOperationId,
-    lastOperationAction: 'update',
-    lastEventId: followUpUpdateEventId,
-  };
   const followUpUpdateEvent = {
     id: followUpUpdateEventId,
     taskId: followUpTaskId,
@@ -937,9 +922,23 @@ try {
     operationId: followUpUpdateOperationId,
     operationAction: 'update',
   };
+  const followUpUpdatedTask = {
+    ...followUpTask,
+    status: 'completed',
+    outcome: 'connected',
+    notes: 'Sudah dihubungi.',
+    revision: 2,
+    updatedAt: followUpUpdatedAt,
+    completedAt: followUpUpdatedAt,
+    completedByUid: 'customers-admin',
+    completedByName: 'Customer Admin',
+    lastOperationId: followUpUpdateOperationId,
+    lastOperationAction: 'update',
+    lastEventId: followUpUpdateEventId,
+    lastEventSnapshot: followUpUpdateEvent,
+  };
   const followUpUpdateBatch = writeBatch(customersAdmin);
   followUpUpdateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpUpdatedTask);
-  followUpUpdateBatch.set(doc(customersAdmin, 'customerFollowUpEvents', followUpUpdateEventId), followUpUpdateEvent);
   followUpUpdateBatch.set(
     doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpUpdateOperationId),
     {
@@ -955,8 +954,10 @@ try {
     },
   );
   await assertSucceeds(followUpUpdateBatch.commit());
+  await assertSucceeds(setDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpUpdateEventId), followUpUpdateEvent));
 
-  // Dashboard-only cannot create Follow-up records, even with a valid marker.
+  // A dashboard-only administrator cannot create a customer follow-up task.
+  const dashboardForFollowUp = context('dashboard-only', 'dashboard@example.com');
   const dashboardFollowUpRequestId = 'follow-up-dashboard-denied-001';
   const dashboardFollowUpOperationId = await createRepositoryOperationId({
     actorUid: 'dashboard-only',
@@ -966,27 +967,26 @@ try {
   });
   const dashboardFollowUpTaskId = 'fup_' + dashboardFollowUpOperationId.slice(3);
   const dashboardFollowUpEventId = 'fue_' + dashboardFollowUpOperationId.slice(3);
-  const dashboardTask = {
-    ...followUpTask,
-    id: dashboardFollowUpTaskId,
-    lastOperationId: dashboardFollowUpOperationId,
-    lastEventId: dashboardFollowUpEventId,
-    createdByUid: 'dashboard-only',
-    createdByName: 'Dashboard Only',
-  };
-  const dashboardEvent = {
+  const dashboardFollowUpEvent = {
     ...followUpEvent,
     id: dashboardFollowUpEventId,
     taskId: dashboardFollowUpTaskId,
     actorUid: 'dashboard-only',
-    actorName: 'Dashboard Only',
     operationId: dashboardFollowUpOperationId,
   };
-  const dashboardFollowUpBatch = writeBatch(dashboard);
-  dashboardFollowUpBatch.set(doc(dashboard, 'customerFollowUpTasks', dashboardFollowUpTaskId), dashboardTask);
-  dashboardFollowUpBatch.set(doc(dashboard, 'customerFollowUpEvents', dashboardFollowUpEventId), dashboardEvent);
+  const dashboardFollowUpTask = {
+    ...followUpTask,
+    id: dashboardFollowUpTaskId,
+    lastOperationId: dashboardFollowUpOperationId,
+    lastEventId: dashboardFollowUpEventId,
+    lastEventSnapshot: dashboardFollowUpEvent,
+    createdByUid: 'dashboard-only',
+    createdByName: 'Dashboard Only',
+  };
+  const dashboardFollowUpBatch = writeBatch(dashboardForFollowUp);
+  dashboardFollowUpBatch.set(doc(dashboardForFollowUp, 'customerFollowUpTasks', dashboardFollowUpTaskId), dashboardFollowUpTask);
   dashboardFollowUpBatch.set(
-    doc(dashboard, 'users', 'dashboard-only', 'repositoryOperations', dashboardFollowUpOperationId),
+    doc(dashboardForFollowUp, 'users', 'dashboard-only', 'repositoryOperations', dashboardFollowUpOperationId),
     {
       operationId: dashboardFollowUpOperationId,
       actorUid: 'dashboard-only',
