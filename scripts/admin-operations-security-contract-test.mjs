@@ -264,6 +264,7 @@ assert.equal(read('src/pages/admin/InventoryPage.jsx').includes('adjustCanonical
 const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
 assert.equal(inventoryPage.includes('saveCanonicalInventoryItem'), true);
 assert.equal(inventoryPage.includes('archiveCanonicalInventoryItem'), true);
+assert.equal(inventoryPage.includes("from '../../services/inventoryFirestoreRepository.js'"), true);
 assert.equal(inventoryPage.includes('inventoryRepository.createInventoryMovement('), false);
 assert.equal(inventoryPage.includes('inventoryRepository.createInventoryItem('), false);
 assert.equal(inventoryPage.includes('inventoryRepository.updateInventoryItem('), false);
@@ -271,11 +272,11 @@ assert.equal(workerIndex.includes("pathname === '/v1/inventory/items'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/inventory/items/archive'"), true);
 assert.equal(inventoryPage.includes('createInventoryMovement('), false, 'No direct movement writes may remain in the inventory page.');
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/items'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
-assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create: if inventoryItemCreateAllowed\(itemId\);[\s\S]*?allow update: if inventoryItemUpdateAllowed\(itemId\);[\s\S]*?allow delete: if false;/);
 assert.match(
   rules,
-  /match \/inventoryMovements\/\{movementId\} \{[\s\S]*?allow create, update, delete: if false;/,
-  'Inventory movements must remain server-write-only.',
+  /match \/inventoryMovements\/\{movementId\} \{[\s\S]*?allow create: if inventoryMovementCreateAllowed\(movementId\);[\s\S]*?allow update, delete: if false;/,
+  'Inventory movements must remain append-only with a paired operation gate.',
 );
 assert.match(
   inventoryWorker,
@@ -292,6 +293,12 @@ assert.match(
   /firestore\.setWrite\('inventoryItems', itemId, nextItem, \{ updateTime: itemDocument\.updateTime \}\)/,
   'Canonical stock adjustments must use an update-time precondition.',
 );
+const inventoryDirectRepository = read('src/services/inventoryFirestoreRepository.js');
+assert.match(inventoryDirectRepository, /runIdempotentFirestoreTransaction\(/);
+assert.match(inventoryDirectRepository, /transaction\.set\(itemRef, item\);[\s\S]*?transaction\.set\(movementRef, movement\);/);
+assert.match(inventoryDirectRepository, /lastOperationAction: action/);
+assert.match(inventoryDirectRepository, /lastMovementId: movementId/);
+assert.match(inventoryDirectRepository, /assertNoActiveMaintenance\(transaction, itemId\)/);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes('commitIdempotentOperation'), true);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes("'inventoryMovements'"), true);
 assert.equal(galleryRepository.includes('permanentlyDeleteGalleryItem'), true);
