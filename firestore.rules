@@ -1358,6 +1358,11 @@ match /users/{userId} {
           'lastFinanceProofId'
         ]) &&
         bookingAfter.id == bookingId &&
+        bookingAfter.paymentStatus in ['dp', 'lunas'] &&
+        bookingAfter.paymentStatusCanonical in ['partial', 'paid'] &&
+        bookingAfter.paymentStatus == (bookingAfter.paymentStatusCanonical == 'paid' ? 'lunas' : 'dp') &&
+        bookingAfter.dpAmount == (bookingAfter.paymentStatusCanonical == 'paid' ? 0 : bookingAfter.paidAmount) &&
+        validIsoTimestampString(bookingAfter.updatedAt) &&
         bookingAfter.lastFinanceAction in ['payment', 'proof-approve'] &&
         validIsoDate(bookingAfter.lastFinanceBusinessDate) &&
         bookingAfter.lastFinanceOperationId is string &&
@@ -1423,6 +1428,14 @@ match /users/{userId} {
           'lastFinanceOperationId', 'lastFinanceProofId'
         ]) &&
         bookingAfter.id == bookingId &&
+        bookingAfter.paymentStatus in ['dp', 'refunded'] &&
+        bookingAfter.paymentStatusCanonical in ['partial', 'refunded'] &&
+        bookingAfter.paymentStatus == (bookingAfter.paymentStatusCanonical == 'refunded' ? 'refunded' : 'dp') &&
+        bookingAfter.refundStatus == (bookingAfter.paymentStatusCanonical == 'refunded' ? 'full' : 'partial') &&
+        bookingAfter.refundedAmount is number &&
+        bookingAfter.refundedAmount == resource.data.get('refundedAmount', 0) + event.amount &&
+        validString(bookingAfter.lastRefundReason, 4, 600) &&
+        validIsoTimestampString(bookingAfter.updatedAt) &&
         bookingAfter.lastFinanceAction == 'refund' &&
         validIsoDate(bookingAfter.lastFinanceBusinessDate) &&
         bookingAfter.lastFinanceOperationId is string &&
@@ -1528,7 +1541,6 @@ match /users/{userId} {
       let action = request.resource.data.get('lastFinanceAction', '');
       return isApprovedAdmin() &&
         hasPermission('billing') &&
-        validBooking(request.resource.data) &&
         (
           action in ['payment', 'proof-approve']
             ? financeBookingPaymentUpdateAllowed(bookingId)
