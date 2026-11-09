@@ -103,7 +103,7 @@ for (const endpoint of [
 function getCollectionRulesBlock(collectionName, documentId) {
   const startIndex = rules.indexOf('match /' + collectionName + '/{' + documentId + '} {');
   if (startIndex < 0) throw new Error('Firestore Rules collection missing: ' + collectionName);
-  const endIndex = rules.indexOf('\\n    match /', startIndex + 1);
+  const endIndex = rules.indexOf(String.fromCharCode(10) + '    match /', startIndex + 1);
   return rules.slice(startIndex, endIndex < 0 ? rules.length : endIndex);
 }
 
