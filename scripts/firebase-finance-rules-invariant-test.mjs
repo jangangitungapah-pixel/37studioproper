@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import {
   createRepositoryOperationId,
   createRepositoryPayloadHash,
@@ -171,13 +171,12 @@ async function refundBatch(db, state, amount, requestId) {
   };
 }
 
-async function voidBatch(db, bookingId, requestId, operationDate) {
+async function voidBatch(db, bookingId, requestId, operationDate, bookingDate) {
   const batch = writeBatch(db);
   const actorUid = 'billing-admin';
   const operationId = await createRepositoryOperationId({
     actorUid, scope: 'finance', action: 'void', requestId,
   });
-  const bookingDate = '2026-08-15';
   batch.update(doc(db, 'bookings', bookingId), {
     invoiceAmount: 0, invoiceStatus: 'void', paymentStatus: 'void',
     paymentStatusCanonical: 'void', updatedAt: later,
@@ -197,9 +196,9 @@ async function voidBatch(db, bookingId, requestId, operationDate) {
   return batch;
 }
 
-async function seedVoidBooking(adminDb, bookingId, paid) {
+async function seedVoidBooking(adminDb, bookingId, paid, date) {
   await setDoc(doc(adminDb, 'bookings', bookingId), makeBooking({
-    id: bookingId, date: '2026-08-15', total: 100000,
+    id: bookingId, date, total: 100000,
     invoiceAmount: paid ? 0 : 100000, paidAmount: paid ? 100000 : 0,
     paymentStatus: paid ? 'lunas' : 'pending',
     paymentStatusCanonical: paid ? 'paid' : 'unpaid',
@@ -208,11 +207,11 @@ async function seedVoidBooking(adminDb, bookingId, paid) {
       id: 'seed-payment-' + bookingId, method: 'cash',
     }] : [],
   }));
-  await setDoc(doc(adminDb, 'bookingScheduleDays', '2026-08-15'), {
-    date: '2026-08-15', lastBookingId: bookingId, revision: 1, updatedAt: now,
+  await setDoc(doc(adminDb, 'bookingScheduleDays', date), {
+    date, lastBookingId: bookingId, revision: 1, updatedAt: now,
   });
   await setDoc(doc(adminDb, 'clientCalendarSlots', bookingId), {
-    bookingId, date: '2026-08-15', durationHours: 1, sessionLabel: 'Rehearsal',
+    bookingId, date, durationHours: 1, sessionLabel: 'Rehearsal',
     startHour: 10, status: paid ? 'lunas' : 'pending', title: 'Occupied', updatedAt: now,
   });
 }
@@ -290,7 +289,6 @@ try {
   const billingDb = environment.authenticatedContext('billing-admin').firestore();
   const bookkeepingDb = environment.authenticatedContext('bookkeeping-admin').firestore();
   const ownerDb = environment.authenticatedContext('new-owner').firestore();
-  const adminDb = environment.unauthenticatedContext().firestore();
 
   // Valid partial payment is accepted; overpayment against the remaining balance is denied.
   let paymentState = { ...makeBooking({ id: 'finance-payment-1' }), fenceRevision: 0 };
@@ -328,11 +326,11 @@ try {
   // Unpaid invoices can be voided with schedule companions; paid invoices cannot.
   await environment.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
-    await seedVoidBooking(db, 'finance-void-unpaid', false);
-    await seedVoidBooking(db, 'finance-void-paid', true);
+    await seedVoidBooking(db, 'finance-void-unpaid', false, '2026-08-15');
+    await seedVoidBooking(db, 'finance-void-paid', true, '2026-08-18');
   });
-  await assertSucceeds((await voidBatch(billingDb, 'finance-void-unpaid', 'void-unpaid-0001', '2026-08-16')).commit());
-  await assertFails((await voidBatch(billingDb, 'finance-void-paid', 'void-paid-0002', '2026-08-17')).commit());
+  await assertSucceeds((await voidBatch(billingDb, 'finance-void-unpaid', 'void-unpaid-0001', '2026-08-16', '2026-08-15')).commit());
+  await assertFails((await voidBatch(billingDb, 'finance-void-paid', 'void-paid-0002', '2026-08-17', '2026-08-18')).commit());
 
   // Bookkeeping permission can close a day; only the canonical Owner can reopen it.
   const closingDate = '2026-08-20';
