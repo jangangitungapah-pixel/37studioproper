@@ -117,6 +117,8 @@ assert.equal(supplierRules.includes('allow create: if procurementSupplierCreateA
 assert.equal(supplierRules.includes('allow update, delete: if false;'), true);
 assert.equal(purchaseOrderRules.includes('allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);'), true);
 assert.equal(purchaseOrderRules.includes('allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);'), true);
+assert.match(rules, /function procurementPurchaseOrderUpdateAllowed\(purchaseOrderId\)[\s\S]*?data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\[[\s\S]*?'lastOperationAction', 'lastEventId'[\s\S]*?repositoryOperationMatchesAfter\([\s\S]*?'purchase-order-transition'[\s\S]*?procurementPurchaseOrderEventMatchesAfter\(data\)/);
+
 assert.equal(purchaseOrderRules.includes('allow delete: if false;'), true);
 assert.equal(receiptRules.includes('allow create, update, delete: if false;'), true);
 assert.equal(procurementPaymentRules.includes('allow create, update, delete: if false;'), true);
