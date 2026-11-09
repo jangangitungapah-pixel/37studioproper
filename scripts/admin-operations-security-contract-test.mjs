@@ -297,9 +297,12 @@ assert.match(
 );
 const inventoryDirectRepository = read('src/services/inventoryFirestoreRepository.js');
 assert.match(inventoryDirectRepository, /runIdempotentFirestoreTransaction\(/);
-assert.match(inventoryDirectRepository, /transaction\.set\(itemRef, item\);[\s\S]*?transaction\.set\(movementRef, movement\);/);
+assert.match(inventoryDirectRepository, /item\.lastMovementSnapshot = movement;[\s\S]*?transaction\.set\(itemRef, item\);/);
+assert.match(inventoryDirectRepository, /async function ensureInventoryMovement\([\s\S]*?await setDoc\(movementRef, movement\)/);
+assert.doesNotMatch(inventoryDirectRepository, /transaction\.set\(movementRef, movement\)/);
 assert.match(inventoryDirectRepository, /lastOperationAction: action/);
 assert.match(inventoryDirectRepository, /lastMovementId: movementId/);
+assert.match(inventoryDirectRepository, /lastMovementSnapshot: \{\}/);
 assert.match(inventoryDirectRepository, /assertNoActiveMaintenance\(transaction, itemId\)/);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes('commitIdempotentOperation'), true);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes("'inventoryMovements'"), true);
