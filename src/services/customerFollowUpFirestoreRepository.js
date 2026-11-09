@@ -5,6 +5,7 @@ import {
   getDocsFromServer,
   limit,
   query,
+  setDoc,
   where,
 } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
@@ -248,18 +249,47 @@ function makeChanges(before, after) {
   }, {});
 }
 
+function stableSerialize(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + stableSerialize(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
+async function ensureFollowUpEvent(event) {
+  const eventRef = doc(firestoreDb, EVENTS, event.id);
+  const current = await getDocFromServer(eventRef);
+  if (current.exists()) {
+    if (stableSerialize(current.data()) !== stableSerialize(event)) {
+      throw new Error('Event follow-up yang tersimpan tidak cocok dengan snapshot task.');
+    }
+    return { id: current.id, ...current.data() };
+  }
+  try {
+    await setDoc(eventRef, event);
+  } catch (error) {
+    const retry = await getDocFromServer(eventRef);
+    if (!retry.exists() || stableSerialize(retry.data()) !== stableSerialize(event)) throw error;
+    return { id: retry.id, ...retry.data() };
+  }
+  return { id: event.id, ...event };
+}
+
 async function hydrateOperation(operation, taskId) {
   const resolvedTaskId = taskId || operation.result.id;
   const taskSnapshot = await getDocFromServer(doc(firestoreDb, TASKS, resolvedTaskId));
   if (!taskSnapshot.exists()) throw new Error('Task follow-up hasil operasi tidak ditemukan.');
   const task = { id: taskSnapshot.id, ...taskSnapshot.data() };
-  const eventSnapshot = await getDocFromServer(doc(firestoreDb, EVENTS, task.lastEventId));
-  if (!eventSnapshot.exists()) throw new Error('Event follow-up hasil operasi tidak ditemukan.');
-  return {
-    task,
-    event: { id: eventSnapshot.id, ...eventSnapshot.data() },
-    duplicate: operation.replayed,
-  };
+  let event;
+  if (task.lastEventSnapshot?.id === task.lastEventId) {
+    event = await ensureFollowUpEvent(task.lastEventSnapshot);
+  } else {
+    const eventSnapshot = await getDocFromServer(doc(firestoreDb, EVENTS, task.lastEventId));
+    if (!eventSnapshot.exists()) throw new Error('Event follow-up hasil operasi tidak ditemukan.');
+    event = { id: eventSnapshot.id, ...eventSnapshot.data() };
+  }
+  return { task, event, duplicate: operation.replayed };
 }
 
 export async function getCanonicalCustomerFollowUpAssignees() {
@@ -377,6 +407,7 @@ export async function createCanonicalCustomerFollowUpTask(input = {}, idempotenc
         lastOperationId: metadata.operationId,
         lastOperationAction: action,
         lastEventId: eventId,
+        lastEventSnapshot: {},
       };
       const event = {
         id: eventId,
@@ -397,8 +428,8 @@ export async function createCanonicalCustomerFollowUpTask(input = {}, idempotenc
         operationId: metadata.operationId,
         operationAction: action,
       };
+      task.lastEventSnapshot = event;
       transaction.set(taskRef, task);
-      transaction.set(eventRef, event);
       return { collection: TASKS, id: taskId };
     },
   });
@@ -544,6 +575,7 @@ export async function updateCanonicalCustomerFollowUpTask(input = {}, idempotenc
         lastOperationId: metadata.operationId,
         lastOperationAction: action,
         lastEventId: eventId,
+        lastEventSnapshot: {},
       };
 
       const changes = makeChanges(current, next);
@@ -576,8 +608,8 @@ export async function updateCanonicalCustomerFollowUpTask(input = {}, idempotenc
         operationId: metadata.operationId,
         operationAction: action,
       };
+      next.lastEventSnapshot = event;
       transaction.set(taskRef, next);
-      transaction.set(eventRef, event);
       return { collection: TASKS, id: taskId };
     },
   });
