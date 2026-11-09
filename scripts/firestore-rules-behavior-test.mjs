@@ -831,6 +831,7 @@ try {
     operationId: followUpCreateOperationId,
     operationAction: 'create',
   };
+  const followUpCreatePayloadHash = await createRepositoryPayloadHash(followUpCreatePayload);
   const followUpTask = {
     id: followUpTaskId,
     customerId: 'customer-1',
@@ -871,12 +872,14 @@ try {
     snoozedByUid: '',
     lastOperationId: followUpCreateOperationId,
     lastOperationAction: 'create',
+    lastOperationPayloadHash: followUpCreatePayloadHash,
     lastEventId: followUpEventId,
     lastEventSnapshot: followUpEvent,
   };
   const followUpCreateBatch = writeBatch(customersAdmin);
   followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpTask);
-  followUpCreateBatch.set(
+  await assertSucceeds(followUpCreateBatch.commit());
+  await assertSucceeds(setDoc(
     doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
     {
       operationId: followUpCreateOperationId,
@@ -884,13 +887,12 @@ try {
       scope: 'customer-follow-up',
       action: 'create',
       requestId: followUpCreateRequestId,
-      payloadHash: await createRepositoryPayloadHash(followUpCreatePayload),
+      payloadHash: followUpCreatePayloadHash,
       resultCollection: 'customerFollowUpTasks',
       resultId: followUpTaskId,
       createdAt: serverTimestamp(),
     },
-  );
-  await assertSucceeds(followUpCreateBatch.commit());
+  ));
   await assertSucceeds(setDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), followUpEvent));
   await assertFails(updateDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), {
     note: 'Riwayat tidak boleh diubah',
@@ -911,6 +913,7 @@ try {
     requestId: followUpUpdateRequestId,
   });
   const followUpUpdateEventId = 'fue_' + followUpUpdateOperationId.slice(3);
+  const followUpUpdatePayloadHash = await createRepositoryPayloadHash(followUpUpdatePayload);
   const followUpUpdatedAt = '2026-08-14T08:15:00.000Z';
   const followUpUpdateEvent = {
     id: followUpUpdateEventId,
@@ -945,12 +948,14 @@ try {
     completedByName: 'Customer Admin',
     lastOperationId: followUpUpdateOperationId,
     lastOperationAction: 'update',
+    lastOperationPayloadHash: followUpUpdatePayloadHash,
     lastEventId: followUpUpdateEventId,
     lastEventSnapshot: followUpUpdateEvent,
   };
   const followUpUpdateBatch = writeBatch(customersAdmin);
   followUpUpdateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpUpdatedTask);
-  followUpUpdateBatch.set(
+  await assertSucceeds(followUpUpdateBatch.commit());
+  await assertSucceeds(setDoc(
     doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpUpdateOperationId),
     {
       operationId: followUpUpdateOperationId,
@@ -958,13 +963,12 @@ try {
       scope: 'customer-follow-up',
       action: 'update',
       requestId: followUpUpdateRequestId,
-      payloadHash: await createRepositoryPayloadHash(followUpUpdatePayload),
+      payloadHash: followUpUpdatePayloadHash,
       resultCollection: 'customerFollowUpTasks',
       resultId: followUpTaskId,
       createdAt: serverTimestamp(),
     },
-  );
-  await assertSucceeds(followUpUpdateBatch.commit());
+  ));
   await assertSucceeds(setDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpUpdateEventId), followUpUpdateEvent));
 
   // A dashboard-only administrator cannot create a customer follow-up task.
@@ -989,6 +993,7 @@ try {
     ...followUpTask,
     id: dashboardFollowUpTaskId,
     lastOperationId: dashboardFollowUpOperationId,
+    lastOperationPayloadHash: await createRepositoryPayloadHash({ customerId: 'customer-1', title: 'forbidden' }),
     lastEventId: dashboardFollowUpEventId,
     lastEventSnapshot: dashboardFollowUpEvent,
     createdByUid: 'dashboard-only',
