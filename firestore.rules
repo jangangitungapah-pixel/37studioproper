@@ -3056,63 +3056,44 @@ match /users/{userId} {
     }
 
     function validCashClosingSession(data, closingId) {
+      let allowedFields = [
+        'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+        'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastBookingId',
+        'lastLedgerEntryId', 'lastProofId', 'revision', 'cashVariance',
+        'closedAt', 'closedByName', 'closedByUid', 'cashDenominations',
+        'countedCash', 'cutoffAt', 'digitalCounts', 'digitalReconciliation',
+        'expectedCash', 'lastEventAt', 'lastEventId', 'lastEventType',
+        'openingCash', 'reviewNote', 'sourceFingerprint', 'sourceWatermark',
+        'totalsByMethod', 'transactionCount', 'transactionReferences',
+        'varianceReason', 'lastFinanceOperationId', 'reopenReason',
+        'reopenedAt', 'reopenedByName', 'reopenedByUid'
+      ];
       return data is map &&
-        data.keys().hasOnly([
-          'id', 'businessDate', 'registerId', 'status', 'activityRevision',
-          'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
-          'lastOperationId', 'lastOperationAction', 'lastBookingId',
-          'lastLedgerEntryId', 'lastProofId', 'revision', 'cashVariance',
-          'closedAt', 'closedByName', 'closedByUid', 'cashDenominations',
-          'countedCash', 'cutoffAt', 'digitalCounts', 'digitalReconciliation',
-          'expectedCash', 'lastEventAt', 'lastEventId', 'lastEventType',
-          'openingCash', 'reviewNote', 'sourceFingerprint', 'sourceWatermark',
-          'totalsByMethod', 'transactionCount', 'transactionReferences',
-          'varianceReason', 'lastFinanceOperationId', 'reopenReason',
-          'reopenedAt', 'reopenedByName', 'reopenedByUid'
-        ]) &&
+        data.keys().hasOnly(allowedFields) &&
         data.keys().hasAll([
           'id', 'businessDate', 'registerId', 'status', 'activityRevision',
-          'createdAt', 'updatedAt'
+          'createdAt', 'updatedAt', 'revision', 'lastEventId',
+          'lastEventType', 'lastOperationId', 'lastOperationAction'
         ]) &&
         data.id == closingId &&
         closingId == data.businessDate + '__main' &&
         validIsoDate(data.businessDate) &&
         data.registerId == 'main' &&
-        data.status in ['open', 'reopened', 'closed'] &&
+        data.status in ['closed', 'reopened'] &&
         data.activityRevision is int &&
         data.activityRevision >= 0 &&
+        data.revision is int &&
+        data.revision >= 1 &&
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt) &&
-        validOptionalString(data, 'lastActivityAt', 40) &&
-        validOptionalString(data, 'lastActivityByUid', 128) &&
-        validOptionalString(data, 'lastOperationId', 80) &&
-        validOptionalString(data, 'lastOperationAction', 40) &&
-        validOptionalString(data, 'lastBookingId', 160) &&
-        validOptionalString(data, 'lastLedgerEntryId', 160) &&
-        validOptionalString(data, 'lastProofId', 160) &&
-        validOptionalString(data, 'lastFinanceOperationId', 80) &&
-        (!data.keys().hasAny(['revision']) || (data.revision is int && data.revision >= 0)) &&
-        (!data.keys().hasAny(['transactionCount']) || (data.transactionCount is int && data.transactionCount >= 0 && data.transactionCount <= 1000)) &&
-        (!data.keys().hasAny(['transactionReferences']) || (data.transactionReferences is list && data.transactionReferences.size() <= 1000)) &&
-        (!data.keys().hasAny(['totalsByMethod']) || data.totalsByMethod is map) &&
-        (!data.keys().hasAny(['digitalCounts']) || data.digitalCounts is map) &&
-        (!data.keys().hasAny(['digitalReconciliation']) || data.digitalReconciliation is map) &&
-        (!data.keys().hasAny(['cashDenominations']) || data.cashDenominations is map) &&
-        validOptionalString(data, 'closedAt', 40) &&
-        validOptionalString(data, 'closedByName', 120) &&
-        validOptionalString(data, 'closedByUid', 128) &&
-        validOptionalString(data, 'cutoffAt', 40) &&
-        validOptionalString(data, 'lastEventAt', 40) &&
-        validOptionalString(data, 'lastEventId', 160) &&
-        validOptionalString(data, 'lastEventType', 40) &&
-        validOptionalString(data, 'sourceFingerprint', 64) &&
-        validOptionalString(data, 'sourceWatermark', 50) &&
-        validOptionalString(data, 'reviewNote', 1000) &&
-        validOptionalString(data, 'varianceReason', 600) &&
-        validOptionalString(data, 'reopenReason', 600) &&
-        validOptionalString(data, 'reopenedAt', 40) &&
-        validOptionalString(data, 'reopenedByName', 120) &&
-        validOptionalString(data, 'reopenedByUid', 128);
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventType in ['closed', 'reopened'] &&
+        validString(data.lastOperationId, 8, 80) &&
+        data.lastOperationAction in ['daily-close', 'daily-reopen'] &&
+        data.lastBookingId == '' &&
+        data.lastLedgerEntryId == '' &&
+        data.lastProofId == '';
     }
 
     function activityRevisionIncrements(closingId, data) {
