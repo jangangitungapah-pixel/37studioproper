@@ -94,10 +94,17 @@ assert.equal(
 );
 assert.equal(
   directRepositorySource.includes('runIdempotentFirestoreTransaction({') &&
+    directRepositorySource.includes('item.lastMovementSnapshot = movement;') &&
     directRepositorySource.includes('transaction.set(itemRef, item);') &&
-    directRepositorySource.includes('transaction.set(movementRef, movement);'),
+    directRepositorySource.includes('await setDoc(movementRef, movement)') &&
+    directRepositorySource.includes('async function ensureInventoryMovement'),
   true,
-  'Inventory mutations must atomically commit item, movement, and operation marker.',
+  'Inventory mutations must commit an idempotent item snapshot before appending the matching immutable movement.',
+);
+assert.equal(
+  directRepositorySource.includes('transaction.set(movementRef, movement)'),
+  false,
+  'Inventory item and movement Rules must not form a circular getAfter dependency.',
 );
 for (const required of [
   "status: 'inactive'",
