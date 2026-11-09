@@ -3015,6 +3015,7 @@ match /users/{userId} {
           'sourceEventId', 'title', 'type', 'updatedAt'
         ]) &&
         data.id == entryId &&
+        data.id == 'booking-payment-' + data.sourceBookingId + '-' + data.sourceEventId &&
         data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
         data.reversalOf == '' &&
         data.updatedAt == data.createdAt &&
