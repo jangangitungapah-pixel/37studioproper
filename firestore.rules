@@ -852,7 +852,11 @@ match /users/{userId} {
 
     match /users/{userId}/repositoryOperations/{operationId} {
       allow read: if canAccessOwnRepositoryOperations(userId);
-      allow create: if canAccessOwnRepositoryOperations(userId) &&
+      // An operation marker is inert idempotency metadata, never an access grant.
+      // Restrict creation to the caller's own namespace; domain writes still
+      // enforce their own role, ownership, and transition contracts.
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
         validRepositoryOperation(request.resource.data, operationId);
       allow update, delete: if false;
     }
@@ -3811,6 +3815,12 @@ match /users/{userId} {
     }
 
     function customerFollowUpAssigneeAllowed(uid) {
+      return uid == request.auth.uid
+        ? hasApprovedAdminPermission('customers')
+        : customerFollowUpOtherAssigneeAllowed(uid);
+    }
+
+    function customerFollowUpOtherAssigneeAllowed(uid) {
       let userPath = /databases/$(database)/documents/users/$(uid);
       let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
       let profileExists = exists(userPath);
