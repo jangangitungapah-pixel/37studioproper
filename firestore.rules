@@ -3915,22 +3915,6 @@ match /users/{userId} {
         data.operationAction in ['create', 'update'];
     }
 
-    function validCustomerFollowUpEventSnapshot(data, eventId) {
-      return data is map &&
-        data.keys().hasOnly([
-          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
-          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
-          'note', 'createdAt', 'operationId', 'operationAction'
-        ]) &&
-        data.id == eventId &&
-        data.taskId is string &&
-        data.customerId is string &&
-        data.actorUid == request.auth.uid &&
-        data.createdAt is string &&
-        data.operationId is string &&
-        data.operationAction in ['create', 'update'];
-    }
-
     function validCustomerFollowUpTask(data, taskId) {
       return data is map &&
         data.keys().hasOnly([
@@ -3994,9 +3978,16 @@ match /users/{userId} {
         data.lastOperationPayloadHash.size() == 64 &&
         data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
         validString(data.lastEventId, 1, 160) &&
-        validCustomerFollowUpEventSnapshot(data.lastEventSnapshot, data.lastEventId) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.lastEventSnapshot.id == data.lastEventId &&
         data.lastEventSnapshot.taskId == data.id &&
         data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
         data.lastEventSnapshot.operationId == data.lastOperationId &&
         data.lastEventSnapshot.operationAction == data.lastOperationAction &&
         data.lastEventSnapshot.createdAt == data.updatedAt;
@@ -4016,7 +4007,6 @@ match /users/{userId} {
         data.createdByUid == request.auth.uid &&
         data.lastOperationAction == 'create' &&
         customerFollowUpAssigneeAllowed(data.assignedToUid) &&
-        data.lastEventSnapshot.operationId == data.lastOperationId &&
         data.lastEventSnapshot.operationAction == 'create';
     }
 
@@ -4039,7 +4029,6 @@ match /users/{userId} {
         data.revision == resource.data.revision + 1 &&
         data.lastOperationId != resource.data.lastOperationId &&
         data.lastOperationAction == 'update' &&
-        data.lastEventSnapshot.operationId == data.lastOperationId &&
         data.lastEventSnapshot.operationAction == 'update' &&
         (
           data.assignedToUid == resource.data.assignedToUid ||
