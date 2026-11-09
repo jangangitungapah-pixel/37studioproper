@@ -515,7 +515,6 @@ assert.match(packageJson.scripts.test, /customer-follow-up-task-contract-test\.m
 assert.match(packageJson.scripts['test:prd'], /customer-follow-up-task-contract-test\.mjs/);
 
 console.log('Customer follow-up domain and integration contract passed.');
-\)/);
 assert.doesNotMatch(rulesTask, /repositoryOperationMatchesAfter/);
 assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
 assert.match(directFollowUpRepository, /runIdempotentFirestoreTransaction\(/);
