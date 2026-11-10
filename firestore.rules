@@ -3658,31 +3658,6 @@ match /users/{userId} {
         );
     }
 
-    function procurementGoodsReceiptSnapshotMatchesAfter(data) {
-      let movement = data.lastMovementSnapshot;
-      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(movement.sourceGoodsReceiptId);
-      let receiptExists = existsAfter(receiptPath);
-      let receipt = receiptExists ? getAfter(receiptPath).data : {};
-      return movement.type == 'goods-receipt' &&
-        movement.operationAction == 'receive' &&
-        movement.operationId == data.lastOperationId &&
-        movement.actorUid == request.auth.uid &&
-        movement.itemId == data.id &&
-        movement.previousQuantity == resource.data.quantity &&
-        movement.nextQuantity == data.quantity &&
-        movement.nextQuantity == movement.previousQuantity + movement.quantity &&
-        receiptExists &&
-        receipt.operationId == data.lastOperationId &&
-        receipt.receivedByUid == request.auth.uid &&
-        receipt.items.hasAny([{
-          'lineId': movement.sourceLineId,
-          'inventoryItemId': data.id,
-          'itemName': movement.itemName,
-          'quantity': movement.quantity,
-          'movementId': movement.id
-        }]);
-    }
-
     function procurementGoodsReceiptMovementMatchesAfter(data) {
       let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.sourceGoodsReceiptId);
       let receiptExists = existsAfter(receiptPath);
@@ -3700,98 +3675,163 @@ match /users/{userId} {
         }]);
     }
 
+    function validGoodsReceiptInventoryItem(data, itemId, changed) {
+      let movement = data.lastMovementSnapshot;
+      return data is map &&
+        data.id == itemId &&
+        data.quantity is number &&
+        data.quantity > resource.data.quantity &&
+        data.quantity <= 1000000 &&
+        data.createdAt == resource.data.createdAt &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationAction == 'receive' &&
+        validString(data.lastMovementId, 1, 160) &&
+        movement is map &&
+        movement.id == data.lastMovementId &&
+        movement.itemId == itemId &&
+        movement.type == 'goods-receipt' &&
+        movement.operationAction == 'receive' &&
+        movement.operationId == data.lastOperationId &&
+        movement.actorUid == request.auth.uid &&
+        movement.previousQuantity == resource.data.quantity &&
+        movement.nextQuantity == data.quantity &&
+        movement.nextQuantity == movement.previousQuantity + movement.quantity &&
+        movement.sourcePurchaseOrderId is string &&
+        movement.sourceGoodsReceiptId is string &&
+        movement.sourceLineId is string &&
+        data.name == resource.data.name &&
+        data.category == resource.data.category &&
+        data.type == resource.data.type &&
+        data.unit == resource.data.unit &&
+        data.minStock == resource.data.minStock &&
+        data.condition == resource.data.condition &&
+        data.status == resource.data.status &&
+        data.location == resource.data.location &&
+        data.note == resource.data.note &&
+        changed.hasOnly([
+          'quantity', 'updatedAt', 'lastOperationId', 'lastOperationAction',
+          'lastMovementId', 'lastMovementSnapshot'
+        ]);
+    }
+
+    function procurementGoodsReceiptMovementCreateAllowed(data, movementId) {
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
+      let itemExists = existsAfter(itemPath);
+      let item = itemExists ? getAfter(itemPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        data is map &&
+        data.id == movementId &&
+        data.type == 'goods-receipt' &&
+        data.operationAction == 'receive' &&
+        data.operationId is string &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validString(data.itemId, 1, 160) &&
+        validString(data.itemName, 1, 160) &&
+        validNumber(data.quantity, 1, 1000000) &&
+        validNumber(data.previousQuantity, 0, 1000000) &&
+        validNumber(data.nextQuantity, 0, 1000000) &&
+        data.nextQuantity == data.previousQuantity + data.quantity &&
+        validString(data.unit, 1, 40) &&
+        validString(data.note, 0, 600) &&
+        validString(data.reason, 0, 600) &&
+        validString(data.sourcePurchaseOrderId, 1, 160) &&
+        validString(data.sourceGoodsReceiptId, 1, 160) &&
+        validString(data.sourceLineId, 1, 160) &&
+        validIsoTimestampString(data.createdAt) &&
+        itemExists &&
+        item.lastMovementId == movementId &&
+        item.lastMovementSnapshot == data &&
+        item.lastOperationId == data.operationId &&
+        item.lastOperationAction == 'receive' &&
+        item.quantity == data.nextQuantity &&
+        item.updatedAt == data.createdAt &&
+        procurementGoodsReceiptMovementMatchesAfter(data);
+    }
+
     function inventoryItemUpdateAllowed(itemId) {
       let data = request.resource.data;
       let changed = data.diff(resource.data).affectedKeys();
-      let isGoodsReceipt = data.lastOperationAction == 'receive';
       return hasApprovedAdminPermission('inventory') &&
-        (isGoodsReceipt || inventoryPreviousMovementRecorded()) &&
-        validInventoryItem(data, itemId) &&
-        data.createdAt == resource.data.createdAt &&
-        data.lastOperationId != resource.data.get('lastOperationId', '') &&
         (
-          isGoodsReceipt
-            ? procurementGoodsReceiptSnapshotMatchesAfter(data)
-            : repositoryOperationMatchesAfter(
+          data.lastOperationAction == 'receive'
+            ? validGoodsReceiptInventoryItem(data, itemId, changed)
+            : inventoryPreviousMovementRecorded() &&
+              validInventoryItem(data, itemId) &&
+              data.createdAt == resource.data.createdAt &&
+              data.lastOperationId != resource.data.get('lastOperationId', '') &&
+              repositoryOperationMatchesAfter(
                 data.lastOperationId,
                 'inventory',
                 data.lastOperationAction,
                 'inventoryItems',
                 itemId
+              ) &&
+              (
+                (
+                  data.lastOperationAction == 'update' &&
+                  data.quantity == resource.data.quantity &&
+                  changed.hasOnly([
+                    'name', 'category', 'type', 'unit', 'minStock', 'condition',
+                    'status', 'location', 'note', 'updatedAt',
+                    'lastOperationId', 'lastOperationAction', 'lastMovementId',
+                    'lastMovementSnapshot'
+                  ])
+                ) ||
+                (
+                  data.lastOperationAction == 'archive' &&
+                  data.status == 'inactive' &&
+                  data.quantity == resource.data.quantity &&
+                  data.name == resource.data.name &&
+                  data.category == resource.data.category &&
+                  data.type == resource.data.type &&
+                  data.unit == resource.data.unit &&
+                  data.minStock == resource.data.minStock &&
+                  data.condition == resource.data.condition &&
+                  data.location == resource.data.location &&
+                  data.note == resource.data.note &&
+                  changed.hasOnly([
+                    'status', 'lastOperationId', 'lastOperationAction',
+                    'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                  ])
+                ) ||
+                (
+                  data.lastOperationAction == 'adjust' &&
+                  data.quantity != resource.data.quantity &&
+                  data.name == resource.data.name &&
+                  data.category == resource.data.category &&
+                  data.type == resource.data.type &&
+                  data.unit == resource.data.unit &&
+                  data.minStock == resource.data.minStock &&
+                  data.condition == resource.data.condition &&
+                  data.status == resource.data.status &&
+                  data.location == resource.data.location &&
+                  data.note == resource.data.note &&
+                  changed.hasOnly([
+                    'quantity', 'lastOperationId', 'lastOperationAction',
+                    'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                  ])
+                )
               )
-        ) &&
-        (
-          (
-            data.lastOperationAction == 'update' &&
-            data.quantity == resource.data.quantity &&
-            changed.hasOnly([
-              'name', 'category', 'type', 'unit', 'minStock', 'condition',
-              'status', 'location', 'note', 'updatedAt',
-              'lastOperationId', 'lastOperationAction', 'lastMovementId',
-              'lastMovementSnapshot'
-            ])
-          ) ||
-          (
-            data.lastOperationAction == 'archive' &&
-            data.status == 'inactive' &&
-            data.quantity == resource.data.quantity &&
-            data.name == resource.data.name &&
-            data.category == resource.data.category &&
-            data.type == resource.data.type &&
-            data.unit == resource.data.unit &&
-            data.minStock == resource.data.minStock &&
-            data.condition == resource.data.condition &&
-            data.location == resource.data.location &&
-            data.note == resource.data.note &&
-            changed.hasOnly([
-              'status', 'lastOperationId', 'lastOperationAction',
-              'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
-            ])
-          ) ||
-          (
-            data.lastOperationAction == 'adjust' &&
-            data.quantity != resource.data.quantity &&
-            data.name == resource.data.name &&
-            data.category == resource.data.category &&
-            data.type == resource.data.type &&
-            data.unit == resource.data.unit &&
-            data.minStock == resource.data.minStock &&
-            data.condition == resource.data.condition &&
-            data.status == resource.data.status &&
-            data.location == resource.data.location &&
-            data.note == resource.data.note &&
-            changed.hasOnly([
-              'quantity', 'lastOperationId', 'lastOperationAction',
-              'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
-            ])
-          ) ||
-          (
-            isGoodsReceipt &&
-            data.quantity > resource.data.quantity &&
-            data.name == resource.data.name &&
-            data.category == resource.data.category &&
-            data.type == resource.data.type &&
-            data.unit == resource.data.unit &&
-            data.minStock == resource.data.minStock &&
-            data.condition == resource.data.condition &&
-            data.status == resource.data.status &&
-            data.location == resource.data.location &&
-            data.note == resource.data.note &&
-            changed.hasOnly([
-              'quantity', 'updatedAt', 'lastOperationId', 'lastOperationAction',
-              'lastMovementId', 'lastMovementSnapshot'
-            ])
-          )
         );
     }
 
     function inventoryMovementCreateAllowed(movementId) {
       let data = request.resource.data;
+      return data.type == 'goods-receipt' && data.operationAction == 'receive'
+        ? procurementGoodsReceiptMovementCreateAllowed(data, movementId)
+        : inventoryStandardMovementCreateAllowed(data, movementId);
+    }
+
+    function inventoryStandardMovementCreateAllowed(data, movementId) {
       let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
-      let itemExists = data.type == 'goods-receipt' ? existsAfter(itemPath) : exists(itemPath);
-      let item = itemExists
-        ? (data.type == 'goods-receipt' ? getAfter(itemPath).data : get(itemPath).data)
-        : {};
+      let itemExists = exists(itemPath);
+      let item = itemExists ? get(itemPath).data : {};
       return hasApprovedAdminPermission('inventory') &&
         validInventoryMovement(data, movementId) &&
         itemExists &&
@@ -3833,12 +3873,6 @@ match /users/{userId} {
             data.type == 'stock-out' &&
             data.operationAction == 'adjust' &&
             data.previousQuantity == data.nextQuantity + data.quantity
-          ) ||
-          (
-            data.type == 'goods-receipt' &&
-            data.operationAction == 'receive' &&
-            data.nextQuantity == data.previousQuantity + data.quantity &&
-            procurementGoodsReceiptMovementMatchesAfter(data)
           )
         );
     }
