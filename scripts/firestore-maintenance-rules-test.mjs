@@ -162,29 +162,6 @@ function maintenanceEvent({
   };
 }
 
-async function operationMarker({
-  db,
-  actorUid,
-  action,
-  requestId,
-  operationId,
-  resultId,
-}) {
-  await setDoc(
-    doc(db, 'users', actorUid, 'repositoryOperations', operationId),
-    {
-      operationId,
-      actorUid,
-      scope: 'maintenance',
-      action,
-      requestId,
-      payloadHash: await createRepositoryPayloadHash({ action, requestId, resultId }),
-      resultCollection: 'maintenanceWorkOrders',
-      resultId,
-      createdAt: serverTimestamp(),
-    },
-  );
-}
 
 try {
   await environment.withSecurityRulesDisabled(async (context) => {
@@ -200,6 +177,7 @@ try {
     }));
     await setDoc(doc(db, 'users', 'bookkeeping-admin'), userProfile('bookkeeping-admin', 'admin', {
       bookkeeping: true,
+      inventory: true,
     }));
     await setDoc(doc(db, 'inventoryItems', 'maintenance-report-item'), inventoryItem('maintenance-report-item'));
     await setDoc(doc(db, 'inventoryItems', 'maintenance-cost-item'), {
