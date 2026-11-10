@@ -16,9 +16,7 @@ const modules = [
   'firestore/rules/domains/customer-follow-up.rules',
   'firestore/rules/fallback.rules',
 ];
-const assembled = (await Promise.all(modules.map(async (path) =>
-  (await read(path)).replace(/\s+$/, '')
-))).map((section, index) => index === 1 || index === 3 || index === 4 ? section + '\n' : section).join('\n');
+const assembled = (await Promise.all(modules.map((path) => read(path)))).join('');
 const deployed = await read('firestore.rules');
 assert.equal(
   assembled,
