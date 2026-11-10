@@ -1214,3 +1214,4 @@ match /users/{userId} {
           ? adminBookingFinanceUpdateAllowed(bookingId)
           : isApprovedScheduleAdmin() && adminBookingOperationalUpdate(bookingId);
     }
+
