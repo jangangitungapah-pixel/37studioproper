@@ -41,6 +41,18 @@ Target: Firebase project `studio-proper`, Firestore `(default)` Standard edition
 - Public reads are limited to `settings/pricing` and `settings/invoice` because the unauthenticated client landing page renders those business-facing values.
 - Gallery metadata, status, and real-time lists are admin-only and authoritative in Firestore. Image binaries remain on the existing Cloudinary service because Firebase Storage is not provisioned and billing is disabled on this project.
 
+## Phase 4 direct repository implementation status (2026-11-10)
+
+The migration branch now routes the following operational writes directly through the Firebase Web SDK. This describes branch source code only; it does not assert that production Rules/Hosting have been deployed.
+
+- **Customer Follow-up:** `customerFollowUpFirestoreRepository.js` creates, updates and cancels follow-up tasks with immutable event records and per-user repository operation markers. Assignee discovery reads approved user profiles/ownership directly.
+- **Inventory:** `inventoryFirestoreRepository.js` owns item save/archive/adjustment and immutable movement snapshots. The Maintenance lifecycle may change only the item status/condition and its Maintenance linkage pointers through a WorkOrder/event companion transaction; it cannot change stock quantity.
+- **Procurement:** `procurementFirestoreRepository.js` owns supplier and Purchase Order lifecycle, Goods Receipt and Procurement Payment. Goods Receipt atomically updates received quantities, inventory balances, stock movements, receipt, PO and event. Payment atomically links the PO, payment document, immutable procurement expense, procurement event, Daily Closing activity fence and operation marker.
+- **Maintenance:** `maintenanceFirestoreRepository.js` owns WorkOrder report, transitions, Owner-only reopen and one-time actual-cost posting. WorkOrder writes require a linked append-only event, revision/actor/permission checks, inventory lock state and idempotency marker. Cost posting also links an immutable `source: maintenance` bookkeeping entry and the open Daily Closing fence.
+- **Worker boundary:** The Maintenance UI no longer calls the Admin Operations Worker, and the obsolete Maintenance wrappers were removed from `adminOperationsRepository.js`. Worker route/domain code is temporarily retained as a migration/regression reference while other application domains still depend on the Worker.
+
+The new Maintenance Rules Emulator coverage is wired into `npm run test:rules` via `scripts/firestore-maintenance-rules-test.mjs`. Local build, lint, regression and emulator verification for this Phase 4 branch revision is pending. No production Rules/index/Hosting change or production data mutation is implied.
+
 ## Index assessment (repository audit 2026-11-09)
 
 The repository currently defines three composite indexes in firestore.indexes.json:
