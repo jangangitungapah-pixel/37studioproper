@@ -501,8 +501,8 @@ assert.doesNotMatch(rules, /function validCustomerFollowUpEventSnapshot/);
 assert.match(rules, /return uid == request\.auth\.uid \|\| customerFollowUpOtherAssigneeAllowed\(uid\);/);
 assert.match(
   rules,
-  /function validCustomerFollowUpTaskUpdate\(data, taskId\)[\s\S]*?data\.assignedToUid == resource\.data\.assignedToUid \|\|[\s\S]*?validString\(data\.assignedToUid, 1, 128\)[\s\S]*?data\.lastEventSnapshot\.operationAction == 'update'[\s\S]*?function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?validCustomerFollowUpTaskUpdate\(data, taskId\)/,
-  'Unchanged Follow-up fields should reuse trusted persisted values; changed values must still validate.',
+  /function validCustomerFollowUpTaskUpdate\(data, taskId\)[\s\S]*?data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\[[\s\S]*?'lastEventSnapshot'[\s\S]*?data\.revision == resource\.data\.revision \+ 1[\s\S]*?data\.lastEventSnapshot\.operationAction == 'update'[\s\S]*?function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?validCustomerFollowUpTaskUpdate\(data, taskId\)[\s\S]*?data\.lastOperationId != resource\.data\.lastOperationId/,
+  'Follow-up updates must restrict changed keys, preserve revision and idempotency, and validate changed values.',
 );
 
 assert.equal(rules.includes('lastOperationPayloadHash.size() == 64') && rules.includes("data.lastOperationPayloadHash.matches('^[0-9a-f]{64}')"), true);

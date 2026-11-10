@@ -4778,7 +4778,16 @@ match /users/{userId} {
 
     function validCustomerFollowUpTaskUpdate(data, taskId) {
       return data is map &&
-        data.keys().size() == resource.data.keys().size() &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+          'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+          'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+          'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+          'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+          'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+          'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
+          'lastEventSnapshot'
+        ]) &&
         data.id == taskId &&
         (
           data.assignedToUid == resource.data.assignedToUid ||
@@ -4923,27 +4932,12 @@ match /users/{userId} {
       return customerFollowUpActorAllowed() &&
         customerFollowUpPreviousEventRecorded() &&
         validCustomerFollowUpTaskUpdate(data, taskId) &&
-        data.keys().size() == resource.data.keys().size() &&
-        data.customerId == resource.data.customerId &&
-        data.customerName == resource.data.customerName &&
-        data.customerPhone == resource.data.customerPhone &&
-        data.sourceId == resource.data.sourceId &&
-        data.sourceType == resource.data.sourceType &&
-        data.bookingId == resource.data.bookingId &&
-        data.templateKey == resource.data.templateKey &&
-        data.createdAt == resource.data.createdAt &&
-        data.createdByUid == resource.data.createdByUid &&
-        data.createdByName == resource.data.createdByName &&
-        data.revision == resource.data.revision + 1 &&
         data.lastOperationId != resource.data.lastOperationId &&
-        data.lastOperationAction == 'update' &&
-        data.lastEventSnapshot.operationAction == 'update' &&
         (
           data.assignedToUid == resource.data.assignedToUid ||
           customerFollowUpAssigneeAllowed(data.assignedToUid)
         );
     }
-
     function customerFollowUpEventCreateAllowed(eventId) {
       let data = request.resource.data;
       let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
