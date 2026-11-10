@@ -390,8 +390,8 @@ assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orde
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orders\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orders\/reopen'[\s\S]*?ownerOnly: true[\s\S]*?requireFreshAuth: true[\s\S]*?body = await readJson\(request\);/);
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orders\/cost'[\s\S]*?permission: 'bookkeeping'[\s\S]*?body = await readJson\(request\);/);
-assert.match(firestoreRules, /match \/maintenanceWorkOrders\/\{workOrderId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessInventoryData\(\);[\s\S]*?allow create: if maintenanceWorkOrderCreateAllowed\(workOrderId\);[\s\S]*?allow update: if maintenanceWorkOrderUpdateAllowed\(workOrderId\);[\s\S]*?allow delete: if false;/);
-assert.match(firestoreRules, /match \/maintenanceEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessInventoryData\(\);[\s\S]*?allow create: if maintenanceEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
+assert.match(firestoreRules, /match \/maintenanceWorkOrders\/\{workOrderId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessMaintenanceData\(\);[\s\S]*?allow create: if maintenanceWorkOrderCreateAllowed\(workOrderId\);[\s\S]*?allow update: if maintenanceWorkOrderUpdateAllowed\(workOrderId\);[\s\S]*?allow delete: if false;/);
+assert.match(firestoreRules, /match \/maintenanceEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessMaintenanceData\(\);[\s\S]*?allow create: if maintenanceEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
 assert.match(firestoreRules, /function maintenanceOperationMarkerMatches\(data\)/);
 assert.match(firestoreRules, /function maintenanceWorkOrderCreateAllowed\(workOrderId\)/);
 assert.match(firestoreRules, /function maintenanceWorkOrderTransitionAllowed\(workOrderId, data\)/);
