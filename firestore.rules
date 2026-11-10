@@ -3972,7 +3972,7 @@ match /users/{userId} {
           'notes', 'createdAt', 'updatedAt', 'createdByUid', 'createdByName',
           'approvedAt', 'approvedByUid', 'approvedByName', 'orderedAt',
           'cancelledAt', 'cancelReason', 'cancelledByUid', 'receivedAt',
-          'lastOperationId', 'lastOperationAction', 'lastEventId'
+          'lastOperationId', 'lastOperationAction', 'lastEventId', 'lastPaymentId'
         ]) &&
         data.id == purchaseOrderId &&
         validString(data.poNumber, 12, 64) &&
@@ -4005,21 +4005,97 @@ match /users/{userId} {
         validOptionalString(data, 'receivedAt', 40) &&
         validString(data.lastOperationId, 67, 67) &&
         data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
-        data.lastOperationAction in ['create', 'transition'] &&
-        validString(data.lastEventId, 1, 160);
+        data.lastOperationAction in ['create', 'transition', 'payment'] &&
+        validString(data.lastEventId, 1, 160) &&
+        validOptionalString(data, 'lastPaymentId', 160);
+    }
+
+    function validProcurementPayment(data, paymentId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'purchaseOrderId', 'poNumber', 'supplierId', 'supplierName',
+          'amount', 'paymentMethod', 'date', 'reference', 'note',
+          'actorUid', 'actorName', 'createdAt', 'operationId'
+        ]) &&
+        data.id == paymentId &&
+        validString(data.purchaseOrderId, 1, 160) &&
+        validString(data.poNumber, 12, 64) &&
+        validString(data.supplierId, 1, 160) &&
+        validString(data.supplierName, 1, 160) &&
+        validNumber(data.amount, 1, 1000000000) &&
+        data.paymentMethod in ['cash', 'transfer', 'qris'] &&
+        validIsoDate(data.date) &&
+        validString(data.reference, 0, 120) &&
+        validString(data.note, 0, 800) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.operationId is string &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$');
+    }
+
+    function procurementPaymentEventMatchesAfter(data) {
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.entityId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.paymentId);
+      let paymentExists = existsAfter(paymentPath);
+      let payment = paymentExists ? getAfter(paymentPath).data : {};
+      return poExists && paymentExists &&
+        po.lastEventId == data.id &&
+        po.lastPaymentId == data.paymentId &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'payment' &&
+        po.updatedAt == data.createdAt &&
+        payment.id == data.paymentId &&
+        payment.purchaseOrderId == data.entityId &&
+        payment.amount == data.amount &&
+        payment.operationId == data.operationId &&
+        payment.actorUid == request.auth.uid;
+    }
+
+    function procurementPaymentCreateAllowed(paymentId) {
+      let data = request.resource.data;
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.purchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      let poBeforeExists = exists(poPath);
+      let poBefore = poBeforeExists ? get(poPath).data : {};
+      let expensePath = /databases/$(database)/documents/bookkeepingEntries/$(paymentId);
+      let expenseExists = existsAfter(expensePath);
+      let expense = expenseExists ? getAfter(expensePath).data : {};
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validProcurementPayment(data, paymentId) &&
+        poExists && poBeforeExists &&
+        po.status in ['submitted', 'approved', 'ordered', 'partially_received', 'received'] &&
+        po.lastPaymentId == paymentId &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'payment' &&
+        po.updatedAt == data.createdAt &&
+        po.paidAmount == poBefore.paidAmount + data.amount &&
+        po.paidAmount <= po.totalAmount &&
+        expenseExists &&
+        expense.id == paymentId &&
+        expense.source == 'procurement-payment' &&
+        expense.sourcePurchaseOrderId == data.purchaseOrderId &&
+        expense.sourceProcurementPaymentId == paymentId &&
+        expense.amount == data.amount &&
+        expense.operationId == data.operationId;
     }
 
     function validProcurementEvent(data, eventId) {
       return data is map &&
         data.keys().hasOnly([
           'id', 'entityType', 'entityId', 'action', 'fromStatus', 'toStatus',
-          'reason', 'actorUid', 'actorName', 'createdAt', 'amount',
+          'reason', 'actorUid', 'actorName', 'createdAt', 'amount', 'paymentId',
           'operationId'
         ]) &&
         data.id == eventId &&
         data.entityType in ['supplier', 'purchase_order'] &&
         validString(data.entityId, 1, 160) &&
-        data.action in ['created', 'status_changed'] &&
+        data.action in ['created', 'status_changed', 'payment_recorded'] &&
+        validOptionalString(data, 'paymentId', 160) &&
         validString(data.get('fromStatus', ''), 0, 40) &&
         validString(data.get('toStatus', ''), 0, 40) &&
         validString(data.get('reason', ''), 0, 600) &&
@@ -4112,8 +4188,7 @@ match /users/{userId} {
         procurementPurchaseOrderEventMatchesAfter(data);
     }
 
-    function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
-      let data = request.resource.data;
+    function procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data) {
       let nextStatusAllowed = (
         resource.data.status == 'draft' && data.status in ['submitted', 'cancelled']
       ) || (
@@ -4168,6 +4243,61 @@ match /users/{userId} {
           purchaseOrderId
         ) &&
         procurementPurchaseOrderEventMatchesAfter(data);
+    }
+
+    function procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data) {
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.lastPaymentId);
+      let paymentExists = existsAfter(paymentPath);
+      let payment = paymentExists ? getAfter(paymentPath).data : {};
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        resource.data.status in ['submitted', 'approved', 'ordered', 'partially_received', 'received'] &&
+        data.status == resource.data.status &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'paidAmount', 'updatedAt', 'lastOperationId', 'lastOperationAction',
+          'lastEventId', 'lastPaymentId'
+        ]) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.updatedAt != resource.data.updatedAt &&
+        paymentExists &&
+        payment.id == data.lastPaymentId &&
+        payment.purchaseOrderId == purchaseOrderId &&
+        payment.actorUid == request.auth.uid &&
+        payment.operationId == data.lastOperationId &&
+        payment.createdAt == data.updatedAt &&
+        payment.amount > 0 &&
+        data.paidAmount == resource.data.paidAmount + payment.amount &&
+        data.paidAmount <= data.totalAmount &&
+        eventExists &&
+        event.id == data.lastEventId &&
+        event.entityType == 'purchase_order' &&
+        event.entityId == purchaseOrderId &&
+        event.action == 'payment_recorded' &&
+        event.paymentId == data.lastPaymentId &&
+        event.amount == payment.amount &&
+        event.operationId == data.lastOperationId &&
+        event.actorUid == request.auth.uid &&
+        event.createdAt == data.updatedAt &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'payment' &&
+        validString(data.lastEventId, 1, 160) &&
+        validString(data.lastPaymentId, 1, 160) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'procurement-payment',
+          'purchaseOrders',
+          purchaseOrderId
+        );
+    }
+
+    function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
+      let data = request.resource.data;
+      return procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data) ||
+        procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data);
     }
 
     function procurementEventSupplierMatchesAfter(data) {
