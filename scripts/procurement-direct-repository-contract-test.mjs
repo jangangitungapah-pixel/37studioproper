@@ -130,7 +130,7 @@ assert.match(rules, /function validProcurementPayment\(data, paymentId\)/);
 assert.match(rules, /function procurementPaymentCreateAllowed\(paymentId\)/);
 assert.match(rules, /function procurementPurchaseOrderPaymentUpdateAllowed\(purchaseOrderId, data\)/);
 assert.match(rules, /function procurementPaymentFenceUpdateAllowed\(closingId\)/);
-assert.match(rules, /function validProcurementPaymentFence\(data, closingId\)[\s\S]*?'status', 'activityRevision'[\s\S]*?get\(fencePath\)\.data\.status in \['open', 'reopened', 'not_opened'\]/);
+assert.match(rules, /function validProcurementPaymentFence\(data, closingId\)[\s\S]*?let fenceExists = exists\(fencePath\)[\s\S]*?let previous = fenceExists \? get\(fencePath\)\.data : \{\}[\s\S]*?previous\.status in \['open', 'reopened', 'not_opened'\]/);
 
 assert.match(rules, /data\.source == 'procurement-payment'[\s\S]*?bookkeepingBusinessDateOpen\(data\)/);
 assert.match(rules, /data\.action == 'payment_recorded'[\s\S]*?procurementPaymentEventMatchesAfter\(data\)/);
