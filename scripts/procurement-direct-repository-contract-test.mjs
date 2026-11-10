@@ -18,7 +18,7 @@ for (const operation of [
 ]) {
   assert.equal(repository.includes('export async function ' + operation + '('), true);
 }
-assert.equal((repository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 5);
+assert.equal((repository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
 for (const required of [
   'scope: SCOPE',
   'requestId',
@@ -113,6 +113,9 @@ assert.equal(packageJson.scripts['test:prd'].includes('procurement-direct-reposi
 assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
 assert.match(workspace, /getStableRequestId\('procurement-payment'[\s\S]*?recordCanonicalProcurementPayment\(payload, request\.requestId\)/);
 assert.match(repository, /export async function receiveCanonicalPurchaseOrder/);
+assert.match(repository, /runTransaction\(firestoreDb, async \(transaction\)/);
+assert.match(repository, /existingReceipt\.payloadHash !== payloadHash/);
+assert.match(repository, /createRepositoryPayloadHash\(payload\)/);
 assert.match(repository, /export async function recordCanonicalProcurementPayment/);
 assert.match(repository, /requirePrincipal\('bookkeeping'\)/);
 assert.match(repository, /closing\?\.status === 'closed'/);

@@ -833,6 +833,12 @@ try {
     createdAt: goodsReceiptAt,
     operationId: goodsReceiptOperationId,
     eventId: goodsReceiptEventId,
+    payloadHash: await createRepositoryPayloadHash({
+      purchaseOrderId: goodsReceiptPoId,
+      expectedUpdatedAt: now,
+      items: [{ lineId: 'line-goods-receipt-rules-1', quantity: 2 }],
+      note: 'Dua unit diterima',
+    }),
   };
   const goodsReceiptPoSnapshot = await getDoc(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId));
   const goodsReceiptPo = {
@@ -854,25 +860,6 @@ try {
   goodsReceiptBatch.set(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId), goodsReceiptPo);
   goodsReceiptBatch.set(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId), goodsReceipt);
   goodsReceiptBatch.set(doc(goodsReceiptDb, 'procurementEvents', goodsReceiptEventId), goodsReceiptEvent);
-  goodsReceiptBatch.set(
-    doc(goodsReceiptDb, 'users', 'inventory-admin', 'repositoryOperations', goodsReceiptOperationId),
-    {
-      operationId: goodsReceiptOperationId,
-      actorUid: 'inventory-admin',
-      scope: 'procurement',
-      action: 'goods-receipt-create',
-      requestId: goodsReceiptRequestId,
-      payloadHash: await createRepositoryPayloadHash({
-        purchaseOrderId: goodsReceiptPoId,
-        expectedUpdatedAt: now,
-        items: [{ lineId: 'line-goods-receipt-rules-1', quantity: 2 }],
-        note: 'Dua unit diterima',
-      }),
-      resultCollection: 'goodsReceipts',
-      resultId: goodsReceiptId,
-      createdAt: serverTimestamp(),
-    },
-  );
   await assertSucceeds(goodsReceiptBatch.commit());
   const savedGoodsReceiptPo = await getDoc(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId));
   const savedGoodsReceiptItem = await getDoc(doc(goodsReceiptDb, 'inventoryItems', 'item-1'));
@@ -882,6 +869,7 @@ try {
   assert.equal(savedGoodsReceiptPo.data().items[0].receivedQuantity, 2);
   assert.equal(savedGoodsReceiptItem.data().quantity, goodsReceiptInventory.quantity + 2);
   assert.equal(savedGoodsReceipt.exists(), true);
+  assert.equal(savedGoodsReceipt.data().payloadHash.length, 64);
   assert.equal(savedGoodsReceiptMovement.exists(), true);
   await assertFails(updateDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId), { note: 'Tamper' }));
   await assertFails(deleteDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId)));

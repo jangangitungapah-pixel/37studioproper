@@ -35,7 +35,7 @@ assert.match(directRepository, /export async function createCanonicalSupplier/);
 assert.match(directRepository, /export async function createCanonicalPurchaseOrder/);
 assert.match(directRepository, /export async function transitionCanonicalPurchaseOrder/);
 assert.match(directRepository, /export async function receiveCanonicalPurchaseOrder/);
-assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 5);
+assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
 assert.match(directRepository, /transaction\.get\(supplierRef\)/);
 assert.match(directRepository, /transaction\.get\(reference\)/);
 
