@@ -1,8 +1,9 @@
-import { doc, getDocFromServer } from 'firebase/firestore';
+import { doc, getDocFromServer, runTransaction } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
 import {
   buildRepositoryPrincipal,
   createRepositoryOperationId,
+  createRepositoryPayloadHash,
   createRepositoryRequestId,
   runIdempotentFirestoreTransaction,
 } from '../lib/firestoreRepositoryFoundation.js';
@@ -434,8 +435,8 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
   const body = input && typeof input === 'object' ? input : {};
   const purchaseOrderId = cleanText(body.purchaseOrderId, 'Purchase Order', 160, true);
   const expectedUpdatedAt = cleanText(body.expectedUpdatedAt, 'Waktu pembaruan PO', 40, true);
-  if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 12) {
-    throw new Error('Penerimaan harus berisi 1 sampai 12 baris agar transaksi tetap berada dalam batas evaluasi Firestore Rules.');
+  if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 5) {
+    throw new Error('Penerimaan harus berisi 1 sampai 5 baris agar transaksi tetap berada dalam batas evaluasi Firestore Rules.');
   }
   const seenLineIds = new Set();
   const requestedLines = body.items.map((line) => {
@@ -449,6 +450,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
   const note = cleanText(body.note, 'Catatan penerimaan', 800);
   const payload = { purchaseOrderId, expectedUpdatedAt, items: requestedLines, note };
   const requestId = await normalizeRequestId(idempotencyKey);
+  const payloadHash = await createRepositoryPayloadHash(payload);
   const action = 'goods-receipt-create';
   const operationId = await createRepositoryOperationId({
     actorUid: actor.uid, scope: SCOPE, action, requestId,
@@ -457,25 +459,29 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
   const eventId = 'pev_' + operationId.slice(3);
   const timestamp = new Date().toISOString();
 
-  const operation = await runIdempotentFirestoreTransaction({
-    db: firestoreDb,
-    actorUid: actor.uid,
-    scope: SCOPE,
-    action,
-    requestId,
-    payload,
-    execute: async (transaction, metadata) => {
+  const operation = await runTransaction(firestoreDb, async (transaction) => {
       const poRef = doc(firestoreDb, PURCHASE_ORDERS, purchaseOrderId);
       const receiptRef = doc(firestoreDb, 'goodsReceipts', receiptId);
       const eventRef = doc(firestoreDb, EVENTS, eventId);
-      const [poSnapshot, receiptSnapshot, eventSnapshot] = await Promise.all([
+      const receiptSnapshot = await transaction.get(receiptRef);
+      if (receiptSnapshot.exists()) {
+        const existingReceipt = receiptSnapshot.data();
+        if (
+          existingReceipt.operationId !== operationId ||
+          existingReceipt.payloadHash !== payloadHash ||
+          existingReceipt.receivedByUid !== actor.uid
+        ) {
+          throw new Error('Request ID penerimaan sudah digunakan dengan payload yang berbeda.');
+        }
+        return { replayed: true };
+      }
+      const [poSnapshot, eventSnapshot] = await Promise.all([
         transaction.get(poRef),
-        transaction.get(receiptRef),
         transaction.get(eventRef),
       ]);
       if (!poSnapshot.exists()) throw new Error('Purchase Order tidak ditemukan.');
-      if (receiptSnapshot.exists() || eventSnapshot.exists()) {
-        throw new Error('ID Goods Receipt atau event sudah digunakan.');
+      if (eventSnapshot.exists()) {
+        throw new Error('ID event Goods Receipt sudah digunakan.');
       }
       const current = { id: poSnapshot.id, ...poSnapshot.data() };
       if (!['ordered', 'partially_received'].includes(current.status)) {
@@ -501,7 +507,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
       }
       const inventoryRefs = inventoryIds.map((id) => doc(firestoreDb, 'inventoryItems', id));
       const movementIds = requestedLines.map((_, index) => (
-        'mov_' + metadata.operationId.slice(3) + '_' + String(index + 1).padStart(3, '0')
+        'mov_' + operationId.slice(3) + '_' + String(index + 1).padStart(3, '0')
       ));
       const movementRefs = movementIds.map((id) => doc(firestoreDb, 'inventoryMovements', id));
       const inventorySnapshots = await Promise.all(inventoryRefs.map((reference) => transaction.get(reference)));
@@ -544,7 +550,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
           actorUid: actor.uid,
           actorName: actor.displayName,
           createdAt: timestamp,
-          operationId: metadata.operationId,
+          operationId: operationId,
           operationAction: 'receive',
           sourcePurchaseOrderId: purchaseOrderId,
           sourceGoodsReceiptId: receiptId,
@@ -554,7 +560,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
           ...inventoryItem,
           quantity: nextQuantity,
           updatedAt: timestamp,
-          lastOperationId: metadata.operationId,
+          lastOperationId: operationId,
           lastOperationAction: 'receive',
           lastMovementId: movement.id,
           lastMovementSnapshot: movement,
@@ -582,7 +588,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
         status,
         updatedAt: timestamp,
         ...(allReceived ? { receivedAt: timestamp } : {}),
-        lastOperationId: metadata.operationId,
+        lastOperationId: operationId,
         lastOperationAction: 'receipt',
         lastEventId: eventId,
         lastReceiptId: receiptId,
@@ -599,8 +605,9 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
         receivedByUid: actor.uid,
         receivedByName: actor.displayName,
         createdAt: timestamp,
-        operationId: metadata.operationId,
+        operationId: operationId,
         eventId,
+        payloadHash,
       };
       const event = {
         id: eventId,
@@ -614,7 +621,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
         actorName: actor.displayName,
         createdAt: timestamp,
         items: receiptItems,
-        operationId: metadata.operationId,
+        operationId: operationId,
       };
 
       nextInventoryItems.forEach((item, index) => {
@@ -624,11 +631,12 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
       transaction.set(poRef, nextPurchaseOrder);
       transaction.set(receiptRef, receipt);
       transaction.set(eventRef, event);
-      return { collection: 'goodsReceipts', id: receiptId };
+      return { replayed: false };
     },
-  });
+  );
 
-  const receipt = await hydrateDocument(operation, 'goodsReceipts');
+  const operationReplayed = operation.replayed === true;
+  const receipt = await hydrateDocument({ result: { id: receiptId } }, 'goodsReceipts');
   const [purchaseOrderSnapshot, eventSnapshot] = await Promise.all([
     getDocFromServer(doc(firestoreDb, PURCHASE_ORDERS, purchaseOrderId)),
     getDocFromServer(doc(firestoreDb, EVENTS, eventId)),
@@ -640,7 +648,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
     receipt,
     purchaseOrder: { id: purchaseOrderSnapshot.id, ...purchaseOrderSnapshot.data() },
     event: { id: eventSnapshot.id, ...eventSnapshot.data() },
-    duplicate: operation.replayed,
+    duplicate: operationReplayed,
   };
 }
 
