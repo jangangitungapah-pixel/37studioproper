@@ -876,9 +876,31 @@ match /users/{userId} {
         data.createdAt == request.time;
     }
 
+    function maintenanceOperationMarkerMatches(data) {
+      let workOrderPath = /databases/$(database)/documents/maintenanceWorkOrders/$(data.resultId);
+      let workOrderExists = existsAfter(workOrderPath);
+      let workOrder = workOrderExists ? getAfter(workOrderPath).data : {};
+      let expectedAction = data.action == 'waiting-parts' ? 'waiting_parts' : data.action;
+      return data.resultCollection == 'maintenanceWorkOrders' &&
+        data.action in [
+          'report', 'triage', 'approve', 'assign', 'start', 'waiting-parts',
+          'resume', 'complete', 'verify', 'cancel', 'reopen', 'cost'
+        ] &&
+        workOrderExists &&
+        workOrder.id == data.resultId &&
+        workOrder.lastOperationId == data.operationId &&
+        workOrder.lastOperationAction == expectedAction &&
+        validString(workOrder.lastEventId, 1, 160);
+    }
+
     function repositoryOperationDomainMatches(data) {
-      return data.scope != 'customer-follow-up' ||
-        customerFollowUpOperationMarkerMatches(data);
+      return (
+        data.scope != 'customer-follow-up' ||
+        customerFollowUpOperationMarkerMatches(data)
+      ) && (
+        data.scope != 'maintenance' ||
+        maintenanceOperationMarkerMatches(data)
+      );
     }
 
     function customerFollowUpOperationMarkerMatches(data) {
@@ -3197,6 +3219,82 @@ match /users/{userId} {
     }
 
 
+    function validMaintenanceCostLedger(data, entryId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'type', 'category', 'title', 'amount', 'date',
+          'paymentMethod', 'note', 'source', 'sourceWorkOrderId',
+          'sourceEventId', 'sourceAction', 'actorName', 'actorUid',
+          'idempotencyKey', 'immutable', 'operationId', 'reversalOf',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.id == entryId &&
+        data.type == 'expense' &&
+        data.category == 'maintenance' &&
+        validString(data.title, 1, 160) &&
+        validNumber(data.amount, 1, 1000000000) &&
+        validIsoDate(data.date) &&
+        data.paymentMethod in ['cash', 'transfer', 'qris', 'other'] &&
+        validString(data.note, 4, 600) &&
+        data.source == 'maintenance' &&
+        validString(data.sourceWorkOrderId, 1, 160) &&
+        validString(data.sourceEventId, 1, 160) &&
+        data.sourceAction == 'maintenance_cost' &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validString(data.idempotencyKey, 8, 128) &&
+        data.immutable == true &&
+        validString(data.operationId, 67, 67) &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.reversalOf == '' &&
+        validIsoTimestampString(data.createdAt) &&
+        data.updatedAt == data.createdAt;
+    }
+
+    function maintenanceCostLedgerMatchesAfter(data, entryId) {
+      let workOrderPath = /databases/$(database)/documents/maintenanceWorkOrders/$(data.sourceWorkOrderId);
+      let workOrderExists = existsAfter(workOrderPath);
+      let workOrder = workOrderExists ? getAfter(workOrderPath).data : {};
+      let eventPath = /databases/$(database)/documents/maintenanceEvents/$(data.sourceEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      let closingId = data.date + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingExists = existsAfter(closingPath);
+      let closing = closingExists ? getAfter(closingPath).data : {};
+      return workOrderExists && eventExists && closingExists &&
+        workOrder.id == data.sourceWorkOrderId &&
+        workOrder.status in ['completed', 'verified'] &&
+        workOrder.costEntryId == entryId &&
+        workOrder.actualCost == data.amount &&
+        workOrder.lastOperationAction == 'cost' &&
+        workOrder.lastOperationId == data.operationId &&
+        workOrder.lastEventId == data.sourceEventId &&
+        event.id == data.sourceEventId &&
+        event.workOrderId == workOrder.id &&
+        event.action == 'cost_recorded' &&
+        event.operationAction == 'cost' &&
+        event.operationId == data.operationId &&
+        event.bookkeepingEntryId == entryId &&
+        event.actorUid == request.auth.uid &&
+        event.actualCost == data.amount &&
+        event.createdAt == data.createdAt &&
+        closing.id == closingId &&
+        closing.status in ['open', 'reopened'] &&
+        closing.lastOperationAction == 'maintenance-cost' &&
+        closing.lastOperationId == data.operationId &&
+        closing.lastLedgerEntryId == entryId &&
+        closing.lastActivityByUid == request.auth.uid &&
+        closing.updatedAt == data.createdAt;
+    }
+
+    function maintenanceCostLedgerCreateAllowed(data, entryId) {
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validMaintenanceCostLedger(data, entryId) &&
+        bookkeepingBusinessDateOpen(data) &&
+        maintenanceCostLedgerMatchesAfter(data, entryId);
+    }
+
     function bookkeepingEntryCreateAllowed(data, entryId) {
       let source = data.get('source', '');
       return source == 'booking-payment'
@@ -3210,6 +3308,8 @@ match /users/{userId} {
           ? financeBookingLedgerCreateAllowed(data, entryId)
           : source == 'procurement-payment'
             ? procurementPaymentLedgerCreateAllowed(data, entryId)
+          : source == 'maintenance'
+            ? maintenanceCostLedgerCreateAllowed(data, entryId)
           : source == 'manual'
             ? (
                 isApprovedAdmin() &&
@@ -3375,17 +3475,42 @@ match /users/{userId} {
         financeActivityBookingCompanionMatchesAfter(data, action);
     }
 
+    function maintenanceCostFenceCompanionMatchesAfter(data, entryAfter) {
+      let workOrderPath = /databases/$(database)/documents/maintenanceWorkOrders/$(entryAfter.sourceWorkOrderId);
+      let workOrderExists = existsAfter(workOrderPath);
+      let workOrder = workOrderExists ? getAfter(workOrderPath).data : {};
+      let eventPath = /databases/$(database)/documents/maintenanceEvents/$(entryAfter.sourceEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return workOrderExists && eventExists &&
+        entryAfter.source == 'maintenance' &&
+        entryAfter.operationId == data.lastOperationId &&
+        entryAfter.date == data.businessDate &&
+        workOrder.id == entryAfter.sourceWorkOrderId &&
+        workOrder.costEntryId == data.lastLedgerEntryId &&
+        workOrder.lastOperationId == data.lastOperationId &&
+        workOrder.lastOperationAction == 'cost' &&
+        workOrder.lastEventId == entryAfter.sourceEventId &&
+        event.id == entryAfter.sourceEventId &&
+        event.workOrderId == workOrder.id &&
+        event.operationId == data.lastOperationId &&
+        event.operationAction == 'cost' &&
+        event.bookkeepingEntryId == data.lastLedgerEntryId;
+    }
+
     function manualBookkeepingFenceCompanionMatchesAfter(data, action) {
       let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
       let entryAfter = existsAfter(entryPath) ? getAfter(entryPath).data : {};
       let entryBefore = exists(entryPath) ? get(entryPath).data : {};
-      return action == 'manual-delete'
-        ? (!existsAfter(entryPath) && exists(entryPath) &&
-            entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
-        : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
-            entryAfter.operationId == data.lastOperationId &&
-            (entryAfter.date == data.businessDate ||
-              (exists(entryPath) && entryBefore.date == data.businessDate)));
+      return action == 'maintenance-cost'
+        ? existsAfter(entryPath) && maintenanceCostFenceCompanionMatchesAfter(data, entryAfter)
+        : action == 'manual-delete'
+          ? (!existsAfter(entryPath) && exists(entryPath) &&
+              entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
+          : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
+              entryAfter.operationId == data.lastOperationId &&
+              (entryAfter.date == data.businessDate ||
+                (exists(entryPath) && entryBefore.date == data.businessDate)));
     }
 
     function validManualBookkeepingActivityFence(data, closingId) {
@@ -3419,7 +3544,7 @@ match /users/{userId} {
         data.lastActivityByUid == request.auth.uid &&
         data.lastOperationId is string &&
         data.lastOperationId.size() > 0 &&
-        data.lastOperationAction in ['manual-create', 'manual-update', 'manual-delete'] &&
+        data.lastOperationAction in ['manual-create', 'manual-update', 'manual-delete', 'maintenance-cost'] &&
         data.lastLedgerEntryId is string &&
         data.lastLedgerEntryId.size() > 0 &&
         data.lastBookingId == '' &&
@@ -3538,7 +3663,7 @@ match /users/{userId} {
         ? financeActivityFenceUpdateAllowed(closingId)
         : action == 'procurement-payment'
           ? procurementPaymentFenceUpdateAllowed(closingId)
-          : action in ['manual-create', 'manual-update', 'manual-delete']
+          : action in ['manual-create', 'manual-update', 'manual-delete', 'maintenance-cost']
             ? manualBookkeepingFenceUpdateAllowed(closingId)
             : action in ['daily-close', 'daily-reopen']
               ? dailyClosingSessionTransitionAllowed(closingId)
@@ -3565,7 +3690,8 @@ match /users/{userId} {
           'id', 'name', 'category', 'type', 'quantity', 'unit', 'minStock',
           'condition', 'status', 'location', 'note', 'createdAt', 'updatedAt',
           'lastOperationId', 'lastOperationAction', 'lastMovementId',
-          'lastMovementSnapshot'
+          'lastMovementSnapshot', 'activeMaintenanceWorkOrderId',
+          'lastMaintenanceWorkOrderId'
         ]) &&
         data.id == itemId &&
         validString(data.name, 1, 160) &&
@@ -3580,6 +3706,8 @@ match /users/{userId} {
         validString(data.note, 0, 2000) &&
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt) &&
+        validOptionalString(data, 'activeMaintenanceWorkOrderId', 160) &&
+        validOptionalString(data, 'lastMaintenanceWorkOrderId', 160) &&
         data.lastOperationId.size() == 67 &&
         data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
         data.lastOperationAction in [
@@ -3755,69 +3883,79 @@ match /users/{userId} {
     function inventoryItemUpdateAllowed(itemId) {
       let data = request.resource.data;
       let changed = data.diff(resource.data).affectedKeys();
+      let maintenanceActive =
+        resource.data.get('activeMaintenanceWorkOrderId', '') != '' ||
+        data.get('activeMaintenanceWorkOrderId', '') != '' ||
+        resource.data.status == 'maintenance' ||
+        resource.data.condition == 'maintenance';
       return hasApprovedAdminPermission('inventory') &&
         (
           data.lastOperationAction == 'receive'
             ? validGoodsReceiptInventoryItem(data, itemId, changed)
-            : inventoryPreviousMovementRecorded() &&
-              validInventoryItem(data, itemId) &&
-              data.createdAt == resource.data.createdAt &&
-              data.lastOperationId != resource.data.get('lastOperationId', '') &&
-              repositoryOperationMatchesAfter(
-                data.lastOperationId,
-                'inventory',
-                data.lastOperationAction,
-                'inventoryItems',
-                itemId
-              ) &&
-              (
+            : maintenanceActive
+              ? maintenanceInventoryItemUpdateAllowed(itemId, data, changed)
+              : inventoryPreviousMovementRecorded() &&
+                validInventoryItem(data, itemId) &&
+                data.createdAt == resource.data.createdAt &&
+                data.lastOperationId != resource.data.get('lastOperationId', '') &&
+                repositoryOperationMatchesAfter(
+                  data.lastOperationId,
+                  'inventory',
+                  data.lastOperationAction,
+                  'inventoryItems',
+                  itemId
+                ) &&
                 (
-                  data.lastOperationAction == 'update' &&
-                  data.quantity == resource.data.quantity &&
-                  changed.hasOnly([
-                    'name', 'category', 'type', 'unit', 'minStock', 'condition',
-                    'status', 'location', 'note', 'updatedAt',
-                    'lastOperationId', 'lastOperationAction', 'lastMovementId',
-                    'lastMovementSnapshot'
-                  ])
-                ) ||
-                (
-                  data.lastOperationAction == 'archive' &&
-                  data.status == 'inactive' &&
-                  data.quantity == resource.data.quantity &&
-                  data.name == resource.data.name &&
-                  data.category == resource.data.category &&
-                  data.type == resource.data.type &&
-                  data.unit == resource.data.unit &&
-                  data.minStock == resource.data.minStock &&
-                  data.condition == resource.data.condition &&
-                  data.location == resource.data.location &&
-                  data.note == resource.data.note &&
-                  changed.hasOnly([
-                    'status', 'lastOperationId', 'lastOperationAction',
-                    'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
-                  ])
-                ) ||
-                (
-                  data.lastOperationAction == 'adjust' &&
-                  data.quantity != resource.data.quantity &&
-                  data.name == resource.data.name &&
-                  data.category == resource.data.category &&
-                  data.type == resource.data.type &&
-                  data.unit == resource.data.unit &&
-                  data.minStock == resource.data.minStock &&
-                  data.condition == resource.data.condition &&
-                  data.status == resource.data.status &&
-                  data.location == resource.data.location &&
-                  data.note == resource.data.note &&
-                  changed.hasOnly([
-                    'quantity', 'lastOperationId', 'lastOperationAction',
-                    'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
-                  ])
+                  (
+                    data.lastOperationAction == 'update' &&
+                    data.quantity == resource.data.quantity &&
+                    changed.hasOnly([
+                      'name', 'category', 'type', 'unit', 'minStock', 'condition',
+                      'status', 'location', 'note', 'updatedAt',
+                      'lastOperationId', 'lastOperationAction', 'lastMovementId',
+                      'lastMovementSnapshot'
+                    ])
+                  ) ||
+                  (
+                    data.lastOperationAction == 'archive' &&
+                    resource.data.get('activeMaintenanceWorkOrderId', '') == '' &&
+                    data.status == 'inactive' &&
+                    data.quantity == resource.data.quantity &&
+                    data.name == resource.data.name &&
+                    data.category == resource.data.category &&
+                    data.type == resource.data.type &&
+                    data.unit == resource.data.unit &&
+                    data.minStock == resource.data.minStock &&
+                    data.condition == resource.data.condition &&
+                    data.location == resource.data.location &&
+                    data.note == resource.data.note &&
+                    changed.hasOnly([
+                      'status', 'lastOperationId', 'lastOperationAction',
+                      'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                    ])
+                  ) ||
+                  (
+                    data.lastOperationAction == 'adjust' &&
+                    data.quantity != resource.data.quantity &&
+                    data.name == resource.data.name &&
+                    data.category == resource.data.category &&
+                    data.type == resource.data.type &&
+                    data.unit == resource.data.unit &&
+                    data.minStock == resource.data.minStock &&
+                    data.condition == resource.data.condition &&
+                    data.status == resource.data.status &&
+                    data.location == resource.data.location &&
+                    data.note == resource.data.note &&
+                    changed.hasOnly([
+                      'quantity', 'lastOperationId', 'lastOperationAction',
+                      'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                    ])
+                  )
                 )
-              )
         );
     }
+
+
 
     function inventoryMovementCreateAllowed(movementId) {
       let data = request.resource.data;
@@ -3890,14 +4028,443 @@ match /users/{userId} {
 
     match /maintenanceWorkOrders/{workOrderId} {
       allow read: if isApproved() && canAccessInventoryData();
-      // Work orders and their lifecycle are written only by Admin Operations Worker.
-      allow create, update, delete: if false;
+      allow create: if maintenanceWorkOrderCreateAllowed(workOrderId);
+      allow update: if maintenanceWorkOrderUpdateAllowed(workOrderId);
+      allow delete: if false;
     }
 
     match /maintenanceEvents/{eventId} {
       allow read: if isApproved() && canAccessInventoryData();
-      // Maintenance history is append-only and server-authoritative.
-      allow create, update, delete: if false;
+      allow create: if maintenanceEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    function validMaintenanceWorkOrder(data, workOrderId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'inventoryItemId', 'itemName', 'itemCategory', 'itemLocation',
+          'title', 'description', 'priority', 'status', 'reportedAt',
+          'reportedByUid', 'reportedByName', 'assignedToUid', 'assignedToName',
+          'plannedAt', 'dueAt', 'diagnosis', 'repairNotes', 'verificationNote',
+          'verificationCondition', 'vendor', 'estimatedCost', 'actualCost',
+          'costEntryId', 'attachments', 'priorItemStatus', 'priorItemCondition',
+          'revision', 'createdAt', 'updatedAt', 'updatedByUid', 'updatedByName',
+          'triagedAt', 'triagedByUid', 'triagedByName',
+          'approvedAt', 'approvedByUid', 'approvedByName', 'approvalNote',
+          'assignedAt', 'assignedByUid', 'startedAt', 'startedByUid',
+          'waitingPartsAt', 'waitingPartsReason', 'resumedAt', 'resumeNote',
+          'completedAt', 'completedByUid', 'completedByName',
+          'verifiedAt', 'verifiedByUid', 'verifiedByName',
+          'cancelledAt', 'cancelledByUid', 'cancelReason',
+          'reopenPriorItemStatus', 'reopenPriorItemCondition',
+          'reopenedAt', 'reopenedByUid', 'reopenedByName', 'reopenReason',
+          'costRecordedAt', 'costRecordedByUid', 'costRecordedByName',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        data.keys().hasAll([
+          'id', 'inventoryItemId', 'itemName', 'itemCategory', 'itemLocation',
+          'title', 'description', 'priority', 'status', 'reportedAt',
+          'reportedByUid', 'reportedByName', 'assignedToUid', 'assignedToName',
+          'plannedAt', 'dueAt', 'diagnosis', 'repairNotes', 'verificationNote',
+          'verificationCondition', 'vendor', 'estimatedCost', 'actualCost',
+          'costEntryId', 'attachments', 'priorItemStatus', 'priorItemCondition',
+          'revision', 'createdAt', 'updatedAt', 'updatedByUid', 'updatedByName',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        data.id == workOrderId &&
+        validString(data.inventoryItemId, 1, 160) &&
+        validString(data.itemName, 1, 160) &&
+        validString(data.itemCategory, 0, 80) &&
+        validString(data.itemLocation, 0, 240) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 4, 2000) &&
+        data.priority in ['low', 'normal', 'high', 'urgent'] &&
+        data.status in [
+          'reported', 'triaged', 'approved', 'assigned', 'in_progress',
+          'waiting_parts', 'completed', 'verified', 'cancelled'
+        ] &&
+        validIsoTimestampString(data.reportedAt) &&
+        validString(data.reportedByUid, 1, 128) &&
+        validString(data.reportedByName, 1, 120) &&
+        validString(data.assignedToUid, 0, 128) &&
+        validString(data.assignedToName, 0, 120) &&
+        validString(data.plannedAt, 0, 40) &&
+        validString(data.dueAt, 0, 40) &&
+        validString(data.diagnosis, 0, 2000) &&
+        validString(data.repairNotes, 0, 2000) &&
+        validString(data.verificationNote, 0, 1000) &&
+        validString(data.verificationCondition, 0, 20) &&
+        validString(data.vendor, 0, 160) &&
+        validNumber(data.estimatedCost, 0, 1000000000) &&
+        validNumber(data.actualCost, 0, 1000000000) &&
+        validString(data.costEntryId, 0, 160) &&
+        data.attachments is list &&
+        data.attachments.size() <= 10 &&
+        validString(data.priorItemStatus, 1, 40) &&
+        validString(data.priorItemCondition, 1, 40) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.updatedByUid, 1, 128) &&
+        validString(data.updatedByName, 1, 120) &&
+        validString(data.lastOperationId, 67, 67) &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationAction in [
+          'report', 'triage', 'approve', 'assign', 'start', 'waiting_parts',
+          'resume', 'complete', 'verify', 'cancel', 'reopen', 'cost'
+        ] &&
+        validString(data.lastEventId, 1, 160) &&
+        validOptionalString(data, 'triagedByUid', 128) &&
+        validOptionalString(data, 'triagedByName', 120) &&
+        validOptionalString(data, 'approvedByUid', 128) &&
+        validOptionalString(data, 'approvedByName', 120) &&
+        validOptionalString(data, 'assignedByUid', 128) &&
+        validOptionalString(data, 'startedByUid', 128) &&
+        validOptionalString(data, 'completedByUid', 128) &&
+        validOptionalString(data, 'completedByName', 120) &&
+        validOptionalString(data, 'verifiedByUid', 128) &&
+        validOptionalString(data, 'verifiedByName', 120) &&
+        validOptionalString(data, 'cancelledByUid', 128) &&
+        validOptionalString(data, 'reopenPriorItemStatus', 40) &&
+        validOptionalString(data, 'reopenPriorItemCondition', 40) &&
+        validOptionalString(data, 'reopenedByUid', 128) &&
+        validOptionalString(data, 'reopenedByName', 120) &&
+        validOptionalString(data, 'costRecordedByUid', 128) &&
+        validOptionalString(data, 'costRecordedByName', 120);
+    }
+
+    function validMaintenanceEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'action', 'actorName', 'actorUid', 'createdAt', 'details',
+          'fromStatus', 'id', 'inventoryItemId', 'operationAction',
+          'operationId', 'reason', 'revision', 'toStatus', 'workOrderId',
+          'actualCost', 'bookkeepingEntryId'
+        ]) &&
+        data.id == eventId &&
+        data.action in [
+          'reported', 'triage', 'approve', 'assign', 'start', 'waiting_parts',
+          'resume', 'complete', 'verify', 'cancel', 'reopen', 'cost_recorded'
+        ] &&
+        validString(data.actorName, 1, 120) &&
+        data.actorUid == request.auth.uid &&
+        validIsoTimestampString(data.createdAt) &&
+        data.details is map &&
+        validString(data.fromStatus, 0, 40) &&
+        validString(data.inventoryItemId, 1, 160) &&
+        data.operationAction in [
+          'report', 'triage', 'approve', 'assign', 'start', 'waiting_parts',
+          'resume', 'complete', 'verify', 'cancel', 'reopen', 'cost'
+        ] &&
+        validString(data.operationId, 67, 67) &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        validString(data.reason, 0, 600) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validString(data.toStatus, 1, 40) &&
+        validString(data.workOrderId, 1, 160) &&
+        (!data.keys().hasAny(['actualCost']) || validNumber(data.actualCost, 1, 1000000000)) &&
+        validOptionalString(data, 'bookkeepingEntryId', 160);
+    }
+
+    function maintenanceWorkOrderEventMatchesAfter(data) {
+      let eventPath = /databases/$(database)/documents/maintenanceEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return eventExists &&
+        event.id == data.lastEventId &&
+        event.workOrderId == data.id &&
+        event.inventoryItemId == data.inventoryItemId &&
+        event.operationId == data.lastOperationId &&
+        event.operationAction == data.lastOperationAction &&
+        event.revision == data.revision &&
+        event.toStatus == data.status &&
+        event.createdAt == data.updatedAt &&
+        event.actorUid == request.auth.uid &&
+        event.action == (data.lastOperationAction == 'report'
+          ? 'reported'
+          : data.lastOperationAction == 'cost' ? 'cost_recorded' : data.lastOperationAction);
+    }
+
+    function maintenanceWorkOrderInventoryMatchesAfter(data) {
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.inventoryItemId);
+      let itemExists = existsAfter(itemPath);
+      let item = itemExists ? getAfter(itemPath).data : {};
+      return itemExists &&
+        item.id == data.inventoryItemId &&
+        item.lastMaintenanceWorkOrderId == data.id &&
+        item.updatedAt == data.updatedAt &&
+        (
+          data.status in [
+            'reported', 'triaged', 'approved', 'assigned',
+            'in_progress', 'waiting_parts', 'completed'
+          ]
+            ? item.activeMaintenanceWorkOrderId == data.id &&
+              item.status == 'maintenance' &&
+              item.condition == 'maintenance'
+            : data.status == 'verified'
+              ? item.activeMaintenanceWorkOrderId == '' &&
+                item.condition == data.verificationCondition &&
+                item.status == (data.verificationCondition == 'broken' ? 'broken' : 'active')
+              : data.status == 'cancelled' &&
+                item.activeMaintenanceWorkOrderId == '' &&
+                item.status == data.get('reopenPriorItemStatus', data.priorItemStatus) &&
+                item.condition == data.get('reopenPriorItemCondition', data.priorItemCondition)
+        );
+    }
+
+    function maintenanceWorkOrderCreateAllowed(workOrderId) {
+      let data = request.resource.data;
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.inventoryItemId);
+      let itemBeforeExists = exists(itemPath);
+      let itemBefore = itemBeforeExists ? get(itemPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        validMaintenanceWorkOrder(data, workOrderId) &&
+        data.status == 'reported' &&
+        data.revision == 1 &&
+        data.reportedByUid == request.auth.uid &&
+        data.lastOperationAction == 'report' &&
+        data.createdAt == data.updatedAt &&
+        itemBeforeExists &&
+        itemBefore.get('activeMaintenanceWorkOrderId', '') == '' &&
+        itemBefore.status != 'maintenance' &&
+        itemBefore.condition != 'maintenance' &&
+        itemBefore.status != 'inactive' &&
+        itemBefore.status != 'lost' &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'maintenance',
+          'report',
+          'maintenanceWorkOrders',
+          workOrderId
+        ) &&
+        maintenanceWorkOrderEventMatchesAfter(data) &&
+        maintenanceWorkOrderInventoryMatchesAfter(data);
+    }
+
+    function maintenanceWorkOrderTransitionAllowed(workOrderId, data) {
+      let action = data.lastOperationAction;
+      let changed = data.diff(resource.data).affectedKeys();
+      let transitionAllowed = (
+        action == 'triage' && resource.data.status == 'reported' && data.status == 'triaged'
+      ) || (
+        action == 'approve' && resource.data.status == 'triaged' && data.status == 'approved'
+      ) || (
+        action == 'assign' && resource.data.status == 'approved' && data.status == 'assigned'
+      ) || (
+        action == 'start' && resource.data.status == 'assigned' && data.status == 'in_progress'
+      ) || (
+        action == 'waiting_parts' && resource.data.status == 'in_progress' && data.status == 'waiting_parts'
+      ) || (
+        action == 'resume' && resource.data.status == 'waiting_parts' && data.status == 'in_progress'
+      ) || (
+        action == 'complete' && resource.data.status == 'in_progress' && data.status == 'completed'
+      ) || (
+        action == 'verify' && resource.data.status == 'completed' && data.status == 'verified'
+      ) || (
+        action == 'cancel' &&
+        resource.data.status in ['reported', 'triaged', 'approved', 'assigned', 'in_progress', 'waiting_parts'] &&
+        data.status == 'cancelled'
+      ) || (
+        action == 'reopen' && resource.data.status == 'verified' && data.status == 'in_progress' && isOwner()
+      );
+      return hasApprovedAdminPermission('inventory') &&
+        validMaintenanceWorkOrder(data, workOrderId) &&
+        resource.data.inventoryItemId == data.inventoryItemId &&
+        resource.data.createdAt == data.createdAt &&
+        resource.data.reportedByUid == data.reportedByUid &&
+        data.revision == resource.data.revision + 1 &&
+        data.updatedAt != resource.data.updatedAt &&
+        data.lastOperationId != resource.data.get('lastOperationId', '') &&
+        changed.hasOnly([
+          'status', 'updatedAt', 'updatedByUid', 'updatedByName',
+          'revision', 'lastOperationId', 'lastOperationAction', 'lastEventId',
+          'diagnosis', 'priority', 'triagedAt', 'triagedByUid', 'triagedByName',
+          'approvedAt', 'approvedByUid', 'approvedByName', 'approvalNote',
+          'assignedToUid', 'assignedToName', 'plannedAt', 'dueAt', 'assignedAt', 'assignedByUid',
+          'startedAt', 'startedByUid', 'waitingPartsAt', 'waitingPartsReason',
+          'resumedAt', 'resumeNote', 'repairNotes', 'completedAt', 'completedByUid',
+          'completedByName', 'verificationCondition', 'verificationNote',
+          'verifiedAt', 'verifiedByUid', 'verifiedByName', 'cancelledAt',
+          'cancelledByUid', 'cancelReason', 'reopenPriorItemStatus',
+          'reopenPriorItemCondition', 'reopenedAt', 'reopenedByUid',
+          'reopenedByName', 'reopenReason'
+        ]) &&
+        transitionAllowed &&
+        (
+          action != 'triage' ||
+          validString(data.diagnosis, 4, 2000)
+        ) &&
+        (
+          action != 'assign' ||
+          validString(data.assignedToName, 1, 120)
+        ) &&
+        (
+          action != 'waiting_parts' ||
+          validString(data.waitingPartsReason, 4, 600)
+        ) &&
+        (
+          action != 'complete' ||
+          validString(data.repairNotes, 4, 2000)
+        ) &&
+        (
+          action != 'verify' ||
+          (
+            data.verificationCondition in ['good', 'fair', 'broken'] &&
+            (data.verificationCondition != 'broken' || validString(data.verificationNote, 4, 1000))
+          )
+        ) &&
+        (
+          action != 'cancel' && action != 'reopen' ||
+          validString(data.get(action == 'cancel' ? 'cancelReason' : 'reopenReason', ''), 4, 600)
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'maintenance',
+          action == 'waiting_parts' ? 'waiting-parts' : action,
+          'maintenanceWorkOrders',
+          workOrderId
+        ) &&
+        maintenanceWorkOrderEventMatchesAfter(data) &&
+        maintenanceWorkOrderInventoryMatchesAfter(data);
+    }
+
+    function maintenanceWorkOrderCostCompanionsMatchAfter(workOrderId, data) {
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.costEntryId);
+      let entryExists = existsAfter(entryPath);
+      let entry = entryExists ? getAfter(entryPath).data : {};
+      let eventPath = /databases/$(database)/documents/maintenanceEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      let closingId = entry.get('date', '') + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingExists = existsAfter(closingPath);
+      let closing = closingExists ? getAfter(closingPath).data : {};
+      return entryExists && eventExists && closingExists &&
+        entry.id == data.costEntryId &&
+        entry.source == 'maintenance' &&
+        entry.sourceWorkOrderId == workOrderId &&
+        entry.sourceEventId == data.lastEventId &&
+        entry.operationId == data.lastOperationId &&
+        entry.amount == data.actualCost &&
+        entry.actorUid == request.auth.uid &&
+        event.id == data.lastEventId &&
+        event.workOrderId == workOrderId &&
+        event.bookkeepingEntryId == data.costEntryId &&
+        event.operationId == data.lastOperationId &&
+        event.action == 'cost_recorded' &&
+        event.operationAction == 'cost' &&
+        closing.id == closingId &&
+        closing.status in ['open', 'reopened'] &&
+        closing.lastOperationAction == 'maintenance-cost' &&
+        closing.lastOperationId == data.lastOperationId &&
+        closing.lastLedgerEntryId == data.costEntryId &&
+        closing.lastActivityByUid == request.auth.uid &&
+        closing.updatedAt == data.updatedAt;
+    }
+
+    function maintenanceWorkOrderCostUpdateAllowed(workOrderId, data) {
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validMaintenanceWorkOrder(data, workOrderId) &&
+        resource.data.status in ['completed', 'verified'] &&
+        resource.data.get('costEntryId', '') == '' &&
+        data.status == resource.data.status &&
+        data.revision == resource.data.revision + 1 &&
+        data.actualCost > 0 &&
+        validString(data.costEntryId, 1, 160) &&
+        data.lastOperationAction == 'cost' &&
+        data.updatedAt != resource.data.updatedAt &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'actualCost', 'costEntryId', 'costRecordedAt', 'costRecordedByUid',
+          'costRecordedByName', 'revision', 'updatedAt', 'updatedByUid',
+          'updatedByName', 'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'maintenance',
+          'cost',
+          'maintenanceWorkOrders',
+          workOrderId
+        ) &&
+        maintenanceWorkOrderEventMatchesAfter(data) &&
+        maintenanceWorkOrderCostCompanionsMatchAfter(workOrderId, data);
+    }
+
+    function maintenanceWorkOrderUpdateAllowed(workOrderId) {
+      let data = request.resource.data;
+      return data.lastOperationAction == 'cost'
+        ? maintenanceWorkOrderCostUpdateAllowed(workOrderId, data)
+        : maintenanceWorkOrderTransitionAllowed(workOrderId, data);
+    }
+
+    function maintenanceEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let workOrderPath = /databases/$(database)/documents/maintenanceWorkOrders/$(data.workOrderId);
+      let workOrderExists = existsAfter(workOrderPath);
+      let workOrder = workOrderExists ? getAfter(workOrderPath).data : {};
+      return validMaintenanceEvent(data, eventId) &&
+        workOrderExists &&
+        workOrder.lastEventId == eventId &&
+        workOrder.lastOperationId == data.operationId &&
+        workOrder.lastOperationAction == data.operationAction &&
+        workOrder.revision == data.revision &&
+        workOrder.status == data.toStatus &&
+        workOrder.updatedAt == data.createdAt &&
+        workOrder.inventoryItemId == data.inventoryItemId &&
+        (
+          data.operationAction == 'cost'
+            ? hasApprovedAdminPermission('bookkeeping') &&
+              data.action == 'cost_recorded' &&
+              workOrder.costEntryId == data.bookkeepingEntryId
+            : data.operationAction == 'reopen'
+              ? isOwner()
+              : hasApprovedAdminPermission('inventory') &&
+                data.action == (data.operationAction == 'report' ? 'reported' : data.operationAction)
+        );
+    }
+
+    function maintenanceInventoryItemUpdateAllowed(itemId, data, changed) {
+      let workOrderId = data.get('lastMaintenanceWorkOrderId', '');
+      let workOrderPath = /databases/$(database)/documents/maintenanceWorkOrders/$(workOrderId);
+      let workOrderExists = workOrderId != '' && existsAfter(workOrderPath);
+      let workOrder = workOrderExists ? getAfter(workOrderPath).data : {};
+      let eventPath = /databases/$(database)/documents/maintenanceEvents/$(workOrder.get('lastEventId', ''));
+      let eventExists = workOrderExists && existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        data.id == itemId &&
+        workOrderExists &&
+        eventExists &&
+        workOrder.inventoryItemId == itemId &&
+        data.lastMaintenanceWorkOrderId == workOrder.id &&
+        workOrder.updatedAt == data.updatedAt &&
+        workOrder.lastOperationId == event.operationId &&
+        workOrder.lastEventId == event.id &&
+        event.workOrderId == workOrder.id &&
+        event.inventoryItemId == itemId &&
+        event.actorUid == request.auth.uid &&
+        changed.hasOnly([
+          'status', 'condition', 'updatedAt',
+          'activeMaintenanceWorkOrderId', 'lastMaintenanceWorkOrderId'
+        ]) &&
+        (
+          workOrder.status in [
+            'reported', 'triaged', 'approved', 'assigned',
+            'in_progress', 'waiting_parts', 'completed'
+          ]
+            ? data.activeMaintenanceWorkOrderId == workOrder.id &&
+              data.status == 'maintenance' &&
+              data.condition == 'maintenance'
+            : workOrder.status == 'verified'
+              ? data.activeMaintenanceWorkOrderId == '' &&
+                data.status == (workOrder.verificationCondition == 'broken' ? 'broken' : 'active') &&
+                data.condition == workOrder.verificationCondition
+              : workOrder.status == 'cancelled' &&
+                data.activeMaintenanceWorkOrderId == '' &&
+                data.status == workOrder.get('reopenPriorItemStatus', workOrder.priorItemStatus) &&
+                data.condition == workOrder.get('reopenPriorItemCondition', workOrder.priorItemCondition)
+        );
     }
 
     function validGalleryItem(data) {
