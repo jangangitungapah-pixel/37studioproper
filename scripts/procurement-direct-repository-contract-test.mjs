@@ -108,7 +108,7 @@ for (const required of [
 }
 assert.equal(rules.includes('function procurementPurchaseOrderEventMatchesAfter'), true);
 assert.equal(rules.includes('function procurementEventPurchaseOrderMatchesAfter'), true);
-assert.equal(packageJson.scripts.test.includes('procurement-direct-repository-contract-test.mjs'), true);
+assert.equal(packageJson.scripts['test:serial:raw'].includes('procurement-direct-repository-contract-test.mjs'), true);
 assert.equal(packageJson.scripts['test:prd'].includes('procurement-direct-repository-contract-test.mjs'), true);
 
 assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
