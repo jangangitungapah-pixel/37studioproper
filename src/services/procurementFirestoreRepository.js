@@ -553,7 +553,7 @@ export async function recordCanonicalProcurementPayment(input = {}, idempotencyK
         id: paymentId,
         type: 'expense',
         category: 'procurement',
-        title: 'Pembayaran ' + payment.poNumber + ' · ' + payment.supplierName,
+        title: ('Pembayaran ' + payment.poNumber + ' · ' + payment.supplierName).slice(0, 160),
         amount,
         date: paymentDate,
         paymentMethod,
