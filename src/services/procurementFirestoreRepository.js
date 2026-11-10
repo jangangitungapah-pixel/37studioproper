@@ -47,7 +47,7 @@ function procurementAmount(value, label) {
 function procurementDate(value, label, { optional = false } = {}) {
   const date = String(value ?? '').trim();
   if (!date && optional) return '';
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(label + ' harus menggunakan format YYYY-MM-DD.');
   }
   const parsed = new Date(date + 'T00:00:00.000Z');
@@ -124,13 +124,32 @@ async function hydratePurchaseOrder(operation) {
   };
 }
 
+async function hydrateProcurementPayment(operation, paymentId, eventId) {
+  const [purchaseOrder, paymentSnapshot, expenseSnapshot, eventSnapshot] = await Promise.all([
+    hydrateDocument(operation, PURCHASE_ORDERS),
+    getDocFromServer(doc(firestoreDb, 'procurementPayments', paymentId)),
+    getDocFromServer(doc(firestoreDb, 'bookkeepingEntries', paymentId)),
+    getDocFromServer(doc(firestoreDb, EVENTS, eventId)),
+  ]);
+  if (!paymentSnapshot.exists() || !expenseSnapshot.exists() || !eventSnapshot.exists()) {
+    throw new Error('Dokumen pembayaran Procurement belum lengkap. Gunakan request yang sama untuk memulihkan operasi.');
+  }
+  return {
+    purchaseOrder,
+    payment: { id: paymentSnapshot.id, ...paymentSnapshot.data() },
+    expense: { id: expenseSnapshot.id, ...expenseSnapshot.data() },
+    event: { id: eventSnapshot.id, ...eventSnapshot.data() },
+    duplicate: operation.replayed,
+  };
+}
+
 export async function createCanonicalSupplier(input = {}, idempotencyKey = '') {
   const actor = await requirePrincipal();
   const body = input && typeof input === 'object' ? input : {};
   const name = cleanText(body.name, 'Nama supplier', 160, true);
   if (name.length < 2) throw new Error('Nama supplier minimal 2 karakter.');
   const email = cleanText(body.email, 'Email', 160).toLowerCase();
-  if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error('Format email supplier belum valid.');
   }
   const payload = {
@@ -409,8 +428,183 @@ export async function transitionCanonicalPurchaseOrder(input = {}, idempotencyKe
   return hydratePurchaseOrder(operation);
 }
 
+
+export async function recordCanonicalProcurementPayment(input = {}, idempotencyKey = '') {
+  const actor = await requirePrincipal('bookkeeping');
+  const body = input && typeof input === 'object' ? input : {};
+  const purchaseOrderId = cleanText(body.purchaseOrderId, 'Purchase Order', 160, true);
+  const expectedUpdatedAt = cleanText(body.expectedUpdatedAt, 'Waktu pembaruan PO', 40, true);
+  const amount = procurementAmount(body.amount, 'Pembayaran');
+  if (amount > 1_000_000_000) {
+    throw new Error('Nominal per transaksi pembayaran tidak boleh melebihi Rp1.000.000.000.');
+  }
+  const paymentMethod = cleanText(body.paymentMethod || 'transfer', 'Metode pembayaran', 40).toLowerCase();
+  if (!['cash', 'transfer', 'qris'].includes(paymentMethod)) {
+    throw new Error('Metode pembayaran tidak didukung.');
+  }
+  const paymentDate = procurementDate(
+    body.date || new Date().toISOString().slice(0, 10),
+    'Tanggal pembayaran',
+  );
+  const reference = cleanText(body.reference, 'Referensi pembayaran', 120);
+  const note = cleanText(body.note, 'Catatan pembayaran', 800);
+  const requestId = await normalizeRequestId(idempotencyKey);
+  const action = 'procurement-payment';
+  const operationId = await createRepositoryOperationId({
+    actorUid: actor.uid,
+    scope: SCOPE,
+    action,
+    requestId,
+  });
+  const paymentId = 'ppay_' + operationId.slice(3);
+  const eventId = 'pev_' + operationId.slice(3);
+  const closingSessionId = paymentDate + '__main';
+  const timestamp = new Date().toISOString();
+  const payload = {
+    purchaseOrderId,
+    expectedUpdatedAt,
+    amount,
+    paymentMethod,
+    date: paymentDate,
+    reference,
+    note,
+  };
+
+  const operation = await runIdempotentFirestoreTransaction({
+    db: firestoreDb,
+    actorUid: actor.uid,
+    scope: SCOPE,
+    action,
+    requestId,
+    payload,
+    execute: async (transaction, metadata) => {
+      const poRef = doc(firestoreDb, PURCHASE_ORDERS, purchaseOrderId);
+      const paymentRef = doc(firestoreDb, 'procurementPayments', paymentId);
+      const expenseRef = doc(firestoreDb, 'bookkeepingEntries', paymentId);
+      const eventRef = doc(firestoreDb, EVENTS, eventId);
+      const closingRef = doc(firestoreDb, 'cashClosingSessions', closingSessionId);
+      const [poSnapshot, paymentSnapshot, expenseSnapshot, eventSnapshot, closingSnapshot] = await Promise.all([
+        transaction.get(poRef),
+        transaction.get(paymentRef),
+        transaction.get(expenseRef),
+        transaction.get(eventRef),
+        transaction.get(closingRef),
+      ]);
+
+      if (!poSnapshot.exists()) throw new Error('Purchase Order tidak ditemukan.');
+      if (paymentSnapshot.exists() || expenseSnapshot.exists() || eventSnapshot.exists()) {
+        throw new Error('ID payment, ledger, atau event Procurement sudah digunakan.');
+      }
+      const current = { id: poSnapshot.id, ...poSnapshot.data() };
+      if (current.status === 'draft' || current.status === 'cancelled') {
+        throw new Error('PO belum siap menerima pembayaran.');
+      }
+      if (current.updatedAt !== expectedUpdatedAt) {
+        throw new Error('PO berubah. Muat ulang sebelum mencatat pembayaran.');
+      }
+      const totalAmount = procurementAmount(current.totalAmount, 'Total PO');
+      const paidAmount = current.paidAmount ? procurementAmount(current.paidAmount, 'Total terbayar') : 0;
+      const remaining = Math.max(0, totalAmount - paidAmount);
+      if (amount > remaining) {
+        throw new Error('Pembayaran melebihi sisa kewajiban PO.');
+      }
+
+      const closing = closingSnapshot.exists() ? closingSnapshot.data() : null;
+      if (closing?.status === 'closed') {
+        throw new Error('Tanggal pembayaran sudah ditutup oleh Daily Closing. Reopen hanya dapat dilakukan Owner.');
+      }
+      if (closing && !['open', 'reopened', 'not_opened'].includes(closing.status)) {
+        throw new Error('Status Daily Closing tidak valid untuk mencatat pembayaran.');
+      }
+
+      const closingSession = {
+        ...(closing || {}),
+        id: closingSessionId,
+        businessDate: paymentDate,
+        registerId: 'main',
+        status: closing?.status === 'reopened' ? 'reopened' : 'open',
+        activityRevision: Number(closing?.activityRevision || 0) + 1,
+        createdAt: closing?.createdAt || timestamp,
+        updatedAt: timestamp,
+        lastActivityAt: timestamp,
+        lastActivityByUid: actor.uid,
+        lastOperationId: metadata.operationId,
+        lastOperationAction: action,
+        lastProcurementPaymentAt: timestamp,
+        lastProcurementPaymentId: paymentId,
+      };
+      const payment = {
+        id: paymentId,
+        purchaseOrderId,
+        poNumber: cleanText(current.poNumber, 'Nomor PO', 64, true),
+        supplierId: cleanText(current.supplierId, 'Supplier', 160, true),
+        supplierName: cleanText(current.supplierName, 'Nama supplier', 160, true),
+        amount,
+        paymentMethod,
+        date: paymentDate,
+        reference,
+        note,
+        actorUid: actor.uid,
+        actorName: actor.displayName,
+        createdAt: timestamp,
+        operationId: metadata.operationId,
+      };
+      const expense = {
+        id: paymentId,
+        type: 'expense',
+        category: 'procurement',
+        title: 'Pembayaran ' + payment.poNumber + ' · ' + payment.supplierName,
+        amount,
+        date: paymentDate,
+        paymentMethod,
+        note,
+        source: 'procurement-payment',
+        sourcePurchaseOrderId: purchaseOrderId,
+        sourceProcurementPaymentId: paymentId,
+        actorUid: actor.uid,
+        actorName: actor.displayName,
+        operationId: metadata.operationId,
+        immutable: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      const nextPurchaseOrder = {
+        ...current,
+        paidAmount: paidAmount + amount,
+        updatedAt: timestamp,
+        lastOperationId: metadata.operationId,
+        lastOperationAction: 'payment',
+        lastEventId: eventId,
+        lastPaymentId: paymentId,
+      };
+      const event = {
+        id: eventId,
+        entityType: 'purchase_order',
+        entityId: purchaseOrderId,
+        action: 'payment_recorded',
+        amount,
+        paymentId,
+        actorUid: actor.uid,
+        actorName: actor.displayName,
+        createdAt: timestamp,
+        operationId: metadata.operationId,
+      };
+
+      transaction.set(poRef, nextPurchaseOrder);
+      transaction.set(paymentRef, payment);
+      transaction.set(expenseRef, expense);
+      transaction.set(eventRef, event);
+      transaction.set(closingRef, closingSession);
+      return { collection: PURCHASE_ORDERS, id: purchaseOrderId };
+    },
+  });
+
+  return hydrateProcurementPayment(operation, paymentId, eventId);
+}
+
 export const procurementFirestoreRepository = Object.freeze({
   createSupplier: createCanonicalSupplier,
   createPurchaseOrder: createCanonicalPurchaseOrder,
   transitionPurchaseOrder: transitionCanonicalPurchaseOrder,
+  recordProcurementPayment: recordCanonicalProcurementPayment,
 });
