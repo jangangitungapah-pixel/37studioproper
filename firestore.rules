@@ -4075,6 +4075,11 @@ match /users/{userId} {
         itemBefore.condition != 'maintenance' &&
         itemBefore.status != 'inactive' &&
         itemBefore.status != 'lost' &&
+        data.itemName == itemBefore.name &&
+        data.itemCategory == itemBefore.category &&
+        data.itemLocation == itemBefore.location &&
+        data.priorItemStatus == itemBefore.get('status', 'active') &&
+        data.priorItemCondition == itemBefore.get('condition', 'good') &&
         repositoryOperationMatchesAfter(
           data.lastOperationId,
           'maintenance',
