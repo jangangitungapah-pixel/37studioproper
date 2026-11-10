@@ -16,11 +16,11 @@ import {
 } from 'lucide-react';
 import {
   receiveCanonicalPurchaseOrder,
-  recordCanonicalProcurementPayment,
 } from '../../services/adminOperationsRepository.js';
 import {
   createCanonicalPurchaseOrder,
   createCanonicalSupplier,
+  recordCanonicalProcurementPayment,
   transitionCanonicalPurchaseOrder,
 } from '../../services/procurementFirestoreRepository.js';
 import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
@@ -469,17 +469,20 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       showFeedback('error', 'Nominal pembayaran tidak valid', 'Nominal harus lebih dari nol dan tidak boleh melebihi sisa kewajiban PO.');
       return;
     }
+    const payload = {
+      purchaseOrderId: paymentOrder.id,
+      expectedUpdatedAt: paymentOrder.updatedAt,
+      amount,
+      paymentMethod: paymentDraft.paymentMethod,
+      date: paymentDraft.date,
+      reference: paymentDraft.reference,
+      note: paymentDraft.note,
+    };
+    const request = getStableRequestId('procurement-payment', payload);
     setIsSubmitting(true);
     try {
-      await recordCanonicalProcurementPayment({
-        purchaseOrderId: paymentOrder.id,
-        expectedUpdatedAt: paymentOrder.updatedAt,
-        amount,
-        paymentMethod: paymentDraft.paymentMethod,
-        date: paymentDraft.date,
-        reference: paymentDraft.reference,
-        note: paymentDraft.note,
-      });
+      await recordCanonicalProcurementPayment(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setPaymentOrderId('');
       showFeedback('success', 'Pembayaran dicatat', 'Pembayaran parsial masuk ke PO dan ledger pengeluaran.');
     } catch (error) {
