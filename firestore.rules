@@ -3880,165 +3880,6 @@ match /users/{userId} {
         procurementGoodsReceiptMovementMatchesAfter(data);
     }
 
-    function inventoryItemUpdateAllowed(itemId) {
-      let data = request.resource.data;
-      let changed = data.diff(resource.data).affectedKeys();
-      let maintenanceActive =
-        resource.data.get('activeMaintenanceWorkOrderId', '') != '' ||
-        data.get('activeMaintenanceWorkOrderId', '') != '' ||
-        resource.data.status == 'maintenance' ||
-        resource.data.condition == 'maintenance';
-      return hasApprovedAdminPermission('inventory') &&
-        (
-          data.lastOperationAction == 'receive'
-            ? validGoodsReceiptInventoryItem(data, itemId, changed)
-            : maintenanceActive
-              ? maintenanceInventoryItemUpdateAllowed(itemId, data, changed)
-              : inventoryPreviousMovementRecorded() &&
-                validInventoryItem(data, itemId) &&
-                data.createdAt == resource.data.createdAt &&
-                data.lastOperationId != resource.data.get('lastOperationId', '') &&
-                repositoryOperationMatchesAfter(
-                  data.lastOperationId,
-                  'inventory',
-                  data.lastOperationAction,
-                  'inventoryItems',
-                  itemId
-                ) &&
-                (
-                  (
-                    data.lastOperationAction == 'update' &&
-                    data.quantity == resource.data.quantity &&
-                    changed.hasOnly([
-                      'name', 'category', 'type', 'unit', 'minStock', 'condition',
-                      'status', 'location', 'note', 'updatedAt',
-                      'lastOperationId', 'lastOperationAction', 'lastMovementId',
-                      'lastMovementSnapshot'
-                    ])
-                  ) ||
-                  (
-                    data.lastOperationAction == 'archive' &&
-                    resource.data.get('activeMaintenanceWorkOrderId', '') == '' &&
-                    data.status == 'inactive' &&
-                    data.quantity == resource.data.quantity &&
-                    data.name == resource.data.name &&
-                    data.category == resource.data.category &&
-                    data.type == resource.data.type &&
-                    data.unit == resource.data.unit &&
-                    data.minStock == resource.data.minStock &&
-                    data.condition == resource.data.condition &&
-                    data.location == resource.data.location &&
-                    data.note == resource.data.note &&
-                    changed.hasOnly([
-                      'status', 'lastOperationId', 'lastOperationAction',
-                      'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
-                    ])
-                  ) ||
-                  (
-                    data.lastOperationAction == 'adjust' &&
-                    data.quantity != resource.data.quantity &&
-                    data.name == resource.data.name &&
-                    data.category == resource.data.category &&
-                    data.type == resource.data.type &&
-                    data.unit == resource.data.unit &&
-                    data.minStock == resource.data.minStock &&
-                    data.condition == resource.data.condition &&
-                    data.status == resource.data.status &&
-                    data.location == resource.data.location &&
-                    data.note == resource.data.note &&
-                    changed.hasOnly([
-                      'quantity', 'lastOperationId', 'lastOperationAction',
-                      'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
-                    ])
-                  )
-                )
-        );
-    }
-
-
-
-    function inventoryMovementCreateAllowed(movementId) {
-      let data = request.resource.data;
-      return data.type == 'stock-in' && data.operationAction == 'receive'
-        ? procurementGoodsReceiptMovementCreateAllowed(data, movementId)
-        : inventoryStandardMovementCreateAllowed(data, movementId);
-    }
-
-    function inventoryStandardMovementCreateAllowed(data, movementId) {
-      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
-      let itemExists = exists(itemPath);
-      let item = itemExists ? get(itemPath).data : {};
-      return hasApprovedAdminPermission('inventory') &&
-        validInventoryMovement(data, movementId) &&
-        itemExists &&
-        item.lastMovementId == movementId &&
-        item.lastMovementSnapshot == data &&
-        item.lastOperationId == data.operationId &&
-        item.lastOperationAction == data.operationAction &&
-        item.quantity == data.nextQuantity &&
-        item.updatedAt == data.createdAt &&
-        (
-          (
-            data.type == 'create' &&
-            data.operationAction == 'create' &&
-            data.previousQuantity == 0 &&
-            data.quantity == data.nextQuantity &&
-            item.createdAt == data.createdAt
-          ) ||
-          (
-            data.type == 'edit' &&
-            data.operationAction == 'update' &&
-            data.previousQuantity == data.nextQuantity &&
-            data.nextQuantity == item.quantity &&
-            data.quantity == 0
-          ) ||
-          (
-            data.type == 'inactive' &&
-            data.operationAction == 'archive' &&
-            item.status == 'inactive' &&
-            data.previousQuantity == data.nextQuantity &&
-            data.nextQuantity == item.quantity &&
-            data.quantity == 0
-          ) ||
-          (
-            data.type == 'stock-in' &&
-            data.operationAction == 'adjust' &&
-            data.nextQuantity == data.previousQuantity + data.quantity
-          ) ||
-          (
-            data.type == 'stock-out' &&
-            data.operationAction == 'adjust' &&
-            data.previousQuantity == data.nextQuantity + data.quantity
-          )
-        );
-    }
-
-    match /inventoryItems/{itemId} {
-      allow read: if isApproved() && canAccessInventoryData();
-      allow create: if inventoryItemCreateAllowed(itemId);
-      allow update: if inventoryItemUpdateAllowed(itemId);
-      allow delete: if false;
-    }
-
-    match /inventoryMovements/{movementId} {
-      allow read: if isApproved() && canAccessInventoryData();
-      allow create: if inventoryMovementCreateAllowed(movementId);
-      allow update, delete: if false;
-    }
-
-    match /maintenanceWorkOrders/{workOrderId} {
-      allow read: if isApproved() && canAccessInventoryData();
-      allow create: if maintenanceWorkOrderCreateAllowed(workOrderId);
-      allow update: if maintenanceWorkOrderUpdateAllowed(workOrderId);
-      allow delete: if false;
-    }
-
-    match /maintenanceEvents/{eventId} {
-      allow read: if isApproved() && canAccessInventoryData();
-      allow create: if maintenanceEventCreateAllowed(eventId);
-      allow update, delete: if false;
-    }
-
     function validMaintenanceWorkOrder(data, workOrderId) {
       return data is map &&
         data.keys().hasOnly([
@@ -4465,6 +4306,165 @@ match /users/{userId} {
                 data.status == workOrder.get('reopenPriorItemStatus', workOrder.priorItemStatus) &&
                 data.condition == workOrder.get('reopenPriorItemCondition', workOrder.priorItemCondition)
         );
+    }
+
+    function inventoryItemUpdateAllowed(itemId) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      let maintenanceActive =
+        resource.data.get('activeMaintenanceWorkOrderId', '') != '' ||
+        data.get('activeMaintenanceWorkOrderId', '') != '' ||
+        resource.data.status == 'maintenance' ||
+        resource.data.condition == 'maintenance';
+      return hasApprovedAdminPermission('inventory') &&
+        (
+          data.lastOperationAction == 'receive'
+            ? validGoodsReceiptInventoryItem(data, itemId, changed)
+            : maintenanceActive
+              ? maintenanceInventoryItemUpdateAllowed(itemId, data, changed)
+              : inventoryPreviousMovementRecorded() &&
+                validInventoryItem(data, itemId) &&
+                data.createdAt == resource.data.createdAt &&
+                data.lastOperationId != resource.data.get('lastOperationId', '') &&
+                repositoryOperationMatchesAfter(
+                  data.lastOperationId,
+                  'inventory',
+                  data.lastOperationAction,
+                  'inventoryItems',
+                  itemId
+                ) &&
+                (
+                  (
+                    data.lastOperationAction == 'update' &&
+                    data.quantity == resource.data.quantity &&
+                    changed.hasOnly([
+                      'name', 'category', 'type', 'unit', 'minStock', 'condition',
+                      'status', 'location', 'note', 'updatedAt',
+                      'lastOperationId', 'lastOperationAction', 'lastMovementId',
+                      'lastMovementSnapshot'
+                    ])
+                  ) ||
+                  (
+                    data.lastOperationAction == 'archive' &&
+                    resource.data.get('activeMaintenanceWorkOrderId', '') == '' &&
+                    data.status == 'inactive' &&
+                    data.quantity == resource.data.quantity &&
+                    data.name == resource.data.name &&
+                    data.category == resource.data.category &&
+                    data.type == resource.data.type &&
+                    data.unit == resource.data.unit &&
+                    data.minStock == resource.data.minStock &&
+                    data.condition == resource.data.condition &&
+                    data.location == resource.data.location &&
+                    data.note == resource.data.note &&
+                    changed.hasOnly([
+                      'status', 'lastOperationId', 'lastOperationAction',
+                      'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                    ])
+                  ) ||
+                  (
+                    data.lastOperationAction == 'adjust' &&
+                    data.quantity != resource.data.quantity &&
+                    data.name == resource.data.name &&
+                    data.category == resource.data.category &&
+                    data.type == resource.data.type &&
+                    data.unit == resource.data.unit &&
+                    data.minStock == resource.data.minStock &&
+                    data.condition == resource.data.condition &&
+                    data.status == resource.data.status &&
+                    data.location == resource.data.location &&
+                    data.note == resource.data.note &&
+                    changed.hasOnly([
+                      'quantity', 'lastOperationId', 'lastOperationAction',
+                      'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                    ])
+                  )
+                )
+        );
+    }
+
+
+
+    function inventoryMovementCreateAllowed(movementId) {
+      let data = request.resource.data;
+      return data.type == 'stock-in' && data.operationAction == 'receive'
+        ? procurementGoodsReceiptMovementCreateAllowed(data, movementId)
+        : inventoryStandardMovementCreateAllowed(data, movementId);
+    }
+
+    function inventoryStandardMovementCreateAllowed(data, movementId) {
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
+      let itemExists = exists(itemPath);
+      let item = itemExists ? get(itemPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        validInventoryMovement(data, movementId) &&
+        itemExists &&
+        item.lastMovementId == movementId &&
+        item.lastMovementSnapshot == data &&
+        item.lastOperationId == data.operationId &&
+        item.lastOperationAction == data.operationAction &&
+        item.quantity == data.nextQuantity &&
+        item.updatedAt == data.createdAt &&
+        (
+          (
+            data.type == 'create' &&
+            data.operationAction == 'create' &&
+            data.previousQuantity == 0 &&
+            data.quantity == data.nextQuantity &&
+            item.createdAt == data.createdAt
+          ) ||
+          (
+            data.type == 'edit' &&
+            data.operationAction == 'update' &&
+            data.previousQuantity == data.nextQuantity &&
+            data.nextQuantity == item.quantity &&
+            data.quantity == 0
+          ) ||
+          (
+            data.type == 'inactive' &&
+            data.operationAction == 'archive' &&
+            item.status == 'inactive' &&
+            data.previousQuantity == data.nextQuantity &&
+            data.nextQuantity == item.quantity &&
+            data.quantity == 0
+          ) ||
+          (
+            data.type == 'stock-in' &&
+            data.operationAction == 'adjust' &&
+            data.nextQuantity == data.previousQuantity + data.quantity
+          ) ||
+          (
+            data.type == 'stock-out' &&
+            data.operationAction == 'adjust' &&
+            data.previousQuantity == data.nextQuantity + data.quantity
+          )
+        );
+    }
+
+    match /inventoryItems/{itemId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryItemCreateAllowed(itemId);
+      allow update: if inventoryItemUpdateAllowed(itemId);
+      allow delete: if false;
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryMovementCreateAllowed(movementId);
+      allow update, delete: if false;
+    }
+
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if maintenanceWorkOrderCreateAllowed(workOrderId);
+      allow update: if maintenanceWorkOrderUpdateAllowed(workOrderId);
+      allow delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if maintenanceEventCreateAllowed(eventId);
+      allow update, delete: if false;
     }
 
     function validGalleryItem(data) {
