@@ -4023,6 +4023,7 @@ match /users/{userId} {
         event.toStatus == data.status &&
         event.createdAt == data.updatedAt &&
         event.actorUid == request.auth.uid &&
+        event.actorName == data.updatedByName &&
         event.action == (data.lastOperationAction == 'report'
           ? 'reported'
           : data.lastOperationAction == 'cost' ? 'cost_recorded' : data.lastOperationAction);
@@ -4065,6 +4066,7 @@ match /users/{userId} {
         data.status == 'reported' &&
         data.revision == 1 &&
         data.reportedByUid == request.auth.uid &&
+        data.updatedByUid == request.auth.uid &&
         data.lastOperationAction == 'report' &&
         data.createdAt == data.updatedAt &&
         itemBeforeExists &&
@@ -4118,6 +4120,8 @@ match /users/{userId} {
         data.revision == resource.data.revision + 1 &&
         data.updatedAt != resource.data.updatedAt &&
         data.lastOperationId != resource.data.get('lastOperationId', '') &&
+        data.updatedByUid == request.auth.uid &&
+        validString(data.updatedByName, 1, 120) &&
         changed.hasOnly([
           'status', 'updatedAt', 'updatedByUid', 'updatedByName',
           'revision', 'lastOperationId', 'lastOperationAction', 'lastEventId',
@@ -4135,30 +4139,82 @@ match /users/{userId} {
         transitionAllowed &&
         (
           action != 'triage' ||
-          validString(data.diagnosis, 4, 2000)
+          (
+            validString(data.diagnosis, 4, 2000) &&
+            data.triagedAt == data.updatedAt &&
+            data.triagedByUid == request.auth.uid &&
+            validString(data.triagedByName, 1, 120)
+          )
+        ) &&
+        (
+          action != 'approve' ||
+          (
+            data.approvedAt == data.updatedAt &&
+            data.approvedByUid == request.auth.uid &&
+            validString(data.approvedByName, 1, 120)
+          )
         ) &&
         (
           action != 'assign' ||
-          validString(data.assignedToName, 1, 120)
+          (
+            validString(data.assignedToName, 1, 120) &&
+            data.assignedAt == data.updatedAt &&
+            data.assignedByUid == request.auth.uid
+          )
+        ) &&
+        (
+          action != 'start' ||
+          (
+            data.startedAt == data.updatedAt &&
+            data.startedByUid == request.auth.uid
+          )
         ) &&
         (
           action != 'waiting_parts' ||
-          validString(data.waitingPartsReason, 4, 600)
+          (
+            data.waitingPartsAt == data.updatedAt &&
+            validString(data.waitingPartsReason, 4, 600)
+          )
+        ) &&
+        (
+          action != 'resume' ||
+          data.resumedAt == data.updatedAt
         ) &&
         (
           action != 'complete' ||
-          validString(data.repairNotes, 4, 2000)
+          (
+            validString(data.repairNotes, 4, 2000) &&
+            data.completedAt == data.updatedAt &&
+            data.completedByUid == request.auth.uid &&
+            validString(data.completedByName, 1, 120)
+          )
         ) &&
         (
           action != 'verify' ||
           (
             data.verificationCondition in ['good', 'fair', 'broken'] &&
-            (data.verificationCondition != 'broken' || validString(data.verificationNote, 4, 1000))
+            (data.verificationCondition != 'broken' || validString(data.verificationNote, 4, 1000)) &&
+            data.verifiedAt == data.updatedAt &&
+            data.verifiedByUid == request.auth.uid &&
+            validString(data.verifiedByName, 1, 120)
           )
         ) &&
         (
-          action != 'cancel' && action != 'reopen' ||
-          validString(data.get(action == 'cancel' ? 'cancelReason' : 'reopenReason', ''), 4, 600)
+          action != 'cancel' ||
+          (
+            validString(data.cancelReason, 4, 600) &&
+            data.cancelledAt == data.updatedAt &&
+            data.cancelledByUid == request.auth.uid
+          )
+        ) &&
+        (
+          action != 'reopen' ||
+          (
+            validString(data.reopenReason, 4, 600) &&
+            data.reopenedAt == data.updatedAt &&
+            data.reopenedByUid == request.auth.uid &&
+            validString(data.reopenedByName, 1, 120)
+          )
         ) &&
         repositoryOperationMatchesAfter(
           data.lastOperationId,
@@ -4216,6 +4272,11 @@ match /users/{userId} {
         validString(data.costEntryId, 1, 160) &&
         data.lastOperationAction == 'cost' &&
         data.updatedAt != resource.data.updatedAt &&
+        data.costRecordedAt == data.updatedAt &&
+        data.costRecordedByUid == request.auth.uid &&
+        validString(data.costRecordedByName, 1, 120) &&
+        data.updatedByUid == request.auth.uid &&
+        validString(data.updatedByName, 1, 120) &&
         data.diff(resource.data).affectedKeys().hasOnly([
           'actualCost', 'costEntryId', 'costRecordedAt', 'costRecordedByUid',
           'costRecordedByName', 'revision', 'updatedAt', 'updatedByUid',
