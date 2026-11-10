@@ -244,6 +244,10 @@ service cloud.firestore {
       return hasPermission('dashboard') || hasPermission('inventory') || canManageInventoryData();
     }
 
+    function canAccessMaintenanceData() {
+      return canAccessInventoryData() || canAccessBookkeepingData();
+    }
+
     function canManageInventoryData() {
       return hasPermission('inventory');
     }
@@ -4521,14 +4525,14 @@ match /users/{userId} {
     }
 
     match /maintenanceWorkOrders/{workOrderId} {
-      allow read: if isApproved() && canAccessInventoryData();
+      allow read: if isApproved() && canAccessMaintenanceData();
       allow create: if maintenanceWorkOrderCreateAllowed(workOrderId);
       allow update: if maintenanceWorkOrderUpdateAllowed(workOrderId);
       allow delete: if false;
     }
 
     match /maintenanceEvents/{eventId} {
-      allow read: if isApproved() && canAccessInventoryData();
+      allow read: if isApproved() && canAccessMaintenanceData();
       allow create: if maintenanceEventCreateAllowed(eventId);
       allow update, delete: if false;
     }
