@@ -63,8 +63,8 @@ for (const required of [
 
 const inventoryAdjustmentStart = inventoryWorkerSource.indexOf('export async function adjustInventory({');
 const inventoryAdjustmentEnd = inventoryWorkerSource.indexOf('const PURCHASE_ORDER_STATUSES', inventoryAdjustmentStart);
-assert.notEqual(inventoryAdjustmentStart, -1, 'Canonical inventory adjustment Worker domain is missing.');
-assert.notEqual(inventoryAdjustmentEnd, -1, 'Canonical inventory adjustment boundary is missing.');
+assert.notEqual(inventoryAdjustmentStart, -1, 'Legacy Worker inventory adjustment regression fixture is missing.');
+assert.notEqual(inventoryAdjustmentEnd, -1, 'Legacy Worker inventory adjustment regression boundary is missing.');
 const inventoryAdjustmentSource = inventoryWorkerSource.slice(inventoryAdjustmentStart, inventoryAdjustmentEnd);
 for (const required of [
   'const previousQuantity = finiteQuantity(item.quantity || 0',
@@ -116,13 +116,13 @@ for (const required of [
   assert.equal(
     inventoryWorkerSource.includes(required),
     true,
-    'Canonical Worker archive behavior missing: ' + required,
+    'Legacy Worker archive regression behavior missing: ' + required,
   );
 }
 
 assert.equal(pageSource.includes('inventoryRepository.createInventoryMovement('), false, 'Inventory UI must not write movement documents from the browser.');
-assert.equal(pageSource.includes('inventoryRepository.createInventoryItem('), false, 'Inventory UI must create items through the canonical Worker.');
-assert.equal(pageSource.includes('inventoryRepository.updateInventoryItem('), false, 'Inventory UI must update metadata through the canonical Worker.');
+assert.equal(pageSource.includes('inventoryRepository.createInventoryItem('), false, 'Inventory UI must create items through the direct Firestore repository.');
+assert.equal(pageSource.includes('inventoryRepository.updateInventoryItem('), false, 'Inventory UI must update metadata through the direct Firestore repository.');
 for (const forbidden of [
   'deleteInventoryItem(',
   'deleteDoc(',
