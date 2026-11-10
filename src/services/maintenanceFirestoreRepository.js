@@ -603,7 +603,13 @@ export async function actOnCanonicalMaintenanceWorkOrder(input = {}, idempotency
     },
   });
 
-  return hydrateWorkOrderOperation(operation, eventId, '');
+  const savedWorkOrder = await getDocFromServer(doc(firestoreDb, WORK_ORDERS, workOrderId));
+  if (!savedWorkOrder.exists()) throw new Error('Work order hasil operasi tidak ditemukan di Firestore.');
+  return hydrateWorkOrderOperation(
+    operation,
+    eventId,
+    String(savedWorkOrder.data()?.inventoryItemId || ''),
+  );
 }
 
 export async function reopenCanonicalMaintenanceWorkOrder(input = {}, idempotencyKey = '') {
