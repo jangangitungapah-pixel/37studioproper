@@ -18,7 +18,7 @@ const modules = [
 ];
 const assembled = (await Promise.all(modules.map(async (path) =>
   (await read(path)).replace(/\s+$/, '')
-))).join('\n') + '\n';
+))).join('\n');
 const deployed = await read('firestore.rules');
 assert.equal(
   assembled,
