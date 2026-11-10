@@ -3316,8 +3316,7 @@ match /users/{userId} {
             ? maintenanceCostLedgerCreateAllowed(data, entryId)
           : source == 'manual'
             ? (
-                isApprovedAdmin() &&
-                hasPermission('bookkeeping') &&
+                hasApprovedAdminPermission('bookkeeping') &&
                 validManualBookkeepingEntry(data, entryId) &&
                 data.actorUid == request.auth.uid &&
                 bookkeepingBusinessDateOpen(data) &&
@@ -3337,8 +3336,7 @@ match /users/{userId} {
     match /bookkeepingEntries/{entryId} {
       allow read: if isApproved() && canAccessBookkeepingData();
       allow create: if bookkeepingEntryCreateAllowed(request.resource.data, entryId);
-      allow update: if isApprovedAdmin() &&
-        hasPermission('bookkeeping') &&
+      allow update: if hasApprovedAdminPermission('bookkeeping') &&
         validManualBookkeepingEntry(request.resource.data, entryId) &&
         resource.data.source in ['', 'manual'] &&
         manualBookkeepingUpdateAllowed(request.resource.data, entryId);
@@ -3557,8 +3555,7 @@ match /users/{userId} {
 
     function manualBookkeepingFenceUpdateAllowed(closingId) {
       let data = request.resource.data;
-      return isApprovedAdmin() &&
-        hasPermission('bookkeeping') &&
+      return hasApprovedAdminPermission('bookkeeping') &&
         validManualBookkeepingActivityFence(data, closingId) &&
         activityRevisionIncrements(closingId, data) &&
         (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
