@@ -396,7 +396,7 @@ assert.match(firestoreRules, /function maintenanceOperationMarkerMatches\(data\)
 assert.match(firestoreRules, /function maintenanceWorkOrderCreateAllowed\(workOrderId\)/);
 assert.match(firestoreRules, /function maintenanceWorkOrderTransitionAllowed\(workOrderId, data\)/);
 assert.match(firestoreRules, /function maintenanceCostLedgerCreateAllowed\(data, entryId\)/);
-assert.match(firestoreRules, /data.lastOperationAction == 'maintenance-cost'/);
+assert.match(firestoreRules, /data\.lastOperationAction in \['manual-create', 'manual-update', 'manual-delete', 'maintenance-cost'\]/);
 assert.match(firestoreRules, /'sourceWorkOrderId'/);
 assert.match(firestoreRules, /validOptionalString\(data, 'sourceWorkOrderId', 160\)/);
 assert.equal(inventoryPage.includes('InventoryMaintenanceWorkspace'), true);
@@ -423,6 +423,6 @@ assert.equal(bookkeepingRepository.includes('sourceWorkOrderId'), true);
 assert.equal(bookkeepingPage.includes("source === 'maintenance'"), true);
 assert.equal(bookkeepingPage.includes('workOrderId: entry.sourceWorkOrderId'), true);
 assert.equal(packageJson.scripts['test:prd'].includes('maintenance-work-orders-contract-test.mjs'), true);
-assert.equal(packageJson.scripts.test.includes('maintenance-work-orders-contract-test.mjs'), true);
+assert.equal(packageJson.scripts['test:serial:raw'].includes('maintenance-work-orders-contract-test.mjs'), true);
 
 console.log('Maintenance work order contract passed.');
