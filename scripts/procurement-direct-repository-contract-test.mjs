@@ -87,8 +87,9 @@ for (const required of [
 ]) {
   assert.equal(workspace.includes(required), true, 'Procurement UI routing missing: ' + required);
 }
-assert.equal(operations.includes("requestOperation('/v1/procurement/goods-receipts'"), true);
-assert.equal(operations.includes("requestOperation('/v1/procurement/payments'"), true);
+// Procurement UI mutations must use the direct Firestore repository.
+assert.equal(operations.includes("requestOperation('/v1/procurement/goods-receipts'"), false);
+assert.equal(operations.includes("requestOperation('/v1/procurement/payments'"), false);
 
 for (const required of [
   'function validProcurementSupplier',
