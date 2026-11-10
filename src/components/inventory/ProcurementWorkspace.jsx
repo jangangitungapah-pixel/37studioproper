@@ -15,12 +15,10 @@ import {
   X,
 } from 'lucide-react';
 import {
-  receiveCanonicalPurchaseOrder,
-} from '../../services/adminOperationsRepository.js';
-import {
   createCanonicalPurchaseOrder,
   createCanonicalSupplier,
   recordCanonicalProcurementPayment,
+  receiveCanonicalPurchaseOrder,
   transitionCanonicalPurchaseOrder,
 } from '../../services/procurementFirestoreRepository.js';
 import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
@@ -430,14 +428,17 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       showFeedback('error', 'Jumlah penerimaan tidak valid', 'Isi jumlah yang diterima dan jangan melebihi sisa pesanan.');
       return;
     }
+    const payload = {
+      purchaseOrderId: receiptOrder.id,
+      expectedUpdatedAt: receiptOrder.updatedAt,
+      items: lines.map(({ lineId, quantity }) => ({ lineId, quantity })),
+      note: receiptNote,
+    };
+    const request = getStableRequestId('goods-receipt', payload);
     setIsSubmitting(true);
     try {
-      await receiveCanonicalPurchaseOrder({
-        purchaseOrderId: receiptOrder.id,
-        expectedUpdatedAt: receiptOrder.updatedAt,
-        items: lines.map(({ lineId, quantity }) => ({ lineId, quantity })),
-        note: receiptNote,
-      });
+      await receiveCanonicalPurchaseOrder(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setReceiptOrderId('');
       setReceiptQuantities({});
       showFeedback('success', 'Goods Receipt tersimpan', 'Stok inventory bertambah sesuai barang yang benar-benar diterima.');

@@ -107,6 +107,36 @@ try {
       supplierName: 'Supplier Rules', items: [], totalAmount: 100000, paidAmount: 0,
       status: 'ordered', orderDate: '2026-08-14', expectedAt: '', createdAt: now, updatedAt: now,
     });
+    await setDoc(doc(db, 'purchaseOrders', 'po-goods-receipt-rules-1'), {
+      id: 'po-goods-receipt-rules-1',
+      poNumber: 'PO-GR-RULES-1',
+      supplierId: 'supplier-rules-1',
+      supplierName: 'Supplier Rules',
+      items: [{
+        lineId: 'line-goods-receipt-rules-1',
+        inventoryItemId: 'item-1',
+        name: 'Cable',
+        category: 'Cable',
+        quantity: 5,
+        receivedQuantity: 0,
+        unit: 'pcs',
+        unitPrice: 10000,
+        lineTotal: 50000,
+      }],
+      totalAmount: 50000,
+      paidAmount: 0,
+      status: 'ordered',
+      orderDate: '2026-08-14',
+      expectedAt: '',
+      notes: '',
+      createdAt: now,
+      updatedAt: now,
+      createdByUid: 'inventory-admin',
+      createdByName: 'Inventory Admin',
+      lastOperationId: 'v1_' + 'a'.repeat(64),
+      lastOperationAction: 'transition',
+      lastEventId: 'existing-po-event-goods-receipt',
+    });
     await setDoc(doc(db, 'goodsReceipts', 'receipt-rules-1'), {
       id: 'receipt-rules-1', purchaseOrderId: 'po-rules-1', poNumber: 'PO-RULES-1',
       supplierId: 'supplier-rules-1', supplierName: 'Supplier Rules', items: [],
@@ -719,6 +749,142 @@ try {
   await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementPayments', procurementPaymentId)));
   await assertSucceeds(getDoc(doc(procurementBookkeeping, 'bookkeepingEntries', procurementPaymentId)));
   await assertSucceeds(getDoc(doc(procurementBookkeeping, 'cashClosingSessions', procurementPaymentClosingId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'purchaseOrders', directPoId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementEvents', procurementPaymentEventId)));
+  await assertFails(getDoc(doc(procurementBookkeeping, 'procurementEvents', directPoEventId)));
+
+  // Goods Receipt atomically updates PO, stock, stock movement, receipt, event and operation marker.
+  const goodsReceiptPoId = 'po-goods-receipt-rules-1';
+  const goodsReceiptRequestId = 'goods-receipt-direct-rules-001';
+  const goodsReceiptOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'goods-receipt-create',
+    requestId: goodsReceiptRequestId,
+  });
+  const goodsReceiptId = 'gr_' + goodsReceiptOperationId.slice(3);
+  const goodsReceiptEventId = 'pev_' + goodsReceiptOperationId.slice(3);
+  const goodsReceiptMovementId = 'mov_' + goodsReceiptOperationId.slice(3) + '_001';
+  const goodsReceiptAt = '2026-08-14T08:30:00.000Z';
+  const goodsReceiptDb = inventoryAdmin;
+  const goodsReceiptInventorySnapshot = await getDoc(doc(goodsReceiptDb, 'inventoryItems', 'item-1'));
+  const goodsReceiptInventory = goodsReceiptInventorySnapshot.data();
+  const goodsReceiptMovement = {
+    id: goodsReceiptMovementId,
+    itemId: 'item-1',
+    itemName: 'Cable',
+    type: 'goods-receipt',
+    quantity: 2,
+    previousQuantity: goodsReceiptInventory.quantity,
+    nextQuantity: goodsReceiptInventory.quantity + 2,
+    unit: 'pcs',
+    note: 'Penerimaan PO-GR-RULES-1',
+    reason: 'Dua unit diterima',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: goodsReceiptAt,
+    operationId: goodsReceiptOperationId,
+    operationAction: 'receive',
+    sourcePurchaseOrderId: goodsReceiptPoId,
+    sourceGoodsReceiptId: goodsReceiptId,
+    sourceLineId: 'line-goods-receipt-rules-1',
+  };
+  const goodsReceiptNextInventory = {
+    ...goodsReceiptInventory,
+    quantity: goodsReceiptInventory.quantity + 2,
+    updatedAt: goodsReceiptAt,
+    lastOperationId: goodsReceiptOperationId,
+    lastOperationAction: 'receive',
+    lastMovementId: goodsReceiptMovementId,
+    lastMovementSnapshot: goodsReceiptMovement,
+  };
+  const goodsReceiptItems = [{
+    lineId: 'line-goods-receipt-rules-1',
+    inventoryItemId: 'item-1',
+    itemName: 'Cable',
+    quantity: 2,
+    movementId: goodsReceiptMovementId,
+  }];
+  const goodsReceiptEvent = {
+    id: goodsReceiptEventId,
+    entityType: 'goods_receipt',
+    entityId: goodsReceiptId,
+    purchaseOrderId: goodsReceiptPoId,
+    action: 'received',
+    fromStatus: 'ordered',
+    toStatus: 'partially_received',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: goodsReceiptAt,
+    items: goodsReceiptItems,
+    operationId: goodsReceiptOperationId,
+  };
+  const goodsReceipt = {
+    id: goodsReceiptId,
+    purchaseOrderId: goodsReceiptPoId,
+    poNumber: 'PO-GR-RULES-1',
+    supplierId: 'supplier-rules-1',
+    supplierName: 'Supplier Rules',
+    items: goodsReceiptItems,
+    note: 'Dua unit diterima',
+    receivedAt: goodsReceiptAt,
+    receivedByUid: 'inventory-admin',
+    receivedByName: 'Inventory Admin',
+    createdAt: goodsReceiptAt,
+    operationId: goodsReceiptOperationId,
+    eventId: goodsReceiptEventId,
+  };
+  const goodsReceiptPoSnapshot = await getDoc(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId));
+  const goodsReceiptPo = {
+    ...goodsReceiptPoSnapshot.data(),
+    items: goodsReceiptPoSnapshot.data().items.map((line) => ({
+      ...line,
+      receivedQuantity: 2,
+    })),
+    status: 'partially_received',
+    updatedAt: goodsReceiptAt,
+    lastOperationId: goodsReceiptOperationId,
+    lastOperationAction: 'receipt',
+    lastEventId: goodsReceiptEventId,
+    lastReceiptId: goodsReceiptId,
+  };
+  const goodsReceiptBatch = writeBatch(goodsReceiptDb);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'inventoryItems', 'item-1'), goodsReceiptNextInventory);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'inventoryMovements', goodsReceiptMovementId), goodsReceiptMovement);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId), goodsReceiptPo);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId), goodsReceipt);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'procurementEvents', goodsReceiptEventId), goodsReceiptEvent);
+  goodsReceiptBatch.set(
+    doc(goodsReceiptDb, 'users', 'inventory-admin', 'repositoryOperations', goodsReceiptOperationId),
+    {
+      operationId: goodsReceiptOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'goods-receipt-create',
+      requestId: goodsReceiptRequestId,
+      payloadHash: await createRepositoryPayloadHash({
+        purchaseOrderId: goodsReceiptPoId,
+        expectedUpdatedAt: now,
+        items: [{ lineId: 'line-goods-receipt-rules-1', quantity: 2 }],
+        note: 'Dua unit diterima',
+      }),
+      resultCollection: 'goodsReceipts',
+      resultId: goodsReceiptId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(goodsReceiptBatch.commit());
+  const savedGoodsReceiptPo = await getDoc(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId));
+  const savedGoodsReceiptItem = await getDoc(doc(goodsReceiptDb, 'inventoryItems', 'item-1'));
+  const savedGoodsReceipt = await getDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId));
+  const savedGoodsReceiptMovement = await getDoc(doc(goodsReceiptDb, 'inventoryMovements', goodsReceiptMovementId));
+  assert.equal(savedGoodsReceiptPo.data().status, 'partially_received');
+  assert.equal(savedGoodsReceiptPo.data().items[0].receivedQuantity, 2);
+  assert.equal(savedGoodsReceiptItem.data().quantity, goodsReceiptInventory.quantity + 2);
+  assert.equal(savedGoodsReceipt.exists(), true);
+  assert.equal(savedGoodsReceiptMovement.exists(), true);
+  await assertFails(updateDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId), { note: 'Tamper' }));
+  await assertFails(deleteDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId)));
 
   await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', directPoId), { status: 'received' }));
 

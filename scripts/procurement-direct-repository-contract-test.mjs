@@ -14,10 +14,11 @@ for (const operation of [
   'createCanonicalSupplier',
   'createCanonicalPurchaseOrder',
   'transitionCanonicalPurchaseOrder',
+  'receiveCanonicalPurchaseOrder',
 ]) {
   assert.equal(repository.includes('export async function ' + operation + '('), true);
 }
-assert.equal((repository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
+assert.equal((repository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 5);
 for (const required of [
   'scope: SCOPE',
   'requestId',
@@ -75,12 +76,14 @@ for (const required of [
 for (const required of [
   "from '../../services/procurementFirestoreRepository.js'",
   'recordCanonicalProcurementPayment',
+  'receiveCanonicalPurchaseOrder',
   "getStableRequestId('supplier-create'",
   "getStableRequestId('purchase-order-create'",
   "getStableRequestId('purchase-order-transition'",
   'receiveCanonicalPurchaseOrder',
   'recordCanonicalProcurementPayment',
-  "from '../../services/adminOperationsRepository.js'",
+  "getStableRequestId('goods-receipt'",
+  'receiveCanonicalPurchaseOrder(payload, request.requestId)',
 ]) {
   assert.equal(workspace.includes(required), true, 'Procurement UI routing missing: ' + required);
 }
@@ -109,6 +112,7 @@ assert.equal(packageJson.scripts['test:prd'].includes('procurement-direct-reposi
 
 assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
 assert.match(workspace, /getStableRequestId\('procurement-payment'[\s\S]*?recordCanonicalProcurementPayment\(payload, request\.requestId\)/);
+assert.match(repository, /export async function receiveCanonicalPurchaseOrder/);
 assert.match(repository, /export async function recordCanonicalProcurementPayment/);
 assert.match(repository, /requirePrincipal\('bookkeeping'\)/);
 assert.match(repository, /closing\?\.status === 'closed'/);

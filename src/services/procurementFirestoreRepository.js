@@ -429,6 +429,221 @@ export async function transitionCanonicalPurchaseOrder(input = {}, idempotencyKe
 }
 
 
+export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey = '') {
+  const actor = await requirePrincipal('inventory');
+  const body = input && typeof input === 'object' ? input : {};
+  const purchaseOrderId = cleanText(body.purchaseOrderId, 'Purchase Order', 160, true);
+  const expectedUpdatedAt = cleanText(body.expectedUpdatedAt, 'Waktu pembaruan PO', 40, true);
+  if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 12) {
+    throw new Error('Penerimaan harus berisi 1 sampai 12 baris agar transaksi tetap berada dalam batas evaluasi Firestore Rules.');
+  }
+  const seenLineIds = new Set();
+  const requestedLines = body.items.map((line) => {
+    const lineId = cleanText(line?.lineId, 'Baris PO', 160, true);
+    const quantity = finiteQuantity(line?.quantity, 'Jumlah diterima');
+    if (seenLineIds.has(lineId)) throw new Error('Baris penerimaan tidak boleh duplikat.');
+    if (quantity <= 0) throw new Error('Jumlah diterima harus lebih dari nol.');
+    seenLineIds.add(lineId);
+    return { lineId, quantity };
+  });
+  const note = cleanText(body.note, 'Catatan penerimaan', 800);
+  const payload = { purchaseOrderId, expectedUpdatedAt, items: requestedLines, note };
+  const requestId = await normalizeRequestId(idempotencyKey);
+  const action = 'goods-receipt-create';
+  const operationId = await createRepositoryOperationId({
+    actorUid: actor.uid, scope: SCOPE, action, requestId,
+  });
+  const receiptId = 'gr_' + operationId.slice(3);
+  const eventId = 'pev_' + operationId.slice(3);
+  const timestamp = new Date().toISOString();
+
+  const operation = await runIdempotentFirestoreTransaction({
+    db: firestoreDb,
+    actorUid: actor.uid,
+    scope: SCOPE,
+    action,
+    requestId,
+    payload,
+    execute: async (transaction, metadata) => {
+      const poRef = doc(firestoreDb, PURCHASE_ORDERS, purchaseOrderId);
+      const receiptRef = doc(firestoreDb, 'goodsReceipts', receiptId);
+      const eventRef = doc(firestoreDb, EVENTS, eventId);
+      const [poSnapshot, receiptSnapshot, eventSnapshot] = await Promise.all([
+        transaction.get(poRef),
+        transaction.get(receiptRef),
+        transaction.get(eventRef),
+      ]);
+      if (!poSnapshot.exists()) throw new Error('Purchase Order tidak ditemukan.');
+      if (receiptSnapshot.exists() || eventSnapshot.exists()) {
+        throw new Error('ID Goods Receipt atau event sudah digunakan.');
+      }
+      const current = { id: poSnapshot.id, ...poSnapshot.data() };
+      if (!['ordered', 'partially_received'].includes(current.status)) {
+        throw new Error('PO harus berstatus Ordered atau Partially Received.');
+      }
+      if (current.updatedAt !== expectedUpdatedAt) {
+        throw new Error('PO berubah. Muat ulang sebelum mencatat penerimaan.');
+      }
+      if (!Array.isArray(current.items) || !current.items.length) {
+        throw new Error('PO tidak memiliki detail item yang valid.');
+      }
+
+      const lineIndexes = requestedLines.map((line) => {
+        const index = current.items.findIndex((item) => item.lineId === line.lineId);
+        if (index < 0) throw new Error('Baris penerimaan tidak sesuai dengan PO.');
+        return index;
+      });
+      const inventoryIds = requestedLines.map((line, index) => (
+        cleanText(current.items[lineIndexes[index]].inventoryItemId, 'Item inventory', 160, true)
+      ));
+      if (new Set(inventoryIds).size !== inventoryIds.length) {
+        throw new Error('Satu item inventory tidak boleh muncul lebih dari sekali dalam satu penerimaan.');
+      }
+      const inventoryRefs = inventoryIds.map((id) => doc(firestoreDb, 'inventoryItems', id));
+      const movementIds = requestedLines.map((_, index) => (
+        'mov_' + metadata.operationId.slice(3) + '_' + String(index + 1).padStart(3, '0')
+      ));
+      const movementRefs = movementIds.map((id) => doc(firestoreDb, 'inventoryMovements', id));
+      const inventorySnapshots = await Promise.all(inventoryRefs.map((reference) => transaction.get(reference)));
+      const movementSnapshots = await Promise.all(movementRefs.map((reference) => transaction.get(reference)));
+      if (movementSnapshots.some((snapshot) => snapshot.exists())) {
+        throw new Error('ID stock movement sudah digunakan.');
+      }
+
+      const nextItems = current.items.map((item) => ({ ...item }));
+      const receiptItems = [];
+      const movements = [];
+      const nextInventoryItems = [];
+      requestedLines.forEach((line, index) => {
+        const orderLine = nextItems[lineIndexes[index]];
+        const orderedQuantity = finiteQuantity(orderLine.quantity, 'Jumlah pesanan');
+        const previouslyReceived = finiteQuantity(orderLine.receivedQuantity || 0, 'Jumlah yang sudah diterima');
+        const remaining = Math.max(0, orderedQuantity - previouslyReceived);
+        if (line.quantity > remaining) {
+          throw new Error('Jumlah diterima melebihi sisa pesanan untuk ' + cleanText(orderLine.name, 'Nama item', 160) + '.');
+        }
+        const inventorySnapshot = inventorySnapshots[index];
+        if (!inventorySnapshot.exists() || inventorySnapshot.data().status === 'inactive') {
+          throw new Error('Item inventory tidak ditemukan atau sudah dinonaktifkan: ' + inventoryIds[index]);
+        }
+        const inventoryItem = { id: inventorySnapshot.id, ...inventorySnapshot.data() };
+        const previousQuantity = finiteQuantity(inventoryItem.quantity || 0, 'Stok saat ini');
+        const nextQuantity = finiteQuantity(previousQuantity + line.quantity, 'Stok hasil');
+        if (nextQuantity > 1_000_000) throw new Error('Stok hasil melebihi batas operasional.');
+        const movement = {
+          id: movementIds[index],
+          itemId: inventoryItem.id,
+          itemName: cleanText(inventoryItem.name, 'Nama item', 160, true),
+          type: 'goods-receipt',
+          quantity: line.quantity,
+          previousQuantity,
+          nextQuantity,
+          unit: cleanText(inventoryItem.unit || orderLine.unit || 'pcs', 'Satuan', 40, true),
+          note: 'Penerimaan ' + cleanText(current.poNumber, 'Nomor PO', 64, true),
+          reason: note,
+          actorUid: actor.uid,
+          actorName: actor.displayName,
+          createdAt: timestamp,
+          operationId: metadata.operationId,
+          operationAction: 'receive',
+          sourcePurchaseOrderId: purchaseOrderId,
+          sourceGoodsReceiptId: receiptId,
+          sourceLineId: line.lineId,
+        };
+        const nextInventoryItem = {
+          ...inventoryItem,
+          quantity: nextQuantity,
+          updatedAt: timestamp,
+          lastOperationId: metadata.operationId,
+          lastOperationAction: 'receive',
+          lastMovementId: movement.id,
+          lastMovementSnapshot: movement,
+        };
+        orderLine.receivedQuantity = finiteQuantity(previouslyReceived + line.quantity, 'Total diterima');
+        receiptItems.push({
+          lineId: line.lineId,
+          inventoryItemId: inventoryItem.id,
+          itemName: cleanText(orderLine.name, 'Nama item PO', 160, true),
+          quantity: line.quantity,
+          movementId: movement.id,
+        });
+        movements.push(movement);
+        nextInventoryItems.push(nextInventoryItem);
+      });
+
+      const allReceived = nextItems.every((item) => (
+        finiteQuantity(item.receivedQuantity || 0, 'Jumlah diterima') >=
+        finiteQuantity(item.quantity, 'Jumlah pesanan')
+      ));
+      const status = allReceived ? 'received' : 'partially_received';
+      const nextPurchaseOrder = {
+        ...current,
+        items: nextItems,
+        status,
+        updatedAt: timestamp,
+        ...(allReceived ? { receivedAt: timestamp } : {}),
+        lastOperationId: metadata.operationId,
+        lastOperationAction: 'receipt',
+        lastEventId: eventId,
+        lastReceiptId: receiptId,
+      };
+      const receipt = {
+        id: receiptId,
+        purchaseOrderId,
+        poNumber: cleanText(current.poNumber, 'Nomor PO', 64, true),
+        supplierId: cleanText(current.supplierId, 'Supplier', 160, true),
+        supplierName: cleanText(current.supplierName, 'Nama supplier', 160, true),
+        items: receiptItems,
+        note,
+        receivedAt: timestamp,
+        receivedByUid: actor.uid,
+        receivedByName: actor.displayName,
+        createdAt: timestamp,
+        operationId: metadata.operationId,
+        eventId,
+      };
+      const event = {
+        id: eventId,
+        entityType: 'goods_receipt',
+        entityId: receiptId,
+        purchaseOrderId,
+        action: 'received',
+        fromStatus: current.status,
+        toStatus: status,
+        actorUid: actor.uid,
+        actorName: actor.displayName,
+        createdAt: timestamp,
+        items: receiptItems,
+        operationId: metadata.operationId,
+      };
+
+      nextInventoryItems.forEach((item, index) => {
+        transaction.set(inventoryRefs[index], item);
+        transaction.set(movementRefs[index], movements[index]);
+      });
+      transaction.set(poRef, nextPurchaseOrder);
+      transaction.set(receiptRef, receipt);
+      transaction.set(eventRef, event);
+      return { collection: 'goodsReceipts', id: receiptId };
+    },
+  });
+
+  const receipt = await hydrateDocument(operation, 'goodsReceipts');
+  const [purchaseOrderSnapshot, eventSnapshot] = await Promise.all([
+    getDocFromServer(doc(firestoreDb, PURCHASE_ORDERS, purchaseOrderId)),
+    getDocFromServer(doc(firestoreDb, EVENTS, eventId)),
+  ]);
+  if (!purchaseOrderSnapshot.exists() || !eventSnapshot.exists()) {
+    throw new Error('Dokumen PO atau event penerimaan belum lengkap. Gunakan request ID yang sama untuk memulihkan operasi.');
+  }
+  return {
+    receipt,
+    purchaseOrder: { id: purchaseOrderSnapshot.id, ...purchaseOrderSnapshot.data() },
+    event: { id: eventSnapshot.id, ...eventSnapshot.data() },
+    duplicate: operation.replayed,
+  };
+}
+
 export async function recordCanonicalProcurementPayment(input = {}, idempotencyKey = '') {
   const actor = await requirePrincipal('bookkeeping');
   const body = input && typeof input === 'object' ? input : {};
@@ -607,5 +822,6 @@ export const procurementFirestoreRepository = Object.freeze({
   createSupplier: createCanonicalSupplier,
   createPurchaseOrder: createCanonicalPurchaseOrder,
   transitionPurchaseOrder: transitionCanonicalPurchaseOrder,
+  receivePurchaseOrder: receiveCanonicalPurchaseOrder,
   recordProcurementPayment: recordCanonicalProcurementPayment,
 });

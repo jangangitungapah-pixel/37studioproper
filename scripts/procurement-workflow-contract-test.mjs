@@ -27,14 +27,15 @@ assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\
 assert.match(workspace, /getStableRequestId\('procurement-payment'/);
 assert.match(workspace, /recordCanonicalProcurementPayment\(payload, request\.requestId\)/);
 
-assert.match(workspace, /from '\.\.\/\.\.\/services\/adminOperationsRepository\.js'/);
+assert.doesNotMatch(workspace, /adminOperationsRepository/);
 assert.match(workspace, /getStableRequestId\('supplier-create'/);
 assert.match(workspace, /getStableRequestId\('purchase-order-create'/);
 assert.match(workspace, /getStableRequestId\('purchase-order-transition'/);
 assert.match(directRepository, /export async function createCanonicalSupplier/);
 assert.match(directRepository, /export async function createCanonicalPurchaseOrder/);
 assert.match(directRepository, /export async function transitionCanonicalPurchaseOrder/);
-assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
+assert.match(directRepository, /export async function receiveCanonicalPurchaseOrder/);
+assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 5);
 assert.match(directRepository, /transaction\.get\(supplierRef\)/);
 assert.match(directRepository, /transaction\.get\(reference\)/);
 
@@ -125,7 +126,8 @@ assert.match(rules, /function procurementPurchaseOrderTransitionUpdateAllowed\(p
 assert.match(rules, /function procurementPurchaseOrderUpdateAllowed\(purchaseOrderId\)[\s\S]*?procurementPurchaseOrderTransitionUpdateAllowed\(purchaseOrderId, data\)[\s\S]*?procurementPurchaseOrderPaymentUpdateAllowed\(purchaseOrderId, data\)/);
 
 assert.equal(purchaseOrderRules.includes('allow delete: if false;'), true);
-assert.equal(receiptRules.includes('allow create, update, delete: if false;'), true);
+assert.equal(receiptRules.includes('allow create: if procurementGoodsReceiptCreateAllowed(receiptId);'), true);
+assert.equal(receiptRules.includes('allow update, delete: if false;'), true);
 assert.equal(procurementPaymentRules.includes('allow create: if procurementPaymentCreateAllowed(paymentId);'), true);
 assert.equal(procurementPaymentRules.includes('allow update, delete: if false;'), true);
 assert.equal(procurementEventRules.includes('allow create: if procurementEventCreateAllowed(eventId);'), true);

@@ -3604,7 +3604,8 @@ match /users/{userId} {
           'id', 'itemId', 'itemName', 'type', 'quantity', 'previousQuantity',
           'nextQuantity', 'unit', 'note', 'reason', 'actorUid', 'actorName',
           'createdAt', 'metadataSnapshot', 'previousMetadata', 'nextMetadata',
-          'adjustmentKey', 'operationId', 'operationAction'
+          'adjustmentKey', 'operationId', 'operationAction',
+          'sourcePurchaseOrderId', 'sourceGoodsReceiptId', 'sourceLineId'
         ]) &&
         data.id == movementId &&
         validString(data.itemId, 1, 160) &&
@@ -3626,6 +3627,9 @@ match /users/{userId} {
         (!data.keys().hasAny(['previousMetadata']) || data.previousMetadata is map) &&
         (!data.keys().hasAny(['nextMetadata']) || data.nextMetadata is map) &&
         (!data.keys().hasAny(['adjustmentKey']) || validString(data.adjustmentKey, 1, 128)) &&
+        validOptionalString(data, 'sourcePurchaseOrderId', 160) &&
+        validOptionalString(data, 'sourceGoodsReceiptId', 160) &&
+        validOptionalString(data, 'sourceLineId', 160) &&
         data.operationId.size() == 67 &&
         data.operationId.matches('^v1_[a-f0-9]{64}') &&
         data.operationAction in [
@@ -3654,20 +3658,67 @@ match /users/{userId} {
         );
     }
 
+    function procurementGoodsReceiptSnapshotMatchesAfter(data) {
+      let movement = data.lastMovementSnapshot;
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(movement.sourceGoodsReceiptId);
+      let receiptExists = existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      return movement.type == 'goods-receipt' &&
+        movement.operationAction == 'receive' &&
+        movement.operationId == data.lastOperationId &&
+        movement.actorUid == request.auth.uid &&
+        movement.itemId == data.id &&
+        movement.previousQuantity == resource.data.quantity &&
+        movement.nextQuantity == data.quantity &&
+        movement.nextQuantity == movement.previousQuantity + movement.quantity &&
+        receiptExists &&
+        receipt.operationId == data.lastOperationId &&
+        receipt.receivedByUid == request.auth.uid &&
+        receipt.items.hasAny([{
+          'lineId': movement.sourceLineId,
+          'inventoryItemId': data.id,
+          'itemName': movement.itemName,
+          'quantity': movement.quantity,
+          'movementId': movement.id
+        }]);
+    }
+
+    function procurementGoodsReceiptMovementMatchesAfter(data) {
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.sourceGoodsReceiptId);
+      let receiptExists = existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      return receiptExists &&
+        receipt.operationId == data.operationId &&
+        receipt.purchaseOrderId == data.sourcePurchaseOrderId &&
+        receipt.receivedByUid == request.auth.uid &&
+        receipt.items.hasAny([{
+          'lineId': data.sourceLineId,
+          'inventoryItemId': data.itemId,
+          'itemName': data.itemName,
+          'quantity': data.quantity,
+          'movementId': data.id
+        }]);
+    }
+
     function inventoryItemUpdateAllowed(itemId) {
       let data = request.resource.data;
       let changed = data.diff(resource.data).affectedKeys();
+      let isGoodsReceipt = data.lastOperationAction == 'receive';
       return hasApprovedAdminPermission('inventory') &&
-        inventoryPreviousMovementRecorded() &&
+        (isGoodsReceipt || inventoryPreviousMovementRecorded()) &&
         validInventoryItem(data, itemId) &&
         data.createdAt == resource.data.createdAt &&
         data.lastOperationId != resource.data.get('lastOperationId', '') &&
-        repositoryOperationMatchesAfter(
-          data.lastOperationId,
-          'inventory',
-          data.lastOperationAction,
-          'inventoryItems',
-          itemId
+        (
+          isGoodsReceipt
+            ? procurementGoodsReceiptSnapshotMatchesAfter(data)
+            : repositoryOperationMatchesAfter(
+                data.lastOperationId,
+                'inventory',
+                data.lastOperationAction,
+                'inventoryItems',
+                itemId
+              )
         ) &&
         (
           (
@@ -3713,6 +3764,23 @@ match /users/{userId} {
               'quantity', 'lastOperationId', 'lastOperationAction',
               'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
             ])
+          ) ||
+          (
+            isGoodsReceipt &&
+            data.quantity > resource.data.quantity &&
+            data.name == resource.data.name &&
+            data.category == resource.data.category &&
+            data.type == resource.data.type &&
+            data.unit == resource.data.unit &&
+            data.minStock == resource.data.minStock &&
+            data.condition == resource.data.condition &&
+            data.status == resource.data.status &&
+            data.location == resource.data.location &&
+            data.note == resource.data.note &&
+            changed.hasOnly([
+              'quantity', 'updatedAt', 'lastOperationId', 'lastOperationAction',
+              'lastMovementId', 'lastMovementSnapshot'
+            ])
           )
         );
     }
@@ -3720,8 +3788,10 @@ match /users/{userId} {
     function inventoryMovementCreateAllowed(movementId) {
       let data = request.resource.data;
       let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
-      let itemExists = exists(itemPath);
-      let item = itemExists ? get(itemPath).data : {};
+      let itemExists = data.type == 'goods-receipt' ? existsAfter(itemPath) : exists(itemPath);
+      let item = itemExists
+        ? (data.type == 'goods-receipt' ? getAfter(itemPath).data : get(itemPath).data)
+        : {};
       return hasApprovedAdminPermission('inventory') &&
         validInventoryMovement(data, movementId) &&
         itemExists &&
@@ -3763,6 +3833,12 @@ match /users/{userId} {
             data.type == 'stock-out' &&
             data.operationAction == 'adjust' &&
             data.previousQuantity == data.nextQuantity + data.quantity
+          ) ||
+          (
+            data.type == 'goods-receipt' &&
+            data.operationAction == 'receive' &&
+            data.nextQuantity == data.previousQuantity + data.quantity &&
+            procurementGoodsReceiptMovementMatchesAfter(data)
           )
         );
     }
@@ -4003,7 +4079,7 @@ match /users/{userId} {
           'notes', 'createdAt', 'updatedAt', 'createdByUid', 'createdByName',
           'approvedAt', 'approvedByUid', 'approvedByName', 'orderedAt',
           'cancelledAt', 'cancelReason', 'cancelledByUid', 'receivedAt',
-          'lastOperationId', 'lastOperationAction', 'lastEventId', 'lastPaymentId'
+          'lastOperationId', 'lastOperationAction', 'lastEventId', 'lastPaymentId', 'lastReceiptId'
         ]) &&
         data.id == purchaseOrderId &&
         validString(data.poNumber, 12, 64) &&
@@ -4036,9 +4112,10 @@ match /users/{userId} {
         validOptionalString(data, 'receivedAt', 40) &&
         validString(data.lastOperationId, 67, 67) &&
         data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
-        data.lastOperationAction in ['create', 'transition', 'payment'] &&
+        data.lastOperationAction in ['create', 'transition', 'payment', 'receipt'] &&
         validString(data.lastEventId, 1, 160) &&
-        validOptionalString(data, 'lastPaymentId', 160);
+        validOptionalString(data, 'lastPaymentId', 160) &&
+        validOptionalString(data, 'lastReceiptId', 160);
     }
 
     function validProcurementPayment(data, paymentId) {
@@ -4121,10 +4198,12 @@ match /users/{userId} {
           'operationId'
         ]) &&
         data.id == eventId &&
-        data.entityType in ['supplier', 'purchase_order'] &&
+        data.entityType in ['supplier', 'purchase_order', 'goods_receipt'] &&
         validString(data.entityId, 1, 160) &&
-        data.action in ['created', 'status_changed', 'payment_recorded'] &&
+        data.action in ['created', 'status_changed', 'payment_recorded', 'received'] &&
         validOptionalString(data, 'paymentId', 160) &&
+        validOptionalString(data, 'purchaseOrderId', 160) &&
+        (!data.keys().hasAny(['items']) || data.items is list) &&
         validString(data.get('fromStatus', ''), 0, 40) &&
         validString(data.get('toStatus', ''), 0, 40) &&
         validString(data.get('reason', ''), 0, 600) &&
@@ -4328,7 +4407,8 @@ match /users/{userId} {
     function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
       let data = request.resource.data;
       return procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data) ||
-        procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data);
+        procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data) ||
+        procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data);
     }
 
     function procurementEventSupplierMatchesAfter(data) {
@@ -4356,6 +4436,129 @@ match /users/{userId} {
         po.lastOperationAction == (data.action == 'created' ? 'create' : 'transition');
     }
 
+    function procurementGoodsReceiptEventMatchesAfter(data) {
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.entityId);
+      let receiptExists = existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.purchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      return receiptExists && poExists &&
+        receipt.id == data.entityId &&
+        receipt.eventId == data.id &&
+        receipt.operationId == data.operationId &&
+        receipt.purchaseOrderId == data.purchaseOrderId &&
+        receipt.items == data.items &&
+        po.lastReceiptId == receipt.id &&
+        po.lastEventId == data.id &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'receipt' &&
+        po.updatedAt == data.createdAt &&
+        po.status == data.toStatus;
+    }
+
+    function procurementGoodsReceiptCreateAllowed(receiptId) {
+      let data = request.resource.data;
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.purchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.eventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        data is map &&
+        data.keys().hasOnly([
+          'id', 'purchaseOrderId', 'poNumber', 'supplierId', 'supplierName',
+          'items', 'note', 'receivedAt', 'receivedByUid', 'receivedByName',
+          'createdAt', 'operationId', 'eventId'
+        ]) &&
+        data.id == receiptId &&
+        validString(data.purchaseOrderId, 1, 160) &&
+        validString(data.poNumber, 12, 64) &&
+        validString(data.supplierId, 1, 160) &&
+        validString(data.supplierName, 1, 160) &&
+        data.items is list &&
+        data.items.size() >= 1 &&
+        data.items.size() <= 100 &&
+        validString(data.note, 0, 800) &&
+        validIsoTimestampString(data.receivedAt) &&
+        data.receivedByUid == request.auth.uid &&
+        validString(data.receivedByName, 1, 120) &&
+        data.createdAt == data.receivedAt &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        validString(data.eventId, 1, 160) &&
+        repositoryOperationMatchesAfter(
+          data.operationId,
+          'procurement',
+          'goods-receipt-create',
+          'goodsReceipts',
+          receiptId
+        ) &&
+        poExists &&
+        po.lastReceiptId == receiptId &&
+        po.lastEventId == data.eventId &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'receipt' &&
+        po.updatedAt == data.receivedAt &&
+        po.status in ['partially_received', 'received'] &&
+        eventExists &&
+        event.id == data.eventId &&
+        event.entityType == 'goods_receipt' &&
+        event.entityId == receiptId &&
+        event.purchaseOrderId == data.purchaseOrderId &&
+        event.operationId == data.operationId &&
+        event.createdAt == data.receivedAt &&
+        event.items == data.items;
+    }
+
+    function procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data) {
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.lastReceiptId);
+      let receiptExists = existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      let changed = data.diff(resource.data).affectedKeys();
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        resource.data.status in ['ordered', 'partially_received'] &&
+        data.status in ['partially_received', 'received'] &&
+        data.items is list &&
+        data.items.size() == resource.data.items.size() &&
+        data.totalAmount == resource.data.totalAmount &&
+        data.paidAmount == resource.data.paidAmount &&
+        data.supplierId == resource.data.supplierId &&
+        data.supplierName == resource.data.supplierName &&
+        data.lastOperationAction == 'receipt' &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.updatedAt != resource.data.updatedAt &&
+        validIsoTimestampString(data.updatedAt) &&
+        changed.hasOnly([
+          'items', 'status', 'updatedAt', 'receivedAt',
+          'lastOperationId', 'lastOperationAction', 'lastEventId', 'lastReceiptId'
+        ]) &&
+        receiptExists &&
+        receipt.id == data.lastReceiptId &&
+        receipt.purchaseOrderId == purchaseOrderId &&
+        receipt.operationId == data.lastOperationId &&
+        receipt.eventId == data.lastEventId &&
+        receipt.receivedAt == data.updatedAt &&
+        eventExists &&
+        event.entityId == data.lastReceiptId &&
+        event.purchaseOrderId == purchaseOrderId &&
+        event.operationId == data.lastOperationId &&
+        event.action == 'received' &&
+        event.fromStatus == resource.data.status &&
+        event.toStatus == data.status &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'goods-receipt-create',
+          'goodsReceipts',
+          data.lastReceiptId
+        );
+    }
+
     function procurementEventCreateAllowed(eventId) {
       let data = request.resource.data;
       return data.action == 'payment_recorded'
@@ -4363,24 +4566,28 @@ match /users/{userId} {
           validProcurementEvent(data, eventId) &&
           data.entityType == 'purchase_order' &&
           procurementPaymentEventMatchesAfter(data)
-        : hasApprovedAdminPermission('inventory') &&
-          validProcurementEvent(data, eventId) &&
-          (
+        : data.action == 'received'
+          ? hasApprovedAdminPermission('inventory') &&
+            validProcurementEvent(data, eventId) &&
+            data.entityType == 'goods_receipt' &&
+            procurementGoodsReceiptEventMatchesAfter(data)
+          : hasApprovedAdminPermission('inventory') &&
+            validProcurementEvent(data, eventId) &&
             (
-              data.entityType == 'supplier' &&
-              data.action == 'created' &&
-              procurementEventSupplierMatchesAfter(data)
-            ) ||
-            (
-              data.entityType == 'purchase_order' &&
-              data.action in ['created', 'status_changed'] &&
-              procurementEventPurchaseOrderMatchesAfter(data)
-            )
-          );
+              (
+                data.entityType == 'supplier' &&
+                data.action == 'created' &&
+                procurementEventSupplierMatchesAfter(data)
+              ) ||
+              (
+                data.entityType == 'purchase_order' &&
+                data.action in ['created', 'status_changed'] &&
+                procurementEventPurchaseOrderMatchesAfter(data)
+              )
+            );
     }
 
-    // Supplier, PO, and payment lifecycle writes use direct Firestore transactions.
-    // Goods Receipts remain Worker-owned until their stock movement invariants are migrated.
+    // Supplier, PO, Goods Receipt, and payment lifecycle writes use direct Firestore transactions.
     match /suppliers/{supplierId} {
       allow read: if isApproved() && canAccessInventoryData();
       allow create: if procurementSupplierCreateAllowed(supplierId);
@@ -4388,7 +4595,7 @@ match /users/{userId} {
     }
 
     match /purchaseOrders/{purchaseOrderId} {
-      allow read: if isApproved() && canAccessInventoryData();
+      allow read: if isApproved() && (canAccessInventoryData() || hasPermission('bookkeeping'));
       allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);
       allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);
       allow delete: if false;
@@ -4396,7 +4603,8 @@ match /users/{userId} {
 
     match /goodsReceipts/{receiptId} {
       allow read: if isApproved() && canAccessInventoryData();
-      allow create, update, delete: if false;
+      allow create: if procurementGoodsReceiptCreateAllowed(receiptId);
+      allow update, delete: if false;
     }
 
     match /procurementPayments/{paymentId} {
@@ -4406,7 +4614,8 @@ match /users/{userId} {
     }
 
     match /procurementEvents/{eventId} {
-      allow read: if isApproved() && canAccessInventoryData();
+      allow read: if isApproved() && (canAccessInventoryData() ||
+        (hasPermission('bookkeeping') && resource.data.action == 'payment_recorded'));
       allow create: if procurementEventCreateAllowed(eventId);
       allow update, delete: if false;
     }
