@@ -126,7 +126,8 @@ assert.match(rules, /function procurementPurchaseOrderUpdateAllowed\(purchaseOrd
 
 assert.equal(purchaseOrderRules.includes('allow delete: if false;'), true);
 assert.equal(receiptRules.includes('allow create, update, delete: if false;'), true);
-assert.equal(procurementPaymentRules.includes('allow create, update, delete: if false;'), true);
+assert.equal(procurementPaymentRules.includes('allow create: if procurementPaymentCreateAllowed(paymentId);'), true);
+assert.equal(procurementPaymentRules.includes('allow update, delete: if false;'), true);
 assert.equal(procurementEventRules.includes('allow create: if procurementEventCreateAllowed(eventId);'), true);
 assert.equal(procurementEventRules.includes('allow update, delete: if false;'), true);
 assert.match(
