@@ -21,7 +21,7 @@ const sections = await Promise.all(modules.map(async (path) => {
   const content = await readFile(resolve(root, path), 'utf8');
   return content.replace(/\s+$/, '');
 }));
-const output = sections.map((section, index) => index === 1 || index === 3 ? section + '\n' : section).join('\n');
+const output = sections.map((section, index) => index === 1 || index === 3 || index === 4 ? section + '\n' : section).join('\n');
 await writeFile(resolve(root, 'firestore.rules'), output, 'utf8');
 process.stdout.write(
   'Firestore Rules assembled from ' + modules.length + ' ordered source modules (' +
