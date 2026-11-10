@@ -595,6 +595,131 @@ try {
     },
   );
   await assertSucceeds(transitionBatch.commit());
+
+  // Procurement payments are Bookkeeping-only and atomically pair the PO,
+  // immutable payment, expense ledger, event, closing activity fence and marker.
+  const procurementPaymentRequestId = 'procurement-payment-direct-rules-001';
+  const procurementPaymentOperationId = await createRepositoryOperationId({
+    actorUid: 'bookkeeping-admin',
+    scope: 'procurement',
+    action: 'procurement-payment',
+    requestId: procurementPaymentRequestId,
+  });
+  const procurementPaymentId = 'ppay_' + procurementPaymentOperationId.slice(3);
+  const procurementPaymentEventId = 'pev_' + procurementPaymentOperationId.slice(3);
+  const procurementPaymentDate = '2026-08-15';
+  const procurementPaymentCreatedAt = '2026-08-14T08:20:00.000Z';
+  const procurementPaymentAmount = 5000;
+  const procurementPaymentPayload = {
+    purchaseOrderId: directPoId,
+    expectedUpdatedAt: submittedAt,
+    amount: procurementPaymentAmount,
+    paymentMethod: 'transfer',
+    date: procurementPaymentDate,
+    reference: 'BANK-REF-001',
+    note: 'Uang muka PO rules',
+  };
+  const procurementPaymentPayloadHash = await createRepositoryPayloadHash(procurementPaymentPayload);
+  const paidPurchaseOrder = {
+    ...submittedPo,
+    paidAmount: procurementPaymentAmount,
+    updatedAt: procurementPaymentCreatedAt,
+    lastOperationId: procurementPaymentOperationId,
+    lastOperationAction: 'payment',
+    lastEventId: procurementPaymentEventId,
+    lastPaymentId: procurementPaymentId,
+  };
+  const procurementPayment = {
+    id: procurementPaymentId,
+    purchaseOrderId: directPoId,
+    poNumber: submittedPo.poNumber,
+    supplierId: submittedPo.supplierId,
+    supplierName: submittedPo.supplierName,
+    amount: procurementPaymentAmount,
+    paymentMethod: 'transfer',
+    date: procurementPaymentDate,
+    reference: 'BANK-REF-001',
+    note: 'Uang muka PO rules',
+    actorUid: 'bookkeeping-admin',
+    actorName: 'Bookkeeping Admin',
+    createdAt: procurementPaymentCreatedAt,
+    operationId: procurementPaymentOperationId,
+  };
+  const procurementExpense = {
+    id: procurementPaymentId,
+    type: 'expense',
+    category: 'procurement',
+    title: ('Pembayaran ' + submittedPo.poNumber + ' · ' + submittedPo.supplierName).slice(0, 160),
+    amount: procurementPaymentAmount,
+    date: procurementPaymentDate,
+    paymentMethod: 'transfer',
+    note: 'Uang muka PO rules',
+    source: 'procurement-payment',
+    sourcePurchaseOrderId: directPoId,
+    sourceProcurementPaymentId: procurementPaymentId,
+    actorUid: 'bookkeeping-admin',
+    actorName: 'Bookkeeping Admin',
+    operationId: procurementPaymentOperationId,
+    immutable: true,
+    createdAt: procurementPaymentCreatedAt,
+    updatedAt: procurementPaymentCreatedAt,
+  };
+  const procurementPaymentEvent = {
+    id: procurementPaymentEventId,
+    entityType: 'purchase_order',
+    entityId: directPoId,
+    action: 'payment_recorded',
+    amount: procurementPaymentAmount,
+    paymentId: procurementPaymentId,
+    actorUid: 'bookkeeping-admin',
+    actorName: 'Bookkeeping Admin',
+    createdAt: procurementPaymentCreatedAt,
+    operationId: procurementPaymentOperationId,
+  };
+  const procurementPaymentClosingId = procurementPaymentDate + '__main';
+  const procurementPaymentFence = {
+    id: procurementPaymentClosingId,
+    businessDate: procurementPaymentDate,
+    registerId: 'main',
+    status: 'open',
+    activityRevision: 1,
+    createdAt: procurementPaymentCreatedAt,
+    updatedAt: procurementPaymentCreatedAt,
+    lastActivityAt: procurementPaymentCreatedAt,
+    lastActivityByUid: 'bookkeeping-admin',
+    lastOperationId: procurementPaymentOperationId,
+    lastOperationAction: 'procurement-payment',
+    lastProcurementPaymentAt: procurementPaymentCreatedAt,
+    lastProcurementPaymentId: procurementPaymentId,
+    lastProcurementPurchaseOrderId: directPoId,
+  };
+  const procurementPaymentBatch = writeBatch(procurementBookkeeping);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'purchaseOrders', directPoId), paidPurchaseOrder);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'procurementPayments', procurementPaymentId), procurementPayment);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'bookkeepingEntries', procurementPaymentId), procurementExpense);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'procurementEvents', procurementPaymentEventId), procurementPaymentEvent);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'cashClosingSessions', procurementPaymentClosingId), procurementPaymentFence);
+  procurementPaymentBatch.set(
+    doc(procurementBookkeeping, 'users', 'bookkeeping-admin', 'repositoryOperations', procurementPaymentOperationId),
+    {
+      operationId: procurementPaymentOperationId,
+      actorUid: 'bookkeeping-admin',
+      scope: 'procurement',
+      action: 'procurement-payment',
+      requestId: procurementPaymentRequestId,
+      payloadHash: procurementPaymentPayloadHash,
+      resultCollection: 'purchaseOrders',
+      resultId: directPoId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(procurementPaymentBatch.commit());
+  const savedPaidPurchaseOrder = await getDoc(doc(procurementBookkeeping, 'purchaseOrders', directPoId));
+  assert.equal(savedPaidPurchaseOrder.data().paidAmount, procurementPaymentAmount);
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementPayments', procurementPaymentId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'bookkeepingEntries', procurementPaymentId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'cashClosingSessions', procurementPaymentClosingId)));
+
   await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', directPoId), { status: 'received' }));
 
   await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1'), { status: 'received' }));
