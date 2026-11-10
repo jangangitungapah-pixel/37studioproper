@@ -3039,6 +3039,35 @@ match /users/{userId} {
         bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
 
+    function validProcurementPaymentExpense(data, entryId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'type', 'category', 'title', 'amount', 'date',
+          'paymentMethod', 'note', 'source', 'sourcePurchaseOrderId',
+          'sourceProcurementPaymentId', 'actorName', 'actorUid',
+          'immutable', 'operationId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == entryId &&
+        data.type == 'expense' &&
+        data.category == 'procurement' &&
+        validString(data.title, 1, 160) &&
+        validNumber(data.amount, 1, 1000000000) &&
+        validIsoDate(data.date) &&
+        data.paymentMethod in ['cash', 'transfer', 'qris'] &&
+        validString(data.note, 0, 2000) &&
+        data.source == 'procurement-payment' &&
+        validString(data.sourcePurchaseOrderId, 1, 160) &&
+        data.sourceProcurementPaymentId == entryId &&
+        validString(data.actorName, 1, 120) &&
+        data.actorUid == request.auth.uid &&
+        data.immutable == true &&
+        data.operationId is string &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt);
+    }
+
     function procurementPaymentBookkeepingMatchesAfter(data, entryId) {
       let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.sourceProcurementPaymentId);
       let paymentExists = existsAfter(paymentPath);
@@ -3046,9 +3075,7 @@ match /users/{userId} {
       let poPath = /databases/$(database)/documents/purchaseOrders/$(data.sourcePurchaseOrderId);
       let poExists = existsAfter(poPath);
       let po = poExists ? getAfter(poPath).data : {};
-      let poBeforeExists = exists(poPath);
-      let poBefore = poBeforeExists ? get(poPath).data : {};
-      return paymentExists && poExists && poBeforeExists &&
+      return paymentExists && poExists &&
         data.id == entryId &&
         data.type == 'expense' &&
         data.category == 'procurement' &&
@@ -3067,12 +3094,12 @@ match /users/{userId} {
         po.id == payment.purchaseOrderId &&
         po.lastPaymentId == payment.id &&
         po.lastOperationId == payment.operationId &&
-        po.paidAmount == poBefore.paidAmount + payment.amount;
+        po.paidAmount <= po.totalAmount;
     }
 
     function procurementPaymentLedgerCreateAllowed(data, entryId) {
       return hasApprovedAdminPermission('bookkeeping') &&
-        validBookkeepingEntry(data, entryId) &&
+        validProcurementPaymentExpense(data, entryId) &&
         data.source == 'procurement-payment' &&
         validString(data.sourcePurchaseOrderId, 1, 160) &&
         validString(data.sourceProcurementPaymentId, 1, 160) &&
@@ -4064,20 +4091,18 @@ match /users/{userId} {
       let poPath = /databases/$(database)/documents/purchaseOrders/$(data.purchaseOrderId);
       let poExists = existsAfter(poPath);
       let po = poExists ? getAfter(poPath).data : {};
-      let poBeforeExists = exists(poPath);
-      let poBefore = poBeforeExists ? get(poPath).data : {};
       let expensePath = /databases/$(database)/documents/bookkeepingEntries/$(paymentId);
       let expenseExists = existsAfter(expensePath);
       let expense = expenseExists ? getAfter(expensePath).data : {};
       return hasApprovedAdminPermission('bookkeeping') &&
         validProcurementPayment(data, paymentId) &&
-        poExists && poBeforeExists &&
+        poExists &&
         po.status in ['submitted', 'approved', 'ordered', 'partially_received', 'received'] &&
         po.lastPaymentId == paymentId &&
         po.lastOperationId == data.operationId &&
         po.lastOperationAction == 'payment' &&
         po.updatedAt == data.createdAt &&
-        po.paidAmount == poBefore.paidAmount + data.amount &&
+        po.paidAmount >= data.amount &&
         po.paidAmount <= po.totalAmount &&
         expenseExists &&
         expense.id == paymentId &&
@@ -4257,7 +4282,9 @@ match /users/{userId} {
       let eventExists = existsAfter(eventPath);
       let event = eventExists ? getAfter(eventPath).data : {};
       return hasApprovedAdminPermission('bookkeeping') &&
-        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        data.id == purchaseOrderId &&
+        data.totalAmount is number &&
+        data.paidAmount is number &&
         resource.data.status in ['submitted', 'approved', 'ordered', 'partially_received', 'received'] &&
         data.status == resource.data.status &&
         data.diff(resource.data).affectedKeys().hasOnly([
@@ -4331,27 +4358,25 @@ match /users/{userId} {
 
     function procurementEventCreateAllowed(eventId) {
       let data = request.resource.data;
-      return validProcurementEvent(data, eventId) &&
-        (
+      return data.action == 'payment_recorded'
+        ? hasApprovedAdminPermission('bookkeeping') &&
+          validProcurementEvent(data, eventId) &&
+          data.entityType == 'purchase_order' &&
+          procurementPaymentEventMatchesAfter(data)
+        : hasApprovedAdminPermission('inventory') &&
+          validProcurementEvent(data, eventId) &&
           (
-            hasApprovedAdminPermission('inventory') &&
-            data.entityType == 'supplier' &&
-            data.action == 'created' &&
-            procurementEventSupplierMatchesAfter(data)
-          ) ||
-          (
-            hasApprovedAdminPermission('inventory') &&
-            data.entityType == 'purchase_order' &&
-            data.action in ['created', 'status_changed'] &&
-            procurementEventPurchaseOrderMatchesAfter(data)
-          ) ||
-          (
-            hasApprovedAdminPermission('bookkeeping') &&
-            data.entityType == 'purchase_order' &&
-            data.action == 'payment_recorded' &&
-            procurementPaymentEventMatchesAfter(data)
-          )
-        );
+            (
+              data.entityType == 'supplier' &&
+              data.action == 'created' &&
+              procurementEventSupplierMatchesAfter(data)
+            ) ||
+            (
+              data.entityType == 'purchase_order' &&
+              data.action in ['created', 'status_changed'] &&
+              procurementEventPurchaseOrderMatchesAfter(data)
+            )
+          );
     }
 
     // Supplier, PO, and payment lifecycle writes use direct Firestore transactions.
