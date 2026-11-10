@@ -424,3 +424,4 @@
       allow delete: if isOwner();
     }
     // <<< STUDIO37 GUARD ATTENDANCE RULES END
+
