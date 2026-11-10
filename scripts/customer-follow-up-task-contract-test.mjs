@@ -536,6 +536,20 @@ assert.match(
 );
 
 assert.equal(rules.includes('lastOperationPayloadHash.size() == 64') && rules.includes("data.lastOperationPayloadHash.matches('^[0-9a-f]{64}')"), true);
+const followUpEventCreateRule = rules.slice(
+  rules.indexOf('function customerFollowUpEventCreateAllowed(eventId)'),
+  rules.indexOf('// Customer Follow-up writes the task snapshot first'),
+);
+assert.match(followUpEventCreateRule, /customerFollowUpActorAllowed\(\)/);
+assert.match(followUpEventCreateRule, /validCustomerFollowUpEvent\(data, eventId\)/);
+assert.match(followUpEventCreateRule, /taskExists/);
+assert.match(followUpEventCreateRule, /task\.lastEventSnapshot == data/);
+assert.doesNotMatch(
+  followUpEventCreateRule,
+  /task\.lastEventId|task\.lastOperationId|task\.lastOperationAction|task\.customerId|task\.updatedAt/,
+  'The exact event snapshot comparison already binds task, operation, customer and timestamp fields.',
+);
+
 assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
 assert.match(directFollowUpRepository, /runIdempotentFirestoreTransaction\(/);
 assert.equal((directFollowUpRepository.match(/markerWriteMode: 'after'/g) || []).length, 2);

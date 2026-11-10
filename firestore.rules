@@ -4943,12 +4943,7 @@ match /users/{userId} {
       return customerFollowUpActorAllowed() &&
         validCustomerFollowUpEvent(data, eventId) &&
         taskExists &&
-        task.lastEventId == eventId &&
-        task.lastEventSnapshot == data &&
-        task.lastOperationId == data.operationId &&
-        task.lastOperationAction == data.operationAction &&
-        task.customerId == data.customerId &&
-        task.updatedAt == data.createdAt;
+        task.lastEventSnapshot == data;
     }
 
     // Customer Follow-up writes the task snapshot first, then appends the exact
