@@ -3112,7 +3112,7 @@ match /users/{userId} {
     function validProcurementPaymentFence(data, closingId) {
       let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
       let allowedChanges = [
-        'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'status', 'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
         'lastOperationId', 'lastOperationAction', 'lastProcurementPaymentAt',
         'lastProcurementPaymentId', 'lastProcurementPurchaseOrderId'
       ];
@@ -3132,6 +3132,10 @@ match /users/{userId} {
         validIsoDate(data.businessDate) &&
         data.registerId == 'main' &&
         data.status in ['open', 'reopened'] &&
+        (
+          !exists(fencePath) ||
+          get(fencePath).data.status in ['open', 'reopened', 'not_opened']
+        ) &&
         data.activityRevision is int &&
         data.activityRevision >= 1 &&
         validIsoTimestampString(data.createdAt) &&
