@@ -476,7 +476,21 @@ const rulesEvent = rules.slice(rules.indexOf('match /customerFollowUpEvents/'), 
 assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpTaskCreateAllowed\(taskId\);[\s\S]*?allow update: if customerFollowUpTaskUpdateAllowed\(taskId\);[\s\S]*?allow delete: if false;/);
 assert.match(rules, /function repositoryOperationDomainMatches\(data\)[\s\S]*?task\.lastOperationId == data\.operationId[\s\S]*?task\.lastOperationPayloadHash == data\.payloadHash/);
 assert.match(rules, /function validCustomerFollowUpTask\(data, taskId\)[\s\S]*?data\.keys\(\)\.size\(\) == 42[\s\S]*?data\.lastOperationPayloadHash\.size\(\) == 64/);
-assert.match(rules, /function customerFollowUpActorAllowed\(\)[\s\S]*?profile\.permissions\.customers == true[\s\S]*?ownership\.currentOwnerUid == request\.auth\.uid/);
+assert.match(
+  rules,
+  /function customerFollowUpActorAllowed\(\)[\s\S]*?profile\.permissions\.customers == true[\s\S]*?profile\.role == 'owner'[\s\S]*?get\(ownershipPath\)\.data\.currentOwnerUid == request\.auth\.uid/,
+  'Customer admins must avoid the extra ownership read; canonical Owner access remains ownership-bound.',
+);
+assert.match(
+  rules,
+  /function customerFollowUpOtherAssigneeAllowed\(uid\)[\s\S]*?profile\.role == 'owner'[\s\S]*?get\(ownershipPath\)\.data\.currentOwnerUid == uid/,
+  'Owner assignees must remain bound to the canonical ownership document.',
+);
+assert.match(
+  rules,
+  /function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?data\.keys\(\)\.size\(\) == resource\.data\.keys\(\)\.size\(\)[\s\S]*?data\.customerId == resource\.data\.customerId[\s\S]*?data\.createdByUid == resource\.data\.createdByUid[\s\S]*?data\.revision == resource\.data\.revision \+ 1/,
+  'Follow-up updates must preserve immutable task identity and increment revision.',
+);
 assert.match(rules, /data\.lastEventSnapshot\.keys\(\)\.hasOnly\(\[[\s\S]*?'changes', 'fromStatus', 'toStatus'[\s\S]*?data\.lastEventSnapshot\.createdAt == data\.updatedAt/);
 assert.doesNotMatch(rules, /function validCustomerFollowUpEventSnapshot/);
 
