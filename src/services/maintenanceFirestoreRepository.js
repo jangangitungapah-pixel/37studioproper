@@ -77,7 +77,7 @@ function dateTime(value, label, optional = false) {
 
 function businessDate(value) {
   const date = cleanText(value, 'Tanggal biaya', 10, true);
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error('Tanggal biaya wajib menggunakan format YYYY-MM-DD.');
   }
   const parsed = new Date(date + 'T00:00:00.000Z');
@@ -92,7 +92,7 @@ function normalizeAttachments(value) {
   if (!Array.isArray(value)) throw new Error('Lampiran harus berupa daftar referensi.');
   return value.slice(0, 10).map((entry) => {
     const url = cleanText(entry?.url, 'URL lampiran', 2000, true);
-    if (!/^https:\\/\\//i.test(url)) {
+    if (!/^https:\/\//i.test(url)) {
       throw new Error('Referensi lampiran harus menggunakan URL HTTPS.');
     }
     return {
@@ -298,6 +298,9 @@ export async function reportCanonicalMaintenanceWorkOrder(input = {}, idempotenc
       }
       if (['inactive', 'lost'].includes(String(item.status || '').trim())) {
         throw new Error('Equipment nonaktif atau hilang tidak dapat dibuatkan work order baru.');
+      }
+      if (item.status === 'maintenance' || item.condition === 'maintenance') {
+        throw new Error('Equipment sudah berstatus Maintenance dan perlu menyelesaikan work order yang aktif terlebih dahulu.');
       }
 
       const workOrder = {
