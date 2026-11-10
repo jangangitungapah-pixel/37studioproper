@@ -508,16 +508,16 @@ for (const field of [
     'Follow-up updates must preserve immutable field: ' + field,
   );
 }
-assert.match(followUpUpdateValidator, /validCustomerFollowUpTask\\(data, taskId\\)/);
-assert.match(followUpUpdateValidator, /data\\.revision == resource\\.data\\.revision \\+ 1/);
-assert.match(followUpUpdateValidator, /data\\.lastOperationAction == 'update'/);
-assert.match(followUpUpdateValidator, /validCustomerFollowUpTaskUpdateEventSnapshot\\(data\\)/);
+assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpTask(data, taskId)'));
+assert.ok(followUpUpdateValidator.includes('data.revision == resource.data.revision + 1'));
+assert.ok(followUpUpdateValidator.includes("data.lastOperationAction == 'update'"));
+assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpTaskUpdateEventSnapshot(data)'));
 const followUpUpdateSnapshotValidator = rules.slice(
   rules.indexOf('function validCustomerFollowUpTaskUpdateEventSnapshot(data)'),
   rules.indexOf('function validCustomerFollowUpTaskUpdate(data, taskId)'),
 );
-assert.match(followUpUpdateSnapshotValidator, /snapshot\\.keys\\(\\)\\.size\\(\\) == 16/);
-assert.match(followUpUpdateSnapshotValidator, /snapshot\\.operationAction == 'update'/);
+assert.ok(followUpUpdateSnapshotValidator.includes('snapshot.keys().size() == 16'));
+assert.ok(followUpUpdateSnapshotValidator.includes("snapshot.operationAction == 'update'"));
 const followUpUpdateRule = rules.slice(
   rules.indexOf('function customerFollowUpTaskUpdateAllowed(taskId)'),
   rules.indexOf('function customerFollowUpEventCreateAllowed(eventId)'),
@@ -554,7 +554,6 @@ assert.doesNotMatch(
   /data\.diff\(resource\.data\)/,
   'Follow-up update validation must avoid recursive MapDiff on the nested event snapshot.',
 );
-assert.match(followUpUpdateValidator, /data\.lastEventSnapshot\.operationAction == 'update'/);
 assert.match(followUpUpdateRule, /data\.get\('lastOperationId', ''\) != resource\.data\.get\('lastOperationId', ''\)/);
 
 assert.equal(rules.includes('lastOperationPayloadHash.size() == 64') && rules.includes("data.lastOperationPayloadHash.matches('^[0-9a-f]{64}')"), true);
