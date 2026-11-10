@@ -9,7 +9,6 @@ const workspace = read('src/components/inventory/ProcurementWorkspace.jsx');
 const inventoryCss = read('src/styles/modules/inventory.css');
 const inventoryWorker = read('workers/admin-operations-worker/src/domain/inventory.js');
 const workerRouter = read('workers/admin-operations-worker/src/index.js');
-const operations = read('src/services/adminOperationsRepository.js');
 const inventoryRepository = read('src/services/inventoryRepository.js');
 const directRepository = read('src/services/procurementFirestoreRepository.js');
 const rules = read('firestore.rules');
@@ -102,7 +101,7 @@ for (const endpoint of [
   '/v1/procurement/goods-receipts',
   '/v1/procurement/payments',
 ]) {
-  assert.equal(operations.includes(endpoint), true, 'Canonical client wrapper missing: ' + endpoint);
+  assert.equal(directRepository.includes(endpoint), false, 'Direct Firestore repository must not call Worker routes: ' + endpoint);
 }
 
 function getCollectionRulesBlock(collectionName, documentId) {
