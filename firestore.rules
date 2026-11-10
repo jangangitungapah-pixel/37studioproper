@@ -2706,6 +2706,7 @@ match /users/{userId} {
           'sourceAttendanceId', 'sourceAttendanceDate',
           'sourceGuardPersonId', 'sourceBookingId',
           'sourceFeeEntryId', 'sourceEventId', 'sourceAction', 'sourceWorkOrderId',
+          'sourcePurchaseOrderId', 'sourceProcurementPaymentId',
           'actorName', 'actorUid', 'idempotencyKey', 'immutable',
           'operationId', 'sourceProofId', 'reversalOf', 'createdAt', 'updatedAt'
         ]) &&
@@ -2724,6 +2725,8 @@ match /users/{userId} {
         validOptionalString(data, 'sourceBookingId', 160) &&
         validOptionalString(data, 'sourceFeeEntryId', 240) &&
         validOptionalString(data, 'sourceWorkOrderId', 160) &&
+        validOptionalString(data, 'sourcePurchaseOrderId', 160) &&
+        validOptionalString(data, 'sourceProcurementPaymentId', 160) &&
         validOptionalString(data, 'sourceEventId', 240) &&
         validOptionalString(data, 'sourceAction', 80) &&
         validOptionalString(data, 'actorName', 120) &&
@@ -3036,6 +3039,135 @@ match /users/{userId} {
         bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
 
+    function procurementPaymentBookkeepingMatchesAfter(data, entryId) {
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.sourceProcurementPaymentId);
+      let paymentExists = existsAfter(paymentPath);
+      let payment = paymentExists ? getAfter(paymentPath).data : {};
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.sourcePurchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      let poBeforeExists = exists(poPath);
+      let poBefore = poBeforeExists ? get(poPath).data : {};
+      return paymentExists && poExists && poBeforeExists &&
+        data.id == entryId &&
+        data.type == 'expense' &&
+        data.category == 'procurement' &&
+        data.source == 'procurement-payment' &&
+        data.immutable == true &&
+        data.sourceProcurementPaymentId == entryId &&
+        data.sourcePurchaseOrderId == payment.purchaseOrderId &&
+        data.amount == payment.amount &&
+        data.date == payment.date &&
+        data.paymentMethod == payment.paymentMethod &&
+        data.note == payment.note &&
+        data.actorUid == request.auth.uid &&
+        data.operationId == payment.operationId &&
+        payment.id == entryId &&
+        payment.actorUid == request.auth.uid &&
+        po.id == payment.purchaseOrderId &&
+        po.lastPaymentId == payment.id &&
+        po.lastOperationId == payment.operationId &&
+        po.paidAmount == poBefore.paidAmount + payment.amount;
+    }
+
+    function procurementPaymentLedgerCreateAllowed(data, entryId) {
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validBookkeepingEntry(data, entryId) &&
+        data.source == 'procurement-payment' &&
+        validString(data.sourcePurchaseOrderId, 1, 160) &&
+        validString(data.sourceProcurementPaymentId, 1, 160) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.operationId, 67, 67) &&
+        data.immutable == true &&
+        bookkeepingBusinessDateOpen(data) &&
+        procurementPaymentBookkeepingMatchesAfter(data, entryId);
+    }
+
+    function procurementPaymentFenceCompanionMatchesAfter(data) {
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.lastProcurementPaymentId);
+      let paymentExists = existsAfter(paymentPath);
+      let payment = paymentExists ? getAfter(paymentPath).data : {};
+      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastProcurementPaymentId);
+      let ledgerExists = existsAfter(ledgerPath);
+      let ledger = ledgerExists ? getAfter(ledgerPath).data : {};
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.lastProcurementPurchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      return paymentExists && ledgerExists && poExists &&
+        payment.id == data.lastProcurementPaymentId &&
+        payment.purchaseOrderId == data.lastProcurementPurchaseOrderId &&
+        payment.date == data.businessDate &&
+        payment.createdAt == data.updatedAt &&
+        payment.operationId == data.lastOperationId &&
+        payment.actorUid == request.auth.uid &&
+        ledger.id == payment.id &&
+        ledger.source == 'procurement-payment' &&
+        ledger.date == data.businessDate &&
+        ledger.operationId == data.lastOperationId &&
+        po.lastPaymentId == payment.id &&
+        po.lastOperationId == data.lastOperationId &&
+        po.lastOperationAction == 'payment';
+    }
+
+    function validProcurementPaymentFence(data, closingId) {
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let allowedChanges = [
+        'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastProcurementPaymentAt',
+        'lastProcurementPaymentId', 'lastProcurementPurchaseOrderId'
+      ];
+      return data is map &&
+        (
+          exists(fencePath)
+            ? data.diff(get(fencePath).data).affectedKeys().hasOnly(allowedChanges)
+            : data.keys().hasOnly([
+                'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+                'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+                'lastOperationId', 'lastOperationAction', 'lastProcurementPaymentAt',
+                'lastProcurementPaymentId', 'lastProcurementPurchaseOrderId'
+              ])
+        ) &&
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['open', 'reopened'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.updatedAt == data.lastProcurementPaymentAt &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastActivityByUid == request.auth.uid &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationAction == 'procurement-payment' &&
+        validString(data.lastProcurementPaymentId, 1, 160) &&
+        validString(data.lastProcurementPurchaseOrderId, 1, 160);
+    }
+
+    function procurementPaymentFenceUpdateAllowed(closingId) {
+      let data = request.resource.data;
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validProcurementPaymentFence(data, closingId) &&
+        (
+          exists(fencePath)
+            ? resource.data.status != 'closed' &&
+              data.activityRevision == resource.data.get('activityRevision', 0) + 1
+            : data.activityRevision == 1
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'procurement-payment',
+          'purchaseOrders',
+          data.lastProcurementPurchaseOrderId
+        ) &&
+        procurementPaymentFenceCompanionMatchesAfter(data);
+    }
+
     function bookkeepingEntryCreateAllowed(data, entryId) {
       let source = data.get('source', '');
       return source == 'booking-payment'
@@ -3047,6 +3179,8 @@ match /users/{userId} {
           )
         : source == 'booking-refund'
           ? financeBookingLedgerCreateAllowed(data, entryId)
+          : source == 'procurement-payment'
+            ? procurementPaymentLedgerCreateAllowed(data, entryId)
           : source == 'manual'
             ? (
                 isApprovedAdmin() &&
@@ -3090,7 +3224,9 @@ match /users/{userId} {
         'openingCash', 'reviewNote', 'sourceFingerprint', 'sourceWatermark',
         'totalsByMethod', 'transactionCount', 'transactionReferences',
         'varianceReason', 'lastFinanceOperationId', 'reopenReason',
-        'reopenedAt', 'reopenedByName', 'reopenedByUid'
+        'reopenedAt', 'reopenedByName', 'reopenedByUid',
+        'lastProcurementPaymentAt', 'lastProcurementPaymentId',
+        'lastProcurementPurchaseOrderId'
       ];
       return data is map &&
         data.keys().hasOnly(allowedFields) &&
@@ -3371,11 +3507,13 @@ match /users/{userId} {
       let action = data.get('lastOperationAction', '');
       return action in ['payment', 'proof-approve', 'refund', 'void']
         ? financeActivityFenceUpdateAllowed(closingId)
-        : action in ['manual-create', 'manual-update', 'manual-delete']
-          ? manualBookkeepingFenceUpdateAllowed(closingId)
-          : action in ['daily-close', 'daily-reopen']
-            ? dailyClosingSessionTransitionAllowed(closingId)
-            : false;
+        : action == 'procurement-payment'
+          ? procurementPaymentFenceUpdateAllowed(closingId)
+          : action in ['manual-create', 'manual-update', 'manual-delete']
+            ? manualBookkeepingFenceUpdateAllowed(closingId)
+            : action in ['daily-close', 'daily-reopen']
+              ? dailyClosingSessionTransitionAllowed(closingId)
+              : false;
     }
 
     match /cashClosingSessions/{closingId} {
