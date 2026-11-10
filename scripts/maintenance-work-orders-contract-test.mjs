@@ -96,6 +96,7 @@ const firestoreRules = read('firestore.rules');
 const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
 const maintenanceUi = read('src/components/inventory/InventoryMaintenanceWorkspace.jsx');
 const maintenanceRepository = read('src/services/maintenanceFirestoreRepository.js');
+const adminOperationsClient = read('src/services/adminOperationsRepository.js');
 const bookkeepingRepository = read('src/services/bookkeepingRepository.js');
 const bookkeepingPage = read('src/pages/admin/BookkeepingPage.jsx');
 const packageJson = JSON.parse(read('package.json'));
@@ -401,6 +402,16 @@ assert.match(firestoreRules, /validOptionalString\(data, 'sourceWorkOrderId', 16
 assert.equal(inventoryPage.includes('InventoryMaintenanceWorkspace'), true);
 assert.equal(maintenanceUi.includes('maintenanceFirestoreRepository.js'), true);
 assert.equal(maintenanceUi.includes('adminOperationsRepository.js'), false);
+assert.doesNotMatch(
+  adminOperationsClient,
+  /reportCanonicalMaintenanceWorkOrder|actOnCanonicalMaintenanceWorkOrder|reopenCanonicalMaintenanceWorkOrder|recordCanonicalMaintenanceCost/,
+  'Maintenance client Worker wrappers must stay retired.',
+);
+assert.doesNotMatch(
+  adminOperationsClient,
+  /createCanonicalSupplier|createCanonicalPurchaseOrder|transitionCanonicalPurchaseOrder|receiveCanonicalPurchaseOrder|recordCanonicalProcurementPayment|saveCanonicalInventoryItem|archiveCanonicalInventoryItem|adjustCanonicalInventory|getCanonicalCustomerFollowUpAssignees|createCanonicalCustomerFollowUpTask|updateCanonicalCustomerFollowUpTask|cancelCanonicalCustomerFollowUpTask/,
+  'Phase 4 client Worker wrappers must stay retired.',
+);
 assert.equal(maintenanceUi.includes('recordCanonicalMaintenanceCost'), true);
 assert.equal(maintenanceRepository.includes('runIdempotentFirestoreTransaction'), true);
 assert.equal(maintenanceRepository.includes('reportCanonicalMaintenanceWorkOrder'), true);
