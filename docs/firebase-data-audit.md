@@ -112,4 +112,4 @@ This is a source-level query inventory, not proof that every possible filter com
 - Production prerequisites remain open: export/compare the active production Rules baseline (previously recorded release `aa6d3469-9101-4c7a-8ede-bcba9894d38a`), verify production composite index `customerFollowUpTasks(status, dueAt, dueTime)`, and reconcile production financial data before any publication.
 - No production Rules/index change, Hosting/Worker deployment, or production data mutation was performed.
 
-**Phase 3 status: CLOSED** on 2026-11-09 after final HEAD Quality Gates #504 passed. PR #18 remains Draft and unmerged; Phase 4 has not started.
+**Phase 3 status: CLOSED** on 2026-11-09 after final HEAD Quality Gates #504 passed. PR #18 remains Draft and unmerged; Phase 4 implementation is in progress on the migration branch. Local verification is pending.
