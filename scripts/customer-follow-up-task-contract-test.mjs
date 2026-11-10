@@ -508,13 +508,16 @@ for (const field of [
     'Follow-up updates must preserve immutable field: ' + field,
   );
 }
-assert.match(followUpUpdateValidator, /data\.keys\(\)\.size\(\) == 42/);
-assert.match(followUpUpdateValidator, /data\.revision == resource\.data\.revision \+ 1/);
-assert.match(
-  followUpUpdateValidator,
-  /data\.assignedToUid == resource\.data\.assignedToUid \|\|\s*validString\(data\.assignedToUid, 1, 128\)/,
-  'An unchanged assignee is preserved; a changed assignee must remain a valid UID.',
+assert.match(followUpUpdateValidator, /validCustomerFollowUpTask\\(data, taskId\\)/);
+assert.match(followUpUpdateValidator, /data\\.revision == resource\\.data\\.revision \\+ 1/);
+assert.match(followUpUpdateValidator, /data\\.lastOperationAction == 'update'/);
+assert.match(followUpUpdateValidator, /validCustomerFollowUpTaskUpdateEventSnapshot\\(data\\)/);
+const followUpUpdateSnapshotValidator = rules.slice(
+  rules.indexOf('function validCustomerFollowUpTaskUpdateEventSnapshot(data)'),
+  rules.indexOf('function validCustomerFollowUpTaskUpdate(data, taskId)'),
 );
+assert.match(followUpUpdateSnapshotValidator, /snapshot\\.keys\\(\\)\\.size\\(\\) == 16/);
+assert.match(followUpUpdateSnapshotValidator, /snapshot\\.operationAction == 'update'/);
 const followUpUpdateRule = rules.slice(
   rules.indexOf('function customerFollowUpTaskUpdateAllowed(taskId)'),
   rules.indexOf('function customerFollowUpEventCreateAllowed(eventId)'),
