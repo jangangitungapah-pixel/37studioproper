@@ -13,6 +13,7 @@
     "test": "node scripts/run-with-report.mjs test:raw",
     "test:spark": "node scripts/run-with-report.mjs test:spark:raw",
     "test:serial": "node scripts/run-with-report.mjs test:serial:raw",
+    "verify:local": "node scripts/run-local-verification.mjs",
     "build:raw": "vite build",
     "lint:raw": "eslint .",
     "test:rules:raw": "firebase --project demo-studio37 emulators:exec --only firestore \"node scripts/firestore-rules-behavior-test.mjs && node scripts/firestore-maintenance-rules-test.mjs && node scripts/firestore-repository-foundation-rules-test.mjs && node scripts/firebase-finance-rules-invariant-test.mjs\"",
