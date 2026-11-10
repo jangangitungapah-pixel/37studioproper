@@ -3522,12 +3522,39 @@ match /users/{userId} {
         event.bookkeepingEntryId == data.lastLedgerEntryId;
     }
 
-    function manualBookkeepingFenceCompanionMatchesAfter(data, action) {
+    function manualBookkeepingMaintenanceFenceCompanionMatchesAfter(data) {
       let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
-      let entryAfter = existsAfter(entryPath) ? getAfter(entryPath).data : {};
-      let entryBefore = exists(entryPath) ? get(entryPath).data : {};
+      let entryExists = existsAfter(entryPath);
+      let entryAfter = entryExists ? getAfter(entryPath).data : {};
+      return entryExists && maintenanceCostFenceCompanionMatchesAfter(data, entryAfter);
+    }
+
+    function manualBookkeepingFenceUpdateCompanionMatchesAfter(data) {
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
+      let entryExistsAfter = existsAfter(entryPath);
+      let entryAfter = entryExistsAfter ? getAfter(entryPath).data : {};
+      let entryExistsBefore = exists(entryPath);
+      let entryBefore = entryExistsBefore ? get(entryPath).data : {};
+      return entryExistsAfter &&
+        entryAfter.source == 'manual' &&
+        entryAfter.operationId == data.lastOperationId &&
+        (entryAfter.date == data.businessDate ||
+          (entryExistsBefore && entryBefore.date == data.businessDate));
+    }
+
+    function manualBookkeepingFenceDeleteCompanionMatchesAfter(data) {
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
+      let entryExistsAfter = existsAfter(entryPath);
+      let entryExistsBefore = exists(entryPath);
+      let entryBefore = entryExistsBefore ? get(entryPath).data : {};
+      return !entryExistsAfter && entryExistsBefore &&
+        entryBefore.source in ['', 'manual'] &&
+        entryBefore.date == data.businessDate;
+    }
+
+    function manualBookkeepingFenceCompanionMatchesAfter(data, action) {
       return action == 'maintenance-cost'
-        ? existsAfter(entryPath) && maintenanceCostFenceCompanionMatchesAfter(data, entryAfter)
+        ? manualBookkeepingMaintenanceFenceCompanionMatchesAfter(data)
         : action == 'manual-create'
           ? manualBookkeepingCreateFenceMatchesAfter(
               data.lastLedgerEntryId,
@@ -3535,12 +3562,8 @@ match /users/{userId} {
               data.businessDate
             )
           : action == 'manual-delete'
-            ? (!existsAfter(entryPath) && exists(entryPath) &&
-                entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
-            : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
-                entryAfter.operationId == data.lastOperationId &&
-                (entryAfter.date == data.businessDate ||
-                  (exists(entryPath) && entryBefore.date == data.businessDate)));
+            ? manualBookkeepingFenceDeleteCompanionMatchesAfter(data)
+            : manualBookkeepingFenceUpdateCompanionMatchesAfter(data);
     }
     function validManualBookkeepingActivityFence(data, closingId) {
       let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
