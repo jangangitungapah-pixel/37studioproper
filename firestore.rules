@@ -4631,24 +4631,22 @@ match /users/{userId} {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
       let profileExists = exists(userPath);
-      let ownershipExists = exists(ownershipPath);
       let profile = profileExists ? get(userPath).data : {};
-      let ownership = ownershipExists ? get(ownershipPath).data : {};
-      return (
-        profileExists &&
-        profile.status == 'approved' &&
-        (
+      return profileExists
+        ? profile.status == 'approved' &&
           (
-            profile.role == 'admin' &&
-            profile.permissions is map &&
-            profile.permissions.customers == true
-          ) ||
-          (
-            profile.role == 'owner' &&
-            (!ownershipExists || ownership.currentOwnerUid == request.auth.uid)
+            (
+              profile.role == 'admin' &&
+              profile.permissions is map &&
+              profile.permissions.customers == true
+            ) ||
+            (
+              profile.role == 'owner' &&
+              (!exists(ownershipPath) ||
+                get(ownershipPath).data.currentOwnerUid == request.auth.uid)
+            )
           )
-        )
-      ) || (!profileExists && !ownershipExists && isBootstrapOwnerEmail());
+        : !exists(ownershipPath) && isBootstrapOwnerEmail();
     }
 
     function customerFollowUpAssigneeAllowed(uid) {
@@ -4660,9 +4658,7 @@ match /users/{userId} {
       let userPath = /databases/$(database)/documents/users/$(uid);
       let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
       let profileExists = exists(userPath);
-      let ownershipExists = exists(ownershipPath);
       let profile = profileExists ? get(userPath).data : {};
-      let ownership = ownershipExists ? get(ownershipPath).data : {};
       return profileExists &&
         profile.uid == uid &&
         profile.status == 'approved' &&
@@ -4674,8 +4670,8 @@ match /users/{userId} {
           ) ||
           (
             profile.role == 'owner' &&
-            ownershipExists &&
-            ownership.currentOwnerUid == uid
+            exists(ownershipPath) &&
+            get(ownershipPath).data.currentOwnerUid == uid
           )
         );
     }
@@ -4856,20 +4852,20 @@ match /users/{userId} {
 
     function customerFollowUpTaskUpdateAllowed(taskId) {
       let data = request.resource.data;
-      let allowedChanges = [
-        'assignedToUid', 'assignedToName', 'title', 'description', 'status',
-        'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
-        'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
-        'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
-        'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
-        'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
-        'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
-        'lastEventSnapshot'
-      ];
       return customerFollowUpActorAllowed() &&
         customerFollowUpPreviousEventRecorded() &&
         validCustomerFollowUpTaskUpdate(data, taskId) &&
-        data.diff(resource.data).affectedKeys().hasOnly(allowedChanges) &&
+        data.keys().size() == resource.data.keys().size() &&
+        data.customerId == resource.data.customerId &&
+        data.customerName == resource.data.customerName &&
+        data.customerPhone == resource.data.customerPhone &&
+        data.sourceId == resource.data.sourceId &&
+        data.sourceType == resource.data.sourceType &&
+        data.bookingId == resource.data.bookingId &&
+        data.templateKey == resource.data.templateKey &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
         data.revision == resource.data.revision + 1 &&
         data.lastOperationId != resource.data.lastOperationId &&
         data.lastOperationAction == 'update' &&
