@@ -532,6 +532,7 @@ export async function recordCanonicalProcurementPayment(input = {}, idempotencyK
         lastOperationAction: action,
         lastProcurementPaymentAt: timestamp,
         lastProcurementPaymentId: paymentId,
+        lastProcurementPurchaseOrderId: purchaseOrderId,
       };
       const payment = {
         id: paymentId,
