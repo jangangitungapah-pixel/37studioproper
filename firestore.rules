@@ -4195,7 +4195,7 @@ match /users/{userId} {
         data.keys().hasOnly([
           'id', 'entityType', 'entityId', 'action', 'fromStatus', 'toStatus',
           'reason', 'actorUid', 'actorName', 'createdAt', 'amount', 'paymentId',
-          'operationId'
+          'operationId', 'purchaseOrderId', 'items'
         ]) &&
         data.id == eventId &&
         data.entityType in ['supplier', 'purchase_order', 'goods_receipt'] &&
@@ -4354,8 +4354,9 @@ match /users/{userId} {
     }
 
     function procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data) {
-      let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.lastPaymentId);
-      let paymentExists = existsAfter(paymentPath);
+      let paymentId = data.get('lastPaymentId', '');
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(paymentId);
+      let paymentExists = paymentId != '' && existsAfter(paymentPath);
       let payment = paymentExists ? getAfter(paymentPath).data : {};
       let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
       let eventExists = existsAfter(eventPath);
@@ -4485,6 +4486,7 @@ match /users/{userId} {
         data.receivedByUid == request.auth.uid &&
         validString(data.receivedByName, 1, 120) &&
         data.createdAt == data.receivedAt &&
+        data.operationId is string &&
         data.operationId.matches('^v1_[a-f0-9]{64}$') &&
         validString(data.eventId, 1, 160) &&
         repositoryOperationMatchesAfter(
@@ -4512,8 +4514,9 @@ match /users/{userId} {
     }
 
     function procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data) {
-      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.lastReceiptId);
-      let receiptExists = existsAfter(receiptPath);
+      let receiptId = data.get('lastReceiptId', '');
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(receiptId);
+      let receiptExists = receiptId != '' && existsAfter(receiptPath);
       let receipt = receiptExists ? getAfter(receiptPath).data : {};
       let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
       let eventExists = existsAfter(eventPath);
