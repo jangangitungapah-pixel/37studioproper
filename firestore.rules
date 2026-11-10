@@ -4441,9 +4441,13 @@ match /users/{userId} {
 
     function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
       let data = request.resource.data;
-      return procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data) ||
-        procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data) ||
-        procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data);
+      return data.lastOperationAction == 'transition'
+        ? procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data)
+        : data.lastOperationAction == 'payment'
+          ? procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data)
+          : data.lastOperationAction == 'receipt'
+            ? procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data)
+            : false;
     }
 
     function procurementEventSupplierMatchesAfter(data) {
