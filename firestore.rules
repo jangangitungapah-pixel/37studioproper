@@ -122,6 +122,32 @@ service cloud.firestore {
       ) || isOwner();
     }
 
+    // Procurement payment writes share this compact canonical role check across
+    // their atomic PO, payment, ledger, event and closing-fence companion docs.
+    function hasProcurementBookkeepingPermission() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = isSignedIn() && exists(userPath);
+      let ownershipExists = isSignedIn() && exists(ownershipPath);
+      let profile = profileExists ? get(userPath).data : {};
+      return (
+        profileExists &&
+        profile.role == 'admin' &&
+        profile.status == 'approved' &&
+        profile.permissions is map &&
+        profile.permissions.bookkeeping == true
+      ) || (
+        profileExists &&
+        profile.role == 'owner' &&
+        profile.status == 'approved' &&
+        (!ownershipExists || get(ownershipPath).data.currentOwnerUid == request.auth.uid)
+      ) || (
+        !profileExists &&
+        !ownershipExists &&
+        isBootstrapOwnerEmail()
+      );
+    }
+
     function canAccessNotifications() {
       return isOwner() || (
         isApprovedAdmin() &&
@@ -3073,36 +3099,24 @@ match /users/{userId} {
       let poExists = existsAfter(poPath);
       let po = poExists ? getAfter(poPath).data : {};
       return paymentExists && poExists &&
-        data.id == entryId &&
-        data.type == 'expense' &&
-        data.category == 'procurement' &&
-        data.source == 'procurement-payment' &&
-        data.immutable == true &&
-        data.sourceProcurementPaymentId == entryId &&
-        data.sourcePurchaseOrderId == payment.purchaseOrderId &&
-        data.amount == payment.amount &&
-        data.date == payment.date &&
-        data.paymentMethod == payment.paymentMethod &&
-        data.note == payment.note &&
-        data.actorUid == request.auth.uid &&
-        data.operationId == payment.operationId &&
         payment.id == entryId &&
-        payment.actorUid == request.auth.uid &&
+        payment.purchaseOrderId == data.sourcePurchaseOrderId &&
+        payment.amount == data.amount &&
+        payment.date == data.date &&
+        payment.paymentMethod == data.paymentMethod &&
+        payment.note == data.note &&
+        payment.actorUid == data.actorUid &&
+        payment.operationId == data.operationId &&
         po.id == payment.purchaseOrderId &&
         po.lastPaymentId == payment.id &&
         po.lastOperationId == payment.operationId &&
+        po.lastOperationAction == 'payment' &&
         po.paidAmount <= po.totalAmount;
     }
 
     function procurementPaymentLedgerCreateAllowed(data, entryId) {
-      return hasApprovedAdminPermission('bookkeeping') &&
+      return hasProcurementBookkeepingPermission() &&
         validProcurementPaymentExpense(data, entryId) &&
-        data.source == 'procurement-payment' &&
-        validString(data.sourcePurchaseOrderId, 1, 160) &&
-        validString(data.sourceProcurementPaymentId, 1, 160) &&
-        data.actorUid == request.auth.uid &&
-        validString(data.operationId, 67, 67) &&
-        data.immutable == true &&
         bookkeepingBusinessDateOpen(data) &&
         procurementPaymentBookkeepingMatchesAfter(data, entryId);
     }
@@ -3111,23 +3125,16 @@ match /users/{userId} {
       let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.lastProcurementPaymentId);
       let paymentExists = existsAfter(paymentPath);
       let payment = paymentExists ? getAfter(paymentPath).data : {};
-      let ledgerPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastProcurementPaymentId);
-      let ledgerExists = existsAfter(ledgerPath);
-      let ledger = ledgerExists ? getAfter(ledgerPath).data : {};
       let poPath = /databases/$(database)/documents/purchaseOrders/$(data.lastProcurementPurchaseOrderId);
       let poExists = existsAfter(poPath);
       let po = poExists ? getAfter(poPath).data : {};
-      return paymentExists && ledgerExists && poExists &&
+      return paymentExists && poExists &&
         payment.id == data.lastProcurementPaymentId &&
         payment.purchaseOrderId == data.lastProcurementPurchaseOrderId &&
         payment.date == data.businessDate &&
         payment.createdAt == data.updatedAt &&
         payment.operationId == data.lastOperationId &&
         payment.actorUid == request.auth.uid &&
-        ledger.id == payment.id &&
-        ledger.source == 'procurement-payment' &&
-        ledger.date == data.businessDate &&
-        ledger.operationId == data.lastOperationId &&
         po.lastPaymentId == payment.id &&
         po.lastOperationId == data.lastOperationId &&
         po.lastOperationAction == 'payment';
@@ -3135,6 +3142,8 @@ match /users/{userId} {
 
     function validProcurementPaymentFence(data, closingId) {
       let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let fenceExists = exists(fencePath);
+      let previous = fenceExists ? get(fencePath).data : {};
       let allowedChanges = [
         'status', 'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
         'lastOperationId', 'lastOperationAction', 'lastProcurementPaymentAt',
@@ -3142,8 +3151,8 @@ match /users/{userId} {
       ];
       return data is map &&
         (
-          exists(fencePath)
-            ? data.diff(get(fencePath).data).affectedKeys().hasOnly(allowedChanges)
+          fenceExists
+            ? data.diff(previous).affectedKeys().hasOnly(allowedChanges)
             : data.keys().hasOnly([
                 'id', 'businessDate', 'registerId', 'status', 'activityRevision',
                 'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
@@ -3156,10 +3165,7 @@ match /users/{userId} {
         validIsoDate(data.businessDate) &&
         data.registerId == 'main' &&
         data.status in ['open', 'reopened'] &&
-        (
-          !exists(fencePath) ||
-          get(fencePath).data.status in ['open', 'reopened', 'not_opened']
-        ) &&
+        (!fenceExists || previous.status in ['open', 'reopened', 'not_opened']) &&
         data.activityRevision is int &&
         data.activityRevision >= 1 &&
         validIsoTimestampString(data.createdAt) &&
@@ -3169,7 +3175,1767 @@ match /users/{userId} {
         data.lastActivityByUid == request.auth.uid &&
         data.lastOperationId is string &&
         data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}
+
+    function bookkeepingEntryCreateAllowed(data, entryId) {
+      let source = data.get('source', '');
+      return source == 'booking-payment'
+        ? (
+            (
+              bookingInitialPaymentLedgerCreateAllowed(data, entryId) &&
+              bookkeepingBusinessDateOpen(data)
+            ) || financeBookingLedgerCreateAllowed(data, entryId)
+          )
+        : source == 'booking-refund'
+          ? financeBookingLedgerCreateAllowed(data, entryId)
+          : source == 'procurement-payment'
+            ? procurementPaymentLedgerCreateAllowed(data, entryId)
+          : source == 'manual'
+            ? (
+                isApprovedAdmin() &&
+                hasPermission('bookkeeping') &&
+                validManualBookkeepingEntry(data, entryId) &&
+                data.actorUid == request.auth.uid &&
+                bookkeepingBusinessDateOpen(data) &&
+                manualBookkeepingCreateOrUpdateAllowed(data, entryId, 'manual-create')
+              )
+            : source in ['operatorFee', 'guardAttendanceMeal']
+              ? (
+                  isApprovedAdmin() &&
+                  hasPermission('operator-fee') &&
+                  validBookkeepingEntry(data, entryId) &&
+                  bookkeepingBusinessDateOpen(data) &&
+                  reconciledBookkeepingWriteAllowed(data)
+                )
+              : false;
+    }
+
+    match /bookkeepingEntries/{entryId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create: if bookkeepingEntryCreateAllowed(request.resource.data, entryId);
+      allow update: if isApprovedAdmin() &&
+        hasPermission('bookkeeping') &&
+        validManualBookkeepingEntry(request.resource.data, entryId) &&
+        resource.data.source in ['', 'manual'] &&
+        manualBookkeepingUpdateAllowed(request.resource.data, entryId);
+      allow delete: if manualBookkeepingDeleteAllowed(entryId);
+    }
+
+    function validCashClosingSession(data, closingId) {
+      let allowedFields = [
+        'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+        'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastBookingId',
+        'lastLedgerEntryId', 'lastProofId', 'revision', 'cashVariance',
+        'closedAt', 'closedByName', 'closedByUid', 'cashDenominations',
+        'countedCash', 'cutoffAt', 'digitalCounts', 'digitalReconciliation',
+        'expectedCash', 'lastEventAt', 'lastEventId', 'lastEventType',
+        'openingCash', 'reviewNote', 'sourceFingerprint', 'sourceWatermark',
+        'totalsByMethod', 'transactionCount', 'transactionReferences',
+        'varianceReason', 'lastFinanceOperationId', 'reopenReason',
+        'reopenedAt', 'reopenedByName', 'reopenedByUid',
+        'lastProcurementPaymentAt', 'lastProcurementPaymentId',
+        'lastProcurementPurchaseOrderId'
+      ];
+      return data is map &&
+        data.keys().hasOnly(allowedFields) &&
+        data.keys().hasAll([
+          'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+          'createdAt', 'updatedAt', 'revision', 'lastEventId',
+          'lastEventType', 'lastOperationId', 'lastOperationAction'
+        ]) &&
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['closed', 'reopened'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 0 &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventType in ['closed', 'reopened'] &&
+        validString(data.lastOperationId, 8, 80) &&
+        data.lastOperationAction in ['daily-close', 'daily-reopen'] &&
+        data.lastBookingId == '' &&
+        data.lastLedgerEntryId == '' &&
+        data.lastProofId == '';
+    }
+
+    function activityRevisionIncrements(closingId, data) {
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return exists(closingPath)
+        ? data.activityRevision == get(closingPath).data.get('activityRevision', 0) + 1
+        : data.activityRevision == 1;
+    }
+
+    function financeActivityLedgerCompanionMatchesAfter(data, bookingAfter) {
+      return data.lastLedgerEntryId is string &&
+        data.lastLedgerEntryId.size() > 0 &&
+        bookingAfter.lastFinanceLedgerEntryId == data.lastLedgerEntryId &&
+        bookingAfter.lastFinanceProofId == data.lastProofId;
+    }
+
+    function financeActivityVoidCompanionMatchesAfter(data, bookingAfter) {
+      return data.lastLedgerEntryId == '' &&
+        data.lastProofId == '' &&
+        bookingAfter.lastFinanceAction == 'void' &&
+        bookingAfter.lastFinanceLedgerEntryId == '' &&
+        bookingAfter.lastFinanceProofId == '';
+    }
+
+    function financeActivityBookingCompanionMatchesAfter(data, action) {
+      let bookingPath = /databases/$(database)/documents/bookings/$(data.lastBookingId);
+      let bookingAfter = getAfter(bookingPath).data;
+      return existsAfter(bookingPath) &&
+        bookingAfter.lastFinanceAction == action &&
+        bookingAfter.lastFinanceBusinessDate == data.businessDate &&
+        bookingAfter.lastFinanceOperationId == data.lastOperationId &&
+        bookingAfter.lastFinanceLedgerEntryId == data.lastLedgerEntryId &&
+        bookingAfter.lastFinanceProofId == data.lastProofId &&
+        (
+          action == 'void'
+            ? financeActivityVoidCompanionMatchesAfter(data, bookingAfter)
+            : financeActivityLedgerCompanionMatchesAfter(data, bookingAfter)
+        );
+    }
+
+    function validFinanceActivityFence(data, closingId) {
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let allowedChanges = [
+        'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastBookingId',
+        'lastLedgerEntryId', 'lastProofId'
+      ];
+      return data is map &&
+        (
+          exists(fencePath)
+            ? data.diff(get(fencePath).data).affectedKeys().hasOnly(allowedChanges)
+            : data.keys().hasOnly([
+                'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+                'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+                'lastOperationId', 'lastOperationAction', 'lastBookingId',
+                'lastLedgerEntryId', 'lastProofId'
+              ])
+        ) &&
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['open', 'reopened'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastActivityByUid == request.auth.uid &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() > 0 &&
+        data.lastOperationAction in ['payment', 'proof-approve', 'refund', 'void'] &&
+        data.lastBookingId is string &&
+        data.lastBookingId.size() > 0 &&
+        data.lastLedgerEntryId is string &&
+        data.lastProofId is string;
+    }
+
+    function financeActivityFenceUpdateAllowed(closingId) {
+      let data = request.resource.data;
+      let action = data.lastOperationAction;
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      return hasApprovedAdminPermission('billing') &&
+        validFinanceActivityFence(data, closingId) &&
+        (
+          exists(fencePath)
+            ? resource.data.status != 'closed' &&
+              data.activityRevision == resource.data.get('activityRevision', 0) + 1
+            : data.activityRevision == 1
+        ) &&
+        financeActivityBookingCompanionMatchesAfter(data, action);
+    }
+
+    function manualBookkeepingFenceCompanionMatchesAfter(data, action) {
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(data.lastLedgerEntryId);
+      let entryAfter = existsAfter(entryPath) ? getAfter(entryPath).data : {};
+      let entryBefore = exists(entryPath) ? get(entryPath).data : {};
+      return action == 'manual-delete'
+        ? (!existsAfter(entryPath) && exists(entryPath) &&
+            entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
+        : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
+            entryAfter.operationId == data.lastOperationId &&
+            (entryAfter.date == data.businessDate ||
+              (exists(entryPath) && entryBefore.date == data.businessDate)));
+    }
+
+    function validManualBookkeepingActivityFence(data, closingId) {
+      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let allowedChanges = [
+        'activityRevision', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+        'lastOperationId', 'lastOperationAction', 'lastBookingId',
+        'lastLedgerEntryId', 'lastProofId'
+      ];
+      return data is map &&
+        (
+          exists(fencePath)
+            ? data.diff(get(fencePath).data).affectedKeys().hasOnly(allowedChanges)
+            : data.keys().hasOnly([
+                'id', 'businessDate', 'registerId', 'status', 'activityRevision',
+                'createdAt', 'updatedAt', 'lastActivityAt', 'lastActivityByUid',
+                'lastOperationId', 'lastOperationAction', 'lastBookingId',
+                'lastLedgerEntryId', 'lastProofId'
+              ])
+        ) &&
+        data.id == closingId &&
+        closingId == data.businessDate + '__main' &&
+        validIsoDate(data.businessDate) &&
+        data.registerId == 'main' &&
+        data.status in ['open', 'reopened'] &&
+        data.activityRevision is int &&
+        data.activityRevision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validIsoTimestampString(data.lastActivityAt) &&
+        data.lastActivityByUid == request.auth.uid &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() > 0 &&
+        data.lastOperationAction in ['manual-create', 'manual-update', 'manual-delete'] &&
+        data.lastLedgerEntryId is string &&
+        data.lastLedgerEntryId.size() > 0 &&
+        data.lastBookingId == '' &&
+        data.lastProofId == '';
+    }
+
+    function manualBookkeepingFenceUpdateAllowed(closingId) {
+      let data = request.resource.data;
+      return isApprovedAdmin() &&
+        hasPermission('bookkeeping') &&
+        validManualBookkeepingActivityFence(data, closingId) &&
+        activityRevisionIncrements(closingId, data) &&
+        (!exists(/databases/$(database)/documents/cashClosingSessions/$(closingId)) ||
+          get(/databases/$(database)/documents/cashClosingSessions/$(closingId)).data.status != 'closed') &&
+        manualBookkeepingFenceCompanionMatchesAfter(data, data.lastOperationAction);
+    }
+
+    function validCashClosingEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'action', 'actorName', 'actorUid', 'businessDate', 'closingId',
+          'createdAt', 'id', 'reason', 'registerId', 'revision',
+          'sourceFingerprint', 'snapshot', 'summary', 'type', 'operationId'
+        ]) &&
+        data.id == eventId &&
+        data.action in ['closed', 'reopened'] &&
+        validString(data.actorName, 1, 120) &&
+        data.actorUid == request.auth.uid &&
+        validIsoDate(data.businessDate) &&
+        validString(data.closingId, 1, 80) &&
+        data.closingId == data.businessDate + '__main' &&
+        validIsoTimestampString(data.createdAt) &&
+        validString(data.reason, 0, 600) &&
+        data.registerId == 'main' &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validString(data.get('sourceFingerprint', ''), 0, 64) &&
+        data.type == 'cash-closing-event' &&
+        validString(data.operationId, 8, 80) &&
+        (!data.keys().hasAny(['snapshot']) || data.snapshot is map) &&
+        (!data.keys().hasAny(['summary']) || data.summary is map);
+    }
+
+    function cashClosingEventReferencesSessionAfter(eventId) {
+      let event = request.resource.data;
+      let sessionPath = /databases/$(database)/documents/cashClosingSessions/$(event.closingId);
+      let sessionAfter = getAfter(sessionPath).data;
+      let expectedAction = event.action == 'closed' ? 'daily-close' : 'daily-reopen';
+      return existsAfter(sessionPath) &&
+        sessionAfter.lastEventId == eventId &&
+        sessionAfter.lastEventType == event.action &&
+        sessionAfter.lastOperationId == event.operationId &&
+        sessionAfter.lastOperationAction == expectedAction &&
+        sessionAfter.businessDate == event.businessDate &&
+        sessionAfter.revision == event.revision &&
+        sessionAfter.status == (event.action == 'closed' ? 'closed' : 'reopened');
+    }
+
+    function dailyClosingSessionTransitionCompanionsMatchAfter(closingId, data) {
+      let sessionPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let hasPrevious = exists(sessionPath);
+      let previous = hasPrevious ? get(sessionPath).data : {};
+      let eventId = data.lastEventId;
+      let eventPath = /databases/$(database)/documents/cashClosingEvents/$(eventId);
+      let eventAfter = existsAfter(eventPath) ? getAfter(eventPath).data : {};
+      let action = data.lastOperationAction;
+      return (
+        (
+          action == 'daily-close' &&
+          data.status == 'closed' &&
+          (!hasPrevious || previous.status in ['open', 'reopened']) &&
+          data.revision == previous.get('revision', 0) + 1 &&
+          data.activityRevision == previous.get('activityRevision', 0) &&
+          data.lastEventType == 'closed' &&
+          existsAfter(eventPath) &&
+          eventAfter.action == 'closed' &&
+          eventAfter.operationId == data.lastOperationId &&
+          eventAfter.closingId == closingId
+        ) ||
+        (
+          action == 'daily-reopen' &&
+          isOwner() &&
+          hasPrevious &&
+          previous.status == 'closed' &&
+          data.status == 'reopened' &&
+          data.revision == previous.revision &&
+          data.activityRevision == previous.get('activityRevision', 0) + 1 &&
+          data.lastEventType == 'reopened' &&
+          existsAfter(eventPath) &&
+          eventAfter.action == 'reopened' &&
+          eventAfter.operationId == data.lastOperationId &&
+          eventAfter.closingId == closingId
+        )
+      );
+    }
+
+    function dailyClosingSessionTransitionAllowed(closingId) {
+      let data = request.resource.data;
+      let action = data.lastOperationAction;
+      return hasApprovedAdminPermission('bookkeeping') &&
+        validCashClosingSession(data, closingId) &&
+        action in ['daily-close', 'daily-reopen'] &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'finance',
+          action,
+          'cashClosingSessions',
+          closingId
+        ) &&
+        dailyClosingSessionTransitionCompanionsMatchAfter(closingId, data);
+    }
+
+    function cashClosingSessionWriteAllowed(closingId, data) {
+      let action = data.get('lastOperationAction', '');
+      return action in ['payment', 'proof-approve', 'refund', 'void']
+        ? financeActivityFenceUpdateAllowed(closingId)
+        : action == 'procurement-payment'
+          ? procurementPaymentFenceUpdateAllowed(closingId)
+          : action in ['manual-create', 'manual-update', 'manual-delete']
+            ? manualBookkeepingFenceUpdateAllowed(closingId)
+            : action in ['daily-close', 'daily-reopen']
+              ? dailyClosingSessionTransitionAllowed(closingId)
+              : false;
+    }
+
+    match /cashClosingSessions/{closingId} {
+      allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
+      allow create, update: if cashClosingSessionWriteAllowed(closingId, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /cashClosingEvents/{eventId} {
+      allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
+      allow create: if hasApprovedAdminPermission('bookkeeping') &&
+        validCashClosingEvent(request.resource.data, eventId) &&
+        cashClosingEventReferencesSessionAfter(eventId);
+      allow update, delete: if false;
+    }
+
+    function validInventoryItem(data, itemId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'name', 'category', 'type', 'quantity', 'unit', 'minStock',
+          'condition', 'status', 'location', 'note', 'createdAt', 'updatedAt',
+          'lastOperationId', 'lastOperationAction', 'lastMovementId',
+          'lastMovementSnapshot'
+        ]) &&
+        data.id == itemId &&
+        validString(data.name, 1, 160) &&
+        validString(data.category, 1, 80) &&
+        validString(data.type, 1, 40) &&
+        validNumber(data.quantity, 0, 1000000) &&
+        validString(data.unit, 1, 40) &&
+        validNumber(data.minStock, 0, 1000000) &&
+        validString(data.condition, 1, 40) &&
+        validString(data.status, 1, 40) &&
+        validString(data.location, 0, 240) &&
+        validString(data.note, 0, 2000) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction in [
+          'create', 'update', 'archive', 'adjust', 'receive',
+          'maintenance-report', 'maintenance-action', 'maintenance-reopen'
+        ] &&
+        validString(data.lastMovementId, 1, 160) &&
+        data.lastMovementSnapshot is map &&
+        data.lastMovementSnapshot.id == data.lastMovementId &&
+        data.lastMovementSnapshot.itemId == data.id &&
+        data.lastMovementSnapshot.operationId == data.lastOperationId &&
+        data.lastMovementSnapshot.operationAction == data.lastOperationAction &&
+        data.lastMovementSnapshot.actorUid == request.auth.uid &&
+        data.lastMovementSnapshot.nextQuantity == data.quantity;
+    }
+
+    function validInventoryMovement(data, movementId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'itemId', 'itemName', 'type', 'quantity', 'previousQuantity',
+          'nextQuantity', 'unit', 'note', 'reason', 'actorUid', 'actorName',
+          'createdAt', 'metadataSnapshot', 'previousMetadata', 'nextMetadata',
+          'adjustmentKey', 'operationId', 'operationAction',
+          'sourcePurchaseOrderId', 'sourceGoodsReceiptId', 'sourceLineId'
+        ]) &&
+        data.id == movementId &&
+        validString(data.itemId, 1, 160) &&
+        validString(data.itemName, 1, 160) &&
+        data.type in [
+          'create', 'edit', 'inactive', 'stock-in', 'stock-out',
+          'goods-receipt', 'maintenance'
+        ] &&
+        validNumber(data.quantity, 0, 1000000) &&
+        validNumber(data.previousQuantity, 0, 1000000) &&
+        validNumber(data.nextQuantity, 0, 1000000) &&
+        validString(data.unit, 1, 40) &&
+        validString(data.note, 0, 600) &&
+        validString(data.reason, 0, 600) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['metadataSnapshot']) || data.metadataSnapshot is map) &&
+        (!data.keys().hasAny(['previousMetadata']) || data.previousMetadata is map) &&
+        (!data.keys().hasAny(['nextMetadata']) || data.nextMetadata is map) &&
+        (!data.keys().hasAny(['adjustmentKey']) || validString(data.adjustmentKey, 1, 128)) &&
+        validOptionalString(data, 'sourcePurchaseOrderId', 160) &&
+        validOptionalString(data, 'sourceGoodsReceiptId', 160) &&
+        validOptionalString(data, 'sourceLineId', 160) &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}') &&
+        data.operationAction in [
+          'create', 'update', 'archive', 'adjust', 'receive',
+          'maintenance-report', 'maintenance-action', 'maintenance-reopen'
+        ];
+    }
+
+    function inventoryPreviousMovementRecorded() {
+      let movementId = resource.data.get('lastMovementId', '');
+      let movementPath = /databases/$(database)/documents/inventoryMovements/$(movementId);
+      return movementId == '' || exists(movementPath);
+    }
+
+    function inventoryItemCreateAllowed(itemId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('inventory') &&
+        validInventoryItem(data, itemId) &&
+        data.lastOperationAction == 'create' &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'inventory',
+          'create',
+          'inventoryItems',
+          itemId
+        );
+    }
+
+    function procurementGoodsReceiptMovementMatchesAfter(data) {
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.sourceGoodsReceiptId);
+      let receiptExists = existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      return receiptExists &&
+        receipt.operationId == data.operationId &&
+        receipt.purchaseOrderId == data.sourcePurchaseOrderId &&
+        receipt.receivedByUid == request.auth.uid &&
+        receipt.items.hasAny([{
+          'lineId': data.sourceLineId,
+          'inventoryItemId': data.itemId,
+          'itemName': data.itemName,
+          'quantity': data.quantity,
+          'movementId': data.id
+        }]);
+    }
+
+    function validGoodsReceiptInventoryItem(data, itemId, changed) {
+      let movement = data.lastMovementSnapshot;
+      return data is map &&
+        data.id == itemId &&
+        data.quantity is number &&
+        data.quantity > resource.data.quantity &&
+        data.quantity <= 1000000 &&
+        data.createdAt == resource.data.createdAt &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
         data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationAction == 'receive' &&
+        validString(data.lastMovementId, 1, 160) &&
+        movement is map &&
+        movement.id == data.lastMovementId &&
+        movement.itemId == itemId &&
+        movement.type == 'stock-in' &&
+        movement.operationAction == 'receive' &&
+        movement.operationId == data.lastOperationId &&
+        movement.actorUid == request.auth.uid &&
+        movement.previousQuantity == resource.data.quantity &&
+        movement.nextQuantity == data.quantity &&
+        movement.nextQuantity == movement.previousQuantity + movement.quantity &&
+        movement.sourcePurchaseOrderId is string &&
+        movement.sourceGoodsReceiptId is string &&
+        movement.sourceLineId is string &&
+        data.name == resource.data.name &&
+        data.category == resource.data.category &&
+        data.type == resource.data.type &&
+        data.unit == resource.data.unit &&
+        data.minStock == resource.data.minStock &&
+        data.condition == resource.data.condition &&
+        data.status == resource.data.status &&
+        data.location == resource.data.location &&
+        data.note == resource.data.note &&
+        changed.hasOnly([
+          'quantity', 'updatedAt', 'lastOperationId', 'lastOperationAction',
+          'lastMovementId', 'lastMovementSnapshot'
+        ]);
+    }
+
+    function procurementGoodsReceiptMovementCreateAllowed(data, movementId) {
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
+      let itemExists = existsAfter(itemPath);
+      let item = itemExists ? getAfter(itemPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        data is map &&
+        data.id == movementId &&
+        data.type == 'stock-in' &&
+        data.operationAction == 'receive' &&
+        data.operationId is string &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validString(data.itemId, 1, 160) &&
+        validString(data.itemName, 1, 160) &&
+        validNumber(data.quantity, 1, 1000000) &&
+        validNumber(data.previousQuantity, 0, 1000000) &&
+        validNumber(data.nextQuantity, 0, 1000000) &&
+        data.nextQuantity == data.previousQuantity + data.quantity &&
+        validString(data.unit, 1, 40) &&
+        validString(data.note, 0, 600) &&
+        validString(data.reason, 0, 600) &&
+        validString(data.sourcePurchaseOrderId, 1, 160) &&
+        validString(data.sourceGoodsReceiptId, 1, 160) &&
+        validString(data.sourceLineId, 1, 160) &&
+        validIsoTimestampString(data.createdAt) &&
+        itemExists &&
+        item.lastMovementId == movementId &&
+        item.lastMovementSnapshot == data &&
+        item.lastOperationId == data.operationId &&
+        item.lastOperationAction == 'receive' &&
+        item.quantity == data.nextQuantity &&
+        item.updatedAt == data.createdAt &&
+        procurementGoodsReceiptMovementMatchesAfter(data);
+    }
+
+    function inventoryItemUpdateAllowed(itemId) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      return hasApprovedAdminPermission('inventory') &&
+        (
+          data.lastOperationAction == 'receive'
+            ? validGoodsReceiptInventoryItem(data, itemId, changed)
+            : inventoryPreviousMovementRecorded() &&
+              validInventoryItem(data, itemId) &&
+              data.createdAt == resource.data.createdAt &&
+              data.lastOperationId != resource.data.get('lastOperationId', '') &&
+              repositoryOperationMatchesAfter(
+                data.lastOperationId,
+                'inventory',
+                data.lastOperationAction,
+                'inventoryItems',
+                itemId
+              ) &&
+              (
+                (
+                  data.lastOperationAction == 'update' &&
+                  data.quantity == resource.data.quantity &&
+                  changed.hasOnly([
+                    'name', 'category', 'type', 'unit', 'minStock', 'condition',
+                    'status', 'location', 'note', 'updatedAt',
+                    'lastOperationId', 'lastOperationAction', 'lastMovementId',
+                    'lastMovementSnapshot'
+                  ])
+                ) ||
+                (
+                  data.lastOperationAction == 'archive' &&
+                  data.status == 'inactive' &&
+                  data.quantity == resource.data.quantity &&
+                  data.name == resource.data.name &&
+                  data.category == resource.data.category &&
+                  data.type == resource.data.type &&
+                  data.unit == resource.data.unit &&
+                  data.minStock == resource.data.minStock &&
+                  data.condition == resource.data.condition &&
+                  data.location == resource.data.location &&
+                  data.note == resource.data.note &&
+                  changed.hasOnly([
+                    'status', 'lastOperationId', 'lastOperationAction',
+                    'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                  ])
+                ) ||
+                (
+                  data.lastOperationAction == 'adjust' &&
+                  data.quantity != resource.data.quantity &&
+                  data.name == resource.data.name &&
+                  data.category == resource.data.category &&
+                  data.type == resource.data.type &&
+                  data.unit == resource.data.unit &&
+                  data.minStock == resource.data.minStock &&
+                  data.condition == resource.data.condition &&
+                  data.status == resource.data.status &&
+                  data.location == resource.data.location &&
+                  data.note == resource.data.note &&
+                  changed.hasOnly([
+                    'quantity', 'lastOperationId', 'lastOperationAction',
+                    'lastMovementId', 'lastMovementSnapshot', 'updatedAt'
+                  ])
+                )
+              )
+        );
+    }
+
+    function inventoryMovementCreateAllowed(movementId) {
+      let data = request.resource.data;
+      return data.type == 'stock-in' && data.operationAction == 'receive'
+        ? procurementGoodsReceiptMovementCreateAllowed(data, movementId)
+        : inventoryStandardMovementCreateAllowed(data, movementId);
+    }
+
+    function inventoryStandardMovementCreateAllowed(data, movementId) {
+      let itemPath = /databases/$(database)/documents/inventoryItems/$(data.itemId);
+      let itemExists = exists(itemPath);
+      let item = itemExists ? get(itemPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        validInventoryMovement(data, movementId) &&
+        itemExists &&
+        item.lastMovementId == movementId &&
+        item.lastMovementSnapshot == data &&
+        item.lastOperationId == data.operationId &&
+        item.lastOperationAction == data.operationAction &&
+        item.quantity == data.nextQuantity &&
+        item.updatedAt == data.createdAt &&
+        (
+          (
+            data.type == 'create' &&
+            data.operationAction == 'create' &&
+            data.previousQuantity == 0 &&
+            data.quantity == data.nextQuantity &&
+            item.createdAt == data.createdAt
+          ) ||
+          (
+            data.type == 'edit' &&
+            data.operationAction == 'update' &&
+            data.previousQuantity == data.nextQuantity &&
+            data.nextQuantity == item.quantity &&
+            data.quantity == 0
+          ) ||
+          (
+            data.type == 'inactive' &&
+            data.operationAction == 'archive' &&
+            item.status == 'inactive' &&
+            data.previousQuantity == data.nextQuantity &&
+            data.nextQuantity == item.quantity &&
+            data.quantity == 0
+          ) ||
+          (
+            data.type == 'stock-in' &&
+            data.operationAction == 'adjust' &&
+            data.nextQuantity == data.previousQuantity + data.quantity
+          ) ||
+          (
+            data.type == 'stock-out' &&
+            data.operationAction == 'adjust' &&
+            data.previousQuantity == data.nextQuantity + data.quantity
+          )
+        );
+    }
+
+    match /inventoryItems/{itemId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryItemCreateAllowed(itemId);
+      allow update: if inventoryItemUpdateAllowed(itemId);
+      allow delete: if false;
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryMovementCreateAllowed(movementId);
+      allow update, delete: if false;
+    }
+
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Work orders and their lifecycle are written only by Admin Operations Worker.
+      allow create, update, delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      // Maintenance history is append-only and server-authoritative.
+      allow create, update, delete: if false;
+    }
+
+    function validGalleryItem(data) {
+      return data.keys().hasOnly([
+          'title', 'description', 'url', 'publicId', 'category', 'isFavorite',
+          'isDeleted', 'uploadedBy', 'createdAt', 'deletedAt',
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]) &&
+        validString(data.title, 1, 180) &&
+        validString(data.description, 0, 2000) &&
+        validString(data.url, 8, 2000) &&
+        validString(data.publicId, 1, 500) &&
+        data.publicId.matches('^studio37/gallery/[A-Za-z0-9_./-]+$') &&
+        validString(data.category, 1, 80) &&
+        data.isFavorite is bool &&
+        data.isDeleted is bool &&
+        validString(data.uploadedBy, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['deletedAt']) || data.deletedAt == null || validIsoTimestampString(data.deletedAt));
+    }
+
+    match /gallery/{imageId} {
+      allow read: if isApproved() && hasPermission('gallery');
+      allow create: if isApproved() && hasPermission('gallery') &&
+        validGalleryItem(request.resource.data) &&
+        !request.resource.data.keys().hasAny([
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]);
+      allow update: if isApproved() && hasPermission('gallery') &&
+        (!resource.data.keys().hasAny(['permanentDeleteStatus']) ||
+          resource.data.permanentDeleteStatus != 'deleting') &&
+        validGalleryItem(request.resource.data) &&
+        request.resource.data.publicId == resource.data.publicId &&
+        request.resource.data.url == resource.data.url &&
+        request.resource.data.uploadedBy == resource.data.uploadedBy &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        !request.resource.data.keys().hasAny([
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]);
+      allow delete: if false;
+    }
+
+    // Server-authoritative operation control plane. Admin SDK/REST service
+    // accounts bypass client rules after independently verifying actor access.
+    match /adminOperationKeys/{operationId} {
+      allow read, write: if false;
+    }
+
+    match /adminOperationAudit/{auditId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /adminOperationDryRuns/{snapshotId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /adminOperationJobs/{jobId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    // >>> STUDIO37 NOTIFICATION EVENT RULES START
+    function validNotificationEvent(data, eventId) {
+      return data.keys().hasOnly([
+          'actorEmail', 'actorRole', 'actorUid', 'attempts',
+          'bookingId', 'channel', 'createdAt', 'errorMessage',
+          'id', 'message', 'metadata', 'paymentProofId',
+          'priority', 'provider', 'sentAt', 'source', 'status',
+          'targetMode', 'targetRole', 'targetUid', 'title',
+          'type', 'updatedAt', 'url', 'lastAction', 'lastActionAt',
+          'lastActionByEmail', 'lastActionByRole', 'lastActionByUid',
+          'lastActionReason', 'lastActionRequestId', 'leaseExpiresAt',
+          'leaseId', 'providerNotificationId'
+        ]) &&
+        data.id == eventId &&
+        data.actorRole in ['admin', 'client', 'guard', 'system'] &&
+        validString(data.actorUid, 1, 128) &&
+        validString(data.actorEmail, 0, 254) &&
+        validNumber(data.attempts, 0, 20) &&
+        validString(data.bookingId, 0, 160) &&
+        data.channel == 'in_app' &&
+        validIsoTimestampString(data.createdAt) &&
+        validString(data.errorMessage, 0, 1000) &&
+        validString(data.message, 1, 600) &&
+        data.metadata is map &&
+        validString(data.paymentProofId, 0, 160) &&
+        data.priority in ['low', 'normal', 'high'] &&
+        data.provider == 'firestore' &&
+        validOptionalString(data, 'sentAt', 40) &&
+        validString(data.source, 1, 80) &&
+        data.status in ['pending', 'processing', 'sent', 'failed', 'cancelled'] &&
+        data.targetMode in ['role', 'user'] &&
+        data.targetRole in ['admin', 'client', 'none'] &&
+        validString(data.targetUid, 0, 128) &&
+        validString(data.title, 1, 180) &&
+        data.type in [
+          'booking_confirmed',
+          'booking_message_created',
+          'booking_rejected',
+          'booking_request_created',
+          'guard_attendance_submitted',
+          'payment_proof_approved',
+          'payment_proof_rejected',
+          'payment_proof_submitted'
+        ] &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.url, 0, 700) &&
+        validOptionalString(data, 'lastAction', 80) &&
+        validOptionalString(data, 'lastActionAt', 40) &&
+        validOptionalString(data, 'lastActionByEmail', 254) &&
+        validOptionalString(data, 'lastActionByRole', 40) &&
+        validOptionalString(data, 'lastActionByUid', 128) &&
+        validOptionalString(data, 'lastActionReason', 500) &&
+        validOptionalString(data, 'lastActionRequestId', 160) &&
+        validOptionalString(data, 'leaseExpiresAt', 40) &&
+        validOptionalString(data, 'leaseId', 160) &&
+        validOptionalString(data, 'providerNotificationId', 240);
+    }
+
+    function notificationEventActorMatches(data) {
+      return data.actorUid == request.auth.uid &&
+        (
+          (data.actorRole == 'client' && isClientAccount()) ||
+          (data.actorRole == 'admin' && isApprovedAdmin()) ||
+          (data.actorRole == 'guard' && isStudioGuardAccount())
+        );
+    }
+
+    function notificationEventCreateIsRecorded(data) {
+      return data.status == 'sent' &&
+        data.attempts == 0 &&
+        data.errorMessage == '' &&
+        validIsoTimestampString(data.sentAt) &&
+        !data.keys().hasAny([
+          'lastAction', 'lastActionAt', 'lastActionByEmail',
+          'lastActionByRole', 'lastActionByUid', 'lastActionReason',
+          'lastActionRequestId', 'leaseExpiresAt', 'leaseId',
+          'providerNotificationId'
+        ]);
+    }
+
+    function notificationEventTargetIsSafe(data) {
+      return (
+          data.targetMode == 'role' &&
+          data.targetRole == 'admin' &&
+          data.targetUid == '' &&
+          data.actorRole in ['admin', 'client', 'guard']
+        ) || (
+          data.targetMode == 'user' &&
+          data.targetRole == 'client' &&
+          data.targetUid.size() > 0 &&
+          data.actorRole == 'admin'
+        ) || (
+          data.targetMode == 'user' &&
+          data.targetRole == 'admin' &&
+          data.targetUid.size() > 0 &&
+          data.actorRole == 'admin'
+        );
+    }
+
+    match /notificationEvents/{eventId} {
+      allow read: if isSignedIn() && (
+        canAccessNotifications() ||
+        resource.data.actorUid == request.auth.uid ||
+        resource.data.targetUid == request.auth.uid
+      );
+
+      allow create: if isSignedIn() &&
+        validNotificationEvent(request.resource.data, eventId) &&
+        notificationEventActorMatches(request.resource.data) &&
+        notificationEventCreateIsRecorded(request.resource.data) &&
+        notificationEventTargetIsSafe(request.resource.data);
+
+      // Activity events are immutable after creation.
+      allow update, delete: if false;
+    }
+    // <<< STUDIO37 NOTIFICATION EVENT RULES END
+
+    function validProcurementSupplier(data, supplierId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'name', 'contactName', 'phone', 'email', 'address', 'notes',
+          'status', 'createdAt', 'updatedAt', 'createdByUid', 'createdByName',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        data.id == supplierId &&
+        validString(data.name, 2, 160) &&
+        validString(data.contactName, 0, 120) &&
+        validString(data.phone, 0, 40) &&
+        validString(data.email, 0, 160) &&
+        validString(data.address, 0, 500) &&
+        validString(data.notes, 0, 1000) &&
+        data.status == 'active' &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.createdByUid == request.auth.uid &&
+        validString(data.createdByName, 1, 120) &&
+        validString(data.lastOperationId, 67, 67) &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationAction == 'create' &&
+        validString(data.lastEventId, 1, 160);
+    }
+
+    function validProcurementPurchaseOrder(data, purchaseOrderId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'poNumber', 'supplierId', 'supplierName', 'items',
+          'totalAmount', 'paidAmount', 'status', 'orderDate', 'expectedAt',
+          'notes', 'createdAt', 'updatedAt', 'createdByUid', 'createdByName',
+          'approvedAt', 'approvedByUid', 'approvedByName', 'orderedAt',
+          'cancelledAt', 'cancelReason', 'cancelledByUid', 'receivedAt',
+          'lastOperationId', 'lastOperationAction', 'lastEventId', 'lastPaymentId', 'lastReceiptId'
+        ]) &&
+        data.id == purchaseOrderId &&
+        validString(data.poNumber, 12, 64) &&
+        validString(data.supplierId, 1, 160) &&
+        validString(data.supplierName, 1, 160) &&
+        data.items is list &&
+        data.items.size() >= 1 &&
+        data.items.size() <= 100 &&
+        validNumber(data.totalAmount, 1, 1000000000000) &&
+        validNumber(data.paidAmount, 0, 1000000000000) &&
+        data.paidAmount <= data.totalAmount &&
+        data.status in [
+          'draft', 'submitted', 'approved', 'ordered',
+          'partially_received', 'received', 'cancelled'
+        ] &&
+        validIsoDate(data.orderDate) &&
+        (data.expectedAt == '' || validIsoDate(data.expectedAt)) &&
+        validString(data.notes, 0, 1200) &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.createdByUid, 1, 128) &&
+        validString(data.createdByName, 1, 120) &&
+        validOptionalString(data, 'approvedAt', 40) &&
+        validOptionalString(data, 'approvedByUid', 128) &&
+        validOptionalString(data, 'approvedByName', 120) &&
+        validOptionalString(data, 'orderedAt', 40) &&
+        validOptionalString(data, 'cancelledAt', 40) &&
+        validOptionalString(data, 'cancelReason', 600) &&
+        validOptionalString(data, 'cancelledByUid', 128) &&
+        validOptionalString(data, 'receivedAt', 40) &&
+        validString(data.lastOperationId, 67, 67) &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationAction in ['create', 'transition', 'payment', 'receipt'] &&
+        validString(data.lastEventId, 1, 160) &&
+        validOptionalString(data, 'lastPaymentId', 160) &&
+        validOptionalString(data, 'lastReceiptId', 160);
+    }
+
+    function validProcurementPayment(data, paymentId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'purchaseOrderId', 'poNumber', 'supplierId', 'supplierName',
+          'amount', 'paymentMethod', 'date', 'reference', 'note',
+          'actorUid', 'actorName', 'createdAt', 'operationId'
+        ]) &&
+        data.id == paymentId &&
+        validString(data.purchaseOrderId, 1, 160) &&
+        validString(data.poNumber, 12, 64) &&
+        validString(data.supplierId, 1, 160) &&
+        validString(data.supplierName, 1, 160) &&
+        validNumber(data.amount, 1, 1000000000) &&
+        data.paymentMethod in ['cash', 'transfer', 'qris'] &&
+        validIsoDate(data.date) &&
+        validString(data.reference, 0, 120) &&
+        validString(data.note, 0, 800) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.operationId is string &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$');
+    }
+
+    function procurementPaymentEventMatchesAfter(data) {
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.entityId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.paymentId);
+      let paymentExists = existsAfter(paymentPath);
+      let payment = paymentExists ? getAfter(paymentPath).data : {};
+      return poExists && paymentExists &&
+        po.lastEventId == data.id &&
+        po.lastPaymentId == data.paymentId &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'payment' &&
+        po.updatedAt == data.createdAt &&
+        payment.id == data.paymentId &&
+        payment.purchaseOrderId == data.entityId &&
+        payment.amount == data.amount &&
+        payment.operationId == data.operationId &&
+        payment.actorUid == request.auth.uid;
+    }
+
+    function procurementPaymentCreateAllowed(paymentId) {
+      let data = request.resource.data;
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.purchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      let expensePath = /databases/$(database)/documents/bookkeepingEntries/$(paymentId);
+      let expenseExists = existsAfter(expensePath);
+      let expense = expenseExists ? getAfter(expensePath).data : {};
+      return hasProcurementBookkeepingPermission() &&
+        validProcurementPayment(data, paymentId) &&
+        poExists &&
+        po.status in ['submitted', 'approved', 'ordered', 'partially_received', 'received'] &&
+        po.lastPaymentId == paymentId &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'payment' &&
+        po.updatedAt == data.createdAt &&
+        po.paidAmount >= data.amount &&
+        expenseExists &&
+        expense.id == paymentId &&
+        expense.source == 'procurement-payment' &&
+        expense.sourceProcurementPaymentId == paymentId &&
+        expense.amount == data.amount &&
+        expense.operationId == data.operationId;
+    }
+
+    function validProcurementEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'entityType', 'entityId', 'action', 'fromStatus', 'toStatus',
+          'reason', 'actorUid', 'actorName', 'createdAt', 'amount', 'paymentId',
+          'operationId', 'purchaseOrderId', 'items'
+        ]) &&
+        data.id == eventId &&
+        data.entityType in ['supplier', 'purchase_order', 'goods_receipt'] &&
+        validString(data.entityId, 1, 160) &&
+        data.action in ['created', 'status_changed', 'payment_recorded', 'received'] &&
+        validOptionalString(data, 'paymentId', 160) &&
+        validOptionalString(data, 'purchaseOrderId', 160) &&
+        (!data.keys().hasAny(['items']) || data.items is list) &&
+        validString(data.get('fromStatus', ''), 0, 40) &&
+        validString(data.get('toStatus', ''), 0, 40) &&
+        validString(data.get('reason', ''), 0, 600) &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['amount']) || validNumber(data.amount, 1, 1000000000000)) &&
+        validString(data.operationId, 67, 67) &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$');
+    }
+
+    function procurementSupplierEventMatchesAfter(data) {
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return eventExists &&
+        event.id == data.lastEventId &&
+        event.entityType == 'supplier' &&
+        event.entityId == data.id &&
+        event.action == 'created' &&
+        event.actorUid == request.auth.uid &&
+        event.operationId == data.lastOperationId &&
+        event.createdAt == data.createdAt;
+    }
+
+    function procurementPurchaseOrderEventMatchesAfter(data) {
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      let event = eventExists ? getAfter(eventPath).data : {};
+      return eventExists &&
+        event.id == data.lastEventId &&
+        event.entityType == 'purchase_order' &&
+        event.entityId == data.id &&
+        event.actorUid == request.auth.uid &&
+        event.operationId == data.lastOperationId &&
+        event.createdAt == data.updatedAt &&
+        (
+          (
+            data.lastOperationAction == 'create' &&
+            event.action == 'created' &&
+            event.fromStatus == '' &&
+            event.toStatus == 'draft'
+          ) ||
+          (
+            data.lastOperationAction == 'transition' &&
+            event.action == 'status_changed' &&
+            event.fromStatus == resource.data.status &&
+            event.toStatus == data.status &&
+            (data.status != 'cancelled' || event.reason == data.cancelReason)
+          )
+        );
+    }
+
+    function procurementSupplierCreateAllowed(supplierId) {
+      let data = request.resource.data;
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementSupplier(data, supplierId) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'supplier-create',
+          'suppliers',
+          supplierId
+        ) &&
+        procurementSupplierEventMatchesAfter(data);
+    }
+
+    function procurementPurchaseOrderCreateAllowed(purchaseOrderId) {
+      let data = request.resource.data;
+      let supplierPath = /databases/$(database)/documents/suppliers/$(data.supplierId);
+      let supplierExists = exists(supplierPath);
+      let supplier = supplierExists ? get(supplierPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        validProcurementPurchaseOrder(data, purchaseOrderId) &&
+        data.status == 'draft' &&
+        data.paidAmount == 0 &&
+        data.createdByUid == request.auth.uid &&
+        validString(data.createdByName, 1, 120) &&
+        data.lastOperationAction == 'create' &&
+        supplierExists &&
+        supplier.status == 'active' &&
+        supplier.name == data.supplierName &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'purchase-order-create',
+          'purchaseOrders',
+          purchaseOrderId
+        ) &&
+        procurementPurchaseOrderEventMatchesAfter(data);
+    }
+
+    function procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data) {
+      let nextStatusAllowed = (
+        resource.data.status == 'draft' && data.status in ['submitted', 'cancelled']
+      ) || (
+        resource.data.status == 'submitted' && data.status in ['approved', 'cancelled']
+      ) || (
+        resource.data.status == 'approved' && data.status in ['ordered', 'cancelled']
+      );
+      return hasApprovedAdminPermission('inventory') &&
+        data.id == purchaseOrderId &&
+        nextStatusAllowed &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'approvedAt', 'approvedByUid', 'approvedByName',
+          'orderedAt', 'cancelledAt', 'cancelReason', 'cancelledByUid',
+          'lastOperationId', 'lastOperationAction', 'lastEventId'
+        ]) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.updatedAt != resource.data.updatedAt &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'transition' &&
+        validString(data.lastEventId, 1, 160) &&
+        (
+          data.status != 'approved' ||
+          (
+            data.approvedAt == data.updatedAt &&
+            data.approvedByUid == request.auth.uid &&
+            validString(data.approvedByName, 1, 120)
+          )
+        ) &&
+        (
+          data.status != 'ordered' ||
+          data.orderedAt == data.updatedAt
+        ) &&
+        (
+          data.status != 'cancelled' ||
+          (
+            resource.data.paidAmount == 0 &&
+            data.cancelReason is string &&
+            data.cancelReason.size() >= 4 &&
+            data.cancelReason.size() <= 600 &&
+            data.cancelledByUid == request.auth.uid &&
+            data.cancelledAt == data.updatedAt
+          )
+        ) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'purchase-order-transition',
+          'purchaseOrders',
+          purchaseOrderId
+        ) &&
+        procurementPurchaseOrderEventMatchesAfter(data);
+    }
+
+    function procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data) {
+      let paymentId = data.get('lastPaymentId', '');
+      let paymentPath = /databases/$(database)/documents/procurementPayments/$(paymentId);
+      let paymentExists = paymentId != '' && existsAfter(paymentPath);
+      let payment = paymentExists ? getAfter(paymentPath).data : {};
+      let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
+      let eventExists = existsAfter(eventPath);
+      return hasProcurementBookkeepingPermission() &&
+        data.id == purchaseOrderId &&
+        data.totalAmount is number &&
+        data.paidAmount is number &&
+        resource.data.status in ['submitted', 'approved', 'ordered', 'partially_received', 'received'] &&
+        data.status == resource.data.status &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'paidAmount', 'updatedAt', 'lastOperationId', 'lastOperationAction',
+          'lastEventId', 'lastPaymentId'
+        ]) &&
+        validIsoTimestampString(data.updatedAt) &&
+        data.updatedAt != resource.data.updatedAt &&
+        paymentExists &&
+        payment.id == data.lastPaymentId &&
+        payment.purchaseOrderId == purchaseOrderId &&
+        payment.actorUid == request.auth.uid &&
+        payment.operationId == data.lastOperationId &&
+        payment.createdAt == data.updatedAt &&
+        payment.amount > 0 &&
+        data.paidAmount == resource.data.paidAmount + payment.amount &&
+        data.paidAmount <= data.totalAmount &&
+        eventExists &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        data.lastOperationAction == 'payment' &&
+        validString(data.lastEventId, 1, 160) &&
+        validString(data.lastPaymentId, 1, 160) &&
+        repositoryOperationMatchesAfter(
+          data.lastOperationId,
+          'procurement',
+          'procurement-payment',
+          'purchaseOrders',
+          purchaseOrderId
+        );
+    }
+
+    function procurementPurchaseOrderUpdateAllowed(purchaseOrderId) {
+      let data = request.resource.data;
+      return data.lastOperationAction == 'transition'
+        ? procurementPurchaseOrderTransitionUpdateAllowed(purchaseOrderId, data)
+        : data.lastOperationAction == 'payment'
+          ? procurementPurchaseOrderPaymentUpdateAllowed(purchaseOrderId, data)
+          : data.lastOperationAction == 'receipt'
+            ? procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data)
+            : false;
+    }
+
+    function procurementEventSupplierMatchesAfter(data) {
+      let supplierPath = /databases/$(database)/documents/suppliers/$(data.entityId);
+      let supplierExists = existsAfter(supplierPath);
+      let supplier = supplierExists ? getAfter(supplierPath).data : {};
+      return supplierExists &&
+        supplier.lastEventId == data.id &&
+        supplier.lastOperationId == data.operationId &&
+        supplier.id == data.entityId &&
+        supplier.status == 'active' &&
+        supplier.createdAt == data.createdAt;
+    }
+
+    function procurementEventPurchaseOrderMatchesAfter(data) {
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.entityId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      return poExists &&
+        po.lastEventId == data.id &&
+        po.lastOperationId == data.operationId &&
+        po.id == data.entityId &&
+        po.status == data.get('toStatus', '') &&
+        po.updatedAt == data.createdAt &&
+        po.lastOperationAction == (data.action == 'created' ? 'create' : 'transition');
+    }
+
+    function procurementGoodsReceiptEventMatchesAfter(data) {
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(data.entityId);
+      let receiptExists = existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      return receiptExists &&
+        receipt.id == data.entityId &&
+        receipt.eventId == data.id &&
+        receipt.operationId == data.operationId &&
+        receipt.purchaseOrderId == data.purchaseOrderId &&
+        receipt.items == data.items &&
+        receipt.receivedByUid == request.auth.uid &&
+        receipt.receivedAt == data.createdAt;
+    }
+
+    function procurementGoodsReceiptCreateAllowed(receiptId) {
+      let data = request.resource.data;
+      let poPath = /databases/$(database)/documents/purchaseOrders/$(data.purchaseOrderId);
+      let poExists = existsAfter(poPath);
+      let po = poExists ? getAfter(poPath).data : {};
+      return hasApprovedAdminPermission('inventory') &&
+        data is map &&
+        data.keys().hasOnly([
+          'id', 'purchaseOrderId', 'poNumber', 'supplierId', 'supplierName',
+          'items', 'note', 'receivedAt', 'receivedByUid', 'receivedByName',
+          'createdAt', 'operationId', 'eventId', 'payloadHash'
+        ]) &&
+        data.id == receiptId &&
+        validString(data.purchaseOrderId, 1, 160) &&
+        validString(data.poNumber, 12, 64) &&
+        validString(data.supplierId, 1, 160) &&
+        validString(data.supplierName, 1, 160) &&
+        data.items is list &&
+        data.items.size() >= 1 &&
+        data.items.size() <= 5 &&
+        validString(data.note, 0, 800) &&
+        validIsoTimestampString(data.receivedAt) &&
+        data.receivedByUid == request.auth.uid &&
+        validString(data.receivedByName, 1, 120) &&
+        data.createdAt == data.receivedAt &&
+        data.operationId is string &&
+        data.operationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.payloadHash is string &&
+        data.payloadHash.matches('^[a-f0-9]{64}$') &&
+        validString(data.eventId, 1, 160) &&
+        poExists &&
+        po.lastReceiptId == receiptId &&
+        po.lastEventId == data.eventId &&
+        po.lastOperationId == data.operationId &&
+        po.lastOperationAction == 'receipt' &&
+        po.updatedAt == data.receivedAt &&
+        po.status in ['partially_received', 'received'];
+    }
+
+    function procurementPurchaseOrderReceiptUpdateAllowed(purchaseOrderId, data) {
+      let receiptId = data.get('lastReceiptId', '');
+      let receiptPath = /databases/$(database)/documents/goodsReceipts/$(receiptId);
+      let receiptExists = receiptId != '' && existsAfter(receiptPath);
+      let receipt = receiptExists ? getAfter(receiptPath).data : {};
+      let changed = data.diff(resource.data).affectedKeys();
+      return hasApprovedAdminPermission('inventory') &&
+        data.id == purchaseOrderId &&
+        resource.data.status in ['ordered', 'partially_received'] &&
+        data.status in ['partially_received', 'received'] &&
+        data.items is list &&
+        data.items.size() == resource.data.items.size() &&
+        data.totalAmount == resource.data.totalAmount &&
+        data.paidAmount == resource.data.paidAmount &&
+        data.supplierId == resource.data.supplierId &&
+        data.supplierName == resource.data.supplierName &&
+        data.lastOperationAction == 'receipt' &&
+        validString(data.lastOperationId, 67, 67) &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}$') &&
+        data.updatedAt != resource.data.updatedAt &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.lastEventId, 1, 160) &&
+        changed.hasOnly([
+          'items', 'status', 'updatedAt', 'receivedAt',
+          'lastOperationId', 'lastOperationAction', 'lastEventId', 'lastReceiptId'
+        ]) &&
+        receiptExists &&
+        receipt.id == receiptId &&
+        receipt.purchaseOrderId == purchaseOrderId &&
+        receipt.operationId == data.lastOperationId &&
+        receipt.eventId == data.lastEventId &&
+        receipt.receivedAt == data.updatedAt;
+    }
+
+    function procurementEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      return data.action == 'payment_recorded'
+        ? hasProcurementBookkeepingPermission() &&
+          validProcurementEvent(data, eventId) &&
+          data.entityType == 'purchase_order' &&
+          procurementPaymentEventMatchesAfter(data)
+        : data.action == 'received'
+          ? hasApprovedAdminPermission('inventory') &&
+            validProcurementEvent(data, eventId) &&
+            data.entityType == 'goods_receipt' &&
+            procurementGoodsReceiptEventMatchesAfter(data)
+          : hasApprovedAdminPermission('inventory') &&
+            validProcurementEvent(data, eventId) &&
+            (
+              (
+                data.entityType == 'supplier' &&
+                data.action == 'created' &&
+                procurementEventSupplierMatchesAfter(data)
+              ) ||
+              (
+                data.entityType == 'purchase_order' &&
+                data.action in ['created', 'status_changed'] &&
+                procurementEventPurchaseOrderMatchesAfter(data)
+              )
+            );
+    }
+
+    // Supplier, PO, Goods Receipt, and payment lifecycle writes use direct Firestore transactions.
+    match /suppliers/{supplierId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if procurementSupplierCreateAllowed(supplierId);
+      allow update, delete: if false;
+    }
+
+    match /purchaseOrders/{purchaseOrderId} {
+      allow read: if isApproved() && (canAccessInventoryData() || hasPermission('bookkeeping'));
+      allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);
+      allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);
+      allow delete: if false;
+    }
+
+    match /goodsReceipts/{receiptId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if procurementGoodsReceiptCreateAllowed(receiptId);
+      allow update, delete: if false;
+    }
+
+    match /procurementPayments/{paymentId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create: if procurementPaymentCreateAllowed(paymentId);
+      allow update, delete: if false;
+    }
+
+    match /procurementEvents/{eventId} {
+      allow read: if isApproved() && (canAccessInventoryData() ||
+        (hasPermission('bookkeeping') && resource.data.action == 'payment_recorded'));
+      allow create: if procurementEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    function validCustomerFollowUpOptionalTimestamp(value) {
+      return value == '' || validIsoTimestampString(value);
+    }
+
+    function customerFollowUpActorAllowed() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let profile = profileExists ? get(userPath).data : {};
+      return profileExists
+        ? profile.status == 'approved' &&
+          (
+            (
+              profile.role == 'admin' &&
+              profile.permissions is map &&
+              profile.permissions.customers == true
+            ) ||
+            (
+              profile.role == 'owner' &&
+              (!exists(ownershipPath) ||
+                get(ownershipPath).data.currentOwnerUid == request.auth.uid)
+            )
+          )
+        : !exists(ownershipPath) && isBootstrapOwnerEmail();
+    }
+
+    function customerFollowUpAssigneeAllowed(uid) {
+      // The caller's permission is already checked by the parent task rule.
+      return uid == request.auth.uid || customerFollowUpOtherAssigneeAllowed(uid);
+    }
+
+    function customerFollowUpOtherAssigneeAllowed(uid) {
+      let userPath = /databases/$(database)/documents/users/$(uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let profile = profileExists ? get(userPath).data : {};
+      return profileExists &&
+        profile.uid == uid &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            exists(ownershipPath) &&
+            get(ownershipPath).data.currentOwnerUid == uid
+          )
+        );
+    }
+
+    function validCustomerFollowUpEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.id == eventId &&
+        validString(data.taskId, 1, 160) &&
+        validString(data.customerId, 1, 160) &&
+        data.action in [
+          'created', 'updated', 'reassigned', 'rescheduled', 'snoozed',
+          'completed', 'cancelled', 'reopened', 'contacted', 'open',
+          'in_progress'
+        ] &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        data.changes is map &&
+        validString(data.get('fromStatus', ''), 0, 40) &&
+        validString(data.get('toStatus', ''), 0, 40) &&
+        validString(data.get('outcome', ''), 0, 40) &&
+        validString(data.get('dueAt', ''), 0, 10) &&
+        validString(data.get('reason', ''), 0, 600) &&
+        validString(data.get('note', ''), 0, 1200) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}') &&
+        data.operationAction in ['create', 'update'];
+    }
+
+    function validCustomerFollowUpTask(data, taskId) {
+      // All 42 canonical task keys are read and type-checked below. An exact
+      // key count therefore rejects additional fields without an expensive
+      // large-set hasOnly comparison at every update.
+      return data is map &&
+        data.keys().size() == 42 &&
+        data.id == taskId &&
+        validString(data.customerId, 1, 160) &&
+        validString(data.customerName, 1, 160) &&
+        validString(data.customerPhone, 0, 40) &&
+        validString(data.sourceId, 1, 160) &&
+        data.sourceType in ['customer', 'client_account', 'booking'] &&
+        validString(data.bookingId, 0, 160) &&
+        validString(data.assignedToUid, 1, 128) &&
+        validString(data.assignedToName, 1, 120) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 0, 1200) &&
+        data.templateKey in ['payment', 'booking', 'comeback'] &&
+        data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled'] &&
+        data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other'] &&
+        validIsoDate(data.dueAt) &&
+        validString(data.dueTime, 0, 5) &&
+        (
+          data.dueTime == '' ||
+          (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+        ) &&
+        validString(data.notes, 0, 1200) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.createdByUid, 1, 128) &&
+        validString(data.createdByName, 1, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastContactedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.completedAt) &&
+        validString(data.completedByUid, 0, 128) &&
+        validString(data.completedByName, 0, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.cancelledAt) &&
+        validString(data.cancelledByUid, 0, 128) &&
+        validString(data.cancelReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.reopenedAt) &&
+        validString(data.reopenedByUid, 0, 128) &&
+        validString(data.reopenedByName, 0, 120) &&
+        validString(data.reopenReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
+        validString(data.snoozedByUid, 0, 128) &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction in ['create', 'update'] &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.lastEventSnapshot.id == data.lastEventId &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function validCustomerFollowUpTaskUpdate(data, taskId) {
+      return data is map &&
+        data.diff(resource.data).affectedKeys().hasOnly([
+          'assignedToUid', 'assignedToName', 'title', 'description', 'status',
+          'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
+          'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
+          'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
+          'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
+          'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
+          'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
+          'lastEventSnapshot'
+        ]) &&
+        data.id == taskId &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          validString(data.assignedToUid, 1, 128)
+        ) &&
+        (
+          data.assignedToName == resource.data.assignedToName ||
+          validString(data.assignedToName, 1, 120)
+        ) &&
+        (data.title == resource.data.title || validString(data.title, 3, 160)) &&
+        (data.description == resource.data.description || validString(data.description, 0, 1200)) &&
+        (
+          data.status == resource.data.status ||
+          data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled']
+        ) &&
+        (
+          data.outcome == resource.data.outcome ||
+          data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other']
+        ) &&
+        (data.dueAt == resource.data.dueAt || validIsoDate(data.dueAt)) &&
+        (
+          data.dueTime == resource.data.dueTime ||
+          (
+            validString(data.dueTime, 0, 5) &&
+            (
+              data.dueTime == '' ||
+              (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+            )
+          )
+        ) &&
+        (data.notes == resource.data.notes || validString(data.notes, 0, 1200)) &&
+        data.revision is int &&
+        data.revision == resource.data.revision + 1 &&
+        validIsoTimestampString(data.updatedAt) &&
+        (
+          data.lastContactedAt == resource.data.lastContactedAt ||
+          validCustomerFollowUpOptionalTimestamp(data.lastContactedAt)
+        ) &&
+        (
+          data.completedAt == resource.data.completedAt ||
+          validCustomerFollowUpOptionalTimestamp(data.completedAt)
+        ) &&
+        (
+          data.completedByUid == resource.data.completedByUid ||
+          validString(data.completedByUid, 0, 128)
+        ) &&
+        (
+          data.completedByName == resource.data.completedByName ||
+          validString(data.completedByName, 0, 120)
+        ) &&
+        (
+          data.cancelledAt == resource.data.cancelledAt ||
+          validCustomerFollowUpOptionalTimestamp(data.cancelledAt)
+        ) &&
+        (
+          data.cancelledByUid == resource.data.cancelledByUid ||
+          validString(data.cancelledByUid, 0, 128)
+        ) &&
+        (
+          data.cancelReason == resource.data.cancelReason ||
+          validString(data.cancelReason, 0, 600)
+        ) &&
+        (
+          data.lastCompletedAt == resource.data.lastCompletedAt ||
+          validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt)
+        ) &&
+        (
+          data.lastCancelledAt == resource.data.lastCancelledAt ||
+          validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt)
+        ) &&
+        (
+          data.reopenedAt == resource.data.reopenedAt ||
+          validCustomerFollowUpOptionalTimestamp(data.reopenedAt)
+        ) &&
+        (
+          data.reopenedByUid == resource.data.reopenedByUid ||
+          validString(data.reopenedByUid, 0, 128)
+        ) &&
+        (
+          data.reopenedByName == resource.data.reopenedByName ||
+          validString(data.reopenedByName, 0, 120)
+        ) &&
+        (
+          data.reopenReason == resource.data.reopenReason ||
+          validString(data.reopenReason, 0, 600)
+        ) &&
+        (
+          data.snoozedAt == resource.data.snoozedAt ||
+          validCustomerFollowUpOptionalTimestamp(data.snoozedAt)
+        ) &&
+        (
+          data.snoozedByUid == resource.data.snoozedByUid ||
+          validString(data.snoozedByUid, 0, 128)
+        ) &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction == 'update' &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().size() == 16 &&
+        data.lastEventSnapshot.id == data.lastEventId &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        validString(data.lastEventSnapshot.action, 1, 40) &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
+        validString(data.lastEventSnapshot.actorName, 1, 120) &&
+        data.lastEventSnapshot.changes is map &&
+        validString(data.lastEventSnapshot.fromStatus, 0, 40) &&
+        validString(data.lastEventSnapshot.toStatus, 0, 40) &&
+        validString(data.lastEventSnapshot.outcome, 0, 40) &&
+        validString(data.lastEventSnapshot.dueAt, 0, 10) &&
+        validString(data.lastEventSnapshot.reason, 0, 600) &&
+        validString(data.lastEventSnapshot.note, 0, 1200) &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == 'update' &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        data.lastEventSnapshot.operationAction == 'create';
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      return customerFollowUpActorAllowed() &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTaskUpdate(data, taskId) &&
+        data.lastOperationId != resource.data.lastOperationId &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        );
+    }
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventSnapshot == data;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+) &&
         data.lastOperationAction == 'procurement-payment' &&
         validString(data.lastProcurementPaymentId, 1, 160) &&
         validString(data.lastProcurementPurchaseOrderId, 1, 160);
@@ -3177,21 +4943,15 @@ match /users/{userId} {
 
     function procurementPaymentFenceUpdateAllowed(closingId) {
       let data = request.resource.data;
-      let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
-      return hasApprovedAdminPermission('bookkeeping') &&
+      let fenceExists = exists(/databases/$(database)/documents/cashClosingSessions/$(closingId));
+      return hasProcurementBookkeepingPermission() &&
         validProcurementPaymentFence(data, closingId) &&
         (
-          exists(fencePath)
+          fenceExists
             ? resource.data.status != 'closed' &&
-              data.activityRevision == resource.data.get('activityRevision', 0) + 1
+              data.activityRevision == resource.data.get('activityRevision', 0) + 1 &&
+              data.lastOperationId != resource.data.lastOperationId
             : data.activityRevision == 1
-        ) &&
-        repositoryOperationMatchesAfter(
-          data.lastOperationId,
-          'procurement',
-          'procurement-payment',
-          'purchaseOrders',
-          data.lastProcurementPurchaseOrderId
         ) &&
         procurementPaymentFenceCompanionMatchesAfter(data);
     }
