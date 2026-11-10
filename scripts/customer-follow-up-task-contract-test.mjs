@@ -491,7 +491,11 @@ assert.match(
   /function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?data\.keys\(\)\.size\(\) == resource\.data\.keys\(\)\.size\(\)[\s\S]*?data\.customerId == resource\.data\.customerId[\s\S]*?data\.createdByUid == resource\.data\.createdByUid[\s\S]*?data\.revision == resource\.data\.revision \+ 1/,
   'Follow-up updates must preserve immutable task identity and increment revision.',
 );
-assert.match(rules, /data\.lastEventSnapshot\.keys\(\)\.hasOnly\(\[[\s\S]*?'changes', 'fromStatus', 'toStatus'[\s\S]*?data\.lastEventSnapshot\.createdAt == data\.updatedAt/);
+assert.match(
+  rules,
+  /data\.lastEventSnapshot\.keys\(\)\.size\(\) == 16[\s\S]*?data\.lastEventSnapshot\.changes is map[\s\S]*?data\.lastEventSnapshot\.operationAction == 'update'[\s\S]*?data\.lastEventSnapshot\.createdAt == data\.updatedAt/,
+  'Task update snapshots must preserve the full 16-field event schema.',
+);
 assert.doesNotMatch(rules, /function validCustomerFollowUpEventSnapshot/);
 
 assert.match(rules, /return uid == request\.auth\.uid \|\| customerFollowUpOtherAssigneeAllowed\(uid\);/);

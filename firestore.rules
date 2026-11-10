@@ -4819,15 +4819,20 @@ match /users/{userId} {
         data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
         validString(data.lastEventId, 1, 160) &&
         data.lastEventSnapshot is map &&
-        data.lastEventSnapshot.keys().hasOnly([
-          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
-          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
-          'note', 'createdAt', 'operationId', 'operationAction'
-        ]) &&
+        data.lastEventSnapshot.keys().size() == 16 &&
         data.lastEventSnapshot.id == data.lastEventId &&
         data.lastEventSnapshot.taskId == data.id &&
         data.lastEventSnapshot.customerId == data.customerId &&
+        validString(data.lastEventSnapshot.action, 1, 40) &&
         data.lastEventSnapshot.actorUid == request.auth.uid &&
+        validString(data.lastEventSnapshot.actorName, 1, 120) &&
+        data.lastEventSnapshot.changes is map &&
+        validString(data.lastEventSnapshot.fromStatus, 0, 40) &&
+        validString(data.lastEventSnapshot.toStatus, 0, 40) &&
+        validString(data.lastEventSnapshot.outcome, 0, 40) &&
+        validString(data.lastEventSnapshot.dueAt, 0, 10) &&
+        validString(data.lastEventSnapshot.reason, 0, 600) &&
+        validString(data.lastEventSnapshot.note, 0, 1200) &&
         data.lastEventSnapshot.operationId == data.lastOperationId &&
         data.lastEventSnapshot.operationAction == 'update' &&
         data.lastEventSnapshot.createdAt == data.updatedAt;
