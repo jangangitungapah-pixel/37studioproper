@@ -288,5 +288,3 @@
       allow create: if customerFollowUpEventCreateAllowed(eventId);
       allow update, delete: if false;
     }
-
-
