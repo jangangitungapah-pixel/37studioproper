@@ -4327,25 +4327,31 @@ match /users/{userId} {
 
     function procurementEventCreateAllowed(eventId) {
       let data = request.resource.data;
-      return hasApprovedAdminPermission('inventory') &&
-        validProcurementEvent(data, eventId) &&
+      return validProcurementEvent(data, eventId) &&
         (
           (
+            hasApprovedAdminPermission('inventory') &&
             data.entityType == 'supplier' &&
             data.action == 'created' &&
             procurementEventSupplierMatchesAfter(data)
           ) ||
           (
+            hasApprovedAdminPermission('inventory') &&
             data.entityType == 'purchase_order' &&
             data.action in ['created', 'status_changed'] &&
             procurementEventPurchaseOrderMatchesAfter(data)
+          ) ||
+          (
+            hasApprovedAdminPermission('bookkeeping') &&
+            data.entityType == 'purchase_order' &&
+            data.action == 'payment_recorded' &&
+            procurementPaymentEventMatchesAfter(data)
           )
         );
     }
 
-    // Supplier and PO lifecycle writes use direct Firestore transactions.
-    // Receipts and procurement payments remain Worker-owned until their stock,
-    // Daily Closing, and bookkeeping invariants are migrated.
+    // Supplier, PO, and payment lifecycle writes use direct Firestore transactions.
+    // Goods Receipts remain Worker-owned until their stock movement invariants are migrated.
     match /suppliers/{supplierId} {
       allow read: if isApproved() && canAccessInventoryData();
       allow create: if procurementSupplierCreateAllowed(supplierId);
@@ -4366,7 +4372,8 @@ match /users/{userId} {
 
     match /procurementPayments/{paymentId} {
       allow read: if isApproved() && canAccessBookkeepingData();
-      allow create, update, delete: if false;
+      allow create: if procurementPaymentCreateAllowed(paymentId);
+      allow update, delete: if false;
     }
 
     match /procurementEvents/{eventId} {
