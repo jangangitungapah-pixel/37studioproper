@@ -17,7 +17,7 @@ for (const operation of [
 ]) {
   assert.equal(repository.includes('export async function ' + operation + '('), true);
 }
-assert.equal((repository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 3);
+assert.equal((repository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
 for (const required of [
   'scope: SCOPE',
   'requestId',
@@ -74,6 +74,7 @@ for (const required of [
 
 for (const required of [
   "from '../../services/procurementFirestoreRepository.js'",
+  'recordCanonicalProcurementPayment',
   "getStableRequestId('supplier-create'",
   "getStableRequestId('purchase-order-create'",
   "getStableRequestId('purchase-order-transition'",
@@ -105,5 +106,24 @@ assert.equal(rules.includes('function procurementPurchaseOrderEventMatchesAfter'
 assert.equal(rules.includes('function procurementEventPurchaseOrderMatchesAfter'), true);
 assert.equal(packageJson.scripts.test.includes('procurement-direct-repository-contract-test.mjs'), true);
 assert.equal(packageJson.scripts['test:prd'].includes('procurement-direct-repository-contract-test.mjs'), true);
+
+assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
+assert.match(workspace, /getStableRequestId\('procurement-payment'[\s\S]*?recordCanonicalProcurementPayment\(payload, request\.requestId\)/);
+assert.match(repository, /export async function recordCanonicalProcurementPayment/);
+assert.match(repository, /requirePrincipal\('bookkeeping'\)/);
+assert.match(repository, /closing\?\.status === 'closed'/);
+assert.match(repository, /amount > remaining/);
+assert.match(repository, /transaction\.set\(poRef, nextPurchaseOrder\)/);
+assert.match(repository, /transaction\.set\(paymentRef, payment\)/);
+assert.match(repository, /transaction\.set\(expenseRef, expense\)/);
+assert.match(repository, /transaction\.set\(eventRef, event\)/);
+assert.match(repository, /transaction\.set\(closingRef, closingSession\)/);
+assert.match(rules, /function validProcurementPayment\(data, paymentId\)/);
+assert.match(rules, /function procurementPaymentCreateAllowed\(paymentId\)/);
+assert.match(rules, /function procurementPurchaseOrderPaymentUpdateAllowed\(purchaseOrderId, data\)/);
+assert.match(rules, /function procurementPaymentFenceUpdateAllowed\(closingId\)/);
+assert.match(rules, /data\.source == 'procurement-payment'[\s\S]*?bookkeepingBusinessDateOpen\(data\)/);
+assert.match(rules, /data\.action == 'payment_recorded'[\s\S]*?procurementPaymentEventMatchesAfter\(data\)/);
+assert.match(rules, /allow create: if procurementPaymentCreateAllowed\(paymentId\);/);
 
 console.log('procurement-direct-repository-contract-test: PASS');
