@@ -390,3 +390,4 @@ service cloud.firestore {
         ]);
     }
     // >>> STUDIO37 GUARD ATTENDANCE RULES START
+
