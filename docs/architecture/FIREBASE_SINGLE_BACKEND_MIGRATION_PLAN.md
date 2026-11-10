@@ -186,7 +186,7 @@ Do not emulate Admin SDK power by exposing credentials. Where a server-only Auth
 **Remaining Phase 4 closure work:**
 - Run build, lint, regression, and Firestore Rules Emulator locally against the same branch HEAD; fix all failures without weakening permission or transaction invariants.
 - Confirm supplier/PO/receipt/payment and full maintenance lifecycle, including partial receipt, partial payment, retries, Owner reopen, one-time maintenance cost and closed-day denial.
-- Audit all Phase 4 UI imports/call sites for remaining Worker request paths and reconcile the migration matrix.
+- Source-level import/call-site audit is complete for `CustomerPage.jsx`, `InventoryPage.jsx`, `ProcurementWorkspace.jsx` and `InventoryMaintenanceWorkspace.jsx`; no Phase 4 UI imports Worker client wrappers. Contract tests now guard that the retired Phase 4 wrappers do not return.
 - Record local verification evidence and close Phase 4 only after the full domain and security contracts pass.
 
 **Exit:** all domain lifecycle, inventory balance, procurement and maintenance tests pass.
