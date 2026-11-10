@@ -4,7 +4,7 @@
 **Target Firebase project:** `studio-proper`  
 **Target Hosting site:** `studio-37` (`https://studio-37.web.app`)  
 **Architecture decision date:** 2026-11-09  
-**Status:** Approved direction; Phases 1-3 complete; Phase 4 not started. Phase 3 closed on 2026-11-09 after Quality Gates #504 passed on final PR HEAD `bd90b2abfa184773366050ac654c98df08bd3ce7`.
+**Status:** Approved direction; Phases 1-3 complete; Phase 4 in progress on `architecture/firebase-single-backend-migration-2026-11-09`. Phase 3 closed on 2026-11-09 after Quality Gates #504 passed on final PR HEAD `bd90b2abfa184773366050ac654c98df08bd3ce7`.
 
 ## 1. Objective
 
@@ -169,12 +169,25 @@ Do not emulate Admin SDK power by exposing credentials. Where a server-only Auth
 - Reconcile production financial data and validate production indexes before any release.
 - No production Rules/index deployment, Hosting deployment, Worker deployment, or production data mutation was performed or authorized in this phase.
 
-**Exit: met.** Phase 3 is **CLOSED** as of 2026-11-09 on final validated HEAD `bd90b2abfa184773366050ac654c98df08bd3ce7`. PR #18 remains Draft and unmerged. Phase 4 is not started and must begin in a separate session after this close-out. No production action is implied.
+**Exit: met.** Phase 3 is **CLOSED** as of 2026-11-09 on final validated HEAD `bd90b2abfa184773366050ac654c98df08bd3ce7`. PR #18 remains Draft and unmerged. Phase 4 implementation is tracked separately below. No production action is implied.
 
 ### Phase 4 — Customer, follow-up, inventory, procurement, and maintenance
-- Migrate follow-up task lifecycle and PIC discovery to direct Auth/Firestore reads/writes.
-- Migrate inventory save/archive/adjustment, supplier/PO/receipt/payment lifecycle, and maintenance work-order/cost lifecycle.
-- Preserve stock movement records, procurement event history, idempotency, role boundaries, and linked bookkeeping effects.
+
+**Implementation in progress (2026-11-10, migration branch):**
+- Customer Follow-up is routed through `src/services/customerFollowUpFirestoreRepository.js`; CustomerPage uses direct Firestore task create/update/cancel and assignee discovery. Follow-up events remain append-only and operation markers are idempotent.
+- Inventory save/archive/adjustment is routed through `src/services/inventoryFirestoreRepository.js`; inventory movement snapshots remain linked to item updates.
+- Supplier, Purchase Order, Goods Receipt and Procurement Payment operations are routed through `src/services/procurementFirestoreRepository.js`. Goods Receipt writes stock, movements, receipt, PO and event in one idempotent Firestore transaction. Procurement Payment links PO, payment record, immutable expense ledger, procurement event, Daily Closing fence and operation marker.
+- Maintenance work orders now use `src/services/maintenanceFirestoreRepository.js` for report, lifecycle transitions, Owner-only reopen and actual-cost posting. `InventoryMaintenanceWorkspace.jsx` uses stable session-persisted request IDs; the prior Worker wrappers were removed from `adminOperationsRepository.js`.
+- `firestore.rules` now defines direct WorkOrder and append-only Maintenance Event writes, equipment lock pointers, per-action/revision/actor checks, direct maintenance expense validation, and the Daily Closing fence companion. The Rules Emulator command includes `scripts/firestore-maintenance-rules-test.mjs`.
+- The Admin Operations Worker endpoints/domain implementation remain temporarily as legacy compatibility and regression reference while other domains still use the Worker. They are no longer called from the Maintenance UI.
+
+**Verification state:** implementation and contracts are committed on the migration branch, but local build/lint/regression/Firestore Emulator verification on this Phase 4 HEAD is still pending. Do not treat Phase 4 as passed until the local Quality Gates command set is run and any failures are resolved.
+
+**Remaining Phase 4 closure work:**
+- Run build, lint, regression, and Firestore Rules Emulator locally against the same branch HEAD; fix all failures without weakening permission or transaction invariants.
+- Confirm supplier/PO/receipt/payment and full maintenance lifecycle, including partial receipt, partial payment, retries, Owner reopen, one-time maintenance cost and closed-day denial.
+- Audit all Phase 4 UI imports/call sites for remaining Worker request paths and reconcile the migration matrix.
+- Record local verification evidence and close Phase 4 only after the full domain and security contracts pass.
 
 **Exit:** all domain lifecycle, inventory balance, procurement and maintenance tests pass.
 
