@@ -42,3 +42,4 @@
         validIsoTimestampString(data.createdAt) &&
         (!data.keys().hasAny(['deletedAt']) || data.deletedAt == null || validIsoTimestampString(data.deletedAt));
     }
+
