@@ -486,11 +486,33 @@ assert.match(
   /function customerFollowUpOtherAssigneeAllowed\(uid\)[\s\S]*?profile\.role == 'owner'[\s\S]*?get\(ownershipPath\)\.data\.currentOwnerUid == uid/,
   'Owner assignees must remain bound to the canonical ownership document.',
 );
-assert.match(
-  rules,
-  /function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?data\.keys\(\)\.size\(\) == resource\.data\.keys\(\)\.size\(\)[\s\S]*?data\.customerId == resource\.data\.customerId[\s\S]*?data\.createdByUid == resource\.data\.createdByUid[\s\S]*?data\.revision == resource\.data\.revision \+ 1/,
-  'Follow-up updates must preserve immutable task identity and increment revision.',
+const followUpUpdateValidator = rules.slice(
+  rules.indexOf('function validCustomerFollowUpTaskUpdate(data, taskId)'),
+  rules.indexOf('function customerFollowUpPreviousEventRecorded()'),
 );
+const followUpUpdateAllowedKeys = followUpUpdateValidator.match(
+  /affectedKeys\\(\\)\\.hasOnly\\(\\[([\\s\\S]*?)\\]\\)/,
+)?.[1] || '';
+assert.ok(followUpUpdateAllowedKeys.includes("'lastEventSnapshot'"));
+assert.equal(followUpUpdateAllowedKeys.includes("'customerId'"), false,
+  'Follow-up update allowlist must not permit changing the task customer identity.');
+assert.equal(followUpUpdateAllowedKeys.includes("'createdByUid'"), false,
+  'Follow-up update allowlist must not permit changing the task creator.');
+assert.match(followUpUpdateValidator, /data\\.revision == resource\\.data\\.revision \\+ 1/);
+assert.match(
+  followUpUpdateValidator,
+  /data\\.assignedToUid == resource\\.data\\.assignedToUid \\|\\|\\s*validString\\(data\\.assignedToUid, 1, 128\\)/,
+  'An unchanged assignee is preserved; a changed assignee must remain a valid UID.',
+);
+const followUpUpdateRule = rules.slice(
+  rules.indexOf('function customerFollowUpTaskUpdateAllowed(taskId)'),
+  rules.indexOf('function customerFollowUpEventCreateAllowed(eventId)'),
+);
+assert.match(followUpUpdateRule, /customerFollowUpActorAllowed\\(\\)/);
+assert.match(followUpUpdateRule, /customerFollowUpPreviousEventRecorded\\(\\)/);
+assert.match(followUpUpdateRule, /validCustomerFollowUpTaskUpdate\\(data, taskId\\)/);
+assert.match(followUpUpdateRule, /data\\.lastOperationId != resource\\.data\\.lastOperationId/);
+assert.match(followUpUpdateRule, /customerFollowUpAssigneeAllowed\\(data\\.assignedToUid\\)/);
 assert.match(
   rules,
   /data\.lastEventSnapshot\.keys\(\)\.size\(\) == 16[\s\S]*?data\.lastEventSnapshot\.changes is map[\s\S]*?data\.lastEventSnapshot\.operationAction == 'update'[\s\S]*?data\.lastEventSnapshot\.createdAt == data\.updatedAt/,
