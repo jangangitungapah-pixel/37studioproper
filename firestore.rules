@@ -865,10 +865,7 @@ match /users/{userId} {
         task.id == data.resultId &&
         task.lastOperationId == data.operationId &&
         task.lastOperationAction == data.action &&
-        task.lastOperationPayloadHash == data.payloadHash &&
-        task.lastEventSnapshot.actorUid == data.actorUid &&
-        task.lastEventSnapshot.operationId == data.operationId &&
-        task.lastEventSnapshot.operationAction == data.action;
+        task.lastOperationPayloadHash == data.payloadHash;
     }
 
     match /users/{userId}/repositoryOperations/{operationId} {

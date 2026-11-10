@@ -475,6 +475,14 @@ const rulesTask = rules.slice(rules.indexOf('match /customerFollowUpTasks/'), ru
 const rulesEvent = rules.slice(rules.indexOf('match /customerFollowUpEvents/'), rules.indexOf('match /{document=**}', rules.indexOf('match /customerFollowUpEvents/')));
 assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpTaskCreateAllowed\(taskId\);[\s\S]*?allow update: if customerFollowUpTaskUpdateAllowed\(taskId\);[\s\S]*?allow delete: if false;/);
 assert.match(rules, /function repositoryOperationDomainMatches\(data\)[\s\S]*?task\.lastOperationId == data\.operationId[\s\S]*?task\.lastOperationPayloadHash == data\.payloadHash/);
+assert.doesNotMatch(
+  rules.slice(
+    rules.indexOf('function customerFollowUpOperationMarkerMatches(data)'),
+    rules.indexOf('match /users/{userId}/repositoryOperations/')
+  ),
+  /lastEventSnapshot/,
+  'Operation marker validation must not repeat the task event-snapshot checks.',
+);
 assert.match(rules, /function validCustomerFollowUpTask\(data, taskId\)[\s\S]*?data\.keys\(\)\.size\(\) == 42[\s\S]*?data\.lastOperationPayloadHash\.size\(\) == 64/);
 assert.match(
   rules,
