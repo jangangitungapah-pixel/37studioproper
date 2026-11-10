@@ -3319,7 +3319,8 @@ match /users/{userId} {
                 hasApprovedAdminPermission('bookkeeping') &&
                 validManualBookkeepingEntry(data, entryId) &&
                 data.actorUid == request.auth.uid &&
-                bookkeepingBusinessDateOpen(data) &&
+                // The companion activity-fence rule already rejects closed dates
+                // and only permits open/reopened sessions for manual writes.
                 manualBookkeepingCreateOrUpdateAllowed(data, entryId, 'manual-create')
               )
             : source in ['operatorFee', 'guardAttendanceMeal']
