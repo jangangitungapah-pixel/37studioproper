@@ -118,6 +118,7 @@ assert.match(repository, /transaction\.set\(paymentRef, payment\)/);
 assert.match(repository, /transaction\.set\(expenseRef, expense\)/);
 assert.match(repository, /transaction\.set\(eventRef, event\)/);
 assert.match(repository, /transaction\.set\(closingRef, closingSession\)/);
+assert.match(repository, /lastProcurementPurchaseOrderId: purchaseOrderId/);
 assert.match(rules, /function validProcurementPayment\(data, paymentId\)/);
 assert.match(rules, /function procurementPaymentCreateAllowed\(paymentId\)/);
 assert.match(rules, /function procurementPurchaseOrderPaymentUpdateAllowed\(purchaseOrderId, data\)/);
