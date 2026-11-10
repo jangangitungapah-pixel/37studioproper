@@ -588,7 +588,7 @@ assert.match(directFollowUpRepository, /export async function createCanonicalCus
 assert.match(directFollowUpRepository, /export async function updateCanonicalCustomerFollowUpTask/);
 assert.match(directFollowUpRepository, /export async function cancelCanonicalCustomerFollowUpTask/);
 assert.doesNotMatch(directFollowUpRepository, /requestOperation\(/);
-assert.match(packageJson.scripts.test, /customer-follow-up-task-contract-test\.mjs/);
+assert.match(packageJson.scripts['test:serial:raw'], /customer-follow-up-task-contract-test\.mjs/);
 assert.match(packageJson.scripts['test:prd'], /customer-follow-up-task-contract-test\.mjs/);
 
 console.log('Customer follow-up domain and integration contract passed.');
