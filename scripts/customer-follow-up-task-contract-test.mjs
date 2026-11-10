@@ -499,7 +499,11 @@ assert.match(
 assert.doesNotMatch(rules, /function validCustomerFollowUpEventSnapshot/);
 
 assert.match(rules, /return uid == request\.auth\.uid \|\| customerFollowUpOtherAssigneeAllowed\(uid\);/);
-assert.match(rules, /function validCustomerFollowUpTaskUpdate\(data, taskId\)[\s\S]*?data\.lastEventSnapshot\.operationAction == 'update'[\s\S]*?function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?validCustomerFollowUpTaskUpdate\(data, taskId\)/);
+assert.match(
+  rules,
+  /function validCustomerFollowUpTaskUpdate\(data, taskId\)[\s\S]*?data\.assignedToUid == resource\.data\.assignedToUid \|\|[\s\S]*?validString\(data\.assignedToUid, 1, 128\)[\s\S]*?data\.lastEventSnapshot\.operationAction == 'update'[\s\S]*?function customerFollowUpTaskUpdateAllowed\(taskId\)[\s\S]*?validCustomerFollowUpTaskUpdate\(data, taskId\)/,
+  'Unchanged Follow-up fields should reuse trusted persisted values; changed values must still validate.',
+);
 
 assert.equal(rules.includes('lastOperationPayloadHash.size() == 64') && rules.includes("data.lastOperationPayloadHash.matches('^[0-9a-f]{64}')"), true);
 assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
