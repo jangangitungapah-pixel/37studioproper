@@ -5397,18 +5397,23 @@ match /users/{userId} {
     }
 
     function validCustomerFollowUpTaskUpdate(data, taskId) {
+      // The task embeds a nested event snapshot. Comparing MapDiff for the full
+      // document recursively is needlessly expensive in Rules. All 42 canonical
+      // fields are still required below; immutable identity fields are compared
+      // directly, and every mutable field remains type/transition checked.
       return data is map &&
-        data.diff(resource.data).affectedKeys().hasOnly([
-          'assignedToUid', 'assignedToName', 'title', 'description', 'status',
-          'outcome', 'dueAt', 'dueTime', 'notes', 'revision', 'updatedAt',
-          'lastContactedAt', 'completedAt', 'completedByUid', 'completedByName',
-          'cancelledAt', 'cancelledByUid', 'cancelReason', 'lastCompletedAt',
-          'lastCancelledAt', 'reopenedAt', 'reopenedByUid', 'reopenedByName',
-          'reopenReason', 'snoozedAt', 'snoozedByUid', 'lastOperationId',
-          'lastOperationAction', 'lastOperationPayloadHash', 'lastEventId',
-          'lastEventSnapshot'
-        ]) &&
+        data.keys().size() == 42 &&
         data.id == taskId &&
+        data.customerId == resource.data.customerId &&
+        data.customerName == resource.data.customerName &&
+        data.customerPhone == resource.data.customerPhone &&
+        data.sourceId == resource.data.sourceId &&
+        data.sourceType == resource.data.sourceType &&
+        data.bookingId == resource.data.bookingId &&
+        data.templateKey == resource.data.templateKey &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
         (
           data.assignedToUid == resource.data.assignedToUid ||
           validString(data.assignedToUid, 1, 128)
