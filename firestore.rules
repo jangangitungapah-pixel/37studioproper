@@ -5554,9 +5554,12 @@ match /users/{userId} {
 
     function customerFollowUpTaskUpdateAllowed(taskId) {
       let data = request.resource.data;
+      // Legacy/minimal task records may not yet carry an operation marker.
+      // Use map.get defaults so these writes are rejected before full validation
+      // without triggering a missing-property evaluation error.
       return customerFollowUpActorAllowed() &&
-        data.lastOperationId is string &&
-        data.lastOperationId != resource.data.get('lastOperationId', '') &&
+        data.get('lastOperationId', '') is string &&
+        data.get('lastOperationId', '') != resource.data.get('lastOperationId', '') &&
         customerFollowUpPreviousEventRecorded() &&
         validCustomerFollowUpTaskUpdate(data, taskId) &&
         (
