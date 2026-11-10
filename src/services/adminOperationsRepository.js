@@ -200,94 +200,6 @@ export function reviewCanonicalPaymentProof(proofId, decision, input = {}, idemp
   });
 }
 
-export function createCanonicalSupplier(input, idempotencyKey = '') {
-  return requestOperation('/v1/procurement/suppliers', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('supplier-create', input?.name),
-  });
-}
-
-export function createCanonicalPurchaseOrder(input, idempotencyKey = '') {
-  return requestOperation('/v1/procurement/purchase-orders', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('purchase-order-create', input?.supplierId),
-  });
-}
-
-export function transitionCanonicalPurchaseOrder(input, idempotencyKey = '') {
-  return requestOperation('/v1/procurement/purchase-orders/transition', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('purchase-order-transition', input?.purchaseOrderId),
-  });
-}
-
-export function receiveCanonicalPurchaseOrder(input, idempotencyKey = '') {
-  return requestOperation('/v1/procurement/goods-receipts', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('goods-receipt', input?.purchaseOrderId),
-  });
-}
-
-export function recordCanonicalProcurementPayment(input, idempotencyKey = '') {
-  return requestOperation('/v1/procurement/payments', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('procurement-payment', input?.purchaseOrderId),
-  });
-}
-
-export function saveCanonicalInventoryItem(input, idempotencyKey = '') {
-  return requestOperation('/v1/inventory/items', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey(
-      input?.action === 'create' ? 'inventory-create' : 'inventory-update',
-      input?.itemId,
-    ),
-  });
-}
-
-export function archiveCanonicalInventoryItem(input, idempotencyKey = '') {
-  return requestOperation('/v1/inventory/items/archive', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('inventory-archive', input?.itemId),
-  });
-}
-
-
-export function getCanonicalCustomerFollowUpAssignees() {
-  return requestOperation('/v1/customers/follow-ups/assignees', {
-    method: 'GET',
-    retryCount: 1,
-  });
-}
-
-export function createCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
-  return requestOperation('/v1/customers/follow-ups', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-create', input?.customerId),
-  });
-}
-
-export function updateCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
-  return requestOperation('/v1/customers/follow-ups/update', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-update', input?.taskId),
-  });
-}
-
-export function cancelCanonicalCustomerFollowUpTask(input, idempotencyKey = '') {
-  return requestOperation('/v1/customers/follow-ups/cancel', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('customer-follow-up-cancel', input?.taskId),
-  });
-}
-
-export function adjustCanonicalInventory(input, idempotencyKey = '') {
-  return requestOperation('/v1/inventory/adjustments', {
-    body: input,
-    idempotencyKey: idempotencyKey || createAdminOperationKey('inventory', input?.itemId),
-  });
-}
-
 export function permanentlyDeleteGalleryItem(input, idempotencyKey = '') {
   return requestOperation('/v1/gallery/permanent-delete', {
     body: input,
@@ -333,18 +245,6 @@ export function getDangerZoneJob(jobId) {
 }
 
 export const adminOperationsRepository = {
-  getCustomerFollowUpAssignees: getCanonicalCustomerFollowUpAssignees,
-  createCustomerFollowUpTask: createCanonicalCustomerFollowUpTask,
-  updateCustomerFollowUpTask: updateCanonicalCustomerFollowUpTask,
-  cancelCustomerFollowUpTask: cancelCanonicalCustomerFollowUpTask,
-  createSupplier: createCanonicalSupplier,
-  createPurchaseOrder: createCanonicalPurchaseOrder,
-  transitionPurchaseOrder: transitionCanonicalPurchaseOrder,
-  receivePurchaseOrder: receiveCanonicalPurchaseOrder,
-  recordProcurementPayment: recordCanonicalProcurementPayment,
-  adjustInventory: adjustCanonicalInventory,
-  saveInventoryItem: saveCanonicalInventoryItem,
-  archiveInventoryItem: archiveCanonicalInventoryItem,
   createManualBooking: createCanonicalManualBooking,
   recordBookingSessionAction: recordCanonicalBookingSessionAction,
   createDangerZoneDryRun,
