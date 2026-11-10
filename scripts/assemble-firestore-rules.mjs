@@ -19,11 +19,11 @@ const modules = [
 
 const sections = await Promise.all(modules.map(async (path) => {
   const content = await readFile(resolve(root, path), 'utf8');
-  return content.replace(/\\s+$/, '');
+  return content.replace(/\s+$/, '');
 }));
-const output = sections.join('\\n') + '\\n';
+const output = sections.join('\n') + '\n';
 await writeFile(resolve(root, 'firestore.rules'), output, 'utf8');
 process.stdout.write(
   'Firestore Rules assembled from ' + modules.length + ' ordered source modules (' +
-  output.length + ' characters).\\n',
+  output.length + ' characters).\n',
 );
