@@ -5555,9 +5555,10 @@ match /users/{userId} {
     function customerFollowUpTaskUpdateAllowed(taskId) {
       let data = request.resource.data;
       return customerFollowUpActorAllowed() &&
+        data.lastOperationId is string &&
+        data.lastOperationId != resource.data.get('lastOperationId', '') &&
         customerFollowUpPreviousEventRecorded() &&
         validCustomerFollowUpTaskUpdate(data, taskId) &&
-        data.lastOperationId != resource.data.lastOperationId &&
         (
           data.assignedToUid == resource.data.assignedToUid ||
           customerFollowUpAssigneeAllowed(data.assignedToUid)
