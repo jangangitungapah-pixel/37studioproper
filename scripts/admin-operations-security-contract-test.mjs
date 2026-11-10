@@ -175,8 +175,9 @@ assert.equal(dailyClosingWorker.includes('Asia/Jakarta'), true);
 assert.equal(dailyClosingWorker.includes('requiredSignedMoney'), true, 'Net digital reconciliation must support negative refunds and outflows.');
 assert.equal(dailyClosingWorker.includes('commitIdempotentOperation'), true);
 assert.match(rules, /function bookkeepingBusinessDateOpen\(data\)[\s\S]*?cashClosingSessions[\s\S]*?status != 'closed'/);
-assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && \(canAccessBookkeepingData\(\) \|\| hasPermission\('billing'\)\);[\s\S]*?allow create, update: if cashClosingSessionWriteAllowed\(closingId, request\.resource\.data\);[\s\S]*?allow delete: if false;/);
+assert.match(rules, /function cashClosingSessionWriteAllowed\(closingId, data\)[\s\S]*?financeActivityFenceUpdateAllowed\(closingId\)[\s\S]*?procurementPaymentFenceUpdateAllowed\(closingId\)[\s\S]*?dailyClosingSessionTransitionAllowed\(closingId\)/);
+assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && \(canAccessBookkeepingData\(\) \|\| hasPermission\('billing'\)\);[\s\S]*?allow create: if hasApprovedAdminPermission\('bookkeeping'\)[\s\S]*?allow update, delete: if false;/);
 assert.equal(rules.includes('bookkeepingBusinessDateOpen(data)'), true,
   'Manual journal create must reject writes against a closed business date.');
 assert.match(
