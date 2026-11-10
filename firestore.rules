@@ -2976,6 +2976,24 @@ match /users/{userId} {
         );
     }
 
+    function manualBookkeepingCreateFenceMatchesAfter(entryId, operationId, businessDate) {
+      let closingId = businessDate + '__main';
+      let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
+      let closingExists = existsAfter(closingPath);
+      let closingAfter = closingExists ? getAfter(closingPath).data : {};
+      let entryPath = /databases/$(database)/documents/bookkeepingEntries/$(entryId);
+      let entryExists = existsAfter(entryPath);
+      let entryAfter = entryExists ? getAfter(entryPath).data : {};
+      return closingExists && entryExists &&
+        closingAfter.lastOperationId == operationId &&
+        closingAfter.lastOperationAction == 'manual-create' &&
+        closingAfter.lastLedgerEntryId == entryId &&
+        closingAfter.businessDate == businessDate &&
+        entryAfter.source == 'manual' &&
+        entryAfter.operationId == operationId &&
+        entryAfter.date == businessDate;
+    }
+
     function manualBookkeepingFenceMatchesAfter(entryId, operationId, action, businessDate) {
       let closingId = businessDate + '__main';
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
@@ -2999,7 +3017,11 @@ match /users/{userId} {
 
     function manualBookkeepingCreateOrUpdateAllowed(data, entryId, action) {
       return data.operationId is string &&
-        manualBookkeepingFenceMatchesAfter(entryId, data.operationId, action, data.date) &&
+        (
+          action == 'manual-create'
+            ? manualBookkeepingCreateFenceMatchesAfter(entryId, data.operationId, data.date)
+            : manualBookkeepingFenceMatchesAfter(entryId, data.operationId, action, data.date)
+        ) &&
         repositoryOperationMatchesAfter(
           data.operationId,
           'bookkeeping',
@@ -3008,7 +3030,6 @@ match /users/{userId} {
           entryId
         );
     }
-
     function manualBookkeepingUpdateAllowed(data, entryId) {
       return manualBookkeepingCreateOrUpdateAllowed(
           data,
@@ -3507,15 +3528,20 @@ match /users/{userId} {
       let entryBefore = exists(entryPath) ? get(entryPath).data : {};
       return action == 'maintenance-cost'
         ? existsAfter(entryPath) && maintenanceCostFenceCompanionMatchesAfter(data, entryAfter)
-        : action == 'manual-delete'
-          ? (!existsAfter(entryPath) && exists(entryPath) &&
-              entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
-          : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
-              entryAfter.operationId == data.lastOperationId &&
-              (entryAfter.date == data.businessDate ||
-                (exists(entryPath) && entryBefore.date == data.businessDate)));
+        : action == 'manual-create'
+          ? manualBookkeepingCreateFenceMatchesAfter(
+              data.lastLedgerEntryId,
+              data.lastOperationId,
+              data.businessDate
+            )
+          : action == 'manual-delete'
+            ? (!existsAfter(entryPath) && exists(entryPath) &&
+                entryBefore.source in ['', 'manual'] && entryBefore.date == data.businessDate)
+            : (existsAfter(entryPath) && entryAfter.source == 'manual' &&
+                entryAfter.operationId == data.lastOperationId &&
+                (entryAfter.date == data.businessDate ||
+                  (exists(entryPath) && entryBefore.date == data.businessDate)));
     }
-
     function validManualBookkeepingActivityFence(data, closingId) {
       let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
       let allowedChanges = [
@@ -5397,14 +5423,33 @@ match /users/{userId} {
         data.lastEventSnapshot.createdAt == data.updatedAt;
     }
 
+    function validCustomerFollowUpTaskUpdateEventSnapshot(data) {
+      let snapshot = data.lastEventSnapshot;
+      return snapshot is map &&
+        snapshot.keys().size() == 16 &&
+        snapshot.id == data.lastEventId &&
+        snapshot.taskId == data.id &&
+        snapshot.customerId == data.customerId &&
+        validString(snapshot.action, 1, 40) &&
+        snapshot.actorUid == request.auth.uid &&
+        validString(snapshot.actorName, 1, 120) &&
+        snapshot.changes is map &&
+        validString(snapshot.fromStatus, 0, 40) &&
+        validString(snapshot.toStatus, 0, 40) &&
+        validString(snapshot.outcome, 0, 40) &&
+        validString(snapshot.dueAt, 0, 10) &&
+        validString(snapshot.reason, 0, 600) &&
+        validString(snapshot.note, 0, 1200) &&
+        snapshot.operationId == data.lastOperationId &&
+        snapshot.operationAction == 'update' &&
+        snapshot.createdAt == data.updatedAt;
+    }
+
     function validCustomerFollowUpTaskUpdate(data, taskId) {
-      // The task embeds a nested event snapshot. Comparing MapDiff for the full
-      // document recursively is needlessly expensive in Rules. All 42 canonical
-      // fields are still required below; immutable identity fields are compared
-      // directly, and every mutable field remains type/transition checked.
-      return data is map &&
-        data.keys().size() == 42 &&
-        data.id == taskId &&
+      // Reuse the canonical task validator instead of comparing every mutable
+      // field with an OR-validation branch. The nested event snapshot is checked
+      // separately to retain the full immutable 16-field update-event contract.
+      return validCustomerFollowUpTask(data, taskId) &&
         data.customerId == resource.data.customerId &&
         data.customerName == resource.data.customerName &&
         data.customerPhone == resource.data.customerPhone &&
@@ -5415,127 +5460,10 @@ match /users/{userId} {
         data.createdAt == resource.data.createdAt &&
         data.createdByUid == resource.data.createdByUid &&
         data.createdByName == resource.data.createdByName &&
-        (
-          data.assignedToUid == resource.data.assignedToUid ||
-          validString(data.assignedToUid, 1, 128)
-        ) &&
-        (
-          data.assignedToName == resource.data.assignedToName ||
-          validString(data.assignedToName, 1, 120)
-        ) &&
-        (data.title == resource.data.title || validString(data.title, 3, 160)) &&
-        (data.description == resource.data.description || validString(data.description, 0, 1200)) &&
-        (
-          data.status == resource.data.status ||
-          data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled']
-        ) &&
-        (
-          data.outcome == resource.data.outcome ||
-          data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other']
-        ) &&
-        (data.dueAt == resource.data.dueAt || validIsoDate(data.dueAt)) &&
-        (
-          data.dueTime == resource.data.dueTime ||
-          (
-            validString(data.dueTime, 0, 5) &&
-            (
-              data.dueTime == '' ||
-              (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
-            )
-          )
-        ) &&
-        (data.notes == resource.data.notes || validString(data.notes, 0, 1200)) &&
-        data.revision is int &&
         data.revision == resource.data.revision + 1 &&
-        validIsoTimestampString(data.updatedAt) &&
-        (
-          data.lastContactedAt == resource.data.lastContactedAt ||
-          validCustomerFollowUpOptionalTimestamp(data.lastContactedAt)
-        ) &&
-        (
-          data.completedAt == resource.data.completedAt ||
-          validCustomerFollowUpOptionalTimestamp(data.completedAt)
-        ) &&
-        (
-          data.completedByUid == resource.data.completedByUid ||
-          validString(data.completedByUid, 0, 128)
-        ) &&
-        (
-          data.completedByName == resource.data.completedByName ||
-          validString(data.completedByName, 0, 120)
-        ) &&
-        (
-          data.cancelledAt == resource.data.cancelledAt ||
-          validCustomerFollowUpOptionalTimestamp(data.cancelledAt)
-        ) &&
-        (
-          data.cancelledByUid == resource.data.cancelledByUid ||
-          validString(data.cancelledByUid, 0, 128)
-        ) &&
-        (
-          data.cancelReason == resource.data.cancelReason ||
-          validString(data.cancelReason, 0, 600)
-        ) &&
-        (
-          data.lastCompletedAt == resource.data.lastCompletedAt ||
-          validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt)
-        ) &&
-        (
-          data.lastCancelledAt == resource.data.lastCancelledAt ||
-          validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt)
-        ) &&
-        (
-          data.reopenedAt == resource.data.reopenedAt ||
-          validCustomerFollowUpOptionalTimestamp(data.reopenedAt)
-        ) &&
-        (
-          data.reopenedByUid == resource.data.reopenedByUid ||
-          validString(data.reopenedByUid, 0, 128)
-        ) &&
-        (
-          data.reopenedByName == resource.data.reopenedByName ||
-          validString(data.reopenedByName, 0, 120)
-        ) &&
-        (
-          data.reopenReason == resource.data.reopenReason ||
-          validString(data.reopenReason, 0, 600)
-        ) &&
-        (
-          data.snoozedAt == resource.data.snoozedAt ||
-          validCustomerFollowUpOptionalTimestamp(data.snoozedAt)
-        ) &&
-        (
-          data.snoozedByUid == resource.data.snoozedByUid ||
-          validString(data.snoozedByUid, 0, 128)
-        ) &&
-        data.lastOperationId is string &&
-        data.lastOperationId.size() == 67 &&
-        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
         data.lastOperationAction == 'update' &&
-        data.lastOperationPayloadHash is string &&
-        data.lastOperationPayloadHash.size() == 64 &&
-        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
-        validString(data.lastEventId, 1, 160) &&
-        data.lastEventSnapshot is map &&
-        data.lastEventSnapshot.keys().size() == 16 &&
-        data.lastEventSnapshot.id == data.lastEventId &&
-        data.lastEventSnapshot.taskId == data.id &&
-        data.lastEventSnapshot.customerId == data.customerId &&
-        validString(data.lastEventSnapshot.action, 1, 40) &&
-        data.lastEventSnapshot.actorUid == request.auth.uid &&
-        validString(data.lastEventSnapshot.actorName, 1, 120) &&
-        data.lastEventSnapshot.changes is map &&
-        validString(data.lastEventSnapshot.fromStatus, 0, 40) &&
-        validString(data.lastEventSnapshot.toStatus, 0, 40) &&
-        validString(data.lastEventSnapshot.outcome, 0, 40) &&
-        validString(data.lastEventSnapshot.dueAt, 0, 10) &&
-        validString(data.lastEventSnapshot.reason, 0, 600) &&
-        validString(data.lastEventSnapshot.note, 0, 1200) &&
-        data.lastEventSnapshot.operationId == data.lastOperationId &&
-        data.lastEventSnapshot.operationAction == 'update' &&
-        data.lastEventSnapshot.createdAt == data.updatedAt;
+        validCustomerFollowUpTaskUpdateEventSnapshot(data);
     }
-
     function customerFollowUpPreviousEventRecorded() {
       let eventId = resource.data.get('lastEventId', '');
       let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
