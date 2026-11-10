@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, Clock3, Plus, RefreshCw, Wrench, X } from 'lucide-react';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
 import { maintenanceRepository } from '../../services/maintenanceRepository.js';
@@ -8,7 +8,8 @@ import {
   recordCanonicalMaintenanceCost,
   reopenCanonicalMaintenanceWorkOrder,
   reportCanonicalMaintenanceWorkOrder,
-} from '../../services/adminOperationsRepository.js';
+} from '../../services/maintenanceFirestoreRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 
 const STATUS_LABELS = {
   reported: 'Dilaporkan',
@@ -74,6 +75,16 @@ function formatMoney(value) {
     style: 'currency',
     currency: 'IDR',
   }).format(Number(value || 0));
+}
+
+function stableMaintenancePayload(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableMaintenancePayload).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map((key) => (
+      JSON.stringify(key) + ':' + stableMaintenancePayload(value[key])
+    )).join(',') + '}';
+  }
+  return JSON.stringify(value);
 }
 
 function parseAttachmentRefs(value) {
@@ -244,6 +255,22 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
 }
 
 export default function InventoryMaintenanceWorkspace() {
+  const maintenanceRequestIdsRef = useRef(new Map());
+
+  function getMaintenanceRequestId(scope, payload) {
+    const key = scope + ':' + stableMaintenancePayload(payload);
+    let requestId = maintenanceRequestIdsRef.current.get(key);
+    if (!requestId) {
+      requestId = createRepositoryRequestId();
+      maintenanceRequestIdsRef.current.set(key, requestId);
+    }
+    return { key, requestId };
+  }
+
+  function clearMaintenanceRequestId(requestKey) {
+    maintenanceRequestIdsRef.current.delete(requestKey);
+  }
+
   const [items, setItems] = useState([]);
   const [adminSession, setAdminSession] = useState(null);
   const [workOrders, setWorkOrders] = useState([]);
@@ -347,13 +374,16 @@ export default function InventoryMaintenanceWorkspace() {
     if (busy) return;
     setBusy(true);
     try {
-      const result = await reportCanonicalMaintenanceWorkOrder({
+      const payload = {
         ...reportForm,
         estimatedCost: Number(reportForm.estimatedCost || 0),
         plannedAt: reportForm.plannedAt ? new Date(reportForm.plannedAt).toISOString() : '',
         dueAt: reportForm.dueAt ? new Date(reportForm.dueAt).toISOString() : '',
         attachments: parseAttachmentRefs(reportForm.attachmentsText),
-      });
+      };
+      const request = getMaintenanceRequestId('report', payload);
+      const result = await reportCanonicalMaintenanceWorkOrder(payload, request.requestId);
+      clearMaintenanceRequestId(request.key);
       setSelectedId(result.workOrder?.id || '');
       setShowReportForm(false);
       setReportForm({
@@ -380,22 +410,28 @@ export default function InventoryMaintenanceWorkspace() {
     setBusy(true);
     try {
       let result;
+      const operationPayload = pendingAction === 'reopen'
+        ? {
+            expectedRevision: selectedOrder.revision,
+            expectedStatus: selectedOrder.status,
+            reason: payload.reason,
+            workOrderId: selectedOrder.id,
+          }
+        : {
+            ...payload,
+            action: pendingAction,
+            expectedRevision: selectedOrder.revision,
+            expectedStatus: selectedOrder.status,
+            workOrderId: selectedOrder.id,
+          };
+      const request = getMaintenanceRequestId(pendingAction, operationPayload);
       if (pendingAction === 'reopen') {
         await adminAuthRepository.reauthenticateCurrentAdmin({ password: payload.password || '' });
-        result = await reopenCanonicalMaintenanceWorkOrder({
-          expectedRevision: selectedOrder.revision,
-          reason: payload.reason,
-          workOrderId: selectedOrder.id,
-        });
+        result = await reopenCanonicalMaintenanceWorkOrder(operationPayload, request.requestId);
       } else {
-        result = await actOnCanonicalMaintenanceWorkOrder({
-          ...payload,
-          action: pendingAction,
-          expectedRevision: selectedOrder.revision,
-          expectedStatus: selectedOrder.status,
-          workOrderId: selectedOrder.id,
-        });
+        result = await actOnCanonicalMaintenanceWorkOrder(operationPayload, request.requestId);
       }
+      clearMaintenanceRequestId(request.key);
       setSelectedId(result.workOrder?.id || selectedOrder.id);
       setPendingAction('');
       setNotice({ type: 'success', message: 'Status work order diperbarui: ' + (STATUS_LABELS[result.workOrder?.status] || 'berhasil') + '.' });
@@ -414,14 +450,17 @@ export default function InventoryMaintenanceWorkspace() {
     if (!selectedOrder || busy) return;
     setBusy(true);
     try {
-      await recordCanonicalMaintenanceCost({
+      const payload = {
         workOrderId: selectedOrder.id,
         expectedRevision: selectedOrder.revision,
         amount: Number(costForm.amount),
         paymentMethod: costForm.paymentMethod,
         date: costForm.date,
         note: costForm.note,
-      });
+      };
+      const request = getMaintenanceRequestId('cost', payload);
+      await recordCanonicalMaintenanceCost(payload, request.requestId);
+      clearMaintenanceRequestId(request.key);
       setCostForm({ amount: '', paymentMethod: 'cash', date: localBusinessDate(), note: '' });
       setNotice({ type: 'success', message: 'Expense maintenance sudah diposting ke Bookkeeping dan ditautkan ke work order.' });
     } catch (error) {
