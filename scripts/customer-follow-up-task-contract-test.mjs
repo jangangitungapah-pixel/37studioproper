@@ -503,9 +503,8 @@ for (const field of [
   'customerId', 'customerName', 'customerPhone', 'sourceId', 'sourceType',
   'bookingId', 'templateKey', 'createdAt', 'createdByUid', 'createdByName',
 ]) {
-  assert.match(
-    followUpUpdateValidator,
-    new RegExp('data\\\\.' + field + ' == resource\\\\.data\\\\.' + field),
+  assert.ok(
+    followUpUpdateValidator.includes('data.' + field + ' == resource.data.' + field),
     'Follow-up updates must preserve immutable field: ' + field,
   );
 }
