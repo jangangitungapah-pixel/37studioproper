@@ -177,7 +177,6 @@ try {
     }));
     await setDoc(doc(db, 'users', 'bookkeeping-admin'), userProfile('bookkeeping-admin', 'admin', {
       bookkeeping: true,
-      inventory: true,
     }));
     await setDoc(doc(db, 'inventoryItems', 'maintenance-report-item'), inventoryItem('maintenance-report-item'));
     await setDoc(doc(db, 'inventoryItems', 'maintenance-cost-item'), {
@@ -228,6 +227,10 @@ try {
 
   const inventoryDb = environment.authenticatedContext('inventory-admin').firestore();
   const bookkeepingDb = environment.authenticatedContext('bookkeeping-admin').firestore();
+
+  // Bookkeeping-only users can read the source WorkOrder/Event they must reference when posting cost.
+  await assertSucceeds(getDoc(doc(bookkeepingDb, 'maintenanceWorkOrders', 'mwo-cost-fixture')));
+  await assertSucceeds(getDoc(doc(bookkeepingDb, 'maintenanceEvents', 'mwe-cost-fixture')));
 
   // Report creates a WorkOrder, exact event, equipment lock and immutable operation marker atomically.
   const reportRequestId = 'maintenance-report-rules-001';
