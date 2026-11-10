@@ -5557,9 +5557,9 @@ match /users/{userId} {
       // Legacy/minimal task records may not yet carry an operation marker.
       // Use map.get defaults so these writes are rejected before full validation
       // without triggering a missing-property evaluation error.
-      return customerFollowUpActorAllowed() &&
-        data.get('lastOperationId', '') is string &&
+      return data.get('lastOperationId', '') is string &&
         data.get('lastOperationId', '') != resource.data.get('lastOperationId', '') &&
+        customerFollowUpActorAllowed() &&
         customerFollowUpPreviousEventRecorded() &&
         validCustomerFollowUpTaskUpdate(data, taskId) &&
         (
