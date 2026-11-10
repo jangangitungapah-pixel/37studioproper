@@ -530,10 +530,11 @@ export async function actOnCanonicalMaintenanceWorkOrder(input = {}, idempotency
   }
   const workOrderId = cleanText(body.workOrderId, 'Work order', 160, true);
   const requestId = await normalizeRequestId(idempotencyKey);
+  const operationAction = action.replace(/_/g, '-');
   const operationId = await createRepositoryOperationId({
     actorUid: actor.uid,
     scope: SCOPE,
-    action,
+    action: operationAction,
     requestId,
   });
   const eventId = 'mwe_' + operationId.slice(3);
@@ -543,7 +544,7 @@ export async function actOnCanonicalMaintenanceWorkOrder(input = {}, idempotency
     db: firestoreDb,
     actorUid: actor.uid,
     scope: SCOPE,
-    action,
+    action: operationAction,
     requestId,
     payload: {
       action,
