@@ -4391,7 +4391,6 @@ match /users/{userId} {
       let payment = paymentExists ? getAfter(paymentPath).data : {};
       let eventPath = /databases/$(database)/documents/procurementEvents/$(data.lastEventId);
       let eventExists = existsAfter(eventPath);
-      let event = eventExists ? getAfter(eventPath).data : {};
       return hasApprovedAdminPermission('bookkeeping') &&
         data.id == purchaseOrderId &&
         data.totalAmount is number &&
@@ -4414,15 +4413,6 @@ match /users/{userId} {
         data.paidAmount == resource.data.paidAmount + payment.amount &&
         data.paidAmount <= data.totalAmount &&
         eventExists &&
-        event.id == data.lastEventId &&
-        event.entityType == 'purchase_order' &&
-        event.entityId == purchaseOrderId &&
-        event.action == 'payment_recorded' &&
-        event.paymentId == data.lastPaymentId &&
-        event.amount == payment.amount &&
-        event.operationId == data.lastOperationId &&
-        event.actorUid == request.auth.uid &&
-        event.createdAt == data.updatedAt &&
         data.lastOperationId != resource.data.lastOperationId &&
         data.lastOperationAction == 'payment' &&
         validString(data.lastEventId, 1, 160) &&
