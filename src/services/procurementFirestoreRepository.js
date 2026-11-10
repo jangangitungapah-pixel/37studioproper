@@ -540,7 +540,7 @@ export async function receiveCanonicalPurchaseOrder(input = {}, idempotencyKey =
           id: movementIds[index],
           itemId: inventoryItem.id,
           itemName: cleanText(inventoryItem.name, 'Nama item', 160, true),
-          type: 'goods-receipt',
+          type: 'stock-in',
           quantity: line.quantity,
           previousQuantity,
           nextQuantity,

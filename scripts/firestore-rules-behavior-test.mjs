@@ -773,7 +773,7 @@ try {
     id: goodsReceiptMovementId,
     itemId: 'item-1',
     itemName: 'Cable',
-    type: 'goods-receipt',
+    type: 'stock-in',
     quantity: 2,
     previousQuantity: goodsReceiptInventory.quantity,
     nextQuantity: goodsReceiptInventory.quantity + 2,

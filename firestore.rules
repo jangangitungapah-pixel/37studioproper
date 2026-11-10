@@ -3692,7 +3692,7 @@ match /users/{userId} {
         movement is map &&
         movement.id == data.lastMovementId &&
         movement.itemId == itemId &&
-        movement.type == 'goods-receipt' &&
+        movement.type == 'stock-in' &&
         movement.operationAction == 'receive' &&
         movement.operationId == data.lastOperationId &&
         movement.actorUid == request.auth.uid &&
@@ -3724,7 +3724,7 @@ match /users/{userId} {
       return hasApprovedAdminPermission('inventory') &&
         data is map &&
         data.id == movementId &&
-        data.type == 'goods-receipt' &&
+        data.type == 'stock-in' &&
         data.operationAction == 'receive' &&
         data.operationId is string &&
         data.operationId.size() == 67 &&
@@ -3823,7 +3823,7 @@ match /users/{userId} {
 
     function inventoryMovementCreateAllowed(movementId) {
       let data = request.resource.data;
-      return data.type == 'goods-receipt' && data.operationAction == 'receive'
+      return data.type == 'stock-in' && data.operationAction == 'receive'
         ? procurementGoodsReceiptMovementCreateAllowed(data, movementId)
         : inventoryStandardMovementCreateAllowed(data, movementId);
     }
