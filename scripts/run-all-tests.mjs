@@ -7,7 +7,6 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, isAbsolute, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -23,7 +22,8 @@ if (!legacyScript) {
 }
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
-const reportDir = resolve(tmpdir(), `37studioproper-test-report-${runId}`);
+const reportRoot = resolve(rootDir, 'test-results');
+const reportDir = resolve(reportRoot, runId);
 mkdirSync(reportDir, { recursive: true });
 
 const fullReportPath = resolve(reportDir, 'FULL-TEST-OUTPUT.txt');
@@ -41,6 +41,12 @@ function expandScript(scriptName, stack = []) {
   const body = packageJson.scripts?.[scriptName];
   if (typeof body !== 'string' || !body.trim()) {
     configurationErrors.push(`Missing or empty npm script: ${scriptName}`);
+    return;
+  }
+
+  const reportWrapper = body.match(/^node\s+scripts\/run-with-report\.mjs\s+([\w:.-]+)$/);
+  if (reportWrapper) {
+    expandScript(reportWrapper[1], [...stack, scriptName]);
     return;
   }
 
@@ -107,7 +113,7 @@ for (let index = 0; index < tests.length; index += 1) {
   const safeName = test.command
     ? basename(test.command).replace(/[^a-zA-Z0-9._-]/g, '_')
     : `configuration-${String(index + 1).padStart(2, '0')}.txt`;
-  const logPath = resolve(reportDir, `${String(index + 1).padStart(2, '0')}-${safeName}.log`);
+  const logPath = resolve(reportDir, `${String(index + 1).padStart(2, '0')}-${safeName}.txt`);
   const testStart = new Date();
   let stdout = '';
   let stderr = '';
