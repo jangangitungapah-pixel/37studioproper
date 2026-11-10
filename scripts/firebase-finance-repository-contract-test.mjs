@@ -138,6 +138,25 @@ assert.doesNotMatch(
   /repositoryOperationMatchesAfter/,
   'The operation marker is validated by the journal write; the paired fence must not duplicate that expensive check.',
 );
+const manualCreateFenceRule = rules.slice(
+  rules.indexOf('function manualBookkeepingCreateFenceMatchesAfter'),
+  rules.indexOf('function manualBookkeepingFenceMatchesAfter'),
+);
+assert.match(manualCreateFenceRule, /closingAfter\.lastOperationAction == 'manual-create'/);
+assert.doesNotMatch(
+  manualCreateFenceRule,
+  /exists\(entryPath\)|get\(entryPath\)/,
+  'Manual-create must not read a pre-image for a newly created journal entry.',
+);
+const manualFenceCreateCompanion = rules.slice(
+  rules.indexOf('function manualBookkeepingFenceCreateCompanionMatchesAfter'),
+  rules.indexOf('function manualBookkeepingMaintenanceFenceCompanionMatchesAfter'),
+);
+assert.doesNotMatch(
+  manualFenceCreateCompanion,
+  /exists\(entryPath\)|get\(entryPath\)/,
+  'A new manual activity fence must validate its journal companion without pre-image reads.',
+);
 assert.equal(rules.includes('function cashClosingSessionWriteAllowed(closingId, data)'), true,
   'Closing-session authorization must dispatch by operation action.');
 assert.match(
