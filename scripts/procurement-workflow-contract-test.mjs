@@ -23,6 +23,10 @@ assert.match(workspace, /createCanonicalSupplier/);
 assert.match(workspace, /createCanonicalPurchaseOrder/);
 assert.match(workspace, /transitionCanonicalPurchaseOrder/);
 assert.match(workspace, /from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
+assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
+assert.match(workspace, /getStableRequestId\('procurement-payment'/);
+assert.match(workspace, /recordCanonicalProcurementPayment\(payload, request\.requestId\)/);
+
 assert.match(workspace, /from '\.\.\/\.\.\/services\/adminOperationsRepository\.js'/);
 assert.match(workspace, /getStableRequestId\('supplier-create'/);
 assert.match(workspace, /getStableRequestId\('purchase-order-create'/);
@@ -30,7 +34,7 @@ assert.match(workspace, /getStableRequestId\('purchase-order-transition'/);
 assert.match(directRepository, /export async function createCanonicalSupplier/);
 assert.match(directRepository, /export async function createCanonicalPurchaseOrder/);
 assert.match(directRepository, /export async function transitionCanonicalPurchaseOrder/);
-assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 3);
+assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
 assert.match(directRepository, /transaction\.get\(supplierRef\)/);
 assert.match(directRepository, /transaction\.get\(reference\)/);
 
