@@ -9,7 +9,10 @@ import {
   reopenCanonicalMaintenanceWorkOrder,
   reportCanonicalMaintenanceWorkOrder,
 } from '../../services/maintenanceFirestoreRepository.js';
-import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
+import {
+  createRepositoryPayloadHash,
+  createRepositoryRequestId,
+} from '../../lib/firestoreRepositoryFoundation.js';
 
 const STATUS_LABELS = {
   reported: 'Dilaporkan',
@@ -77,14 +80,26 @@ function formatMoney(value) {
   }).format(Number(value || 0));
 }
 
-function stableMaintenancePayload(value) {
-  if (Array.isArray(value)) return '[' + value.map(stableMaintenancePayload).join(',') + ']';
-  if (value && typeof value === 'object') {
-    return '{' + Object.keys(value).sort().map((key) => (
-      JSON.stringify(key) + ':' + stableMaintenancePayload(value[key])
-    )).join(',') + '}';
+const MAINTENANCE_REQUEST_CACHE_KEY = '37studio.maintenance.requestIds.v1';
+
+function readMaintenanceRequestCache() {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = window.sessionStorage.getItem(MAINTENANCE_REQUEST_CACHE_KEY);
+    const parsed = stored ? JSON.parse(stored) : {};
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
-  return JSON.stringify(value);
+}
+
+function writeMaintenanceRequestCache(value) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(MAINTENANCE_REQUEST_CACHE_KEY, JSON.stringify(value));
+  } catch {
+    // In-memory retry protection remains available when browser storage is blocked.
+  }
 }
 
 function parseAttachmentRefs(value) {
@@ -257,11 +272,15 @@ function MaintenanceActionForm({ action, busy, onCancel, onSubmit }) {
 export default function InventoryMaintenanceWorkspace() {
   const maintenanceRequestIdsRef = useRef(new Map());
 
-  function getMaintenanceRequestId(scope, payload) {
-    const key = scope + ':' + stableMaintenancePayload(payload);
+  async function getMaintenanceRequestId(scope, payload) {
+    const payloadHash = await createRepositoryPayloadHash({ scope, payload });
+    const key = scope + ':' + payloadHash;
     let requestId = maintenanceRequestIdsRef.current.get(key);
     if (!requestId) {
-      requestId = createRepositoryRequestId();
+      const cache = readMaintenanceRequestCache();
+      requestId = cache[key] || createRepositoryRequestId();
+      cache[key] = requestId;
+      writeMaintenanceRequestCache(cache);
       maintenanceRequestIdsRef.current.set(key, requestId);
     }
     return { key, requestId };
@@ -269,6 +288,9 @@ export default function InventoryMaintenanceWorkspace() {
 
   function clearMaintenanceRequestId(requestKey) {
     maintenanceRequestIdsRef.current.delete(requestKey);
+    const cache = readMaintenanceRequestCache();
+    delete cache[requestKey];
+    writeMaintenanceRequestCache(cache);
   }
 
   const [items, setItems] = useState([]);
@@ -381,7 +403,7 @@ export default function InventoryMaintenanceWorkspace() {
         dueAt: reportForm.dueAt ? new Date(reportForm.dueAt).toISOString() : '',
         attachments: parseAttachmentRefs(reportForm.attachmentsText),
       };
-      const request = getMaintenanceRequestId('report', payload);
+      const request = await getMaintenanceRequestId('report', payload);
       const result = await reportCanonicalMaintenanceWorkOrder(payload, request.requestId);
       clearMaintenanceRequestId(request.key);
       setSelectedId(result.workOrder?.id || '');
@@ -424,7 +446,7 @@ export default function InventoryMaintenanceWorkspace() {
             expectedStatus: selectedOrder.status,
             workOrderId: selectedOrder.id,
           };
-      const request = getMaintenanceRequestId(pendingAction, operationPayload);
+      const request = await getMaintenanceRequestId(pendingAction, operationPayload);
       if (pendingAction === 'reopen') {
         await adminAuthRepository.reauthenticateCurrentAdmin({ password: payload.password || '' });
         result = await reopenCanonicalMaintenanceWorkOrder(operationPayload, request.requestId);
@@ -458,7 +480,7 @@ export default function InventoryMaintenanceWorkspace() {
         date: costForm.date,
         note: costForm.note,
       };
-      const request = getMaintenanceRequestId('cost', payload);
+      const request = await getMaintenanceRequestId('cost', payload);
       await recordCanonicalMaintenanceCost(payload, request.requestId);
       clearMaintenanceRequestId(request.key);
       setCostForm({ amount: '', paymentMethod: 'cash', date: localBusinessDate(), note: '' });
