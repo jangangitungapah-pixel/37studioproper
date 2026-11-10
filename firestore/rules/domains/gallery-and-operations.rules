@@ -1,0 +1,43 @@
+    match /gallery/{imageId} {
+      allow read: if isApproved() && hasPermission('gallery');
+      allow create: if isApproved() && hasPermission('gallery') &&
+        validGalleryItem(request.resource.data) &&
+        !request.resource.data.keys().hasAny([
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]);
+      allow update: if isApproved() && hasPermission('gallery') &&
+        (!resource.data.keys().hasAny(['permanentDeleteStatus']) ||
+          resource.data.permanentDeleteStatus != 'deleting') &&
+        validGalleryItem(request.resource.data) &&
+        request.resource.data.publicId == resource.data.publicId &&
+        request.resource.data.url == resource.data.url &&
+        request.resource.data.uploadedBy == resource.data.uploadedBy &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        !request.resource.data.keys().hasAny([
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]);
+      allow delete: if false;
+    }
+
+    // Server-authoritative operation control plane. Admin SDK/REST service
+    // accounts bypass client rules after independently verifying actor access.
+    match /adminOperationKeys/{operationId} {
+      allow read, write: if false;
+    }
+
+    match /adminOperationAudit/{auditId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /adminOperationDryRuns/{snapshotId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /adminOperationJobs/{jobId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+
+    // >>> STUDIO37 NOTIFICATION EVENT RULES START
