@@ -521,6 +521,11 @@ const followUpUpdateRule = rules.slice(
 );
 assert.match(followUpUpdateRule, /customerFollowUpActorAllowed\(\)/);
 assert.match(followUpUpdateRule, /data\.get\('lastOperationId', ''\) is string/);
+assert.ok(
+  followUpUpdateRule.indexOf("data.get('lastOperationId', '') is string") <
+    followUpUpdateRule.indexOf('customerFollowUpActorAllowed()'),
+  'Legacy task writes without operation markers must be rejected before profile reads.',
+);
 assert.match(
   followUpUpdateRule,
   /data\.get\('lastOperationId', ''\) != resource\.data\.get\('lastOperationId', ''\)/,
