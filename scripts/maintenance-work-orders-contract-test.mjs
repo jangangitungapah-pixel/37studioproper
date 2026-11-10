@@ -422,7 +422,7 @@ assert.equal(maintenanceRepository.includes('activeMaintenanceWorkOrderId'), tru
 assert.equal(bookkeepingRepository.includes('sourceWorkOrderId'), true);
 assert.equal(bookkeepingPage.includes("source === 'maintenance'"), true);
 assert.equal(bookkeepingPage.includes('workOrderId: entry.sourceWorkOrderId'), true);
-assert.equal(packageJson.scripts['test:prd'].includes('maintenance-work-orders-contract-test.mjs'), true);
+assert.equal(packageJson.scripts['test:prd:raw'].includes('maintenance-work-orders-contract-test.mjs'), true);
 assert.equal(packageJson.scripts['test:serial:raw'].includes('maintenance-work-orders-contract-test.mjs'), true);
 
 console.log('Maintenance work order contract passed.');
