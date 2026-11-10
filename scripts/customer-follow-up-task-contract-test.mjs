@@ -128,7 +128,6 @@ const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const ui = read('src/pages/admin/CustomerPage.jsx');
 const customerRepository = read('src/services/adminCustomerRepository.js');
 const directFollowUpRepository = read('src/services/customerFollowUpFirestoreRepository.js');
-const operationsRepository = read('src/services/adminOperationsRepository.js');
 const packageJson = JSON.parse(read('package.json'));
 
 const actor = { displayName: 'Operator Test', role: 'admin', uid: 'operator-1' };
@@ -584,7 +583,11 @@ assert.match(ui, /taskDueTimes\[task\.id\]/);
 assert.match(ui, /Buka draft WhatsApp/);
 assert.doesNotMatch(ui, /onClick=\{\(\) => onUpdateTask\(task, \{ status: 'in_progress', contacted: false \}\)\}/);
 assert.doesNotMatch(ui, /placeholder="Nama PIC"/);
-assert.match(operationsRepository, /\/v1\/customers\/follow-ups\/assignees/);
+assert.match(directFollowUpRepository, /export async function getCanonicalCustomerFollowUpAssignees/);
+assert.match(directFollowUpRepository, /export async function createCanonicalCustomerFollowUpTask/);
+assert.match(directFollowUpRepository, /export async function updateCanonicalCustomerFollowUpTask/);
+assert.match(directFollowUpRepository, /export async function cancelCanonicalCustomerFollowUpTask/);
+assert.doesNotMatch(directFollowUpRepository, /requestOperation\(/);
 assert.match(packageJson.scripts.test, /customer-follow-up-task-contract-test\.mjs/);
 assert.match(packageJson.scripts['test:prd'], /customer-follow-up-task-contract-test\.mjs/);
 
