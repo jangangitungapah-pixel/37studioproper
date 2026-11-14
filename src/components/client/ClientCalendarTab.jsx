@@ -59,17 +59,35 @@ function formatDayRange(days = [], monthNames = []) {
   return `${first.getDate()} ${monthLabel(first.getMonth())} – ${last.getDate()} ${monthLabel(last.getMonth())} ${last.getFullYear()}`;
 }
 
+function getBlockEndHour(block) {
+  const booking = block?.booking || block || {};
+  const start = Number(booking.startHour ?? block?.startHour);
+  const rawEnd = Number(booking.endHour ?? block?.endHour);
+  if (Number.isFinite(start) && Number.isFinite(rawEnd) && rawEnd > start) {
+    return rawEnd;
+  }
+  const span = Math.max(1, Math.ceil(Number(booking.durationHours ?? booking.duration ?? block?.spanRows) || 1));
+  return Number.isFinite(start) ? start + span : rawEnd;
+}
+
 function shiftCalendarViewDate(baseDate, direction, viewMode, shiftDate) {
-  const current = baseDate instanceof Date ? new Date(baseDate) : new Date(baseDate || Date.now());
+  const current = baseDate instanceof Date && !Number.isNaN(baseDate.getTime())
+    ? new Date(baseDate)
+    : new Date();
+  const deltaDays = viewMode === 'day' ? direction : direction * 7;
+  if (typeof shiftDate === 'function') {
+    const shifted = shiftDate.length >= 3
+      ? shiftDate(current, viewMode, direction)
+      : shiftDate(current, deltaDays);
+    if (shifted instanceof Date && !Number.isNaN(shifted.getTime())) {
+      return shifted;
+    }
+  }
   if (viewMode === 'month') {
     const next = new Date(current.getFullYear(), current.getMonth() + direction, 1);
     const maxDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
     next.setDate(Math.min(current.getDate(), maxDay));
     return next;
-  }
-  const deltaDays = viewMode === 'day' ? direction : direction * 7;
-  if (typeof shiftDate === 'function') {
-    return shiftDate(current, deltaDays);
   }
   const next = new Date(current);
   next.setDate(current.getDate() + deltaDays);
@@ -83,7 +101,7 @@ function getBlockForSlot(bookingBlocks, dayIso, hourStart) {
     bookingBlocks.find((block) => {
       if (!block || block.dayKey !== dayIso) return false;
       const start = Number(block.booking?.startHour ?? block.startHour);
-      const end = Number(block.booking?.endHour ?? block.endHour);
+      const end = getBlockEndHour(block);
       if (Number.isFinite(start) && Number.isFinite(end)) {
         return targetHour >= start && targetHour < end;
       }
@@ -250,12 +268,16 @@ export default function ClientCalendarTab({
   }, [selectedDaySlots, hours]);
 
   const rangeText = useMemo(() => {
-    if (typeof formatRangeLabel === 'function') {
-      const label = formatRangeLabel();
+    if (
+      typeof formatRangeLabel === 'function' &&
+      normalizedSelectedDate instanceof Date &&
+      !Number.isNaN(normalizedSelectedDate.getTime())
+    ) {
+      const label = formatRangeLabel(normalizedSelectedDate, calendarViewMode);
       if (label) return label;
     }
     return formatDayRange(activeDays, monthNames);
-  }, [formatRangeLabel, activeDays, monthNames]);
+  }, [formatRangeLabel, normalizedSelectedDate, calendarViewMode, activeDays, monthNames]);
 
   const selectedDayFormatted = useMemo(() => {
     const dayLabel = Array.isArray(dayNames) && dayNames[selectedDay.getDay()] ? dayNames[selectedDay.getDay()] : '';
@@ -614,7 +636,7 @@ export default function ClientCalendarTab({
                   const isOwn = Boolean(booking.isOwnClientBooking);
                   const paymentStatus = getLegacyBookingPaymentStatus(booking) || 'pending';
                   const spanRows = Math.max(1, Number(block?.spanRows) || 1);
-                  const timeText = formatHourRange(booking.startHour, booking.endHour);
+                  const timeText = formatHourRange(booking.startHour, getBlockEndHour(block));
 
                   if (isOwn) {
                     const statusLabel =
@@ -778,7 +800,7 @@ export default function ClientCalendarTab({
                           <span className={`client-calendar-status-tag is-${paymentStatus}`}>
                             {statusLabel}
                           </span>
-                          <small>{formatHourRange(booking.startHour, booking.endHour)}</small>
+                          <small>{formatHourRange(booking.startHour, getBlockEndHour(block))}</small>
                         </div>
                         <strong>{getServiceLabel(booking)}</strong>
                       </div>
