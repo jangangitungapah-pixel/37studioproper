@@ -2179,10 +2179,10 @@ export default function DashboardPage() {
             );
 
             adminBookingRepository
-              .syncClientCalendarSlotsFromBookings(
+              .syncClientCalendarSlotsFromBookings?.(
                 data,
               )
-              .catch(
+              ?.catch(
                 (
                   error,
                 ) =>

@@ -17,9 +17,14 @@ echarts.use([
   CanvasRenderer,
 ]);
 
+const ResolvedEChartsCore =
+  typeof ReactEChartsCore === 'function'
+    ? ReactEChartsCore
+    : ReactEChartsCore?.default || ReactEChartsCore;
+
 export default function EChartsRenderer({ height, option }) {
   return (
-    <ReactEChartsCore
+    <ResolvedEChartsCore
       echarts={echarts}
       lazyUpdate
       notMerge
