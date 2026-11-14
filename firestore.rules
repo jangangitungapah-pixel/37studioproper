@@ -4,6 +4,7 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+
     function userDocExists() {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
