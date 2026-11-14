@@ -1,0 +1,291 @@
+    function validCustomerFollowUpOptionalTimestamp(value) {
+      return value == '' || validIsoTimestampString(value);
+    }
+
+    function customerFollowUpActorAllowed() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let profile = profileExists ? get(userPath).data : {};
+      return profileExists
+        ? profile.status == 'approved' &&
+          (
+            (
+              profile.role == 'admin' &&
+              profile.permissions is map &&
+              profile.permissions.customers == true
+            ) ||
+            (
+              profile.role == 'owner' &&
+              (!exists(ownershipPath) ||
+                get(ownershipPath).data.currentOwnerUid == request.auth.uid)
+            )
+          )
+        : !exists(ownershipPath) && isBootstrapOwnerEmail();
+    }
+
+    function customerFollowUpAssigneeAllowed(uid) {
+      // The caller's permission is already checked by the parent task rule.
+      return uid == request.auth.uid || customerFollowUpOtherAssigneeAllowed(uid);
+    }
+
+    function customerFollowUpOtherAssigneeAllowed(uid) {
+      let userPath = /databases/$(database)/documents/users/$(uid);
+      let ownershipPath = /databases/$(database)/documents/adminControl/ownership;
+      let profileExists = exists(userPath);
+      let profile = profileExists ? get(userPath).data : {};
+      return profileExists &&
+        profile.uid == uid &&
+        profile.status == 'approved' &&
+        (
+          (
+            profile.role == 'admin' &&
+            profile.permissions is map &&
+            profile.permissions.customers == true
+          ) ||
+          (
+            profile.role == 'owner' &&
+            exists(ownershipPath) &&
+            get(ownershipPath).data.currentOwnerUid == uid
+          )
+        );
+    }
+
+    function validCustomerFollowUpEvent(data, eventId) {
+      return data is map &&
+        data.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.id == eventId &&
+        validString(data.taskId, 1, 160) &&
+        validString(data.customerId, 1, 160) &&
+        data.action in [
+          'created', 'updated', 'reassigned', 'rescheduled', 'snoozed',
+          'completed', 'cancelled', 'reopened', 'contacted', 'open',
+          'in_progress'
+        ] &&
+        data.actorUid == request.auth.uid &&
+        validString(data.actorName, 1, 120) &&
+        data.changes is map &&
+        validString(data.get('fromStatus', ''), 0, 40) &&
+        validString(data.get('toStatus', ''), 0, 40) &&
+        validString(data.get('outcome', ''), 0, 40) &&
+        validString(data.get('dueAt', ''), 0, 10) &&
+        validString(data.get('reason', ''), 0, 600) &&
+        validString(data.get('note', ''), 0, 1200) &&
+        validIsoTimestampString(data.createdAt) &&
+        data.operationId.size() == 67 &&
+        data.operationId.matches('^v1_[a-f0-9]{64}') &&
+        data.operationAction in ['create', 'update'];
+    }
+
+    function validCustomerFollowUpTask(data, taskId) {
+      // All 42 canonical task keys are read and type-checked below. An exact
+      // key count therefore rejects additional fields without an expensive
+      // large-set hasOnly comparison at every update.
+      return data is map &&
+        data.keys().size() == 42 &&
+        data.id == taskId &&
+        validString(data.customerId, 1, 160) &&
+        validString(data.customerName, 1, 160) &&
+        validString(data.customerPhone, 0, 40) &&
+        validString(data.sourceId, 1, 160) &&
+        data.sourceType in ['customer', 'client_account', 'booking'] &&
+        validString(data.bookingId, 0, 160) &&
+        validString(data.assignedToUid, 1, 128) &&
+        validString(data.assignedToName, 1, 120) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 0, 1200) &&
+        data.templateKey in ['payment', 'booking', 'comeback'] &&
+        data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled'] &&
+        data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other'] &&
+        validIsoDate(data.dueAt) &&
+        validString(data.dueTime, 0, 5) &&
+        (
+          data.dueTime == '' ||
+          (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+        ) &&
+        validString(data.notes, 0, 1200) &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        validIsoTimestampString(data.createdAt) &&
+        validIsoTimestampString(data.updatedAt) &&
+        validString(data.createdByUid, 1, 128) &&
+        validString(data.createdByName, 1, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastContactedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.completedAt) &&
+        validString(data.completedByUid, 0, 128) &&
+        validString(data.completedByName, 0, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.cancelledAt) &&
+        validString(data.cancelledByUid, 0, 128) &&
+        validString(data.cancelReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.reopenedAt) &&
+        validString(data.reopenedByUid, 0, 128) &&
+        validString(data.reopenedByName, 0, 120) &&
+        validString(data.reopenReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
+        validString(data.snoozedByUid, 0, 128) &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction in ['create', 'update'] &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        data.lastEventSnapshot is map &&
+        data.lastEventSnapshot.keys().hasOnly([
+          'id', 'taskId', 'customerId', 'action', 'actorUid', 'actorName',
+          'changes', 'fromStatus', 'toStatus', 'outcome', 'dueAt', 'reason',
+          'note', 'createdAt', 'operationId', 'operationAction'
+        ]) &&
+        data.lastEventSnapshot.id == data.lastEventId &&
+        data.lastEventSnapshot.taskId == data.id &&
+        data.lastEventSnapshot.customerId == data.customerId &&
+        data.lastEventSnapshot.actorUid == request.auth.uid &&
+        data.lastEventSnapshot.operationId == data.lastOperationId &&
+        data.lastEventSnapshot.operationAction == data.lastOperationAction &&
+        data.lastEventSnapshot.createdAt == data.updatedAt;
+    }
+
+    function validCustomerFollowUpTaskUpdateEventSnapshot(data) {
+      let snapshot = data.lastEventSnapshot;
+      return snapshot is map &&
+        snapshot.keys().size() == 16 &&
+        snapshot.id == data.lastEventId &&
+        snapshot.taskId == data.id &&
+        snapshot.customerId == data.customerId &&
+        validString(snapshot.action, 1, 40) &&
+        snapshot.actorUid == request.auth.uid &&
+        validString(snapshot.actorName, 1, 120) &&
+        snapshot.changes is map &&
+        validString(snapshot.fromStatus, 0, 40) &&
+        validString(snapshot.toStatus, 0, 40) &&
+        validString(snapshot.outcome, 0, 40) &&
+        validString(snapshot.dueAt, 0, 10) &&
+        validString(snapshot.reason, 0, 600) &&
+        validString(snapshot.note, 0, 1200) &&
+        snapshot.operationId == data.lastOperationId &&
+        snapshot.operationAction == 'update' &&
+        snapshot.createdAt == data.updatedAt;
+    }
+
+    function validCustomerFollowUpTaskUpdate(data, taskId) {
+      // Update checks only the mutable contract plus immutable identity. Create
+      // performs the full document validation; repeating every create-time check
+      // on each update exhausted Firestore's expression budget.
+      return data is map &&
+        data.keys().size() == 42 &&
+        data.id == taskId &&
+        data.customerId == resource.data.customerId &&
+        data.customerName == resource.data.customerName &&
+        data.customerPhone == resource.data.customerPhone &&
+        data.sourceId == resource.data.sourceId &&
+        data.sourceType == resource.data.sourceType &&
+        data.bookingId == resource.data.bookingId &&
+        data.templateKey == resource.data.templateKey &&
+        data.createdAt == resource.data.createdAt &&
+        data.createdByUid == resource.data.createdByUid &&
+        data.createdByName == resource.data.createdByName &&
+        validString(data.assignedToUid, 1, 128) &&
+        validString(data.assignedToName, 1, 120) &&
+        validString(data.title, 3, 160) &&
+        validString(data.description, 0, 1200) &&
+        data.status in ['open', 'in_progress', 'snoozed', 'completed', 'cancelled'] &&
+        data.outcome in ['', 'connected', 'no_answer', 'rescheduled', 'not_interested', 'paid', 'booked', 'other'] &&
+        validIsoDate(data.dueAt) &&
+        validString(data.dueTime, 0, 5) &&
+        (
+          data.dueTime == '' ||
+          (data.dueTime.size() == 5 && data.dueTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]'))
+        ) &&
+        validString(data.notes, 0, 1200) &&
+        data.revision is int &&
+        data.revision == resource.data.revision + 1 &&
+        validIsoTimestampString(data.updatedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastContactedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.completedAt) &&
+        validString(data.completedByUid, 0, 128) &&
+        validString(data.completedByName, 0, 120) &&
+        validCustomerFollowUpOptionalTimestamp(data.cancelledAt) &&
+        validString(data.cancelledByUid, 0, 128) &&
+        validString(data.cancelReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCompletedAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.lastCancelledAt) &&
+        validCustomerFollowUpOptionalTimestamp(data.reopenedAt) &&
+        validString(data.reopenedByUid, 0, 128) &&
+        validString(data.reopenedByName, 0, 120) &&
+        validString(data.reopenReason, 0, 600) &&
+        validCustomerFollowUpOptionalTimestamp(data.snoozedAt) &&
+        validString(data.snoozedByUid, 0, 128) &&
+        data.lastOperationId is string &&
+        data.lastOperationId.size() == 67 &&
+        data.lastOperationId.matches('^v1_[a-f0-9]{64}') &&
+        data.lastOperationAction == 'update' &&
+        data.lastOperationPayloadHash is string &&
+        data.lastOperationPayloadHash.size() == 64 &&
+        data.lastOperationPayloadHash.matches('^[0-9a-f]{64}') &&
+        validString(data.lastEventId, 1, 160) &&
+        validCustomerFollowUpTaskUpdateEventSnapshot(data);
+    }
+    function customerFollowUpPreviousEventRecorded() {
+      let eventId = resource.data.get('lastEventId', '');
+      let eventPath = /databases/$(database)/documents/customerFollowUpEvents/$(eventId);
+      return eventId == '' || exists(eventPath);
+    }
+
+    function customerFollowUpTaskCreateAllowed(taskId) {
+      let data = request.resource.data;
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpTask(data, taskId) &&
+        data.revision == 1 &&
+        data.createdByUid == request.auth.uid &&
+        data.lastOperationAction == 'create' &&
+        customerFollowUpAssigneeAllowed(data.assignedToUid) &&
+        data.lastEventSnapshot.operationAction == 'create';
+    }
+
+    function customerFollowUpTaskUpdateAllowed(taskId) {
+      let data = request.resource.data;
+      // Legacy/minimal task records may not yet carry an operation marker.
+      // Use map.get defaults so these writes are rejected before full validation
+      // without triggering a missing-property evaluation error.
+      return data.get('lastOperationId', '') is string &&
+        data.get('lastOperationId', '') != resource.data.get('lastOperationId', '') &&
+        customerFollowUpActorAllowed() &&
+        customerFollowUpPreviousEventRecorded() &&
+        validCustomerFollowUpTaskUpdate(data, taskId) &&
+        (
+          data.assignedToUid == resource.data.assignedToUid ||
+          customerFollowUpAssigneeAllowed(data.assignedToUid)
+        );
+    }
+    function customerFollowUpEventCreateAllowed(eventId) {
+      let data = request.resource.data;
+      let taskPath = /databases/$(database)/documents/customerFollowUpTasks/$(data.taskId);
+      let taskExists = exists(taskPath);
+      let task = taskExists ? get(taskPath).data : {};
+      return customerFollowUpActorAllowed() &&
+        validCustomerFollowUpEvent(data, eventId) &&
+        taskExists &&
+        task.lastEventSnapshot == data;
+    }
+
+    // Customer Follow-up writes the task snapshot first, then appends the exact
+    // immutable event. Later task mutations wait until the prior event is recorded.
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpTaskCreateAllowed(taskId);
+      allow update: if customerFollowUpTaskUpdateAllowed(taskId);
+      allow delete: if false;
+    }
+
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if customerFollowUpEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+

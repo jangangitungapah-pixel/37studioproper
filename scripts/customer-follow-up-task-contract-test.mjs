@@ -508,10 +508,13 @@ for (const field of [
     'Follow-up updates must preserve immutable field: ' + field,
   );
 }
-assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpTask(data, taskId)'));
+assert.ok(followUpUpdateValidator.includes('data.keys().size() == 42'));
 assert.ok(followUpUpdateValidator.includes('data.revision == resource.data.revision + 1'));
 assert.ok(followUpUpdateValidator.includes("data.lastOperationAction == 'update'"));
 assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpTaskUpdateEventSnapshot(data)'));
+assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpOptionalTimestamp(data.snoozedAt)'));
+assert.ok(followUpUpdateValidator.includes('data.lastOperationPayloadHash.matches'));
+assert.ok(followUpUpdateValidator.includes('data.customerId == resource.data.customerId'));
 const followUpUpdateSnapshotValidator = rules.slice(
   rules.indexOf('function validCustomerFollowUpTaskUpdateEventSnapshot(data)'),
   rules.indexOf('function validCustomerFollowUpTaskUpdate(data, taskId)'),

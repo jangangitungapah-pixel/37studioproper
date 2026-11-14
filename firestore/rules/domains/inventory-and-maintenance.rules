@@ -1,0 +1,45 @@
+    match /inventoryItems/{itemId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryItemCreateAllowed(itemId);
+      allow update: if inventoryItemUpdateAllowed(itemId);
+      allow delete: if false;
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if inventoryMovementCreateAllowed(movementId);
+      allow update, delete: if false;
+    }
+
+    match /maintenanceWorkOrders/{workOrderId} {
+      allow read: if isApproved() && canAccessMaintenanceData();
+      allow create: if maintenanceWorkOrderCreateAllowed(workOrderId);
+      allow update: if maintenanceWorkOrderUpdateAllowed(workOrderId);
+      allow delete: if false;
+    }
+
+    match /maintenanceEvents/{eventId} {
+      allow read: if isApproved() && canAccessMaintenanceData();
+      allow create: if maintenanceEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
+    function validGalleryItem(data) {
+      return data.keys().hasOnly([
+          'title', 'description', 'url', 'publicId', 'category', 'isFavorite',
+          'isDeleted', 'uploadedBy', 'createdAt', 'deletedAt',
+          'permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus'
+        ]) &&
+        validString(data.title, 1, 180) &&
+        validString(data.description, 0, 2000) &&
+        validString(data.url, 8, 2000) &&
+        validString(data.publicId, 1, 500) &&
+        data.publicId.matches('^studio37/gallery/[A-Za-z0-9_./-]+$') &&
+        validString(data.category, 1, 80) &&
+        data.isFavorite is bool &&
+        data.isDeleted is bool &&
+        validString(data.uploadedBy, 1, 120) &&
+        validIsoTimestampString(data.createdAt) &&
+        (!data.keys().hasAny(['deletedAt']) || data.deletedAt == null || validIsoTimestampString(data.deletedAt));
+    }
+

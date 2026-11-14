@@ -1,0 +1,32 @@
+    match /suppliers/{supplierId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if procurementSupplierCreateAllowed(supplierId);
+      allow update, delete: if false;
+    }
+
+    match /purchaseOrders/{purchaseOrderId} {
+      allow read: if isApproved() && (canAccessInventoryData() || hasPermission('bookkeeping'));
+      allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);
+      allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);
+      allow delete: if false;
+    }
+
+    match /goodsReceipts/{receiptId} {
+      allow read: if isApproved() && canAccessInventoryData();
+      allow create: if procurementGoodsReceiptCreateAllowed(receiptId);
+      allow update, delete: if false;
+    }
+
+    match /procurementPayments/{paymentId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create: if procurementPaymentCreateAllowed(paymentId);
+      allow update, delete: if false;
+    }
+
+    match /procurementEvents/{eventId} {
+      allow read: if isApproved() && (canAccessInventoryData() ||
+        (hasPermission('bookkeeping') && resource.data.action == 'payment_recorded'));
+      allow create: if procurementEventCreateAllowed(eventId);
+      allow update, delete: if false;
+    }
+
