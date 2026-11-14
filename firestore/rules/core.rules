@@ -5,24 +5,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userPath(uid) {
-      return /databases/$(database)/documents/users/$(uid);
-    }
-
-    function ownershipPath() {
-      return /databases/$(database)/documents/adminControl/ownership;
-    }
 
     function userDocExists() {
-      return isSignedIn() && exists(userPath(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function getUserData() {
-      return get(userPath(request.auth.uid)).data;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function ownershipControlExists() {
-      return exists(ownershipPath());
+      return exists(/databases/$(database)/documents/adminControl/ownership);
     }
 
     function isBootstrapOwnerEmail() {
@@ -35,8 +28,8 @@ service cloud.firestore {
     function isOwner() {
       let profileExists = userDocExists();
       let ownershipExists = ownershipControlExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
-      let ownership = ownershipExists ? get(ownershipPath()).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
+      let ownership = ownershipExists ? get(/databases/$(database)/documents/adminControl/ownership).data : {};
       return (
         profileExists &&
         profile.role == 'owner' &&
@@ -51,7 +44,7 @@ service cloud.firestore {
 
     function isApproved() {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return isOwner() || (
         profileExists &&
         profile.role in ['admin', 'studio_guard'] &&
@@ -61,7 +54,7 @@ service cloud.firestore {
 
     function isApprovedAdmin() {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return isOwner() || (
         profileExists &&
         profile.role == 'admin' &&
@@ -71,13 +64,13 @@ service cloud.firestore {
 
     function isClientAccount() {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return profileExists && profile.role == 'client' && profile.status == 'active';
     }
 
     function isStudioGuardAccount() {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return profileExists && profile.role == 'studio_guard' && profile.status == 'approved';
     }
 
@@ -90,7 +83,7 @@ service cloud.firestore {
 
     function hasPermission(page) {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return isOwner() || (
         profileExists &&
         profile.role == 'admin' &&
@@ -110,7 +103,7 @@ service cloud.firestore {
 
     function canAccessNotifications() {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return isOwner() || (
         profileExists &&
         profile.role == 'admin' &&
@@ -130,7 +123,7 @@ service cloud.firestore {
 
     function canManageGuardAttendance() {
       let profileExists = userDocExists();
-      let profile = profileExists ? get(userPath(request.auth.uid)).data : {};
+      let profile = profileExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : {};
       return isOwner() || (
         profileExists &&
         profile.role == 'admin' &&
