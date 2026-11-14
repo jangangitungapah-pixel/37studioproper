@@ -1580,9 +1580,10 @@ try {
     updatedAt: now,
   };
   const manualFence = {
-    activityRevision: 1,
+    ...procurementPaymentFence,
+    activityRevision: procurementPaymentFence.activityRevision + 1,
     businessDate: '2026-08-15',
-    createdAt: now,
+    createdAt: procurementPaymentFence.createdAt,
     id: manualClosingId,
     lastActivityAt: now,
     lastActivityByUid: 'bookkeeping-admin',
