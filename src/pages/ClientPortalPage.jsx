@@ -384,8 +384,10 @@ export default function ClientPortalPage() {
     setClientNotificationsRetryVersion((value) => value + 1);
   }
 
-  // Calendar parameters
-  const [calendarViewMode, setCalendarViewMode] = useState('week'); // 'day' | 'week' | 'month'
+  // Calendar parameters (default to clean 1-day view on compact mobile viewports)
+  const [calendarViewMode, setCalendarViewMode] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches ? 'day' : 'week'
+  )); // 'day' | 'week' | 'month'
   const [calendarSelectedDate, setCalendarSelectedDate] = useState(() => startOfDay(new Date()));
 
   // Interactive booking form simulator inside calendar
@@ -1627,6 +1629,9 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
             type="button"
           >
             <Bell size={17} aria-hidden="true" />
+            {!clientNotificationsLoading && !clientNotificationsError && clientNotifications.length > 0 ? (
+              <span className="client-notifications-dot" aria-hidden="true" />
+            ) : null}
           </button>
           <div className="client-header-profile">
             <span>{(currentUser?.displayName || currentUser?.email || 'C').slice(0, 1).toUpperCase()}</span>
@@ -1678,7 +1683,15 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         <header className="client-portal-mobile-heading">
           <span className="client-header-mark">37</span>
           <div>
-            <small>37 Music Studio</small>
+            <small>
+              {activeTab === 'home'
+                ? 'Overview · 37 Music Studio'
+                : activeTab === 'book'
+                  ? 'Jadwal Studio · 37 Music Studio'
+                  : activeTab === 'bookings'
+                    ? 'Riwayat & Bayar · 37 Music Studio'
+                    : 'Akun Saya · 37 Music Studio'}
+            </small>
             <strong>Halo, {currentUser?.displayName?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'Client'}</strong>
           </div>
           <div className="client-portal-mobile-actions">
@@ -1691,11 +1704,25 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               type="button"
             >
               <Bell size={17} aria-hidden="true" />
+              {!clientNotificationsLoading && !clientNotificationsError && clientNotifications.length > 0 ? (
+                <span className="client-notifications-dot" aria-hidden="true" />
+              ) : null}
             </button>
-            <button type="button" onClick={toggleTheme} aria-label={isDark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} aria-pressed={isDark}>
+            <button
+              className="client-theme-toggle"
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Gunakan tema terang' : 'Gunakan tema gelap'}
+              aria-pressed={isDark}
+            >
               {isDark ? <Sun size={17} /> : <Moon size={17} />}
             </button>
-            <button type="button" onClick={handleLogout} aria-label="Keluar dari portal">
+            <button
+              className="client-logout-button"
+              type="button"
+              onClick={handleLogout}
+              aria-label="Keluar dari portal"
+            >
               <LogOut size={17} />
             </button>
           </div>
