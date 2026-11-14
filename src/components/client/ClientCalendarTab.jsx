@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 import {
   AlertCircle,
@@ -139,8 +139,6 @@ function getBookingBlockPlacement(block) {
     const lanePercent = 100 / laneCount;
     style.width = `calc(${lanePercent}% - 6px)`;
     style.marginLeft = `calc(${laneIndex * lanePercent}% + 3px)`;
-  } else {
-    style.marginInline = '4px';
   }
 
   return style;
@@ -170,6 +168,7 @@ export default function ClientCalendarTab({
   dayNames = [],
 }) {
   const boardScrollRef = useRef(null);
+  const selectedDayRef = useRef(null);
   const dragStateRef = useRef({ active: false, pointerId: null, startX: 0, startScrollLeft: 0, moved: false });
   const dragMovedRef = useRef(false);
 
@@ -303,6 +302,32 @@ export default function ClientCalendarTab({
   const handleGoToday = () => {
     setCalendarSelectedDate?.(normalizedToday);
   };
+
+  useEffect(() => {
+    const scrollEl = boardScrollRef.current;
+    const targetEl = selectedDayRef.current;
+    if (!scrollEl || !targetEl || scrollEl.scrollWidth <= scrollEl.clientWidth + 2) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const timeColWidth = scrollEl.querySelector('.client-booking-board-corner')?.offsetWidth || 86;
+      const visibleLeft = scrollEl.scrollLeft + timeColWidth;
+      const visibleRight = scrollEl.scrollLeft + scrollEl.clientWidth;
+      const targetLeftEdge = targetEl.offsetLeft;
+      const targetRightEdge = targetLeftEdge + targetEl.offsetWidth;
+
+      if (targetLeftEdge < visibleLeft + 8 || targetRightEdge > visibleRight - 8) {
+        const nextLeft = Math.max(0, targetLeftEdge - timeColWidth - 16);
+        scrollEl.scrollTo({
+          left: nextLeft,
+          behavior: 'auto',
+        });
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [calendarViewMode, selectedDayIso]);
 
   const handleBoardPointerDown = (event) => {
     if (event.pointerType !== 'mouse' || event.button !== 0) return;
@@ -542,12 +567,20 @@ export default function ClientCalendarTab({
                 className={`client-booking-board-grid is-${calendarViewMode}-view`}
                 style={{ '--client-book-days': Math.max(1, activeDays.length) }}
               >
-                <div className="client-booking-board-corner" aria-hidden="true">
-                  <Clock3 size={14} />
-                  <span>WIB</span>
+                <div
+                  className="client-booking-board-corner"
+                  style={{ gridColumn: '1', gridRow: '1' }}
+                  aria-hidden="true"
+                >
+                  <Clock3 size={13} />
+                  <span>
+                    {isMonthView && monthNames[selectedDay.getMonth()]
+                      ? monthNames[selectedDay.getMonth()].slice(0, 3)
+                      : 'WIB'}
+                  </span>
                 </div>
 
-                {activeDays.map((day) => {
+                {activeDays.map((day, dayIndex) => {
                   const dayIso = toIsoDate?.(day) || '';
                   const isToday = Boolean(isSameDay?.(day, normalizedToday));
                   const isSelected = Boolean(isSameDay?.(day, selectedDay));
@@ -555,43 +588,47 @@ export default function ClientCalendarTab({
                     Array.isArray(dayNames) && dayNames[day.getDay()]
                       ? dayNames[day.getDay()].slice(0, 3)
                       : '';
-                  const shortMonth =
-                    Array.isArray(monthNames) && monthNames[day.getMonth()]
-                      ? monthNames[day.getMonth()].slice(0, 3)
-                      : '';
 
                   return (
                     <button
                       key={dayIso || day.toISOString()}
+                      ref={isSelected ? selectedDayRef : null}
                       type="button"
                       className={`client-booking-day-header ${isToday ? 'is-today' : ''} ${
                         isSelected ? 'is-selected' : ''
                       }`}
+                      style={{ gridColumn: String(dayIndex + 2), gridRow: '1' }}
                       onClick={() => setCalendarSelectedDate?.(day)}
                     >
                       <span>{shortDay}</span>
                       <strong>{day.getDate()}</strong>
-                      {isMonthView && <small>{shortMonth}</small>}
                     </button>
                   );
                 })}
 
-                {hours.map((hour) => (
+                {hours.map((hour, hourIndex) => (
                   <Fragment key={hour.key}>
-                    <div className="client-booking-time-cell">
-                      <strong>{formatHourClock(hour.start)}</strong>
+                    <div
+                      className="client-booking-time-cell"
+                      style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
+                    >
                       <span>{formatHourRange(hour.start, hour.end)}</span>
                     </div>
 
-                    {activeDays.map((day) => {
+                    {activeDays.map((day, dayIndex) => {
                       const dayIso = toIsoDate?.(day) || '';
                       const occupyingBlock = getBlockForSlot(blocksList, dayIso, hour.start);
+                      const cellStyle = {
+                        gridColumn: String(dayIndex + 2),
+                        gridRow: String(hourIndex + 2),
+                      };
 
                       if (occupyingBlock) {
                         return (
                           <div
                             key={`${dayIso}-${hour.key}`}
                             className="client-booking-slot is-under-booking"
+                            style={cellStyle}
                             aria-hidden="true"
                           />
                         );
@@ -602,6 +639,7 @@ export default function ClientCalendarTab({
                           key={`${dayIso}-${hour.key}`}
                           type="button"
                           className="client-booking-slot is-available"
+                          style={cellStyle}
                           disabled={!calendarSlotsReady}
                           aria-label={
                             !calendarSlotsReady
