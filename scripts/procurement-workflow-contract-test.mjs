@@ -170,6 +170,6 @@ assert.equal(inventoryRepository.includes('subscribeGoodsReceipts'), true);
 assert.equal(inventoryRepository.includes('subscribeProcurementPayments'), true);
 assert.match(read('scripts/procurement-worker-regression-test.mjs'), /business_date_closed/);
 assert.match(packageJson.scripts['test:serial:raw'], /procurement-worker-regression-test\.mjs/);
-assert.match(packageJson.scripts['test:prd'], /procurement-workflow-contract-test\.mjs/);
+assert.match(packageJson.scripts['test:prd:raw'], /procurement-workflow-contract-test\.mjs/);
 
 console.log('procurement-workflow-contract-test: PASS');

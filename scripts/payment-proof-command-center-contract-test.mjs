@@ -14,7 +14,7 @@ function read(
       file,
     ),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
 }
 
 const repositorySource =
