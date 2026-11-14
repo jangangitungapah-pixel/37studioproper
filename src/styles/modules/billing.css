@@ -859,33 +859,50 @@
   padding: 15px;
 }
 
-.billing-proof-image-link {
-  min-height: 220px;
+.billing-proof-reference-panel {
+  min-width: 0;
   display: grid;
-  place-items: center;
-  gap: 8px;
-  overflow: hidden;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-lg);
   background: var(--auth-bg-soft);
-  color: var(--auth-text-muted);
-  text-decoration: none;
+  padding: 14px;
 }
 
-.billing-proof-image-link img {
-  width: 100%;
-  max-height: 360px;
-  object-fit: contain;
+.billing-proof-reference-panel > div {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 5px;
 }
 
-.billing-proof-image-link > span,
-.billing-proof-image-link em {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.billing-proof-reference-panel small {
   color: var(--auth-text-muted);
   font-size: var(--studio-text-xs);
-  font-style: normal;
+}
+
+.billing-proof-reference-panel strong {
+  overflow-wrap: anywhere;
+  color: var(--auth-text-strong);
+  font-size: var(--studio-text-sm);
+}
+
+.billing-proof-reference-panel p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--auth-text-muted);
+  font-size: var(--studio-text-xs);
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .billing-proof-reference-panel {
+    grid-template-columns: 1fr;
+  }
+  .billing-proof-reference-panel p {
+    grid-column: 1;
+  }
 }
 
 .billing-proof-info-grid {
@@ -2739,7 +2756,7 @@
 .billing-payment-form textarea:focus,
 .billing-proof-approval-fields input:focus,
 .billing-proof-admin-note textarea:focus { border-color: var(--studio-accent); box-shadow: 0 0 0 3px var(--studio-accent-soft); }
-.billing-proof-image-link,
+.billing-proof-reference-panel,
 .billing-proof-info-grid article,
 .billing-proof-note,
 .billing-proof-review-audit > span { border-color: var(--studio-edge-soft); background: var(--studio-surface-2); }

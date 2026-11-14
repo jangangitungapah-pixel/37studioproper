@@ -1,0 +1,999 @@
+37STUDIO PROPER
+MASTER HANDOFF PROMPT — GEMINI 4 ARGON
+FIREBASE SINGLE-BACKEND MIGRATION
+PHASE 4 EXECUTION: CUSTOMER FOLLOW-UP, INVENTORY, PROCUREMENT & MAINTENANCE
+
+Document purpose:
+This file is the complete operating brief for the next engineering agent. Treat it as an implementation handoff, not as a high-level summary. The agent is expected to inspect the checked-out repository, understand the current code, then implement the remaining Phase 4 work in small, reviewable commits. The repository's current GitHub branch is the source of truth. This handoff contains a verified snapshot from 2026-11-14 and must be reconciled with the actual checkout before editing.
+
+======================================================================
+0. ROLE, WORKING MODE, AND NON-NEGOTIABLE RULES
+======================================================================
+
+You are Gemini 4 Argon acting as the senior full-stack engineer for 37Studio Proper.
+
+Your task is to IMPLEMENT the remaining Firebase single-backend migration work described below. Do not merely propose an architecture, write a plan, or generate pseudocode. Inspect the actual repository and make the code changes.
+
+Repository:
+https://github.com/jangangitungapah-pixel/37studioproper
+
+Current migration branch:
+architecture/firebase-single-backend-migration-2026-11-09
+
+Current PR:
+https://github.com/jangangitungapah-pixel/37studioproper/pull/18
+
+Current PR state at handoff:
+- PR #18 is OPEN.
+- PR #18 is DRAFT.
+- PR #18 is NOT MERGED.
+- Base branch is main.
+- Head branch is architecture/firebase-single-backend-migration-2026-11-09.
+- Verified PR HEAD SHA at 2026-11-14: a5e08f0c4cefd8a9c7e4ec55f1ecfb01c9a83efa.
+- PR title: docs: plan migration to a Firebase-only backend.
+- The user has pushed their latest repository state. Always fetch/pull/inspect the latest HEAD before starting.
+- Never assume the handoff SHA is still HEAD. Verify with git status, git branch, git log, and GitHub.
+
+User's explicit working agreement:
+1. The agent implements code. The user performs local QA, test execution, CI review, and reports results.
+2. Do not spend time running broad test suites repeatedly. Do not run deployment, production mutation, expensive CI, or full regression suites autonomously.
+3. At completion, provide exact PowerShell commands for the user to run locally.
+4. Each phase is handled in its own chat/session. Do not begin Phase 5 while executing Phase 4.
+5. Produce a detailed next-phase handoff only after the user confirms the current phase is completed.
+6. Keep implementation focused and practical. Avoid speculative architecture and overengineering.
+7. Do not merge PR #18, mark it ready for review, close it, retarget its base, or deploy anything without the user's explicit approval.
+8. Do not push directly to main. Work only on the current migration branch unless the user instructs otherwise.
+9. Do not create unrelated PRs or stack/retarget old PRs unless the user explicitly directs that.
+10. Do not claim tests, emulator checks, CI, production behavior, or deploy validation passed unless you actually have current evidence. Since the user owns QA, normally report "not run by agent; pending local verification."
+
+Preferred communication:
+- Indonesian, casual and direct. The user often uses "bro/kawan".
+- Be transparent about uncertainty.
+- At each meaningful checkpoint, report what changed and what remains.
+- Do not ask the user to repeat information already present in this brief or repository.
+- If a repository fact is uncertain, inspect it instead of guessing.
+
+======================================================================
+1. APPROVED TARGET ARCHITECTURE — STRICT
+======================================================================
+
+The user has explicitly approved this target architecture:
+
+- Firebase Authentication: identity and session authentication.
+- Cloud Firestore: application operational data, authorization boundaries, domain data, transactionally consistent workflows.
+- Firebase Hosting: web application hosting.
+- Firebase project: studio-proper.
+- Firebase Hosting site: studio-37.
+- Production URL: https://studio-37.web.app.
+- Firebase plan: Spark (free tier).
+- Cloudinary: may be used only for Gallery photo binaries.
+- Gallery metadata, ownership, lifecycle state, and references remain in Firestore.
+
+STRICTLY PROHIBITED:
+- Do not enable Cloud Billing.
+- Do not upgrade to Blaze.
+- Do not enable a Free Trial.
+- Do not request or add a payment method.
+- Do not add Cloud Functions.
+- Do not add Firebase Storage.
+- Do not add Firebase Extensions.
+- Do not add a second serverless backend.
+- Do not restore Cloudflare Workers as an operational API backend.
+- Do not move business logic into Firestore Rules as a substitute for application services.
+- Do not create an external backend that requires paid infrastructure.
+
+Cloudflare Workers are being retired from the operational application request path. Worker source may still exist in the repository as legacy/dormant code while migration is in progress. Existence of a legacy worker folder alone does not mean it is still active. Inspect frontend imports, runtime routing, deployment configs, scripts, CI, environment variables and documentation before changing or removing it.
+
+Important distinction:
+- Firestore Rules are the security boundary: authenticated identity, role/permission, document access, allowed field shape, immutable fields, valid transitions/invariants that must be enforced at the database boundary.
+- React/UI: rendering, UX, optimistic states only when safe, client-side input feedback.
+- Repository/service layer: Firestore reads/writes, transactions, calculations, idempotency, canonical data transformation, recovery behavior.
+- Keep business workflows in repository/service modules, not in the 5,000-line Rules file.
+- Do not let a browser/UI validation be the sole security control.
+
+Architecture preference:
+A single backend and the least moving pieces necessary for a small studio operation. No microservices, queues, event bus, cloud functions, or unnecessary abstraction layers.
+
+======================================================================
+2. CURRENT VERIFIED REPOSITORY SNAPSHOT
+======================================================================
+
+Verified on 2026-11-14 using the GitHub connector.
+
+Repository:
+jangangitungapah-pixel/37studioproper
+Default branch:
+main
+Migration branch:
+architecture/firebase-single-backend-migration-2026-11-09
+PR:
+#18
+HEAD:
+a5e08f0c4cefd8a9c7e4ec55f1ecfb01c9a83efa
+
+PR #18 body currently records:
+- Phase 1: CLOSED/accepted.
+- Phase 2: completed/accepted.
+- Phase 3 Finance, Payment Proof, Bookkeeping & Daily Closing: CLOSED on 2026-11-09.
+- Phase 4: Customer follow-up, inventory, procurement, maintenance.
+- PR #18 remains Draft, open and unmerged.
+- Do not merge/deploy without explicit approval.
+
+The current branch already contains the following files (verified existing at HEAD):
+
+Firestore Rules monolith:
+- firestore.rules
+
+Modular Firestore Rules sources:
+- firestore/rules/core.rules
+- firestore/rules/domains/guard-attendance.rules
+- firestore/rules/domains/accounts-and-identity.rules
+- firestore/rules/domains/booking-and-scheduling.rules
+- firestore/rules/domains/finance-and-bookkeeping.rules
+- firestore/rules/domains/inventory-and-maintenance.rules
+- firestore/rules/domains/gallery-and-operations.rules
+- firestore/rules/domains/notifications.rules
+- firestore/rules/domains/procurement.rules
+- firestore/rules/domains/customer-follow-up.rules
+- firestore/rules/fallback.rules
+
+Rules assembly / source parity:
+- scripts/assemble-firestore-rules.mjs
+- scripts/firestore-rules-source-contract-test.mjs
+
+Relevant domain files verified:
+- workers/admin-operations-worker/src/domain/customerFollowUp.js
+- workers/admin-operations-worker/src/domain/inventory.js
+- workers/admin-operations-worker/src/domain/maintenance.js
+- src/services/customerFollowUpFirestoreRepository.js
+- src/services/inventoryFirestoreRepository.js
+- src/services/maintenanceFirestoreRepository.js
+- src/services/procurementFirestoreRepository.js
+- scripts/customer-follow-up-task-contract-test.mjs
+- firestore.indexes.json
+
+Verified blob SHAs at the time of inspection (use only as historical reference, not as authority if HEAD moves):
+- firestore.rules: 3b5a7df8acf7ae02473f1d869174e7c69fd41a7a
+- scripts/assemble-firestore-rules.mjs: 48e535c692c3074410da924fd5b02cb786de478f
+- scripts/firestore-rules-source-contract-test.mjs: aab9d899b9c3dc10dd3103071a6393737488875f
+- scripts/customer-follow-up-task-contract-test.mjs: f945d3b93831e5f5538ff109bc56c1b45411bd24
+- firestore/rules/domains/customer-follow-up.rules: 9246111b4a54df0e1b3e104a5e8f746739fbc660
+- firestore/rules/domains/inventory-and-maintenance.rules: 8f7b1959752431fd364479611b0bd919c6cd224c
+- firestore/rules/domains/procurement.rules: ac2a9321d272f4c473d8bba2beea370027e55340
+- firestore.indexes.json: 512c2dd8db3a4f4599a2d9c3f692cc9d2d3106e8
+- src/services/customerFollowUpFirestoreRepository.js: 4637cbc6c4fbea25852452a736279f0a97c15389
+- src/services/inventoryFirestoreRepository.js: 842778f6d77fee025793723118bfbb6e729989d0
+- src/services/maintenanceFirestoreRepository.js: ed45c32aeb8b1c86dc4867bf2d815c22a484a2d2
+- src/services/procurementFirestoreRepository.js: 536b66634256d581606b8196015f5b1f422a7144
+- workers/admin-operations-worker/src/domain/customerFollowUp.js: 9b02c9a9a4c7ee038857a2c8f699f80383933a76
+- workers/admin-operations-worker/src/domain/inventory.js: 09c8df1aaa854cf7c069b4558c4cd1426ee3957b
+- workers/admin-operations-worker/src/domain/maintenance.js: ba3a8cad5ecf7c4d9d56f9feb81e16425382c9cd
+
+Critical verified configuration:
+firebase.json contains:
+- firestore.rules = "firestore.rules"
+- firestore.indexes = "firestore.indexes.json"
+- Hosting site = "studio-37"
+- Hosting public directory = "dist"
+- SPA rewrite to /index.html.
+The modular files are source modules, NOT directly consumed by Firebase. The assembled firestore.rules remains the generated deployment input.
+
+Current package.json at HEAD:
+- "rules:assemble": "node scripts/assemble-firestore-rules.mjs"
+- "test:rules:source:raw": "node scripts/firestore-rules-source-contract-test.mjs"
+- "test:rules:raw" invokes rules:assemble before Firestore Emulator checks.
+- "test:prd:raw" currently invokes several contracts, then rules:assemble, test:rules:source:raw, test:rules, Customer Follow-up, Procurement tests.
+- Important: Inspect the current package.json again because the latest repository may have changed since this snapshot. At the 2026-11-14 inspection, test:prd:raw did NOT start by running assembly/parity before its first group of tests; it did include parity before the Rules Emulator segment. Do not assume the complete npm command graph without reading the current file.
+
+Customer Follow-up Rules optimization already exists:
+- validCustomerFollowUpTask(data, taskId) validates the complete 42-key create contract.
+- validCustomerFollowUpTaskUpdate(data, taskId) validates immutable identity against resource.data and mutable fields separately instead of calling the expensive full create validator.
+- validCustomerFollowUpTaskUpdateEventSnapshot validates the 16-key event snapshot.
+- Update requires revision = resource.data.revision + 1.
+- Customer Follow-up update guard checks a safe map.get('lastOperationId', '') before the expensive logic to reject legacy/minimal records early.
+- This optimization was made because the user previously saw a Firestore Rules expression-budget failure around Customer Follow-up update rules.
+- DO NOT claim the expression-limit issue is fixed until the user runs local emulator tests and reports it.
+- Do not loosen security merely to make the emulator pass.
+
+Rules modularization facts:
+- Current module set has 11 files.
+- Assembler reads them in a fixed order and writes the exact concatenation into firestore.rules.
+- Source parity contract compares exact string equality between assembled modules and firestore.rules.
+- Modularization improves source maintainability only. It does NOT shrink the deployed Ruleset or fix a Ruleset-size/expression budget on its own.
+- Keep the module ordering synchronized between assembler and parity contract. Better if one shared module manifest can be used without introducing unnecessary build complexity.
+- The final generated monolith must be exactly byte-for-byte equal to the concatenated module sources.
+
+Potential quality-gate improvement:
+- Consider making the normal PRD/security validation always perform assembly + parity before emulator tests. Current command graph already contains it in the rules segment. Only adjust if it improves correctness without destabilizing scripts.
+- Keep command wiring minimal and avoid adding redundant tests.
+
+======================================================================
+3. PHASE 4 GOAL
+======================================================================
+
+Phase 4 is a migration implementation phase covering these four domains:
+
+A. Customer Follow-up
+B. Inventory
+C. Procurement
+D. Equipment Maintenance
+
+Target state:
+- Browser runtime uses Firebase Auth + Cloud Firestore Web SDK directly for these domains.
+- Firestore Rules authorize reads and deny/allow writes according to the selected domain architecture.
+- Any business-critical mutation must be carried out atomically and securely through Firestore transactions in the repository layer.
+- No operational request for these domains should need Cloudflare Worker fetch calls after migration.
+- No Firebase Cloud Functions, no Firebase Storage, no Blaze.
+- Existing records and schema remain compatible. No bulk production data migration unless separately approved.
+
+Do not equate "repository file exists" with migration complete. Confirm that UI pages import and call the Firebase repository, that runtime network requests no longer target Worker endpoints, and that stale service wrappers are not still used by the application.
+
+Do not blindly delete legacy Worker code. The user approved retiring Worker operational paths, but source deletion should only happen when references, route registration, deployment, tests and rollback implications have been inspected. It is acceptable to keep dead legacy code temporarily, provided it is clearly out of the runtime path and does not get deployed as an active backend.
+
+======================================================================
+4. DOMAIN A — CUSTOMER FOLLOW-UP
+======================================================================
+
+Existing capabilities evidenced by current code and prior phase descriptions:
+- Persistent Customer Follow-up Center.
+- Queues: Overdue, Due Today, Upcoming, Completed.
+- Optional due time in Asia/Jakarta context.
+- Assignment to eligible Owner/Admin users with Customer permission.
+- Customer identity resolution against:
+  1. customers/{customerId}
+  2. client account represented by auth_{uid}
+  3. legacy booking fallback.
+- Worker-side validation of the selected PIC and customer source exists in legacy code.
+- State machine supports open, in_progress, snoozed, completed, cancelled.
+- Outcomes are separate from task completion.
+- Reopen requires reason and clears stale prior outcome state.
+- WhatsApp draft launch does not falsely claim the contact occurred.
+- Realtime task/event subscriptions and retry/error states.
+- Append-only event history.
+- Idempotency, revision tracking, actor attribution.
+- Firestore composite indexes for Follow-up query shapes.
+
+Existing direct Firebase repository:
+src/services/customerFollowUpFirestoreRepository.js
+
+Legacy Worker domain:
+workers/admin-operations-worker/src/domain/customerFollowUp.js
+
+Existing test/contract:
+scripts/customer-follow-up-task-contract-test.mjs
+
+Rules module:
+firestore/rules/domains/customer-follow-up.rules
+
+Indexes:
+firestore.indexes.json
+
+Implementation checklist:
+1. Trace CustomerPage.jsx and all consumers for task reads/writes.
+2. Confirm all current UI mutations call customerFollowUpFirestoreRepository.
+3. Remove/retire runtime Worker calls for Follow-up; do not break unrelated worker-backed features that may remain elsewhere during transition.
+4. Ensure actor is constructed from Firebase Auth UID + canonical users/{uid} + adminControl/ownership. Client-supplied role/name is not authoritative.
+5. Validate customer source and assignee using current canonical Firestore documents.
+6. Confirm query constraints match the deployed composite indexes.
+7. Preserve status transition rules, outcome behavior, due date/time semantics, WIB/Asia-Jakarta and immutable event history.
+8. Preserve idempotency and replay response behavior.
+9. Preserve revision / stale-write protection.
+10. Confirm client/browser cannot write task events or bypass the repository's invariants where write denial is intended.
+11. Audit Customer permission read scope and Owner access.
+12. Inspect the latest Customer Follow-up Rules validator and expression budget behavior. Do not make the full create validator run on update if it reintroduces the budget issue.
+13. Confirm direct repository and Worker legacy semantics agree where compatibility matters.
+14. Update docs to describe the Firebase path, not Worker as the operational backend.
+
+Critical known issue:
+The user previously ran Firestore Emulator and saw Customer Follow-up update hit the Rules expression evaluation limit near line 5583 in the then-generated monolith. The current module has an optimized mutable update validator. User must verify locally. If it still fails:
+- Capture the exact fixture, stack/line, operation and Rules expression count.
+- Find repeated reads/function expansion/large predicates.
+- Optimize targeted expressions and Rules functions without weakening auth or immutable-field protection.
+- Preserve source parity.
+- Do not solve by broadly denying valid updates or weakening actor checks.
+
+Acceptance for Customer Follow-up:
+- Create valid task accepted.
+- Invalid customer source/invalid assignee denied.
+- Owner and authorized Customer Admin can read according to scope.
+- Unrelated admin cannot read.
+- Direct browser writes to task/event are denied if that remains the chosen write boundary.
+- Valid repository task updates, transitions, reopen/cancel/contact operations work.
+- Invalid transitions, stale revision, replay with conflicting payload, tampered immutable fields denied.
+- Retry of same operation does not duplicate event or task.
+- Event history is append-only.
+- Emulator Rules expression budget remains below limit for supported valid update fixture.
+- Query/index requirements are represented in firestore.indexes.json.
+
+======================================================================
+5. DOMAIN B — INVENTORY
+======================================================================
+
+Existing code:
+- Direct Firebase repository: src/services/inventoryFirestoreRepository.js
+- Legacy Worker domain: workers/admin-operations-worker/src/domain/inventory.js
+- Rules source: firestore/rules/domains/inventory-and-maintenance.rules
+
+Expected operational capabilities:
+- Inventory item create/update.
+- Stock quantity represented accurately.
+- Inventory movement history is append-only.
+- Stock adjustment is an explicit operation, not hidden in metadata edits.
+- Prevent inventory item status/condition changes while maintenance work order is active.
+- Prevent archive/delete of equipment while a work order is active where applicable.
+- Permission boundary based on canonical inventory permission.
+- Actor, operation ID, payload fingerprint, and idempotency metadata.
+- Realtime data loading from Firestore.
+
+Important direct repository behavior seen at HEAD:
+- Requires Firebase currentUser.
+- Reads users/{uid} and adminControl/ownership from server.
+- Resolves canonical principal using buildRepositoryPrincipal.
+- Checks inventory permission.
+- Uses runIdempotentFirestoreTransaction.
+- Creates inventory item and movement in the same transaction.
+- Existing item metadata update cannot change quantity implicitly.
+- It checks for active maintenance when status/condition changes.
+- It hydrates movement record after the transaction and verifies snapshot consistency.
+
+Important risk to inspect:
+- Confirm every read performed by a Firestore transaction happens before transaction writes. Firestore transactions have strict read-before-write semantics.
+- Ensure item + movement + operation marker are atomic and idempotent.
+- Check that movement document is not written through an out-of-transaction fallback in a way that could create partial state or race conditions.
+- Inspect any standalone ensureInventoryMovement/hydration path. A read-after-commit recovery read may be okay; an independent new movement write must not create a partial business operation.
+- Confirm adjustments update quantity and movement atomically, with expected old quantity/revision or transaction read to prevent concurrent stock loss.
+- Confirm negative stock/over-adjustment policy is explicit.
+- Confirm item create and update are distinct operations; metadata-only update must not change stock silently.
+- Confirm movement records cannot be modified/deleted by clients.
+- Confirm inventory Rules don't allow a caller to spoof actor or movement snapshot.
+- Confirm active-maintenance status list is consistent in Inventory and Maintenance repositories.
+- Confirm list size bounds do not silently hide active maintenance records. If a bounded query may miss a matching record beyond the limit, design a safe targeted query or denormalized active marker. Do not pretend a bounded incomplete scan is a security guarantee.
+- Avoid unnecessary data migrations.
+
+Acceptance for Inventory:
+- Authorized Inventory actor can create an item and exactly one initial movement.
+- Duplicate retry cannot duplicate item or movement.
+- Conflicting idempotency payload is denied.
+- Metadata edit cannot alter quantity.
+- Quantity adjustment creates matching movement and updates stock atomically.
+- Concurrent adjustments do not lose updates.
+- Stale operations fail safely.
+- Active maintenance locks the corresponding protected item fields / archive path.
+- Unrelated users and client accounts are denied.
+- Movement history is immutable.
+- Rules Emulator allows/denies are exercised for representative cases.
+
+======================================================================
+6. DOMAIN C — EQUIPMENT MAINTENANCE
+======================================================================
+
+Existing direct Firebase repository:
+src/services/maintenanceFirestoreRepository.js
+
+Legacy Worker domain:
+workers/admin-operations-worker/src/domain/maintenance.js
+
+Rules source:
+firestore/rules/domains/inventory-and-maintenance.rules
+
+Expected workflow:
+- Work order lifecycle: report, triage, approve, assign PIC, schedule, start, waiting_parts, resume, complete, verify, cancel, Owner-only reopen.
+- Equipment status/availability synchronized with the active work order.
+- Equipment remains locked/unavailable while work order is active, including the Completed-awaiting-verification state.
+- It may be restored only on Verified or Cancelled according to actual domain rules.
+- No duplicate active work orders for the same equipment.
+- Append-only maintenanceEvents.
+- Actual maintenance costs are posted exactly once into immutable bookkeeping expense records.
+- Payment/expense date respects Daily Closing lock.
+- Idempotency and expected revision / transaction preconditions protect retries and stale writes.
+- Owner-only reopen requires fresh authentication where existing UX requires it.
+- Attachment support is HTTPS references only (no Firebase Storage). Preserve Cloudinary only for Gallery binary assets, not as an unapproved storage backend for maintenance unless existing product policy explicitly allows it.
+
+Important direct repository details seen:
+- Uses Firebase Auth currentUser and canonical principal checks.
+- Reads users and ownership control.
+- Uses Firestore transaction abstraction.
+- Collections: maintenanceWorkOrders, maintenanceEvents, inventoryItems, bookkeepingEntries, cashClosingSessions.
+- Transition map currently includes triage, approve, assign, start, waiting_parts, resume, complete, verify, cancel, reopen.
+- Active status set includes reported, triaged, approved, assigned, in_progress, waiting_parts, completed.
+- Verify moves completed to verified. Reopen moves verified to in_progress.
+- Finance permission is needed for cost posting; inventory permission for work order operations; Owner may have special reopen authority.
+
+Implementation checklist:
+1. Verify every Maintenance UI entry point is wired to direct repository.
+2. Ensure no runtime Worker route is called for Maintenance.
+3. Ensure work-order create reads current inventory item and checks no active order transactionally.
+4. Ensure all transition writes, event append, and equipment projection changes are atomic.
+5. Guard against two concurrent work-order creations for the same equipment. If Firestore query phantom/race semantics cannot guarantee uniqueness, use a transactionally updated activeWorkOrderId/maintenance lock field on inventory item or an equivalent deterministic guard. Do not rely only on a pre-transaction query.
+6. Keep a completed work order active/locked until verify if that is the intended policy.
+7. On cancel/verify, release the equipment lock consistently.
+8. Owner-only reopen: canonical Owner check and fresh authentication; don't trust UI role.
+9. Cost posting must atomically update/link the work order, create exactly one immutable bookkeeping entry, append event and idempotency operation marker, and check daily close fence.
+10. Confirm closed business dates block maintenance cost posting.
+11. Prevent manual edit/delete of system-generated maintenance expense from generic bookkeeping paths.
+12. Keep attachments as validated HTTPS references only.
+13. Check that all status enumerations are consistent between Rules, repository, UI, worker legacy domain and contract tests.
+14. Preserve history; do not rewrite historical events.
+
+Acceptance for Maintenance:
+- Authorized actor creates valid work order.
+- Second active work order for same equipment is rejected even under race.
+- Invalid lifecycle transition denied.
+- Event and projected state update atomically.
+- Item cannot be casually marked active/available while maintenance remains active.
+- Completed awaiting verification remains locked.
+- Verify/cancel releases lock appropriately.
+- Only canonical Owner can reopen, with fresh auth.
+- Cost posting creates one linked ledger expense and one event.
+- Duplicate retry does not double post.
+- Closed date blocks new expense posting.
+- Maintenance events and system expenses are immutable to browser edits.
+- Unauthorized users denied.
+
+======================================================================
+7. DOMAIN D — PROCUREMENT
+======================================================================
+
+Existing direct Firebase repository:
+src/services/procurementFirestoreRepository.js
+
+Rules source:
+firestore/rules/domains/procurement.rules
+
+Collections visible in current Rules/repository:
+- suppliers
+- purchaseOrders
+- goodsReceipts
+- procurementPayments
+- procurementEvents
+- inventoryItems / inventoryMovements
+- bookkeepingEntries
+- cashClosingSessions
+- admin operation records
+
+The current direct repository source includes:
+- canonical principal check for inventory/bookkeeping permissions
+- supplier creation
+- purchase order creation
+- purchase order state model:
+  draft, submitted, approved, ordered, partially_received, received, cancelled
+- idempotency helper and transaction abstraction
+- supplier, PO, event hydration
+- procurement payment hydration that expects PO + procurementPayments + bookkeeping expense + event to exist.
+
+Historical Phase 5 PR #14 is an older, stacked implementation branch and is NOT the source of truth for this migration branch. Do not copy its Worker-backed architecture or retarget the current PR to it. Inspect the current migration branch code only. Some old PR descriptions refer to Worker endpoints; those descriptions are historical.
+
+Expected Procurement workflows to inspect and complete:
+1. Supplier create/update/archive as implemented or intended.
+2. PO create with supplier and current inventory item references.
+3. PO transitions Draft → Submitted → Approved → Ordered → Partially Received / Received, plus guarded cancellation.
+4. Goods Receipts allow partial receipt.
+5. Inventory quantity increments only when a receipt is committed.
+6. Receipt cannot exceed outstanding quantity.
+7. Supplier payment supports partial payment and does not exceed outstanding payable.
+8. Payment creates an immutable bookkeeping expense and procurement payment record.
+9. Purchase order revision/stale-write protection.
+10. Procurement event history append-only.
+11. Payment obeys daily closing fence.
+12. Read boundaries:
+   - Supplier / PO / Receipt data follows Inventory permission.
+   - Payment records follow Bookkeeping permission.
+   - Procurement event read scope should disclose only required payment metadata to Bookkeeping users and full operational details to Inventory users.
+13. Idempotency prevents double receipt and double payment.
+14. Race-safe stock changes and payment balance updates.
+15. No Worker runtime route for procurement after migration.
+
+Critical implementation inspection:
+- Trace all UI calls. A direct procurement repository exists, but that alone does not prove it is used by the runtime.
+- Inspect every exported function from procurementFirestoreRepository.js and map it to UI actions.
+- Validate transaction read-before-write order.
+- Confirm all related reads (PO, supplier, inventory item(s), payment, expense, event, closing session, operation marker) happen before any transaction write.
+- Confirm inventory updates and movement records happen within the same transaction as Goods Receipt and PO update.
+- Confirm payment + bookkeeping expense + payment record + event + PO balance + operation marker are atomic.
+- Avoid a two-step write where a PO is updated and the receipt/stock movement fails afterward.
+- Ensure supplier/PO status transitions are enforced in the repository and also at Rules boundary if browser writes are permitted. If repository-only writes are used, deny unauthorized direct writes.
+- Validate procurement amount rounding and safe integer ranges. Store integer Rupiah if that matches canonical bookkeeping schema; inspect the existing ledger schema before changing units.
+- Check for 0 quantity, fractional quantities, unit conversion assumptions, and decimal precision.
+- Never allow over-receipt or overpayment.
+- Do not adjust inventory merely because a PO reaches Ordered.
+- A stock movement is written when actual goods are received, not when an order is submitted.
+- Avoid changing legacy existing PO or bookkeeping records without explicit migration design.
+
+Acceptance for Procurement:
+- Supplier creation produces one supplier and one event.
+- Duplicate retry returns the same canonical result without duplicates.
+- PO create calculates correct totals from validated lines.
+- Invalid/archived supplier or inventory item is rejected.
+- Invalid state transition / stale revision rejected.
+- Partial receipts increment stock only by the received amount.
+- Over-receipt denied.
+- Completing receipt sets PO Received only when all lines fully received.
+- Partial supplier payment accepted; payment above outstanding denied.
+- Payment produces exactly one expense row and one payment record and event.
+- Payment blocked by closed business date.
+- Event and ledger rows immutable.
+- Inventory readers do not gain unrestricted bookkeeping payment details.
+- Bookkeeping readers do not gain unrestricted supplier/contact data.
+- No Worker operational calls remain.
+
+======================================================================
+8. FIRESTORE RULES — MODULAR SOURCE AND GENERATED FILE
+======================================================================
+
+Current source layout:
+- firestore/rules/core.rules
+- firestore/rules/domains/*.rules
+- firestore/rules/fallback.rules
+- scripts/assemble-firestore-rules.mjs
+- scripts/firestore-rules-source-contract-test.mjs
+- output: firestore.rules
+
+Firebase config:
+firebase.json -> firestore.rules
+
+Do NOT change firebase.json to point at the modular directory. Firebase Rules deployment input stays a single firestore.rules file.
+
+Current assembler sequence:
+1. core.rules
+2. guard-attendance.rules
+3. accounts-and-identity.rules
+4. booking-and-scheduling.rules
+5. finance-and-bookkeeping.rules
+6. inventory-and-maintenance.rules
+7. gallery-and-operations.rules
+8. notifications.rules
+9. procurement.rules
+10. customer-follow-up.rules
+11. fallback.rules
+
+Important:
+- Assembler concatenates raw file contents exactly using sections.join('').
+- Module files therefore own their whitespace/newlines.
+- The parity contract asserts byte/string equality between concatenated modules and firestore.rules.
+- If you edit any module, run assembly locally and inspect diff of firestore.rules.
+- Never manually edit firestore.rules only. Edit source module then assemble.
+- Never update module and generated file inconsistently.
+- Keep comments and section order deterministic.
+- Avoid introducing a generic Rules preprocessor or build system. Current Node script is enough.
+- Do not split further merely for appearance. Split only if a domain boundary becomes materially easier to own.
+- Never weaken access controls to reduce line count.
+- Review Firestore Rules access-call limits, expression evaluation limits, function depth/argument constraints and file size against current official Firebase docs when a specific limit is material. Do not rely on recalled limits without checking.
+- Remember: modularization doesn't shrink generated Rules content. It improves maintainability, not runtime cost.
+- Track repeated get()/exists() expressions carefully; Firestore may cache document access calls but expression counts and function expansion still matter.
+- The user's local Emulator previously hit an expression-budget issue during Customer Follow-up update. The targeted update validator optimization is present; local confirmation is outstanding.
+- Test both valid and invalid representative cases. Do not make the security boundary more permissive simply to pass.
+
+Rules responsibilities:
+- Canonical auth and principal.
+- Role/permission and ownership control.
+- Collection read permissions.
+- Client write allowlist / server-only write prohibition.
+- Required/allowed fields and type shapes.
+- Immutable identity and audit values.
+- Valid operation/event identity.
+- Protected transition or linked-document invariants required at the database boundary.
+- Deny all unspecified writes by default.
+
+Potential concern:
+The current Firestore Rules source contains 11 large modules and generates a 246,470-character monolith in prior verified state. Treat actual current size as unknown until measured. Do not confuse the source module count with deployed size.
+
+======================================================================
+9. TRANSACTION AND DATA INTEGRITY DESIGN
+======================================================================
+
+Use Firestore Web SDK transaction APIs and the existing repository foundation. Avoid bespoke transaction abstractions if a compatible foundation already exists.
+
+For every mutation, answer:
+- What is the canonical actor?
+- What is the operation ID?
+- What is the payload fingerprint?
+- What records are read before writes?
+- What invariant must be true at commit time?
+- What documents are written atomically?
+- What event/audit row is appended?
+- What stale-write/expected revision precondition exists?
+- What happens on network retry?
+- What happens if the operation marker exists with same payload?
+- What happens if the operation marker exists with different payload?
+- What response is returned after a replay?
+- Can two simultaneous requests bypass the invariant?
+
+Important Firestore transaction rules:
+- Perform all transaction reads before the first transaction write.
+- Do not perform external network calls inside transaction callbacks.
+- Avoid generating different operation IDs or timestamps on transaction callback retries unless the operation design explicitly supports it.
+- Build deterministic IDs from operation identity when appropriate.
+- Ensure transaction callback is retry-safe.
+- Keep writes under Firestore limits.
+- Never assume a prior query guarantees uniqueness against concurrent transactions.
+- Use a document read/update lock or deterministic transaction guard for uniqueness across records.
+- For inventory stock and payment balances, base calculations on the transaction's latest read values.
+- Use integer IDR amounts when consistent with ledger model; avoid floating-point money drift.
+- Preserve Asia/Jakarta business-date behavior where financial dates and due dates require it.
+- Preserve idempotency on network retries. Replaying the same key + same payload should return prior result; same key + different payload must fail.
+- Keep event collections append-only.
+
+Do not introduce Cloud Functions to work around Firestore transaction limits. The approved architecture has no Cloud Functions.
+
+======================================================================
+10. FIREBASE SPARK CONSTRAINTS / PRODUCTION SAFETY
+======================================================================
+
+This project must remain on Firebase Spark.
+
+Never:
+- trigger a Blaze upgrade prompt as part of implementation;
+- activate Cloud Billing;
+- deploy Cloud Functions;
+- add Firebase Storage;
+- deploy to Hosting;
+- deploy Firestore Rules/Indexes to production;
+- mutate live production data;
+- modify production indexes;
+- run data reconciliation scripts against production;
+without explicit user approval.
+
+Emulator validation is permitted when the user performs it locally. The agent should not publish anything.
+
+Do not treat Firebase Emulator success as proof that production indexes are deployed. Local firestore.indexes.json only describes intended indexes.
+
+Known production items outstanding from PR #18:
+- Active production Firestore Rules release previously recorded as aa6d3469-9101-4c7a-8ede-bcba9894d38a.
+- Live deployed Rules source has not been exported and compared with this branch.
+- Production status of Follow-up composite index customerFollowUpTasks(status, dueAt, dueTime) remains unverified.
+- Production finance data reconciliation remains outstanding.
+- No production release is part of this phase by default.
+
+Before any production publication (future user-approved work only):
+1. Export current live Rules baseline.
+2. Compare live source with branch; preserve production-only fixes.
+3. Confirm index requirements and live index status.
+4. Run local Emulator tests.
+5. Inspect production data implications and backup/recovery.
+6. Get explicit user approval for each intended release/mutation.
+7. Do not mix Rules deploy, indexes deploy, hosting deploy and data migration unless scope explicitly approved.
+
+======================================================================
+11. WORKER RETIREMENT STRATEGY
+======================================================================
+
+The previous architecture used an Admin Operations Worker. The new target retires it from operational application requests.
+
+The repository may contain:
+- workers/admin-operations-worker/
+- Worker-specific contract tests
+- Wrangler config / package references
+- Legacy endpoint references
+- CI scripts
+- Docs and deployment scripts
+
+Do a reference map before deleting code:
+A. Frontend imports of Worker client/fetch wrappers.
+B. API URL constants and runtime config.
+C. All route handlers and routers.
+D. Worker-specific tests and package scripts.
+E. wrangler.toml / wrangler.jsonc / wrangler.json and deploy commands.
+F. GitHub Actions workflows.
+G. secrets/environment variables in source manifests (do not reveal secrets).
+H. docs, PR templates, README, migration plan.
+I. Cloudinary and Firebase use should not be accidentally removed.
+J. Production worker deployment status and traffic are unknown; do not infer zero traffic.
+
+For Phase 4:
+- Remove operational Worker calls only for Customer Follow-up, Inventory, Procurement and Maintenance after equivalent Firebase path is fully wired and accepted.
+- Do not retire the entire Worker infrastructure in Phase 4 if other domains still depend on it.
+- Keep the broad Worker retirement/config consolidation for Phase 6, after the remaining domains are migrated and production dependency/traffic checks are done.
+- Do not remove worker code or Wrangler config globally until Phase 6.
+- If a domain's Worker endpoint is no longer called in app code, mark it deprecated/dormant and update relevant docs/tests. Do not falsely claim the Worker has been decommissioned in production.
+
+======================================================================
+12. IMPLEMENTATION ORDER AND DELIVERY SLICES
+======================================================================
+
+Do not attempt a giant rewrite. Work in coherent slices:
+
+Slice 0 — Reconcile state
+- Pull latest migration branch.
+- Confirm working tree clean.
+- Verify current HEAD and branch.
+- Inspect PR #18 and latest commits.
+- Read current migration roadmap docs (find actual paths; a requested path from prior session may not exist).
+- Inventory all frontend callers and backend endpoints for the four Phase 4 domains.
+- List current repository exports and UI usage.
+- Identify files already implemented versus legacy paths.
+- Write a short internal checklist in your response before editing; no need to create a giant plan file.
+
+Slice 1 — Customer Follow-up completion
+- Trace UI → service → Firebase repository.
+- Remove active Worker path for Customer Follow-up.
+- Fix incomplete or inconsistent Firestore transaction / idempotency / index integration.
+- Preserve current Rules optimizer and source parity.
+- Update a minimal targeted contract if necessary.
+- User validates locally before moving deeper if a real blocker or Rules budget issue appears.
+
+Slice 2 — Inventory completion
+- Trace UI actions and all exports.
+- Ensure create/update/adjustment operations use direct Firestore repository.
+- Ensure stock + movement + idempotency marker atomic.
+- Ensure maintenance lock semantics and permission boundary.
+- Remove only the Inventory Worker runtime caller.
+
+Slice 3 — Maintenance completion
+- Trace UI actions and all exports.
+- Ensure all lifecycle actions use direct Firestore repository.
+- Ensure unique active work-order lock is transactionally enforced.
+- Ensure ledger cost, closing fence, event and projection writes are atomic.
+- Remove only Maintenance Worker runtime caller.
+
+Slice 4 — Procurement completion
+- Trace UI actions and all exports.
+- Complete Supplier, PO, Receipt, Payment operations.
+- Make receipts + stock movements + PO state atomic.
+- Make payments + payment row + ledger expense + event + PO balance + operation marker atomic.
+- Ensure partial balances, no over-receipt, no over-payment, daily close fence.
+- Remove only Procurement Worker runtime caller.
+
+Slice 5 — Security/index/script/docs closeout
+- Update Firestore modular source and regenerate firestore.rules.
+- Maintain exact parity.
+- Add only necessary indexes.
+- Confirm Firebase config still points to firestore.rules and Hosting site studio-37.
+- Clean/update only relevant domain Worker tests and docs.
+- Add a migration status note showing what is direct Firebase and what still uses legacy Worker.
+- Do not do global Worker retirement (reserved for Phase 6).
+- Do not mark PR ready / merge.
+
+If the checkout reveals that one or more repositories/UI integrations are already complete, do not rewrite them. Audit and document acceptance evidence, then focus on the actual remaining gap.
+
+======================================================================
+13. TESTING AND QUALITY GATES — USER RUNS LOCALLY
+======================================================================
+
+User owns local tests and CI. The agent should not run broad tests or CI automatically.
+
+Inspect and preserve current package scripts. Do not guess command names.
+
+Current known scripts in the 2026-11-14 snapshot:
+- npm run build
+- npm run lint
+- npm run rules:assemble
+- npm run test:rules:source:raw
+- npm run test:rules
+- npm run test:prd
+- npm test
+- npm run verify:local
+
+Known raw mapping at snapshot:
+- rules:assemble -> node scripts/assemble-firestore-rules.mjs
+- test:rules:source:raw -> node scripts/firestore-rules-source-contract-test.mjs
+- test:rules:raw -> assembly then Firestore Emulator tests:
+  - scripts/firestore-rules-behavior-test.mjs
+  - scripts/firestore-maintenance-rules-test.mjs
+  - scripts/firestore-repository-foundation-rules-test.mjs
+  - scripts/firebase-finance-rules-invariant-test.mjs
+- test:prd:raw invokes a long chain of domain contracts and includes assembly/parity/emulator/customer follow-up/procurement contracts.
+
+Suggested staged user validation after code implementation:
+1. npm ci (only if lockfile/dependencies changed or clean install is desired; don't run if unnecessary)
+2. npm run rules:assemble
+3. npm run test:rules:source:raw
+4. npm run test:rules
+5. npm run build
+6. npm run lint
+7. Run targeted domain contracts that changed.
+8. npm run test:prd
+9. CI Quality Gates on the exact HEAD.
+
+Do not ask the user to run every suite after every tiny commit. Provide staged commands relevant to the changed domain(s).
+Do not use production Firebase project as emulator project. Existing scripts use demo-studio37 for Firestore Emulator; preserve this unless actual repo config directs otherwise.
+If Emulator startup fails due to occupied port, identify/stop the actual stale process rather than changing project config casually.
+If test fails:
+- Ask user for exact command + full relevant error output only when necessary.
+- Interpret the actual failure and implement a targeted fix.
+- Do not run the whole suite again unless the failure/fix requires it.
+- Do not mask or skip failing tests.
+- Do not lower assertions simply to get green.
+
+At final implementation handoff, provide exact PowerShell commands.
+
+User's local Windows path:
+C:\Users\hazel\source\repos\37studioproper
+
+PowerShell branch sync template (verify branch name first):
+git fetch origin
+git switch architecture/firebase-single-backend-migration-2026-11-09
+git pull --ff-only origin architecture/firebase-single-backend-migration-2026-11-09
+
+After pull, execute relevant npm checks in stages. Only the user runs them.
+
+======================================================================
+14. DOCUMENTATION THAT MUST BE KEPT ACCURATE
+======================================================================
+
+Inspect actual docs before editing. Prior attempt to fetch docs/architecture/FIREBASE-DEVELOPMENT-STRATEGY.md returned 404 on this branch, so DO NOT assume it exists at that path.
+
+Find current migration plan, data audit and architecture docs using repo tree or search. The PR #18 body says docs/migration plan and data audit were synchronized in documentation-only commits:
+- 556bb1f7d79eaae0e03a4fef062ab5c6513ad582
+- c58a2636f6c749976dd3dee7ecdf49b8932c6de7
+- 6273a121ff54c04e1c50217f70ebd485dac83f23
+
+Those are historical docs-only commits on the branch; inspect them and locate their actual files. Do not blindly recreate docs in a guessed path.
+
+Update relevant docs to state:
+- Phase 1 accepted.
+- Phase 2 completed.
+- Phase 3 Finance accepted/closed.
+- Phase 4 status based on actual code and user validation, not code existence alone.
+- Which domain mutation/read paths use direct Firebase.
+- Which domain still calls legacy Worker, if any.
+- Which Rules source module owns each domain.
+- Which emulator/contract tests cover each domain.
+- Production state is unverified unless user confirms.
+- No production deployment is part of this work.
+
+Do not state Phase 4 is complete until the user confirms the required local validations and any agreed acceptance review.
+
+======================================================================
+15. QUALITY, SECURITY, AND REVIEW CHECKLIST
+======================================================================
+
+For every changed file:
+- Understand existing conventions before editing.
+- Preserve user-facing functionality.
+- Avoid unnecessary dependency changes.
+- Avoid copying old PR code that may be incompatible.
+- Avoid mass formatting or unrelated refactors.
+- Keep JSX/JS consistent with repository conventions.
+- Preserve accessibility and responsive behavior.
+- Handle loading, error, empty, stale, and duplicate states.
+- Use canonical principal instead of client-supplied role.
+- Never store secrets in source.
+- Do not use localStorage or browser state as authorization.
+- Keep financial data in integer Rupiah units if matching current schema.
+- Do not allow stock quantity drift.
+- Do not allow duplicate ledger entries.
+- Use immutable audit/event rows.
+- Preserve idempotency on retry and reject payload collision.
+- Keep transaction read-before-write ordering.
+- Ensure no client direct-write path bypasses repository-level invariants.
+- Confirm Rules match actual query/write patterns.
+- Confirm all required indexes exist in firestore.indexes.json (production deployment is a separate approval).
+- Do not add Firestore Storage/Cloud Functions/Blaze dependencies.
+
+For Firestore Rules:
+- Deny by default.
+- Exact immutable identity checks.
+- Actor must match request.auth.uid and canonical user record.
+- Owner check must honor adminControl/ownership.
+- Admin permission must be approved and explicit.
+- Client role cannot inherit admin permissions.
+- Event/audit records cannot be updated/deleted.
+- Do not add broad wildcard allows.
+- Be cautious with overlapping match blocks: Firestore allows are OR-combined; a restrictive match does not override a permissive match.
+- Test both allow and deny paths.
+
+For financial linked writes:
+- A single logical operation must leave records consistent or write nothing.
+- A payment cannot exceed balance.
+- A receipt cannot exceed ordered quantity.
+- A refund cannot exceed net paid.
+- Daily Closing fence must apply to relevant expenses.
+- Reconcile source collection and ledger semantics before changing.
+
+======================================================================
+16. WHAT NOT TO DO
+======================================================================
+
+Do NOT:
+- start Phase 5 (Owner/account lifecycle, Danger Zone, Gallery) in this session;
+- start Phase 6 (global Worker retirement/config consolidation) in this session;
+- implement an alternative backend;
+- add Cloud Functions;
+- add Firebase Storage;
+- turn Firestore Rules into business-logic code;
+- blindly split Rules into more files;
+- weaken rules to bypass expression limits;
+- trust client role/permission fields;
+- assume a repository file is wired to the UI;
+- assume a Worker source folder means it is active;
+- delete all Worker infrastructure during Phase 4;
+- copy historical PR #14 procurement Worker patterns into current Firebase branch;
+- alter base/main or merge PR #18;
+- change production Firestore Rules/indexes/Hosting;
+- add a migration that deletes historical documents/assets;
+- change existing payment-proof binary policy;
+- rewrite old financial history;
+- report tests as passed without evidence;
+- ask the user to run massive test suites repeatedly without a reason;
+- claim a production index exists just because it is in firestore.indexes.json.
+
+======================================================================
+17. REQUIRED FINAL DELIVERABLE FROM GEMINI
+======================================================================
+
+When Phase 4 implementation work reaches a coherent stopping point, provide:
+
+A. Summary
+- Domains fully migrated to direct Firebase.
+- Domains partially migrated.
+- Remaining Worker runtime dependencies.
+- Important architectural choices.
+
+B. Exact file list
+- Added / modified / deleted paths.
+- One-line purpose for each meaningful path.
+
+C. Data integrity / security summary
+- Transaction boundaries.
+- Idempotency behavior.
+- Role/permission boundary.
+- Event immutability.
+- Relevant Rules changes.
+- Index changes.
+
+D. Validation status
+- Explicit list of commands the agent did NOT run.
+- Contracts added/updated.
+- Risks still requiring local QA.
+- Never say "passed" without fresh execution evidence.
+
+E. Exact PowerShell commands for user
+Start with:
+git fetch origin
+git switch architecture/firebase-single-backend-migration-2026-11-09
+git pull --ff-only origin architecture/firebase-single-backend-migration-2026-11-09
+
+Then only relevant commands, for example:
+npm run rules:assemble
+npm run test:rules:source:raw
+npm run test:rules
+npm run build
+npm run lint
+npm run test:prd
+
+Use actual current package scripts and order. Do not give commands that do not exist.
+
+F. Governance state
+- PR #18 remains Draft/open/unmerged.
+- No deployment performed.
+- No production data mutated.
+- No production security rules/indexes published.
+
+G. Handoff file
+When the user confirms Phase 4 acceptance, create a new plain-text handoff file for Phase 5. Do not begin Phase 5 implementation in this session.
+
+======================================================================
+18. START HERE — IMMEDIATE INSTRUCTIONS
+======================================================================
+
+Start by reconciling actual checkout with this brief:
+
+1. Run/read:
+   git status --short
+   git branch --show-current
+   git log -5 --oneline --decorate
+   git remote -v
+2. Fetch latest:
+   git fetch origin
+   git switch architecture/firebase-single-backend-migration-2026-11-09
+   git pull --ff-only origin architecture/firebase-single-backend-migration-2026-11-09
+3. Verify clean working tree. Do not discard user changes.
+4. Inspect PR #18 current state and head SHA.
+5. Locate docs and current migration roadmap.
+6. Inspect current package.json and firebase.json.
+7. Build a compact domain matrix:
+
+   Domain | UI caller | Current repository | Worker runtime calls | Rules module | Indexes | Test coverage | Remaining work
+
+8. Trace real references, not just file existence:
+   - Customer Follow-up UI → repository → Firestore.
+   - Inventory UI → repository → Firestore.
+   - Maintenance UI → repository → Firestore.
+   - Procurement UI → repository → Firestore.
+9. Identify any dual-write or mixed backend paths.
+10. Identify transaction flaws that can cause duplicate or partial data.
+11. Report the exact remaining Phase 4 work, then implement it.
+
+Do not spend the session producing another high-level architecture proposal. The target architecture is already approved. The job is to make the current branch work correctly and complete the migration.
+
+END OF HANDOFF

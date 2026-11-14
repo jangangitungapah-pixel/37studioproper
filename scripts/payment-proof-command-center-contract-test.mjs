@@ -14,7 +14,7 @@ function read(
       file,
     ),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
 }
 
 const repositorySource =
@@ -71,11 +71,15 @@ assert.equal(
 
 assert.equal(
   repositorySource.includes(
-    'reviewCanonicalPaymentProof(',
+    'approvePaymentProofDirect(',
   ),
   true,
-  'Protected canonical accounting service must own payment approval.',
+  'Firebase finance repository must own payment approval.',
 );
+
+assert.equal(repositorySource.includes('rejectPaymentProofDirect('), true);
+assert.equal(repositorySource.includes('runIdempotentFirestoreTransaction('), true);
+assert.equal(repositorySource.includes('reviewCanonicalPaymentProof('), false);
 
 assert.equal(
   billingSource.includes(
@@ -170,6 +174,9 @@ for (
       required,
   );
 }
+
+assert.equal(commandSource.includes('proofUrl'), false, 'Proof queue must not display historical remote image URLs.');
+assert.equal(commandSource.includes('proof.transactionReference'), true, 'Proof queue must display the transaction reference.');
 
 assert.equal(
   commandSource.includes(

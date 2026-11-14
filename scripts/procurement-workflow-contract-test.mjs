@@ -9,8 +9,8 @@ const workspace = read('src/components/inventory/ProcurementWorkspace.jsx');
 const inventoryCss = read('src/styles/modules/inventory.css');
 const inventoryWorker = read('workers/admin-operations-worker/src/domain/inventory.js');
 const workerRouter = read('workers/admin-operations-worker/src/index.js');
-const operations = read('src/services/adminOperationsRepository.js');
 const inventoryRepository = read('src/services/inventoryRepository.js');
+const directRepository = read('src/services/procurementFirestoreRepository.js');
 const rules = read('firestore.rules');
 const packageJson = JSON.parse(read('package.json'));
 
@@ -21,6 +21,23 @@ assert.match(workspace, /Procurement Management/);
 assert.match(workspace, /createCanonicalSupplier/);
 assert.match(workspace, /createCanonicalPurchaseOrder/);
 assert.match(workspace, /transitionCanonicalPurchaseOrder/);
+assert.match(workspace, /from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
+assert.match(workspace, /recordCanonicalProcurementPayment,[\s\S]*?from '\.\.\/\.\.\/services\/procurementFirestoreRepository\.js'/);
+assert.match(workspace, /getStableRequestId\('procurement-payment'/);
+assert.match(workspace, /recordCanonicalProcurementPayment\(payload, request\.requestId\)/);
+
+assert.doesNotMatch(workspace, /adminOperationsRepository/);
+assert.match(workspace, /getStableRequestId\('supplier-create'/);
+assert.match(workspace, /getStableRequestId\('purchase-order-create'/);
+assert.match(workspace, /getStableRequestId\('purchase-order-transition'/);
+assert.match(directRepository, /export async function createCanonicalSupplier/);
+assert.match(directRepository, /export async function createCanonicalPurchaseOrder/);
+assert.match(directRepository, /export async function transitionCanonicalPurchaseOrder/);
+assert.match(directRepository, /export async function receiveCanonicalPurchaseOrder/);
+assert.equal((directRepository.match(/await runIdempotentFirestoreTransaction\(/g) || []).length, 4);
+assert.match(directRepository, /transaction\.get\(supplierRef\)/);
+assert.match(directRepository, /transaction\.get\(reference\)/);
+
 assert.match(workspace, /receiveCanonicalPurchaseOrder/);
 assert.match(workspace, /recordCanonicalProcurementPayment/);
 assert.match(workspace, /subscribeSuppliers/);
@@ -84,22 +101,36 @@ for (const endpoint of [
   '/v1/procurement/goods-receipts',
   '/v1/procurement/payments',
 ]) {
-  assert.equal(operations.includes(endpoint), true, 'Canonical client wrapper missing: ' + endpoint);
+  assert.equal(directRepository.includes(endpoint), false, 'Direct Firestore repository must not call Worker routes: ' + endpoint);
 }
 
-for (const collectionName of [
-  'suppliers',
-  'purchaseOrders',
-  'goodsReceipts',
-  'procurementPayments',
-  'procurementEvents',
-]) {
-  const escapedCollectionName = collectionName.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(
-    'match /' + escapedCollectionName + '/\\{[^}]+\\} \\{[\\s\\S]*?allow create, update, delete: if false;',
-  );
-  assert.match(rules, pattern, 'Procurement collection must be Worker-write-only: ' + collectionName);
+function getCollectionRulesBlock(collectionName, documentId) {
+  const startIndex = rules.indexOf('match /' + collectionName + '/{' + documentId + '} {');
+  if (startIndex < 0) throw new Error('Firestore Rules collection missing: ' + collectionName);
+  const endIndex = rules.indexOf(String.fromCharCode(10) + '    match /', startIndex + 1);
+  return rules.slice(startIndex, endIndex < 0 ? rules.length : endIndex);
 }
+
+const supplierRules = getCollectionRulesBlock('suppliers', 'supplierId');
+const purchaseOrderRules = getCollectionRulesBlock('purchaseOrders', 'purchaseOrderId');
+const receiptRules = getCollectionRulesBlock('goodsReceipts', 'receiptId');
+const procurementPaymentRules = getCollectionRulesBlock('procurementPayments', 'paymentId');
+const procurementEventRules = getCollectionRulesBlock('procurementEvents', 'eventId');
+
+assert.equal(supplierRules.includes('allow create: if procurementSupplierCreateAllowed(supplierId);'), true);
+assert.equal(supplierRules.includes('allow update, delete: if false;'), true);
+assert.equal(purchaseOrderRules.includes('allow create: if procurementPurchaseOrderCreateAllowed(purchaseOrderId);'), true);
+assert.equal(purchaseOrderRules.includes('allow update: if procurementPurchaseOrderUpdateAllowed(purchaseOrderId);'), true);
+assert.match(rules, /function procurementPurchaseOrderTransitionUpdateAllowed\(purchaseOrderId, data\)[\s\S]*?data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\[[\s\S]*?'purchase-order-transition'[\s\S]*?procurementPurchaseOrderEventMatchesAfter\(data\)/);
+assert.match(rules, /function procurementPurchaseOrderUpdateAllowed\(purchaseOrderId\)[\s\S]*?procurementPurchaseOrderTransitionUpdateAllowed\(purchaseOrderId, data\)[\s\S]*?procurementPurchaseOrderPaymentUpdateAllowed\(purchaseOrderId, data\)/);
+
+assert.equal(purchaseOrderRules.includes('allow delete: if false;'), true);
+assert.equal(receiptRules.includes('allow create: if procurementGoodsReceiptCreateAllowed(receiptId);'), true);
+assert.equal(receiptRules.includes('allow update, delete: if false;'), true);
+assert.equal(procurementPaymentRules.includes('allow create: if procurementPaymentCreateAllowed(paymentId);'), true);
+assert.equal(procurementPaymentRules.includes('allow update, delete: if false;'), true);
+assert.equal(procurementEventRules.includes('allow create: if procurementEventCreateAllowed(eventId);'), true);
+assert.equal(procurementEventRules.includes('allow update, delete: if false;'), true);
 assert.match(
   rules,
   /match \/procurementPayments\/\{paymentId\} \{[\s\S]*?canAccessBookkeepingData\(\)/,
@@ -130,15 +161,15 @@ assert.match(
 );
 assert.match(
   rules,
-  /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/,
-  'Procurement must preserve Worker-only inventory stock writes.',
+  /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create: if inventoryItemCreateAllowed\(itemId\);[\s\S]*?allow update: if inventoryItemUpdateAllowed\(itemId\);[\s\S]*?allow delete: if false;/,
+  'Inventory writes must remain protected by direct stock and movement contracts.',
 );
 assert.equal(inventoryRepository.includes('subscribeSuppliers'), true);
 assert.equal(inventoryRepository.includes('subscribePurchaseOrders'), true);
 assert.equal(inventoryRepository.includes('subscribeGoodsReceipts'), true);
 assert.equal(inventoryRepository.includes('subscribeProcurementPayments'), true);
 assert.match(read('scripts/procurement-worker-regression-test.mjs'), /business_date_closed/);
-assert.match(packageJson.scripts.test, /procurement-worker-regression-test\.mjs/);
-assert.match(packageJson.scripts['test:prd'], /procurement-workflow-contract-test\.mjs/);
+assert.match(packageJson.scripts['test:serial:raw'], /procurement-worker-regression-test\.mjs/);
+assert.match(packageJson.scripts['test:prd:raw'], /procurement-workflow-contract-test\.mjs/);
 
 console.log('procurement-workflow-contract-test: PASS');

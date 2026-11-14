@@ -127,7 +127,7 @@ const rules = read('firestore.rules');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const ui = read('src/pages/admin/CustomerPage.jsx');
 const customerRepository = read('src/services/adminCustomerRepository.js');
-const operationsRepository = read('src/services/adminOperationsRepository.js');
+const directFollowUpRepository = read('src/services/customerFollowUpFirestoreRepository.js');
 const packageJson = JSON.parse(read('package.json'));
 
 const actor = { displayName: 'Operator Test', role: 'admin', uid: 'operator-1' };
@@ -472,8 +472,122 @@ assert.deepEqual(buckets.completed.map((item) => item.id), ['done']);
 
 const rulesTask = rules.slice(rules.indexOf('match /customerFollowUpTasks/'), rules.indexOf('match /customerFollowUpEvents/'));
 const rulesEvent = rules.slice(rules.indexOf('match /customerFollowUpEvents/'), rules.indexOf('match /{document=**}', rules.indexOf('match /customerFollowUpEvents/')));
-assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rulesTask, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpTaskCreateAllowed\(taskId\);[\s\S]*?allow update: if customerFollowUpTaskUpdateAllowed\(taskId\);[\s\S]*?allow delete: if false;/);
+assert.match(rules, /function repositoryOperationDomainMatches\(data\)[\s\S]*?task\.lastOperationId == data\.operationId[\s\S]*?task\.lastOperationPayloadHash == data\.payloadHash/);
+assert.doesNotMatch(
+  rules.slice(
+    rules.indexOf('function customerFollowUpOperationMarkerMatches(data)'),
+    rules.indexOf('match /users/{userId}/repositoryOperations/')
+  ),
+  /lastEventSnapshot/,
+  'Operation marker validation must not repeat the task event-snapshot checks.',
+);
+assert.match(rules, /function validCustomerFollowUpTask\(data, taskId\)[\s\S]*?data\.keys\(\)\.size\(\) == 42[\s\S]*?data\.lastOperationPayloadHash\.size\(\) == 64/);
+assert.match(
+  rules,
+  /function customerFollowUpActorAllowed\(\)[\s\S]*?profile\.permissions\.customers == true[\s\S]*?profile\.role == 'owner'[\s\S]*?get\(ownershipPath\)\.data\.currentOwnerUid == request\.auth\.uid/,
+  'Customer admins must avoid the extra ownership read; canonical Owner access remains ownership-bound.',
+);
+assert.match(
+  rules,
+  /function customerFollowUpOtherAssigneeAllowed\(uid\)[\s\S]*?profile\.role == 'owner'[\s\S]*?get\(ownershipPath\)\.data\.currentOwnerUid == uid/,
+  'Owner assignees must remain bound to the canonical ownership document.',
+);
+const followUpUpdateValidator = rules.slice(
+  rules.indexOf('function validCustomerFollowUpTaskUpdate(data, taskId)'),
+  rules.indexOf('function customerFollowUpPreviousEventRecorded()'),
+);
+// The full-document diff is intentionally avoided because the task contains
+// a nested event snapshot. Keep immutable identity fields locked explicitly.
+for (const field of [
+  'customerId', 'customerName', 'customerPhone', 'sourceId', 'sourceType',
+  'bookingId', 'templateKey', 'createdAt', 'createdByUid', 'createdByName',
+]) {
+  assert.ok(
+    followUpUpdateValidator.includes('data.' + field + ' == resource.data.' + field),
+    'Follow-up updates must preserve immutable field: ' + field,
+  );
+}
+assert.ok(followUpUpdateValidator.includes('data.keys().size() == 42'));
+assert.ok(followUpUpdateValidator.includes('data.revision == resource.data.revision + 1'));
+assert.ok(followUpUpdateValidator.includes("data.lastOperationAction == 'update'"));
+assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpTaskUpdateEventSnapshot(data)'));
+assert.ok(followUpUpdateValidator.includes('validCustomerFollowUpOptionalTimestamp(data.snoozedAt)'));
+assert.ok(followUpUpdateValidator.includes('data.lastOperationPayloadHash.matches'));
+assert.ok(followUpUpdateValidator.includes('data.customerId == resource.data.customerId'));
+const followUpUpdateSnapshotValidator = rules.slice(
+  rules.indexOf('function validCustomerFollowUpTaskUpdateEventSnapshot(data)'),
+  rules.indexOf('function validCustomerFollowUpTaskUpdate(data, taskId)'),
+);
+assert.ok(followUpUpdateSnapshotValidator.includes('snapshot.keys().size() == 16'));
+assert.ok(followUpUpdateSnapshotValidator.includes("snapshot.operationAction == 'update'"));
+const followUpUpdateRule = rules.slice(
+  rules.indexOf('function customerFollowUpTaskUpdateAllowed(taskId)'),
+  rules.indexOf('function customerFollowUpEventCreateAllowed(eventId)'),
+);
+assert.match(followUpUpdateRule, /customerFollowUpActorAllowed\(\)/);
+assert.match(followUpUpdateRule, /data\.get\('lastOperationId', ''\) is string/);
+assert.ok(
+  followUpUpdateRule.indexOf("data.get('lastOperationId', '') is string") <
+    followUpUpdateRule.indexOf('customerFollowUpActorAllowed()'),
+  'Legacy task writes without operation markers must be rejected before profile reads.',
+);
+assert.match(
+  followUpUpdateRule,
+  /data\.get\('lastOperationId', ''\) != resource\.data\.get\('lastOperationId', ''\)/,
+);
+assert.ok(
+  followUpUpdateRule.indexOf("data.get('lastOperationId', '') !=") <
+    followUpUpdateRule.indexOf('validCustomerFollowUpTaskUpdate(data, taskId)'),
+  'Missing or repeated operation markers must be rejected before full task validation.',
+);
+assert.match(followUpUpdateRule, /customerFollowUpPreviousEventRecorded\(\)/);
+assert.match(followUpUpdateRule, /validCustomerFollowUpTaskUpdate\(data, taskId\)/);
+assert.match(followUpUpdateRule, /customerFollowUpAssigneeAllowed\(data\.assignedToUid\)/);
+assert.ok(followUpUpdateSnapshotValidator.includes('snapshot.changes is map'));
+assert.ok(followUpUpdateSnapshotValidator.includes('snapshot.createdAt == data.updatedAt'));
+assert.doesNotMatch(rules, /function validCustomerFollowUpEventSnapshot/);
+
+assert.match(rules, /return uid == request\.auth\.uid \|\| customerFollowUpOtherAssigneeAllowed\(uid\);/);
+assert.doesNotMatch(
+  followUpUpdateValidator,
+  /data\.diff\(resource\.data\)/,
+  'Follow-up update validation must avoid recursive MapDiff on the nested event snapshot.',
+);
+assert.match(followUpUpdateRule, /data\.get\('lastOperationId', ''\) != resource\.data\.get\('lastOperationId', ''\)/);
+
+assert.equal(rules.includes('lastOperationPayloadHash.size() == 64') && rules.includes("data.lastOperationPayloadHash.matches('^[0-9a-f]{64}')"), true);
+const followUpEventCreateRule = rules.slice(
+  rules.indexOf('function customerFollowUpEventCreateAllowed(eventId)'),
+  rules.indexOf('// Customer Follow-up writes the task snapshot first'),
+);
+assert.match(followUpEventCreateRule, /customerFollowUpActorAllowed\(\)/);
+assert.match(followUpEventCreateRule, /validCustomerFollowUpEvent\(data, eventId\)/);
+assert.match(followUpEventCreateRule, /taskExists/);
+assert.match(followUpEventCreateRule, /task\.lastEventSnapshot == data/);
+assert.doesNotMatch(
+  followUpEventCreateRule,
+  /task\.lastEventId|task\.lastOperationId|task\.lastOperationAction|task\.customerId|task\.updatedAt/,
+  'The exact event snapshot comparison already binds task, operation, customer and timestamp fields.',
+);
+
+assert.match(rulesEvent, /allow read: if isApproved\(\) && canAccessCustomerData\(\);[\s\S]*?allow create: if customerFollowUpEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
+assert.match(directFollowUpRepository, /runIdempotentFirestoreTransaction\(/);
+assert.equal((directFollowUpRepository.match(/markerWriteMode: 'after'/g) || []).length, 2);
+assert.equal((directFollowUpRepository.match(/lastOperationPayloadHash: metadata\.payloadHash/g) || []).length, 2);
+assert.match(directFollowUpRepository, /current\.lastOperationPayloadHash === metadata\.payloadHash/);
+
+assert.match(directFollowUpRepository, /scope: SCOPE,[\s\S]*?action,[\s\S]*?requestId,[\s\S]*?execute: async \(transaction, metadata\)/);
+assert.match(directFollowUpRepository, /task\.lastEventSnapshot = event;[\s\S]*?transaction\.set\(taskRef, task\);/);
+assert.match(directFollowUpRepository, /async function ensureFollowUpEvent\([\s\S]*?await setDoc\(eventRef, event\)/);
+assert.doesNotMatch(directFollowUpRepository, /transaction\.set\(eventRef, event\)/);
+assert.match(directFollowUpRepository, /lastOperationId: metadata\.operationId/);
+assert.match(directFollowUpRepository, /lastEventSnapshot: \{\}/);
+assert.match(directFollowUpRepository, /operationAction: action/);
+assert.match(ui, /customerFollowUpFirestoreRepository\.js/);
+assert.match(ui, /createRepositoryRequestId\(\)/);
+assert.match(ui, /followUpRequestIdsRef\.current\.set\(requestKey, requestId\)/);
+assert.doesNotMatch(ui, /from '\.\.\/\.\.\/services\/adminOperationsRepository\.js'/);
 assert.match(workerIndex, /pathname === '\/v1\/customers\/follow-ups\/assignees'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'customers' \}\)/);
 assert.match(workerIndex, /pathname === '\/v1\/customers\/follow-ups'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'customers' \}\)/);
 assert.match(customerRepository, /where\('status', 'in', ACTIVE_CUSTOMER_FOLLOW_UP_STATUSES\)[\s\S]*?orderBy\('dueAt', 'asc'\)[\s\S]*?orderBy\('dueTime', 'asc'\)[\s\S]*?limit\(200\)/);
@@ -491,8 +605,12 @@ assert.match(ui, /taskDueTimes\[task\.id\]/);
 assert.match(ui, /Buka draft WhatsApp/);
 assert.doesNotMatch(ui, /onClick=\{\(\) => onUpdateTask\(task, \{ status: 'in_progress', contacted: false \}\)\}/);
 assert.doesNotMatch(ui, /placeholder="Nama PIC"/);
-assert.match(operationsRepository, /\/v1\/customers\/follow-ups\/assignees/);
-assert.match(packageJson.scripts.test, /customer-follow-up-task-contract-test\.mjs/);
-assert.match(packageJson.scripts['test:prd'], /customer-follow-up-task-contract-test\.mjs/);
+assert.match(directFollowUpRepository, /export async function getCanonicalCustomerFollowUpAssignees/);
+assert.match(directFollowUpRepository, /export async function createCanonicalCustomerFollowUpTask/);
+assert.match(directFollowUpRepository, /export async function updateCanonicalCustomerFollowUpTask/);
+assert.match(directFollowUpRepository, /export async function cancelCanonicalCustomerFollowUpTask/);
+assert.doesNotMatch(directFollowUpRepository, /requestOperation\(/);
+assert.match(packageJson.scripts['test:serial:raw'], /customer-follow-up-task-contract-test\.mjs/);
+assert.match(packageJson.scripts['test:prd:raw'], /customer-follow-up-task-contract-test\.mjs/);
 
 console.log('Customer follow-up domain and integration contract passed.');

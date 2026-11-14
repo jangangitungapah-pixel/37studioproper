@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 
 const TYPEAHEAD_RESET_MS = 650;
 
@@ -34,10 +34,50 @@ function getEnabledIndices(options) {
   }, []);
 }
 
-function getFloatingListStyle(rect) {
+function resolvePortalContainer(portalContainer) {
+  if (!portalContainer) return null;
+  if (typeof portalContainer === 'object' && 'current' in portalContainer) {
+    return portalContainer.current || null;
+  }
+  return portalContainer;
+}
+
+function getFloatingListStyle(rect, containerElement = null) {
+  const gutter = 12;
+
+  if (containerElement) {
+    const containerRect = containerElement.getBoundingClientRect();
+    const containerWidth = Math.max(containerRect.width || 0, 220);
+    const containerHeight = Math.max(containerRect.height || 0, 220);
+    const maxContainerWidth = Math.max(180, containerWidth - gutter * 2);
+    const width = Math.min(Math.max(rect.width, 220), maxContainerWidth);
+    const rawLeft = rect.left - containerRect.left;
+    const left = Math.min(Math.max(gutter, rawLeft), containerWidth - width - gutter);
+    const spaceBelow = containerRect.bottom - rect.bottom - gutter - 8;
+    const spaceAbove = rect.top - containerRect.top - gutter - 8;
+    const shouldOpenUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const availableHeight = shouldOpenUp ? spaceAbove : spaceBelow;
+    const maxHeight = Math.min(320, Math.max(132, availableHeight));
+    const triggerTopInContainer = rect.top - containerRect.top;
+    const triggerBottomInContainer = rect.bottom - containerRect.top;
+    const preferredTop = shouldOpenUp
+      ? triggerTopInContainer - maxHeight - 8
+      : triggerBottomInContainer + 8;
+    const top = Math.max(gutter, Math.min(preferredTop, containerHeight - gutter - maxHeight));
+
+    return {
+      bottom: 'auto',
+      left: Math.round(left) + 'px',
+      maxHeight: Math.round(maxHeight) + 'px',
+      position: 'absolute',
+      right: 'auto',
+      top: Math.round(top) + 'px',
+      width: Math.round(width) + 'px',
+    };
+  }
+
   const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
   const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-  const gutter = 12;
   const bottomReserve = window.matchMedia('(max-width: 899px)').matches ? 118 : gutter;
   const maxViewportWidth = Math.max(180, viewportWidth - gutter * 2);
   const width = Math.min(Math.max(rect.width, 220), maxViewportWidth);
@@ -66,17 +106,21 @@ export default function StudioSelect({
   helper,
   inlineList = false,
   label,
+  mobileSheet = false,
   multiple = false,
   onChange,
   options,
   placeholder = 'Pilih opsi',
+  portalContainer = null,
   selectedKey,
   selectedKeys = [],
+  sheetTitle = '',
 }) {
   const selectId = useId();
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const listRef = useRef(null);
+  const sheetCardRef = useRef(null);
   const optionRefs = useRef(new Map());
   const typeaheadRef = useRef('');
   const typeaheadTimerRef = useRef(null);
@@ -84,6 +128,7 @@ export default function StudioSelect({
   const labelId = selectId + '-label';
   const helperId = selectId + '-helper';
   const [isOpen, setIsOpen] = useState(false);
+  const [isSheetMode, setIsSheetMode] = useState(false);
   const [listStyle, setListStyle] = useState(null);
   const [activeIndex, setActiveIndex] = useState(-1);
 
@@ -103,8 +148,15 @@ export default function StudioSelect({
     return selectedIndex >= 0 ? selectedIndex : (enabledIndices[0] ?? -1);
   }, [enabledIndices, multiple, options, selectedKey, selectedKeys]);
 
+  const isMobileSheetViewport = useCallback(() => (
+    Boolean(mobileSheet && !inlineList && typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches)
+  ), [inlineList, mobileSheet]);
+
   const updateListPosition = useCallback(() => {
-    if (inlineList) {
+    const nextSheetMode = isMobileSheetViewport();
+    setIsSheetMode(nextSheetMode);
+
+    if (inlineList || nextSheetMode) {
       setListStyle(null);
       return;
     }
@@ -113,11 +165,13 @@ export default function StudioSelect({
 
     if (!rect) return;
 
-    setListStyle(getFloatingListStyle(rect));
-  }, [inlineList]);
+    const containerElement = resolvePortalContainer(portalContainer);
+    setListStyle(getFloatingListStyle(rect, containerElement));
+  }, [inlineList, isMobileSheetViewport, portalContainer]);
 
   const closeList = useCallback(({ restoreFocus = false } = {}) => {
     setIsOpen(false);
+    setIsSheetMode(false);
     setListStyle(null);
     typeaheadRef.current = '';
 
@@ -127,16 +181,24 @@ export default function StudioSelect({
   const openList = useCallback((index = preferredActiveIndex) => {
     if (disabled) return;
 
-    if (!inlineList) updateListPosition();
+    const nextSheetMode = isMobileSheetViewport();
+    setIsSheetMode(nextSheetMode);
+    if (!inlineList && !nextSheetMode) updateListPosition();
     setActiveIndex(index);
     setIsOpen(true);
-  }, [disabled, inlineList, preferredActiveIndex, updateListPosition]);
+  }, [disabled, inlineList, isMobileSheetViewport, preferredActiveIndex, updateListPosition]);
 
   useEffect(() => {
     function handlePointerDown(event) {
       const target = event.target;
 
-      if (rootRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      if (
+        rootRef.current?.contains(target) ||
+        listRef.current?.contains(target) ||
+        sheetCardRef.current?.contains(target)
+      ) {
+        return;
+      }
 
       closeList();
     }
@@ -145,6 +207,22 @@ export default function StudioSelect({
 
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [closeList]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    function handleEscapeCapture(event) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      closeList({ restoreFocus: true });
+    }
+
+    window.addEventListener('keydown', handleEscapeCapture, true);
+
+    return () => window.removeEventListener('keydown', handleEscapeCapture, true);
+  }, [closeList, isOpen]);
 
   useEffect(() => () => {
     if (typeaheadTimerRef.current) window.clearTimeout(typeaheadTimerRef.current);
@@ -311,6 +389,10 @@ export default function StudioSelect({
     width: '240px',
   };
 
+  const resolvedPortalContainer = resolvePortalContainer(portalContainer);
+  const usePortal = typeof document !== 'undefined' && !inlineList;
+  const portalTarget = resolvedPortalContainer || (typeof document !== 'undefined' ? document.body : null);
+
   const listbox = isOpen && !disabled ? (
     <div
       aria-labelledby={labelId}
@@ -319,11 +401,13 @@ export default function StudioSelect({
       data-inline={inlineList ? 'true' : 'false'}
       data-option-count={options.length}
       data-portal={inlineList ? 'false' : 'true'}
-      data-ready={inlineList || listStyle ? 'true' : 'false'}
+      data-portal-scoped={resolvedPortalContainer ? 'true' : 'false'}
+      data-ready={inlineList || isSheetMode || listStyle ? 'true' : 'false'}
+      data-sheet={isSheetMode ? 'true' : 'false'}
       id={listboxId}
       ref={listRef}
       role="listbox"
-      style={inlineList ? undefined : (listStyle || fallbackListStyle)}
+      style={inlineList || isSheetMode ? undefined : (listStyle || fallbackListStyle)}
       onPointerDown={(event) => event.stopPropagation()}
     >
       {options.map((option, index) => {
@@ -366,6 +450,39 @@ export default function StudioSelect({
     </div>
   ) : null;
 
+  const portalContent = listbox && isSheetMode ? (
+    <div
+      className="studio-select-sheet-layer"
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        if (event.target === event.currentTarget) {
+          closeList({ restoreFocus: true });
+        }
+      }}
+    >
+      <div className="studio-select-sheet-card" ref={sheetCardRef}>
+        <div aria-hidden="true" className="studio-select-sheet-handle" />
+        <header className="studio-select-sheet-head">
+          <div>
+            <span>Pilih {label || 'Opsi'}</span>
+            <strong>{sheetTitle || label || placeholder}</strong>
+          </div>
+          <button
+            aria-label={'Tutup daftar ' + (label || 'opsi')}
+            className="studio-select-sheet-close"
+            type="button"
+            onClick={() => closeList({ restoreFocus: true })}
+          >
+            <X aria-hidden="true" size={16} strokeWidth={2.2} />
+          </button>
+        </header>
+        <div className="studio-select-sheet-body">
+          {listbox}
+        </div>
+      </div>
+    </div>
+  ) : listbox;
+
   return (
     <div className={rootClassName} ref={rootRef}>
       <button
@@ -399,7 +516,7 @@ export default function StudioSelect({
         />
       </button>
 
-      {listbox && typeof document !== 'undefined' && !inlineList ? createPortal(listbox, document.body) : listbox}
+      {portalContent && usePortal && portalTarget ? createPortal(portalContent, portalTarget) : portalContent}
     </div>
   );
 }

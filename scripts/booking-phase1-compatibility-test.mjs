@@ -405,7 +405,7 @@ assert.deepEqual(
  */
 
 const selectorConsumers = [
-  'src/services/adminBookingRepository.js',
+  'src/services/bookingOperationsRepository.js',
   'src/services/bookingCommunicationRepository.js',
   'src/pages/admin/SchedulePage.jsx',
   'src/pages/admin/BillingPage.jsx',
@@ -481,9 +481,9 @@ assert.equal(
 );
 
 assert.equal(
-  communicationSource.includes('decideCanonicalBookingRequest'),
+  communicationSource.includes("import { decideBookingRequest } from './bookingOperationsRepository.js'"),
   true,
-  'Admin request decisions must use the protected server-side mutation boundary.',
+  'Admin request decisions must use the Firebase-native booking repository boundary.',
 );
 
 const workerBookingSource = readFileSync(

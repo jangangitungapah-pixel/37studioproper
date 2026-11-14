@@ -22,6 +22,8 @@ import { hasAdminPagePermission } from '../../utils/adminPermissions.js';
 const ADMIN_GUARD_ATTENDANCE_PATHS = [
   '/admin/guard-attendance',
   '/admin/operations/guard-attendance',
+  '/admin/operator-fee',
+  '/admin/finance/operator-fee',
 ];
 
 function formatDateTime(value) {
@@ -201,6 +203,23 @@ export default function GuardAttendanceApprovalModal({ currentUser, onOpenPanel 
                 <strong>{pendingSessions.length} attendance</strong>
               </span>
             </div>
+
+            {activeSession.note ? (
+              <div
+                style={{
+                  background: 'rgba(148, 163, 184, 0.08)',
+                  border: '1px solid rgba(148, 163, 184, 0.22)',
+                  borderRadius: '0.65rem',
+                  fontSize: '0.82rem',
+                  padding: '0.65rem 0.85rem',
+                }}
+              >
+                <strong style={{ display: 'block', fontSize: '0.75rem', opacity: 0.8 }}>
+                  Catatan dari Guard:
+                </strong>
+                <span>{activeSession.note}</span>
+              </div>
+            ) : null}
 
             {isRejecting ? (
               <label className="guard-review-attention-reason">

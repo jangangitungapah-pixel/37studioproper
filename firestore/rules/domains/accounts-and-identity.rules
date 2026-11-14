@@ -1,0 +1,107 @@
+    function hasNoAdminPermissions(data) {
+      return data is map &&
+        data.get('dashboard', false) == false &&
+        data.get('schedule', false) == false &&
+        data.get('customers', false) == false &&
+        data.get('billing', false) == false &&
+        data.get('bookkeeping', false) == false &&
+        data.get('operator-fee', false) == false &&
+        data.get('guard-attendance', false) == false &&
+        data.get('inventory', false) == false &&
+        data.get('gallery', false) == false &&
+        data.get('settings', false) == false &&
+        data.get('notifications', false) == false;
+    }
+    function validUser(data, userId) {
+      return data is map &&
+        (!data.keys().hasAny(['uid']) || data.uid == userId) &&
+        data.role in ['owner', 'admin', 'client', 'studio_guard'] &&
+        data.status in ['active', 'pending', 'approved', 'rejected', 'inactive'] &&
+        (!data.keys().hasAny(['permissions']) || data.permissions is map) &&
+        (
+          (data.role == 'owner' && data.status == 'approved') ||
+          (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected', 'inactive']) ||
+          (data.role == 'client' && data.status in ['active', 'rejected', 'inactive'] && hasNoAdminPermissions(data.get('permissions', {}))) ||
+          (data.role == 'studio_guard' && data.status in ['pending', 'approved', 'rejected', 'inactive'] && hasNoAdminPermissions(data.get('permissions', {})))
+        );
+    }
+    function isSafeAccountSelfCreate(data) {
+      return (isBootstrapOwnerEmail() && data.role == 'owner' && data.status == 'approved') ||
+        (!isBootstrapOwnerEmail() && data.role == 'admin' && data.status == 'pending') ||
+        (!isBootstrapOwnerEmail() && data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions));
+    }
+    function isSafeAdminRequestToClientTransition(userId) {
+      return isSignedIn() &&
+        request.auth.uid == userId &&
+        resource.data.role == 'admin' &&
+        resource.data.status in ['pending', 'rejected'] &&
+        request.resource.data.role == 'client' &&
+        request.resource.data.status == 'active' &&
+        hasNoAdminPermissions(request.resource.data.permissions) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'role', 'status', 'permissions', 'adminRequestCancelledAt', 'updatedAt'
+        ]);
+    }
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner() || hasPermission('settings'));
+      allow create: if (isOwner() && validUser(request.resource.data, userId)) || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        validUser(request.resource.data, userId) &&
+        isSafeAccountSelfCreate(request.resource.data)
+      );
+      allow update: if isOwner() || (
+        validUser(request.resource.data, userId) && (
+          (isSignedIn() &&
+            request.auth.uid == userId &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'preferences', 'updatedAt'])) ||
+          isSafeAdminRequestToClientTransition(userId)
+        )
+      );
+      allow delete: if isOwner();
+    }
+    function canAccessOwnRepositoryOperations(userId) {
+      return isSignedIn() &&
+        request.auth.uid == userId &&
+        (isApproved() || isClientAccount());
+    }
+    match /users/{userId}/repositoryOperations/{operationId} {
+      allow read: if canAccessOwnRepositoryOperations(userId);
+      allow create: if canAccessOwnRepositoryOperations(userId) &&
+        request.resource.data.operationId == operationId &&
+        request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /adminControl/ownership {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        !ownershipControlExists() &&
+        request.resource.data.currentOwnerUid == request.auth.uid &&
+        (isBootstrapOwnerEmail() || isOwner());
+      allow update, delete: if false;
+    }
+    function isClientBookingOwner(data) {
+      return isClientAccount() && (
+        (data.clientUid is string && data.clientUid == request.auth.uid) ||
+        (
+          'email' in request.auth.token &&
+          request.auth.token.email is string &&
+          data.email is string &&
+          data.email.lower() == request.auth.token.email.lower()
+        ) ||
+        (
+          'phone_number' in request.auth.token &&
+          request.auth.token.phone_number is string &&
+          (
+            (data.phone is string && (
+              data.phone == request.auth.token.phone_number ||
+              ('+' + data.phone) == request.auth.token.phone_number
+            )) ||
+            (data.customerPhoneKey is string && (
+              data.customerPhoneKey == request.auth.token.phone_number ||
+              ('+' + data.customerPhoneKey) == request.auth.token.phone_number
+            ))
+          )
+        )
+      );
+    }

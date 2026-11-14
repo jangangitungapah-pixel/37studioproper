@@ -1,0 +1,150 @@
+    match /bookings/{bookingId} {
+      allow read: if (isApproved() && (canAccessBookingData() || hasPermission('bookkeeping'))) ||
+        isClientBookingOwner(resource.data);
+      allow create: if (
+          isApprovedScheduleAdmin() &&
+          request.resource.data.id == bookingId
+        ) || (
+          isClientAccount() &&
+          request.resource.data.id == bookingId &&
+          request.resource.data.clientUid == request.auth.uid &&
+          request.resource.data.source == 'clientPortal' &&
+          request.resource.data.bookingRequestStatus == 'submitted' &&
+          request.resource.data.paymentStatus == 'pending' &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.paidAmount == 0
+        );
+      allow update: if (
+          isApproved() &&
+          canAccessBookingData() &&
+          request.resource.data.id == resource.data.id
+        ) || (
+          isClientBookingOwner(resource.data) &&
+          request.resource.data.clientUid == resource.data.clientUid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'bookingRequestStatus', 'clientRequestNote', 'clientRequestUpdatedAt',
+            'lastMessageId', 'lastMessageAt', 'lastMessagePreview',
+            'lastMessageSenderRole', 'lastMessageReadByAdmin', 'lastMessageReadByClient'
+          ])
+        );
+      allow delete: if false;
+    }
+    match /paymentProofs/{proofId} {
+      allow read: if (isApproved() && canAccessBookingData()) ||
+        (isClientAccount() && resource.data.clientUid == request.auth.uid);
+      allow create: if isSignedIn() &&
+        request.resource.data.id == proofId &&
+        request.resource.data.clientUid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if hasApprovedAdminPermission('billing') &&
+        resource.data.status == 'pending' &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.bookingId == resource.data.bookingId &&
+        request.resource.data.clientUid == resource.data.clientUid &&
+        request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if false;
+    }
+    match /bookingMessages/{messageId} {
+      allow read: if (isApproved() && canAccessBookingData()) ||
+        (isClientAccount() && resource.data.clientUid == request.auth.uid);
+      allow create: if request.resource.data.id == messageId && (
+        (
+          isApproved() &&
+          canAccessBookingData() &&
+          request.resource.data.senderUid == request.auth.uid &&
+          request.resource.data.senderRole == 'admin'
+        ) || (
+          isClientAccount() &&
+          request.resource.data.clientUid == request.auth.uid &&
+          request.resource.data.senderUid == request.auth.uid &&
+          request.resource.data.senderRole == 'client'
+        )
+      );
+      allow update: if (
+          isApproved() &&
+          canAccessBookingData() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByAdmin']) &&
+          request.resource.data.readByAdmin == true
+        ) || (
+          isClientAccount() &&
+          resource.data.clientUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readByClient']) &&
+          request.resource.data.readByClient == true
+        );
+      allow delete: if isOwner();
+    }
+    match /bookingSessionEvents/{eventId} {
+      allow read: if isApprovedScheduleAdmin();
+      allow create: if isApprovedScheduleAdmin() &&
+        request.resource.data.id == eventId &&
+        request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /clientCalendarSlots/{slotId} {
+      allow read: if true;
+      allow create, update: if isApprovedScheduleAdmin() || hasApprovedAdminPermission('billing');
+      allow delete: if isApprovedScheduleAdmin() || hasApprovedAdminPermission('billing');
+    }
+    match /bookingScheduleDays/{dateId} {
+      allow read: if isApprovedAdmin() && (canManageBookingData() || hasPermission('billing'));
+      allow create, update: if (isApprovedScheduleAdmin() || hasApprovedAdminPermission('billing')) &&
+        request.resource.data.date == dateId;
+      allow delete: if false;
+    }
+    match /customers/{customerId} {
+      allow read: if (isApproved() && canAccessCustomerData()) ||
+        (isClientAccount() && customerId == ('auth_' + request.auth.uid));
+      allow create: if (
+          isApproved() &&
+          canManageCustomerData() &&
+          request.resource.data.id == customerId
+        ) || (
+          isClientAccount() &&
+          customerId == ('auth_' + request.auth.uid) &&
+          request.resource.data.id == customerId &&
+          request.resource.data.authUid == request.auth.uid &&
+          request.resource.data.source == 'clientPortal'
+        );
+      allow update: if (
+          isApproved() &&
+          canManageCustomerData() &&
+          request.resource.data.id == customerId
+        ) || (
+          isClientAccount() &&
+          customerId == ('auth_' + request.auth.uid) &&
+          resource.data.authUid == request.auth.uid &&
+          request.resource.data.authUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'phoneKey', 'email', 'updatedAt'])
+        );
+      allow delete: if isApproved() && canManageCustomerData();
+    }
+    match /settings/studio {
+      allow read: if true;
+      allow create, update: if isApprovedAdmin() && hasPermission('settings');
+      allow delete: if isOwner();
+    }
+    match /settings/pricing {
+      allow read: if true;
+      allow create, update: if isApprovedAdmin() && hasPermission('settings');
+      allow delete: if isOwner();
+    }
+    match /settings/invoice {
+      allow read: if true;
+      allow create, update: if isApprovedAdmin() && hasPermission('settings');
+      allow delete: if isOwner();
+    }
+    match /settings/operatorFees {
+      allow read: if isApproved();
+      allow create, update: if isOwner() || hasPermission('operator-fee') || hasPermission('settings');
+      allow delete: if isOwner();
+    }
+    match /operatorFeeEntries/{entryId} {
+      allow read: if canManageOperatorFees();
+      allow create: if canManageOperatorFees() &&
+        request.resource.data.id == entryId &&
+        request.resource.data.status in ['draft', 'reviewed'];
+      allow update: if canManageOperatorFees() &&
+        request.resource.data.id == entryId &&
+        (resource.data.status != 'posted' || request.resource.data.status == 'posted');
+      allow delete: if canManageOperatorFees() && resource.data.status != 'posted';
+    }

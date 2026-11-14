@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/modules/customer.css';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Dialog } from 'radix-ui';
@@ -28,7 +28,8 @@ import PaginationControls from '../../components/ui/PaginationControls.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository } from '../../services/adminBookingRepository.js';
 import { adminCustomerRepository, subscribeCustomerFollowUpTasks, subscribeCustomerFollowUpEvents } from '../../services/adminCustomerRepository.js';
-import { createCanonicalCustomerFollowUpTask, getCanonicalCustomerFollowUpAssignees, updateCanonicalCustomerFollowUpTask } from '../../services/adminOperationsRepository.js';
+import { createCanonicalCustomerFollowUpTask, getCanonicalCustomerFollowUpAssignees, updateCanonicalCustomerFollowUpTask } from '../../services/customerFollowUpFirestoreRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 import { getCustomerFollowUpBuckets } from '../../domain/customerFollowUp.js';
 
 const MANUAL_CUSTOMERS_STORAGE_KEY = '37musicstudio.customers.manual.v1';
@@ -2154,6 +2155,7 @@ export default function CustomerPage() {
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [toast, setToast] = useState(null);
+  const followUpRequestIdsRef = useRef(new Map());
 
   useEffect(() => {
     const local = readManualCustomers();
@@ -2280,8 +2282,12 @@ export default function CustomerPage() {
   const selectedCustomer = detailId ? customers.find((customer) => customer.id === detailId) : null;
 
   async function createFollowUpTask(input) {
+    const requestKey = 'create:' + JSON.stringify(input);
+    const requestId = followUpRequestIdsRef.current.get(requestKey) || createRepositoryRequestId();
+    followUpRequestIdsRef.current.set(requestKey, requestId);
     try {
-      const result = await createCanonicalCustomerFollowUpTask(input);
+      const result = await createCanonicalCustomerFollowUpTask(input, requestId);
+      followUpRequestIdsRef.current.delete(requestKey);
       setFollowUpTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
       setToast({ title: 'Task follow-up dibuat', message: result.task.customerName + ' masuk ke queue follow-up.' });
       return result;
@@ -2292,12 +2298,17 @@ export default function CustomerPage() {
   }
 
   async function updateFollowUpTask(task, patch) {
+    const input = {
+      taskId: task.id,
+      expectedUpdatedAt: task.updatedAt,
+      ...patch,
+    };
+    const requestKey = 'update:' + JSON.stringify(input);
+    const requestId = followUpRequestIdsRef.current.get(requestKey) || createRepositoryRequestId();
+    followUpRequestIdsRef.current.set(requestKey, requestId);
     try {
-      const result = await updateCanonicalCustomerFollowUpTask({
-        taskId: task.id,
-        expectedUpdatedAt: task.updatedAt,
-        ...patch,
-      });
+      const result = await updateCanonicalCustomerFollowUpTask(input, requestId);
+      followUpRequestIdsRef.current.delete(requestKey);
       setFollowUpTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
       setToast({
         title: 'Follow-up diperbarui',

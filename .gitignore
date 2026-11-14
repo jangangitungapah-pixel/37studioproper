@@ -19,3 +19,6 @@ workers/**/*.local
 
 # Local Guard legacy migration audit reports
 .guard-migration-audit/
+
+# Local verification reports (stdout/stderr and regression evidence)
+/test-results/

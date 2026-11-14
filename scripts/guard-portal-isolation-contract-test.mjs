@@ -176,12 +176,10 @@ const rulesSource = readFileSync(
   'utf8',
 ).replace(/\r\n?/g, '\n');
 
-assert.equal(
-  rulesSource.includes(
-    'function hasPermission(page) {\n      return isOwner() || (\n        isApprovedAdmin() &&',
-  ),
-  true,
-  'Admin data permissions must only accept owner/approved admin.',
+assert.match(
+  rulesSource,
+  /function hasPermission\(page\) \{[\s\S]*?let profileExists = userDocExists\(\);[\s\S]*?let profile = profileExists \? getUserData\(\) : \{\};[\s\S]*?profile\.role == 'admin'[\s\S]*?profile\.status == 'approved'[\s\S]*?profile\.permissions is map[\s\S]*?profile\.permissions\[page\] == true[\s\S]*?\|\| isOwner\(\);/,
+  'Admin data permissions must accept only approved admins with the requested permission or the canonical Owner.',
 );
 
 assert.equal(

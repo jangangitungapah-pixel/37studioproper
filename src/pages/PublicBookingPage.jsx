@@ -210,8 +210,17 @@ export default function PublicBookingPage() {
     };
   }, []);
 
+  const dateWindow = useMemo(
+    () => getDateWindow(todayKey, dateWindowOffset),
+    [dateWindowOffset, todayKey],
+  );
+
+  const calendarStartDate = dateWindow[0];
+  const calendarEndDate = dateWindow[6];
+
   useEffect(() => {
     const unsubscribe = adminBookingRepository.subscribeClientCalendarSlots(
+      { startDate: calendarStartDate, endDate: calendarEndDate, limitCount: 500 },
       (data) => {
         setSlots(data);
         setLoadError('');
@@ -225,12 +234,7 @@ export default function PublicBookingPage() {
     );
 
     return unsubscribe;
-  }, [subscriptionVersion]);
-
-  const dateWindow = useMemo(
-    () => getDateWindow(todayKey, dateWindowOffset),
-    [dateWindowOffset, todayKey],
-  );
+  }, [subscriptionVersion, calendarStartDate, calendarEndDate]);
 
   const availability = useMemo(
     () => businessHours.map((hour) => {

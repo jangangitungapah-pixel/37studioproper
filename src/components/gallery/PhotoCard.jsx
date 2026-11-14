@@ -1,5 +1,6 @@
 import {
   Check,
+  Globe,
   Heart,
   Pencil,
   RefreshCw,
@@ -13,9 +14,11 @@ export default function PhotoCard({
   isDeletedTab = false,
   isSelectMode = false,
   isSelected = false,
+  landingBadges = [],
   onSelectToggle,
   onCardClick,
   onFavoriteClick,
+  onManageLanding,
   onRestoreClick,
   onDeleteClick,
   onEditMetadata,
@@ -59,6 +62,16 @@ export default function PhotoCard({
         <span className="gallery-photo-category">
           {categoryLabel}
         </span>
+
+        {!isDeletedTab && landingBadges.length > 0 ? (
+          <span
+            className="gallery-photo-landing-badge"
+            title={`Tayang di Landing Page (${landingBadges.join(', ')})`}
+          >
+            <Globe size={10} aria-hidden="true" />
+            <span>{landingBadges.join(' · ')}</span>
+          </span>
+        ) : null}
 
         <span className="gallery-photo-caption">
           <strong>
@@ -117,6 +130,28 @@ export default function PhotoCard({
         >
           {!isDeletedTab ? (
             <>
+              {onManageLanding ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onManageLanding?.();
+                  }}
+                  className={
+                    landingBadges.length > 0
+                      ? 'is-landing'
+                      : ''
+                  }
+                  title="Atur ke Landing Page"
+                  aria-label="Atur foto ke Landing Page"
+                >
+                  <Globe
+                    size={13}
+                    aria-hidden="true"
+                  />
+                </button>
+              ) : null}
+
               <button
                 type="button"
                 onClick={(event) => {

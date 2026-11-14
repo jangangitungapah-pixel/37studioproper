@@ -1,11 +1,13 @@
 export default function GalleryTimelineView({
   displayedImages,
   EmptyGalleryState,
+  getLandingBadges,
   gridColumns,
   isSelectMode,
   onDeleteClick,
   onFavoriteClick,
   onEditMetadata,
+  onManageLanding,
   onOpenPhoto,
   onSelectToggle,
   PhotoCard,
@@ -65,6 +67,7 @@ export default function GalleryTimelineView({
                   isSelected={selectedIds.has(
                     img.id,
                   )}
+                  landingBadges={getLandingBadges ? getLandingBadges(img) : []}
                   onSelectToggle={
                     onSelectToggle
                   }
@@ -80,9 +83,12 @@ export default function GalleryTimelineView({
                   onFavoriteClick={() =>
                     onFavoriteClick(img)
                   }
-                  onEditMetadata={() =>
-                    onEditMetadata(img)
+                  onManageLanding={
+                    onManageLanding
+                      ? () => onManageLanding(img)
+                      : undefined
                   }
+                  onEditMetadata={() => onEditMetadata(img)}
                   onDeleteClick={() =>
                     onDeleteClick(img.id)
                   }

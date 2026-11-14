@@ -262,7 +262,7 @@ const billingSource =
 
 assert.equal(
   billingSource.includes(
-    'recordCanonicalPayment(',
+    'financeRepository.recordPayment(',
   ),
   true,
   'Billing payment must use the protected canonical operation.',
@@ -270,7 +270,7 @@ assert.equal(
 
 assert.equal(
   billingSource.includes(
-    'voidCanonicalInvoice(',
+    'financeRepository.voidInvoice(',
   ),
   true,
   'Billing void must use the protected canonical operation.',
@@ -309,11 +309,15 @@ const proofRepositorySource =
 
 assert.equal(
   proofRepositorySource.includes(
-    'reviewCanonicalPaymentProof(',
+    'approvePaymentProofDirect(',
   ),
   true,
-  'Payment proof approval must use the same server-side accounting core.',
+  'Payment proof approval must run through the Firebase finance repository.',
 );
+
+assert.equal(proofRepositorySource.includes('rejectPaymentProofDirect('), true);
+assert.equal(proofRepositorySource.includes('runIdempotentFirestoreTransaction('), true);
+assert.equal(proofRepositorySource.includes('reviewCanonicalPaymentProof('), false);
 
 const portalSource =
   readFileSync(

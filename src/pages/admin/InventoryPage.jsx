@@ -26,7 +26,8 @@ import InventoryMaintenanceWorkspace from '../../components/inventory/InventoryM
 import ProcurementWorkspace from '../../components/inventory/ProcurementWorkspace.jsx';
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { inventoryRepository } from '../../services/inventoryRepository.js';
-import { adjustCanonicalInventory, archiveCanonicalInventoryItem, saveCanonicalInventoryItem } from '../../services/adminOperationsRepository.js';
+import { adjustCanonicalInventory, archiveCanonicalInventoryItem, saveCanonicalInventoryItem } from '../../services/inventoryFirestoreRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 
 const categoryOptions = [
   { key: 'all', label: 'Semua Kategori', description: 'Tampilkan semua item' },
@@ -1025,6 +1026,7 @@ export default function InventoryPage({ currentUser = null } = {}) {
   const [activeTab, setActiveTab] = useState('inventory');
   const [adjustingItemIds, setAdjustingItemIds] = useState(() => new Set());
   const adjustingItemIdsRef = useRef(new Set());
+  const inventoryRequestIdsRef = useRef(new Map());
 
   useEffect(() => {
     const unsubscribe = inventoryRepository.subscribeInventoryItems(
@@ -1158,25 +1160,30 @@ export default function InventoryPage({ currentUser = null } = {}) {
   }
 
   async function saveItem(nextItem) {
+    const isEditing = Boolean(nextItem.id);
+    const input = {
+      action: isEditing ? 'update' : 'create',
+      ...(isEditing ? { itemId: nextItem.id } : {}),
+      category: nextItem.category,
+      condition: nextItem.condition,
+      location: nextItem.location,
+      minStock: nextItem.minStock,
+      name: nextItem.name,
+      note: nextItem.note,
+      ...(isEditing ? {} : { quantity: nextItem.quantity }),
+      reason: isEditing ? 'Update data inventory' : 'Item baru ditambahkan',
+      status: nextItem.status,
+      type: nextItem.type,
+      unit: nextItem.unit,
+    };
+    const requestKey = 'save:' + JSON.stringify(input);
+    const requestId = inventoryRequestIdsRef.current.get(requestKey) || createRepositoryRequestId();
+    inventoryRequestIdsRef.current.set(requestKey, requestId);
     try {
-      const isEditing = Boolean(nextItem.id);
-      const result = await saveCanonicalInventoryItem({
-        action: isEditing ? 'update' : 'create',
-        ...(isEditing ? { itemId: nextItem.id } : {}),
-        category: nextItem.category,
-        condition: nextItem.condition,
-        location: nextItem.location,
-        minStock: nextItem.minStock,
-        name: nextItem.name,
-        note: nextItem.note,
-        ...(isEditing ? {} : { quantity: nextItem.quantity }),
-        reason: isEditing ? 'Update data inventory' : 'Item baru ditambahkan',
-        status: nextItem.status,
-        type: nextItem.type,
-        unit: nextItem.unit,
-      });
+      const result = await saveCanonicalInventoryItem(input, requestId);
+      inventoryRequestIdsRef.current.delete(requestKey);
       const savedItem = result?.item;
-      if (!savedItem?.id) throw new Error('Worker tidak mengembalikan inventory item yang tersimpan.');
+      if (!savedItem?.id) throw new Error('Repository tidak mengembalikan inventory item yang tersimpan.');
 
       setIsFormOpen(false);
       setEditingItem(null);
@@ -1204,11 +1211,12 @@ export default function InventoryPage({ currentUser = null } = {}) {
     try {
       const amount = Number(adjustment.amount || 0);
       const delta = adjustment.mode === 'in' ? amount : -amount;
-      const result = await adjustCanonicalInventory({
-        delta,
-        itemId: item.id,
-        reason: adjustment.note,
-      });
+      const input = { delta, itemId: item.id, reason: adjustment.note };
+      const requestKey = 'adjust:' + JSON.stringify(input);
+      const requestId = inventoryRequestIdsRef.current.get(requestKey) || createRepositoryRequestId();
+      inventoryRequestIdsRef.current.set(requestKey, requestId);
+      const result = await adjustCanonicalInventory(input, requestId);
+      inventoryRequestIdsRef.current.delete(requestKey);
       const nextQuantity = Number(result?.item?.quantity ?? item.quantity);
 
       setStockAdjustment(null);
@@ -1232,8 +1240,13 @@ export default function InventoryPage({ currentUser = null } = {}) {
   }
 
   async function archiveItem(item) {
+    const input = { itemId: item.id, reason: 'Item dinonaktifkan' };
+    const requestKey = 'archive:' + JSON.stringify(input);
+    const requestId = inventoryRequestIdsRef.current.get(requestKey) || createRepositoryRequestId();
+    inventoryRequestIdsRef.current.set(requestKey, requestId);
     try {
-      await archiveCanonicalInventoryItem({ itemId: item.id, reason: 'Item dinonaktifkan' });
+      await archiveCanonicalInventoryItem(input, requestId);
+      inventoryRequestIdsRef.current.delete(requestKey);
       setToast({
         title: 'Item dinonaktifkan',
         message: item.name + ' tidak lagi dihitung sebagai item aktif.',

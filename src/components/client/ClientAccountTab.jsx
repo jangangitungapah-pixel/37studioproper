@@ -10,6 +10,7 @@ import {
   Sun,
   UserRound,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import {
   formatRupiah,
 } from '../../settings/pricingSettings.js';
@@ -42,9 +43,12 @@ export default function ClientAccountTab({
     );
 
   return (
-    <section
+    <motion.section
+      animate={{ opacity: 1, y: 0 }}
       className="client-account-tab client-account-overhaul"
       aria-labelledby="client-account-title"
+      initial={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       <header className="client-navigation-page-heading">
         <span>
@@ -266,6 +270,6 @@ export default function ClientAccountTab({
           </button>
         </aside>
       </div>
-    </section>
+    </motion.section>
   );
 }

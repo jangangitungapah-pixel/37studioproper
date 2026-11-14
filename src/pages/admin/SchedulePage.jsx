@@ -1746,6 +1746,9 @@ export default function SchedulePage({
       )}
 
       <BookingFormModal
+        checkSlotConflict={(candidateBooking) =>
+          getBookingConflictIssue(candidateBooking, bookings)
+        }
         editingBooking={editingBooking}
         initialSlot={bookingInitialSlot}
         isOpen={isBookingModalOpen}

@@ -26,10 +26,16 @@ import {
 import {
   GUARD_ATTENDANCE_APPROVAL_STATUSES,
   GUARD_ATTENDANCE_STATUSES,
+  GUARD_MEAL_BOOKKEEPING_STATUSES,
   closeGuardAttendanceSession,
   createGuardAttendanceCheckIn,
+  resubmitGuardAttendanceCheckIn,
   subscribeGuardAttendanceSessions,
+  updateGuardAttendanceNote,
 } from '../../services/guardAttendanceRepository.js';
+import {
+  subscribeGuardNotificationEvents,
+} from '../../services/notificationEventRepository.js';
 import { adminAuthRepository } from '../../services/adminAuthRepository.js';
 import {
   GUARD_PORTAL_ACCESS,
@@ -228,18 +234,135 @@ function GuardMetric({ label, value, detail }) {
   );
 }
 
-function GuardHistoryRow({ session }) {
-  const approvalTone = getApprovalTone(session.approvalStatus);
-  const isRunning = !session.clockOutAt;
-  const duration = Number(session.durationHours) || 0;
+function GuardLifecycleStepper({ todaySession }) {
+  const hasClockIn = Boolean(todaySession?.clockInAt);
+  const isApproved = todaySession?.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
+  const isRejected = todaySession?.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED;
+  const isVoid = todaySession?.status === GUARD_ATTENDANCE_STATUSES.VOID;
+  const hasClockOut = Boolean(todaySession?.clockOutAt);
+  const isMealPosted = todaySession?.mealBookkeepingStatus === GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED;
+  const isMealReady = isApproved && hasClockOut && todaySession?.mealEligible && !isMealPosted;
+
+  const steps = [
+    {
+      detail: hasClockIn ? `Tercatat ${formatTime(todaySession.clockInAt)}` : 'Mulai jaga & kirim catatan',
+      label: '1. Clock-In',
+      state: hasClockIn ? 'done' : 'current',
+    },
+    {
+      detail: isVoid
+        ? 'Shift dibatalkan (Void)'
+        : isApproved
+          ? `Disetujui ${todaySession.approvedByName || 'Admin'}`
+          : isRejected
+            ? 'Ditolak — perlu ajukan ulang'
+            : hasClockIn
+              ? 'Menunggu keputusan Admin/Owner'
+              : 'Menunggu clock-in',
+      label: '2. Review Admin',
+      state: isVoid || isRejected
+        ? 'attention'
+        : isApproved
+          ? 'done'
+          : hasClockIn
+            ? 'current'
+            : 'upcoming',
+    },
+    {
+      detail: hasClockOut
+        ? `Selesai ${formatTime(todaySession.clockOutAt)} (${Number(todaySession.durationHours || 0).toFixed(1)} jam)`
+        : hasClockIn && !isRejected && !isVoid
+          ? 'Sedang bertugas (On duty)'
+          : 'Kunci durasi saat selesai',
+      label: '3. Clock-Out',
+      state: hasClockOut
+        ? 'done'
+        : hasClockIn && !isRejected && !isVoid
+          ? 'current'
+          : 'upcoming',
+    },
+    {
+      detail: isMealPosted
+        ? 'Sudah dicairkan ke kas'
+        : isMealReady
+          ? 'Siap dicairkan oleh Admin'
+          : isApproved && todaySession?.mealEligible
+            ? 'Aktif setelah clock-out'
+            : 'Aktif setelah approval & selesai',
+      label: '4. Uang Makan & Fee',
+      state: isMealPosted
+        ? 'done'
+        : isMealReady
+          ? 'current'
+          : 'upcoming',
+    },
+  ];
 
   return (
-    <article className="guard-portal-history-row">
+    <div
+      aria-label="Alur 4 tahap kehadiran penjaga"
+      style={{
+        display: 'grid',
+        gap: '0.65rem',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
+        marginBottom: '1rem',
+      }}
+    >
+      {steps.map((step) => {
+        const borderColor =
+          step.state === 'done'
+            ? 'rgba(34, 197, 94, 0.45)'
+            : step.state === 'attention'
+              ? 'rgba(239, 68, 68, 0.55)'
+              : step.state === 'current'
+                ? 'rgba(59, 130, 246, 0.5)'
+                : 'rgba(148, 163, 184, 0.22)';
+        const bg =
+          step.state === 'done'
+            ? 'rgba(34, 197, 94, 0.08)'
+            : step.state === 'attention'
+              ? 'rgba(239, 68, 68, 0.1)'
+              : step.state === 'current'
+                ? 'rgba(59, 130, 246, 0.09)'
+                : 'rgba(148, 163, 184, 0.04)';
+
+        return (
+          <div
+            key={step.label}
+            style={{
+              background: bg,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.2rem',
+              padding: '0.65rem 0.85rem',
+            }}
+          >
+            <strong style={{ fontSize: '0.82rem' }}>{step.label}</strong>
+            <small style={{ fontSize: '0.76rem', opacity: 0.85 }}>{step.detail}</small>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function GuardHistoryRow({ session }) {
+  const isVoid = session.status === GUARD_ATTENDANCE_STATUSES.VOID;
+  const approvalTone = isVoid ? 'neutral' : getApprovalTone(session.approvalStatus);
+  const approvalLabel = isVoid ? 'Dibatalkan (Void)' : getApprovalLabel(session.approvalStatus);
+  const isRunning = !session.clockOutAt && !isVoid && session.approvalStatus !== GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED;
+  const duration = Number(session.durationHours) || 0;
+  const isMealPosted = session.mealBookkeepingStatus === GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED;
+
+  return (
+    <article className="guard-portal-history-row" style={{ flexWrap: 'wrap', gap: '0.65rem' }}>
       <span className={`guard-portal-history-marker is-${approvalTone}`} aria-hidden="true" />
 
       <div className="guard-portal-history-date">
         <strong>{formatDate(session.date)}</strong>
-        <small>{isRunning ? 'Shift berjalan' : `${duration.toFixed(1)} jam`}</small>
+        <small>{isVoid ? 'Void' : isRunning ? 'Shift berjalan' : `${duration.toFixed(1)} jam`}</small>
       </div>
 
       <div className="guard-portal-history-time">
@@ -249,13 +372,55 @@ function GuardHistoryRow({ session }) {
       </div>
 
       <div className="guard-portal-history-meta">
-        {session.mealEligible && session.mealAmount > 0 ? (
-          <small>Meal {formatCurrency(session.mealAmount)}</small>
+        {isMealPosted ? (
+          <small style={{ color: '#16a34a', fontWeight: 600 }}>
+            Meal Cair ({formatCurrency(session.mealAmount)})
+          </small>
+        ) : session.mealEligible && session.mealAmount > 0 ? (
+          <small>
+            Meal {formatCurrency(session.mealAmount)} ({session.clockOutAt ? 'Siap cair' : 'Tunggu selesai'})
+          </small>
         ) : (
           <small>Belum eligible meal</small>
         )}
-        <StatusPill status={approvalTone}>{getApprovalLabel(session.approvalStatus)}</StatusPill>
+        <StatusPill status={approvalTone}>{approvalLabel}</StatusPill>
       </div>
+
+      {(session.note || session.adminNote || session.rejectionReason || session.voidReason || session.approvedByName) ? (
+        <div
+          style={{
+            borderTop: '1px solid rgba(148, 163, 184, 0.16)',
+            display: 'flex',
+            flexBasis: '100%',
+            flexDirection: 'column',
+            fontSize: '0.78rem',
+            gap: '0.25rem',
+            marginTop: '0.2rem',
+            paddingLeft: '1rem',
+            paddingTop: '0.45rem',
+          }}
+        >
+          {session.note ? (
+            <span><strong>Catatan Guard:</strong> {session.note}</span>
+          ) : null}
+          {session.approvedByName && session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED ? (
+            <span style={{ color: '#16a34a' }}>
+              <strong>Disetujui oleh:</strong> {session.approvedByName}
+              {session.adminNote ? ` · Catatan Admin: "${session.adminNote}"` : ''}
+            </span>
+          ) : null}
+          {session.rejectionReason ? (
+            <span style={{ color: '#dc2626' }}>
+              <strong>Alasan Ditolak ({session.rejectedByName || 'Admin'}):</strong> {session.rejectionReason}
+            </span>
+          ) : null}
+          {session.voidReason ? (
+            <span style={{ color: '#d97706' }}>
+              <strong>Alasan Void:</strong> {session.voidReason}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -278,7 +443,9 @@ function GuardAttendancePageContent() {
   const [authUser, setAuthUser] = useState(null);
   const [guardAccount, setGuardAccount] = useState(null);
   const [sessions, setSessions] = useState([]);
+  const [guardNotifications, setGuardNotifications] = useState([]);
   const [note, setNote] = useState('');
+  const [activeShiftNoteDraft, setActiveShiftNoteDraft] = useState('');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [showCheckOutConfirm, setShowCheckOutConfirm] = useState(false);
   const [isReady, setIsReady] = useState(!isAuthAvailable);
@@ -429,10 +596,40 @@ function GuardAttendancePageContent() {
     );
   }, [authUser?.uid, canUseGuardPage]);
 
+  useEffect(() => {
+    if (!authUser?.uid || !canUseGuardPage) return () => {};
+
+    return subscribeGuardNotificationEvents(
+      authUser,
+      (events) => setGuardNotifications(events.slice(0, 5)),
+      (notifError) => {
+        console.warn('[guard-attendance] Gagal membaca notifikasi guard:', notifError);
+      }
+    );
+  }, [authUser, canUseGuardPage]);
+
+  const todayIsoStr = useMemo(() => {
+    const now = new Date();
+    return [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+  }, []);
+
+  const todaySession = useMemo(
+    () => sessions.find((session) => session.date === todayIsoStr) || null,
+    [sessions, todayIsoStr]
+  );
+
   const currentSession = useMemo(
     () => sessions.find(isActiveLikeSession) || null,
     [sessions]
   );
+
+  useEffect(() => {
+    setActiveShiftNoteDraft(currentSession?.note || '');
+  }, [currentSession?.id, currentSession?.note]);
 
   useEffect(() => {
     if (!currentSession?.clockInAt) {
@@ -584,11 +781,17 @@ function GuardAttendancePageContent() {
       String(now.getMonth() + 1).padStart(2, '0'),
       String(now.getDate()).padStart(2, '0'),
     ].join('-');
-    const hasAlreadyCheckedInToday = sessions.some(
+    const existingTodaySession = sessions.find(
       (session) => session.date === todayStr && session.guardPersonId === selectedGuardPerson.id
     );
+    const canResubmitRejectedToday = Boolean(
+      existingTodaySession &&
+      existingTodaySession.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED &&
+      existingTodaySession.status !== GUARD_ATTENDANCE_STATUSES.VOID &&
+      existingTodaySession.mealBookkeepingStatus !== GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED
+    );
 
-    if (hasAlreadyCheckedInToday) {
+    if (existingTodaySession && !canResubmitRejectedToday) {
       setError('Anda sudah melakukan absensi hari ini. Tidak boleh absen dua kali di tanggal yang sama.');
       return;
     }
@@ -598,12 +801,20 @@ function GuardAttendancePageContent() {
     setNotice('');
 
     try {
-      const nextSession = await createGuardAttendanceCheckIn({
-        guardPerson: selectedGuardPerson,
-        mealAmount,
-        note,
-        user: authUser,
-      });
+      const nextSession = canResubmitRejectedToday
+        ? await resubmitGuardAttendanceCheckIn({
+            guardPerson: selectedGuardPerson,
+            mealAmount,
+            note: note || existingTodaySession.note,
+            session: existingTodaySession,
+            user: authUser,
+          })
+        : await createGuardAttendanceCheckIn({
+            guardPerson: selectedGuardPerson,
+            mealAmount,
+            note,
+            user: authUser,
+          });
 
       setSessions((current) => [
         nextSession,
@@ -611,13 +822,40 @@ function GuardAttendancePageContent() {
       ]);
       setNote('');
       setNotice(
-        isOnline
-          ? 'Clock-in tercatat. Status menunggu approval Owner.'
-          : 'Clock-in disimpan offline dan akan disinkronkan saat koneksi kembali.'
+        canResubmitRejectedToday
+          ? 'Pengajuan ulang absen berhasil dikirim ke Owner/Admin untuk direview.'
+          : isOnline
+            ? 'Clock-in tercatat. Status menunggu approval Owner.'
+            : 'Clock-in disimpan offline dan akan disinkronkan saat koneksi kembali.'
       );
     } catch (checkInError) {
       console.error('[guard-attendance] Absen masuk gagal:', checkInError);
       setError(checkInError?.message || 'Absen gagal. Coba ulang atau hubungi Owner.');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleSaveActiveNote() {
+    if (!currentSession || !authUser?.uid) return;
+
+    setIsBusy(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const updated = await updateGuardAttendanceNote(
+        currentSession,
+        authUser,
+        activeShiftNoteDraft,
+      );
+      setSessions((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item))
+      );
+      setNotice('Catatan shift berhasil diperbarui dan dikirim ke Admin/Owner.');
+    } catch (noteError) {
+      console.error('[guard-attendance] Update catatan gagal:', noteError);
+      setError(noteError?.message || 'Gagal memperbarui catatan shift.');
     } finally {
       setIsBusy(false);
     }
@@ -641,7 +879,9 @@ function GuardAttendancePageContent() {
     setNotice('');
 
     try {
-      const nextSession = await closeGuardAttendanceSession(currentSession, authUser);
+      const nextSession = await closeGuardAttendanceSession(currentSession, authUser, {
+        note: activeShiftNoteDraft,
+      });
 
       setSessions((current) => current.map((item) => (
         item.id === nextSession.id ? nextSession : item
@@ -649,7 +889,7 @@ function GuardAttendancePageContent() {
       setShowCheckOutConfirm(false);
       setNotice(
         isOnline
-          ? 'Clock-out tersimpan. Durasi shift sudah dikunci.'
+          ? 'Clock-out tersimpan. Durasi shift dan catatan serah terima sudah dikunci.'
           : 'Clock-out disimpan offline dan akan disinkronkan otomatis.'
       );
     } catch (checkOutError) {
@@ -818,12 +1058,14 @@ function GuardAttendancePageContent() {
               <div>
                 <span className="guard-portal-eyebrow">Operations / Attendance</span>
                 <h1>{currentSession ? 'Shift sedang berjalan' : 'Mulai shift hari ini'}</h1>
-                <p>Clock-in, clock-out, dan riwayat kehadiran penjaga.</p>
+                <p>Clock-in, clock-out, komunikasi dua arah dengan Admin/Owner, dan riwayat kehadiran penjaga.</p>
               </div>
               <StatusPill status={currentSession ? 'success' : 'neutral'}>
                 {currentSession ? 'On duty' : 'Ready'}
               </StatusPill>
             </header>
+
+            <GuardLifecycleStepper todaySession={currentSession || todaySession} />
 
             <div className="guard-portal-workspace-grid">
               <section className={`guard-portal-shift-surface ${currentSession ? 'is-active' : 'is-idle'}`}>
@@ -833,9 +1075,77 @@ function GuardAttendancePageContent() {
                       <span aria-hidden="true"><BriefcaseBusiness size={20} /></span>
                       <div>
                         <small>Clock-in</small>
-                        <h2>Mulai jaga</h2>
+                        <h2>
+                          {todaySession?.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED &&
+                          todaySession?.status !== GUARD_ATTENDANCE_STATUSES.VOID
+                            ? 'Perbaiki & Ajukan Ulang Absen'
+                            : 'Mulai jaga'}
+                        </h2>
                       </div>
                     </div>
+
+                    {todaySession?.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED &&
+                    todaySession?.status !== GUARD_ATTENDANCE_STATUSES.VOID ? (
+                      <div
+                        role="alert"
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.45)',
+                          borderRadius: '0.75rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.3rem',
+                          padding: '0.85rem 1rem',
+                        }}
+                      >
+                        <strong style={{ color: '#dc2626', fontSize: '0.88rem' }}>
+                          Absen Hari Ini Ditolak oleh {todaySession.rejectedByName || 'Admin/Owner'}
+                        </strong>
+                        <p style={{ fontSize: '0.83rem', margin: 0 }}>
+                          <strong>Alasan:</strong> {todaySession.rejectionReason || 'Data absen belum sesuai.'}
+                        </p>
+                        <small style={{ opacity: 0.85 }}>
+                          Silakan lengkapi atau perbaiki catatan shift di bawah lalu klik tombol ajukan ulang.
+                        </small>
+                      </div>
+                    ) : null}
+
+                    {todaySession?.clockOutAt &&
+                    todaySession?.approvalStatus !== GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED ? (
+                      <div
+                        role="status"
+                        style={{
+                          background: 'rgba(34, 197, 94, 0.08)',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          borderRadius: '0.75rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.3rem',
+                          padding: '0.85rem 1rem',
+                        }}
+                      >
+                        <strong style={{ color: '#16a34a', fontSize: '0.88rem' }}>
+                          Shift Hari Ini Selesai ({Number(todaySession.durationHours || 0).toFixed(1)} jam)
+                        </strong>
+                        <small>
+                          Status Review: <strong>{getApprovalLabel(todaySession.approvalStatus)}</strong>
+                          {' · '}
+                          Uang Makan:{' '}
+                          <strong>
+                            {todaySession.mealBookkeepingStatus === GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED
+                              ? 'Sudah Dicairkan'
+                              : todaySession.mealEligible
+                                ? 'Siap Dicairkan oleh Admin'
+                                : 'Menunggu Approval'}
+                          </strong>
+                        </small>
+                        {todaySession.adminNote ? (
+                          <small>
+                            <strong>Catatan Admin/Owner:</strong> &ldquo;{todaySession.adminNote}&rdquo;
+                          </small>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     <div className="guard-portal-identity-row">
                       <span className="guard-portal-avatar">{guardInitials}</span>
@@ -849,13 +1159,13 @@ function GuardAttendancePageContent() {
 
                     <label className="guard-portal-note-field" htmlFor="guard-shift-note">
                       <span>
-                        <strong>Catatan shift</strong>
+                        <strong>Catatan shift ke Admin/Owner</strong>
                         <small>Opsional · maksimal 1000 karakter</small>
                       </span>
                       <textarea
                         id="guard-shift-note"
                         maxLength={1000}
-                        placeholder="Contoh: shift sore, serah terima kunci, atau tukar jadwal."
+                        placeholder="Contoh: shift sore, kondisi ruangan aman, serah terima kunci, atau tukar jadwal."
                         rows={4}
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
@@ -870,7 +1180,10 @@ function GuardAttendancePageContent() {
                       onClick={handleCheckIn}
                     >
                       {isBusy ? <LoaderCircle className="auth-spin" size={18} /> : <LogIn size={18} />}
-                      Clock-in sekarang
+                      {todaySession?.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED &&
+                      todaySession?.status !== GUARD_ATTENDANCE_STATUSES.VOID
+                        ? 'Ajukan ulang absen hari ini'
+                        : 'Clock-in sekarang'}
                       <ArrowRight size={16} aria-hidden="true" />
                     </button>
                   </div>
@@ -895,12 +1208,56 @@ function GuardAttendancePageContent() {
                       <div><dt>Clock-in</dt><dd>{formatDateTime(currentSession.clockInAt)}</dd></div>
                     </dl>
 
+                    {currentSession.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED ? (
+                      <div
+                        className="guard-portal-shift-note"
+                        style={{
+                          background: 'rgba(34, 197, 94, 0.08)',
+                          border: '1px solid rgba(34, 197, 94, 0.35)',
+                        }}
+                      >
+                        <small style={{ color: '#16a34a', fontWeight: 600 }}>
+                          Disetujui oleh {currentSession.approvedByName || 'Owner/Admin'}
+                        </small>
+                        <p>
+                          {currentSession.adminNote
+                            ? `Catatan Admin: "${currentSession.adminNote}"`
+                            : 'Absen Anda telah disetujui. Uang makan dapat dicairkan setelah Anda melakukan clock-out.'}
+                        </p>
+                      </div>
+                    ) : null}
+
                     {currentSession.note ? (
                       <div className="guard-portal-shift-note">
-                        <small>Catatan shift</small>
+                        <small>Catatan shift saat ini</small>
                         <p>{currentSession.note}</p>
                       </div>
                     ) : null}
+
+                    <label className="guard-portal-note-field" htmlFor="guard-active-shift-note">
+                      <span>
+                        <strong>Update catatan shift / laporan ke Admin</strong>
+                        <small>Kirim info kondisi studio atau serah terima ke Admin/Owner</small>
+                      </span>
+                      <textarea
+                        id="guard-active-shift-note"
+                        maxLength={1000}
+                        placeholder="Tulis laporan kondisi studio, kendala alat, atau pesan ke Admin..."
+                        rows={3}
+                        value={activeShiftNoteDraft}
+                        onChange={(event) => setActiveShiftNoteDraft(event.target.value)}
+                      />
+                    </label>
+
+                    <button
+                      className="guard-portal-secondary-action is-full"
+                      disabled={isBusy || activeShiftNoteDraft.trim() === (currentSession.note || '').trim()}
+                      type="button"
+                      onClick={handleSaveActiveNote}
+                    >
+                      {isBusy ? <LoaderCircle className="auth-spin" size={16} /> : <Check size={16} />}
+                      Simpan & Kirim Catatan ke Admin
+                    </button>
 
                     <button
                       className="guard-portal-danger-action is-full"
@@ -934,8 +1291,46 @@ function GuardAttendancePageContent() {
 
                 <div className="guard-portal-process-note">
                   <ShieldCheck size={17} aria-hidden="true" />
-                  <p><strong>Approval tetap terpisah.</strong> Clock-out mengunci durasi, lalu Owner meninjau eligibility dan meal.</p>
+                  <p>
+                    <strong>Alur 2 Arah Terintegrasi.</strong> Clock-in mengirim notifikasi ke Admin/Owner. Keputusan approval, alasan penolakan, dan pencairan uang makan tampil langsung di sini.
+                  </p>
                 </div>
+
+                {guardNotifications.length > 0 ? (
+                  <div
+                    aria-label="Pemberitahuan dari Admin dan Owner"
+                    style={{
+                      background: 'rgba(148, 163, 184, 0.06)',
+                      border: '1px solid rgba(148, 163, 184, 0.2)',
+                      borderRadius: '0.85rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.55rem',
+                      padding: '0.9rem 1rem',
+                    }}
+                  >
+                    <small style={{ fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      Update Terbaru dari Admin/Owner
+                    </small>
+                    {guardNotifications.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          borderTop: '1px solid rgba(148, 163, 184, 0.14)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          fontSize: '0.78rem',
+                          gap: '0.15rem',
+                          paddingTop: '0.45rem',
+                        }}
+                      >
+                        <strong>{item.title}</strong>
+                        <span style={{ opacity: 0.9 }}>{item.message}</span>
+                        <small style={{ opacity: 0.65 }}>{formatDateTime(item.createdAt)}</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </aside>
             </div>
 
@@ -1000,6 +1395,20 @@ function GuardAttendancePageContent() {
                 <span><small>Durasi berjalan</small><strong>{elapsedTime}</strong></span>
                 <span><small>Mulai</small><strong>{formatTime(currentSession?.clockInAt)}</strong></span>
               </div>
+              <label className="guard-portal-note-field" htmlFor="guard-checkout-note">
+                <span>
+                  <strong>Catatan akhir shift / serah terima</strong>
+                  <small>Dikirim ke Admin/Owner saat clock-out</small>
+                </span>
+                <textarea
+                  id="guard-checkout-note"
+                  maxLength={1000}
+                  placeholder="Contoh: semua peralatan lengkap, AC & listrik studio sudah dimatikan."
+                  rows={3}
+                  value={activeShiftNoteDraft}
+                  onChange={(event) => setActiveShiftNoteDraft(event.target.value)}
+                />
+              </label>
               <div className="guard-portal-dialog-actions">
                 <Dialog.Close asChild>
                   <button className="guard-portal-secondary-action" disabled={isBusy} type="button">

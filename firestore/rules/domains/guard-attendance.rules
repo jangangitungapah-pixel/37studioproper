@@ -1,0 +1,43 @@
+    match /guardAttendanceSessions/{attendanceId} {
+      allow read: if canManageGuardAttendance() ||
+        canManageOperatorFees() ||
+        (isStudioGuardAccount() && resource.data.guardUid == request.auth.uid);
+      allow create: if isStudioGuardAccount() &&
+        request.resource.data.id == attendanceId &&
+        request.resource.data.guardUid == request.auth.uid &&
+        request.resource.data.status == 'pending_approval' &&
+        request.resource.data.approvalStatus == 'pending';
+      allow update: if (
+          isStudioGuardAccount() &&
+          resource.data.guardUid == request.auth.uid &&
+          request.resource.data.guardUid == resource.data.guardUid &&
+          (
+            (
+              resource.data.clockOutAt == '' &&
+              request.resource.data.status == 'closed' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'clockOutAt', 'clockOutByUid', 'closedAt', 'durationHours', 'note', 'status', 'updatedAt'
+              ])
+            ) ||
+            (
+              request.resource.data.status == resource.data.status &&
+              request.resource.data.approvalStatus == resource.data.approvalStatus &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'note', 'updatedAt'
+              ])
+            ) ||
+            (
+              resource.data.approvalStatus == 'rejected' &&
+              resource.data.status != 'void' &&
+              resource.data.mealBookkeepingStatus != 'posted' &&
+              request.resource.data.status == 'pending_approval' &&
+              request.resource.data.approvalStatus == 'pending'
+            )
+          )
+        ) || (
+          (canManageGuardAttendance() || canManageOperatorFees()) &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.guardUid == resource.data.guardUid
+        );
+      allow delete: if isOwner();
+    }

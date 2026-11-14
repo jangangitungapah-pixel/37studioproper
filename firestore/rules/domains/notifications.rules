@@ -1,0 +1,12 @@
+    match /notificationEvents/{eventId} {
+      allow read: if isSignedIn() && (
+        canAccessNotifications() ||
+        resource.data.actorUid == request.auth.uid ||
+        resource.data.targetUid == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.id == eventId &&
+        request.resource.data.actorUid == request.auth.uid &&
+        (isApprovedAdmin() || isClientAccount() || isStudioGuardAccount());
+      allow update, delete: if false;
+    }

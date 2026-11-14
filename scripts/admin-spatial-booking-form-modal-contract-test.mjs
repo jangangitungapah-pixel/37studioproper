@@ -244,7 +244,7 @@ for (
   of [
     ".booking-modal-panel[data-booking-modal-ui='ui-3c-mobile-first']",
     'position: fixed;',
-    'bottom: calc(6px + env(safe-area-inset-bottom));',
+    'bottom: 0;',
     'translate: -50% 0;',
     'grid-template-rows: auto auto minmax(0, 1fr);',
     '.booking-step-rail',
@@ -264,6 +264,9 @@ for (
     '.booking-form-actions',
     'min-height: 48px;',
     'env(safe-area-inset-bottom)',
+    '.booking-modal-portal-root',
+    '.studio-select-sheet-card',
+    '.booking-slot-status',
     '@media (min-width: 768px)',
     'top: 50%;',
     'bottom: auto;',
@@ -320,7 +323,7 @@ for (
   const required
   of [
     'position: fixed;',
-    'bottom: calc(6px + env(safe-area-inset-bottom));',
+    'bottom: 0;',
     '--z-modal-backdrop',
     'translate: -50% 0;',
   ]

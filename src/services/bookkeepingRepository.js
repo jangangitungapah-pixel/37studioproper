@@ -1,15 +1,13 @@
 import {
   collection,
-  deleteDoc,
-  doc,
   limit,
   onSnapshot,
   where,
   orderBy,
   query,
-  setDoc,
 } from 'firebase/firestore';
 import { firestoreDb, isFirebaseConfigured } from '../lib/firebase.js';
+import { financeRepository } from './firestoreFinanceRepository.js';
 
 const BOOKKEEPING_COLLECTION = 'bookkeepingEntries';
 
@@ -25,17 +23,9 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
 }
 
-function makeEntryId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-
-  return 'book_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2, 7);
-}
-
 export function normalizeBookkeepingEntry(entry, fallbackId = '') {
   const source = entry && typeof entry === 'object' ? entry : {};
-  const id = cleanText(source.id, fallbackId || makeEntryId());
+  const id = cleanText(source.id, fallbackId);
   const now = new Date().toISOString();
 
   return {
@@ -59,6 +49,8 @@ export function normalizeBookkeepingEntry(entry, fallbackId = '') {
     actorName: cleanText(source.actorName),
     actorUid: cleanText(source.actorUid),
     idempotencyKey: cleanText(source.idempotencyKey),
+    operationId: cleanText(source.operationId),
+    sourceProofId: cleanText(source.sourceProofId),
     immutable: source.immutable === true,
     reversalOf: cleanText(source.reversalOf),
     createdAt: source.createdAt || now,
@@ -125,81 +117,26 @@ export function subscribeBookkeepingEntries(options, callback, onError) {
   );
 }
 
-export async function createBookkeepingEntry(entry) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  const entryId = entry.id || doc(collection(firestoreDb, BOOKKEEPING_COLLECTION)).id;
-  const docRef = doc(firestoreDb, BOOKKEEPING_COLLECTION, entryId);
-  const now = new Date().toISOString();
-  const cleanEntry = normalizeBookkeepingEntry(
-    {
-      ...entry,
-      actorName: '',
-      actorUid: '',
-      id: entryId,
-      idempotencyKey: '',
-      immutable: false,
-      reversalOf: '',
-      source: 'manual',
-      sourceAction: '',
-      sourceEventId: '',
-      createdAt: entry.createdAt || now,
-      updatedAt: now,
-    },
-    entryId
-  );
-
-  await setDoc(docRef, cleanEntry);
-  return cleanEntry;
+export async function createBookkeepingEntry(entry, operationRequestId = '') {
+  if (!isFirebaseConfigured || !firestoreDb) throw new Error('Firebase belum dikonfigurasi.');
+  const saved = await financeRepository.createManualBookkeepingEntry(entry, operationRequestId);
+  return normalizeBookkeepingEntry(saved, saved.id);
 }
 
-export async function updateBookkeepingEntry(entry) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  if (!entry.id) {
-    throw new Error('Bookkeeping entry ID tidak boleh kosong.');
-  }
-
+export async function updateBookkeepingEntry(entry, operationRequestId = '') {
+  if (!isFirebaseConfigured || !firestoreDb) throw new Error('Firebase belum dikonfigurasi.');
+  if (!entry?.id) throw new Error('Bookkeeping entry ID tidak boleh kosong.');
   if (entry.immutable === true || (entry.source && entry.source !== 'manual')) {
     throw new Error('Transaksi hasil rekonsiliasi bersifat read-only. Gunakan reversal untuk koreksi.');
   }
-
-  const docRef = doc(firestoreDb, BOOKKEEPING_COLLECTION, entry.id);
-  const cleanEntry = normalizeBookkeepingEntry(
-    {
-      ...entry,
-      actorName: '',
-      actorUid: '',
-      idempotencyKey: '',
-      immutable: false,
-      reversalOf: '',
-      source: 'manual',
-      sourceAction: '',
-      sourceEventId: '',
-      updatedAt: new Date().toISOString(),
-    },
-    entry.id
-  );
-
-  await setDoc(docRef, cleanEntry, { merge: true });
-  return cleanEntry;
+  const saved = await financeRepository.updateManualBookkeepingEntry(entry, operationRequestId);
+  return normalizeBookkeepingEntry(saved, saved.id);
 }
 
-export async function deleteBookkeepingEntry(entryId) {
-  if (!isFirebaseConfigured || !firestoreDb) {
-    throw new Error('Firebase belum dikonfigurasi.');
-  }
-
-  if (!entryId) {
-    throw new Error('Bookkeeping entry ID tidak boleh kosong.');
-  }
-
-  const docRef = doc(firestoreDb, BOOKKEEPING_COLLECTION, entryId);
-  await deleteDoc(docRef);
+export async function deleteBookkeepingEntry(entryId, operationRequestId = '') {
+  if (!isFirebaseConfigured || !firestoreDb) throw new Error('Firebase belum dikonfigurasi.');
+  if (!entryId) throw new Error('Bookkeeping entry ID tidak boleh kosong.');
+  await financeRepository.deleteManualBookkeepingEntry(entryId, operationRequestId);
 }
 
 export const bookkeepingRepository = {

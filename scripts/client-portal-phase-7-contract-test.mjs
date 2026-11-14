@@ -95,7 +95,10 @@ assert.match(page, /if \(paymentProofsLoading \|\| paymentProofsError\)/);
 assert.match(page, /isBookingPaymentOpen\(selectedBookingDetail\)/);
 assert.match(page, /setPaymentProofsRetryVersion\(\(value\) => value \+ 1\)/);
 assert.match(page, /Status bukti belum dapat diperiksa/);
-assert.match(page, /disabled=\{isSubmittingProof \|\| !proofFile \|\| paymentProofsLoading \|\| Boolean\(paymentProofsError\)\}/);
+assert.match(page, /disabled=\{isSubmittingProof \|\| proofReference\.trim\(\)\.length < 4 \|\| paymentProofsLoading \|\| Boolean\(paymentProofsError\)\}/);
+assert.match(page, /value=\{proofReference\}/);
+assert.match(page, /value=\{proofPayerName\}/);
+assert.doesNotMatch(page, /proofFile|setProofFile|uploadPaymentProofFile/);
 
 assert.match(dashboard, /bookingDataUnavailable = bookingsLoading \|\| Boolean\(bookingsError\)/);
 assert.match(dashboard, /Jadwal belum dapat dimuat/);

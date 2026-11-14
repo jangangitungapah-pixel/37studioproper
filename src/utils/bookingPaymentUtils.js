@@ -1530,14 +1530,14 @@ export function buildPaymentFromProof(
       proof?.id ||
       '',
 
-    proofPublicId:
-      proof?.proofPublicId ||
+    proofReference:
+      proof?.transactionReference ||
+      proof?.proofReference ||
       '',
 
-    proofUrl:
-      proof?.proofUrl ||
+    payerName:
+      proof?.payerName ||
       '',
-
     source:
       'client-payment-proof',
   };

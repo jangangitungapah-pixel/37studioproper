@@ -327,11 +327,14 @@ assert.equal(
 );
 
 assert.equal(
-  rulesSource.includes(
-    '!isReconciledBookkeepingSource(\n          resource.data\n        )'
-  ),
+  rulesSource.includes('!isReconciledBookkeepingSource(resource.data)'),
   true,
   'Reconciled bookkeeping delete must remain blocked.',
+);
+assert.match(
+  rulesSource,
+  /function manualBookkeepingDeleteAllowed\(entryId\)[\s\S]*?resource\.data\.source in \['', 'manual'\][\s\S]*?!isReconciledBookkeepingSource\(resource\.data\)[\s\S]*?manualBookkeepingFenceMatchesAfter/,
+  'Only manual bookkeeping entries may be deleted through the idempotent, fenced path.',
 );
 
 const packageJson =

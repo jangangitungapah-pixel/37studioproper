@@ -95,7 +95,8 @@ const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const firestoreRules = read('firestore.rules');
 const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
 const maintenanceUi = read('src/components/inventory/InventoryMaintenanceWorkspace.jsx');
-const adminOperationsRepository = read('src/services/adminOperationsRepository.js');
+const maintenanceRepository = read('src/services/maintenanceFirestoreRepository.js');
+const adminOperationsClient = read('src/services/adminOperationsRepository.js');
 const bookkeepingRepository = read('src/services/bookkeepingRepository.js');
 const bookkeepingPage = read('src/pages/admin/BookkeepingPage.jsx');
 const packageJson = JSON.parse(read('package.json'));
@@ -389,19 +390,39 @@ assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orde
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orders\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orders\/reopen'[\s\S]*?ownerOnly: true[\s\S]*?requireFreshAuth: true[\s\S]*?body = await readJson\(request\);/);
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/maintenance\/work-orders\/cost'[\s\S]*?permission: 'bookkeeping'[\s\S]*?body = await readJson\(request\);/);
-assert.match(firestoreRules, /match \/maintenanceWorkOrders\/\{workOrderId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessInventoryData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.match(firestoreRules, /match \/maintenanceEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessInventoryData\(\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(firestoreRules, /match \/maintenanceWorkOrders\/\{workOrderId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessMaintenanceData\(\);[\s\S]*?allow create: if maintenanceWorkOrderCreateAllowed\(workOrderId\);[\s\S]*?allow update: if maintenanceWorkOrderUpdateAllowed\(workOrderId\);[\s\S]*?allow delete: if false;/);
+assert.match(firestoreRules, /match \/maintenanceEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessMaintenanceData\(\);[\s\S]*?allow create: if maintenanceEventCreateAllowed\(eventId\);[\s\S]*?allow update, delete: if false;/);
+assert.match(firestoreRules, /function maintenanceOperationMarkerMatches\(data\)/);
+assert.match(firestoreRules, /function maintenanceWorkOrderCreateAllowed\(workOrderId\)/);
+assert.match(firestoreRules, /function maintenanceWorkOrderTransitionAllowed\(workOrderId, data\)/);
+assert.match(firestoreRules, /function maintenanceCostLedgerCreateAllowed\(data, entryId\)/);
+assert.match(firestoreRules, /data\.lastOperationAction in \['manual-create', 'manual-update', 'manual-delete', 'maintenance-cost'\]/);
 assert.match(firestoreRules, /'sourceWorkOrderId'/);
 assert.match(firestoreRules, /validOptionalString\(data, 'sourceWorkOrderId', 160\)/);
 assert.equal(inventoryPage.includes('InventoryMaintenanceWorkspace'), true);
+assert.equal(maintenanceUi.includes('maintenanceFirestoreRepository.js'), true);
+assert.equal(maintenanceUi.includes('adminOperationsRepository.js'), false);
+assert.doesNotMatch(
+  adminOperationsClient,
+  /reportCanonicalMaintenanceWorkOrder|actOnCanonicalMaintenanceWorkOrder|reopenCanonicalMaintenanceWorkOrder|recordCanonicalMaintenanceCost/,
+  'Maintenance client Worker wrappers must stay retired.',
+);
+assert.doesNotMatch(
+  adminOperationsClient,
+  /createCanonicalSupplier|createCanonicalPurchaseOrder|transitionCanonicalPurchaseOrder|receiveCanonicalPurchaseOrder|recordCanonicalProcurementPayment|saveCanonicalInventoryItem|archiveCanonicalInventoryItem|adjustCanonicalInventory|getCanonicalCustomerFollowUpAssignees|createCanonicalCustomerFollowUpTask|updateCanonicalCustomerFollowUpTask|cancelCanonicalCustomerFollowUpTask/,
+  'Phase 4 client Worker wrappers must stay retired.',
+);
 assert.equal(maintenanceUi.includes('recordCanonicalMaintenanceCost'), true);
-assert.equal(adminOperationsRepository.includes('reportCanonicalMaintenanceWorkOrder'), true);
-assert.equal(adminOperationsRepository.includes('actOnCanonicalMaintenanceWorkOrder'), true);
-assert.equal(adminOperationsRepository.includes('recordCanonicalMaintenanceCost'), true);
+assert.equal(maintenanceRepository.includes('runIdempotentFirestoreTransaction'), true);
+assert.equal(maintenanceRepository.includes('reportCanonicalMaintenanceWorkOrder'), true);
+assert.equal(maintenanceRepository.includes('actOnCanonicalMaintenanceWorkOrder'), true);
+assert.equal(maintenanceRepository.includes('reopenCanonicalMaintenanceWorkOrder'), true);
+assert.equal(maintenanceRepository.includes('recordCanonicalMaintenanceCost'), true);
+assert.equal(maintenanceRepository.includes('activeMaintenanceWorkOrderId'), true);
 assert.equal(bookkeepingRepository.includes('sourceWorkOrderId'), true);
 assert.equal(bookkeepingPage.includes("source === 'maintenance'"), true);
 assert.equal(bookkeepingPage.includes('workOrderId: entry.sourceWorkOrderId'), true);
-assert.equal(packageJson.scripts['test:prd'].includes('maintenance-work-orders-contract-test.mjs'), true);
-assert.equal(packageJson.scripts.test.includes('maintenance-work-orders-contract-test.mjs'), true);
+assert.equal(packageJson.scripts['test:prd:raw'].includes('maintenance-work-orders-contract-test.mjs'), true);
+assert.equal(packageJson.scripts['test:serial:raw'].includes('maintenance-work-orders-contract-test.mjs'), true);
 
 console.log('Maintenance work order contract passed.');

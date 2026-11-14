@@ -35,9 +35,9 @@ for (const required of [
 }
 
 for (const invariant of [
-  'recordCanonicalPayment(',
-  'recordCanonicalRefund(',
-  'voidCanonicalInvoice(',
+  'financeRepository.recordPayment(',
+  'financeRepository.recordRefund(',
+  'financeRepository.voidInvoice(',
   'canRefundBookingPayment(booking)',
   'canVoidBookingInvoice(booking)',
   'getBookingFinanceTotals',
@@ -302,7 +302,9 @@ assert.equal(cssSource.includes('color: #111;'), true, 'Thermal receipt ink must
 assert.equal(paymentCoreSource.includes('export function buildBookingPaymentPatch('), true);
 assert.equal(paymentCoreSource.includes('export function buildBookingRefundPatch('), true);
 assert.equal(paymentCoreSource.includes('export function buildBookingVoidPatch('), true);
-assert.equal(proofRepositorySource.includes('reviewCanonicalPaymentProof('), true);
+assert.equal(proofRepositorySource.includes('approvePaymentProofDirect('), true);
+assert.equal(proofRepositorySource.includes('rejectPaymentProofDirect('), true);
+assert.equal(proofRepositorySource.includes('reviewCanonicalPaymentProof('), false);
 assert.equal(proofRepositorySource.includes('export function subscribePaymentProofs('), true);
 assert.equal(bookingRepositorySource.includes('export function subscribeManualBookings('), true);
 assert.equal(bookingRepositorySource.includes('export async function updateManualBooking('), true);
