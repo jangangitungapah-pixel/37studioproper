@@ -1,730 +1,1628 @@
+import '../styles/routes/client.css';
+import '../styles/client-landing.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring } from 'motion/react';
+import { onAuthStateChanged } from 'firebase/auth';
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  useScroll,
+} from 'motion/react';
 import {
   ArrowRight,
+  ArrowUpRight,
   CalendarDays,
-  Check,
-  ChevronRight,
+  CheckCircle2,
   Clock3,
+  Disc3,
   Headphones,
-  LoaderCircle,
-  LogIn,
-  LogOut,
   MapPin,
   Menu,
   MessageCircle,
   Mic2,
   Music2,
+  Phone,
   ShieldCheck,
-  SlidersHorizontal,
+  Sliders,
   Sparkles,
-  Volume2,
+  UserRound,
   X,
 } from 'lucide-react';
+import { NumberTicker } from '../components/magicui/number-ticker.jsx';
+import StudioSelect from '../components/ui/StudioSelect.jsx';
+import StudioAtmosphereShowcase from '../components/landing/StudioAtmosphereShowcase.jsx';
+import StudioVibeAudioControl from '../components/landing/StudioVibeAudioControl.jsx';
+import LandingFaqSection from '../components/landing/LandingFaqSection.jsx';
+import {
+  BOOKING_PROCESS_STEPS,
+  CREATIVE_AUDIENCES,
+  SERVICE_METADATA_BY_KEY,
+  STUDIO_HERO_PHOTO,
+  buildLandingFaqItems,
+  buildWhatsAppHref,
+  cleanStudioInfoValue,
+  formatHourClock,
+  formatHourRange,
+  formatIndonesianDateLabel,
+  formatOperationalHoursLabel,
+  formatStartHourOptionLabel,
+  getFormattedPaymentTermsList,
+  getOccupiedHoursForDate,
+} from '../components/landing/landingData.js';
+import { businessHours, durationOptions } from '../constants/scheduleConfig.js';
+import { firebaseAuth, isFirebaseConfigured } from '../lib/firebase.js';
+import { accountRoleRepository } from '../services/accountRoleRepository.js';
+import { adminBookingRepository } from '../services/adminBookingRepository.js';
+import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import {
   formatRupiah,
   getPackageOptions,
   getRecordingTypeOptions,
   getSessionOptions,
+  isRecordingSessionId,
   resolveBookingPricing,
   usePricingSettings,
 } from '../settings/pricingSettings.js';
-import { useInvoiceSettings } from '../settings/invoiceSettings.js';
-import { businessHours, durationOptions } from '../constants/scheduleConfig.js';
+import {
+  formatBankAccountNumber,
+  getStudioPaymentTerms,
+  mergeStudioSettingsIntoInvoiceSettings,
+  resolveLandingAtmosphereSpots,
+  resolveLandingExtraGalleryItems,
+  resolveLandingHeroMedia,
+  useStudioSettings,
+} from '../settings/studioSettings.js';
+import { BOOKING_REQUEST_STATUS_META } from '../domain/booking/bookingStatus.js';
+import { getBookingRequestStatus } from '../domain/booking/bookingSelectors.js';
+import { isAdminPortalAccount, isClientAccount } from '../utils/accountRoles.js';
 import { getLocalDateKey } from '../utils/publicBookingSelection.js';
-import StudioSelect from '../components/ui/StudioSelect.jsx';
-import { NumberTicker } from '../components/magicui/number-ticker.jsx';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { firebaseAuth } from '../lib/firebase.js';
-import { adminBookingRepository } from '../services/adminBookingRepository.js';
-import { syncClientCustomerProfile } from '../services/clientProfileRepository.js';
-import { accountRoleRepository } from '../services/accountRoleRepository.js';
-import { PORTAL_ACCESS } from '../utils/accountRoles.js';
-import '../styles/routes/client.css';
-import '../styles/client-landing.css';
 
-const SERVICE_STORIES = [
-  {
-    description: 'Full-band rehearsal dengan backline siap pakai dan ruang yang tetap nyaman untuk sesi panjang.',
-    icon: Music2,
-    index: '01',
-    label: 'Rehearsal',
-    sessionKey: 'rehearsal',
-    title: 'Latihan tanpa kehilangan momentum.',
-  },
-  {
-    description: 'Tracking vokal dan instrumen dalam ruang yang dirancang agar setiap detail tetap terdengar.',
-    icon: Mic2,
-    index: '02',
-    label: 'Recording',
-    sessionKey: 'recording',
-    title: 'Tangkap performa terbaik Anda.',
-  },
-  {
-    description: 'Mixing dan mastering untuk membawa materi mentah menjadi karya yang siap diperdengarkan.',
-    icon: SlidersHorizontal,
-    index: '03',
-    label: 'Post production',
-    sessionKey: 'mixing',
-    title: 'Buat karya terasa selesai.',
-  },
-];
-
-const formatTickerRupiah = (value) => formatRupiah(Math.round(value));
-
-function formatPublicDate(value) {
-  if (!value) return 'Tanggal menyusul';
-
-  const date = new Date(String(value).includes('T') ? value : `${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return new Intl.DateTimeFormat('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
-}
-
-function getBookingStatus(booking) {
-  const status = String(booking?.requestStatus || booking?.status || 'submitted').toLowerCase();
-
-  if (['confirmed', 'approved'].includes(status)) return { label: 'Dikonfirmasi', tone: 'success' };
-  if (['cancelled', 'rejected'].includes(status)) return { label: 'Dibatalkan', tone: 'danger' };
-
-  return { label: 'Menunggu', tone: 'warning' };
+function getServiceIcon(sessionKey) {
+  switch (String(sessionKey || '').toLowerCase()) {
+    case 'rehearsal':
+      return Music2;
+    case 'recording':
+      return Mic2;
+    case 'mixing':
+      return Sliders;
+    case 'mastering':
+      return Disc3;
+    default:
+      return Headphones;
+  }
 }
 
 export default function ClientLandingPage() {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll();
-  const scrollProgress = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
-  const sectionRevealProps = shouldReduceMotion ? { initial: false } : {
-    initial: { opacity: 0, y: 26 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, amount: 0.16 },
-    transition: { duration: 0.58, ease: [0.16, 1, 0.3, 1] },
-  };
-  const interactionMotionProps = shouldReduceMotion ? {} : {
-    whileHover: { y: -2 },
-    whileTap: { scale: 0.985 },
-    transition: { type: 'spring', stiffness: 440, damping: 26 },
-  };
+
   const pricingSettings = usePricingSettings();
   const invoiceSettings = useInvoiceSettings();
+  const studioSettings = useStudioSettings();
 
-  const [authLoading, setAuthLoading] = useState(() => Boolean(firebaseAuth));
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userBookings, setUserBookings] = useState([]);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuButtonRef = useRef(null);
-  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
-  const [bookingSelectionError, setBookingSelectionError] = useState('');
+  const resolvedStudioInfo = useMemo(
+    () => mergeStudioSettingsIntoInvoiceSettings(invoiceSettings, studioSettings),
+    [invoiceSettings, studioSettings],
+  );
+  const studioName = cleanStudioInfoValue(resolvedStudioInfo.studioName) || '37 Music Studio';
+  const studioAddress = cleanStudioInfoValue(resolvedStudioInfo.address);
+  const studioPhone = cleanStudioInfoValue(resolvedStudioInfo.phone);
+  const studioBankName = cleanStudioInfoValue(resolvedStudioInfo.bankName);
+  const studioQrisLabel = cleanStudioInfoValue(resolvedStudioInfo.qrisLabel);
+  const paymentTermsList = useMemo(
+    () => getFormattedPaymentTermsList(getStudioPaymentTerms(studioSettings)),
+    [studioSettings],
+  );
+  const heroMedia = useMemo(
+    () => resolveLandingHeroMedia(studioSettings),
+    [studioSettings],
+  );
+  const atmosphereSpots = useMemo(
+    () => resolveLandingAtmosphereSpots(studioSettings),
+    [studioSettings],
+  );
+  const extraGalleryPhotos = useMemo(
+    () => resolveLandingExtraGalleryItems(studioSettings),
+    [studioSettings],
+  );
+  const whatsappHref = useMemo(
+    () => buildWhatsAppHref(studioName, studioPhone),
+    [studioName, studioPhone],
+  );
+
+  const sessionOptions = useMemo(
+    () => getSessionOptions(pricingSettings),
+    [pricingSettings],
+  );
+  const recordingTypeOptions = useMemo(
+    () => getRecordingTypeOptions(pricingSettings),
+    [pricingSettings],
+  );
+  const packageOptions = useMemo(
+    () => getPackageOptions(pricingSettings),
+    [pricingSettings],
+  );
+  const hasPackages = packageOptions.length > 0;
+
+  const todayKey = useMemo(() => getLocalDateKey(), []);
+  const startHours = useMemo(
+    () =>
+      Array.isArray(businessHours)
+        ? businessHours
+          .map((item) => Number(item?.start ?? item?.key ?? item?.value))
+          .filter(Number.isFinite)
+        : [],
+    [],
+  );
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isHeaderElevated, setIsHeaderElevated] = useState(false);
+  const [showMobileStickyCta, setShowMobileStickyCta] = useState(false);
+
   const [plannerMode, setPlannerMode] = useState('regular');
-  const [sessionType, setSessionType] = useState('rehearsal');
-  const [recordingTypeId, setRecordingTypeId] = useState('none');
-  const [packageId, setPackageId] = useState('none');
-  const [date, setDate] = useState(() => getLocalDateKey(new Date()));
-  const [startHour, setStartHour] = useState('10');
+  const [selectedService, setSelectedService] = useState(() => sessionOptions[0]?.key || 'rehearsal');
+  const [selectedPackageId, setSelectedPackageId] = useState(() => packageOptions[0]?.key || 'none');
+  const [selectedRecordingTypeId, setSelectedRecordingTypeId] = useState(
+    () => recordingTypeOptions[0]?.key || 'none',
+  );
+  const [date, setDate] = useState(() => todayKey);
+  const [startHour, setStartHour] = useState(() => String(startHours[0] ?? 10));
   const [duration, setDuration] = useState('2');
-  const [customDuration, setCustomDuration] = useState('');
+  const [bookingSelectionError, setBookingSelectionError] = useState('');
+
+  const [publicSlots, setPublicSlots] = useState([]);
+  const [publicSlotsLoaded, setPublicSlotsLoaded] = useState(false);
+
+  const [authUser, setAuthUser] = useState(null);
+  const [accountIdentity, setAccountIdentity] = useState(null);
+  const [userBookings, setUserBookings] = useState([]);
+
+  const menuButtonRef = useRef(null);
+  const plannerSectionRef = useRef(null);
+  const hasUserPickedHourRef = useRef(false);
+
+  const activeServiceKey = useMemo(() => {
+    if (sessionOptions.some((item) => item.key === selectedService)) {
+      return selectedService;
+    }
+    return sessionOptions[0]?.key || 'rehearsal';
+  }, [selectedService, sessionOptions]);
+
+  const activePackageId = useMemo(() => {
+    if (!hasPackages) return 'none';
+    if (packageOptions.some((item) => item.key === selectedPackageId)) {
+      return selectedPackageId;
+    }
+    return packageOptions[0]?.key || 'none';
+  }, [hasPackages, packageOptions, selectedPackageId]);
+
+  const activeRecordingTypeId = useMemo(() => {
+    if (recordingTypeOptions.some((item) => item.key === selectedRecordingTypeId)) {
+      return selectedRecordingTypeId;
+    }
+    return recordingTypeOptions[0]?.key || 'none';
+  }, [recordingTypeOptions, selectedRecordingTypeId]);
+
+  const isPackageMode = plannerMode === 'package' && hasPackages;
+  const isRecordingSelected = !isPackageMode && isRecordingSessionId(activeServiceKey);
+  const showRecordingTypeSelect = isRecordingSelected && recordingTypeOptions.length > 0;
+  const isRecordingCustomRate = isRecordingSelected && recordingTypeOptions.length === 0;
+
+  const estimatedPricing = useMemo(
+    () =>
+      resolveBookingPricing({
+        customDurationHours: 0,
+        durationHours: Math.max(1, Number(duration) || 1),
+        packageId: isPackageMode ? activePackageId : 'none',
+        paymentStatus: 'pending',
+        pricingSettings,
+        recordingTypeId: showRecordingTypeSelect ? activeRecordingTypeId : 'none',
+        sessionId: activeServiceKey,
+      }),
+    [
+      activePackageId,
+      activeRecordingTypeId,
+      activeServiceKey,
+      duration,
+      isPackageMode,
+      pricingSettings,
+      showRecordingTypeSelect,
+    ],
+  );
+
+  const startingHourlyPrice = useMemo(() => {
+    const pricedSessions = sessionOptions
+      .map((item) => Number(item.pricePerHour ?? item.price ?? 0))
+      .filter((amount) => Number.isFinite(amount) && amount > 0);
+    if (pricedSessions.length > 0) {
+      return Math.min(...pricedSessions);
+    }
+    return 100000;
+  }, [sessionOptions]);
+
+  const todayOccupiedHours = useMemo(
+    () => getOccupiedHoursForDate(publicSlots, todayKey),
+    [publicSlots, todayKey],
+  );
+  const selectedDateOccupiedHours = useMemo(
+    () => getOccupiedHoursForDate(publicSlots, date),
+    [publicSlots, date],
+  );
+
+  const todayAvailableCount = useMemo(
+    () => Math.max(0, startHours.length - todayOccupiedHours.size),
+    [startHours.length, todayOccupiedHours],
+  );
+  const selectedDateAvailableCount = useMemo(
+    () => Math.max(0, startHours.length - selectedDateOccupiedHours.size),
+    [startHours.length, selectedDateOccupiedHours],
+  );
+
+  const startHourSelectOptions = useMemo(
+    () =>
+      startHours.map((hour) => ({
+        key: String(hour),
+        label: formatStartHourOptionLabel(hour, selectedDateOccupiedHours.has(hour)),
+      })),
+    [selectedDateOccupiedHours, startHours],
+  );
+
+  const regularDurationOptions = useMemo(
+    () =>
+      durationOptions
+        .filter((item) => Number(item.key ?? item.value) > 0)
+        .map((item) => ({
+          key: String(item.key ?? item.value),
+          label: item.label,
+        })),
+    [],
+  );
+
+  const faqItems = useMemo(
+    () =>
+      buildLandingFaqItems({
+        studioName,
+        resolvedContact: resolvedStudioInfo,
+        pricingSettings,
+        sessionOptions,
+        packageOptions,
+      }),
+    [packageOptions, pricingSettings, resolvedStudioInfo, sessionOptions, studioName],
+  );
 
   useEffect(() => {
-    if (!firebaseAuth) {
+    if (typeof window === 'undefined') return undefined;
+
+    function handleScroll() {
+      const y = window.scrollY || 0;
+      setIsHeaderElevated(y > 24);
+      setShowMobileStickyCta(y > 320);
+    }
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen || typeof document === 'undefined') {
       return undefined;
     }
 
-    let checkSequence = 0;
-
-    return onAuthStateChanged(firebaseAuth, async (user) => {
-      const currentSequence = ++checkSequence;
-      setAuthLoading(true);
-      setUserBookings([]);
-
-      if (!user) {
-        setCurrentUser(null);
-        setAuthLoading(false);
-        return;
-      }
-
-      try {
-        const result = await accountRoleRepository.resolvePortalAccount(user, 'client');
-        if (currentSequence !== checkSequence) return;
-
-        if (result.access !== PORTAL_ACCESS.ALLOWED) {
-          setCurrentUser(null);
-          return;
-        }
-
-        setCurrentUser(user);
-
-        try {
-          await syncClientCustomerProfile(user);
-        } catch (profileError) {
-          console.error('Role client valid, tetapi profil customer belum tersinkron:', profileError);
-        }
-      } catch (error) {
-        console.error('Gagal memeriksa role akun di landing client:', error);
-        if (currentSequence === checkSequence) setCurrentUser(null);
-      } finally {
-        if (currentSequence === checkSequence) setAuthLoading(false);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    const updateHeaderState = () => setIsHeaderScrolled(window.scrollY > 24);
-    updateHeaderState();
-    window.addEventListener('scroll', updateHeaderState, { passive: true });
-    return () => window.removeEventListener('scroll', updateHeaderState);
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) return undefined;
-
-    return adminBookingRepository.subscribeClientBookingsForUser(
-      currentUser,
-      (bookingsList) => setUserBookings(bookingsList),
-      (error) => console.error('Error fetching client booking history:', error)
-    );
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (!isMenuOpen) return undefined;
-
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const closeOnEscape = (event) => {
+
+    function handleKeyDown(event) {
       if (event.key !== 'Escape') return;
-
       event.preventDefault();
-      setIsMenuOpen(false);
+      setMenuOpen(false);
       menuButtonRef.current?.focus();
-    };
-    window.addEventListener('keydown', closeOnEscape);
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', closeOnEscape);
       document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMenuOpen]);
+  }, [menuOpen]);
 
-  const sessionOptions = useMemo(() => getSessionOptions(pricingSettings), [pricingSettings]);
-  const recordingTypeOptions = useMemo(() => getRecordingTypeOptions(pricingSettings), [pricingSettings]);
-  const packageOptions = useMemo(() => getPackageOptions(pricingSettings), [pricingSettings]);
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      return undefined;
+    }
 
-  const startHourOptions = useMemo(() => businessHours.map((hour) => ({
-    description: 'Jam mulai sesi',
-    key: hour.key,
-    label: hour.rangeLabel,
-  })), []);
-  const minBookableDate = getLocalDateKey(new Date());
-  const hasPackages = packageOptions.length > 0;
-  const selectedStartHour = startHourOptions.find((option) => String(option.key) === String(startHour));
-  const isCustomDurationValid = duration !== 'custom' || (customDuration.trim() !== '' && Number.isInteger(Number(customDuration)) && Number(customDuration) >= 1);
+    const horizonDate = new Date();
+    horizonDate.setDate(horizonDate.getDate() + 14);
+    const endDate = getLocalDateKey(horizonDate);
 
-  const displayedSessionOptions = useMemo(() => {
-    const options = [];
+    return adminBookingRepository.subscribeClientCalendarSlots(
+      {
+        startDate: todayKey,
+        endDate,
+        limitCount: 250,
+      },
+      (slots) => {
+        const nextSlots = Array.isArray(slots) ? slots : [];
+        setPublicSlots(nextSlots);
+        setPublicSlotsLoaded(true);
 
-    sessionOptions.forEach((session) => {
-      if (session.key === 'recording' && recordingTypeOptions.length) {
-        recordingTypeOptions.forEach((recordingType) => options.push({
-          ...recordingType,
-          description: `Recording · ${recordingType.durationHours || 1} jam`,
-          isRecordingType: true,
-        }));
-        return;
+        if (!hasUserPickedHourRef.current) {
+          const occupiedToday = getOccupiedHoursForDate(nextSlots, todayKey);
+          const firstOpenHour = startHours.find((hour) => !occupiedToday.has(hour));
+          if (firstOpenHour !== undefined) {
+            setStartHour((prev) => (occupiedToday.has(Number(prev)) ? String(firstOpenHour) : prev));
+          }
+        }
+      },
+      () => {
+        setPublicSlots([]);
+        setPublicSlotsLoaded(false);
+      },
+    );
+  }, [startHours, todayKey]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !firebaseAuth) {
+      return undefined;
+    }
+
+    const unsubscribeAuth = onAuthStateChanged(firebaseAuth, (nextUser) => {
+      setAuthUser(nextUser || null);
+      if (!nextUser) {
+        setAccountIdentity(null);
+        setUserBookings([]);
       }
-
-      options.push(session);
     });
 
-    return options;
-  }, [recordingTypeOptions, sessionOptions]);
+    return () => unsubscribeAuth();
+  }, []);
 
-  const selectedServiceKey = recordingTypeId !== 'none' ? recordingTypeId : sessionType;
-
-  const actualDuration = useMemo(() => {
-    if (plannerMode === 'package' && packageId !== 'none') {
-      const selectedPackage = pricingSettings.packages?.find((item) => item.id === packageId);
-      return Math.max(0, Number(selectedPackage?.durationHours) || 0);
+  useEffect(() => {
+    if (!isFirebaseConfigured || !authUser?.uid) {
+      return undefined;
     }
-    if (sessionType === 'recording' && recordingTypeId !== 'none') {
-      const selectedRecordingType = recordingTypeOptions.find((item) => item.key === recordingTypeId);
-      return Math.max(0, Number(selectedRecordingType?.durationHours) || 0);
+
+    return accountRoleRepository.subscribeAccountIdentity(
+      authUser,
+      (identity) => {
+        setAccountIdentity(identity || null);
+        if (!isClientAccount(identity)) {
+          setUserBookings([]);
+        }
+      },
+      () => {
+        setAccountIdentity(null);
+        setUserBookings([]);
+      },
+    );
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !authUser?.uid || !isClientAccount(accountIdentity)) {
+      return undefined;
     }
-    if (duration === 'custom') {
-      const parsedDuration = Number(customDuration);
-      return Number.isInteger(parsedDuration) && parsedDuration >= 1 ? parsedDuration : 0;
+
+    return adminBookingRepository.subscribeClientBookingsForUser(
+      authUser,
+      (bookings) => {
+        setUserBookings(Array.isArray(bookings) ? bookings : []);
+      },
+      () => {
+        setUserBookings([]);
+      },
+    );
+  }, [accountIdentity, authUser]);
+
+  function handleNavigationLinkClick(event) {
+    const href = event.currentTarget?.getAttribute('href') || '';
+    setMenuOpen(false);
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
     }
-    return Number(duration) || 2;
-  }, [customDuration, duration, packageId, plannerMode, pricingSettings.packages, recordingTypeId, recordingTypeOptions, sessionType]);
-  const isPriceEstimateReady = plannerMode === 'package'
-    ? hasPackages && packageId !== 'none'
-    : sessionType === 'recording'
-      ? recordingTypeId !== 'none' && recordingTypeOptions.some((item) => item.key === recordingTypeId)
-      : isCustomDurationValid;
 
-  const pricingBreakdown = useMemo(() => resolveBookingPricing({
-    customDurationHours: duration === 'custom' && isCustomDurationValid ? Number(customDuration) : 0,
-    dpAmount: 0,
-    durationHours: Number(duration) || 0,
-    packageId: plannerMode === 'package' ? packageId : 'none',
-    paymentStatus: 'pending',
-    pricingSettings,
-    recordingTypeId,
-    sessionId: sessionType,
-  }), [customDuration, duration, isCustomDurationValid, packageId, plannerMode, pricingSettings, recordingTypeId, sessionType]);
-
-  const startingPrice = useMemo(() => {
-    const prices = sessionOptions
-      .map((option) => Number(option.price))
-      .filter((price) => Number.isFinite(price) && price > 0);
-
-    return prices.length ? Math.min(...prices) : 100000;
-  }, [sessionOptions]);
-
-  const latestBookings = useMemo(() => userBookings.slice(0, 3), [userBookings]);
-  const studioName = invoiceSettings.studioName || '37 Music Studio';
-  const studioAddress = invoiceSettings.address || 'Lokasi studio tersedia setelah konfirmasi booking.';
-  const studioPhone = invoiceSettings.phone || 'Hubungi admin melalui portal booking.';
-
-  function handleServiceChange(value) {
-    const selected = displayedSessionOptions.find((option) => option.key === value);
-    setBookingSelectionError('');
-
-    if (selected?.isRecordingType) {
-      setSessionType('recording');
-      setRecordingTypeId(value);
+    if (href.startsWith('#')) {
+      event.preventDefault();
+      const target = document.getElementById(href.slice(1));
+      if (target) {
+        if (window.location.hash !== href) {
+          window.history.pushState(null, '', href);
+        }
+        target.scrollIntoView({
+          behavior: shouldReduceMotion ? 'auto' : 'smooth',
+          block: 'start',
+        });
+        target.focus({ preventScroll: true });
+      }
       return;
     }
 
-    setSessionType(value);
-    setRecordingTypeId('none');
+    if (href.startsWith('/')) {
+      event.preventDefault();
+      navigate(href);
+    }
+  }
+
+  function handleModeChange(mode) {
+    if (mode === 'package' && !hasPackages) return;
+    setPlannerMode(mode);
+    setBookingSelectionError('');
   }
 
   function handleServiceShortcut(sessionKey) {
     setPlannerMode('regular');
+    setSelectedService(sessionKey);
     setBookingSelectionError('');
-    if (sessionKey === 'recording') {
-      setSessionType('recording');
-      setRecordingTypeId(recordingTypeOptions[0]?.key || 'none');
-    } else {
-      const matchingSession = sessionOptions.find((option) => option.key === sessionKey);
-      if (!matchingSession) return;
-      setSessionType(matchingSession.key);
-      setRecordingTypeId('none');
-    }
-    document.getElementById('pricelist')?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'start' });
-  }
-
-  function handlePlannerMode(mode) {
-    if (mode === 'package' && !hasPackages) return;
-    setBookingSelectionError('');
-    setPlannerMode(mode);
-
-    if (mode === 'regular') setPackageId('none');
-    if (mode === 'package' && packageId === 'none' && packageOptions[0]?.key) {
-      setPackageId(packageOptions[0].key);
+    const plannerEl = plannerSectionRef.current || document.getElementById('pricelist');
+    if (plannerEl) {
+      plannerEl.scrollIntoView({
+        behavior: shouldReduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+      plannerEl.focus({ preventScroll: true });
     }
   }
 
-  function handleBookingAction(event) {
+  function handlePackageShortcut(packageKey) {
+    if (!hasPackages) return;
+    setPlannerMode('package');
+    setSelectedPackageId(packageKey);
+    setBookingSelectionError('');
+    const plannerEl = plannerSectionRef.current || document.getElementById('pricelist');
+    if (plannerEl) {
+      plannerEl.scrollIntoView({
+        behavior: shouldReduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+      plannerEl.focus({ preventScroll: true });
+    }
+  }
+
+  function handlePlannerSubmit(event) {
     event.preventDefault();
-    const selectedDate = new Date(date + 'T00:00:00');
-    const isValidDate = !Number.isNaN(selectedDate.getTime()) && getLocalDateKey(selectedDate) === date && date >= minBookableDate;
-    const isValidHour = businessHours.some((hour) => String(hour.key) === String(startHour));
-    if (!isValidDate) {
-      setBookingSelectionError('Pilih tanggal yang valid mulai hari ini.');
+
+    if (!date || !startHour) {
+      setBookingSelectionError('Pilih tanggal dan jam mulai terlebih dahulu sebelum melanjutkan.');
       return;
     }
-    if (!isValidHour) {
-      setBookingSelectionError('Pilih jam mulai yang tersedia.');
-      return;
-    }
+
     setBookingSelectionError('');
     const params = new URLSearchParams();
     params.set('date', date);
     params.set('startHour', startHour);
-
     navigate('/book?' + params.toString());
   }
 
-  async function handleLogout() {
-    if (!firebaseAuth) return;
+  const sectionMotionProps = shouldReduceMotion
+    ? {}
+    : {
+      initial: { opacity: 1, y: 12 },
+      whileInView: { opacity: 1, y: 0 },
+      viewport: { once: true, amount: 0.02 },
+      transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+    };
 
-    try {
-      await signOut(firebaseAuth);
-      navigate('/client/login', { replace: true });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  }
+  const activeRoleIsClient = isClientAccount(accountIdentity);
+  const activeRoleIsStaff = isAdminPortalAccount(accountIdentity);
+  const operationalWindowLabel = formatOperationalHoursLabel();
+  const formattedBankNumber = cleanStudioInfoValue(
+    formatBankAccountNumber(resolvedStudioInfo.bankAccountNumber),
+  );
+  const paymentChannelSummary = [studioBankName, formattedBankNumber, studioQrisLabel]
+    .filter(Boolean)
+    .join(' · ');
 
-  function handleNavigationLinkClick(event) {
-    const href = event.currentTarget.getAttribute('href') || '';
-    setIsMenuOpen(false);
+  const selectedStartNumeric = Number(startHour);
+  const selectedEndNumeric =
+    selectedStartNumeric + Math.max(1, Number(estimatedPricing.durationHours || duration || 1));
+  const selectedTimeWindowLabel = formatHourRange(selectedStartNumeric, selectedEndNumeric);
+  const activeServiceOption =
+    sessionOptions.find((item) => item.key === activeServiceKey) || sessionOptions[0];
+  const activePackageOption =
+    packageOptions.find((item) => item.key === activePackageId) || packageOptions[0];
 
-    if (!href.startsWith('#')) return;
-
-    const target = document.getElementById(href.slice(1));
-    if (!target) return;
-
-    window.requestAnimationFrame(() => {
-      if (target.isConnected) target.focus({ preventScroll: true });
-    });
-  }
+  const recentClientBookings = useMemo(() => {
+    if (!Array.isArray(userBookings) || userBookings.length === 0) return [];
+    return [...userBookings]
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+      .slice(0, 3);
+  }, [userBookings]);
 
   return (
-    <motion.div className="client-landing-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.28 }}>
-      <motion.div aria-hidden="true" className="client-landing-scroll-progress" style={{ scaleX: shouldReduceMotion ? 0 : scrollProgress }} />
-      <a className="client-landing-skip-link" href="#main-content">Lewati ke konten</a>
+    <div className="client-landing-page">
+      <a href="#main-content" className="client-landing-skip-link">
+        Lewati ke konten utama
+      </a>
 
-      <motion.header className={'client-landing-header' + (isHeaderScrolled ? ' is-scrolled' : '')}>
-        <a className="client-landing-brand" href="#top" aria-label="37 Music Studio, kembali ke atas">
-          <span className="client-landing-brand-mark">37</span>
-          <span className="client-landing-brand-lockup">
-            <strong>Music Studio</strong>
-            <small>Rehearse · Record · Release</small>
-          </span>
-        </a>
+      <motion.div
+        aria-hidden="true"
+        className="client-landing-scroll-progress"
+        style={{ scaleX: shouldReduceMotion ? 0 : scrollYProgress }}
+      />
 
-        <nav
-          aria-label="Navigasi utama"
-          className={`client-landing-nav ${isMenuOpen ? 'is-open' : ''}`}
-          id="client-landing-navigation"
-        >
-          <a href="#services" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Studio</a>
-          <a href="#pricelist" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Harga</a>
-          <a href="/book" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Booking Slot</a>
-          <a href="#location" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Lokasi</a>
-        </nav>
+      <header
+        className={`client-landing-header${isHeaderElevated ? ' is-elevated' : ''}`}
+      >
+        <div className="client-landing-header-inner">
+          <a href="#top" className="client-landing-brand" onClick={handleNavigationLinkClick}>
+            <span className="client-landing-brand-badge" aria-hidden="true">
+              37
+            </span>
+            <span className="client-landing-brand-text">
+              <strong className="client-landing-brand-wordmark">STUDIO</strong>
+              <span>{studioName}</span>
+            </span>
+          </a>
 
-        <div className="client-landing-header-actions">
-          {currentUser ? (
-            <>
-              <button className="client-landing-header-link" type="button" onClick={() => navigate('/client/portal')}>
-                Portal Saya
-              </button>
-              <button className="client-landing-icon-button" type="button" aria-label="Keluar akun" onClick={handleLogout}>
-                <LogOut size={17} aria-hidden="true" />
-              </button>
-            </>
-          ) : (
-            <button
-              className="client-landing-header-link"
-              disabled={authLoading}
-              type="button"
-              onClick={() => navigate('/client/login')}
+          <div className="client-landing-header-actions">
+            <a
+              href="/book"
+              className="client-landing-header-quick-cta"
+              onClick={handleNavigationLinkClick}
             >
-              {authLoading ? <LoaderCircle className="client-landing-spin" size={15} /> : <LogIn size={15} />}
-              Masuk
-            </button>
-          )}
+              Cek Slot
+            </a>
 
-          <motion.button
-            aria-controls="client-landing-navigation"
-            aria-expanded={isMenuOpen}
-            aria-label={isMenuOpen ? 'Tutup navigasi' : 'Buka navigasi'}
-            className="client-landing-menu-button"
-            ref={menuButtonRef}
-            type="button"
-            onClick={() => setIsMenuOpen((value) => !value)}
-            {...interactionMotionProps}
+            <button
+              ref={menuButtonRef}
+              type="button"
+              className="client-landing-menu-button"
+              aria-controls="client-landing-navigation"
+              aria-expanded={menuOpen ? 'true' : 'false'}
+              aria-label={menuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+              onClick={() => setMenuOpen((prev) => !prev)}
+            >
+              {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+              <span>{menuOpen ? 'Tutup' : 'Menu'}</span>
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {menuOpen ? (
+              <motion.button
+                key="nav-backdrop"
+                type="button"
+                aria-label="Tutup menu navigasi"
+                className="client-landing-menu-backdrop"
+                initial={shouldReduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={shouldReduceMotion ? undefined : { opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                onClick={() => setMenuOpen(false)}
+              />
+            ) : null}
+          </AnimatePresence>
+
+          <nav
+            id="client-landing-navigation"
+            aria-label="Navigasi utama"
+            className={`client-landing-nav${menuOpen ? ' is-open' : ''}`}
           >
-            {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </motion.button>
+            <div className="client-landing-nav-links">
+              <a
+                href="#services"
+                className="client-landing-nav-link"
+                onClick={handleNavigationLinkClick}
+              >
+                Studio & Layanan
+              </a>
+              <a
+                href="#atmosphere"
+                className="client-landing-nav-link"
+                onClick={handleNavigationLinkClick}
+              >
+                Suasana
+              </a>
+              <a
+                href="#pricelist"
+                className="client-landing-nav-link"
+                onClick={handleNavigationLinkClick}
+              >
+                Estimasi Harga
+              </a>
+              <a
+                href="#faq"
+                className="client-landing-nav-link"
+                onClick={handleNavigationLinkClick}
+              >
+                FAQ
+              </a>
+              <a
+                href="#location"
+                className="client-landing-nav-link"
+                onClick={handleNavigationLinkClick}
+              >
+                Kontak
+              </a>
+              <a href="/book" className="client-landing-nav-link" onClick={handleNavigationLinkClick}>Booking Slot</a>
+            </div>
+
+            <div className="client-landing-nav-utilities">
+              <a
+                href={
+                  activeRoleIsStaff
+                    ? '/admin'
+                    : activeRoleIsClient
+                      ? '/client/portal'
+                      : '/client/login'
+                }
+                className="client-landing-nav-portal"
+                onClick={handleNavigationLinkClick}
+              >
+                <UserRound size={15} aria-hidden="true" />
+                <span>
+                  {activeRoleIsStaff
+                    ? 'Admin Workspace'
+                    : activeRoleIsClient
+                      ? 'Client Portal'
+                      : 'Masuk Client'}
+                </span>
+              </a>
+            </div>
+          </nav>
         </div>
-      </motion.header>
-      <AnimatePresence>
-        {isMenuOpen ? <motion.button aria-label="Tutup navigasi" className="client-landing-menu-backdrop" type="button" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMenuOpen(false)} /> : null}
-      </AnimatePresence>
+      </header>
 
       <main id="main-content">
-        <motion.section className="client-landing-hero" id="top" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}>
-          <img
-            alt="Control room 37 Music Studio dengan console, monitor, dan instrumen"
-            className="client-landing-hero-image"
-            src="/images/studio_hero_banner.png"
-          />
-          <div className="client-landing-hero-shade" aria-hidden="true" />
+        <section id="top" className="client-landing-hero" aria-labelledby="hero-headline">
+          <div className="client-landing-hero-backdrop" aria-hidden="true" />
 
-          <div className="client-landing-hero-content">
-            <span className="client-landing-kicker"><Sparkles size={14} /> Bekasi · Open daily</span>
-            <p className="client-landing-hero-brand">37 Music Studio</p>
-            <h1>Ruang untuk suara yang serius.</h1>
-            <p className="client-landing-hero-copy">
-              Rehearsal, recording, mixing, dan mastering dalam satu studio yang siap mengikuti ritme karya Anda.
-            </p>
-            <div className="client-landing-hero-actions">
-              <a href="/book" className="client-landing-button is-primary">
-                Lihat slot kosong
-                <ArrowRight size={18} aria-hidden="true" />
-              </a>
-              <a className="client-landing-button is-quiet" href="#services">
-                Jelajahi studio
-                <ChevronRight size={17} aria-hidden="true" />
-              </a>
-            </div>
-          </div>
-
-          <div className="client-landing-hero-meta" aria-label="Informasi studio">
-            <span><Clock3 size={16} /> 10.00—23.00 WIB</span>
-            <span><Headphones size={16} /> Rehearsal & recording</span>
-            <span><ShieldCheck size={16} /> Booking terverifikasi</span>
-          </div>
-        </motion.section>
-
-        <motion.section className="client-landing-intro" {...sectionRevealProps} aria-labelledby="client-intro-title">
-          <div className="client-landing-section-index">The studio</div>
-          <div>
-            <h2 id="client-intro-title">Datang membawa ide.<br />Pulang membawa progres.</h2>
-          </div>
-          <p>
-            Dari latihan pertama sampai final master, setiap sesi dibuat sederhana: pilih kebutuhan, temukan slot, lalu fokus bermusik.
-          </p>
-        </motion.section>
-
-        <motion.section className="client-landing-services" {...sectionRevealProps} id="services" tabIndex={-1} aria-labelledby="client-services-title">
-          <header className="client-landing-section-heading">
-            <span>01 / Services</span>
-            <h2 id="client-services-title">Satu ruang.<br />Tiga cara berkarya.</h2>
-          </header>
-
-          <div className="client-landing-service-list">
-            {SERVICE_STORIES.map(({ description, icon: Icon, index, label, sessionKey, title }) => (
-              <motion.article className="client-landing-service" key={label} whileHover={shouldReduceMotion ? undefined : { x: 5 }} transition={{ duration: 0.2 }}>
-                <span className="client-landing-service-number">{index}</span>
-                <span className="client-landing-service-icon"><Icon size={22} /></span>
-                <div>
-                  <small>{label}</small>
-                  <h3>{title}</h3>
-                  <p>{description}</p>
-                </div>
-                <motion.button aria-label={'Pilih ' + label + ' dan lihat estimasi harga'} className="client-landing-service-action" type="button" onClick={() => handleServiceShortcut(sessionKey)} {...interactionMotionProps}>
-                  <ArrowRight size={19} aria-hidden="true" />
-                </motion.button>
-              </motion.article>
-            ))}
-          </div>
-        </motion.section>
-
-        <motion.section className="client-landing-planner" {...sectionRevealProps} id="pricelist" tabIndex={-1} aria-labelledby="client-planner-title">
-          <div className="client-landing-planner-story">
-            <span>02 / Plan your session</span>
-            <h2 id="client-planner-title">Harga transparan sebelum Anda datang.</h2>
-            <p>Pilih format sesi untuk melihat estimasi. Slot dan total akhir dikonfirmasi di alur booking.</p>
-
-            <div className="client-landing-starting-price">
-              <small>Mulai dari</small>
-              <strong><NumberTicker value={startingPrice} formatter={formatTickerRupiah} duration={shouldReduceMotion ? 0 : 0.52} /></strong>
-              <span>/ jam</span>
-            </div>
-
-            <ul className="client-landing-proof-list">
-              <li><Check size={16} /> Tidak ada biaya tersembunyi</li>
-              <li><Check size={16} /> Slot diperiksa realtime</li>
-              <li><Check size={16} /> Konfirmasi tercatat di portal</li>
-            </ul>
-          </div>
-
-          <motion.form className="client-landing-planner-form" onSubmit={handleBookingAction} {...(shouldReduceMotion ? {} : { whileHover: { y: -2 }, transition: { duration: 0.2 } })}>
-            <div className="client-landing-segmented" aria-label="Mode harga">
-              <button
-                aria-pressed={plannerMode === 'regular'}
-                className={plannerMode === 'regular' ? 'is-active' : ''}
-                type="button"
-                onClick={() => handlePlannerMode('regular')}
-              >
-                Sewa reguler
-              </button>
-              <button
-                aria-pressed={plannerMode === 'package'}
-                className={plannerMode === 'package' ? 'is-active' : ''}
-                disabled={!hasPackages}
-                title={hasPackages ? undefined : 'Paket belum tersedia'}
-                type="button"
-                onClick={() => handlePlannerMode('package')}
-              >
-                Pilih paket
-              </button>
-            </div>
-            {!hasPackages ? <p className="client-landing-mode-note">Paket sesi belum tersedia saat ini. Anda tetap bisa melihat estimasi sewa reguler.</p> : null}
-
-            <div className="client-landing-form-grid">
-              {plannerMode === 'regular' ? (
-                <div className="client-landing-field is-wide">
-                  <StudioSelect
-                    label="Layanan"
-                    options={displayedSessionOptions}
-                    selectedKey={selectedServiceKey}
-                    onChange={handleServiceChange}
-                  />
-                </div>
-              ) : (
-                <div className="client-landing-field is-wide">
-                  <StudioSelect
-                    label="Paket sesi"
-                    options={packageOptions}
-                    selectedKey={packageId}
-                    onChange={setPackageId}
-                  />
-                </div>
-              )}
-
-              <label className="client-landing-field">
-                <span>Tanggal</span>
-                <input min={minBookableDate} type="date" value={date} onChange={(event) => { setDate(event.target.value); setBookingSelectionError(''); }} />
-              </label>
-
-              <div className="client-landing-field">
-                <StudioSelect
-                  label="Jam mulai"
-                  options={startHourOptions}
-                  selectedKey={startHour}
-                  onChange={(value) => { setStartHour(value); setBookingSelectionError(''); }}
-                />
+          <div className="client-landing-container client-landing-hero-grid">
+            <motion.div
+              className="client-landing-hero-copy"
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="client-landing-hero-pills">
+                <span className="client-landing-status-pill">
+                  <span className="client-landing-status-dot" aria-hidden="true" />
+                  Buka Setiap Hari · {operationalWindowLabel}
+                </span>
+                {studioAddress ? (
+                  <span className="client-landing-address-pill">
+                    <MapPin size={13} aria-hidden="true" />
+                    {studioAddress}
+                  </span>
+                ) : null}
               </div>
 
-              {plannerMode === 'regular' ? (
-                <div className="client-landing-field is-wide">
-                  <StudioSelect
-                    label="Durasi"
-                    options={durationOptions}
-                    selectedKey={duration}
-                    onChange={setDuration}
-                  />
-                </div>
-              ) : null}
+              <h1 id="hero-headline" className="client-landing-hero-title">
+                Ruang musik untuk{' '}
+                <span className="client-landing-title-accent">latih, rekam,</span>{' '}
+                dan matangkan karya.
+              </h1>
 
-              {plannerMode === 'regular' && duration === 'custom' ? (
-                <label className="client-landing-field is-wide">
-                  <span>Durasi khusus</span>
-                  <input aria-invalid={!isCustomDurationValid} min="1" step="1" type="number" value={customDuration} onChange={(event) => { setCustomDuration(event.target.value); setBookingSelectionError(''); }} />
-                  {!isCustomDurationValid ? <small className="client-landing-field-error">Masukkan durasi minimal 1 jam.</small> : null}
-                </label>
-              ) : null}
-            </div>
+              <p className="client-landing-hero-subtitle">
+                Dari latihan band rutin hingga sesi recording, mixing, dan mastering.
+                Cek slot kosong secara langsung tanpa wajib login, hitung estimasi biaya,
+                lalu kunci jadwal studio dalam hitungan detik.
+              </p>
 
-            <div className="client-landing-estimate">
-              <div>
-                <small>Estimasi {actualDuration ? `· ${actualDuration} jam` : ''}</small>
-                {isPriceEstimateReady
-                  ? <strong><NumberTicker value={pricingBreakdown.total} formatter={formatTickerRupiah} duration={shouldReduceMotion ? 0 : 0.48} /></strong>
-                  : <strong className="client-landing-estimate-pending">{sessionType === 'recording' ? 'Pilih tipe recording' : 'Masukkan durasi'}</strong>}
+              <div className="client-landing-hero-cta-group">
+                <a href="/book" className="client-landing-button is-primary">
+                  <span>Cek Jadwal &amp; Booking</span>
+                  <ArrowRight size={17} aria-hidden="true" />
+                </a>
+
+                <a
+                  href="#services"
+                  className="client-landing-button is-ghost"
+                  onClick={handleNavigationLinkClick}
+                >
+                  <span>Lihat Layanan &amp; Tarif</span>
+                </a>
               </div>
-              {pricingBreakdown.discountAmount > 0 ? (
-                <span>Hemat {formatRupiah(pricingBreakdown.discountAmount)}</span>
-              ) : (
-                <span>Belum termasuk add-on</span>
-              )}
-            </div>
 
-            <motion.div className="client-landing-handoff-preview">
-              <CalendarDays size={18} aria-hidden="true" />
-              <div>
-                <small>Jadwal yang akan diteruskan</small>
-                <strong>{formatPublicDate(date)} · {selectedStartHour?.label || 'Pilih jam mulai'}</strong>
-                <p>Layanan dan durasi dipilih setelah Anda masuk, supaya detail request tercatat di akun yang benar.</p>
+              <div className="client-landing-hero-metrics" aria-label="Ringkasan informasi studio">
+                <div className="client-landing-metric-card">
+                  <span className="client-landing-metric-label">Tarif Sesi Mulai</span>
+                  <strong className="client-landing-metric-value">
+                    Rp{' '}
+                    <NumberTicker
+                      value={startingHourlyPrice}
+                      className="client-landing-metric-ticker"
+                    />
+                    <span>/jam</span>
+                  </strong>
+                </div>
+
+                <div className="client-landing-metric-card">
+                  <span className="client-landing-metric-label">Ketersediaan Hari Ini</span>
+                  <strong className="client-landing-metric-value">
+                    {publicSlotsLoaded
+                      ? `${todayAvailableCount} dari ${startHours.length} jam`
+                      : `${startHours.length} blok jam/hari`}
+                  </strong>
+                </div>
+
+                <div className="client-landing-metric-card">
+                  <span className="client-landing-metric-label">Akses Kalender Publik</span>
+                  <strong className="client-landing-metric-value">
+                    {activeRoleIsClient ? 'Client Portal Siap' : 'Cek Tanpa Login'}
+                  </strong>
+                </div>
               </div>
             </motion.div>
-            <AnimatePresence initial={false}>
-              {bookingSelectionError ? <motion.p className="client-landing-selection-error" role="alert" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>{bookingSelectionError}</motion.p> : null}
-            </AnimatePresence>
-            <motion.button className="client-landing-planner-submit" type="submit" {...interactionMotionProps}>
-              PILIH SLOT TERSEDIA
-              <ArrowRight size={18} aria-hidden="true" />
-            </motion.button>
-            <p className="client-landing-planner-note">
-              Tanggal dan jam diteruskan ke kalender publik. Layanan dan durasi dipilih setelah masuk ke akun client.
-            </p>
-          </motion.form>
-        </motion.section>
 
-        <motion.section className="client-landing-process" {...sectionRevealProps} aria-labelledby="client-process-title">
-          <header className="client-landing-section-heading is-light">
-            <span>03 / How it works</span>
-            <h2 id="client-process-title">Dari ide ke sesi<br />dalam tiga langkah.</h2>
-          </header>
+            <motion.div
+              className="client-landing-hero-stage"
+              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.985, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.48, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="client-landing-hero-frame">
+                <img
+                  src={heroMedia.url || STUDIO_HERO_PHOTO}
+                  alt={heroMedia.alt || `Suasana ruang utama ${studioName} dengan meja kontrol, monitor studio, akustik kayu, dan sudut instrumen`}
+                  fetchPriority="high"
+                  decoding="async"
+                  style={{
+                    objectPosition: heroMedia.objectPosition || '50% 48%',
+                  }}
+                />
+                <div className="client-landing-hero-frame-scrim" aria-hidden="true" />
 
-          <ol className="client-landing-process-list">
-            <li><span>01</span><strong>Pilih waktu</strong><p>Lihat kalender publik dan temukan slot yang masih tersedia.</p></li>
-            <li><span>02</span><strong>Kirim request</strong><p>Masuk atau buat akun untuk mengunci detail permintaan booking.</p></li>
-            <li><span>03</span><strong>Datang & berkarya</strong><p>Pantau konfirmasi, pembayaran, dan detail sesi dari Portal Client.</p></li>
-          </ol>
-        </motion.section>
+                <div className="client-landing-hero-frame-hud">
+                  <div className="client-landing-hero-hud-badge">
+                    <Clock3 size={14} aria-hidden="true" />
+                    <span>
+                      {publicSlotsLoaded
+                        ? `Hari ini: ${todayAvailableCount} jam terbuka`
+                        : `Operasional ${operationalWindowLabel}`}
+                    </span>
+                  </div>
 
-        <motion.section className="client-landing-client-space" {...sectionRevealProps} id="history" aria-labelledby="client-space-title">
-          <div>
-            <span>04 / Your sessions</span>
-            <h2 id="client-space-title">Semua sesi Anda, tetap mudah ditemukan.</h2>
-            <p>Jadwal aktif, status request, dan riwayat booking tersimpan dalam satu Portal Client.</p>
-            <button className="client-landing-text-action" type="button" onClick={() => navigate(currentUser ? '/client/portal' : '/client/login')}>
-              {currentUser ? 'Buka Portal Saya' : 'Masuk ke Portal Client'}
-              <ArrowRight size={18} aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="client-landing-session-preview">
-            {currentUser && latestBookings.length ? latestBookings.map((booking) => {
-              const status = getBookingStatus(booking);
-
-              return (
-                <button key={booking.id} type="button" onClick={() => navigate('/client/portal')}>
-                  <span className={`client-landing-booking-status is-${status.tone}`}>{status.label}</span>
-                  <strong>{booking.serviceName || booking.sessionName || booking.sessionType || 'Studio session'}</strong>
-                  <small>{formatPublicDate(booking.date || booking.bookingDate)} · {booking.startTime || booking.startHour || 'Waktu menyusul'}</small>
-                  <ArrowRight size={18} aria-hidden="true" />
-                </button>
-              );
-            }) : (
-              <div className="client-landing-session-empty">
-                <CalendarDays size={26} aria-hidden="true" />
-                <strong>{currentUser ? 'Belum ada sesi aktif' : 'Portal siap saat Anda booking'}</strong>
-                <p>{currentUser
-                  ? 'Pilih slot pertama Anda dan semua detailnya akan muncul di sini.'
-                  : 'Login hanya diperlukan saat Anda siap mengirim request booking.'}</p>
+                  <a
+                    href="#pricelist"
+                    onClick={handleNavigationLinkClick}
+                    className="client-landing-hero-hud-link"
+                  >
+                    <span>Hitung Estimasi</span>
+                    <ArrowUpRight size={14} aria-hidden="true" />
+                  </a>
+                </div>
               </div>
-            )}
+
+              <StudioVibeAudioControl />
+            </motion.div>
+          </div>
+        </section>
+
+        <motion.section
+          className="client-landing-intro"
+          aria-labelledby="intro-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-section-head">
+              <span className="client-landing-kicker">
+                <Sparkles size={14} aria-hidden="true" />
+                Untuk Semua Kebutuhan Kreatif
+              </span>
+              <h2 id="intro-heading">
+                Dirancang nyaman untuk sesi serius maupun latihan santai.
+              </h2>
+              <p>
+                Baik untuk band yang mengejar kekompakan, solois yang menyiapkan materi baru,
+                maupun kreator dan komunitas musik yang butuh jadwal pasti tanpa miskomunikasi.
+              </p>
+            </div>
+
+            <div className="client-landing-audience-grid">
+              {CREATIVE_AUDIENCES.map((segment, index) => (
+                <article key={segment.key} className="client-landing-audience-card">
+                  <div className="client-landing-audience-meta">
+                    <span className="client-landing-audience-index">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="client-landing-audience-eyebrow">{segment.eyebrow}</span>
+                  </div>
+                  <h3>{segment.title}</h3>
+                  <p>{segment.description}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </motion.section>
 
-        <motion.section className="client-landing-location" {...sectionRevealProps} id="location" tabIndex={-1} aria-labelledby="client-location-title">
-          <div className="client-landing-location-heading">
-            <span>05 / Visit</span>
-            <h2 id="client-location-title">Temukan ruang<br />untuk sesi berikutnya.</h2>
-          </div>
+        <motion.section
+          id="services"
+          tabIndex={-1}
+          className="client-landing-services"
+          aria-labelledby="services-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-section-head is-split">
+              <div>
+                <span className="client-landing-kicker">
+                  <Music2 size={14} aria-hidden="true" />
+                  Layanan &amp; Tarif Aktif
+                </span>
+                <h2 id="services-heading">
+                  Pilih sesi yang sesuai tahap karyamu.
+                </h2>
+              </div>
 
-          <div className="client-landing-location-details">
-            <div><MapPin size={19} /><span><small>Studio</small><strong>{studioAddress}</strong></span></div>
-            <div><MessageCircle size={19} /><span><small>Kontak</small><strong>{studioPhone}</strong></span></div>
-            <div><Clock3 size={19} /><span><small>Jam operasional</small><strong>Setiap hari · 10.00—23.00 WIB</strong></span></div>
+              <p>
+                Seluruh jenis sesi dan tarif ditarik langsung dari pengaturan harga studio aktif.
+                Klik salah satu layanan untuk mengisi estimator secara instan.
+              </p>
+            </div>
+
+            <div className="client-landing-services-grid">
+              {sessionOptions.map((option) => {
+                const IconComponent = getServiceIcon(option.key);
+                const meta = SERVICE_METADATA_BY_KEY[option.key] || {
+                  tag: 'Layanan Studio',
+                  badge: 'Tersedia',
+                  summary: option.description || 'Layanan studio terjadwal sesuai kebutuhan sesi Anda.',
+                  suitability: 'Sesi terjadwal via kalender publik.',
+                };
+                const rawHourlyPrice = Number(option.pricePerHour ?? option.price ?? 0);
+                const hasFixedRate = Number.isFinite(rawHourlyPrice) && rawHourlyPrice > 0;
+                const isSelected = !isPackageMode && activeServiceKey === option.key;
+
+                return (
+                  <article
+                    key={option.key}
+                    className={`client-landing-service-card${isSelected ? ' is-selected' : ''}`}
+                  >
+                    <div className="client-landing-service-top">
+                      <span className="client-landing-service-icon" aria-hidden="true">
+                        <IconComponent size={20} />
+                      </span>
+                      <span className="client-landing-service-badge">{meta.tag}</span>
+                    </div>
+
+                    <div className="client-landing-service-body">
+                      <h3>{option.label}</h3>
+                      <p className="client-landing-service-desc">
+                        {option.description || meta.summary}
+                      </p>
+                      <p className="client-landing-service-fit">{meta.suitability}</p>
+                    </div>
+
+                    <div className="client-landing-service-footer">
+                      <div className="client-landing-service-rate">
+                        {hasFixedRate ? (
+                          <>
+                            <strong>{formatRupiah(rawHourlyPrice)}</strong>
+                            <span>/ jam</span>
+                          </>
+                        ) : (
+                          <strong>
+                            {isRecordingSessionId(option.key) && recordingTypeOptions.length > 0
+                              ? `${recordingTypeOptions.length} tipe tersedia`
+                              : 'Sesuai proyek'}
+                          </strong>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="client-landing-service-cta"
+                        aria-label={`Pilih ${option.label} dan lihat estimasi harga`}
+                        onClick={() => handleServiceShortcut(option.key)}
+                      >
+                        <span>Hitung Estimasi</span>
+                        <ArrowRight size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {hasPackages ? (
+              <div className="client-landing-packages-shelf" aria-label="Pilihan paket studio">
+                <div className="client-landing-packages-head">
+                  <h3>Paket Studio Tersedia</h3>
+                  <span>Opsi paket terstruktur dengan durasi dan tarif bundling</span>
+                </div>
+
+                <div className="client-landing-packages-list">
+                  {packageOptions.map((pkg) => (
+                    <button
+                      key={pkg.key}
+                      type="button"
+                      className={`client-landing-package-pill${isPackageMode && activePackageId === pkg.key ? ' is-active' : ''}`}
+                      onClick={() => handlePackageShortcut(pkg.key)}
+                    >
+                      <div>
+                        <strong>{pkg.label}</strong>
+                        <span>
+                          {pkg.durationHours ? `${pkg.durationHours} jam · ` : ''}
+                          {formatRupiah(pkg.price || 0)}
+                        </span>
+                      </div>
+                      <ArrowRight size={15} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </motion.section>
 
-        <motion.section className="client-landing-final-cta" {...sectionRevealProps} aria-labelledby="client-final-title">
-          <Volume2 size={28} aria-hidden="true" />
-          <p>{studioName}</p>
-          <h2 id="client-final-title">Sesi yang bagus dimulai<br />dari slot yang tepat.</h2>
-          <a className="client-landing-final-action" href="/book">
-            Mulai booking
-            <ArrowRight size={20} aria-hidden="true" />
-          </a>
+        <div className="client-landing-atmosphere-wrap">
+          <div className="client-landing-container">
+            <StudioAtmosphereShowcase
+              studioName={studioName}
+              spots={atmosphereSpots}
+              extraPhotos={extraGalleryPhotos}
+            />
+          </div>
+        </div>
+
+        <motion.section
+          id="pricelist"
+          ref={plannerSectionRef}
+          tabIndex={-1}
+          className="client-landing-planner"
+          aria-labelledby="planner-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-planner-header">
+              <div>
+                <span className="client-landing-kicker">
+                  <CalendarDays size={14} aria-hidden="true" />
+                  Estimator &amp; Handoff Jadwal
+                </span>
+                <h2 id="planner-heading">Simulasikan biaya &amp; langsung kunci tanggalmu.</h2>
+              </div>
+
+              <div className="client-landing-mode-tabs" role="group" aria-label="Mode estimasi">
+                <button
+                  type="button"
+                  aria-pressed={plannerMode === 'regular' ? 'true' : 'false'}
+                  className={`client-landing-mode-tab${plannerMode === 'regular' ? ' is-active' : ''}`}
+                  onClick={() => handleModeChange('regular')}
+                >
+                  Sewa Reguler
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasPackages}
+                  aria-pressed={plannerMode === 'package' ? 'true' : 'false'}
+                  className={`client-landing-mode-tab${plannerMode === 'package' ? ' is-active' : ''}`}
+                  onClick={() => handleModeChange('package')}
+                >
+                  {hasPackages ? 'Pilih Paket' : 'Paket Belum Aktif'}
+                </button>
+              </div>
+            </div>
+
+            <div className="client-landing-planner-workbench">
+              <div className="client-landing-planner-card">
+                <form
+                  className="client-landing-planner-form"
+                  onSubmit={handlePlannerSubmit}
+                  noValidate
+                >
+                  <div className="client-landing-form-row">
+                    {isPackageMode ? (
+                      <div className="client-landing-field">
+                        <StudioSelect
+                          label="Pilih Paket"
+                          selectedKey={activePackageId}
+                          onChange={setSelectedPackageId}
+                          options={packageOptions.map((item) => ({
+                            key: item.key,
+                            label: `${item.label} (${formatRupiah(item.price || 0)})`,
+                          }))}
+                          sheetTitle="Pilih Paket Studio"
+                        />
+                      </div>
+                    ) : (
+                      <div className="client-landing-field">
+                        <StudioSelect
+                          label="Jenis Layanan"
+                          selectedKey={activeServiceKey}
+                          onChange={(nextValue) => {
+                            setSelectedService(nextValue);
+                            setBookingSelectionError('');
+                          }}
+                          options={sessionOptions.map((item) => ({
+                            key: item.key,
+                            label: item.label,
+                          }))}
+                          sheetTitle="Pilih Layanan Studio"
+                        />
+                      </div>
+                    )}
+
+                    {!isPackageMode ? (
+                      <div className="client-landing-field">
+                        <StudioSelect
+                          label="Durasi Sesi"
+                          selectedKey={duration}
+                          onChange={setDuration}
+                          options={regularDurationOptions}
+                          sheetTitle="Pilih Durasi Sesi"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {showRecordingTypeSelect ? (
+                    <div className="client-landing-field">
+                      <StudioSelect
+                        label="Tipe Recording"
+                        selectedKey={activeRecordingTypeId}
+                        onChange={setSelectedRecordingTypeId}
+                        options={recordingTypeOptions.map((item) => ({
+                          key: item.key,
+                          label: `${item.label} (${formatRupiah(item.price || 0)})`,
+                        }))}
+                        sheetTitle="Pilih Tipe Recording"
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="client-landing-form-row">
+                    <div className="client-landing-field">
+                      <div className="client-landing-date-shell">
+                        <label htmlFor="landing-booking-date" className="client-landing-date-label">
+                          Tanggal Sesi
+                        </label>
+                        <input
+                          id="landing-booking-date"
+                          type="date"
+                          min={todayKey}
+                          value={date}
+                          onChange={(event) => {
+                            setDate(event.target.value);
+                            setBookingSelectionError('');
+                          }}
+                          className="client-landing-date-input"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="client-landing-field">
+                      <StudioSelect
+                        label="Jam mulai"
+                        selectedKey={startHour}
+                        onChange={(nextHour) => {
+                          hasUserPickedHourRef.current = true;
+                          setStartHour(nextHour);
+                          setBookingSelectionError('');
+                        }}
+                        options={startHourSelectOptions}
+                        sheetTitle="Pilih Jam Mulai"
+                      />
+                    </div>
+                  </div>
+
+                  {bookingSelectionError ? (
+                    <div role="alert" className="client-landing-selection-error">
+                      {bookingSelectionError}
+                    </div>
+                  ) : null}
+
+                  <div className="client-landing-handoff-preview">
+                    <div className="client-landing-handoff-main">
+                      <div className="client-landing-handoff-summary">
+                        <span className="client-landing-handoff-label">Ringkasan Pilihanmu</span>
+                        <strong>
+                          {isPackageMode
+                            ? activePackageOption?.label || 'Paket Studio'
+                            : activeServiceOption?.label || 'Sesi Studio'}
+                          {' · '}
+                          {formatIndonesianDateLabel(date)}
+                        </strong>
+                        <span className="client-landing-handoff-slot">{selectedTimeWindowLabel}</span>
+                      </div>
+
+                      <div className="client-landing-handoff-price">
+                        <span>Estimasi Tagihan</span>
+                        {isRecordingCustomRate ? (
+                          <strong className="is-custom">Dikonfirmasi Admin</strong>
+                        ) : (
+                          <strong>{formatRupiah(estimatedPricing.total || 0)}</strong>
+                        )}
+                        {estimatedPricing.discountAmount > 0 ? (
+                          <small className="client-landing-discount-badge">
+                            Sudah termasuk hemat {formatRupiah(estimatedPricing.discountAmount)}
+                          </small>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="client-landing-handoff-notes">
+                      <p className="client-landing-handoff-subcopy">
+                        Tanggal dan jam diteruskan ke kalender publik.
+                      </p>
+                      <p className="client-landing-planner-note">
+                        Layanan dan durasi dipilih setelah masuk ke akun client.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="client-landing-planner-actions">
+                    <button type="submit" className="client-landing-button is-primary is-full">
+                      <span>PILIH SLOT TERSEDIA</span>
+                      <ArrowRight size={17} aria-hidden="true" />
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <aside
+                className="client-landing-availability-card"
+                aria-label="Ketersediaan slot studio pada tanggal terpilih"
+              >
+                <div className="client-landing-availability-top">
+                  <div>
+                    <span className="client-landing-kicker">
+                      <Clock3 size={14} aria-hidden="true" />
+                      Slot Tanggal Terpilih
+                    </span>
+                    <h3>{formatIndonesianDateLabel(date)}</h3>
+                  </div>
+
+                  <span className="client-landing-availability-pill">
+                    {publicSlotsLoaded
+                      ? `${selectedDateAvailableCount} jam terbuka`
+                      : `Buka ${operationalWindowLabel}`}
+                  </span>
+                </div>
+
+                <div className="client-landing-availability-legend" aria-hidden="true">
+                  <span>
+                    <i className="is-open" />
+                    Tersedia
+                  </span>
+                  <span>
+                    <i className="is-active" />
+                    Dipilih
+                  </span>
+                  <span>
+                    <i className="is-busy" />
+                    Terisi
+                  </span>
+                </div>
+
+                <div className="client-landing-hour-grid" role="group" aria-label="Pilih jam mulai cepat">
+                  {startHours.map((hour) => {
+                    const isOccupied = selectedDateOccupiedHours.has(hour);
+                    const isChosen = String(hour) === String(startHour);
+                    return (
+                      <button
+                        key={hour}
+                        type="button"
+                        disabled={isOccupied}
+                        onClick={() => {
+                          hasUserPickedHourRef.current = true;
+                          setStartHour(String(hour));
+                          setBookingSelectionError('');
+                        }}
+                        className={`client-landing-hour-chip${isChosen ? ' is-selected' : ''}${isOccupied ? ' is-occupied' : ''}`}
+                      >
+                        <strong>{formatHourClock(hour)}</strong>
+                        <span>{isOccupied ? 'Terisi' : isChosen ? 'Dipilih' : 'Tersedia'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="client-landing-availability-footer">
+                  <div>
+                    <strong>Lihat Kalender Lengkap 7 Hari</strong>
+                    <span>Bandingkan jadwal minggu ini atau bulan ini langsung di /book.</span>
+                  </div>
+                  <a
+                    href="/book"
+                    className="client-landing-text-link"
+                    onClick={handleNavigationLinkClick}
+                  >
+                    <span>Buka /book</span>
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                  </a>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          id="process"
+          tabIndex={-1}
+          className="client-landing-process"
+          aria-labelledby="process-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-section-head">
+              <span className="client-landing-kicker">
+                <CheckCircle2 size={14} aria-hidden="true" />
+                Alur Booking Tanpa Ribet
+              </span>
+              <h2 id="process-heading">Tiga langkah dari cek slot sampai siap masuk studio.</h2>
+            </div>
+
+            <div className="client-landing-process-grid">
+              {BOOKING_PROCESS_STEPS.map((item) => (
+                <article key={item.step} className="client-landing-process-card">
+                  <span className="client-landing-process-step">{item.step}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          id="client-space"
+          tabIndex={-1}
+          className="client-landing-client-space"
+          aria-labelledby="client-space-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-portal-showcase">
+              <div className="client-landing-portal-copy">
+                <span className="client-landing-kicker">
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  Client Workspace
+                </span>
+                <h2 id="client-space-heading">
+                  {activeRoleIsClient
+                    ? `Halo kembali, ${accountIdentity?.displayName || authUser?.displayName || 'Client Studio'}.`
+                    : 'Kelola seluruh jadwal, invoice, dan konfirmasi sesi dari satu portal.'}
+                </h2>
+                <p>
+                  {activeRoleIsClient
+                    ? 'Akun client Anda sedang aktif. Pantau jadwal terbaru di bawah atau masuk ke Client Portal untuk detail pembayaran dan penjadwalan.'
+                    : 'Anda dapat melihat jadwal studio tanpa login. Saat ingin mengajukan booking, masuk ke akun client agar seluruh histori sesi, invoice, dan unggah bukti pembayaran tercatat rapi.'}
+                </p>
+
+                <div className="client-landing-portal-actions">
+                  <a
+                    href={
+                      activeRoleIsStaff
+                        ? '/admin'
+                        : activeRoleIsClient
+                          ? '/client/portal'
+                          : '/client/login'
+                    }
+                    className="client-landing-button is-primary"
+                    onClick={handleNavigationLinkClick}
+                  >
+                    <span>
+                      {activeRoleIsStaff
+                        ? 'Buka Admin Dashboard'
+                        : activeRoleIsClient
+                          ? 'Buka Client Portal'
+                          : 'Masuk / Daftar Client'}
+                    </span>
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </a>
+
+                  <a
+                    href="/book"
+                    className="client-landing-button is-outline"
+                    onClick={handleNavigationLinkClick}
+                  >
+                    <span>Cek Kalender Publik</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="client-landing-portal-card">
+                {activeRoleIsClient ? (
+                  <div className="client-landing-booking-preview">
+                    <div className="client-landing-booking-preview-head">
+                      <strong>Riwayat Sesi Terkini</strong>
+                      <span>{recentClientBookings.length} booking terhubung</span>
+                    </div>
+
+                    {recentClientBookings.length > 0 ? (
+                      <ul className="client-landing-booking-list">
+                        {recentClientBookings.map((booking) => {
+                          const reqMeta =
+                            BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || {
+                              label: 'Tercatat',
+                            };
+                          return (
+                            <li key={booking.id} className="client-landing-booking-item">
+                              <div>
+                                <strong>{booking.sessionLabel || booking.serviceType || 'Sesi Studio'}</strong>
+                                <span>
+                                  {formatIndonesianDateLabel(booking.date)} · {formatHourClock(booking.startHour)} WIB
+                                </span>
+                              </div>
+                              <span className="client-landing-booking-status">{reqMeta.label}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="client-landing-portal-empty">
+                        Belum ada booking tercatat pada akun ini. Pilih slot dari kalender publik untuk mengajukan sesi pertama Anda.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="client-landing-portal-features">
+                    <div className="client-landing-portal-feature-item">
+                      <CalendarDays size={18} aria-hidden="true" />
+                      <div>
+                        <strong>Kalender Pribadi &amp; Status Request</strong>
+                        <span>Pantau persetujuan admin dan perubahan slot secara langsung.</span>
+                      </div>
+                    </div>
+
+                    <div className="client-landing-portal-feature-item">
+                      <ShieldCheck size={18} aria-hidden="true" />
+                      <div>
+                        <strong>Invoice &amp; Upload Bukti Pembayaran</strong>
+                        <span>Simpan rincian DP maupun pelunasan tanpa perlu mencari chat lama.</span>
+                      </div>
+                    </div>
+
+                    <div className="client-landing-portal-feature-item">
+                      <Clock3 size={18} aria-hidden="true" />
+                      <div>
+                        <strong>Pilihan Tanggal &amp; Jam Tetap Tersimpan</strong>
+                        <span>Slot yang dipilih di landing page langsung diteruskan saat login.</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        <div className="client-landing-faq-wrap">
+          <div className="client-landing-container">
+            <LandingFaqSection items={faqItems} />
+          </div>
+        </div>
+
+        <motion.section
+          id="location"
+          tabIndex={-1}
+          className="client-landing-location"
+          aria-labelledby="location-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-location-grid">
+              <div className="client-landing-location-card">
+                <span className="client-landing-kicker">
+                  <MapPin size={14} aria-hidden="true" />
+                  Lokasi &amp; Kontak Studio
+                </span>
+                <h2 id="location-heading">Kunjungi atau hubungi tim {studioName}.</h2>
+                <p>
+                  Informasi operasional, alamat, dan kanal kontak di bawah bersumber langsung dari
+                  pengaturan studio aktif.
+                </p>
+
+                <dl className="client-landing-info-list">
+                  <div>
+                    <dt>Jam Operasional</dt>
+                    <dd>Setiap hari · {operationalWindowLabel}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Alamat Studio</dt>
+                    <dd>
+                      {studioAddress || 'Detail alamat lengkap tersedia pada konfirmasi booking dan pengaturan studio.'}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>Kontak / WhatsApp</dt>
+                    <dd>{studioPhone || 'Tersedia setelah konfirmasi booking atau melalui Client Portal.'}</dd>
+                  </div>
+
+                  {paymentChannelSummary ? (
+                    <div>
+                      <dt>Kanal Pembayaran Resmi</dt>
+                      <dd>{paymentChannelSummary}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+
+                <div className="client-landing-location-actions">
+                  {whatsappHref ? (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="client-landing-button is-primary"
+                    >
+                      <MessageCircle size={16} aria-hidden="true" />
+                      <span>Tanya Admin via WhatsApp</span>
+                    </a>
+                  ) : null}
+
+                  <a
+                    href="/book"
+                    className={`client-landing-button ${whatsappHref ? 'is-outline' : 'is-primary'}`}
+                    onClick={handleNavigationLinkClick}
+                  >
+                    <span>Lihat Kalender Studio</span>
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="client-landing-policy-card">
+                <span className="client-landing-policy-label">Ketentuan Booking &amp; Pembayaran</span>
+                <h3>Transparan sejak sebelum sesi dimulai</h3>
+                <ul className="client-landing-policy-list">
+                  {paymentTermsList.map((term) => (
+                    <li key={term}>{term}</li>
+                  ))}
+                </ul>
+
+                <div className="client-landing-policy-meta">
+                  <span>
+                    <Phone size={15} aria-hidden="true" />
+                    Konfirmasi &amp; bantuan terhubung dengan dashboard studio
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          className="client-landing-final-cta"
+          aria-labelledby="final-cta-heading"
+          {...sectionMotionProps}
+        >
+          <div className="client-landing-container">
+            <div className="client-landing-final-cta-banner">
+              <div className="client-landing-final-cta-copy">
+                <span className="client-landing-kicker is-on-dark">Siap Masuk Sesi?</span>
+                <h2 id="final-cta-heading">Kunci slot latihan atau rekaman Anda sekarang.</h2>
+                <p>
+                  Lihat ketersediaan real-time di kalender publik dan lanjutkan pengajuan dalam alur
+                  yang rapi.
+                </p>
+              </div>
+
+              <div className="client-landing-final-cta-actions">
+                <a
+                  href="/book"
+                  className="client-landing-button is-primary is-large"
+                  onClick={handleNavigationLinkClick}
+                >
+                  <span>Buka Kalender Publik</span>
+                  <ArrowRight size={17} aria-hidden="true" />
+                </a>
+                <a
+                  href="/client/login"
+                  className="client-landing-button is-ghost-dark"
+                  onClick={handleNavigationLinkClick}
+                >
+                  <span>Client Portal</span>
+                </a>
+              </div>
+            </div>
+          </div>
         </motion.section>
       </main>
 
       <footer className="client-landing-footer">
-        <div className="client-landing-brand is-footer">
-          <span className="client-landing-brand-mark">37</span>
-          <span className="client-landing-brand-lockup"><strong>Music Studio</strong><small>Built for musicians</small></span>
+        <div className="client-landing-container client-landing-footer-grid">
+          <div className="client-landing-footer-brand">
+            <div className="client-landing-brand is-footer">
+              <span className="client-landing-brand-badge" aria-hidden="true">
+                37
+              </span>
+              <span className="client-landing-brand-text">
+                <strong className="client-landing-brand-wordmark">STUDIO</strong>
+                <span>{studioName}</span>
+              </span>
+            </div>
+            <p>
+              Platform penjadwalan publik dan workspace sesi musik untuk rehearsal, recording, mixing,
+              dan mastering.
+            </p>
+          </div>
+
+          <div className="client-landing-footer-col">
+            <h4>Navigasi</h4>
+            <ul>
+              <li>
+                <a href="#services" onClick={handleNavigationLinkClick}>
+                  Layanan &amp; Tarif
+                </a>
+              </li>
+              <li>
+                <a href="#atmosphere" onClick={handleNavigationLinkClick}>
+                  Pratinjau Ruang
+                </a>
+              </li>
+              <li>
+                <a href="#pricelist" onClick={handleNavigationLinkClick}>
+                  Estimator Harga
+                </a>
+              </li>
+              <li>
+                <a href="#faq" onClick={handleNavigationLinkClick}>
+                  FAQ Studio
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div className="client-landing-footer-col">
+            <h4>Akses Booking</h4>
+            <ul>
+              <li>
+                <a href="/book" onClick={handleNavigationLinkClick}>
+                  Kalender Publik (/book)
+                </a>
+              </li>
+              <li>
+                <a href="/client/login" onClick={handleNavigationLinkClick}>
+                  Masuk Client
+                </a>
+              </li>
+              <li>
+                <a href="/client/portal" onClick={handleNavigationLinkClick}>
+                  Client Portal
+                </a>
+              </li>
+              {whatsappHref ? (
+                <li>
+                  <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
+                    WhatsApp Studio
+                  </a>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+
+          <div className="client-landing-footer-col">
+            <h4>Jam Buka</h4>
+            <p className="client-landing-footer-hours">
+              Setiap Hari
+              <br />
+              {operationalWindowLabel}
+            </p>
+          </div>
         </div>
-        <p>© {new Date().getFullYear()} {studioName}. All rights reserved.</p>
-        <a href="#top">Kembali ke atas <ArrowRight size={15} /></a>
+
+        <div className="client-landing-container client-landing-footer-bottom">
+          <p>
+            © {new Date().getFullYear()} {studioName}. Seluruh jadwal &amp; tarif mengacu pada
+            pengaturan studio aktif.
+          </p>
+        </div>
       </footer>
-      <motion.div className="client-landing-mobile-cta">
-        <div><small>Mulai dari</small><strong><NumberTicker value={startingPrice} formatter={formatTickerRupiah} duration={shouldReduceMotion ? 0 : 0.5} /></strong></div>
-        <motion.a href="#pricelist" {...interactionMotionProps}>Atur jadwal <ArrowRight size={16} aria-hidden="true" /></motion.a>
-      </motion.div>
-    </motion.div>
+
+      <div
+        className={`client-landing-mobile-cta${showMobileStickyCta ? ' is-visible' : ''}`}
+      >
+        <div className="client-landing-mobile-cta-copy">
+          <span>Mulai Rp {formatRupiah(startingHourlyPrice).replace(/^Rp\s*/, '')}/jam</span>
+          <strong>
+            {publicSlotsLoaded ? `${todayAvailableCount} jam kosong hari ini` : operationalWindowLabel}
+          </strong>
+        </div>
+
+        <a
+          href="/book"
+          className="client-landing-button is-primary is-compact"
+          onClick={handleNavigationLinkClick}
+        >
+          <span>Cek Jadwal</span>
+          <ArrowRight size={15} aria-hidden="true" />
+        </a>
+      </div>
+    </div>
   );
 }

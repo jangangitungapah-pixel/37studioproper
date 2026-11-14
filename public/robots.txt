@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /book
+Allow: /client
+Allow: /client/login
+Disallow: /admin
+Disallow: /guard
+Disallow: /login
+
+Sitemap: https://studio-37.web.app/sitemap.xml

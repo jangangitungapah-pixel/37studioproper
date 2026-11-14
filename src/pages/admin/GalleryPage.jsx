@@ -31,7 +31,8 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Trash
+  Trash,
+  Globe
 } from 'lucide-react';
 import { firebaseAuth } from '../../lib/firebase.js';
 import { uploadGalleryImageFile, MAX_GALLERY_IMAGE_SIZE_BYTES } from '../../services/cloudinaryUploadService.js';
@@ -39,6 +40,8 @@ import { galleryRepository } from '../../services/galleryRepository.js';
 import GalleryAlerts from '../../components/gallery/GalleryAlerts.jsx';
 import GalleryBatchBanner from '../../components/gallery/GalleryBatchBanner.jsx';
 import GalleryHero from '../../components/gallery/GalleryHero.jsx';
+import GalleryLandingShowcasePanel from '../../components/gallery/GalleryLandingShowcasePanel.jsx';
+import GalleryLandingMediaModal from '../../components/gallery/GalleryLandingMediaModal.jsx';
 import GalleryToolbar from '../../components/gallery/GalleryToolbar.jsx';
 import GalleryAlbumsView from '../../components/gallery/GalleryAlbumsView.jsx';
 import GalleryTimelineView from '../../components/gallery/GalleryTimelineView.jsx';
@@ -49,10 +52,18 @@ import GalleryMetadataModal from '../../components/gallery/GalleryMetadataModal.
 import AlbumFolderCard from '../../components/gallery/AlbumFolderCard.jsx';
 import EmptyGalleryState from '../../components/gallery/EmptyGalleryState.jsx';
 import PhotoCard from '../../components/gallery/PhotoCard.jsx';
+import {
+  defaultLandingMedia,
+  detachDeletedGalleryPhotosFromLandingMedia,
+  getPhotoLandingAssignments,
+  normalizeLandingMedia,
+  saveStudioSettings,
+  useStudioSettings,
+} from '../../settings/studioSettings.js';
 import { AUDIO_VISUALIZER_BAR_HEIGHTS, CATEGORIES } from '../../utils/galleryConstants.js';
 import { getDisplayedGalleryImages, getFilteredActiveImages, getGalleryTimelineGroups, getTrashedGalleryImages } from '../../utils/galleryImageFilters.js';
 import LofiAmbientSynth from '../../utils/lofiAmbientSynth.js';
-import { isOwnerAdminUser } from '../../utils/adminPermissions.js';
+import { hasAdminPagePermission, isOwnerAdminUser } from '../../utils/adminPermissions.js';
 
 function isEditableShortcutTarget(target) {
   if (!target) return false;
@@ -104,6 +115,10 @@ export default function GalleryPage({ currentUser = null }) {
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ));
   const canPermanentlyDelete = isOwnerAdminUser(currentUser);
+  const canManageLandingShowcase = hasAdminPagePermission(currentUser, 'settings');
+  const studioSettings = useStudioSettings();
+  const [isSavingLandingMedia, setIsSavingLandingMedia] = useState(false);
+  const [landingModalState, setLandingModalState] = useState(null);
 
   // Gallery Navigation States
   const [activeTab, setActiveTab] = useState('photos'); // 'photos' | 'albums' | 'trash'
@@ -307,7 +322,7 @@ export default function GalleryPage({ currentUser = null }) {
   // Keyboard Navigation in Lightbox
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activePhotoIndex === null || isEditing || isEditableShortcutTarget(e.target)) return;
+      if (activePhotoIndex === null || isEditing || landingModalState || isEditableShortcutTarget(e.target)) return;
       if (e.key === 'ArrowRight') {
         handleNextPhoto();
       } else if (e.key === 'ArrowLeft') {
@@ -327,7 +342,7 @@ export default function GalleryPage({ currentUser = null }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activePhotoIndex, closeLightbox, displayedImages, handleNextPhoto, handlePrevPhoto, handleToggleFavorite, isEditing, setSlideshowPlayingSafely]);
+  }, [activePhotoIndex, closeLightbox, displayedImages, handleNextPhoto, handlePrevPhoto, handleToggleFavorite, isEditing, landingModalState, setSlideshowPlayingSafely]);
 
   // Slideshow Timer Effect
   useEffect(() => {
@@ -458,9 +473,192 @@ export default function GalleryPage({ currentUser = null }) {
   };
 
   // Soft Delete (Move to Trash)
+  const saveLandingMediaConfig = useCallback(async (nextLandingMedia, successMessage) => {
+    if (!canManageLandingShowcase) {
+      setError('Diperlukan izin Settings untuk mengubah foto landing page publik.');
+      return false;
+    }
+
+    setIsSavingLandingMedia(true);
+    setError('');
+
+    try {
+      await saveStudioSettings({
+        ...studioSettings,
+        landingMedia: normalizeLandingMedia(nextLandingMedia),
+        updatedAt: new Date().toISOString(),
+      });
+      if (successMessage) {
+        setSuccess(successMessage);
+      }
+      return true;
+    } catch (err) {
+      console.error('Failed to save landing media configuration:', err);
+      setError('Gagal menyimpan pengaturan foto landing page.');
+      return false;
+    } finally {
+      setIsSavingLandingMedia(false);
+    }
+  }, [canManageLandingShowcase, studioSettings]);
+
+  const openLandingSlotPicker = useCallback((targetSlot) => {
+    setError('');
+    setSuccess('');
+    setLandingModalState({
+      key: Date.now(),
+      mode: 'slot',
+      photo: null,
+      targetSlot,
+    });
+  }, []);
+
+  const openLandingPhotoAssign = useCallback((targetPhoto) => {
+    if (!targetPhoto) return;
+    setError('');
+    setSuccess('');
+    setLandingModalState({
+      key: Date.now(),
+      mode: 'photo',
+      photo: targetPhoto,
+      targetSlot: 'hero',
+    });
+  }, []);
+
+  const handleSaveLandingMediaModal = async (nextLandingMedia) => {
+    const saved = await saveLandingMediaConfig(
+      nextLandingMedia,
+      'Foto landing page berhasil diperbarui.',
+    );
+    if (saved) {
+      setLandingModalState(null);
+    }
+  };
+
+  const handleResetLandingSlot = async (slotKey) => {
+    const current = normalizeLandingMedia(studioSettings.landingMedia);
+    const next = normalizeLandingMedia(current);
+
+    if (slotKey === 'hero') {
+      next.hero = { ...defaultLandingMedia.hero };
+    } else {
+      next.spots = current.spots.map((spot) => (
+        spot.slotKey === slotKey
+          ? {
+              slotKey,
+              galleryId: '',
+              url: '',
+              badge: '',
+              title: '',
+              caption: '',
+              objectPosition: '',
+            }
+          : spot
+      ));
+    }
+
+    next.updatedAt = new Date().toISOString();
+    await saveLandingMediaConfig(next, 'Slot foto landing page dikembalikan ke default.');
+  };
+
+  const handleResetAllLandingMedia = async () => {
+    if (!window.confirm('Kembalikan seluruh foto Hero, Pratinjau Ruang, dan Dokumentasi di landing page ke bawaan default?')) {
+      return;
+    }
+    await saveLandingMediaConfig(
+      {
+        ...defaultLandingMedia,
+        updatedAt: new Date().toISOString(),
+      },
+      'Seluruh foto landing page berhasil dikembalikan ke default bawaan.',
+    );
+  };
+
+  const handleSwapLandingSpots = async (idxA, idxB) => {
+    const current = normalizeLandingMedia(studioSettings.landingMedia);
+    if (!current.spots[idxA] || !current.spots[idxB]) return;
+
+    const spotA = current.spots[idxA];
+    const spotB = current.spots[idxB];
+    const nextSpots = current.spots.map((spot, idx) => {
+      if (idx === idxA) {
+        return {
+          ...spotB,
+          slotKey: spotA.slotKey,
+        };
+      }
+      if (idx === idxB) {
+        return {
+          ...spotA,
+          slotKey: spotB.slotKey,
+        };
+      }
+      return spot;
+    });
+
+    await saveLandingMediaConfig(
+      {
+        ...current,
+        spots: nextSpots,
+        updatedAt: new Date().toISOString(),
+      },
+      `Urutan Pratinjau 0${idxA + 1} dan 0${idxB + 1} berhasil ditukar.`,
+    );
+  };
+
+  const handleMoveExtraLandingPhoto = async (index, direction) => {
+    const current = normalizeLandingMedia(studioSettings.landingMedia);
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= current.galleryExtras.length) return;
+
+    const nextExtras = [...current.galleryExtras];
+    const [moved] = nextExtras.splice(index, 1);
+    nextExtras.splice(targetIndex, 0, moved);
+
+    await saveLandingMediaConfig(
+      {
+        ...current,
+        galleryExtras: nextExtras,
+        updatedAt: new Date().toISOString(),
+      },
+      'Urutan foto dokumentasi landing page diperbarui.',
+    );
+  };
+
+  const handleRemoveExtraLandingPhoto = async (targetItem) => {
+    const current = normalizeLandingMedia(studioSettings.landingMedia);
+    const nextExtras = current.galleryExtras.filter(
+      (item) => !(
+        (targetItem.galleryId && item.galleryId === targetItem.galleryId) ||
+        (targetItem.url && item.url === targetItem.url)
+      ),
+    );
+
+    await saveLandingMediaConfig(
+      {
+        ...current,
+        galleryExtras: nextExtras,
+        updatedAt: new Date().toISOString(),
+      },
+      'Foto dikeluarkan dari strip dokumentasi landing page.',
+    );
+  };
+
   const handleSoftDelete = useCallback(async (imgId) => {
     try {
+      const targetPhoto = rawImages.find((img) => img.id === imgId);
       await galleryRepository.moveGalleryItemToTrash(imgId);
+
+      const { nextLandingMedia, detachedCount } = detachDeletedGalleryPhotosFromLandingMedia(
+        studioSettings.landingMedia,
+        targetPhoto ? [targetPhoto] : [{ id: imgId }],
+      );
+      if (detachedCount > 0 && canManageLandingShowcase) {
+        await saveStudioSettings({
+          ...studioSettings,
+          landingMedia: nextLandingMedia,
+          updatedAt: new Date().toISOString(),
+        });
+      }
 
       if (activePhotoIndex !== null && displayedImages[activePhotoIndex].id === imgId) {
         if (displayedImages.length <= 1) {
@@ -472,12 +670,16 @@ export default function GalleryPage({ currentUser = null }) {
           handleNextPhoto();
         }
       }
-      setSuccess('Foto dipindahkan ke Tempat Sampah.');
+      setSuccess(
+        detachedCount > 0
+          ? 'Foto dipindahkan ke Tempat Sampah dan dilepas dari slot Landing Page.'
+          : 'Foto dipindahkan ke Tempat Sampah.',
+      );
     } catch (err) {
       console.error('Soft delete failed:', err);
       setError('Gagal memindahkan foto ke Tempat Sampah.');
     }
-  }, [activePhotoIndex, displayedImages, handleNextPhoto]);
+  }, [activePhotoIndex, canManageLandingShowcase, displayedImages, handleNextPhoto, rawImages, studioSettings]);
 
   // Restore from Trash
   const handleRestore = async (imgId) => {
@@ -600,11 +802,30 @@ export default function GalleryPage({ currentUser = null }) {
   const handleBatchSoftDelete = async () => {
     setError('');
     try {
-      await galleryRepository.batchUpdateGalleryItems(Array.from(selectedIds), {
+      const targetIds = Array.from(selectedIds);
+      const targetPhotos = rawImages.filter((img) => selectedIds.has(img.id));
+      await galleryRepository.batchUpdateGalleryItems(targetIds, {
         isDeleted: true,
         deletedAt: new Date().toISOString(),
       });
-      setSuccess(`Berhasil memindahkan ${selectedIds.size} foto ke Tempat Sampah.`);
+
+      const { nextLandingMedia, detachedCount } = detachDeletedGalleryPhotosFromLandingMedia(
+        studioSettings.landingMedia,
+        targetPhotos,
+      );
+      if (detachedCount > 0 && canManageLandingShowcase) {
+        await saveStudioSettings({
+          ...studioSettings,
+          landingMedia: nextLandingMedia,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      setSuccess(
+        detachedCount > 0
+          ? `Berhasil memindahkan ${selectedIds.size} foto ke Tempat Sampah dan melepasnya dari Landing Page.`
+          : `Berhasil memindahkan ${selectedIds.size} foto ke Tempat Sampah.`,
+      );
       setIsSelectMode(false);
       setSelectedIds(new Set());
     } catch (err) {
@@ -971,6 +1192,19 @@ export default function GalleryPage({ currentUser = null }) {
         TrashIcon={Trash2}
       />
 
+      <GalleryLandingShowcasePanel
+        activeImagesCount={filteredActiveImages.length}
+        canManage={canManageLandingShowcase}
+        isSaving={isSavingLandingMedia}
+        onMoveExtraPhoto={handleMoveExtraLandingPhoto}
+        onOpenSlotPicker={openLandingSlotPicker}
+        onRemoveExtraPhoto={handleRemoveExtraLandingPhoto}
+        onResetAll={handleResetAllLandingMedia}
+        onResetSlot={handleResetLandingSlot}
+        onSwapSpots={handleSwapLandingSpots}
+        studioSettings={studioSettings}
+      />
+
       {/* Global Alerts */}
       <GalleryAlerts
         canRetry={Boolean(galleryLoadError && error === galleryLoadError)}
@@ -1054,11 +1288,13 @@ export default function GalleryPage({ currentUser = null }) {
               categories={CATEGORIES}
               displayedImages={displayedImages}
               EmptyGalleryState={EmptyGalleryState}
+              getLandingBadges={(img) => getPhotoLandingAssignments(img, studioSettings).badges}
               gridColumns={gridColumns}
               isSelectMode={isSelectMode}
               onDeleteClick={handleSoftDelete}
               onFavoriteClick={handleToggleFavorite}
               onEditMetadata={openMetadataEditor}
+              onManageLanding={canManageLandingShowcase ? openLandingPhotoAssign : undefined}
               onOpenPhoto={setActivePhotoIndex}
               onSelectToggle={handleSelectToggle}
               PhotoCard={PhotoCard}
@@ -1077,6 +1313,7 @@ export default function GalleryPage({ currentUser = null }) {
               EmptyGalleryState={EmptyGalleryState}
               filteredActiveImages={filteredActiveImages}
               FolderIcon={Folder}
+              getLandingBadges={(img) => getPhotoLandingAssignments(img, studioSettings).badges}
               gridColumns={gridColumns}
               HeartIcon={Heart}
               ImageIcon={ImageIcon}
@@ -1084,6 +1321,7 @@ export default function GalleryPage({ currentUser = null }) {
               onDeleteClick={handleSoftDelete}
               onFavoriteClick={handleToggleFavorite}
               onEditMetadata={openMetadataEditor}
+              onManageLanding={canManageLandingShowcase ? openLandingPhotoAssign : undefined}
               onOpenPhoto={setActivePhotoIndex}
               onOpenTrash={() => {
                 setActiveTab('trash');
@@ -1187,6 +1425,7 @@ export default function GalleryPage({ currentUser = null }) {
         editorFlip={editorFlip}
         editorWatermark={editorWatermark}
         exifDetails={exifDetails}
+        Globe={Globe}
         handleDownloadEditedImage={handleDownloadEditedImage}
         handleNextPhoto={handleNextPhoto}
         handlePermanentDelete={handlePermanentDelete}
@@ -1202,11 +1441,13 @@ export default function GalleryPage({ currentUser = null }) {
         isEditing={isEditing}
         isInfoPanelOpen={isInfoPanelOpen}
         isMusicPlaying={isMusicPlaying}
+        isOnLanding={Boolean(activePhoto && getPhotoLandingAssignments(activePhoto, studioSettings).isActive)}
         isSavingEdit={isSavingEdit}
         isSlideshowPlaying={isSlideshowPlaying}
         LoaderCircle={LoaderCircle}
         MapPin={MapPin}
         Music={Music}
+        onManageLanding={canManageLandingShowcase ? openLandingPhotoAssign : undefined}
         Pause={Pause}
         Play={Play}
         Plus={Plus}
@@ -1230,6 +1471,29 @@ export default function GalleryPage({ currentUser = null }) {
         VolumeX={VolumeX}
         X={X}
       />
+
+      {landingModalState ? (
+        <GalleryLandingMediaModal
+          key={landingModalState.key}
+          activeImages={filteredActiveImages}
+          categories={CATEGORIES}
+          isSaving={isSavingLandingMedia}
+          landingMedia={studioSettings.landingMedia}
+          mode={landingModalState.mode}
+          onClose={() => {
+            if (!isSavingLandingMedia) setLandingModalState(null);
+          }}
+          onOpenUpload={() => {
+            setError('');
+            setSuccess('');
+            setIsModalOpen(true);
+          }}
+          onResetSlot={handleResetLandingSlot}
+          onSave={handleSaveLandingMediaModal}
+          photo={landingModalState.photo}
+          targetSlot={landingModalState.targetSlot}
+        />
+      ) : null}
     </section>
   );
 }

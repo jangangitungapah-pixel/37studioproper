@@ -29,6 +29,7 @@ export default function GalleryAlbumsView({
   EmptyGalleryState,
   filteredActiveImages,
   FolderIcon,
+  getLandingBadges,
   gridColumns,
   HeartIcon,
   ImageIcon,
@@ -36,6 +37,7 @@ export default function GalleryAlbumsView({
   onDeleteClick,
   onFavoriteClick,
   onEditMetadata,
+  onManageLanding,
   onOpenPhoto,
   onOpenTrash,
   onSelectAlbum,
@@ -206,6 +208,7 @@ export default function GalleryAlbumsView({
                 isSelected={selectedIds.has(
                   img.id,
                 )}
+                landingBadges={getLandingBadges ? getLandingBadges(img) : []}
                 onSelectToggle={
                   onSelectToggle
                 }
@@ -219,9 +222,12 @@ export default function GalleryAlbumsView({
                 onFavoriteClick={() =>
                   onFavoriteClick(img)
                 }
-                onEditMetadata={() =>
-                  onEditMetadata(img)
+                onManageLanding={
+                  onManageLanding
+                    ? () => onManageLanding(img)
+                    : undefined
                 }
+                onEditMetadata={() => onEditMetadata(img)}
                 onDeleteClick={() =>
                   onDeleteClick(img.id)
                 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/modules/settings.css';
 import '../../styles/modules/operator-fee.css';
-import { AlertTriangle, Building2, CheckCircle2, Clipboard, Crown, DatabaseZap, Edit3, KeyRound, Landmark, Mail, MapPin, MessageCircle, MonitorSmartphone, Phone, QrCode, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, X } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Clipboard, Crown, DatabaseZap, Edit3, Globe, KeyRound, Landmark, Mail, MapPin, MessageCircle, MonitorSmartphone, Phone, QrCode, RefreshCcw, Save, ShieldAlert, ShieldCheck, SlidersHorizontal, Trash2, UserRound, WalletCards, X } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { firestoreDb } from '../../lib/firebase.js';
@@ -31,6 +31,7 @@ import {
   defaultAdminPermissions,
   defaultGuardPortalPermissions,
   getAssignablePermissionPages,
+  hasAdminPagePermission,
   isOwnerAdminUser,
   normalizeAdminPermissionsForRole,
 } from '../../utils/adminPermissions.js';
@@ -41,9 +42,13 @@ import {
   useInvoiceSettings,
 } from '../../settings/invoiceSettings.js';
 import {
+  countCustomLandingSlots,
   defaultStudioSettings,
   formatBankAccountNumber,
   normalizeStudioSettings,
+  resolveLandingAtmosphereSpots,
+  resolveLandingExtraGalleryItems,
+  resolveLandingHeroMedia,
   saveStudioSettings,
   useStudioSettings,
 } from '../../settings/studioSettings.js';
@@ -3409,6 +3414,72 @@ export default function SettingsPage({ authState, currentUser: currentUserProp }
                     <span style={{ width: studioSetupProgress.percent + '%' }} />
                   </span>
                 </section>
+
+                {(() => {
+                  const landingHero = resolveLandingHeroMedia(studioSettings);
+                  const landingSpots = resolveLandingAtmosphereSpots(studioSettings);
+                  const landingExtras = resolveLandingExtraGalleryItems(studioSettings);
+                  const customLandingCount = countCustomLandingSlots(studioSettings);
+                  const canOpenGalleryPage = hasAdminPagePermission(currentUser, 'gallery');
+
+                  return (
+                    <section className="settings-section settings-studio-landing-card" aria-labelledby="settings-studio-landing-title">
+                      <div className="settings-studio-panel-heading">
+                        <span className="settings-studio-panel-icon" aria-hidden="true">
+                          <Globe size={16} />
+                        </span>
+                        <span>
+                          <small>Public website media</small>
+                          <h3 id="settings-studio-landing-title">Foto Landing Page</h3>
+                          <p>
+                            {customLandingCount > 0
+                              ? `${customLandingCount}/4 slot kustom aktif${landingExtras.length ? ` · +${landingExtras.length} ekstra` : ''}.`
+                              : 'Menggunakan gambar default bawaan.'}
+                          </p>
+                        </span>
+                      </div>
+
+                      <div className="settings-studio-landing-thumbs">
+                        <div className="settings-studio-landing-thumb">
+                          <img
+                            src={landingHero.url}
+                            alt="Hero Banner Landing"
+                            style={{ objectPosition: landingHero.objectPosition }}
+                          />
+                          <span>Hero</span>
+                        </div>
+                        {landingSpots.map((spot) => (
+                          <div key={spot.slotKey} className="settings-studio-landing-thumb">
+                            <img
+                              src={spot.url}
+                              alt={spot.slotLabel}
+                              style={{
+                                objectPosition: spot.objectPosition,
+                                transform: spot.isCustom ? undefined : `scale(${spot.scale})`,
+                              }}
+                            />
+                            <span>{spot.shortLabel}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {canOpenGalleryPage ? (
+                        <button
+                          type="button"
+                          className="settings-mini-button is-ghost settings-studio-landing-btn"
+                          onClick={() => navigate('/admin/content/gallery')}
+                        >
+                          <Globe size={13} aria-hidden="true" />
+                          Pilih & Atur Foto di Gallery
+                        </button>
+                      ) : (
+                        <p className="settings-studio-preview-note">
+                          Pemilihan foto dilakukan melalui halaman Gallery Studio.
+                        </p>
+                      )}
+                    </section>
+                  );
+                })()}
               </aside>
             </div>
 

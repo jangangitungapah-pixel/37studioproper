@@ -19,6 +19,7 @@ export default function GalleryLightbox({
   editorFlip,
   editorWatermark,
   exifDetails,
+  Globe,
   handleDownloadEditedImage,
   handleNextPhoto,
   handlePermanentDelete,
@@ -34,11 +35,13 @@ export default function GalleryLightbox({
   isEditing,
   isInfoPanelOpen,
   isMusicPlaying,
+  isOnLanding = false,
   isSavingEdit,
   isSlideshowPlaying,
   LoaderCircle,
   MapPin,
   Music,
+  onManageLanding,
   Pause,
   Play,
   Plus,
@@ -126,6 +129,21 @@ export default function GalleryLightbox({
               {/* Action Buttons for Normal vs Deleted Photos */}
               {!activePhoto.isDeleted ? (
                 <>
+                  {onManageLanding && Globe ? (
+                    <button
+                      type="button"
+                      onClick={() => onManageLanding(activePhoto)}
+                      className={`p-2 rounded-xl transition-all border ${
+                        isOnLanding
+                          ? 'bg-orange-500/15 text-orange-400 border-orange-500/30'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-white border-white/5'
+                      }`}
+                      title="Atur ke Landing Page"
+                    >
+                      <Globe size={15} />
+                    </button>
+                  ) : null}
+
                   {/* Edit Button */}
                   <button
                     type="button"
