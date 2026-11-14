@@ -1,0 +1,385 @@
+PROMPT IMPLEMENTASI: MOBILE BOOKING FORM MODAL OVERHAUL
+PROYEK: 37STUDIO PROPER
+FITUR: ADMIN / BOOKING CALENDAR / TAMBAH BOOKING
+TARGET UTAMA: MOBILE RESPONSIVE (REFERENSI IPHONE 16 PRO MAX)
+
+============================================================
+1. PERAN DAN TUJUAN
+============================================================
+Bertindak sebagai Senior Product Designer sekaligus Senior Frontend Engineer yang melakukan audit dan overhaul menyeluruh terhadap modal/form Tambah Booking pada halaman Admin > Booking Calendar di repository 37Studio Proper.
+
+Tujuan pekerjaan adalah menghasilkan pengalaman booking mobile yang premium, modern, ringkas, mudah digunakan, konsisten, dan matang secara visual maupun fungsional. Jangan sekadar mengecilkan layout desktop. Rancang pengalaman mobile dengan hierarki informasi, navigasi, scrolling, input, dan action area yang memang dipikirkan untuk layar sentuh.
+
+Gunakan dua screenshot yang dilampirkan pada prompt ini sebagai referensi visual wajib:
+- Screenshot A: versi modal dengan header dan form yang lebih ringkas. Modal memiliki stepper Customer / Layanan / Slot / Bayar, kartu Layanan Studio, Slot Studio, Pembayaran, serta sticky footer berisi tagihan, Batal, dan Simpan Booking.
+- Screenshot B: versi modal yang lebih lengkap, menampilkan ringkasan kesiapan booking dan estimasi tagihan, bagian Customer yang eksplisit, lalu bagian Layanan Studio dan Slot Studio. Screenshot ini memperlihatkan masalah ketika modal terlalu tinggi, konten terpotong, dan sebagian form berada di bawah sticky footer.
+
+Perhatikan kedua screenshot secara berdampingan. Ambil informasi dan fungsi penting dari keduanya, tetapi jangan menyalin kekurangan layout-nya. Hasil akhir harus menyatukan kelengkapan informasi Screenshot B dengan efisiensi dan keterbacaan Screenshot A.
+
+============================================================
+2. BATASAN SCOPE
+============================================================
+Fokus utama hanya pada modal / drawer Tambah Booking di halaman Admin Booking Calendar ketika viewport mobile.
+
+- Lakukan audit repository terlebih dahulu untuk menemukan implementasi aktual modal, komponen form, state, validasi, pricing, slot availability, dan alur penyimpanan booking.
+- Ikuti struktur, arsitektur, konvensi, design token, dan pola komponen yang sudah dipakai proyek.
+- Jangan melakukan redesign seluruh halaman Booking Calendar atau halaman admin lain.
+- Jangan mengubah alur bisnis booking, rumus harga, kebijakan pembayaran, skema Firestore, security rules, atau struktur data kecuali benar-benar diperlukan untuk memperbaiki bug yang terkait langsung dengan modal. Perubahan semacam itu harus minimal dan kompatibel.
+- Jangan menghapus field, validasi, status, atau kemampuan yang sudah ada.
+- Jangan membuat mock data untuk menggantikan data aktual.
+- Jangan melakukan migrasi backend atau mengubah arsitektur Firebase.
+- Jangan menambahkan dependency hanya demi dekorasi jika kemampuan serupa sudah tersedia di proyek.
+
+Desktop dan tablet harus tetap berfungsi dan tidak boleh mengalami regresi. Mobile adalah prioritas desain, bukan alasan merusak layout breakpoint lain.
+
+============================================================
+3. ARAH DESAIN VISUAL
+============================================================
+Gunakan arah visual berikut:
+
+PREMIUM STUDIO BOOKING EXPERIENCE
+- Modern, polished, minimal, warm, dan profesional.
+- Pertahankan karakter visual 37Studio Proper: warm ivory / off-white, warm neutral surfaces, dark brown typography, aksen amber/orange untuk primary action, dan teal/emerald untuk status siap/valid.
+- Gunakan design token proyek. Jangan menyebarkan warna hard-coded baru jika token yang sesuai sudah tersedia.
+- Surface berlapis secara halus, border tipis, shadow lembut, radius konsisten, dan pemisahan section yang jelas.
+- Tipografi tegas dengan skala yang teratur. Hindari heading terlalu besar yang memakan tinggi layar.
+- Status, label, input, helper text, dan nominal harus memiliki kontras dan hirarki yang jelas.
+- Hindari efek glassmorphism berlebihan, gradient berisik, ornament yang tidak memiliki fungsi, card bersarang tanpa alasan, atau whitespace yang tidak proporsional.
+- Gunakan animasi seperlunya: pendek, ringan, dan tidak mengganggu. Hormati prefers-reduced-motion.
+
+Jangan mengejar tampilan futuristik dengan mengorbankan keterbacaan dan kecepatan input. Modal ini adalah alat operasional yang dipakai untuk memasukkan booking, bukan poster promosi.
+
+============================================================
+4. STRUKTUR MODAL MOBILE YANG DIHARAPKAN
+============================================================
+Rancang modal sebagai mobile bottom sheet / full-height sheet yang adaptif. Pilih pola yang paling sesuai dengan arsitektur modal proyek, tetapi pastikan pengalaman pada perangkat kecil tetap nyaman.
+
+A. SHEET CONTAINER
+- Lebar memenuhi viewport mobile dengan margin horizontal yang proporsional bila diperlukan.
+- Tinggi memanfaatkan viewport dinamis secara aman: pertimbangkan 100dvh dan fallback yang kompatibel.
+- Terapkan safe-area inset untuk perangkat dengan notch dan home indicator.
+- Radius bagian atas konsisten dan tidak berlebihan.
+- Background halaman di belakang modal diberi scrim yang cukup untuk memisahkan fokus.
+- Pastikan modal tidak tertutup browser chrome, keyboard, atau safe area.
+- Body halaman di belakang modal tidak boleh ikut scroll saat modal terbuka.
+- Modal harus memiliki batas scroll internal yang jelas. Jangan membuat seluruh halaman di belakang ikut bergerak.
+
+B. HEADER STICKY
+- Drag handle kecil dan tidak mendominasi.
+- Eyebrow ringkas, misalnya "BOOKING BARU".
+- Judul utama "Tambah Booking" dengan ukuran yang proporsional.
+- Tombol close yang jelas, memiliki accessible name, dan touch target memadai.
+- Header tetap terlihat ketika konten form di-scroll.
+- Jangan menumpuk terlalu banyak informasi di header.
+
+C. PROGRESS / STEP NAVIGATION
+- Pertahankan tahapan bisnis yang ada: Customer, Layanan, Slot, dan Bayar.
+- Buat stepper adaptif untuk lebar mobile. Jangan memaksa semua label panjang pada satu baris jika menjadi sempit.
+- Tampilkan tahap aktif, tahap selesai, dan tahap yang belum dikerjakan dengan jelas.
+- Stepper harus benar-benar berfungsi untuk navigasi bila flow proyek saat ini mendukungnya. Jangan membuat elemen yang tampak interaktif tetapi tidak melakukan apa-apa.
+- Bila form tetap satu halaman, stepper dapat menjadi progress navigator yang memindahkan fokus ke section terkait.
+- Indikator progress tidak boleh memberikan status selesai palsu. Status harus berasal dari validasi data aktual.
+
+D. RINGKASAN KESIAPAN DAN TAGIHAN
+- Evaluasi informasi "Kesiapan Booking" dan "Estimasi Tagihan" dari Screenshot B.
+- Pertahankan informasi ini, tetapi desain ulang menjadi ringkasan yang compact dan tidak menghabiskan terlalu banyak tinggi layar.
+- Tampilkan progress validasi aktual, misalnya 3/4, beserta keterangan tahap yang belum lengkap jika memang tersedia.
+- Tampilkan estimasi total/tagihan yang diperbarui secara real-time dari data form dan pricing logic yang sudah ada.
+- Hindari teks terpotong seperti "1 langkah belum ...". Gunakan copy ringkas yang tetap utuh atau detail yang dapat diakses melalui komponen yang tepat.
+- Ringkasan dapat dibuat compact, collapsible, atau ditempatkan di area yang tidak mengganggu input. Tentukan melalui audit usability.
+
+E. FORM SECTIONS
+Gunakan section yang konsisten, mudah dipindai, dan tidak terlalu banyak dekorasi.
+
+1. CUSTOMER
+- Nama customer (wajib).
+- Nama band / project (opsional jika aturan bisnis saat ini memang opsional).
+- No. HP (wajib).
+- Tampilkan label dan required marker secara konsisten.
+- Placeholder membantu pengguna, bukan menggantikan label.
+- Input tidak boleh terlalu rapat atau menyebabkan teks terpotong.
+- Terapkan input type, autocomplete, input mode, dan format nomor telepon yang sesuai tanpa mengubah nilai data secara keliru.
+
+2. LAYANAN STUDIO
+- Pilihan paket.
+- Tipe session seperti Rehearsal, Recording, Mixing/Mastering, atau opsi aktual yang tersedia di sistem.
+- Pilihan harus mencerminkan data konfigurasi aktual.
+- Pastikan dropdown/popover tidak terpotong oleh overflow ancestor, tidak muncul di belakang card/modal, dan tetap dapat digunakan saat keyboard terbuka.
+- Untuk mobile, pertimbangkan bottom sheet picker atau native-friendly picker jika lebih stabil dan konsisten dengan dependency proyek.
+- Tampilkan harga atau ringkasan pilihan bila memang sudah didukung logic proyek.
+
+3. SLOT STUDIO
+- Tanggal.
+- Jam mulai.
+- Durasi.
+- Informasi ketersediaan slot dan konflik booking bila tersedia.
+- Perubahan tanggal, jam mulai, durasi, atau layanan harus tetap menjalankan perhitungan ulang slot dan harga sebagaimana behavior yang berlaku saat ini.
+- Tampilkan pilihan waktu dengan touch target yang nyaman.
+- Jangan biarkan date picker/time picker keluar dari viewport atau tertutup footer.
+- Beri state loading, unavailable, selected, dan error secara jelas jika state tersebut ada.
+
+4. PEMBAYARAN
+- Payment status dengan pilihan yang benar-benar tersedia pada aplikasi.
+- Jangan mengasumsikan status default atau mengubah kebijakan DP/lunas/pending.
+- Jelaskan informasi pembayaran secara ringkas dan konsisten.
+
+Setiap section perlu memiliki heading, optional subtitle/status, dan spacing yang konsisten. Hindari mengulang status "siap" jika tidak memberi informasi baru.
+
+F. STICKY FOOTER / ACTION BAR
+- Footer selalu terlihat pada bagian bawah sheet selama form di-scroll.
+- Sertakan ringkasan tagihan/estimasi yang terbaca jelas.
+- Sediakan tombol Batal dan Simpan Booking.
+- Primary action harus paling menonjol, tetapi kedua tombol tetap memiliki ukuran sentuh yang nyaman.
+- Footer memiliki background solid/opaque yang cukup agar konten di belakang tidak mengganggu keterbacaan.
+- Tambahkan safe-area inset bawah.
+- Beri padding bawah dan scroll content padding yang cukup agar field terakhir tidak pernah tertutup footer.
+- Simpan Booking harus menampilkan loading/disabled state saat proses berlangsung dan mencegah double submission.
+- Tombol simpan harus mengikuti validasi aktual. Jika data belum valid, tampilkan error dekat field terkait dan/atau ringkasan yang jelas.
+- Jangan menghilangkan tombol atau memindahkannya ke luar viewport pada perangkat kecil.
+
+============================================================
+5. PERILAKU RESPONSIVE DAN SCROLLING
+============================================================
+Prioritaskan breakpoint mobile nyata, bukan hanya breakpoint desktop yang diperkecil.
+
+- Uji layout pada lebar 320px, 360px, 375px, 390px, 402px, 430px, dan viewport referensi iPhone 16 Pro Max.
+- Pastikan tidak ada horizontal overflow.
+- Konten form harus memiliki satu area scroll utama yang konsisten.
+- Header dan footer sticky tidak boleh menutupi konten.
+- Gunakan perhitungan tinggi yang aman untuk mobile browser, termasuk dynamic viewport units bila didukung.
+- Tangani virtual keyboard: ketika input fokus, field aktif harus tetap terlihat dan footer tidak boleh menutupi field atau tombol penting.
+- Hindari scroll trap dan nested scrolling yang membingungkan.
+- Ketika berpindah step atau membuka picker, pastikan posisi scroll dan fokus tetap masuk akal.
+- Saat modal ditutup, pulihkan fokus ke tombol pemicu modal.
+- Pastikan backdrop click, Escape, close button, dan perilaku dismiss sesuai standar modal yang telah diterapkan aplikasi. Jangan menutup modal tanpa sengaja ketika pengguna berinteraksi dengan konten di dalamnya.
+
+============================================================
+6. DROPDOWN, POPOVER, DATE/TIME PICKER
+============================================================
+Salah satu risiko visual pada modal mobile adalah daftar opsi muncul di belakang panel, terpotong, atau tidak dapat di-scroll.
+
+Audit semua kontrol di dalam booking form, termasuk tetapi tidak terbatas pada:
+- Paket.
+- Tipe session.
+- Tanggal.
+- Jam mulai.
+- Durasi.
+- Payment status.
+
+Persyaratan:
+- Periksa stacking context, z-index, overflow, transform, isolation, portal, dan positioning ancestor.
+- Pastikan menu opsi selalu tampil di atas surface yang benar dan tidak terpotong.
+- Pastikan opsi dapat di-scroll dan dipilih dengan jari.
+- Pastikan menu tidak keluar dari viewport.
+- Pastikan state selected, disabled, loading, empty, dan error terbaca.
+- Gunakan portal bila memang dibutuhkan dan kompatibel dengan modal focus management.
+- Jangan menyelesaikan masalah hanya dengan memberi z-index sangat besar secara acak.
+- Cegah konflik antara nested dialog, popover, dan parent modal.
+
+============================================================
+7. DEPENDENCY DAN IMPLEMENTASI TEKNOLOGI
+============================================================
+Gunakan dependency modern dan versi stabil terbaru yang kompatibel dengan stack proyek pada saat implementasi.
+
+WAJIB SEBELUM MENAMBAH / MEMPERBARUI DEPENDENCY:
+1. Audit package.json dan lockfile.
+2. Identifikasi versi React, Vite, TypeScript/JavaScript, Tailwind, komponen UI, form, date picker, icon, dan modal yang sudah digunakan.
+3. Periksa versi stable terbaru dari sumber resmi package registry dan dokumentasi resmi masing-masing library pada tanggal implementasi.
+4. Periksa peer dependencies, engine requirement, kompatibilitas bundler, dan breaking changes.
+5. Hindari versi alpha, beta, canary, rc, nightly, atau prerelease kecuali proyek memang secara eksplisit menggunakannya.
+6. Jangan meng-upgrade seluruh dependency proyek hanya untuk satu modal.
+7. Jangan memasang library baru jika dependency yang ada sudah dapat memenuhi kebutuhan dengan baik.
+8. Jika perlu menambah dependency, jelaskan alasan teknis dan gunakan versi stable yang kompatibel. Perbarui lockfile secara konsisten.
+
+Gunakan stack/library yang sudah menjadi arah UI proyek jika memang sudah terpasang dan kompatibel, antara lain:
+- React.
+- shadcn/ui dan Base UI bila sudah menjadi bagian dari implementasi aktif.
+- Tailwind CSS v4 bila sudah aktif di proyek.
+- Motion untuk animasi ringan bila sudah digunakan.
+- Lucide React untuk icon.
+- React Hook Form dan Zod bila sudah menjadi pola form aktif.
+
+Daftar di atas bukan perintah untuk memasang semuanya. Audit dulu. Jangan mencampur dua sistem komponen untuk fungsi sama tanpa alasan kuat. Jangan mengganti komponen modal aktif hanya karena library lain sedang populer.
+
+Gunakan primitive modal/dialog yang memiliki pengelolaan fokus, keyboard navigation, aria semantics, dan focus trapping yang benar. Jika primitive yang ada sudah memenuhi kebutuhan, pertahankan dan perbaiki implementasinya.
+
+============================================================
+8. ACCESSIBILITY DAN TOUCH UX
+============================================================
+- Semua input memiliki label yang benar-benar terhubung.
+- Gunakan semantic button, form, dialog, heading, dan field grouping.
+- Modal harus memiliki accessible name dan deskripsi yang sesuai.
+- Fokus keyboard harus terperangkap di modal ketika terbuka dan dipulihkan ketika modal ditutup.
+- Tab order harus masuk akal.
+- Escape menangani dismiss sesuai kebijakan modal.
+- Indikator fokus terlihat jelas.
+- Kontras teks dan status cukup.
+- Jangan mengandalkan warna saja untuk membedakan status.
+- Icon-only button wajib memiliki accessible label.
+- Target sentuh ideal minimal 44x44 CSS px, dengan spacing yang menghindari salah tap.
+- Input font-size mobile harus mencegah auto-zoom browser iOS, tanpa mengorbankan hierarki tipografi.
+- Hormati prefers-reduced-motion.
+- Validasi harus memberikan pesan yang jelas dan terhubung dengan field terkait.
+
+============================================================
+9. DATA DAN BUSINESS LOGIC WAJIB TETAP UTUH
+============================================================
+Overhaul UI tidak boleh merusak fungsi booking.
+
+Pastikan seluruh perilaku berikut tetap bekerja sesuai implementasi aktual:
+- Create booking.
+- Pilihan customer dan band/project.
+- Pilihan paket dan tipe session.
+- Perhitungan durasi dan slot.
+- Deteksi konflik / ketersediaan studio.
+- Perhitungan tarif, subtotal, DP, sisa tagihan, atau total bila fitur tersebut tersedia.
+- Payment status.
+- Validasi field wajib.
+- Penyimpanan ke Firebase/Firestore melalui repository/service yang saat ini dipakai.
+- Error handling dan feedback keberhasilan.
+- Pencegahan double submit.
+- Refresh/update kalender setelah booking berhasil.
+- Penutupan modal dan reset state sesuai perilaku yang semestinya.
+
+Jangan memindahkan business logic ke komponen presentasi jika arsitektur proyek memisahkannya. Jangan menduplikasi rumus harga atau aturan availability di UI.
+
+============================================================
+10. DETAIL KUALITAS VISUAL YANG HARUS DIBERESKAN
+============================================================
+Periksa dan perbaiki secara eksplisit:
+- Heading terlalu besar atau memakan ruang berlebihan.
+- Stepper yang terlalu padat atau terpotong.
+- Ringkasan kesiapan yang membuat modal semakin tinggi.
+- Card bersarang yang tidak diperlukan.
+- Padding kiri/kanan dan vertikal yang tidak konsisten.
+- Jarak antar-label, input, dan section.
+- Input dengan tinggi atau radius yang tidak konsisten.
+- Placeholder dan helper text yang kurang kontras.
+- Footer yang menutupi field terakhir.
+- Dropdown di belakang modal atau terpotong.
+- Ikon yang tidak sejajar secara vertikal.
+- Status hijau yang terlalu sering diulang.
+- Teks yang terpotong atau ellipsis tanpa alasan.
+- Nominal tagihan yang tidak memiliki hirarki visual jelas.
+- Area sentuh yang terlalu kecil.
+- Layout yang terlalu tinggi dan membutuhkan scrolling berlebihan.
+
+Gunakan ukuran yang proporsional terhadap lebar layar. Jangan mengatasi masalah dengan mengecilkan semua font, padding, atau kontrol sampai sulit digunakan.
+
+============================================================
+11. ALUR KERJA IMPLEMENTASI
+============================================================
+Lakukan pekerjaan dalam urutan berikut:
+
+FASE A - REPOSITORY AUDIT
+- Periksa struktur folder dan entry point halaman Admin Booking Calendar.
+- Temukan modal Tambah Booking, semua subkomponen, hooks, state, schema, validation, pricing, slot availability, dan service/repository terkait.
+- Catat dependency UI/form/date/time/modal yang sudah terpasang.
+- Temukan breakpoint, design token, dan pola responsive yang sedang dipakai.
+- Identifikasi penyebab spesifik masalah pada kedua screenshot.
+
+FASE B - DESIGN / IMPLEMENTATION PLAN
+- Tentukan struktur mobile sheet yang lebih efisien.
+- Tentukan bagian mana yang sticky dan mana yang scrollable.
+- Tentukan komposisi stepper, ringkasan booking, form sections, dan footer.
+- Pastikan seluruh field dan informasi penting dari implementasi sekarang tetap ada.
+- Hindari menambah abstraksi yang tidak dibutuhkan.
+
+FASE C - IMPLEMENTATION
+- Implementasikan redesign mobile secara menyeluruh.
+- Pertahankan desktop/tablet behavior.
+- Perbaiki dropdown, popover, date/time picker, stacking context, dan keyboard interaction.
+- Gunakan token dan komponen existing.
+- Pastikan semua action dan validation benar-benar terhubung ke state dan business logic.
+- Pastikan tidak ada placeholder handler, dead control, mock value, atau unfinished TODO.
+
+FASE D - TARGETED VALIDATION
+Lakukan validasi minimum tetapi terarah. Jangan menjalankan test suite besar berulang kali tanpa alasan.
+
+Checklist minimal:
+1. Build production berhasil.
+2. Modal dapat dibuka dan ditutup.
+3. Customer fields dapat diisi dan divalidasi.
+4. Dropdown paket, tipe session, jam, durasi, dan payment status dapat dibuka serta dipilih.
+5. Date/time picker tidak terpotong dan berfungsi.
+6. Perubahan layanan/tanggal/durasi memperbarui slot dan estimasi tagihan sesuai logic aplikasi.
+7. Footer tidak menutupi field terakhir.
+8. Keyboard mobile tidak menutupi field yang aktif.
+9. Submit booking berhasil dan tidak terjadi double submission.
+10. Kalender ter-update setelah booking disimpan.
+11. Desktop/tablet tidak mengalami regresi.
+12. Tidak ada horizontal overflow pada lebar mobile yang ditentukan.
+
+Jika browser/device automation tersedia, lakukan inspeksi visual pada ukuran 320px, 375px, 390px, 430px, dan iPhone 16 Pro Max. Cek juga viewport pendek dan keyboard terbuka. Jika tidak tersedia, jangan mengklaim pengujian visual telah dilakukan.
+
+============================================================
+12. ACCEPTANCE CRITERIA
+============================================================
+Pekerjaan dianggap selesai jika seluruh poin berikut terpenuhi:
+
+VISUAL
+- Modal tampak premium, bersih, konsisten, dan matang.
+- Tampilan mobile dirancang khusus, bukan sekadar responsive shrink.
+- Semua section dapat dipindai dengan cepat.
+- Hierarki judul, progress, input, status, nominal, dan action jelas.
+- Tidak ada overlapping, clipping, text overflow, atau padding tidak proporsional.
+- Sticky header/footer bekerja tanpa menutupi form.
+- Ringkasan kesiapan dan tagihan tetap berguna tetapi compact.
+
+INTERACTION
+- Semua dropdown dan picker tampil di layer yang tepat dan dapat digunakan.
+- Tidak ada scroll trap.
+- Keyboard mobile tidak merusak layout.
+- Semua touch target nyaman.
+- Accessibility dasar modal dan form terpenuhi.
+
+FUNCTIONAL
+- Business logic booking tetap utuh.
+- Validasi dan perhitungan harga menggunakan logic aktual.
+- Booking dapat disimpan dengan benar.
+- Kalender dan status pembayaran tetap sinkron.
+- Tidak ada regresi pada desktop/tablet.
+
+ENGINEERING
+- Dependency baru hanya ditambahkan bila dibutuhkan dan telah diperiksa kompatibilitasnya.
+- Tidak ada upgrade dependency massal yang tidak terkait.
+- Tidak ada error build.
+- Tidak ada code yang menggantung, dead state, atau placeholder implementasi.
+- Perubahan scope tetap fokus pada booking form modal.
+
+============================================================
+13. OUTPUT / LAPORAN PENYELESAIAN
+============================================================
+Setelah implementasi selesai, berikan laporan:
+1. Ringkasan masalah yang ditemukan dari implementasi lama.
+2. File yang diubah dan tujuan tiap perubahan.
+3. Perubahan UX dan visual utama.
+4. Dependency yang digunakan, versi yang dipilih, dan alasan bila ada perubahan.
+5. Validasi yang benar-benar dijalankan beserta hasilnya.
+6. Batasan yang belum dapat diverifikasi.
+7. Screenshot hasil akhir mobile dan desktop bila environment mendukung.
+8. Command PowerShell untuk pengguna melakukan git pull dan verifikasi lokal.
+
+PENTING UNTUK WORKFLOW:
+- Implementasikan perubahan kode di repository/branch kerja yang sesuai.
+- Jangan merge pull request tanpa izin eksplisit pengguna.
+- Jangan mengklaim test berhasil bila tidak benar-benar dijalankan.
+- Jika verifikasi lokal perlu dilakukan pengguna, siapkan command PowerShell yang menyimpan seluruh stdout dan stderr ke satu file log .txt bertimestamp serta mencatat exit code setiap tahap.
+- Jangan mengubah file atau area lain di luar scope tanpa alasan yang jelas.
+
+============================================================
+14. INSTRUKSI AKHIR
+============================================================
+Lakukan overhaul dengan standar kualitas produk SaaS premium. Jadikan kedua screenshot referensi sebagai bukti visual masalah dan target informasi. Jangan hanya memberi saran atau membuat mockup. Audit code aktual, implementasikan solusi, lalu validasi fungsi utama.
+
+Prioritas tertinggi:
+1. Modal mobile nyaman dipakai pada layar kecil.
+2. Header dan footer sticky tidak menutupi konten.
+3. Seluruh field penting tetap tersedia dan mudah diisi.
+4. Dropdown/date/time picker tidak terpotong atau tertutup layer lain.
+5. Alur booking, pricing, availability, dan penyimpanan tetap akurat.
+6. Visual bersih, premium, konsisten, dan bebas overlapping.
+
+Jangan mengubah fitur menjadi wizard multi-halaman yang memaksa banyak klik apabila struktur satu halaman dengan section navigator lebih efisien. Tentukan solusi berdasarkan audit implementasi dan usability, bukan preferensi pribadi.
+
+Mulai dari audit repository, lanjutkan langsung ke implementasi dalam scope yang ditentukan, dan laporkan hasil secara jujur.
