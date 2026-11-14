@@ -50,6 +50,8 @@
 .client-portal-loading-spinner { color: var(--client-accent); animation: client-spin 700ms linear infinite; }
 
 .client-portal-page .client-portal-header {
+  grid-column: 1;
+  grid-row: 1;
   position: sticky;
   inset: auto;
   top: 12px;
@@ -150,19 +152,28 @@
 .client-desktop-nav button b { margin-left: auto; min-width: 19px; height: 19px; display: grid; place-items: center; border-radius: var(--studio-radius-full); background: var(--client-accent); color: var(--studio-text-inverse); font-size: 8px; }
 
 .client-header-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 8px;
+  gap: 10px 8px;
   margin-top: auto;
   padding: 17px 5px 0;
   border-top: 1px solid var(--client-line);
 }
 
-.client-header-profile { min-width: 0; flex: 1; display: flex; align-items: center; gap: 9px; }
+.client-header-profile { grid-column: 1 / -1; order: -1; min-width: 0; display: flex; align-items: center; gap: 9px; }
 .client-header-profile > span { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: var(--studio-radius-object); background: var(--auth-bg-soft); color: var(--auth-text-main); font-size: 12px; font-weight: 850; }
 .client-header-profile > div { min-width: 0; display: grid; gap: 2px; }
 .client-header-profile strong { overflow: hidden; color: var(--auth-text-strong); font-size: 12px; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
 .client-header-profile small { color: var(--auth-text-subtle); font-size: 10px; }
+.client-header-actions > .client-notifications-trigger,
+.client-header-actions > .client-theme-toggle,
+.client-header-actions > .client-logout-button {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+}
 .client-portal-page .client-theme-toggle,
 .client-portal-page .client-logout-button {
   width: 40px;
@@ -202,8 +213,11 @@
 }
 
 .client-portal-main {
+  grid-column: 2;
+  grid-row: 1;
   position: relative;
   width: 100%;
+  min-width: 0;
   max-width: none;
   min-height: calc(100dvh - 24px);
   margin: 0;
@@ -521,14 +535,14 @@ button.client-booking-slot { cursor: pointer; }
 .client-account-secondary-column { display: grid; align-content: start; gap: 18px; }
 .client-account-profile { min-height: 128px; display: flex; align-items: center; gap: 17px; border: 1px solid var(--studio-edge-soft); border-radius: var(--studio-radius-surface); background: var(--studio-surface-1); color: var(--studio-text-primary); padding: 22px; box-shadow: var(--studio-shadow-contact); }
 .client-account-avatar { width: 60px; height: 60px; display: grid; place-items: center; border: 1px solid var(--studio-edge-strong); border-radius: var(--studio-radius-object); background: var(--studio-accent-soft); color: var(--studio-accent); }
-.client-account-profile > div:last-child { display: grid; gap: 4px; }
+.client-account-profile > div:last-child { min-width: 0; display: grid; gap: 4px; }
 .client-account-profile > div:last-child > span { color: var(--studio-accent); font-size: 10px; font-weight: 760; text-transform: uppercase; letter-spacing: .06em; }
-.client-account-profile > div:last-child > strong { color: var(--studio-text-primary); font-size: clamp(1.3rem,2.4vw,1.8rem); font-weight: 740; letter-spacing: -.03em; }
+.client-account-profile > div:last-child > strong { color: var(--studio-text-primary); font-size: clamp(1.3rem,2.4vw,1.8rem); font-weight: 740; letter-spacing: -.03em; overflow-wrap: anywhere; }
 .client-account-profile > div:last-child > small { color: var(--studio-text-tertiary); font-size: 12px; }
 .client-account-contact { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); border-top: 1px solid var(--client-line); border-bottom: 1px solid var(--client-line); }
-.client-account-contact > div { min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 12px 6px; }
+.client-account-contact > div { min-width: 0; min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 12px 6px; }
 .client-account-contact > div + div { border-left: 1px solid var(--client-line); padding-left: 18px; }
-.client-account-contact > div > svg { color: var(--client-accent); }
+.client-account-contact > div > svg { flex: 0 0 auto; color: var(--client-accent); }
 .client-account-contact span { min-width: 0; display: grid; gap: 3px; }
 .client-account-contact small { color: var(--auth-text-subtle); font-size: 10px; text-transform: uppercase; }
 .client-account-contact strong { overflow: hidden; color: var(--auth-text-strong); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
@@ -690,6 +704,7 @@ button.client-booking-slot { cursor: pointer; }
 @media (max-width: 1120px) {
   .client-home-grid,
   .client-home-lower-grid { grid-template-columns: minmax(0,1.35fr) minmax(230px,.65fr); }
+  .client-account-layout { grid-template-columns: 1fr; }
   .client-bookings-overview { align-items: flex-start; }
   .client-bookings-overview-stats { display: grid; grid-template-columns: repeat(3,1fr); }
   .client-bookings-overview-stats > div { min-width: 86px; padding: 9px; }

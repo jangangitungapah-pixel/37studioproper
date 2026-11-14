@@ -75,7 +75,6 @@ import {
   paymentProofRepository,
 } from '../services/paymentProofRepository.js';
 import { businessHours, statusFilters } from '../constants/scheduleConfig.js';
-import StudioToaster from '../components/ui/StudioToaster.jsx';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
 import ClientDashboardTab from '../components/client/ClientDashboardTab.jsx';
 import ClientCalendarTab from '../components/client/ClientCalendarTab.jsx';
@@ -1544,7 +1543,6 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   return (
     <div className="client-portal-page theme-container">
-      <StudioToaster />
       <a className="client-portal-skip-link" href="#client-portal-main">
         Lewati navigasi client
       </a>
