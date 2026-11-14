@@ -16,11 +16,17 @@ const settings = read('src/pages/admin/SettingsPage.jsx');
 const accountRoleRepository = read('src/services/accountRoleRepository.js');
 const dangerWorker = read('workers/admin-operations-worker/src/domain/danger.js');
 const bookingWorker = read('workers/admin-operations-worker/src/domain/bookings.js');
+const bookingOperationsRepository = read('src/services/bookingOperationsRepository.js');
 const galleryWorker = read('workers/admin-operations-worker/src/domain/gallery.js');
 const workerIndex = read('workers/admin-operations-worker/src/index.js');
 const bookingSessionsWorker = read('workers/admin-operations-worker/src/domain/bookingSessions.js');
 const dailyClosingWorker = read('workers/admin-operations-worker/src/domain/dailyClosings.js');
 const adminBookingRepository = read('src/services/adminBookingRepository.js');
+
+const bookingCommunicationRepository = read('src/services/bookingCommunicationRepository.js');
+const bookingDetailDrawer = read('src/components/booking/BookingDetailDrawer.jsx');
+const publicBookingPage = read('src/pages/PublicBookingPage.jsx');
+const adminPage = read('src/pages/AdminPage.jsx');
 const workerHttp = read('workers/admin-operations-worker/src/lib/http.js');
 const workerAuth = read('workers/admin-operations-worker/src/lib/auth.js');
 const inventoryWorker = read('workers/admin-operations-worker/src/domain/inventory.js');
@@ -99,11 +105,53 @@ assert.match(
 assert.equal(galleryWorker.includes("studio37/gallery/"), true);
 assert.equal(galleryWorker.includes("permanentDeleteStatus: 'deleting'"), true);
 assert.equal(bookingWorker.includes("type: 'manual-booking-create'"), true);
+assert.match(
+  bookingOperationsRepository,
+  /initialPaymentIntent: payment/,
+  'A pending initial payment must be durably stored as an intent on the booking.',
+);
+assert.match(
+  bookingOperationsRepository,
+  /current\.initialPaymentLedgerStatus === 'pending' && current\.initialPaymentIntent/,
+  'Editing a pending booking must recover its initial payment ledger after a page reload.',
+);
+assert.match(
+  rules,
+  /payment == resource\.data\.initialPaymentIntent/,
+  'Rules must bind the posted payment history to the immutable initial payment intent.',
+);
 assert.equal(bookingSessionsWorker.includes('commitIdempotentOperation'), true);
 assert.equal(bookingSessionsWorker.includes("'bookingSessionEvents'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/bookings/sessions/action'"), true);
 assert.match(workerIndex, /pathname === '\/v1\/bookings\/sessions\/action'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'schedule' \}\);[\s\S]*?body = await readJson\(request\);/);
-assert.match(rules, /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && hasPermission\('schedule'\);[\s\S]*?allow create, update, delete: if false;/);
+assert.match(
+  rules,
+  /match \/bookingSessionEvents\/\{eventId\} \{[\s\S]*?allow read: if isApprovedScheduleAdmin\(\);[\s\S]*?allow create: if isApprovedScheduleAdmin\(\)[\s\S]*?bookingSessionEventReferencesBookingAfter\(eventId\);[\s\S]*?allow update, delete: if false;/,
+  'Session history must be schedule-admin readable, paired with its booking update, and append-only.',
+);
+assert.match(
+  rules,
+  /match \/bookingScheduleDays\/\{dateId\} \{[\s\S]*?bookingDocumentChangesAfter\(request\.resource\.data\.lastBookingId, request\.resource\.data\.updatedAt\)/,
+  'Schedule revision markers must accompany a booking write.',
+);
+assert.match(
+  rules,
+  /match \/clientCalendarSlots\/\{slotId\} \{[\s\S]*?allow read: if true;[\s\S]*?bookingCalendarSlotMatchesAfter/,
+  'Public calendar slots must be generic and match the paired booking state.',
+);
+assert.match(
+  rules,
+  /function adminBookingUpdateAllowed\(bookingId\)[\s\S]*?changed\.hasAny\(\['initialPaymentLedgerStatus'\]\)[\s\S]*?adminBookingInitialPaymentLedgerUpdate\(bookingId\)[\s\S]*?changed\.hasAny\(\[[\s\S]*?'lastFinanceAction'[\s\S]*?\]\)[\s\S]*?adminBookingFinanceUpdateAllowed\(bookingId\)[\s\S]*?isApprovedScheduleAdmin\(\) && adminBookingOperationalUpdate\(bookingId\)/,
+  'Initial-payment ledger writes must be routed before ordinary finance mutations, with no duplicate finance evaluation.',
+);
+const operationalStart = rules.indexOf('function adminBookingOperationalUpdate(bookingId)');
+const operationalEnd = rules.indexOf('function adminBookingUpdateAllowed(bookingId)', operationalStart);
+assert.ok(operationalStart >= 0 && operationalEnd > operationalStart);
+assert.doesNotMatch(
+  rules.slice(operationalStart, operationalEnd),
+  /adminBookingFinanceUpdateAllowed/,
+  'Operational booking validation must not repeat the finance validator.',
+);
 
 assert.match(
   workerIndex,
@@ -127,12 +175,38 @@ assert.equal(dailyClosingWorker.includes('Asia/Jakarta'), true);
 assert.equal(dailyClosingWorker.includes('requiredSignedMoney'), true, 'Net digital reconciliation must support negative refunds and outflows.');
 assert.equal(dailyClosingWorker.includes('commitIdempotentOperation'), true);
 assert.match(rules, /function bookkeepingBusinessDateOpen\(data\)[\s\S]*?cashClosingSessions[\s\S]*?status != 'closed'/);
-assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && canAccessBookkeepingData\(\);[\s\S]*?allow create, update, delete: if false;/);
-assert.equal(rules.includes('bookkeepingBusinessDateOpen(request.resource.data)'), true);
-assert.equal(rules.includes('bookkeepingBusinessDateOpen(resource.data)'), true);
+assert.match(rules, /match \/cashClosingSessions\/\{closingId\} \{[\s\S]*?allow read: if isApproved\(\) && \(canAccessBookkeepingData\(\) \|\| hasPermission\('billing'\)\);[\s\S]*?allow create, update: if cashClosingSessionWriteAllowed\(closingId, request\.resource\.data\);[\s\S]*?allow delete: if false;/);
+assert.match(rules, /function cashClosingSessionWriteAllowed\(closingId, data\)[\s\S]*?financeActivityFenceUpdateAllowed\(closingId\)[\s\S]*?procurementPaymentFenceUpdateAllowed\(closingId\)[\s\S]*?dailyClosingSessionTransitionAllowed\(closingId\)/);
+assert.match(rules, /match \/cashClosingEvents\/\{eventId\} \{[\s\S]*?allow read: if isApproved\(\) && \(canAccessBookkeepingData\(\) \|\| hasPermission\('billing'\)\);[\s\S]*?allow create: if hasApprovedAdminPermission\('bookkeeping'\)[\s\S]*?allow update, delete: if false;/);
+assert.equal(rules.includes('bookkeepingBusinessDateOpen(data)'), true,
+  'Manual journal create must reject writes against a closed business date.');
+assert.match(
+  rules,
+  /function manualBookkeepingFenceUpdateAllowed\(closingId\)[\s\S]*?validManualBookkeepingActivityFence\(data, closingId\)[\s\S]*?status != 'closed'/,
+  'Manual journal updates/deletes must be paired with an open activity fence.',
+);
 
-assert.equal(adminBookingRepository.includes("'sessionStatus', 'sessionState', 'checkedInAt'"), true);
+assert.equal(adminBookingRepository.includes('createCanonicalManualBooking'), false);
+assert.equal(adminBookingRepository.includes('updateCanonicalManualBooking'), false);
+assert.equal(adminBookingRepository.includes('syncClientCalendarSlotsFromBookings'), false);
+assert.match(
+  bookingOperationsRepository,
+  /const EDITABLE_BOOKING_FIELDS = new Set\(\[[\s\S]*?'title',?\s*\n\]\);/,
+  'Firebase booking updates must use a narrow editable-field allow-list.',
+);
+assert.equal(bookingOperationsRepository.includes('runIdempotentFirestoreTransaction'), true);
+assert.equal(bookingOperationsRepository.includes('readCompletedOperation'), true);
+assert.equal(bookingOperationsRepository.includes('createRepositoryOperationId'), true);
+assert.equal(bookingOperationsRepository.includes('MAX_BOOKINGS_PER_DATE = 250'), true);
+assert.equal(bookingOperationsRepository.includes('validateNoShowEligibility'), true);
+assert.equal(bookingCommunicationRepository.includes("import { decideBookingRequest } from './bookingOperationsRepository.js'"), true);
+assert.equal(bookingDetailDrawer.includes("import { recordBookingSessionAction } from '../../services/bookingOperationsRepository.js'"), true);
+assert.equal(publicBookingPage.includes('const calendarStartDate = dateWindow[0]'), true);
+assert.equal(publicBookingPage.includes('const calendarEndDate = dateWindow[6]'), true);
+assert.equal(publicBookingPage.includes('startDate: calendarStartDate'), true);
+assert.equal(publicBookingPage.includes('endDate: calendarEndDate'), true);
+assert.equal(publicBookingPage.includes('limitCount: 500'), true);
+assert.equal(adminPage.includes('syncClientCalendarSlotsFromBookings'), false);
 assert.equal(bookingWorker.includes("'sessionStatus',\n  'sessionType'"), false, 'Generic booking updates must not accept sessionStatus.');
 
 assert.equal(bookingWorker.includes("'bookkeepingEntries'"), true);
@@ -165,9 +239,9 @@ for (const forbidden of [
   assert.equal(billing.includes(forbidden), false, `Billing still performs ${forbidden}.`);
 }
 for (const required of [
-  'recordCanonicalPayment(',
-  'recordCanonicalRefund(',
-  'voidCanonicalInvoice(',
+  'financeRepository.recordPayment(',
+  'financeRepository.recordRefund(',
+  'financeRepository.voidInvoice(',
   'createAdminOperationKey(',
 ]) {
   assert.equal(billing.includes(required), true, `Billing missing ${required}.`);
@@ -175,16 +249,25 @@ for (const required of [
 
 assert.equal(paymentProofRepository.includes('writeBatch('), false);
 assert.equal(paymentProofRepository.includes('updateDoc('), false);
-assert.equal(paymentProofRepository.includes('reviewCanonicalPaymentProof('), true);
+assert.equal(paymentProofRepository.includes('runIdempotentFirestoreTransaction('), true);
+assert.equal(paymentProofRepository.includes('approvePaymentProofDirect('), true);
+assert.equal(paymentProofRepository.includes('rejectPaymentProofDirect('), true);
+assert.equal(paymentProofRepository.includes('reviewCanonicalPaymentProof('), false);
+assert.equal(billing.includes('recordCanonicalPayment('), false);
+assert.equal(billing.includes('recordCanonicalRefund('), false);
+assert.equal(billing.includes('voidCanonicalInvoice('), false);
 assert.equal(
-  inventoryRepository.includes('createInventoryMovement') && billing.length > 0,
+  inventoryRepository.includes('subscribeInventoryItems') &&
+    inventoryRepository.includes('subscribeInventoryMovements') &&
+    !inventoryRepository.includes('export async function createInventoryMovement'),
   true,
-  'Inventory repository compatibility API should remain available while Page owns protected adjustment.',
+  'Inventory repository must retain Firestore read subscriptions without exposing unguarded write helpers.',
 );
 assert.equal(read('src/pages/admin/InventoryPage.jsx').includes('adjustCanonicalInventory'), true);
 const inventoryPage = read('src/pages/admin/InventoryPage.jsx');
 assert.equal(inventoryPage.includes('saveCanonicalInventoryItem'), true);
 assert.equal(inventoryPage.includes('archiveCanonicalInventoryItem'), true);
+assert.equal(inventoryPage.includes("from '../../services/inventoryFirestoreRepository.js'"), true);
 assert.equal(inventoryPage.includes('inventoryRepository.createInventoryMovement('), false);
 assert.equal(inventoryPage.includes('inventoryRepository.createInventoryItem('), false);
 assert.equal(inventoryPage.includes('inventoryRepository.updateInventoryItem('), false);
@@ -192,11 +275,11 @@ assert.equal(workerIndex.includes("pathname === '/v1/inventory/items'"), true);
 assert.equal(workerIndex.includes("pathname === '/v1/inventory/items/archive'"), true);
 assert.equal(inventoryPage.includes('createInventoryMovement('), false, 'No direct movement writes may remain in the inventory page.');
 assert.match(workerIndex, /pathname === '\/v1\/inventory\/items'[\s\S]*?authorize\(env, request, firestore, \{ permission: 'inventory' \}\);[\s\S]*?body = await readJson\(request\);/);
-assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create, update, delete: if false;/);
+assert.match(rules, /match \/inventoryItems\/\{itemId\} \{[\s\S]*?allow create: if inventoryItemCreateAllowed\(itemId\);[\s\S]*?allow update: if inventoryItemUpdateAllowed\(itemId\);[\s\S]*?allow delete: if false;/);
 assert.match(
   rules,
-  /match \/inventoryMovements\/\{movementId\} \{[\s\S]*?allow create, update, delete: if false;/,
-  'Inventory movements must remain server-write-only.',
+  /match \/inventoryMovements\/\{movementId\} \{[\s\S]*?allow create: if inventoryMovementCreateAllowed\(movementId\);[\s\S]*?allow update, delete: if false;/,
+  'Inventory movements must remain append-only with a paired operation gate.',
 );
 assert.match(
   inventoryWorker,
@@ -213,6 +296,15 @@ assert.match(
   /firestore\.setWrite\('inventoryItems', itemId, nextItem, \{ updateTime: itemDocument\.updateTime \}\)/,
   'Canonical stock adjustments must use an update-time precondition.',
 );
+const inventoryDirectRepository = read('src/services/inventoryFirestoreRepository.js');
+assert.match(inventoryDirectRepository, /runIdempotentFirestoreTransaction\(/);
+assert.match(inventoryDirectRepository, /item\.lastMovementSnapshot = movement;[\s\S]*?transaction\.set\(itemRef, item\);/);
+assert.match(inventoryDirectRepository, /async function ensureInventoryMovement\([\s\S]*?await setDoc\(movementRef, movement\)/);
+assert.doesNotMatch(inventoryDirectRepository, /transaction\.set\(movementRef, movement\)/);
+assert.match(inventoryDirectRepository, /lastOperationAction: action/);
+assert.match(inventoryDirectRepository, /lastMovementId: movementId/);
+assert.match(inventoryDirectRepository, /lastMovementSnapshot: \{\}/);
+assert.match(inventoryDirectRepository, /assertNoActiveMaintenance\(transaction, itemId\)/);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes('commitIdempotentOperation'), true);
 assert.equal(read('workers/admin-operations-worker/src/domain/inventory.js').includes("'inventoryMovements'"), true);
 assert.equal(galleryRepository.includes('permanentlyDeleteGalleryItem'), true);

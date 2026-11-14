@@ -10,9 +10,8 @@ const readFileSync = (...args) => {
 const pageSource = readFileSync(resolve('src/pages/admin/InventoryPage.jsx'), 'utf8');
 const cssSource = readFileSync(resolve('src/styles/modules/inventory.css'), 'utf8');
 const repositorySource = readFileSync(resolve('src/services/inventoryRepository.js'), 'utf8');
-const operationsRepositorySource = readFileSync(resolve('src/services/adminOperationsRepository.js'), 'utf8');
+const directRepositorySource = readFileSync(resolve('src/services/inventoryFirestoreRepository.js'), 'utf8');
 const inventoryWorkerSource = readFileSync(resolve('workers/admin-operations-worker/src/domain/inventory.js'), 'utf8');
-const inventoryWorkerRouteSource = readFileSync(resolve('workers/admin-operations-worker/src/index.js'), 'utf8');
 const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
 for (const required of [
@@ -46,10 +45,10 @@ for (const required of [
 for (const required of [
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'saveCanonicalInventoryItem({',
-  'archiveCanonicalInventoryItem({',
+  'saveCanonicalInventoryItem(input, requestId)',
+  'archiveCanonicalInventoryItem(input, requestId)',
   "adjustment.mode === 'in'",
-  'adjustCanonicalInventory({',
+  'adjustCanonicalInventory(input, requestId)',
   'adjustingItemIdsRef',
   'Alasan adjustment wajib diisi minimal 4 karakter.',
   'buildInventoryCsv',
@@ -64,8 +63,8 @@ for (const required of [
 
 const inventoryAdjustmentStart = inventoryWorkerSource.indexOf('export async function adjustInventory({');
 const inventoryAdjustmentEnd = inventoryWorkerSource.indexOf('const PURCHASE_ORDER_STATUSES', inventoryAdjustmentStart);
-assert.notEqual(inventoryAdjustmentStart, -1, 'Canonical inventory adjustment Worker domain is missing.');
-assert.notEqual(inventoryAdjustmentEnd, -1, 'Canonical inventory adjustment boundary is missing.');
+assert.notEqual(inventoryAdjustmentStart, -1, 'Legacy Worker inventory adjustment regression fixture is missing.');
+assert.notEqual(inventoryAdjustmentEnd, -1, 'Legacy Worker inventory adjustment regression boundary is missing.');
 const inventoryAdjustmentSource = inventoryWorkerSource.slice(inventoryAdjustmentStart, inventoryAdjustmentEnd);
 for (const required of [
   'const previousQuantity = finiteQuantity(item.quantity || 0',
@@ -83,20 +82,29 @@ for (const required of [
 }
 
 assert.equal(
-  pageSource.includes("archiveCanonicalInventoryItem({ itemId: item.id, reason: 'Item dinonaktifkan' })"),
+  pageSource.includes('archiveCanonicalInventoryItem(input, requestId)'),
   true,
-  'Inventory UI must archive items through the canonical Worker wrapper.',
+  'Inventory UI must archive through the direct Firestore repository.',
 );
 assert.equal(
-  operationsRepositorySource.includes("requestOperation('/v1/inventory/items/archive'"),
+  pageSource.includes("from '../../services/inventoryFirestoreRepository.js'") &&
+    pageSource.includes('createRepositoryRequestId()'),
   true,
-  'Inventory archive wrapper must target the canonical Worker route.',
+  'Inventory UI must use direct Firestore writes and stable request IDs.',
 );
 assert.equal(
-  inventoryWorkerRouteSource.includes("pathname === '/v1/inventory/items/archive'") &&
-    inventoryWorkerRouteSource.includes('archiveInventoryItem({ actor, body, firestore, request })'),
+  directRepositorySource.includes('runIdempotentFirestoreTransaction({') &&
+    directRepositorySource.includes('item.lastMovementSnapshot = movement;') &&
+    directRepositorySource.includes('transaction.set(itemRef, item);') &&
+    directRepositorySource.includes('await setDoc(movementRef, movement)') &&
+    directRepositorySource.includes('async function ensureInventoryMovement'),
   true,
-  'Inventory archive route must authorize and dispatch through the Worker domain.',
+  'Inventory mutations must commit an idempotent item snapshot before appending the matching immutable movement.',
+);
+assert.equal(
+  directRepositorySource.includes('transaction.set(movementRef, movement)'),
+  false,
+  'Inventory item and movement Rules must not form a circular getAfter dependency.',
 );
 for (const required of [
   "status: 'inactive'",
@@ -108,13 +116,13 @@ for (const required of [
   assert.equal(
     inventoryWorkerSource.includes(required),
     true,
-    'Canonical Worker archive behavior missing: ' + required,
+    'Legacy Worker archive regression behavior missing: ' + required,
   );
 }
 
 assert.equal(pageSource.includes('inventoryRepository.createInventoryMovement('), false, 'Inventory UI must not write movement documents from the browser.');
-assert.equal(pageSource.includes('inventoryRepository.createInventoryItem('), false, 'Inventory UI must create items through the canonical Worker.');
-assert.equal(pageSource.includes('inventoryRepository.updateInventoryItem('), false, 'Inventory UI must update metadata through the canonical Worker.');
+assert.equal(pageSource.includes('inventoryRepository.createInventoryItem('), false, 'Inventory UI must create items through the direct Firestore repository.');
+assert.equal(pageSource.includes('inventoryRepository.updateInventoryItem('), false, 'Inventory UI must update metadata through the direct Firestore repository.');
 for (const forbidden of [
   'deleteInventoryItem(',
   'deleteDoc(',
@@ -147,15 +155,34 @@ for (const required of [
   'nextQuantity: toNumber(source.nextQuantity)',
   'subscribeInventoryItems',
   'subscribeInventoryMovements',
-  'createInventoryItem',
-  'updateInventoryItem',
-  'createInventoryMovement',
+  'subscribeSuppliers',
+  'subscribePurchaseOrders',
+  'subscribeGoodsReceipts',
+  'subscribeProcurementPayments',
   'actorName: cleanText(source.actorName)',
   'reason: cleanText(source.reason || source.note)',
-  'await updateDoc(docRef',
 ]) {
   assert.equal(repositorySource.includes(required), true, 'UI-9 repository contract missing: ' + required);
 }
+
+
+for (const required of [
+  "const ITEMS = 'inventoryItems'",
+  "const MOVEMENTS = 'inventoryMovements'",
+  "const SCOPE = 'inventory'",
+  'runIdempotentFirestoreTransaction({',
+  'lastOperationId: marker.operationId',
+  'lastMovementId: movementId',
+  'assertNoActiveMaintenance(transaction, itemId)',
+  'nextQuantity < 0',
+  'item.lastMovementSnapshot = movement;',
+  'async function ensureInventoryMovement',
+  'await setDoc(movementRef, movement)',
+]) {
+  assert.equal(directRepositorySource.includes(required), true, 'Direct inventory repository contract missing: ' + required);
+}
+assert.equal(directRepositorySource.includes('transaction.set(movementRef, movement)'), false, 'Movement append must not participate in a cyclic cross-document Rules transaction.');
+assert.equal(directRepositorySource.includes('transaction.delete(movementRef)'), false, 'Inventory movement history must remain append-only.');
 
 for (const forbidden of [
   'deleteDoc(',

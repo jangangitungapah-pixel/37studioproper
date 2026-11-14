@@ -1,0 +1,20 @@
+    match /customerFollowUpTasks/{taskId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if isApproved() &&
+        canManageCustomerData() &&
+        request.resource.data.id == taskId &&
+        request.resource.data.createdByUid == request.auth.uid;
+      allow update: if isApproved() &&
+        canManageCustomerData() &&
+        request.resource.data.id == taskId &&
+        request.resource.data.customerId == resource.data.customerId;
+      allow delete: if false;
+    }
+    match /customerFollowUpEvents/{eventId} {
+      allow read: if isApproved() && canAccessCustomerData();
+      allow create: if isApproved() &&
+        canManageCustomerData() &&
+        request.resource.data.id == eventId &&
+        request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }

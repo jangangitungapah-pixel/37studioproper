@@ -8,8 +8,6 @@ import {
   CreditCard,
   Download,
   PhoneCall,
-  ExternalLink,
-  Image,
   Printer,
   RotateCcw,
   Search,
@@ -22,12 +20,8 @@ import PaymentProofCommandCenter from '../../components/billing/PaymentProofComm
 import { ADMIN_LIST_PAGE_SIZE, getPaginationSlice } from '../../utils/pagination.js';
 import { adminBookingRepository, createBookingCode, createInvoiceNumber } from '../../services/adminBookingRepository.js';
 import { firebaseAuth } from '../../lib/firebase.js';
-import {
-  createAdminOperationKey,
-  recordCanonicalPayment,
-  recordCanonicalRefund,
-  voidCanonicalInvoice,
-} from '../../services/adminOperationsRepository.js';
+import { createAdminOperationKey } from '../../services/adminOperationsRepository.js';
+import { financeRepository } from '../../services/firestoreFinanceRepository.js';
 import { BOOKING_PAYMENT_STATUS } from '../../domain/booking/bookingStatus.js';
 import {
   getBookingPaymentStatus,
@@ -1084,7 +1078,7 @@ function PaymentProofReviewModal({
       <section className="billing-proof-modal" role="dialog" aria-modal="true" aria-labelledby="billing-proof-modal-title">
         <header className="billing-proof-modal-head">
           <div>
-            <p>Review Bukti Pembayaran</p>
+            <p>Review Referensi Pembayaran</p>
             <h2 id="billing-proof-modal-title">{proof.customer || booking?.customer || 'Client'}</h2>
             <span>{getProofCategoryLabel(proof.category)} • {formatMoney(proof.amount)}</span>
           </div>
@@ -1095,14 +1089,17 @@ function PaymentProofReviewModal({
         </header>
 
         <div className="billing-proof-modal-body">
-          <a className="billing-proof-image-link" href={proof.proofUrl} target="_blank" rel="noreferrer">
-            {proof.proofUrl ? (
-              <img src={proof.proofUrl} alt={'Bukti pembayaran ' + (proof.customer || 'client')} />
-            ) : (
-              <span><Image size={22} />Bukti tidak tersedia</span>
-            )}
-            <em><ExternalLink size={13} />Buka gambar asli</em>
-          </a>
+          <div className="billing-proof-reference-panel">
+            <div>
+              <small>Nomor Referensi Transaksi</small>
+              <strong>{proof.transactionReference || 'Tidak dicantumkan'}</strong>
+            </div>
+            <div>
+              <small>Nama Pengirim</small>
+              <strong>{proof.payerName || 'Tidak dicantumkan'}</strong>
+            </div>
+            <p>Periksa mutasi rekening atau riwayat QRIS secara manual sebelum menyetujui pembayaran.</p>
+          </div>
 
           <div className="billing-proof-info-grid">
             <article>
@@ -1126,7 +1123,7 @@ function PaymentProofReviewModal({
             <article>
               <small>Status Bukti</small>
               <strong>{getPaymentProofStatusLabel(proof.status)}</strong>
-              <span>{proof.proofFileName || 'File pembayaran'}</span>
+              <span>{proof.transactionReference || 'Referensi transaksi historis tidak tersedia'}</span>
             </article>
           </div>
 
@@ -1902,7 +1899,8 @@ const BILLING_QA_PREVIEW_PROOFS = [
     category: 'pelunasan',
     method: 'transfer',
     status: 'pending',
-    proofUrl: 'https://placehold.co/400x600?text=Bukti+Transfer+Budi',
+    transactionReference: 'QA-TRANSFER-2026-06-25-001',
+    payerName: 'Budi Santoso',
     createdAt: '2026-06-25T14:30:00Z'
   }
 ];
@@ -2343,7 +2341,7 @@ export default function BillingPage() {
     }
 
     try {
-      const result = await recordCanonicalPayment({
+      const result = await financeRepository.recordPayment({
         amount: payment.amount,
         bookingId: booking.id,
         date: payment.date,
@@ -2425,7 +2423,7 @@ export default function BillingPage() {
     operationKey,
   ) {
     try {
-      const result = await recordCanonicalRefund({
+      const result = await financeRepository.recordRefund({
         amount: refund.amount,
         bookingId: booking.id,
         date: refund.date,
@@ -2507,7 +2505,7 @@ export default function BillingPage() {
     operationKey,
   ) {
     try {
-      const result = await voidCanonicalInvoice({
+      const result = await financeRepository.voidInvoice({
         bookingId: booking.id,
         reason,
       }, operationKey);

@@ -260,7 +260,7 @@ assert.equal(
  * These core consumers must route status decisions through bookingSelectors.
  */
 const migratedConsumers = [
-  'src/services/adminBookingRepository.js',
+  'src/services/bookingOperationsRepository.js',
   'src/services/bookingCommunicationRepository.js',
   'src/pages/admin/SchedulePage.jsx',
   'src/pages/admin/BillingPage.jsx',

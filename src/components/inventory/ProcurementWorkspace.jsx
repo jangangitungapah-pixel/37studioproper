@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
@@ -17,10 +17,11 @@ import {
 import {
   createCanonicalPurchaseOrder,
   createCanonicalSupplier,
-  receiveCanonicalPurchaseOrder,
   recordCanonicalProcurementPayment,
+  receiveCanonicalPurchaseOrder,
   transitionCanonicalPurchaseOrder,
-} from '../../services/adminOperationsRepository.js';
+} from '../../services/procurementFirestoreRepository.js';
+import { createRepositoryRequestId } from '../../lib/firestoreRepositoryFoundation.js';
 import {
   subscribeGoodsReceipts,
   subscribeProcurementPayments,
@@ -146,6 +147,21 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
   const [cancelOrderId, setCancelOrderId] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const procurementRequestIdsRef = useRef(new Map());
+
+  function getStableRequestId(action, payload) {
+    const requestKey = action + ':' + JSON.stringify(payload);
+    let requestId = procurementRequestIdsRef.current.get(requestKey);
+    if (!requestId) {
+      requestId = createRepositoryRequestId();
+      procurementRequestIdsRef.current.set(requestKey, requestId);
+    }
+    return { requestKey, requestId };
+  }
+
+  function clearStableRequestId(requestKey) {
+    procurementRequestIdsRef.current.delete(requestKey);
+  }
 
   const canApprovePurchaseOrders = currentUser?.role === 'admin' || (
     currentUser?.role === 'owner' && currentUser?.isOwner !== false
@@ -301,8 +317,10 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       return;
     }
     setIsSubmitting(true);
+    const request = getStableRequestId('supplier-create', supplierDraft);
     try {
-      await createCanonicalSupplier(supplierDraft);
+      await createCanonicalSupplier(supplierDraft, request.requestId);
+      clearStableRequestId(request.requestKey);
       setSupplierDraft({ name: '', contactName: '', phone: '', email: '', address: '', notes: '' });
       setShowSupplierForm(false);
       showFeedback('success', 'Supplier tersimpan', 'Supplier baru sudah masuk ke direktori.');
@@ -330,19 +348,22 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       showFeedback('error', 'Item duplikat', 'Satu item inventory hanya boleh muncul satu kali dalam satu PO.');
       return;
     }
+    const payload = {
+      supplierId: orderDraft.supplierId,
+      orderDate: localDateValue(),
+      expectedAt: orderDraft.expectedAt,
+      notes: orderDraft.notes,
+      items: validLines.map((item) => ({
+        inventoryItemId: item.inventoryItemId,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+      })),
+    };
+    const request = getStableRequestId('purchase-order-create', payload);
     setIsSubmitting(true);
     try {
-      await createCanonicalPurchaseOrder({
-        supplierId: orderDraft.supplierId,
-        orderDate: localDateValue(),
-        expectedAt: orderDraft.expectedAt,
-        notes: orderDraft.notes,
-        items: validLines.map((item) => ({
-          inventoryItemId: item.inventoryItemId,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
-        })),
-      });
+      await createCanonicalPurchaseOrder(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setOrderDraft({
         supplierId: '',
         expectedAt: '',
@@ -360,14 +381,17 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
 
   async function changeOrderStatus(order, status, reason = '') {
     if (isSubmitting) return;
+    const payload = {
+      purchaseOrderId: order.id,
+      status,
+      expectedUpdatedAt: order.updatedAt,
+      reason,
+    };
+    const request = getStableRequestId('purchase-order-transition', payload);
     setIsSubmitting(true);
     try {
-      await transitionCanonicalPurchaseOrder({
-        purchaseOrderId: order.id,
-        status,
-        expectedUpdatedAt: order.updatedAt,
-        reason,
-      });
+      await transitionCanonicalPurchaseOrder(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setCancelOrderId('');
       setCancelReason('');
       showFeedback('success', 'Status PO diperbarui', order.poNumber + ' sekarang berstatus ' + (STATUS_META[status]?.label || status) + '.');
@@ -404,14 +428,17 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       showFeedback('error', 'Jumlah penerimaan tidak valid', 'Isi jumlah yang diterima dan jangan melebihi sisa pesanan.');
       return;
     }
+    const payload = {
+      purchaseOrderId: receiptOrder.id,
+      expectedUpdatedAt: receiptOrder.updatedAt,
+      items: lines.map(({ lineId, quantity }) => ({ lineId, quantity })),
+      note: receiptNote,
+    };
+    const request = getStableRequestId('goods-receipt', payload);
     setIsSubmitting(true);
     try {
-      await receiveCanonicalPurchaseOrder({
-        purchaseOrderId: receiptOrder.id,
-        expectedUpdatedAt: receiptOrder.updatedAt,
-        items: lines.map(({ lineId, quantity }) => ({ lineId, quantity })),
-        note: receiptNote,
-      });
+      await receiveCanonicalPurchaseOrder(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setReceiptOrderId('');
       setReceiptQuantities({});
       showFeedback('success', 'Goods Receipt tersimpan', 'Stok inventory bertambah sesuai barang yang benar-benar diterima.');
@@ -443,17 +470,20 @@ export default function ProcurementWorkspace({ currentUser, inventoryItems = [] 
       showFeedback('error', 'Nominal pembayaran tidak valid', 'Nominal harus lebih dari nol dan tidak boleh melebihi sisa kewajiban PO.');
       return;
     }
+    const payload = {
+      purchaseOrderId: paymentOrder.id,
+      expectedUpdatedAt: paymentOrder.updatedAt,
+      amount,
+      paymentMethod: paymentDraft.paymentMethod,
+      date: paymentDraft.date,
+      reference: paymentDraft.reference,
+      note: paymentDraft.note,
+    };
+    const request = getStableRequestId('procurement-payment', payload);
     setIsSubmitting(true);
     try {
-      await recordCanonicalProcurementPayment({
-        purchaseOrderId: paymentOrder.id,
-        expectedUpdatedAt: paymentOrder.updatedAt,
-        amount,
-        paymentMethod: paymentDraft.paymentMethod,
-        date: paymentDraft.date,
-        reference: paymentDraft.reference,
-        note: paymentDraft.note,
-      });
+      await recordCanonicalProcurementPayment(payload, request.requestId);
+      clearStableRequestId(request.requestKey);
       setPaymentOrderId('');
       showFeedback('success', 'Pembayaran dicatat', 'Pembayaran parsial masuk ke PO dan ledger pengeluaran.');
     } catch (error) {

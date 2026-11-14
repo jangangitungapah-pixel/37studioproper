@@ -10,8 +10,14 @@ import {
   doc,
   getDoc,
   setDoc,
+  serverTimestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
+import {
+  createRepositoryOperationId,
+  createRepositoryPayloadHash,
+} from '../src/lib/firestoreRepositoryFoundation.js';
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   throw new Error('Run this test through `npm run test:rules`.');
@@ -100,6 +106,36 @@ try {
       id: 'po-rules-1', poNumber: 'PO-RULES-1', supplierId: 'supplier-rules-1',
       supplierName: 'Supplier Rules', items: [], totalAmount: 100000, paidAmount: 0,
       status: 'ordered', orderDate: '2026-08-14', expectedAt: '', createdAt: now, updatedAt: now,
+    });
+    await setDoc(doc(db, 'purchaseOrders', 'po-goods-receipt-rules-1'), {
+      id: 'po-goods-receipt-rules-1',
+      poNumber: 'PO-GR-RULES-1',
+      supplierId: 'supplier-rules-1',
+      supplierName: 'Supplier Rules',
+      items: [{
+        lineId: 'line-goods-receipt-rules-1',
+        inventoryItemId: 'item-1',
+        name: 'Cable',
+        category: 'Cable',
+        quantity: 5,
+        receivedQuantity: 0,
+        unit: 'pcs',
+        unitPrice: 10000,
+        lineTotal: 50000,
+      }],
+      totalAmount: 50000,
+      paidAmount: 0,
+      status: 'ordered',
+      orderDate: '2026-08-14',
+      expectedAt: '',
+      notes: '',
+      createdAt: now,
+      updatedAt: now,
+      createdByUid: 'inventory-admin',
+      createdByName: 'Inventory Admin',
+      lastOperationId: 'v1_' + 'a'.repeat(64),
+      lastOperationAction: 'transition',
+      lastEventId: 'existing-po-event-goods-receipt',
     });
     await setDoc(doc(db, 'goodsReceipts', 'receipt-rules-1'), {
       id: 'receipt-rules-1', purchaseOrderId: 'po-rules-1', poNumber: 'PO-RULES-1',
@@ -232,6 +268,14 @@ try {
         role: 'admin',
         status: 'approved',
         uid: 'schedule-admin',
+      },
+      'schedule-recovery-admin': {
+        displayName: 'Schedule Recovery Admin',
+        email: 'schedule-recovery@example.com',
+        permissions: permissions({ schedule: true }),
+        role: 'admin',
+        status: 'approved',
+        uid: 'schedule-recovery-admin',
       },
       'settings-admin': {
         displayName: 'Settings Admin',
@@ -371,6 +415,7 @@ try {
   const owner = context('new-owner', 'owner@example.com');
   const inventoryAdmin = context('inventory-admin', 'inventory@example.com');
   const procurementBookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
+  const scheduleRecoveryAdmin = context('schedule-recovery-admin', 'schedule-recovery@example.com');
 
   await assertSucceeds(getDoc(doc(inventoryAdmin, 'suppliers', 'supplier-rules-1')));
   await assertSucceeds(getDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1')));
@@ -379,9 +424,458 @@ try {
   await assertFails(getDoc(doc(inventoryAdmin, 'procurementPayments', 'payment-rules-1')));
   await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementPayments', 'payment-rules-1')));
 
-  await assertFails(setDoc(doc(inventoryAdmin, 'suppliers', 'supplier-browser-create'), {
-    id: 'supplier-browser-create', name: 'Forged Supplier', status: 'active', createdAt: now, updatedAt: now,
+  const supplierRequestId = 'supplier-direct-rules-001';
+  const supplierOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'supplier-create',
+    requestId: supplierRequestId,
+  });
+  const directSupplierId = 'sup_' + supplierOperationId.slice(3);
+  const directSupplierEventId = 'pev_' + supplierOperationId.slice(3);
+  const supplierPayload = {
+    name: 'Direct Rules Supplier',
+    contactName: 'Supplier Contact',
+    phone: '08123456789',
+    email: 'supplier@example.com',
+    address: 'Tangerang',
+    notes: 'Created from Firestore Web SDK',
+  };
+  const directSupplier = {
+    id: directSupplierId,
+    ...supplierPayload,
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+    createdByUid: 'inventory-admin',
+    createdByName: 'Inventory Admin',
+    lastOperationId: supplierOperationId,
+    lastOperationAction: 'create',
+    lastEventId: directSupplierEventId,
+  };
+  const directSupplierEvent = {
+    id: directSupplierEventId,
+    entityType: 'supplier',
+    entityId: directSupplierId,
+    action: 'created',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: now,
+    operationId: supplierOperationId,
+  };
+  const supplierBatch = writeBatch(inventoryAdmin);
+  supplierBatch.set(doc(inventoryAdmin, 'suppliers', directSupplierId), directSupplier);
+  supplierBatch.set(doc(inventoryAdmin, 'procurementEvents', directSupplierEventId), directSupplierEvent);
+  supplierBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', supplierOperationId),
+    {
+      operationId: supplierOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'supplier-create',
+      requestId: supplierRequestId,
+      payloadHash: await createRepositoryPayloadHash(supplierPayload),
+      resultCollection: 'suppliers',
+      resultId: directSupplierId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(supplierBatch.commit());
+  await assertFails(updateDoc(doc(inventoryAdmin, 'suppliers', directSupplierId), { status: 'inactive' }));
+  await assertFails(deleteDoc(doc(inventoryAdmin, 'suppliers', directSupplierId)));
+  await assertFails(updateDoc(doc(inventoryAdmin, 'procurementEvents', directSupplierEventId), {
+    action: 'forged',
   }));
+
+  const poRequestId = 'purchase-order-direct-rules-001';
+  const poOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'purchase-order-create',
+    requestId: poRequestId,
+  });
+  const directPoId = 'po_' + poOperationId.slice(3);
+  const directPoEventId = 'pev_' + poOperationId.slice(3);
+  const directPoItems = [{
+    lineId: 'line_' + poOperationId.slice(3, 15) + '_001',
+    inventoryItemId: 'item-1',
+    name: 'Cable',
+    category: 'Cable',
+    quantity: 2,
+    receivedQuantity: 0,
+    unit: 'pcs',
+    unitPrice: 10000,
+    lineTotal: 20000,
+  }];
+  const poPayload = {
+    supplierId: directSupplierId,
+    orderDate: '2026-08-14',
+    expectedAt: '',
+    notes: 'Direct Firestore PO',
+    items: [{
+      lineId: directPoItems[0].lineId,
+      inventoryItemId: 'item-1',
+      quantity: 2,
+      unitPrice: 10000,
+    }],
+  };
+  const directPurchaseOrder = {
+    id: directPoId,
+    poNumber: 'PO-20260814-' + directPoId.slice(-8).toUpperCase(),
+    supplierId: directSupplierId,
+    supplierName: 'Direct Rules Supplier',
+    items: directPoItems,
+    totalAmount: 20000,
+    paidAmount: 0,
+    status: 'draft',
+    orderDate: '2026-08-14',
+    expectedAt: '',
+    notes: 'Direct Firestore PO',
+    createdAt: now,
+    updatedAt: now,
+    createdByUid: 'inventory-admin',
+    createdByName: 'Inventory Admin',
+    lastOperationId: poOperationId,
+    lastOperationAction: 'create',
+    lastEventId: directPoEventId,
+  };
+  const directPoEvent = {
+    id: directPoEventId,
+    entityType: 'purchase_order',
+    entityId: directPoId,
+    action: 'created',
+    fromStatus: '',
+    toStatus: 'draft',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: now,
+    amount: 20000,
+    operationId: poOperationId,
+  };
+  const poBatch = writeBatch(inventoryAdmin);
+  poBatch.set(doc(inventoryAdmin, 'purchaseOrders', directPoId), directPurchaseOrder);
+  poBatch.set(doc(inventoryAdmin, 'procurementEvents', directPoEventId), directPoEvent);
+  poBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', poOperationId),
+    {
+      operationId: poOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'purchase-order-create',
+      requestId: poRequestId,
+      payloadHash: await createRepositoryPayloadHash(poPayload),
+      resultCollection: 'purchaseOrders',
+      resultId: directPoId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(poBatch.commit());
+
+  const transitionRequestId = 'purchase-order-transition-rules-001';
+  const transitionOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'purchase-order-transition',
+    requestId: transitionRequestId,
+  });
+  const transitionEventId = 'pev_' + transitionOperationId.slice(3);
+  const submittedAt = '2026-08-14T08:05:00.000Z';
+  const submittedPo = {
+    ...directPurchaseOrder,
+    status: 'submitted',
+    updatedAt: submittedAt,
+    lastOperationId: transitionOperationId,
+    lastOperationAction: 'transition',
+    lastEventId: transitionEventId,
+  };
+  const transitionEvent = {
+    id: transitionEventId,
+    entityType: 'purchase_order',
+    entityId: directPoId,
+    action: 'status_changed',
+    fromStatus: 'draft',
+    toStatus: 'submitted',
+    reason: '',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: submittedAt,
+    operationId: transitionOperationId,
+  };
+  const transitionPayload = {
+    purchaseOrderId: directPoId,
+    expectedUpdatedAt: now,
+    status: 'submitted',
+    reason: '',
+  };
+  const transitionBatch = writeBatch(inventoryAdmin);
+  transitionBatch.set(doc(inventoryAdmin, 'purchaseOrders', directPoId), submittedPo);
+  transitionBatch.set(doc(inventoryAdmin, 'procurementEvents', transitionEventId), transitionEvent);
+  transitionBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', transitionOperationId),
+    {
+      operationId: transitionOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'procurement',
+      action: 'purchase-order-transition',
+      requestId: transitionRequestId,
+      payloadHash: await createRepositoryPayloadHash(transitionPayload),
+      resultCollection: 'purchaseOrders',
+      resultId: directPoId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(transitionBatch.commit());
+
+  // Procurement payments are Bookkeeping-only and atomically pair the PO,
+  // immutable payment, expense ledger, event, closing activity fence and marker.
+  const procurementPaymentRequestId = 'procurement-payment-direct-rules-001';
+  const procurementPaymentOperationId = await createRepositoryOperationId({
+    actorUid: 'bookkeeping-admin',
+    scope: 'procurement',
+    action: 'procurement-payment',
+    requestId: procurementPaymentRequestId,
+  });
+  const procurementPaymentId = 'ppay_' + procurementPaymentOperationId.slice(3);
+  const procurementPaymentEventId = 'pev_' + procurementPaymentOperationId.slice(3);
+  const procurementPaymentDate = '2026-08-15';
+  const procurementPaymentCreatedAt = '2026-08-14T08:20:00.000Z';
+  const procurementPaymentAmount = 5000;
+  const procurementPaymentPayload = {
+    purchaseOrderId: directPoId,
+    expectedUpdatedAt: submittedAt,
+    amount: procurementPaymentAmount,
+    paymentMethod: 'transfer',
+    date: procurementPaymentDate,
+    reference: 'BANK-REF-001',
+    note: 'Uang muka PO rules',
+  };
+  const procurementPaymentPayloadHash = await createRepositoryPayloadHash(procurementPaymentPayload);
+  const paidPurchaseOrder = {
+    ...submittedPo,
+    paidAmount: procurementPaymentAmount,
+    updatedAt: procurementPaymentCreatedAt,
+    lastOperationId: procurementPaymentOperationId,
+    lastOperationAction: 'payment',
+    lastEventId: procurementPaymentEventId,
+    lastPaymentId: procurementPaymentId,
+  };
+  const procurementPayment = {
+    id: procurementPaymentId,
+    purchaseOrderId: directPoId,
+    poNumber: submittedPo.poNumber,
+    supplierId: submittedPo.supplierId,
+    supplierName: submittedPo.supplierName,
+    amount: procurementPaymentAmount,
+    paymentMethod: 'transfer',
+    date: procurementPaymentDate,
+    reference: 'BANK-REF-001',
+    note: 'Uang muka PO rules',
+    actorUid: 'bookkeeping-admin',
+    actorName: 'Bookkeeping Admin',
+    createdAt: procurementPaymentCreatedAt,
+    operationId: procurementPaymentOperationId,
+  };
+  const procurementExpense = {
+    id: procurementPaymentId,
+    type: 'expense',
+    category: 'procurement',
+    title: ('Pembayaran ' + submittedPo.poNumber + ' · ' + submittedPo.supplierName).slice(0, 160),
+    amount: procurementPaymentAmount,
+    date: procurementPaymentDate,
+    paymentMethod: 'transfer',
+    note: 'Uang muka PO rules',
+    source: 'procurement-payment',
+    sourcePurchaseOrderId: directPoId,
+    sourceProcurementPaymentId: procurementPaymentId,
+    actorUid: 'bookkeeping-admin',
+    actorName: 'Bookkeeping Admin',
+    operationId: procurementPaymentOperationId,
+    immutable: true,
+    createdAt: procurementPaymentCreatedAt,
+    updatedAt: procurementPaymentCreatedAt,
+  };
+  const procurementPaymentEvent = {
+    id: procurementPaymentEventId,
+    entityType: 'purchase_order',
+    entityId: directPoId,
+    action: 'payment_recorded',
+    amount: procurementPaymentAmount,
+    paymentId: procurementPaymentId,
+    actorUid: 'bookkeeping-admin',
+    actorName: 'Bookkeeping Admin',
+    createdAt: procurementPaymentCreatedAt,
+    operationId: procurementPaymentOperationId,
+  };
+  const procurementPaymentClosingId = procurementPaymentDate + '__main';
+  const procurementPaymentFence = {
+    id: procurementPaymentClosingId,
+    businessDate: procurementPaymentDate,
+    registerId: 'main',
+    status: 'open',
+    activityRevision: 1,
+    createdAt: procurementPaymentCreatedAt,
+    updatedAt: procurementPaymentCreatedAt,
+    lastActivityAt: procurementPaymentCreatedAt,
+    lastActivityByUid: 'bookkeeping-admin',
+    lastOperationId: procurementPaymentOperationId,
+    lastOperationAction: 'procurement-payment',
+    lastProcurementPaymentAt: procurementPaymentCreatedAt,
+    lastProcurementPaymentId: procurementPaymentId,
+    lastProcurementPurchaseOrderId: directPoId,
+  };
+  const procurementPaymentBatch = writeBatch(procurementBookkeeping);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'purchaseOrders', directPoId), paidPurchaseOrder);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'procurementPayments', procurementPaymentId), procurementPayment);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'bookkeepingEntries', procurementPaymentId), procurementExpense);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'procurementEvents', procurementPaymentEventId), procurementPaymentEvent);
+  procurementPaymentBatch.set(doc(procurementBookkeeping, 'cashClosingSessions', procurementPaymentClosingId), procurementPaymentFence);
+  procurementPaymentBatch.set(
+    doc(procurementBookkeeping, 'users', 'bookkeeping-admin', 'repositoryOperations', procurementPaymentOperationId),
+    {
+      operationId: procurementPaymentOperationId,
+      actorUid: 'bookkeeping-admin',
+      scope: 'procurement',
+      action: 'procurement-payment',
+      requestId: procurementPaymentRequestId,
+      payloadHash: procurementPaymentPayloadHash,
+      resultCollection: 'purchaseOrders',
+      resultId: directPoId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(procurementPaymentBatch.commit());
+  const savedPaidPurchaseOrder = await getDoc(doc(procurementBookkeeping, 'purchaseOrders', directPoId));
+  assert.equal(savedPaidPurchaseOrder.data().paidAmount, procurementPaymentAmount);
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementPayments', procurementPaymentId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'bookkeepingEntries', procurementPaymentId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'cashClosingSessions', procurementPaymentClosingId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'purchaseOrders', directPoId)));
+  await assertSucceeds(getDoc(doc(procurementBookkeeping, 'procurementEvents', procurementPaymentEventId)));
+  await assertFails(getDoc(doc(procurementBookkeeping, 'procurementEvents', directPoEventId)));
+
+  // Goods Receipt atomically updates PO, stock, stock movement, receipt, event and operation marker.
+  const goodsReceiptPoId = 'po-goods-receipt-rules-1';
+  const goodsReceiptRequestId = 'goods-receipt-direct-rules-001';
+  const goodsReceiptOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'procurement',
+    action: 'goods-receipt-create',
+    requestId: goodsReceiptRequestId,
+  });
+  const goodsReceiptId = 'gr_' + goodsReceiptOperationId.slice(3);
+  const goodsReceiptEventId = 'pev_' + goodsReceiptOperationId.slice(3);
+  const goodsReceiptMovementId = 'mov_' + goodsReceiptOperationId.slice(3) + '_001';
+  const goodsReceiptAt = '2026-08-14T08:30:00.000Z';
+  const goodsReceiptDb = inventoryAdmin;
+  const goodsReceiptInventorySnapshot = await getDoc(doc(goodsReceiptDb, 'inventoryItems', 'item-1'));
+  const goodsReceiptInventory = goodsReceiptInventorySnapshot.data();
+  const goodsReceiptMovement = {
+    id: goodsReceiptMovementId,
+    itemId: 'item-1',
+    itemName: 'Cable',
+    type: 'stock-in',
+    quantity: 2,
+    previousQuantity: goodsReceiptInventory.quantity,
+    nextQuantity: goodsReceiptInventory.quantity + 2,
+    unit: 'pcs',
+    note: 'Penerimaan PO-GR-RULES-1',
+    reason: 'Dua unit diterima',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: goodsReceiptAt,
+    operationId: goodsReceiptOperationId,
+    operationAction: 'receive',
+    sourcePurchaseOrderId: goodsReceiptPoId,
+    sourceGoodsReceiptId: goodsReceiptId,
+    sourceLineId: 'line-goods-receipt-rules-1',
+  };
+  const goodsReceiptNextInventory = {
+    ...goodsReceiptInventory,
+    quantity: goodsReceiptInventory.quantity + 2,
+    updatedAt: goodsReceiptAt,
+    lastOperationId: goodsReceiptOperationId,
+    lastOperationAction: 'receive',
+    lastMovementId: goodsReceiptMovementId,
+    lastMovementSnapshot: goodsReceiptMovement,
+  };
+  const goodsReceiptItems = [{
+    lineId: 'line-goods-receipt-rules-1',
+    inventoryItemId: 'item-1',
+    itemName: 'Cable',
+    quantity: 2,
+    movementId: goodsReceiptMovementId,
+  }];
+  const goodsReceiptEvent = {
+    id: goodsReceiptEventId,
+    entityType: 'goods_receipt',
+    entityId: goodsReceiptId,
+    purchaseOrderId: goodsReceiptPoId,
+    action: 'received',
+    fromStatus: 'ordered',
+    toStatus: 'partially_received',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: goodsReceiptAt,
+    items: goodsReceiptItems,
+    operationId: goodsReceiptOperationId,
+  };
+  const goodsReceipt = {
+    id: goodsReceiptId,
+    purchaseOrderId: goodsReceiptPoId,
+    poNumber: 'PO-GR-RULES-1',
+    supplierId: 'supplier-rules-1',
+    supplierName: 'Supplier Rules',
+    items: goodsReceiptItems,
+    note: 'Dua unit diterima',
+    receivedAt: goodsReceiptAt,
+    receivedByUid: 'inventory-admin',
+    receivedByName: 'Inventory Admin',
+    createdAt: goodsReceiptAt,
+    operationId: goodsReceiptOperationId,
+    eventId: goodsReceiptEventId,
+    payloadHash: await createRepositoryPayloadHash({
+      purchaseOrderId: goodsReceiptPoId,
+      expectedUpdatedAt: now,
+      items: [{ lineId: 'line-goods-receipt-rules-1', quantity: 2 }],
+      note: 'Dua unit diterima',
+    }),
+  };
+  const goodsReceiptPoSnapshot = await getDoc(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId));
+  const goodsReceiptPo = {
+    ...goodsReceiptPoSnapshot.data(),
+    items: goodsReceiptPoSnapshot.data().items.map((line) => ({
+      ...line,
+      receivedQuantity: 2,
+    })),
+    status: 'partially_received',
+    updatedAt: goodsReceiptAt,
+    lastOperationId: goodsReceiptOperationId,
+    lastOperationAction: 'receipt',
+    lastEventId: goodsReceiptEventId,
+    lastReceiptId: goodsReceiptId,
+  };
+  const goodsReceiptBatch = writeBatch(goodsReceiptDb);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'inventoryItems', 'item-1'), goodsReceiptNextInventory);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'inventoryMovements', goodsReceiptMovementId), goodsReceiptMovement);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId), goodsReceiptPo);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId), goodsReceipt);
+  goodsReceiptBatch.set(doc(goodsReceiptDb, 'procurementEvents', goodsReceiptEventId), goodsReceiptEvent);
+  await assertSucceeds(goodsReceiptBatch.commit());
+  const savedGoodsReceiptPo = await getDoc(doc(goodsReceiptDb, 'purchaseOrders', goodsReceiptPoId));
+  const savedGoodsReceiptItem = await getDoc(doc(goodsReceiptDb, 'inventoryItems', 'item-1'));
+  const savedGoodsReceipt = await getDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId));
+  const savedGoodsReceiptMovement = await getDoc(doc(goodsReceiptDb, 'inventoryMovements', goodsReceiptMovementId));
+  assert.equal(savedGoodsReceiptPo.data().status, 'partially_received');
+  assert.equal(savedGoodsReceiptPo.data().items[0].receivedQuantity, 2);
+  assert.equal(savedGoodsReceiptItem.data().quantity, goodsReceiptInventory.quantity + 2);
+  assert.equal(savedGoodsReceipt.exists(), true);
+  assert.equal(savedGoodsReceipt.data().payloadHash.length, 64);
+  assert.equal(savedGoodsReceiptMovement.exists(), true);
+  await assertFails(updateDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId), { note: 'Tamper' }));
+  await assertFails(deleteDoc(doc(goodsReceiptDb, 'goodsReceipts', goodsReceiptId)));
+
+  await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', directPoId), { status: 'received' }));
+
   await assertFails(updateDoc(doc(inventoryAdmin, 'purchaseOrders', 'po-rules-1'), { status: 'received' }));
   await assertFails(deleteDoc(doc(inventoryAdmin, 'goodsReceipts', 'receipt-rules-1')));
   await assertFails(setDoc(doc(inventoryAdmin, 'procurementEvents', 'procurement-event-browser-create'), {
@@ -409,6 +903,317 @@ try {
     unit: 'pcs',
     updatedAt: now,
   }));
+
+  // Inventory commits the canonical item snapshot first, then appends its immutable movement.
+  const inventoryCreateRequestId = 'inventory-create-rules-001';
+  const inventoryCreatePayload = {
+    action: 'create',
+    itemId: '',
+    name: 'Microphone Cable',
+    category: 'Cable',
+    type: 'equipment',
+    unit: 'pcs',
+    condition: 'good',
+    status: 'active',
+    location: 'Studio',
+    note: '',
+    minStock: 1,
+    quantity: 5,
+    reason: 'Item baru ditambahkan',
+  };
+  const inventoryCreateOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'inventory',
+    action: 'create',
+    requestId: inventoryCreateRequestId,
+  });
+  const inventoryCreatedItemId = 'inv_' + inventoryCreateOperationId.slice(3);
+  const inventoryCreateMovementId = 'mov_' + inventoryCreateOperationId.slice(3);
+  const inventoryCreateMovement = {
+    id: inventoryCreateMovementId,
+    itemId: inventoryCreatedItemId,
+    itemName: 'Microphone Cable',
+    type: 'create',
+    quantity: 5,
+    previousQuantity: 0,
+    nextQuantity: 5,
+    unit: 'pcs',
+    note: 'Item baru ditambahkan',
+    reason: 'Item baru ditambahkan',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: now,
+    operationId: inventoryCreateOperationId,
+    operationAction: 'create',
+    metadataSnapshot: {
+      category: 'Cable',
+      condition: 'good',
+      location: 'Studio',
+      minStock: 1,
+      name: 'Microphone Cable',
+      note: '',
+      status: 'active',
+      type: 'equipment',
+      unit: 'pcs',
+    },
+  };
+  const inventoryCreatedItem = {
+    id: inventoryCreatedItemId,
+    name: 'Microphone Cable',
+    category: 'Cable',
+    type: 'equipment',
+    quantity: 5,
+    unit: 'pcs',
+    minStock: 1,
+    condition: 'good',
+    status: 'active',
+    location: 'Studio',
+    note: '',
+    createdAt: now,
+    updatedAt: now,
+    lastOperationId: inventoryCreateOperationId,
+    lastOperationAction: 'create',
+    lastMovementId: inventoryCreateMovementId,
+    lastMovementSnapshot: inventoryCreateMovement,
+  };
+  const inventoryCreateBatch = writeBatch(inventoryAdmin);
+  inventoryCreateBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), inventoryCreatedItem);
+  inventoryCreateBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', inventoryCreateOperationId),
+    {
+      operationId: inventoryCreateOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'inventory',
+      action: 'create',
+      requestId: inventoryCreateRequestId,
+      payloadHash: await createRepositoryPayloadHash(inventoryCreatePayload),
+      resultCollection: 'inventoryItems',
+      resultId: inventoryCreatedItemId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(inventoryCreateBatch.commit());
+  await assertSucceeds(setDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId), inventoryCreateMovement));
+  await assertFails(updateDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId), {
+    reason: 'Edit forbidden movement',
+  }));
+  await assertFails(deleteDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryCreateMovementId)));
+
+  // A valid stock-in updates the item snapshot and appends the movement afterwards.
+  const inventoryAdjustRequestId = 'inventory-adjust-rules-001';
+  const inventoryAdjustPayload = {
+    itemId: inventoryCreatedItemId,
+    reason: 'Penambahan stok',
+    delta: 3,
+  };
+  const inventoryAdjustOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'inventory',
+    action: 'adjust',
+    requestId: inventoryAdjustRequestId,
+  });
+  const inventoryAdjustMovementId = 'mov_' + inventoryAdjustOperationId.slice(3);
+  const inventoryAdjustMovement = {
+    id: inventoryAdjustMovementId,
+    itemId: inventoryCreatedItemId,
+    itemName: 'Microphone Cable',
+    type: 'stock-in',
+    quantity: 3,
+    previousQuantity: 5,
+    nextQuantity: 8,
+    unit: 'pcs',
+    note: 'Penambahan stok',
+    reason: 'Penambahan stok',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: '2026-08-14T08:10:00.000Z',
+    adjustmentKey: inventoryAdjustRequestId,
+    operationId: inventoryAdjustOperationId,
+    operationAction: 'adjust',
+  };
+  const inventoryAdjustedItem = {
+    ...inventoryCreatedItem,
+    quantity: 8,
+    updatedAt: '2026-08-14T08:10:00.000Z',
+    lastOperationId: inventoryAdjustOperationId,
+    lastOperationAction: 'adjust',
+    lastMovementId: inventoryAdjustMovementId,
+    lastMovementSnapshot: inventoryAdjustMovement,
+  };
+  const inventoryAdjustBatch = writeBatch(inventoryAdmin);
+  inventoryAdjustBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), inventoryAdjustedItem);
+  inventoryAdjustBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', inventoryAdjustOperationId),
+    {
+      operationId: inventoryAdjustOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'inventory',
+      action: 'adjust',
+      requestId: inventoryAdjustRequestId,
+      payloadHash: await createRepositoryPayloadHash(inventoryAdjustPayload),
+      resultCollection: 'inventoryItems',
+      resultId: inventoryCreatedItemId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(inventoryAdjustBatch.commit());
+  await assertSucceeds(setDoc(doc(inventoryAdmin, 'inventoryMovements', inventoryAdjustMovementId), inventoryAdjustMovement));
+
+  // Negative stock is rejected at the item write, before a movement can be posted.
+  const negativeRequestId = 'inventory-negative-rules-001';
+  const negativeOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'inventory',
+    action: 'adjust',
+    requestId: negativeRequestId,
+  });
+  const negativeMovementId = 'mov_' + negativeOperationId.slice(3);
+  const negativeMovement = {
+    id: negativeMovementId,
+    itemId: inventoryCreatedItemId,
+    itemName: 'Microphone Cable',
+    type: 'stock-out',
+    quantity: 9,
+    previousQuantity: 8,
+    nextQuantity: -1,
+    unit: 'pcs',
+    note: 'Invalid stock-out',
+    reason: 'Invalid stock-out',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: '2026-08-14T08:15:00.000Z',
+    adjustmentKey: negativeRequestId,
+    operationId: negativeOperationId,
+    operationAction: 'adjust',
+  };
+  const negativeItem = {
+    ...inventoryAdjustedItem,
+    quantity: -1,
+    updatedAt: '2026-08-14T08:15:00.000Z',
+    lastOperationId: negativeOperationId,
+    lastOperationAction: 'adjust',
+    lastMovementId: negativeMovementId,
+    lastMovementSnapshot: negativeMovement,
+  };
+  const negativeBatch = writeBatch(inventoryAdmin);
+  negativeBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), negativeItem);
+  negativeBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', negativeOperationId),
+    {
+      operationId: negativeOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'inventory',
+      action: 'adjust',
+      requestId: negativeRequestId,
+      payloadHash: await createRepositoryPayloadHash({
+        itemId: inventoryCreatedItemId,
+        reason: 'Invalid stock-out',
+        delta: -9,
+      }),
+      resultCollection: 'inventoryItems',
+      resultId: inventoryCreatedItemId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertFails(negativeBatch.commit());
+  await assertFails(setDoc(doc(inventoryAdmin, 'inventoryMovements', negativeMovementId), negativeMovement));
+
+  // Archive is guarded by the prior movement and records a matching snapshot.
+  const archiveRequestId = 'inventory-archive-rules-001';
+  const archivePayload = { itemId: inventoryCreatedItemId, reason: 'Item dinonaktifkan' };
+  const archiveOperationId = await createRepositoryOperationId({
+    actorUid: 'inventory-admin',
+    scope: 'inventory',
+    action: 'archive',
+    requestId: archiveRequestId,
+  });
+  const archiveMovementId = 'mov_' + archiveOperationId.slice(3);
+  const archiveMovement = {
+    id: archiveMovementId,
+    itemId: inventoryCreatedItemId,
+    itemName: 'Microphone Cable',
+    type: 'inactive',
+    quantity: 0,
+    previousQuantity: 8,
+    nextQuantity: 8,
+    unit: 'pcs',
+    note: 'Item dinonaktifkan',
+    reason: 'Item dinonaktifkan',
+    actorUid: 'inventory-admin',
+    actorName: 'Inventory Admin',
+    createdAt: '2026-08-14T08:20:00.000Z',
+    operationId: archiveOperationId,
+    operationAction: 'archive',
+    previousMetadata: { status: 'active', condition: 'good' },
+    nextMetadata: { status: 'inactive', condition: 'good' },
+  };
+  const archiveItem = {
+    ...inventoryAdjustedItem,
+    status: 'inactive',
+    updatedAt: '2026-08-14T08:20:00.000Z',
+    lastOperationId: archiveOperationId,
+    lastOperationAction: 'archive',
+    lastMovementId: archiveMovementId,
+    lastMovementSnapshot: archiveMovement,
+  };
+  const archiveBatch = writeBatch(inventoryAdmin);
+  archiveBatch.set(doc(inventoryAdmin, 'inventoryItems', inventoryCreatedItemId), archiveItem);
+  archiveBatch.set(
+    doc(inventoryAdmin, 'users', 'inventory-admin', 'repositoryOperations', archiveOperationId),
+    {
+      operationId: archiveOperationId,
+      actorUid: 'inventory-admin',
+      scope: 'inventory',
+      action: 'archive',
+      requestId: archiveRequestId,
+      payloadHash: await createRepositoryPayloadHash(archivePayload),
+      resultCollection: 'inventoryItems',
+      resultId: inventoryCreatedItemId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertSucceeds(archiveBatch.commit());
+  await assertSucceeds(setDoc(doc(inventoryAdmin, 'inventoryMovements', archiveMovementId), archiveMovement));
+
+  const dashboardForInventory = context('dashboard-only', 'dashboard@example.com');
+  const dashboardInventoryRequestId = 'inventory-dashboard-denied-001';
+  const dashboardInventoryOperationId = await createRepositoryOperationId({
+    actorUid: 'dashboard-only',
+    scope: 'inventory',
+    action: 'create',
+    requestId: dashboardInventoryRequestId,
+  });
+  const dashboardInventoryMovementId = 'mov_' + dashboardInventoryOperationId.slice(3);
+  const dashboardInventoryMovement = {
+    ...inventoryCreateMovement,
+    id: dashboardInventoryMovementId,
+    itemId: 'dashboard-inventory-item',
+    operationId: dashboardInventoryOperationId,
+  };
+  const dashboardInventoryItem = {
+    ...inventoryCreatedItem,
+    id: 'dashboard-inventory-item',
+    lastOperationId: dashboardInventoryOperationId,
+    lastMovementId: dashboardInventoryMovementId,
+    lastMovementSnapshot: dashboardInventoryMovement,
+  };
+  const dashboardInventoryBatch = writeBatch(dashboardForInventory);
+  dashboardInventoryBatch.set(doc(dashboardForInventory, 'inventoryItems', 'dashboard-inventory-item'), dashboardInventoryItem);
+  dashboardInventoryBatch.set(
+    doc(dashboardForInventory, 'users', 'dashboard-only', 'repositoryOperations', dashboardInventoryOperationId),
+    {
+      operationId: dashboardInventoryOperationId,
+      actorUid: 'dashboard-only',
+      scope: 'inventory',
+      action: 'create',
+      requestId: dashboardInventoryRequestId,
+      payloadHash: await createRepositoryPayloadHash(inventoryCreatePayload),
+      resultCollection: 'inventoryItems',
+      resultId: 'dashboard-inventory-item',
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertFails(dashboardInventoryBatch.commit());
 
   await assertFails(getDoc(doc(oldBootstrap, 'settings', 'operatorFees')));
   await assertFails(getDoc(doc(missingBootstrap, 'settings', 'operatorFees')));
@@ -475,6 +1280,236 @@ try {
   }));
   await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpEvents', 'follow-up-rules-event')));
 
+  // Follow-up task snapshots are committed first; the exact event is appended afterwards.
+  const followUpCreateRequestId = 'follow-up-create-rules-001';
+  const followUpCreatePayload = {
+    customerId: 'customer-1',
+    assignedToUid: 'customers-admin',
+    dueAt: '2026-11-10',
+    title: 'Hubungi customer',
+  };
+  const followUpCreateOperationId = await createRepositoryOperationId({
+    actorUid: 'customers-admin',
+    scope: 'customer-follow-up',
+    action: 'create',
+    requestId: followUpCreateRequestId,
+  });
+  const followUpTaskId = 'fup_' + followUpCreateOperationId.slice(3);
+  const followUpEventId = 'fue_' + followUpCreateOperationId.slice(3);
+  const followUpCreatedAt = '2026-08-14T08:10:00.000Z';
+  const followUpEvent = {
+    id: followUpEventId,
+    taskId: followUpTaskId,
+    customerId: 'customer-1',
+    action: 'created',
+    actorUid: 'customers-admin',
+    actorName: 'Customer Admin',
+    changes: { status: { before: '', after: 'open' } },
+    note: 'Hubungi customer',
+    createdAt: followUpCreatedAt,
+    operationId: followUpCreateOperationId,
+    operationAction: 'create',
+  };
+  const followUpCreatePayloadHash = await createRepositoryPayloadHash(followUpCreatePayload);
+  const followUpTask = {
+    id: followUpTaskId,
+    customerId: 'customer-1',
+    customerName: 'Customer',
+    customerPhone: '6281',
+    sourceId: 'customer-1',
+    sourceType: 'customer',
+    bookingId: '',
+    assignedToUid: 'customers-admin',
+    assignedToName: 'Customer Admin',
+    title: 'Hubungi customer',
+    description: '',
+    templateKey: 'payment',
+    status: 'open',
+    outcome: '',
+    dueAt: '2026-11-10',
+    dueTime: '10:00',
+    notes: '',
+    revision: 1,
+    createdAt: followUpCreatedAt,
+    updatedAt: followUpCreatedAt,
+    createdByUid: 'customers-admin',
+    createdByName: 'Customer Admin',
+    lastContactedAt: '',
+    completedAt: '',
+    completedByUid: '',
+    completedByName: '',
+    cancelledAt: '',
+    cancelledByUid: '',
+    cancelReason: '',
+    lastCompletedAt: '',
+    lastCancelledAt: '',
+    reopenedAt: '',
+    reopenedByUid: '',
+    reopenedByName: '',
+    reopenReason: '',
+    snoozedAt: '',
+    snoozedByUid: '',
+    lastOperationId: followUpCreateOperationId,
+    lastOperationAction: 'create',
+    lastOperationPayloadHash: followUpCreatePayloadHash,
+    lastEventId: followUpEventId,
+    lastEventSnapshot: followUpEvent,
+  };
+  const followUpCreateBatch = writeBatch(customersAdmin);
+  followUpCreateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpTask);
+  await assertSucceeds(followUpCreateBatch.commit());
+  await assertFails(setDoc(
+    doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
+    {
+      operationId: followUpCreateOperationId,
+      actorUid: 'customers-admin',
+      scope: 'customer-follow-up',
+      action: 'create',
+      requestId: followUpCreateRequestId,
+      payloadHash: 'a'.repeat(64),
+      resultCollection: 'customerFollowUpTasks',
+      resultId: followUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  ));
+  await assertSucceeds(setDoc(
+    doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpCreateOperationId),
+    {
+      operationId: followUpCreateOperationId,
+      actorUid: 'customers-admin',
+      scope: 'customer-follow-up',
+      action: 'create',
+      requestId: followUpCreateRequestId,
+      payloadHash: followUpCreatePayloadHash,
+      resultCollection: 'customerFollowUpTasks',
+      resultId: followUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  ));
+  await assertSucceeds(setDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), followUpEvent));
+  await assertFails(updateDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpEventId), {
+    note: 'Riwayat tidak boleh diubah',
+  }));
+  await assertFails(deleteDoc(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId)));
+
+  const followUpUpdateRequestId = 'follow-up-update-rules-001';
+  const followUpUpdatePayload = {
+    taskId: followUpTaskId,
+    expectedUpdatedAt: followUpCreatedAt,
+    status: 'completed',
+    outcome: 'connected',
+  };
+  const followUpUpdateOperationId = await createRepositoryOperationId({
+    actorUid: 'customers-admin',
+    scope: 'customer-follow-up',
+    action: 'update',
+    requestId: followUpUpdateRequestId,
+  });
+  const followUpUpdateEventId = 'fue_' + followUpUpdateOperationId.slice(3);
+  const followUpUpdatePayloadHash = await createRepositoryPayloadHash(followUpUpdatePayload);
+  const followUpUpdatedAt = '2026-08-14T08:15:00.000Z';
+  const followUpUpdateEvent = {
+    id: followUpUpdateEventId,
+    taskId: followUpTaskId,
+    customerId: 'customer-1',
+    action: 'completed',
+    actorUid: 'customers-admin',
+    actorName: 'Customer Admin',
+    changes: {
+      status: { before: 'open', after: 'completed' },
+      outcome: { before: '', after: 'connected' },
+    },
+    fromStatus: 'open',
+    toStatus: 'completed',
+    outcome: 'connected',
+    dueAt: '2026-11-10',
+    reason: '',
+    note: 'Sudah dihubungi.',
+    createdAt: followUpUpdatedAt,
+    operationId: followUpUpdateOperationId,
+    operationAction: 'update',
+  };
+  const followUpUpdatedTask = {
+    ...followUpTask,
+    status: 'completed',
+    outcome: 'connected',
+    notes: 'Sudah dihubungi.',
+    revision: 2,
+    updatedAt: followUpUpdatedAt,
+    completedAt: followUpUpdatedAt,
+    completedByUid: 'customers-admin',
+    completedByName: 'Customer Admin',
+    lastOperationId: followUpUpdateOperationId,
+    lastOperationAction: 'update',
+    lastOperationPayloadHash: followUpUpdatePayloadHash,
+    lastEventId: followUpUpdateEventId,
+    lastEventSnapshot: followUpUpdateEvent,
+  };
+  const followUpUpdateBatch = writeBatch(customersAdmin);
+  followUpUpdateBatch.set(doc(customersAdmin, 'customerFollowUpTasks', followUpTaskId), followUpUpdatedTask);
+  await assertSucceeds(followUpUpdateBatch.commit());
+  await assertSucceeds(setDoc(
+    doc(customersAdmin, 'users', 'customers-admin', 'repositoryOperations', followUpUpdateOperationId),
+    {
+      operationId: followUpUpdateOperationId,
+      actorUid: 'customers-admin',
+      scope: 'customer-follow-up',
+      action: 'update',
+      requestId: followUpUpdateRequestId,
+      payloadHash: followUpUpdatePayloadHash,
+      resultCollection: 'customerFollowUpTasks',
+      resultId: followUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  ));
+  await assertSucceeds(setDoc(doc(customersAdmin, 'customerFollowUpEvents', followUpUpdateEventId), followUpUpdateEvent));
+
+  // A dashboard-only administrator cannot create a customer follow-up task.
+  const dashboardForFollowUp = context('dashboard-only', 'dashboard@example.com');
+  const dashboardFollowUpRequestId = 'follow-up-dashboard-denied-001';
+  const dashboardFollowUpOperationId = await createRepositoryOperationId({
+    actorUid: 'dashboard-only',
+    scope: 'customer-follow-up',
+    action: 'create',
+    requestId: dashboardFollowUpRequestId,
+  });
+  const dashboardFollowUpTaskId = 'fup_' + dashboardFollowUpOperationId.slice(3);
+  const dashboardFollowUpEventId = 'fue_' + dashboardFollowUpOperationId.slice(3);
+  const dashboardFollowUpEvent = {
+    ...followUpEvent,
+    id: dashboardFollowUpEventId,
+    taskId: dashboardFollowUpTaskId,
+    actorUid: 'dashboard-only',
+    operationId: dashboardFollowUpOperationId,
+  };
+  const dashboardFollowUpTask = {
+    ...followUpTask,
+    id: dashboardFollowUpTaskId,
+    lastOperationId: dashboardFollowUpOperationId,
+    lastOperationPayloadHash: await createRepositoryPayloadHash({ customerId: 'customer-1', title: 'forbidden' }),
+    lastEventId: dashboardFollowUpEventId,
+    lastEventSnapshot: dashboardFollowUpEvent,
+    createdByUid: 'dashboard-only',
+    createdByName: 'Dashboard Only',
+  };
+  const dashboardFollowUpBatch = writeBatch(dashboardForFollowUp);
+  dashboardFollowUpBatch.set(doc(dashboardForFollowUp, 'customerFollowUpTasks', dashboardFollowUpTaskId), dashboardFollowUpTask);
+  dashboardFollowUpBatch.set(
+    doc(dashboardForFollowUp, 'users', 'dashboard-only', 'repositoryOperations', dashboardFollowUpOperationId),
+    {
+      operationId: dashboardFollowUpOperationId,
+      actorUid: 'dashboard-only',
+      scope: 'customer-follow-up',
+      action: 'create',
+      requestId: dashboardFollowUpRequestId,
+      payloadHash: await createRepositoryPayloadHash({ customerId: 'customer-1', title: 'forbidden' }),
+      resultCollection: 'customerFollowUpTasks',
+      resultId: dashboardFollowUpTaskId,
+      createdAt: serverTimestamp(),
+    },
+  );
+  await assertFails(dashboardFollowUpBatch.commit());
+
   const bookkeeping = context('bookkeeping-admin', 'bookkeeping@example.com');
   await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingSessions', '2026-08-14__main')));
   await assertSucceeds(getDoc(doc(bookkeeping, 'cashClosingEvents', 'closing-event-1')));
@@ -493,12 +1528,93 @@ try {
     idempotencyKey: 'late-manual-entry', immutable: false, note: '', paymentMethod: 'cash',
     reversalOf: '', source: 'manual', title: 'Late expense', type: 'expense', updatedAt: now,
   }));
-  await assertSucceeds(setDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-open-date'), {
+  // Browser-style direct journal writes must remain denied. A valid write
+  // needs its journal, activity fence, and immutable operation marker in one batch.
+  await assertFails(setDoc(doc(bookkeeping, 'bookkeepingEntries', 'manual-open-date-direct'), {
     actorName: 'Bookkeeping Admin', actorUid: 'bookkeeping-admin', amount: 30000,
-    category: 'Operational', createdAt: now, date: '2026-08-15', id: 'manual-open-date',
-    idempotencyKey: 'manual-open-date', immutable: false, note: '', paymentMethod: 'cash',
+    category: 'Operational', createdAt: now, date: '2026-08-15', id: 'manual-open-date-direct',
+    idempotencyKey: 'manual-open-date-direct', immutable: false, note: '', paymentMethod: 'cash',
     reversalOf: '', source: 'manual', title: 'Open date expense', type: 'expense', updatedAt: now,
   }));
+
+  const manualRequestId = 'manual-open-date-atomic-001';
+  const manualAction = 'manual-create';
+  const manualPayload = {
+    amount: 30000,
+    category: 'Operational',
+    date: '2026-08-15',
+    note: '',
+    paymentMethod: 'cash',
+    title: 'Open date expense',
+    type: 'expense',
+  };
+  const manualOperationId = await createRepositoryOperationId({
+    actorUid: 'bookkeeping-admin',
+    scope: 'bookkeeping',
+    action: manualAction,
+    requestId: manualRequestId,
+  });
+  const manualPayloadHash = await createRepositoryPayloadHash(manualPayload);
+  const manualEntryId = 'manual-open-date-atomic';
+  const manualClosingId = '2026-08-15__main';
+  const manualEntry = {
+    actorName: 'Bookkeeping Admin',
+    actorUid: 'bookkeeping-admin',
+    ...manualPayload,
+    createdAt: now,
+    id: manualEntryId,
+    idempotencyKey: manualRequestId,
+    immutable: false,
+    operationId: manualOperationId,
+    reversalOf: '',
+    source: 'manual',
+    sourceAction: '',
+    sourceAttendanceDate: '',
+    sourceAttendanceId: '',
+    sourceBookingId: '',
+    sourceEventId: '',
+    sourceFeeEntryId: '',
+    sourceGuardPersonId: '',
+    sourceProofId: '',
+    sourceWorkOrderId: '',
+    updatedAt: now,
+  };
+  const manualFence = {
+    ...procurementPaymentFence,
+    activityRevision: procurementPaymentFence.activityRevision + 1,
+    businessDate: '2026-08-15',
+    createdAt: procurementPaymentFence.createdAt,
+    id: manualClosingId,
+    lastActivityAt: now,
+    lastActivityByUid: 'bookkeeping-admin',
+    lastBookingId: '',
+    lastLedgerEntryId: manualEntryId,
+    lastOperationAction: manualAction,
+    lastOperationId: manualOperationId,
+    lastProofId: '',
+    registerId: 'main',
+    status: 'open',
+    updatedAt: now,
+  };
+  const manualOperationMarker = {
+    action: manualAction,
+    actorUid: 'bookkeeping-admin',
+    createdAt: serverTimestamp(),
+    operationId: manualOperationId,
+    payloadHash: manualPayloadHash,
+    requestId: manualRequestId,
+    resultCollection: 'bookkeepingEntries',
+    resultId: manualEntryId,
+    scope: 'bookkeeping',
+  };
+  const manualWriteBatch = writeBatch(bookkeeping);
+  manualWriteBatch.set(doc(bookkeeping, 'bookkeepingEntries', manualEntryId), manualEntry);
+  manualWriteBatch.set(doc(bookkeeping, 'cashClosingSessions', manualClosingId), manualFence);
+  manualWriteBatch.set(
+    doc(bookkeeping, 'users', 'bookkeeping-admin', 'repositoryOperations', manualOperationId),
+    manualOperationMarker,
+  );
+  await assertSucceeds(manualWriteBatch.commit());
 
   const schedule = context('schedule-admin', 'schedule@example.com');
   await assertSucceeds(getDoc(doc(schedule, 'bookingSessionEvents', 'session-event-1')));
@@ -507,19 +1623,314 @@ try {
     createdAt: now, fromStatus: 'upcoming', id: 'session-event-client-write', reason: '',
     toStatus: 'in_progress', type: 'booking-session-event',
   }));
-  await assertSucceeds(setDoc(doc(schedule, 'bookings', 'safe-unpaid'), {
+  const safeBooking = {
+    appliedDiscounts: [],
+    bandName: '',
+    bookingCode: 'BKG-SAFE-UNPAID',
+    bookingId: 'BKG-SAFE-UNPAID',
+    bookingRequestStatus: 'confirmed',
+    clientUid: '',
+    createdAt: now,
     customer: 'Safe',
+    customerId: '',
+    customerIdentityMode: '',
+    customerPhoneKey: '',
     date: '2026-08-22',
+    discountAmount: 0,
     dpAmount: 0,
     durationHours: 1,
+    email: '',
+    id: 'safe-unpaid',
+    initialPaymentIntent: null,
+    initialPaymentLedgerStatus: 'not_required',
     invoiceAmount: 500000,
+    invoiceNumber: 'INV-SAFE-UNPAID',
+    lastPaymentAt: '',
+    lastPaymentMethod: '',
+    packageId: 'none',
+    packageLabel: '',
     paidAmount: 0,
     paymentHistory: [],
+    paymentMethod: '',
     paymentStatus: 'pending',
+    paymentStatusCanonical: 'unpaid',
     phone: '',
+    pricingMode: 'session',
+    recordingTypeId: '',
+    recordingTypeLabel: '',
+    refundHistory: [],
+    refundedAmount: 0,
+    sessionLabel: 'Rehearsal',
+    sessionStatus: 'scheduled',
+    sessionType: 'rehearsal',
+    source: 'admin',
     startHour: 11,
+    startTimeLabel: '11:00',
     status: 'pending',
+    subtotal: 500000,
+    title: 'Safe Booking',
     total: 500000,
+    updatedAt: now,
+  };
+  const safeBookingBatch = writeBatch(schedule);
+  safeBookingBatch.set(doc(schedule, 'bookings', 'safe-unpaid'), safeBooking);
+  safeBookingBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-22'), {
+    date: '2026-08-22', lastBookingId: 'safe-unpaid', revision: 1, updatedAt: now,
+  });
+  safeBookingBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-unpaid'), {
+    bookingId: 'safe-unpaid', date: '2026-08-22', durationHours: 1,
+    sessionLabel: 'Rehearsal', startHour: 11, status: 'pending',
+    title: 'Terisi', updatedAt: now,
+  });
+  console.log('[rules-behavior] commit safe unpaid booking + slot + day');
+  await assertSucceeds(safeBookingBatch.commit());
+  await assertSucceeds(getDoc(doc(schedule, 'bookingScheduleDays', '2026-08-22')));
+  await assertSucceeds(getDoc(doc(schedule, 'clientCalendarSlots', 'safe-unpaid')));
+  await assertFails(setDoc(doc(schedule, 'bookingScheduleDays', 'orphan-day'), {
+    date: '2026-08-25', lastBookingId: 'missing-booking', revision: 1, updatedAt: now,
+  }));
+  await assertFails(setDoc(doc(schedule, 'clientCalendarSlots', 'orphan-slot'), {
+    bookingId: 'orphan-slot', date: '2026-08-25', durationHours: 1,
+    sessionLabel: 'Orphan', startHour: 10, status: 'pending', title: 'Terisi', updatedAt: now,
+  }));
+
+  const rescheduledAt = '2026-08-14T08:15:00.000Z';
+  const rescheduleBatch = writeBatch(schedule);
+  rescheduleBatch.update(doc(schedule, 'bookings', 'safe-unpaid'), {
+    startHour: 12,
+    startTimeLabel: '12:00',
+    updatedAt: rescheduledAt,
+  });
+  rescheduleBatch.update(doc(schedule, 'bookingScheduleDays', '2026-08-22'), {
+    lastBookingId: 'safe-unpaid',
+    revision: 2,
+    updatedAt: rescheduledAt,
+  });
+  rescheduleBatch.update(doc(schedule, 'clientCalendarSlots', 'safe-unpaid'), {
+    startHour: 12,
+    updatedAt: rescheduledAt,
+  });
+  console.log('[rules-behavior] commit atomic reschedule');
+  await assertSucceeds(rescheduleBatch.commit());
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-unpaid'), {
+    startHour: 13,
+    startTimeLabel: '13:00',
+    updatedAt: '2026-08-14T08:20:00.000Z',
+  }));
+
+  const startedAt = '2026-08-14T08:30:00.000Z';
+  const startEventId = 'session-safe-start';
+  const startBatch = writeBatch(schedule);
+  startBatch.update(doc(schedule, 'bookings', 'safe-unpaid'), {
+    actualStartAt: startedAt,
+    actualStartByName: 'Schedule Admin',
+    actualStartByUid: 'schedule-admin',
+    lastSessionEventAt: startedAt,
+    lastSessionEventId: startEventId,
+    lastSessionEventType: 'start',
+    sessionStatus: 'in_progress',
+    updatedAt: startedAt,
+  });
+  startBatch.set(doc(schedule, 'bookingSessionEvents', startEventId), {
+    action: 'start',
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    bookingId: 'safe-unpaid',
+    createdAt: startedAt,
+    fromStatus: 'upcoming',
+    id: startEventId,
+    reason: '',
+    toStatus: 'in_progress',
+    type: 'booking-session-event',
+  });
+  console.log('[rules-behavior] commit session start + event');
+  await assertSucceeds(startBatch.commit());
+  await assertSucceeds(getDoc(doc(schedule, 'bookingSessionEvents', startEventId)));
+  await assertFails(updateDoc(doc(schedule, 'bookingSessionEvents', startEventId), { reason: 'Mutated' }));
+  await assertFails(deleteDoc(doc(schedule, 'bookingSessionEvents', startEventId)));
+
+  const completedAt = '2026-08-14T09:30:00.000Z';
+  const completeEventId = 'session-safe-complete';
+  const completeBatch = writeBatch(schedule);
+  completeBatch.update(doc(schedule, 'bookings', 'safe-unpaid'), {
+    actualDurationMinutes: 60,
+    actualEndAt: completedAt,
+    actualEndByName: 'Schedule Admin',
+    actualEndByUid: 'schedule-admin',
+    lastSessionEventAt: completedAt,
+    lastSessionEventId: completeEventId,
+    lastSessionEventType: 'complete',
+    sessionStatus: 'completed',
+    updatedAt: completedAt,
+  });
+  completeBatch.set(doc(schedule, 'bookingSessionEvents', completeEventId), {
+    action: 'complete',
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    bookingId: 'safe-unpaid',
+    createdAt: completedAt,
+    fromStatus: 'in_progress',
+    id: completeEventId,
+    reason: '',
+    toStatus: 'completed',
+    type: 'booking-session-event',
+  });
+  console.log('[rules-behavior] commit session completion + event');
+  await assertSucceeds(completeBatch.commit());
+
+  const noShowBooking = {
+    ...safeBooking,
+    bookingCode: 'BKG-SAFE-NO-SHOW',
+    bookingId: 'BKG-SAFE-NO-SHOW',
+    date: '2026-08-25',
+    id: 'safe-no-show',
+    invoiceNumber: 'INV-SAFE-NO-SHOW',
+    startHour: 13,
+    updatedAt: now,
+  };
+  const noShowCreateBatch = writeBatch(schedule);
+  noShowCreateBatch.set(doc(schedule, 'bookings', 'safe-no-show'), noShowBooking);
+  noShowCreateBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-25'), {
+    date: '2026-08-25', lastBookingId: 'safe-no-show', revision: 1, updatedAt: now,
+  });
+  noShowCreateBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-no-show'), {
+    bookingId: 'safe-no-show', date: '2026-08-25', durationHours: 1,
+    sessionLabel: 'Rehearsal', startHour: 13, status: 'pending', title: 'Terisi', updatedAt: now,
+  });
+  console.log('[rules-behavior] commit no-show booking creation');
+  await assertSucceeds(noShowCreateBatch.commit());
+
+  const noShowAt = '2026-08-25T07:30:00.000Z';
+  const noShowEventId = 'session-safe-no-show';
+  const noShowBatch = writeBatch(schedule);
+  noShowBatch.update(doc(schedule, 'bookings', 'safe-no-show'), {
+    lastSessionEventAt: noShowAt,
+    lastSessionEventId: noShowEventId,
+    lastSessionEventType: 'no_show',
+    noShowAt,
+    noShowByName: 'Schedule Admin',
+    noShowByUid: 'schedule-admin',
+    noShowReason: 'Client tidak hadir',
+    sessionStatus: 'no_show',
+    updatedAt: noShowAt,
+  });
+  noShowBatch.set(doc(schedule, 'bookingSessionEvents', noShowEventId), {
+    action: 'no_show',
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    bookingId: 'safe-no-show',
+    createdAt: noShowAt,
+    fromStatus: 'upcoming',
+    id: noShowEventId,
+    reason: 'Client tidak hadir',
+    toStatus: 'no_show',
+    type: 'booking-session-event',
+  });
+  console.log('[rules-behavior] commit no-show action + event');
+  await assertSucceeds(noShowBatch.commit());
+
+  const paidAt = '2026-08-24T08:00:00.000Z';
+  const initialPayment = {
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    amount: 100000,
+    createdAt: paidAt,
+    date: '2026-08-24',
+    id: 'payment-safe-1',
+    idempotencyKey: 'manual-create-safe-paid',
+    method: 'cash',
+    note: 'Pembayaran awal booking',
+    source: 'manual-booking-create',
+  };
+  const safePaidBooking = {
+    ...safeBooking,
+    bookingCode: 'BKG-SAFE-PAID',
+    bookingId: 'BKG-SAFE-PAID',
+    createdAt: paidAt,
+    date: '2026-08-24',
+    dpAmount: 0,
+    id: 'safe-paid',
+    initialPaymentIntent: initialPayment,
+    initialPaymentLedgerStatus: 'pending',
+    invoiceAmount: 500000,
+    invoiceNumber: 'INV-SAFE-PAID',
+    lastPaymentAt: '',
+    lastPaymentMethod: '',
+    paidAmount: 0,
+    paymentHistory: [],
+    paymentMethod: '',
+    paymentStatus: 'pending',
+    paymentStatusCanonical: 'unpaid',
+    sessionStatus: 'scheduled',
+    startHour: 12,
+    status: 'pending',
+    updatedAt: paidAt,
+  };
+  const initialLedgerId = 'booking-payment-safe-paid-payment-safe-1';
+  const paidBookingBatch = writeBatch(schedule);
+  paidBookingBatch.set(doc(schedule, 'bookings', 'safe-paid'), safePaidBooking);
+  paidBookingBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-24'), {
+    date: '2026-08-24', lastBookingId: 'safe-paid', revision: 1, updatedAt: paidAt,
+  });
+  paidBookingBatch.set(doc(schedule, 'clientCalendarSlots', 'safe-paid'), {
+    bookingId: 'safe-paid', date: '2026-08-24', durationHours: 1,
+    sessionLabel: 'Rehearsal', startHour: 12, status: 'pending', title: 'Terisi', updatedAt: paidAt,
+  });
+  console.log('[rules-behavior] create paid booking + slot before initial ledger');
+  await assertSucceeds(paidBookingBatch.commit());
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), {
+    initialPaymentLedgerStatus: 'recorded',
+  }));
+
+  const initialLedger = {
+    actorName: 'Schedule Admin',
+    actorUid: 'schedule-admin',
+    amount: 100000,
+    category: 'booking',
+    createdAt: paidAt,
+    date: '2026-08-24',
+    id: initialLedgerId,
+    idempotencyKey: 'manual-create-safe-paid',
+    immutable: true,
+    note: 'Pembayaran awal booking',
+    paymentMethod: 'cash',
+    reversalOf: '',
+    source: 'booking-payment',
+    sourceAction: 'payment',
+    sourceBookingId: 'safe-paid',
+    sourceEventId: 'payment-safe-1',
+    title: 'Pembayaran INV-SAFE-PAID',
+    type: 'income',
+    updatedAt: paidAt,
+  };
+  const initialLedgerBatch = writeBatch(scheduleRecoveryAdmin);
+  initialLedgerBatch.update(doc(scheduleRecoveryAdmin, 'bookings', 'safe-paid'), {
+    dpAmount: 100000,
+    initialPaymentLedgerStatus: 'recorded',
+    invoiceAmount: 400000,
+    lastPaymentAt: paidAt,
+    lastPaymentMethod: 'cash',
+    paidAmount: 100000,
+    paymentHistory: [initialPayment],
+    paymentMethod: 'cash',
+    paymentStatus: 'dp',
+    paymentStatusCanonical: 'partial',
+    status: 'dp',
+  });
+  initialLedgerBatch.update(doc(scheduleRecoveryAdmin, 'clientCalendarSlots', 'safe-paid'), {
+    status: 'dp',
+  });
+  initialLedgerBatch.set(doc(scheduleRecoveryAdmin, 'bookkeepingEntries', initialLedgerId), initialLedger);
+  console.log('[rules-behavior] commit initial ledger + booking pending-to-recorded transition');
+  await assertSucceeds(initialLedgerBatch.commit());
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'safe-paid'), { total: 400000 }));
+  await assertFails(setDoc(doc(schedule, 'bookkeepingEntries', 'forged-booking-payment'), {
+    actorName: 'Schedule Admin', actorUid: 'schedule-admin', amount: 100000,
+    category: 'booking', createdAt: paidAt, date: '2026-08-24',
+    id: 'forged-booking-payment', idempotencyKey: 'forged-payment', immutable: true,
+    note: '', paymentMethod: 'cash', reversalOf: '', source: 'booking-payment',
+    sourceAction: 'payment', sourceBookingId: 'safe-paid', sourceEventId: 'forged',
+    title: 'Forged booking payment', type: 'income', updatedAt: paidAt,
   }));
   await assertFails(setDoc(doc(schedule, 'bookings', 'forged-paid'), {
     customer: 'Forged',
@@ -690,11 +2101,111 @@ try {
   };
   const safeClientBooking = { ...clientBooking };
   delete safeClientBooking.refundHistory;
+  console.log('[rules-behavior] create client booking request');
   await assertSucceeds(setDoc(doc(client, 'bookings', 'client-safe'), {
     ...safeClientBooking,
     id: 'client-safe',
   }));
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'bookings', 'client-refunded'), {
+      ...safeClientBooking,
+      id: 'client-refunded',
+      invoiceStatus: 'refunded',
+      paymentStatus: 'refunded',
+      paymentStatusCanonical: 'refunded',
+    });
+  });
+  const proofMetadata = {
+    adminNote: '',
+    amount: 50000,
+    bookingCode: 'BKG-CLIENT-SAFE',
+    bookingId: 'client-safe',
+    category: 'dp',
+    clientNote: '',
+    clientUid: 'client-1',
+    createdAt: now,
+    customer: 'Client',
+    id: 'proof-metadata-open',
+    invoiceNumber: 'INV-CLIENT-SAFE',
+    method: 'transfer',
+    payerName: 'Client Name',
+    proofFileName: '',
+    proofMimeType: '',
+    proofPublicId: '',
+    proofUrl: '',
+    reviewDecision: '',
+    reviewOperationId: '',
+    reviewedAt: '',
+    reviewedByName: '',
+    reviewedByUid: '',
+    status: 'pending',
+    transactionReference: 'TXN-123456',
+    updatedAt: now,
+  };
+  await assertSucceeds(setDoc(doc(client, 'paymentProofs', 'proof-metadata-open'), proofMetadata));
+  await assertFails(setDoc(doc(client, 'paymentProofs', 'proof-metadata-refunded'), {
+    ...proofMetadata,
+    bookingId: 'client-refunded',
+    id: 'proof-metadata-refunded',
+  }));
   await assertFails(setDoc(doc(client, 'bookings', clientBooking.id), clientBooking));
+
+  const decisionAt = '2026-08-14T08:45:00.000Z';
+  const decisionKey = 'decision-client-safe';
+  const decisionMessageId = 'request-' + decisionKey;
+  const decisionNote = 'Approved for requested slot';
+  const decisionBatch = writeBatch(schedule);
+  decisionBatch.update(doc(schedule, 'bookings', 'client-safe'), {
+    adminResponseAt: decisionAt,
+    adminResponseBy: 'schedule-admin',
+    adminResponseNote: decisionNote,
+    bookingRequestStatus: 'confirmed',
+    requestStatus: 'confirmed',
+    lastRequestDecisionKey: decisionKey,
+    lastMessageId: decisionMessageId,
+    lastMessageAt: decisionAt,
+    lastMessagePreview: decisionNote,
+    lastMessageSenderRole: 'admin',
+    lastMessageReadByAdmin: true,
+    lastMessageReadByClient: false,
+    updatedAt: decisionAt,
+  });
+  decisionBatch.set(doc(schedule, 'bookingMessages', decisionMessageId), {
+    id: decisionMessageId,
+    bookingId: 'client-safe',
+    clientUid: 'client-1',
+    senderUid: 'schedule-admin',
+    senderRole: 'admin',
+    senderName: 'Schedule Admin',
+    text: decisionNote,
+    type: 'status',
+    createdAt: decisionAt,
+    readByAdmin: true,
+    readByClient: false,
+  });
+  decisionBatch.set(doc(schedule, 'bookingScheduleDays', '2026-08-23'), {
+    date: '2026-08-23',
+    lastBookingId: 'client-safe',
+    revision: 1,
+    updatedAt: decisionAt,
+  });
+  decisionBatch.set(doc(schedule, 'clientCalendarSlots', 'client-safe'), {
+    bookingId: 'client-safe',
+    date: '2026-08-23',
+    durationHours: 1,
+    sessionLabel: 'Sesi Studio',
+    startHour: 13,
+    status: 'pending',
+    title: 'Sesi Studio',
+    updatedAt: decisionAt,
+  });
+  console.log('[rules-behavior] commit admin decision + message + slot + day');
+  await assertSucceeds(decisionBatch.commit());
+  await assertSucceeds(getDoc(doc(schedule, 'bookingMessages', decisionMessageId)));
+  await assertFails(updateDoc(doc(schedule, 'bookings', 'client-safe'), {
+    paymentStatus: 'lunas',
+    status: 'lunas',
+  }));
 
   assert.equal(true, true);
   console.log('firestore-rules-behavior-test: PASS');

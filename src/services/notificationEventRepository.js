@@ -15,7 +15,13 @@ export const NOTIFICATION_EVENT_TYPES = Object.freeze({
   BOOKING_MESSAGE_CREATED: 'booking_message_created',
   BOOKING_REJECTED: 'booking_rejected',
   BOOKING_REQUEST_CREATED: 'booking_request_created',
+  GUARD_ATTENDANCE_APPROVED: 'guard_attendance_approved',
+  GUARD_ATTENDANCE_CHECKED_OUT: 'guard_attendance_checked_out',
+  GUARD_ATTENDANCE_NOTE_UPDATED: 'guard_attendance_note_updated',
+  GUARD_ATTENDANCE_REJECTED: 'guard_attendance_rejected',
   GUARD_ATTENDANCE_SUBMITTED: 'guard_attendance_submitted',
+  GUARD_ATTENDANCE_VOIDED: 'guard_attendance_voided',
+  GUARD_MEAL_POSTED: 'guard_meal_posted',
   PAYMENT_PROOF_APPROVED: 'payment_proof_approved',
   PAYMENT_PROOF_REJECTED: 'payment_proof_rejected',
   PAYMENT_PROOF_SUBMITTED: 'payment_proof_submitted',
@@ -67,6 +73,7 @@ function normalizeActorRole(role) {
 function normalizeTargetRole(role) {
   if (role === 'admin') return 'admin';
   if (role === 'client') return 'client';
+  if (role === 'guard' || role === 'studio_guard') return 'guard';
   return 'none';
 }
 
@@ -205,6 +212,15 @@ export function createClientNotificationEvent(input = {}) {
   });
 }
 
+export function createGuardNotificationEvent(input = {}) {
+  return createNotificationEvent({
+    ...input,
+    actorRole: input.actorRole || 'admin',
+    targetMode: 'user',
+    targetRole: 'guard',
+  });
+}
+
 export function subscribeNotificationEvents({ status = 'all' } = {}, callback, onError) {
   if (!isFirebaseConfigured || !firestoreDb) {
     onError?.(new Error('Firebase belum dikonfigurasi.'));
@@ -278,13 +294,55 @@ export function subscribeClientNotificationEvents(user, callback, onError) {
   );
 }
 
+export function subscribeGuardNotificationEvents(user, callback, onError) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    onError?.(new Error('Firebase belum dikonfigurasi.'));
+    return () => {};
+  }
+
+  if (!user?.uid) {
+    callback([]);
+    return () => {};
+  }
+
+  const eventsRef = collection(firestoreDb, NOTIFICATION_EVENTS_COLLECTION);
+  const guardEventsQuery = query(eventsRef, where('targetUid', '==', user.uid));
+
+  return onSnapshot(
+    guardEventsQuery,
+    (snapshot) => {
+      const events = snapshot.docs
+        .map((eventDoc) => normalizeNotificationEvent({
+          id: eventDoc.id,
+          ...eventDoc.data(),
+        }))
+        .filter((event) =>
+          event.targetUid === user.uid &&
+          event.targetMode === 'user' &&
+          event.targetRole === 'guard'
+        )
+        .sort((first, second) =>
+          String(second.createdAt || '').localeCompare(String(first.createdAt || ''))
+        );
+
+      callback(events);
+    },
+    (error) => {
+      console.error('Gagal membaca notifikasi guard:', error);
+      onError?.(error);
+    },
+  );
+}
+
 export const notificationEventRepository = {
   buildNotificationEventRecord,
   createAdminNotificationEvent,
   createClientNotificationEvent,
+  createGuardNotificationEvent,
   createNotificationEvent,
   getNotificationEventStatusLabel,
   normalizeNotificationEvent,
   subscribeClientNotificationEvents,
+  subscribeGuardNotificationEvents,
   subscribeNotificationEvents,
 };

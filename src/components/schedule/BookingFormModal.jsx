@@ -4,8 +4,10 @@ import {
   Dialog,
 } from 'radix-ui';
 import {
+  AlertTriangle,
   CalendarDays,
   Check,
+  ChevronDown,
   Clock3,
   CreditCard,
   Phone,
@@ -112,6 +114,18 @@ function formatBookingModalDate(
         'short',
     },
   );
+}
+
+function formatHourClock(value) {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) return '-';
+
+  const totalMinutes = Math.max(0, Math.round(numeric * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return String(hours).padStart(2, '0') + '.' + String(minutes).padStart(2, '0');
 }
 
 function getDurationFormValue(durationHours) {
@@ -236,6 +250,7 @@ function buildInitialPaymentHistory({ bookingId, editingBooking, form, now, requ
 }
 
 export default function BookingFormModal({
+  checkSlotConflict = null,
   editingBooking,
   initialSlot,
   isOpen,
@@ -244,8 +259,14 @@ export default function BookingFormModal({
 }) {
   const [form, setForm] = useState(() => createInitialForm(initialSlot, editingBooking));
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [activeStepKey, setActiveStepKey] = useState('customer');
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const panelRef = useRef(null);
+  const selectPortalRef = useRef(null);
   const bookingFormLayoutRef = useRef(null);
+  const submissionIdentityRef = useRef(null);
 
 
   const pricingSettings = usePricingSettings();
@@ -274,7 +295,14 @@ export default function BookingFormModal({
 
     const frameId = window.requestAnimationFrame(() => {
       setForm(createInitialForm(initialSlot, editingBooking));
-      setError('');
+      setFieldErrors({});
+      setActiveStepKey('customer');
+      setIsSummaryExpanded(false);
+      setError(
+        editingBooking?.initialPaymentLedgerStatus === 'pending' && editingBooking?.initialPaymentIntent
+          ? 'Pembayaran awal booking ini masih menunggu pencatatan ledger. Klik Simpan untuk memulihkan payment history dan ledger secara aman.'
+          : ''
+      );
       setIsSaving(false);
     });
 
@@ -282,6 +310,94 @@ export default function BookingFormModal({
       window.cancelAnimationFrame(frameId);
     };
   }, [editingBooking, initialSlot, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return undefined;
+
+    const viewport = window.visualViewport;
+    let frameId = 0;
+
+    function syncVisualViewportHeight() {
+      const panelElement = panelRef.current;
+      if (!panelElement) return;
+
+      if (window.innerWidth >= 768) {
+        panelElement.style.removeProperty('--booking-modal-vvh');
+        return;
+      }
+
+      const nextHeight = viewport?.height || window.innerHeight || 0;
+      if (nextHeight > 0) {
+        panelElement.style.setProperty('--booking-modal-vvh', Math.round(nextHeight) + 'px');
+      }
+    }
+
+    function scheduleSync() {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(syncVisualViewportHeight);
+    }
+
+    const panelAtMount = panelRef.current;
+
+    scheduleSync();
+    viewport?.addEventListener('resize', scheduleSync);
+    window.addEventListener('resize', scheduleSync);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      viewport?.removeEventListener('resize', scheduleSync);
+      window.removeEventListener('resize', scheduleSync);
+      panelAtMount?.style.removeProperty('--booking-modal-vvh');
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const layoutElement = bookingFormLayoutRef.current;
+    if (!layoutElement) return undefined;
+
+    let frameId = 0;
+
+    function syncActiveStepFromScroll() {
+      const container = bookingFormLayoutRef.current;
+      if (!container) return;
+
+      const sections = Array.from(container.querySelectorAll('[data-booking-step]'));
+      if (!sections.length) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const pivotTop = containerRect.top + 88;
+      let nextStep = sections[0].getAttribute('data-booking-step') || 'customer';
+
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= pivotTop && rect.bottom > containerRect.top + 36) {
+          nextStep = section.getAttribute('data-booking-step') || nextStep;
+        }
+      }
+
+      const nearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 18;
+      if (nearBottom) {
+        nextStep = sections[sections.length - 1].getAttribute('data-booking-step') || nextStep;
+      }
+
+      setActiveStepKey((current) => (current === nextStep ? current : nextStep));
+    }
+
+    function handleLayoutScroll() {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(syncActiveStepFromScroll);
+    }
+
+    layoutElement.addEventListener('scroll', handleLayoutScroll, { passive: true });
+    frameId = window.requestAnimationFrame(syncActiveStepFromScroll);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      layoutElement.removeEventListener('scroll', handleLayoutScroll);
+    };
+  }, [isOpen]);
 
   const totals = useMemo(
     () =>
@@ -300,7 +416,48 @@ export default function BookingFormModal({
 
   const isNoDurationPackageSelected = isPackageSelected && Number(totals.durationHours || 0) <= 0;
 
+  const slotConflictIssue = useMemo(() => {
+    if (typeof checkSlotConflict !== 'function' || isNoDurationPackageSelected) {
+      return null;
+    }
+
+    return checkSlotConflict({
+      id: editingBooking?.id || '',
+      date: form.date,
+      startHour: Number(form.startHour),
+      durationHours: totals.durationHours,
+      packageId: form.packageId,
+      pricingMode: totals.mode,
+    });
+  }, [checkSlotConflict, editingBooking?.id, form.date, form.packageId, form.startHour, isNoDurationPackageSelected, totals.durationHours, totals.mode]);
+
+  const dpPresetAmounts = useMemo(() => {
+    const total = Number(totals.total) || 0;
+    if (total <= 0) return [];
+
+    const candidates = [
+      { key: 'dp-50k', label: 'Rp 50rb', amount: 50000 },
+      { key: 'dp-half', label: '50%', amount: Math.round((total * 0.5) / 1000) * 1000 },
+      { key: 'dp-100k', label: 'Rp 100rb', amount: 100000 },
+    ].filter((preset, index, list) => (
+      preset.amount > 0 &&
+      preset.amount < total &&
+      list.findIndex((item) => item.amount === preset.amount) === index
+    ));
+
+    return candidates;
+  }, [totals.total]);
+
   if (!isOpen) return null;
+
+  function clearValidationFor(fields) {
+    setFieldErrors((current) => {
+      if (!fields.some((key) => Boolean(current[key]))) return current;
+      const next = { ...current };
+      for (const key of fields) delete next[key];
+      return next;
+    });
+  }
 
   function updateField(field) {
     return (event) => {
@@ -313,6 +470,7 @@ export default function BookingFormModal({
         [field]: nextValue,
       }));
 
+      clearValidationFor([field]);
       if (error) setError('');
     };
   }
@@ -351,8 +509,60 @@ export default function BookingFormModal({
         return next;
       });
 
+      clearValidationFor([field, 'customDuration', 'dpAmount', 'recordingTypeId']);
       if (error) setError('');
     };
+  }
+
+  function selectDpPreset(amount) {
+    setForm((current) => ({
+      ...current,
+      dpAmount: String(amount),
+    }));
+    clearValidationFor(['dpAmount']);
+    if (error) setError('');
+  }
+
+  function handleFormFocusCapture(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const sectionElement = target.closest('[data-booking-step]');
+    const stepKey = sectionElement?.getAttribute('data-booking-step');
+    if (stepKey) {
+      setActiveStepKey((current) => (current === stepKey ? current : stepKey));
+    }
+
+    if (typeof window !== 'undefined' && window.innerWidth < 768 && target.tagName === 'INPUT') {
+      const fieldContainer = target.closest('.studio-field') || target;
+      const shouldReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.setTimeout(() => {
+        fieldContainer.scrollIntoView?.({
+          behavior: shouldReduceMotion ? 'auto' : 'smooth',
+          block: 'center',
+        });
+      }, 120);
+    }
+  }
+
+  function focusInvalidField(stepKey, fieldId, nextErrors, message) {
+    setFieldErrors(nextErrors);
+    setError(message);
+    navigateToBookingStep(stepKey);
+
+    if (fieldId && typeof document !== 'undefined') {
+      window.setTimeout(() => {
+        document.getElementById(fieldId)?.focus({ preventScroll: true });
+      }, 140);
+    }
+  }
+
+  function requestClose() {
+    if (!editingBooking && submissionIdentityRef.current?.pendingLedgerRecovery) {
+      setError('Pencatatan pembayaran awal belum selesai. Selesaikan retry Simpan terlebih dahulu atau buka kembali booking pending dari Jadwal untuk memulihkan ledger.');
+      return;
+    }
+    onClose();
   }
 
   async function handleSubmit(event) {
@@ -366,35 +576,102 @@ export default function BookingFormModal({
     const requestedDpAmount = parseRupiahInput(form.dpAmount);
 
     if (!cleanName || !cleanPhone || !form.date || !form.startHour) {
-      setError('Nama, No HP, tanggal, dan jam wajib diisi.');
+      const nextErrors = {};
+      if (!cleanName) nextErrors.name = 'Nama customer wajib diisi.';
+      if (!cleanPhone) nextErrors.phone = 'No HP / WhatsApp wajib diisi.';
+      if (!form.date) nextErrors.date = 'Tanggal booking wajib dipilih.';
+
+      const firstStep = !cleanName || !cleanPhone ? 'customer' : 'slot';
+      const firstId = !cleanName
+        ? 'booking-name'
+        : !cleanPhone
+          ? 'booking-phone'
+          : 'booking-date';
+
+      focusInvalidField(firstStep, firstId, nextErrors, 'Nama, No HP, tanggal, dan jam wajib diisi.');
       return;
     }
 
     if (isRecordingSessionSelected && !recordingTypeOptions.length) {
-      setError('Recording Type belum tersedia. Tambahkan harga Recording Type di Settings terlebih dahulu.');
+      focusInvalidField(
+        'service',
+        null,
+        { recordingTypeId: 'Tambahkan harga Recording Type di Settings terlebih dahulu.' },
+        'Recording Type belum tersedia. Tambahkan harga Recording Type di Settings terlebih dahulu.'
+      );
       return;
     }
 
     if (isRecordingSessionSelected && activeRecordingTypeKey === 'none') {
-      setError('Pilih Tipe Recording terlebih dahulu.');
+      focusInvalidField(
+        'service',
+        null,
+        { recordingTypeId: 'Pilih Tipe Recording terlebih dahulu.' },
+        'Pilih Tipe Recording terlebih dahulu.'
+      );
       return;
     }
 
     if (!isNoDurationPackageSelected && !totals.durationHours) {
-      setError('Durasi booking harus lebih dari 0 jam.');
+      focusInvalidField(
+        'slot',
+        form.duration === 'custom' ? 'booking-custom-duration' : null,
+        form.duration === 'custom' ? { customDuration: 'Isi durasi lebih dari 0 jam.' } : {},
+        'Durasi booking harus lebih dari 0 jam.'
+      );
+      return;
+    }
+
+    if (slotConflictIssue) {
+      focusInvalidField('slot', 'booking-date', {}, slotConflictIssue.message);
       return;
     }
 
     if (form.paymentStatus === 'dp' && !requestedDpAmount) {
-      setError('Nominal DP wajib diisi jika status pembayaran DP.');
+      focusInvalidField(
+        'payment',
+        'booking-dp-amount',
+        { dpAmount: 'Nominal DP wajib diisi jika status pembayaran DP.' },
+        'Nominal DP wajib diisi jika status pembayaran DP.'
+      );
       return;
     }
+
+    setFieldErrors({});
 
     const startHourNumber = Number(form.startHour);
     const hourOption = getSelectedOption(businessHours, form.startHour);
     const sessionLabel = totals.packageItem?.label || totals.recordingType?.label || totals.session?.label || 'Session';
-    const bookingId = editingBooking?.id || makeBookingId();
-    const now = new Date().toISOString();
+    const submissionFingerprint = JSON.stringify({
+      form,
+      editingBookingId: editingBooking?.id || '',
+      requestedDpAmount,
+      total: totals.total,
+      subtotal: totals.subtotal,
+      discountAmount: totals.discountAmount,
+      durationHours: totals.durationHours,
+      pricingMode: totals.mode,
+      sessionLabel,
+      recordingTypeId: totals.recordingType?.key || '',
+      appliedDiscounts: totals.appliedDiscounts,
+    });
+    const previousSubmission = submissionIdentityRef.current;
+    if (previousSubmission?.pendingLedgerRecovery &&
+        previousSubmission.fingerprint !== submissionFingerprint) {
+      setError('Booking sudah tersimpan, tetapi ledger pembayaran awal masih perlu diselesaikan. Klik Simpan kembali tanpa mengubah isi formulir terlebih dahulu. Setelah berhasil, buka ulang form untuk mengubah booking.');
+      return;
+    }
+    if (!previousSubmission || previousSubmission.fingerprint !== submissionFingerprint) {
+      submissionIdentityRef.current = {
+        fingerprint: submissionFingerprint,
+        id: editingBooking?.id || makeBookingId(),
+        createdAt: new Date().toISOString(),
+        pendingLedgerRecovery: false,
+      };
+    }
+    const submissionIdentity = submissionIdentityRef.current;
+    const bookingId = submissionIdentity.id;
+    const now = submissionIdentity.createdAt;
     const paymentHistory = buildInitialPaymentHistory({
       bookingId,
       editingBooking,
@@ -450,6 +727,7 @@ export default function BookingFormModal({
       invoiceAmount,
       createdAt: editingBooking?.createdAt || now,
       updatedAt: editingBooking ? now : '',
+      expectedUpdatedAt: editingBooking?.updatedAt || '',
       });
     } catch (saveError) {
       console.error(
@@ -457,9 +735,17 @@ export default function BookingFormModal({
         saveError
       );
 
-      setError(
-        'Booking belum berhasil disimpan. Coba kembali.'
-      );
+      if (saveError?.code === 'booking_payment_ledger_pending') {
+        submissionIdentityRef.current = {
+          ...submissionIdentity,
+          pendingLedgerRecovery: true,
+        };
+        setError(saveError.message);
+      } else {
+        setError(
+          'Booking belum berhasil disimpan. Coba kembali.'
+        );
+      }
 
       return;
     } finally {
@@ -467,9 +753,14 @@ export default function BookingFormModal({
     }
 
     if (didSave === false) {
+      setError(
+        slotConflictIssue?.message ||
+          'Jadwal bentrok atau booking belum bisa disimpan. Periksa slot dan coba kembali.'
+      );
       return;
     }
 
+    submissionIdentityRef.current = null;
     onClose();
   }
 
@@ -512,6 +803,14 @@ export default function BookingFormModal({
         ) +
         ' jam';
 
+  const slotStartHour = Number(form.startHour);
+  const slotEndHour = slotStartHour + (Number(totals.durationHours) || 0);
+  const slotTimeRangeLabel = isNoDurationPackageSelected
+    ? 'Tanpa blok kalender'
+    : Number.isFinite(slotStartHour) && Number(totals.durationHours) > 0
+      ? formatHourClock(slotStartHour) + '–' + formatHourClock(slotEndHour) + ' WIB'
+      : activeTimeLabel;
+
   const paymentStatusLabel =
     selectedPaymentStatus?.label ||
     form.paymentStatus;
@@ -541,6 +840,7 @@ export default function BookingFormModal({
     Boolean(
       form.date &&
       form.startHour &&
+      !slotConflictIssue &&
       (
         isNoDurationPackageSelected ||
         Number(
@@ -568,24 +868,33 @@ export default function BookingFormModal({
     paymentStepComplete,
   ];
 
+  const hasCustomerError = Boolean(fieldErrors.name || fieldErrors.phone);
+  const hasServiceError = Boolean(fieldErrors.recordingTypeId);
+  const hasSlotError = Boolean(fieldErrors.date || fieldErrors.customDuration || slotConflictIssue);
+  const hasPaymentError = Boolean(fieldErrors.dpAmount);
+
   const bookingStepItems = [
     {
       complete: bookingStepStates[0],
+      hasError: hasCustomerError,
       key: 'customer',
       label: 'Customer',
     },
     {
       complete: bookingStepStates[1],
+      hasError: hasServiceError,
       key: 'service',
       label: 'Layanan',
     },
     {
       complete: bookingStepStates[2],
+      hasError: hasSlotError,
       key: 'slot',
       label: 'Slot',
     },
     {
       complete: bookingStepStates[3],
+      hasError: hasPaymentError,
       key: 'payment',
       label: 'Bayar',
     },
@@ -610,13 +919,21 @@ export default function BookingFormModal({
     completedStepCount ===
     bookingStepStates.length;
 
+  const nextIncompleteItem =
+    bookingStepItems.find((item) => !item.complete) || null;
+
   const bookingReadinessLabel =
-    isBookingReady
-      ? 'Siap disimpan'
-      : incompleteStepCount +
-        ' langkah belum lengkap';
+    slotConflictIssue
+      ? 'Jadwal bentrok, cek slot'
+      : isBookingReady
+        ? 'Siap disimpan'
+        : incompleteStepCount === 1 && nextIncompleteItem
+          ? 'Lengkapi ' + nextIncompleteItem.label
+          : incompleteStepCount + ' langkah perlu dilengkapi';
 
   function navigateToBookingStep(stepKey) {
+    setActiveStepKey(stepKey);
+
     const target =
       bookingFormLayoutRef.current?.querySelector(
         '[data-booking-step="' +
@@ -659,7 +976,7 @@ export default function BookingFormModal({
         if (
           !nextOpen
         ) {
-          onClose();
+          requestClose();
         }
       }}
     >
@@ -671,6 +988,12 @@ export default function BookingFormModal({
         <Dialog.Content
           className="booking-modal-panel"
           data-booking-modal-ui="ui-3c-mobile-first"
+          ref={panelRef}
+          onEscapeKeyDown={(event) => {
+            if (selectPortalRef.current?.querySelector('.studio-select-list, .studio-select-sheet-layer')) {
+              event.preventDefault();
+            }
+          }}
         >
           <header className="booking-modal-head">
             <div className="booking-modal-heading">
@@ -762,7 +1085,7 @@ export default function BookingFormModal({
             ) => (
               <button
                 aria-current={
-                  item.key === nextBookingStepKey
+                  item.key === activeStepKey
                     ? 'step'
                     : undefined
                 }
@@ -777,8 +1100,14 @@ export default function BookingFormModal({
                   item.complete
                     ? 'is-complete'
                     : '',
+                  item.key === activeStepKey
+                    ? 'is-viewing'
+                    : '',
                   item.key === nextBookingStepKey
                     ? 'is-next'
+                    : '',
+                  item.hasError
+                    ? 'has-error'
                     : '',
                 ].filter(Boolean).join(' ')}
                 key={item.key}
@@ -790,9 +1119,11 @@ export default function BookingFormModal({
                 }}
               >
                 <span aria-hidden="true">
-                  {item.complete ? (
+                  {item.hasError ? (
+                    '!'
+                  ) : item.complete ? (
                     <Check
-                      size={13}
+                      size={12}
                       strokeWidth={2.6}
                     />
                   ) : (
@@ -825,59 +1156,89 @@ export default function BookingFormModal({
             <div
               className="booking-form-layout"
               ref={bookingFormLayoutRef}
+              onFocusCapture={handleFormFocusCapture}
             >
               <aside
                 aria-label="Ringkasan booking"
                 className="booking-form-summary"
+                data-expanded={isSummaryExpanded ? 'true' : 'false'}
               >
-                <section
-                  className={
-                    'booking-summary-readiness ' +
-                    (
-                      isBookingReady
-                        ? 'is-ready'
-                        : ''
-                    )
-                  }
-                >
-                  <span className="booking-summary-readiness-icon">
-                    {isBookingReady ? (
-                      <Check
-                        size={15}
-                        strokeWidth={2.6}
-                      />
-                    ) : (
-                      completedStepCount
-                    )}
-                  </span>
+                <div className="booking-summary-overview">
+                  <section
+                    className={[
+                      'booking-summary-readiness',
+                      isBookingReady ? 'is-ready' : '',
+                      slotConflictIssue ? 'has-conflict' : '',
+                    ].filter(Boolean).join(' ')}
+                  >
+                    <span className="booking-summary-readiness-icon">
+                      {slotConflictIssue ? (
+                        <AlertTriangle
+                          size={14}
+                          strokeWidth={2.3}
+                        />
+                      ) : isBookingReady ? (
+                        <Check
+                          size={15}
+                          strokeWidth={2.6}
+                        />
+                      ) : (
+                        completedStepCount
+                      )}
+                    </span>
 
-                  <div>
-                    <small>Kesiapan booking</small>
+                    <div>
+                      <small>Kesiapan booking</small>
+                      <strong>
+                        {bookingReadinessLabel}
+                      </strong>
+                    </div>
+
+                    <em>
+                      {completedStepCount}/4
+                    </em>
+                  </section>
+
+                  <section className="booking-summary-hero">
+                    <span>
+                      Estimasi tagihan
+                    </span>
+
                     <strong>
-                      {bookingReadinessLabel}
+                      {formatRupiah(
+                        totals.invoiceAmount,
+                      )}
                     </strong>
-                  </div>
 
-                  <em>
-                    {completedStepCount}/4
-                  </em>
-                </section>
+                    <small>
+                      {totals.invoiceAmount === 0 && Number(totals.total) > 0
+                        ? 'sudah lunas'
+                        : totals.dpAmount > 0
+                          ? 'sisa setelah DP'
+                          : 'tagihan tersisa'}
+                    </small>
+                  </section>
+                </div>
 
-                <section className="booking-summary-hero">
-                  <span>
-                    Estimasi tagihan
+                <button
+                  aria-expanded={isSummaryExpanded}
+                  className="booking-summary-toggle"
+                  type="button"
+                  onClick={() => setIsSummaryExpanded((current) => !current)}
+                >
+                  <span className="booking-summary-toggle-copy">
+                    <strong>{activeServiceLabel}</strong>
+                    <span>{activeDateLabel} · {slotTimeRangeLabel}</span>
                   </span>
-
-                  <strong>
-                    {formatRupiah(
-                      totals.invoiceAmount,
-                    )}
-                  </strong>
-
-                  <small>
-                    tagihan tersisa
-                  </small>
-                </section>
+                  <span className="booking-summary-toggle-pill">
+                    <span>{isSummaryExpanded ? 'Tutup' : 'Rincian'}</span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={isSummaryExpanded ? 'is-open' : ''}
+                      size={15}
+                    />
+                  </span>
+                </button>
 
                 <section className="booking-summary-slot">
                   <header>
@@ -920,7 +1281,7 @@ export default function BookingFormModal({
                     </span>
 
                     <strong>
-                      {activeTimeLabel}
+                      {slotTimeRangeLabel}
                     </strong>
                   </div>
 
@@ -1052,14 +1413,11 @@ export default function BookingFormModal({
               <div className="booking-form-fields">
                 <section
                   aria-labelledby="booking-section-customer"
-                  className={
-                    'booking-form-section ' +
-                    (
-                      customerStepComplete
-                        ? 'is-complete'
-                        : 'is-pending'
-                    )
-                  }
+                  className={[
+                    'booking-form-section',
+                    customerStepComplete ? 'is-complete' : 'is-pending',
+                    hasCustomerError ? 'has-error' : '',
+                  ].filter(Boolean).join(' ')}
                   data-booking-step="customer"
                 >
                   <header className="booking-form-section-head">
@@ -1087,8 +1445,8 @@ export default function BookingFormModal({
                       </p>
                       <small className="booking-form-step-state">
                         {customerStepComplete
-                          ? 'Customer lengkap'
-                          : 'Nama & No HP wajib'}
+                          ? [form.name.trim(), form.phone.trim()].filter(Boolean).join(' · ')
+                          : 'Nama & No HP wajib diisi'}
                       </small>
                     </div>
                   </header>
@@ -1097,6 +1455,7 @@ export default function BookingFormModal({
                     <StudioTextField
                       autoComplete="name"
                       className="booking-field-span-2"
+                      error={fieldErrors.name}
                       icon={UserRound}
                       id="booking-name"
                       label="Nama"
@@ -1107,17 +1466,8 @@ export default function BookingFormModal({
                     />
 
                     <StudioTextField
-                      autoComplete="organization"
-                      icon={UsersRound}
-                      id="booking-band-name"
-                      label="Nama Band"
-                      placeholder="Nama band / project"
-                      value={form.bandName}
-                      onChange={updateField('bandName')}
-                    />
-
-                    <StudioTextField
                       autoComplete="tel"
+                      error={fieldErrors.phone}
                       icon={Phone}
                       id="booking-phone"
                       inputMode="tel"
@@ -1127,19 +1477,27 @@ export default function BookingFormModal({
                       value={form.phone}
                       onChange={updateField('phone')}
                     />
+
+                    <StudioTextField
+                      autoComplete="organization"
+                      helper="Opsional"
+                      icon={UsersRound}
+                      id="booking-band-name"
+                      label="Nama Band"
+                      placeholder="Band / project"
+                      value={form.bandName}
+                      onChange={updateField('bandName')}
+                    />
                   </div>
                 </section>
 
                 <section
                   aria-labelledby="booking-section-service"
-                  className={
-                    'booking-form-section ' +
-                    (
-                      serviceStepComplete
-                        ? 'is-complete'
-                        : 'is-pending'
-                    )
-                  }
+                  className={[
+                    'booking-form-section',
+                    serviceStepComplete ? 'is-complete' : 'is-pending',
+                    hasServiceError ? 'has-error' : '',
+                  ].filter(Boolean).join(' ')}
                   data-booking-step="service"
                 >
                   <header className="booking-form-section-head">
@@ -1167,8 +1525,8 @@ export default function BookingFormModal({
                       </p>
                       <small className="booking-form-step-state">
                         {serviceStepComplete
-                          ? 'Layanan siap'
-                          : 'Pilih layanan'}
+                          ? activeServiceLabel
+                          : 'Pilih layanan studio'}
                       </small>
                     </div>
                   </header>
@@ -1176,37 +1534,45 @@ export default function BookingFormModal({
                   <div className="booking-form-section-grid">
                     <StudioSelect
                       className="booking-field-span-2"
-                      inlineList
                       label="Paket"
+                      mobileSheet
                       options={packageOptions}
+                      portalContainer={selectPortalRef}
                       selectedKey={form.packageId}
+                      sheetTitle="Pilih Paket Studio"
                       onChange={updateValue('packageId')}
                     />
 
                     <StudioSelect
-                      inlineList
+                      className={!shouldShowRecordingType ? 'booking-field-span-2' : ''}
                       disabled={isPackageSelected}
                       label="Tipe Session"
+                      mobileSheet
                       options={sessionTypeOptions}
+                      portalContainer={selectPortalRef}
                       selectedKey={form.sessionType}
+                      sheetTitle="Pilih Tipe Session"
                       onChange={updateValue('sessionType')}
                     />
 
                     {shouldShowRecordingType ? (
                       <StudioSelect
-                        inlineList
                         label="Tipe Recording"
+                        mobileSheet
                         options={recordingTypeOptions}
+                        portalContainer={selectPortalRef}
                         selectedKey={activeRecordingTypeKey}
+                        sheetTitle="Pilih Tipe Recording"
                         onChange={updateValue('recordingTypeId')}
                       />
-                    ) : (
-                      <div
-                        aria-hidden="true"
-                        className="booking-form-empty-cell"
-                      />
-                    )}
+                    ) : null}
                   </div>
+
+                  {fieldErrors.recordingTypeId ? (
+                    <p className="booking-inline-error" role="alert">
+                      {fieldErrors.recordingTypeId}
+                    </p>
+                  ) : null}
 
                   {isNoDurationPackageSelected ? (
                     <p className="booking-price-note">
@@ -1225,14 +1591,11 @@ export default function BookingFormModal({
 
                 <section
                   aria-labelledby="booking-section-slot"
-                  className={
-                    'booking-form-section ' +
-                    (
-                      slotStepComplete
-                        ? 'is-complete'
-                        : 'is-pending'
-                    )
-                  }
+                  className={[
+                    'booking-form-section',
+                    slotStepComplete ? 'is-complete' : 'is-pending',
+                    hasSlotError ? 'has-error' : '',
+                  ].filter(Boolean).join(' ')}
                   data-booking-step="slot"
                 >
                   <header className="booking-form-section-head">
@@ -1240,7 +1603,9 @@ export default function BookingFormModal({
                       aria-hidden="true"
                       className="booking-form-step-index"
                     >
-                      {slotStepComplete ? (
+                      {hasSlotError ? (
+                        '!'
+                      ) : slotStepComplete ? (
                         <Check
                           size={13}
                           strokeWidth={2.6}
@@ -1259,15 +1624,19 @@ export default function BookingFormModal({
                         Tentukan tanggal, jam mulai, dan durasi.
                       </p>
                       <small className="booking-form-step-state">
-                        {slotStepComplete
-                          ? 'Slot siap'
-                          : 'Atur jadwal'}
+                        {slotConflictIssue
+                          ? slotConflictIssue.title
+                          : slotStepComplete
+                            ? activeDateLabel + ' · ' + slotTimeRangeLabel
+                            : 'Atur tanggal & durasi'}
                       </small>
                     </div>
                   </header>
 
                   <div className="booking-form-section-grid is-slot-grid">
                     <StudioTextField
+                      className="booking-field-span-2 booking-slot-date-field"
+                      error={fieldErrors.date}
                       icon={CalendarDays}
                       id="booking-date"
                       label="Tanggal"
@@ -1278,22 +1647,26 @@ export default function BookingFormModal({
                     />
 
                     <StudioSelect
-                      inlineList
                       label="Jam Mulai"
+                      mobileSheet
                       options={businessHours}
+                      portalContainer={selectPortalRef}
                       selectedKey={form.startHour}
+                      sheetTitle="Pilih Jam Mulai"
                       onChange={updateValue('startHour')}
                     />
 
                     <StudioSelect
-                      inlineList
                       disabled={
                         isPackageSelected ||
                         isRecordingSessionSelected
                       }
                       label="Durasi"
+                      mobileSheet
                       options={durationOptions}
+                      portalContainer={selectPortalRef}
                       selectedKey={form.duration}
+                      sheetTitle="Pilih Durasi Sesi"
                       onChange={updateValue('duration')}
                     />
 
@@ -1301,6 +1674,8 @@ export default function BookingFormModal({
                     !isPackageSelected &&
                     !isRecordingSessionSelected ? (
                       <StudioTextField
+                        className="booking-field-span-2"
+                        error={fieldErrors.customDuration}
                         helper="Jam"
                         icon={Clock3}
                         id="booking-custom-duration"
@@ -1315,18 +1690,45 @@ export default function BookingFormModal({
                       />
                     ) : null}
                   </div>
+
+                  <div
+                    className={
+                      'booking-slot-status ' +
+                      (slotConflictIssue ? 'is-conflict' : 'is-available')
+                    }
+                    role={slotConflictIssue ? 'alert' : undefined}
+                  >
+                    {slotConflictIssue ? (
+                      <>
+                        <AlertTriangle aria-hidden="true" size={16} />
+                        <div>
+                          <strong>{slotConflictIssue.title}</strong>
+                          <span>{slotConflictIssue.message}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span aria-hidden="true" className="booking-slot-status-dot" />
+                        <div>
+                          <strong>{slotTimeRangeLabel}</strong>
+                          <span>
+                            {isNoDurationPackageSelected
+                              ? 'Tidak memakai blok jam kalender.'
+                              : 'Slot tersedia pada kalender studio.'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </section>
 
                 <section
                   aria-labelledby="booking-section-payment"
-                  className={
-                    'booking-form-section ' +
-                    (
-                      paymentStepComplete
-                        ? 'is-complete'
-                        : 'is-pending'
-                    )
-                  }
+                  className={[
+                    'booking-form-section',
+                    paymentStepComplete ? 'is-complete' : 'is-pending',
+                    hasPaymentError ? 'has-error' : '',
+                  ].filter(Boolean).join(' ')}
                   data-booking-step="payment"
                 >
                   <header className="booking-form-section-head">
@@ -1334,7 +1736,9 @@ export default function BookingFormModal({
                       aria-hidden="true"
                       className="booking-form-step-index"
                     >
-                      {paymentStepComplete ? (
+                      {hasPaymentError ? (
+                        '!'
+                      ) : paymentStepComplete ? (
                         <Check
                           size={13}
                           strokeWidth={2.6}
@@ -1354,8 +1758,12 @@ export default function BookingFormModal({
                       </p>
                       <small className="booking-form-step-state">
                         {paymentStepComplete
-                          ? 'Pembayaran siap'
-                          : 'Lengkapi pembayaran'}
+                          ? (
+                              form.paymentStatus === 'dp' && totals.dpAmount > 0
+                                ? 'DP ' + formatRupiah(totals.dpAmount)
+                                : paymentStatusLabel
+                            )
+                          : 'Masukkan nominal DP'}
                       </small>
                     </div>
                   </header>
@@ -1367,37 +1775,65 @@ export default function BookingFormModal({
                           ? 'booking-field-span-2'
                           : ''
                       }
-                      inlineList
                       label="Payment Status"
+                      mobileSheet
                       options={paymentStatusOptions}
+                      portalContainer={selectPortalRef}
                       selectedKey={form.paymentStatus}
+                      sheetTitle="Pilih Status Pembayaran"
                       onChange={updateValue('paymentStatus')}
                     />
 
                     {form.paymentStatus !== 'pending' ? (
                       <StudioSelect
-                        inlineList
                         label="Metode Bayar"
+                        mobileSheet
                         options={paymentMethodOptions}
+                        portalContainer={selectPortalRef}
                         selectedKey={form.paymentMethod}
+                        sheetTitle="Pilih Metode Pembayaran"
                         onChange={updateValue('paymentMethod')}
                       />
                     ) : null}
 
                     {form.paymentStatus === 'dp' ? (
-                      <StudioTextField
-                        className="booking-field-span-2"
-                        helper="Rupiah"
-                        icon={CreditCard}
-                        id="booking-dp-amount"
-                        inputMode="numeric"
-                        label="Nominal DP"
-                        min="0"
-                        placeholder="Contoh 50000 atau 50.000"
-                        type="text"
-                        value={form.dpAmount}
-                        onChange={updateField('dpAmount')}
-                      />
+                      <div className="booking-dp-group booking-field-span-2">
+                        <StudioTextField
+                          error={fieldErrors.dpAmount}
+                          helper="Rupiah"
+                          icon={CreditCard}
+                          id="booking-dp-amount"
+                          inputMode="numeric"
+                          label="Nominal DP"
+                          min="0"
+                          placeholder="Contoh 50000 atau 50.000"
+                          type="text"
+                          value={form.dpAmount}
+                          onChange={updateField('dpAmount')}
+                        />
+
+                        {dpPresetAmounts.length ? (
+                          <div aria-label="Pilih nominal DP cepat" className="booking-dp-presets">
+                            {dpPresetAmounts.map((preset) => {
+                              const isSelectedPreset = parseRupiahInput(form.dpAmount) === preset.amount;
+                              return (
+                                <button
+                                  className={
+                                    isSelectedPreset
+                                      ? 'booking-dp-chip is-active'
+                                      : 'booking-dp-chip'
+                                  }
+                                  key={preset.key}
+                                  type="button"
+                                  onClick={() => selectDpPreset(preset.amount)}
+                                >
+                                  {preset.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 </section>
@@ -1420,7 +1856,11 @@ export default function BookingFormModal({
                 className="booking-form-action-total"
               >
                 <span>
-                  Tagihan
+                  {totals.invoiceAmount === 0 && Number(totals.total) > 0
+                    ? 'Total lunas'
+                    : totals.dpAmount > 0
+                      ? 'Sisa tagihan'
+                      : 'Tagihan'}
                 </span>
 
                 <strong>
@@ -1431,9 +1871,11 @@ export default function BookingFormModal({
 
                 <small
                   className={
-                    isBookingReady
-                      ? 'is-ready'
-                      : ''
+                    slotConflictIssue
+                      ? 'is-conflict'
+                      : isBookingReady
+                        ? 'is-ready'
+                        : ''
                   }
                 >
                   {bookingReadinessLabel}
@@ -1466,6 +1908,11 @@ export default function BookingFormModal({
               </div>
             </footer>
           </form>
+
+          <div
+            className="booking-modal-portal-root"
+            ref={selectPortalRef}
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

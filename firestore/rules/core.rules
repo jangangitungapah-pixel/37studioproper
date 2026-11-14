@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isBootstrapOwnerEmail() {
+      return isSignedIn() &&
+        request.auth.token.email is string &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email.lower() == 'marsicprod@gmail.com';
+    }
+    function userDocExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function ownershipControlExists() {
+      return exists(/databases/$(database)/documents/adminControl/ownership);
+    }
+    function ownershipControlMatches() {
+      return ownershipControlExists() &&
+        get(/databases/$(database)/documents/adminControl/ownership).data.currentOwnerUid == request.auth.uid;
+    }
+    function isOwner() {
+      return (!ownershipControlExists() && isBootstrapOwnerEmail()) ||
+        (userDocExists() &&
+          getUserData().role == 'owner' &&
+          getUserData().status == 'approved' &&
+          (!ownershipControlExists() || ownershipControlMatches()));
+    }
+    function isApproved() {
+      return isOwner() ||
+        (userDocExists() &&
+          getUserData().role in ['admin', 'studio_guard'] &&
+          getUserData().status == 'approved');
+    }
+    function isApprovedAdmin() {
+      return isOwner() ||
+        (userDocExists() &&
+          getUserData().role == 'admin' &&
+          getUserData().status == 'approved');
+    }
+    function isClientAccount() {
+      return userDocExists() &&
+        getUserData().role == 'client' &&
+        getUserData().status == 'active';
+    }
+    function isStudioGuardAccount() {
+      return userDocExists() &&
+        getUserData().role == 'studio_guard' &&
+        getUserData().status == 'approved';
+    }
+    function hasPermission(page) {
+      return isOwner() ||
+        (isApprovedAdmin() &&
+          getUserData().permissions is map &&
+          getUserData().permissions.get(page, false) == true);
+    }
+    function hasApprovedAdminPermission(page) {
+      return hasPermission(page);
+    }
+    function hasProcurementBookkeepingPermission() {
+      return hasPermission('bookkeeping');
+    }
+    function canAccessNotifications() {
+      return isOwner() ||
+        hasPermission('notifications') ||
+        (isApprovedAdmin() &&
+          getUserData().permissions is map &&
+          !getUserData().permissions.keys().hasAny(['notifications']) &&
+          getUserData().permissions.get('settings', false) == true);
+    }
+    function canManageOperatorFees() {
+      return hasPermission('operator-fee');
+    }
+    function canManageGuardAttendance() {
+      return isOwner() ||
+        hasPermission('guard-attendance') ||
+        (isApprovedAdmin() &&
+          getUserData().permissions is map &&
+          !getUserData().permissions.keys().hasAny(['guard-attendance']) &&
+          getUserData().permissions.get('operator-fee', false) == true);
+    }
+    function canAccessBookingData() {
+      return hasPermission('dashboard') ||
+        hasPermission('schedule') ||
+        hasPermission('customers') ||
+        hasPermission('billing');
+    }
+    function canManageBookingData() {
+      return hasPermission('schedule');
+    }
+    function isApprovedScheduleAdmin() {
+      return hasPermission('schedule');
+    }
+    function canAccessCustomerData() {
+      return hasPermission('dashboard') || hasPermission('customers');
+    }
+    function canManageCustomerData() {
+      return hasPermission('customers');
+    }
+    function canAccessBookkeepingData() {
+      return hasPermission('dashboard') || hasPermission('bookkeeping');
+    }
+    function canAccessInventoryData() {
+      return hasPermission('dashboard') || hasPermission('inventory');
+    }
+    function canAccessMaintenanceData() {
+      return canAccessInventoryData() || canAccessBookkeepingData();
+    }

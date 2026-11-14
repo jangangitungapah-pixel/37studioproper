@@ -28,7 +28,7 @@ import {
   isBookingNoShowEligible,
 } from '../../domain/booking/normalizeBooking.js';
 import { firebaseAuth } from '../../lib/firebase.js';
-import { recordCanonicalBookingSessionAction } from '../../services/adminOperationsRepository.js';
+import { recordBookingSessionAction } from '../../services/bookingOperationsRepository.js';
 import {
   getBookingRequestStatusMeta,
 } from '../../services/bookingCommunicationRepository.js';
@@ -997,12 +997,12 @@ function BookingDetailDrawerContent({
     setIsUpdatingSession(true);
     updateSessionUi({ error: '', feedback: '' });
     try {
-      const result = await recordCanonicalBookingSessionAction({
+      const result = await recordBookingSessionAction({
         action,
         bookingId: booking.id,
         ...(reason ? { reason } : {}),
       });
-      if (!result?.booking?.id) throw new Error('Worker tidak mengembalikan status sesi yang tersimpan.');
+      if (!result?.booking?.id) throw new Error('Repository Firebase tidak mengembalikan status sesi yang tersimpan.');
       updateSessionUi({
         snapshot: { bookingId: booking.id, booking: result.booking },
         feedback: {
@@ -1684,18 +1684,11 @@ function BookingDetailDrawerContent({
                             }
                           </p>
 
-                          {payment
-                            ?.proofUrl ? (
-                            <a
-                              href={
-                                payment
-                                  .proofUrl
-                              }
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              Lihat bukti
-                            </a>
+                          {payment?.proofReference ? (
+                            <small className="booking-detail-drawer-payment-reference">
+                              Referensi: {payment.proofReference}
+                              {payment.payerName ? ' • ' + payment.payerName : ''}
+                            </small>
                           ) : null}
                         </article>
                       ),

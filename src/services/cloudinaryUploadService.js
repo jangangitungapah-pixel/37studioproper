@@ -1,7 +1,6 @@
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../constants/appConstants.js';
 
 export const MAX_GALLERY_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
-export const MAX_PAYMENT_PROOF_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
 const allowedImageMimeTypes = new Set([
   'image/avif',
@@ -96,11 +95,3 @@ export async function uploadGalleryImageFile(file) {
   });
 }
 
-export async function uploadPaymentProofFile(file, context = {}) {
-  return uploadImageFile(file, {
-    context,
-    folder: 'studio37/payment-proofs',
-    maxSizeBytes: MAX_PAYMENT_PROOF_IMAGE_SIZE_BYTES,
-    tags: ['studio37', 'payment-proof'],
-  });
-}

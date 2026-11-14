@@ -308,6 +308,14 @@ const portalSource =
     'utf8',
   );
 
+const adminBookingRepositorySource =
+  readFileSync(
+    resolve(
+      'src/services/adminBookingRepository.js',
+    ),
+    'utf8',
+  );
+
 assert.equal(
   portalSource.includes(
     'parseClientBookingResume(location.search)',
@@ -359,6 +367,31 @@ assert.equal(
   ),
   true,
   'Final booking submit must remain inside authenticated Client Portal.',
+);
+assert.match(
+  portalSource,
+  /const clientBookingRequestIdentityRef = useRef\(null\)/,
+  'Client booking retries must retain one stable request identity.',
+);
+assert.match(
+  portalSource,
+  /const requestFingerprint = JSON\.stringify\(/,
+  'Client booking request identity must be tied to the submitted payload.',
+);
+assert.match(
+  portalSource,
+  /requestId: requestIdentity\.id/,
+  'Client booking submission must pass the stable request ID to the repository.',
+);
+assert.match(
+  portalSource,
+  /previousRequestIdentity\?\.pendingRecovery/,
+  'An uncertain commit must require retrying the same payload before starting a different request.',
+);
+assert.match(
+  adminBookingRepositorySource,
+  /const requestedBookingId = String\(booking\.requestId \|\| ''\)\.trim\(\)/,
+  'The repository must preserve a validated request ID supplied for idempotent retry.',
 );
 
 const landingSource =
@@ -447,18 +480,86 @@ assert.equal(
 
 assert.equal(
   publicSlotRules.includes(
-    'allow create, update: if isApproved()',
+    'allow create, update: if isApprovedScheduleAdmin()',
   ),
   true,
   'Public users must never gain write access to availability mirror.',
 );
 
 assert.equal(
-  rulesSource.includes(
-    "data.keys().hasOnly(['bookingId', 'date', 'durationHours', 'sessionLabel', 'startHour', 'status', 'title', 'updatedAt'])",
-  ),
+  publicSlotRules.includes('bookingCalendarSlotMatchesAfter'),
   true,
+  'Calendar mirror writes must be paired with the matching booking transaction.',
+);
+
+assert.match(
+  publicSlotRules,
+  /allow delete: if \([\s\S]*isApprovedScheduleAdmin\(\)[\s\S]*\) \|\| financeVoidScheduleSlotDeleteAllowed\(slotId\);/,
+  'Availability mirrors may be removed by schedule admins or by the paired, guarded finance-void operation.',
+);
+assert.match(
+  rulesSource,
+  /function financeVoidScheduleSlotDeleteAllowed\(bookingId\)[\s\S]*?hasApprovedAdminPermission\('billing'\)[\s\S]*?lastFinanceAction == 'void'[\s\S]*?financeBookingVoidScheduleMatchesAfter/,
+  'Finance slot deletion must be restricted to an approved Billing admin and the paired invoice-void transaction.',
+);
+assert.match(
+  rulesSource,
+  /function hasApprovedAdminPermission\(page\)[\s\S]*?profile\.role == 'admin'[\s\S]*?profile\.status == 'approved'[\s\S]*?profile\.permissions is map[\s\S]*?profile\.permissions\[page\] == true[\s\S]*?\|\| isOwner\(\)/,
+  'Combined permission evaluation must preserve approved Admin page permissions and canonical Owner access.',
+);
+
+const publicSlotValidatorStart = rulesSource.indexOf(
+  'function validCalendarSlot(data)',
+);
+const publicSlotValidatorEnd = rulesSource.indexOf(
+  'function bookingIsScheduleBlocking(data)',
+  publicSlotValidatorStart,
+);
+const publicSlotValidatorSource = rulesSource.slice(
+  publicSlotValidatorStart,
+  publicSlotValidatorEnd,
+);
+assert.match(
+  publicSlotValidatorSource,
+  /data\.keys\(\)\.hasOnly\(\[\s*'bookingId',\s*'date',\s*'durationHours',\s*'sessionLabel',\s*'startHour',\s*'status',\s*'title',\s*'updatedAt'\s*\]\)[\s\S]*?validString\(data\.title,\s*1,\s*80\)/,
   'Public slot mirror must remain restricted to generic safe fields.',
+);
+const calendarSlotFieldsStart = rulesSource.indexOf(
+  'function bookingCalendarSlotFieldsMatchAfter',
+);
+const calendarSlotFieldsEnd = rulesSource.indexOf(
+  'function bookingCalendarSlotMatchesAfter',
+  calendarSlotFieldsStart,
+);
+const calendarSlotFieldsSource = rulesSource.slice(
+  calendarSlotFieldsStart,
+  calendarSlotFieldsEnd,
+);
+assert.match(
+  calendarSlotFieldsSource,
+  /slotAfter\.bookingId == bookingId[\s\S]*?slotAfter\.date == data\.date[\s\S]*?slotAfter\.durationHours == data\.durationHours[\s\S]*?slotAfter\.startHour == data\.startHour[\s\S]*?slotAfter\.sessionLabel == data\.sessionLabel[\s\S]*?slotAfter\.status == data\.paymentStatus[\s\S]*?slotAfter\.updatedAt == data\.updatedAt/,
+  'Public slot metadata must remain fully paired with the booking fields.',
+);
+const calendarSlotPairingStart = rulesSource.indexOf(
+  'function bookingCalendarSlotMatchesAfter',
+);
+const calendarSlotPairingEnd = rulesSource.indexOf(
+  'function bookingSlotStateMatchesAfter',
+  calendarSlotPairingStart,
+);
+const calendarSlotPairingSource = rulesSource.slice(
+  calendarSlotPairingStart,
+  calendarSlotPairingEnd,
+);
+assert.match(
+  calendarSlotPairingSource,
+  /bookingCalendarSlotFieldsMatchAfter\(bookingId, data\)[\s\S]*?bookingScheduleDayMatchesAfter\(data\.date, bookingId, data\.updatedAt\)/,
+  'Slot rules must pair full slot fields with the matching schedule-day revision.',
+);
+assert.match(
+  rulesSource,
+  /function bookingManualCreateCompanionsAfter\(bookingId, data\)[\s\S]*?slotAfter\.bookingId == bookingId[\s\S]*?dayAfter\.lastBookingId == bookingId/,
+  'Booking create must confirm both slot and day companions without repeating the full slot validator.',
 );
 
 const cssSource =

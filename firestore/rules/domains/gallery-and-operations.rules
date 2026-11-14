@@ -1,0 +1,27 @@
+    match /gallery/{imageId} {
+      allow read: if isApproved() && hasPermission('gallery');
+      allow create: if isApproved() &&
+        hasPermission('gallery') &&
+        !request.resource.data.keys().hasAny(['permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus']);
+      allow update: if isApproved() &&
+        hasPermission('gallery') &&
+        request.resource.data.publicId == resource.data.publicId &&
+        request.resource.data.url == resource.data.url &&
+        !request.resource.data.keys().hasAny(['permanentDeleteKey', 'permanentDeleteStartedAt', 'permanentDeleteStatus']);
+      allow delete: if false;
+    }
+    match /adminOperationKeys/{operationId} {
+      allow read, write: if false;
+    }
+    match /adminOperationAudit/{auditId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+    match /adminOperationDryRuns/{snapshotId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }
+    match /adminOperationJobs/{jobId} {
+      allow read: if isOwner();
+      allow create, update, delete: if false;
+    }

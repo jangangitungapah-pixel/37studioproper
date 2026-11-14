@@ -407,8 +407,8 @@ function makePayment(overrides = {}) {
     category: 'dp',
     method: 'qris',
     clientNote: 'DP via QRIS',
-    proofPublicId: 'cloudinary-proof-001',
-    proofUrl: 'https://example.test/proof.jpg',
+    transactionReference: 'QRIS-2026-08-08-001',
+    payerName: 'Studio Test Client',
   };
 
   const payment = buildPaymentFromProof(proof, {
@@ -449,15 +449,15 @@ function makePayment(overrides = {}) {
   );
 
   assert.equal(
-    payment.proofPublicId,
-    'cloudinary-proof-001',
-    'Payment harus menyimpan proofPublicId.',
+    payment.proofReference,
+    'QRIS-2026-08-08-001',
+    'Payment harus menyimpan nomor referensi transaksi.',
   );
 
   assert.equal(
-    payment.proofUrl,
-    'https://example.test/proof.jpg',
-    'Payment harus menyimpan proofUrl.',
+    payment.payerName,
+    'Studio Test Client',
+    'Payment harus menyimpan nama pengirim.',
   );
 
   assert.equal(

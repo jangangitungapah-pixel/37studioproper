@@ -21,7 +21,7 @@ const landingSource =
       'src/pages/ClientLandingPage.jsx',
     ),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
 
 const wizardSource =
   readFileSync(
@@ -29,7 +29,7 @@ const wizardSource =
       'src/components/client/ClientBookingWizard.jsx',
     ),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
 
 const wizardCss =
   readFileSync(
@@ -37,7 +37,7 @@ const wizardCss =
       'src/styles/modules/client-booking-wizard.css',
     ),
     'utf8',
-  );
+  ).replace(/\r\n/g, '\n');
 
 assert.equal(
   portalSource.includes(

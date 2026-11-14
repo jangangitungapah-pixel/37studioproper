@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const pageSource = readFileSync(resolve('src/pages/admin/BookkeepingPage.jsx'), 'utf8');
-const cssSource = readFileSync(resolve('src/styles/modules/bookkeeping.css'), 'utf8');
-const dailyClosingSource = readFileSync(resolve('src/components/bookkeeping/DailyClosingWorkspace.jsx'), 'utf8');
-const dailyClosingCss = readFileSync(resolve('src/styles/modules/bookkeeping-daily-closing.css'), 'utf8');
-const repositorySource = readFileSync(resolve('src/services/bookkeepingRepository.js'), 'utf8');
-const accountingSource = readFileSync(resolve('src/utils/bookingPaymentUtils.js'), 'utf8');
+const pageSource = readFileSync(resolve('src/pages/admin/BookkeepingPage.jsx'), 'utf8').replace(/\r\n/g, '\n');
+const cssSource = readFileSync(resolve('src/styles/modules/bookkeeping.css'), 'utf8').replace(/\r\n/g, '\n');
+const dailyClosingSource = readFileSync(resolve('src/components/bookkeeping/DailyClosingWorkspace.jsx'), 'utf8').replace(/\r\n/g, '\n');
+const dailyClosingCss = readFileSync(resolve('src/styles/modules/bookkeeping-daily-closing.css'), 'utf8').replace(/\r\n/g, '\n');
+const repositorySource = readFileSync(resolve('src/services/bookkeepingRepository.js'), 'utf8').replace(/\r\n/g, '\n');
+const accountingSource = readFileSync(resolve('src/utils/bookingPaymentUtils.js'), 'utf8').replace(/\r\n/g, '\n');
 const packageJson = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
 for (const required of [

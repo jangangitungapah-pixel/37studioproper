@@ -1,0 +1,33 @@
+    function canWriteBookkeepingEntry(data) {
+      let source = data.get('source', '');
+      return (source in ['', 'manual', 'procurement-payment', 'maintenance'] && hasApprovedAdminPermission('bookkeeping')) ||
+        (source in ['booking-payment', 'booking-refund'] && (isApprovedScheduleAdmin() || hasApprovedAdminPermission('billing') || hasApprovedAdminPermission('bookkeeping'))) ||
+        (source in ['operatorFee', 'guardAttendanceMeal'] && (canManageOperatorFees() || canManageGuardAttendance()));
+    }
+    match /bookkeepingEntries/{entryId} {
+      allow read: if isApproved() && canAccessBookkeepingData();
+      allow create: if isApproved() &&
+        request.resource.data.id == entryId &&
+        request.resource.data.type in ['income', 'expense'] &&
+        canWriteBookkeepingEntry(request.resource.data);
+      allow update: if hasApprovedAdminPermission('bookkeeping') &&
+        request.resource.data.id == entryId &&
+        resource.data.get('source', 'manual') in ['', 'manual'] &&
+        request.resource.data.get('source', 'manual') in ['', 'manual'];
+      allow delete: if hasApprovedAdminPermission('bookkeeping') &&
+        resource.data.get('source', 'manual') in ['', 'manual'];
+    }
+    match /cashClosingSessions/{closingId} {
+      allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
+      allow create, update: if isApproved() &&
+        request.resource.data.id == closingId &&
+        (hasApprovedAdminPermission('bookkeeping') || hasApprovedAdminPermission('billing') || isApprovedScheduleAdmin());
+      allow delete: if false;
+    }
+    match /cashClosingEvents/{eventId} {
+      allow read: if isApproved() && (canAccessBookkeepingData() || hasPermission('billing'));
+      allow create: if hasApprovedAdminPermission('bookkeeping') &&
+        request.resource.data.id == eventId &&
+        request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }

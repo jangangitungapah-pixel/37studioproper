@@ -15,6 +15,7 @@ import { normalizeBookkeepingEntry } from './bookkeepingRepository.js';
 import {
   NOTIFICATION_EVENT_TYPES,
   createAdminNotificationEvent,
+  createGuardNotificationEvent,
 } from './notificationEventRepository.js';
 import { OPERATOR_FEE_PERSON_ROLES } from '../settings/operatorFeeSettings.js';
 import {
@@ -141,6 +142,7 @@ export function normalizeGuardAttendanceSession(session, fallbackId = '') {
 
   return {
     id,
+    adminNote: cleanText(source.adminNote),
     approvalStatus,
     approvedAt: cleanText(source.approvedAt),
     approvedByName: cleanText(source.approvedByName),
@@ -527,12 +529,44 @@ export async function postGuardMealToBookkeeping(
 
   await batch.commit();
 
+  const updatedRecord =
+    normalizeGuardAttendanceSession({
+      ...record,
+      ...attendancePatch,
+    });
+
+  createGuardNotificationEvent({
+    actorRole: 'admin',
+    eventId: 'notif_guard_meal_posted__' + updatedRecord.id,
+    message:
+      'Uang makan shift tanggal ' +
+      updatedRecord.date +
+      ' sebesar Rp ' +
+      Number(updatedRecord.mealAmount || 0).toLocaleString('id-ID') +
+      ' telah dicairkan/diposting ke pembukuan (' +
+      String(paymentMethod || 'cash').toUpperCase() +
+      ').',
+    metadata: {
+      attendanceId: updatedRecord.id,
+      bookkeepingEntryId: bookkeepingEntry.id,
+      date: updatedRecord.date,
+      guardPersonId: updatedRecord.guardPersonId,
+      mealAmount: updatedRecord.mealAmount,
+      paymentMethod: cleanText(paymentMethod, 'cash'),
+    },
+    priority: 'normal',
+    source: 'guard-attendance',
+    targetUid: updatedRecord.guardUid,
+    title: 'Uang Makan Telah Dicairkan',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_MEAL_POSTED,
+    url: '/guard/attendance',
+    user: ownerUser,
+  }).catch((error) => {
+    console.warn('[guard-attendance] Notifikasi pencairan uang makan gagal dibuat:', error);
+  });
+
   return {
-    attendance:
-      normalizeGuardAttendanceSession({
-        ...record,
-        ...attendancePatch,
-      }),
+    attendance: updatedRecord,
 
     bookkeepingEntry,
   };
@@ -651,6 +685,7 @@ export function buildGuardAttendanceCheckOutPatch(
   session,
   user,
   {
+    note,
     timestamp =
       nowIso(),
   } = {},
@@ -724,7 +759,7 @@ export function buildGuardAttendanceCheckOutPatch(
     );
   }
 
-  return {
+  const patch = {
     closedAt:
       timestamp,
 
@@ -746,6 +781,12 @@ export function buildGuardAttendanceCheckOutPatch(
     updatedAt:
       timestamp,
   };
+
+  if (typeof note === 'string') {
+    patch.note = cleanText(note);
+  }
+
+  return patch;
 }
 
 async function hasApprovedGuardMealForDay(
@@ -828,6 +869,7 @@ function createGuardAttendanceSubmittedNotification(
       record.guardName +
       ' mengajukan absen jaga pada ' +
       record.date +
+      (record.note ? ' ("' + record.note.slice(0, 80) + '")' : '') +
       '. Perlu approval owner.',
 
     metadata: {
@@ -866,6 +908,75 @@ function createGuardAttendanceSubmittedNotification(
 
     actorRole:
       'guard',
+  });
+}
+
+function createGuardAttendanceCheckedOutNotification(
+  record,
+  user,
+) {
+  const isApproved =
+    record.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED;
+
+  return createAdminNotificationEvent({
+    actorRole: 'guard',
+    eventId: 'notif_guard_attendance_checkout__' + record.id + '__' + Date.now(),
+    message:
+      record.guardName +
+      ' telah selesai jaga (clock-out) pada ' +
+      record.date +
+      ' dengan durasi ' +
+      Number(record.durationHours || 0).toFixed(1) +
+      ' jam. ' +
+      (isApproved
+        ? 'Siap rekonsiliasi uang makan.'
+        : 'Menunggu approval owner.'),
+    metadata: {
+      attendanceId: record.id,
+      date: record.date,
+      durationHours: record.durationHours,
+      guardName: record.guardName,
+      guardPersonId: record.guardPersonId,
+      guardUid: record.guardUid,
+      note: record.note,
+    },
+    priority: 'normal',
+    source: 'guard-attendance',
+    title: 'Shift Penjaga Selesai (Clock-Out)',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_CHECKED_OUT,
+    url: '/admin/guard-attendance',
+    user,
+  });
+}
+
+function createGuardAttendanceNoteUpdatedNotification(
+  record,
+  user,
+) {
+  return createAdminNotificationEvent({
+    actorRole: 'guard',
+    eventId: 'notif_guard_attendance_note__' + record.id + '__' + Date.now(),
+    message:
+      record.guardName +
+      ' memperbarui catatan shift (' +
+      record.date +
+      '): "' +
+      cleanText(record.note, '-').slice(0, 140) +
+      '"',
+    metadata: {
+      attendanceId: record.id,
+      date: record.date,
+      guardName: record.guardName,
+      guardPersonId: record.guardPersonId,
+      guardUid: record.guardUid,
+      note: record.note,
+    },
+    priority: 'normal',
+    source: 'guard-attendance',
+    title: 'Catatan Shift Guard Diperbarui',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_NOTE_UPDATED,
+    url: '/admin/guard-attendance',
+    user,
   });
 }
 
@@ -1104,6 +1215,7 @@ export async function createGuardAttendanceCheckIn({
 export async function closeGuardAttendanceSession(
   session,
   user,
+  options = {},
 ) {
   if (
     !isFirebaseConfigured ||
@@ -1123,6 +1235,7 @@ export async function closeGuardAttendanceSession(
     buildGuardAttendanceCheckOutPatch(
       record,
       user,
+      options,
     );
 
   const documentRef =
@@ -1158,15 +1271,160 @@ export async function closeGuardAttendanceSession(
     patch,
   );
 
-  return normalizeGuardAttendanceSession({
+  const updatedRecord = normalizeGuardAttendanceSession({
     ...record,
     ...patch,
   });
+
+  createGuardAttendanceCheckedOutNotification(
+    updatedRecord,
+    user,
+  ).catch((error) => {
+    console.warn('[guard-attendance] Notifikasi checkout gagal dibuat:', error);
+  });
+
+  return updatedRecord;
+}
+
+export async function updateGuardAttendanceNote(
+  sessionOrId,
+  user,
+  note = '',
+) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  const record =
+    typeof sessionOrId === 'object' && sessionOrId?.id
+      ? normalizeGuardAttendanceSession(sessionOrId)
+      : await resolveGuardAttendanceSession(sessionOrId);
+
+  if (!user?.uid || user.uid !== record.guardUid) {
+    throw new Error('Hanya penjaga terkait yang bisa mengubah catatan shift.');
+  }
+
+  const timestamp = nowIso();
+  const patch = {
+    note: cleanText(note),
+    updatedAt: timestamp,
+  };
+
+  await updateDoc(getGuardAttendanceDocumentRef(record.id), patch);
+
+  const updatedRecord = normalizeGuardAttendanceSession({
+    ...record,
+    ...patch,
+  });
+
+  createGuardAttendanceNoteUpdatedNotification(updatedRecord, user).catch(
+    (error) => {
+      console.warn('[guard-attendance] Notifikasi update catatan gagal:', error);
+    },
+  );
+
+  return updatedRecord;
+}
+
+export async function resubmitGuardAttendanceCheckIn({
+  guardPerson = {},
+  mealAmount = 40000,
+  note = '',
+  session,
+  user,
+} = {}) {
+  if (!isFirebaseConfigured || !firestoreDb) {
+    throw new Error('Firebase belum dikonfigurasi.');
+  }
+
+  if (!user?.uid) {
+    throw new Error('User penjaga belum valid.');
+  }
+
+  const record = normalizeGuardAttendanceSession(session);
+
+  if (!record.id || record.guardUid !== user.uid) {
+    throw new Error('Sesi absen tidak valid untuk diajukan ulang.');
+  }
+
+  if (record.status === GUARD_ATTENDANCE_STATUSES.VOID) {
+    throw new Error('Absen yang sudah di-void tidak dapat diajukan ulang.');
+  }
+
+  if (record.approvalStatus !== GUARD_ATTENDANCE_APPROVAL_STATUSES.REJECTED) {
+    throw new Error('Hanya absen yang ditolak yang dapat diajukan ulang.');
+  }
+
+  const timestamp = nowIso();
+  const patch = {
+    adminNote: '',
+    approvalStatus: GUARD_ATTENDANCE_APPROVAL_STATUSES.PENDING,
+    approvedAt: '',
+    approvedByName: '',
+    approvedByUid: '',
+    closedAt: '',
+    clockInAt: timestamp,
+    clockInByUid: user.uid,
+    clockOutAt: '',
+    clockOutByUid: '',
+    durationHours: 0,
+    guardName: cleanText(
+      guardPerson?.name || record.guardName || user.displayName,
+      'Penjaga Studio',
+    ),
+    mealAmount: toNumber(mealAmount, record.mealAmount || 40000),
+    mealEligible: false,
+    note: cleanText(note),
+    ownerActionRequired: true,
+    rejectedAt: '',
+    rejectedByName: '',
+    rejectedByUid: '',
+    rejectionReason: '',
+    status: GUARD_ATTENDANCE_STATUSES.PENDING_APPROVAL,
+    updatedAt: timestamp,
+  };
+
+  await updateDoc(getGuardAttendanceDocumentRef(record.id), patch);
+
+  const updatedRecord = normalizeGuardAttendanceSession({
+    ...record,
+    ...patch,
+  });
+
+  createAdminNotificationEvent({
+    actorRole: 'guard',
+    eventId: 'notif_guard_attendance_resubmitted__' + updatedRecord.id + '__' + Date.now(),
+    message:
+      updatedRecord.guardName +
+      ' mengajukan ulang absen jaga pada ' +
+      updatedRecord.date +
+      (updatedRecord.note ? ' ("' + updatedRecord.note.slice(0, 80) + '")' : '') +
+      '. Perlu review ulang owner/admin.',
+    metadata: {
+      attendanceId: updatedRecord.id,
+      date: updatedRecord.date,
+      guardName: updatedRecord.guardName,
+      guardPersonId: updatedRecord.guardPersonId,
+      guardUid: updatedRecord.guardUid,
+      resubmitted: true,
+    },
+    priority: 'high',
+    source: 'guard-attendance',
+    title: 'Pengajuan Ulang Absen Penjaga',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_SUBMITTED,
+    url: '/admin/guard-attendance',
+    user,
+  }).catch((error) => {
+    console.warn('[guard-attendance] Notifikasi pengajuan ulang gagal dibuat:', error);
+  });
+
+  return updatedRecord;
 }
 
 export async function approveGuardAttendanceSession(
   sessionOrId,
   ownerUser,
+  options = {},
 ) {
   if (
     !isFirebaseConfigured ||
@@ -1201,7 +1459,14 @@ export async function approveGuardAttendanceSession(
       record,
     );
 
+  const adminNote =
+    typeof options?.adminNote === 'string'
+      ? cleanText(options.adminNote)
+      : record.adminNote;
+
   const patch = {
+    adminNote,
+
     approvalStatus:
       GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED,
 
@@ -1252,10 +1517,39 @@ export async function approveGuardAttendanceSession(
     patch,
   );
 
-  return normalizeGuardAttendanceSession({
+  const updatedRecord = normalizeGuardAttendanceSession({
     ...record,
     ...patch,
   });
+
+  createGuardNotificationEvent({
+    actorRole: 'admin',
+    eventId: 'notif_guard_attendance_approved__' + updatedRecord.id + '__' + Date.now(),
+    message:
+      'Absen jaga tanggal ' +
+      updatedRecord.date +
+      ' telah disetujui oleh ' +
+      updatedRecord.approvedByName +
+      (updatedRecord.adminNote ? '. Catatan Admin: "' + updatedRecord.adminNote + '"' : '.'),
+    metadata: {
+      adminNote: updatedRecord.adminNote,
+      approvedByName: updatedRecord.approvedByName,
+      attendanceId: updatedRecord.id,
+      date: updatedRecord.date,
+      mealEligible: updatedRecord.mealEligible,
+    },
+    priority: 'normal',
+    source: 'guard-attendance',
+    targetUid: updatedRecord.guardUid,
+    title: 'Absen Jaga Disetujui',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_APPROVED,
+    url: '/guard/attendance',
+    user: ownerUser,
+  }).catch((error) => {
+    console.warn('[guard-attendance] Notifikasi approval guard gagal dibuat:', error);
+  });
+
+  return updatedRecord;
 }
 
 export async function rejectGuardAttendanceSession(
@@ -1331,10 +1625,40 @@ export async function rejectGuardAttendanceSession(
     patch,
   );
 
-  return normalizeGuardAttendanceSession({
+  const updatedRecord = normalizeGuardAttendanceSession({
     ...record,
     ...patch,
   });
+
+  createGuardNotificationEvent({
+    actorRole: 'admin',
+    eventId: 'notif_guard_attendance_rejected__' + updatedRecord.id + '__' + Date.now(),
+    message:
+      'Absen jaga tanggal ' +
+      updatedRecord.date +
+      ' ditolak oleh ' +
+      updatedRecord.rejectedByName +
+      '. Alasan: "' +
+      updatedRecord.rejectionReason +
+      '". Anda dapat memperbaiki catatan dan mengajukan ulang.',
+    metadata: {
+      attendanceId: updatedRecord.id,
+      date: updatedRecord.date,
+      rejectedByName: updatedRecord.rejectedByName,
+      rejectionReason: updatedRecord.rejectionReason,
+    },
+    priority: 'high',
+    source: 'guard-attendance',
+    targetUid: updatedRecord.guardUid,
+    title: 'Absen Jaga Perlu Perbaikan (Ditolak)',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_REJECTED,
+    url: '/guard/attendance',
+    user: ownerUser,
+  }).catch((error) => {
+    console.warn('[guard-attendance] Notifikasi reject guard gagal dibuat:', error);
+  });
+
+  return updatedRecord;
 }
 
 export async function voidGuardAttendanceSession(
@@ -1400,10 +1724,37 @@ export async function voidGuardAttendanceSession(
     patch,
   );
 
-  return normalizeGuardAttendanceSession({
+  const updatedRecord = normalizeGuardAttendanceSession({
     ...record,
     ...patch,
   });
+
+  createGuardNotificationEvent({
+    actorRole: 'admin',
+    eventId: 'notif_guard_attendance_voided__' + updatedRecord.id + '__' + Date.now(),
+    message:
+      'Absen jaga tanggal ' +
+      updatedRecord.date +
+      ' telah dibatalkan (void) oleh Owner/Admin. Alasan: "' +
+      updatedRecord.voidReason +
+      '".',
+    metadata: {
+      attendanceId: updatedRecord.id,
+      date: updatedRecord.date,
+      voidReason: updatedRecord.voidReason,
+    },
+    priority: 'high',
+    source: 'guard-attendance',
+    targetUid: updatedRecord.guardUid,
+    title: 'Absen Jaga Dibatalkan (Void)',
+    type: NOTIFICATION_EVENT_TYPES.GUARD_ATTENDANCE_VOIDED,
+    url: '/guard/attendance',
+    user: ownerUser,
+  }).catch((error) => {
+    console.warn('[guard-attendance] Notifikasi void guard gagal dibuat:', error);
+  });
+
+  return updatedRecord;
 }
 
 export function subscribeGuardAttendanceSessions(
@@ -1518,10 +1869,12 @@ export const guardAttendanceRepository = {
   isGuardFeeLineEligibleByAttendance,
   normalizeGuardAttendanceSession,
   rejectGuardAttendanceSession,
+  resubmitGuardAttendanceCheckIn,
   buildGuardAttendanceCheckOutPatch,
   buildGuardMealPostingPatch,
   makeGuardAttendanceId,
   postGuardMealToBookkeeping,
   subscribeGuardAttendanceSessions,
+  updateGuardAttendanceNote,
   voidGuardAttendanceSession,
 };
