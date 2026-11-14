@@ -24,7 +24,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/adminControl/ownership).data.currentOwnerUid == request.auth.uid;
     }
     function isOwner() {
-      return (!ownershipControlExists() && !userDocExists() && isBootstrapOwnerEmail()) ||
+      return (!ownershipControlExists() && isBootstrapOwnerEmail()) ||
         (userDocExists() &&
           getUserData().role == 'owner' &&
           getUserData().status == 'approved' &&

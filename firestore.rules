@@ -24,7 +24,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/adminControl/ownership).data.currentOwnerUid == request.auth.uid;
     }
     function isOwner() {
-      return (!ownershipControlExists() && !userDocExists() && isBootstrapOwnerEmail()) ||
+      return (!ownershipControlExists() && isBootstrapOwnerEmail()) ||
         (userDocExists() &&
           getUserData().role == 'owner' &&
           getUserData().status == 'approved' &&
@@ -151,15 +151,15 @@ service cloud.firestore {
     }
     function validUser(data, userId) {
       return data is map &&
-        data.uid == userId &&
+        (!data.keys().hasAny(['uid']) || data.uid == userId) &&
         data.role in ['owner', 'admin', 'client', 'studio_guard'] &&
-        data.status in ['active', 'pending', 'approved', 'rejected'] &&
-        data.permissions is map &&
+        data.status in ['active', 'pending', 'approved', 'rejected', 'inactive'] &&
+        (!data.keys().hasAny(['permissions']) || data.permissions is map) &&
         (
           (data.role == 'owner' && data.status == 'approved') ||
-          (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected']) ||
-          (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions)) ||
-          (data.role == 'studio_guard' && data.status == 'approved' && hasNoAdminPermissions(data.permissions))
+          (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected', 'inactive']) ||
+          (data.role == 'client' && data.status in ['active', 'rejected', 'inactive'] && hasNoAdminPermissions(data.get('permissions', {}))) ||
+          (data.role == 'studio_guard' && data.status in ['pending', 'approved', 'rejected', 'inactive'] && hasNoAdminPermissions(data.get('permissions', {})))
         );
     }
     function isSafeAccountSelfCreate(data) {
@@ -180,19 +180,22 @@ service cloud.firestore {
         ]);
     }
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
-      allow create: if isSignedIn() &&
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner() || hasPermission('settings'));
+      allow create: if (isOwner() && validUser(request.resource.data, userId)) || (
+        isSignedIn() &&
         request.auth.uid == userId &&
         validUser(request.resource.data, userId) &&
-        isSafeAccountSelfCreate(request.resource.data);
-      allow update: if validUser(request.resource.data, userId) && (
-        (isOwner() && request.resource.data.role == resource.data.role) ||
-        (isSignedIn() &&
-          request.auth.uid == userId &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'preferences', 'updatedAt'])) ||
-        isSafeAdminRequestToClientTransition(userId)
+        isSafeAccountSelfCreate(request.resource.data)
       );
-      allow delete: if false;
+      allow update: if isOwner() || (
+        validUser(request.resource.data, userId) && (
+          (isSignedIn() &&
+            request.auth.uid == userId &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'preferences', 'updatedAt'])) ||
+          isSafeAdminRequestToClientTransition(userId)
+        )
+      );
+      allow delete: if isOwner();
     }
     function canAccessOwnRepositoryOperations(userId) {
       return isSignedIn() &&
