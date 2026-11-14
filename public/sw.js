@@ -1,6 +1,6 @@
 /* global self, caches, fetch, Response, URL */
-const APP_CACHE = '37musicstudio-app-v10';
-const ASSET_CACHE = '37musicstudio-assets-v10';
+const APP_CACHE = '37musicstudio-app-v11';
+const ASSET_CACHE = '37musicstudio-assets-v11';
 
 const CORE_ASSETS = [
   '/offline.html',

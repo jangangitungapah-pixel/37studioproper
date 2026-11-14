@@ -1683,15 +1683,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
         <header className="client-portal-mobile-heading">
           <span className="client-header-mark">37</span>
           <div>
-            <small>
-              {activeTab === 'home'
-                ? 'Overview · 37 Music Studio'
-                : activeTab === 'book'
-                  ? 'Jadwal Studio · 37 Music Studio'
-                  : activeTab === 'bookings'
-                    ? 'Riwayat & Bayar · 37 Music Studio'
-                    : 'Akun Saya · 37 Music Studio'}
-            </small>
+            <small>37 Music Studio</small>
             <strong>Halo, {currentUser?.displayName?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'Client'}</strong>
           </div>
           <div className="client-portal-mobile-actions">

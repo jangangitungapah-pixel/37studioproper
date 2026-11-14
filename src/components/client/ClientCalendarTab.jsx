@@ -318,7 +318,7 @@ export default function ClientCalendarTab({
       const targetRightEdge = targetLeftEdge + targetEl.offsetWidth;
 
       if (targetLeftEdge < visibleLeft + 8 || targetRightEdge > visibleRight - 8) {
-        const nextLeft = Math.max(0, targetLeftEdge - timeColWidth - 16);
+        const nextLeft = Math.max(0, targetLeftEdge - timeColWidth);
         scrollEl.scrollTo({
           left: nextLeft,
           behavior: 'auto',
@@ -612,6 +612,7 @@ export default function ClientCalendarTab({
                       className="client-booking-time-cell"
                       style={{ gridColumn: '1', gridRow: String(hourIndex + 2) }}
                     >
+                      <strong>{formatHourClock(hour.start)}</strong>
                       <span>{formatHourRange(hour.start, hour.end)}</span>
                     </div>
 
