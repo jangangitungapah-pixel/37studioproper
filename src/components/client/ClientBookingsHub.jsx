@@ -3,6 +3,7 @@ import {
   CreditCard,
   MessageCircle,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import '../../styles/modules/client-navigation-v2.css';
 
 export default function ClientBookingsHub({
@@ -15,9 +16,12 @@ export default function ClientBookingsHub({
   unreadCount,
 }) {
   return (
-    <section
+    <motion.section
+      animate={{ opacity: 1, y: 0 }}
       className="client-bookings-hub client-bookings-hub-overhaul"
       aria-labelledby="client-bookings-title"
+      initial={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       <header className="client-bookings-overview">
         <div className="client-navigation-page-heading">
@@ -171,6 +175,6 @@ export default function ClientBookingsHub({
           ? paymentsContent
           : bookingsContent}
       </div>
-    </section>
+    </motion.section>
   );
 }

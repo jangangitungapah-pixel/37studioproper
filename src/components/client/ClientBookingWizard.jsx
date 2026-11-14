@@ -10,6 +10,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import StudioSelect from '../ui/StudioSelect.jsx';
 import {
   formatRupiah,
@@ -289,11 +290,14 @@ export default function ClientBookingWizard({
         className="client-booking-wizard-backdrop"
         role="presentation"
       >
-        <section
+        <motion.section
+          animate={{ opacity: 1, scale: 1, y: 0 }}
           aria-label="Booking berhasil dikirim"
           aria-modal="true"
           className="client-booking-wizard is-confirmation"
+          initial={{ opacity: 0, scale: 0.98, y: 12 }}
           role="dialog"
+          transition={{ duration: 0.2, ease: 'easeOut' }}
         >
           <div className="client-booking-wizard-success-icon">
             <CheckCircle2
@@ -438,7 +442,7 @@ export default function ClientBookingWizard({
           >
             Tutup
           </button>
-        </section>
+        </motion.section>
       </div>
     );
   }
@@ -448,11 +452,14 @@ export default function ClientBookingWizard({
       className="client-booking-wizard-backdrop"
       role="presentation"
     >
-      <section
+      <motion.section
+        animate={{ opacity: 1, scale: 1, y: 0 }}
         aria-label="Booking studio"
         aria-modal="true"
         className="client-booking-wizard"
+        initial={{ opacity: 0, scale: 0.98, y: 12 }}
         role="dialog"
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       >
         <header className="client-booking-wizard-header">
           <div>
@@ -492,7 +499,13 @@ export default function ClientBookingWizard({
 
         {step ===
         'details' ? (
-          <div className="client-booking-wizard-body">
+          <motion.div
+            animate={{ opacity: 1, y: 0 }}
+            className="client-booking-wizard-body"
+            initial={{ opacity: 0, y: 6 }}
+            key="wizard-details"
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+          >
             <section className="client-booking-wizard-slot">
               <CalendarDays
                 size={18}
@@ -660,6 +673,22 @@ export default function ClientBookingWizard({
                   sessionType,
                 ) ? (
                   <>
+                    <div className="client-booking-wizard-quick-durations">
+                      <span>Pilih cepat durasi</span>
+                      <div>
+                        {['1', '2', '3', '4', 'custom'].map((optionKey) => (
+                          <button
+                            className={duration === optionKey ? 'is-active' : ''}
+                            key={optionKey}
+                            type="button"
+                            onClick={() => setDuration(optionKey)}
+                          >
+                            {optionKey === 'custom' ? 'Lainnya' : `${optionKey} Jam`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <StudioSelect
                       label="Durasi"
                       options={
@@ -964,9 +993,15 @@ export default function ClientBookingWizard({
                 </div>
               ) : null}
             </section>
-          </div>
+          </motion.div>
         ) : (
-          <div className="client-booking-wizard-body">
+          <motion.div
+            animate={{ opacity: 1, y: 0 }}
+            className="client-booking-wizard-body"
+            initial={{ opacity: 0, y: 6 }}
+            key="wizard-review"
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+          >
             <section className="client-booking-wizard-review">
               <span className="client-booking-wizard-eyebrow">
                 Periksa sebelum kirim
@@ -1081,7 +1116,7 @@ export default function ClientBookingWizard({
                 Request belum menjadi jadwal aktif sampai admin mengonfirmasinya.
               </p>
             </section>
-          </div>
+          </motion.div>
         )}
 
         <footer className="client-booking-wizard-footer">
@@ -1165,7 +1200,7 @@ export default function ClientBookingWizard({
             </>
           )}
         </footer>
-      </section>
+      </motion.section>
     </div>
   );
 }

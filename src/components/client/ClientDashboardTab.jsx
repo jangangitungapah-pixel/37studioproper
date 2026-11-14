@@ -1,14 +1,19 @@
 import {
+  ArrowRight,
   CalendarDays,
   CalendarPlus,
+  CheckCircle2,
   ChevronRight,
   Clock,
   CreditCard,
   ListChecks,
   MapPin,
   MessageCircle,
+  ShieldCheck,
+  Sparkles,
   Volume2,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import {
   formatRupiah,
 } from '../../settings/pricingSettings.js';
@@ -28,6 +33,61 @@ function getClientBookingStatusMeta(booking) {
     request: BOOKING_REQUEST_STATUS_META[getBookingRequestStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
     payment: BOOKING_PAYMENT_STATUS_META[getBookingPaymentStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
     session: BOOKING_SESSION_STATUS_META[getBookingSessionStatus(booking)] || { label: 'Belum tersedia', tone: 'neutral' },
+  };
+}
+
+function getNextActionRecommendation({
+  upcomingBooking,
+  stats,
+  onOpenBook,
+  onOpenPayments,
+  handleBookingBlockClick,
+}) {
+  if (stats?.unpaidAmount > 0) {
+    return {
+      tone: 'is-payment',
+      eyebrow: 'Langkah berikutnya · Pembayaran',
+      title: `Ada sisa tagihan ${formatRupiah(stats.unpaidAmount)} yang belum lunas`,
+      description: 'Transfer sesuai tagihan, lalu kirim kode referensi dari menu Pembayaran agar admin dapat memverifikasinya.',
+      ctaLabel: 'Buka Menu Pembayaran',
+      onAction: onOpenPayments,
+    };
+  }
+
+  if (upcomingBooking) {
+    const reqStatus = getBookingRequestStatus(upcomingBooking);
+    const payStatus = getBookingPaymentStatus(upcomingBooking);
+
+    if (reqStatus === 'submitted') {
+      return {
+        tone: 'is-review',
+        eyebrow: 'Langkah berikutnya · Menunggu Admin',
+        title: `Request ${formatBookingDate(upcomingBooking.date)} sedang ditinjau`,
+        description: 'Request Anda sudah masuk. Anda dapat memantau konfirmasi admin atau mengirim pesan di detail booking.',
+        ctaLabel: 'Pantau Status Request',
+        onAction: () => handleBookingBlockClick(upcomingBooking),
+      };
+    }
+
+    if (reqStatus === 'confirmed') {
+      return {
+        tone: 'is-ready',
+        eyebrow: payStatus === 'paid' ? 'Siap Sesi · Terkonfirmasi & Lunas' : 'Jadwal Terkonfirmasi',
+        title: `Sesi studio ${formatBookingDate(upcomingBooking.date)} jam ${String(upcomingBooking.startHour).padStart(2, '0')}.00 WIB siap`,
+        description: 'Tambahkan ke kalender ponsel Anda agar tidak terlewat, atau buka invoice untuk detail lengkap.',
+        ctaLabel: 'Lihat Detail & Invoice',
+        onAction: () => handleBookingBlockClick(upcomingBooking),
+      };
+    }
+  }
+
+  return {
+    tone: 'is-start',
+    eyebrow: 'Panduan Cepat · Mulai Booking',
+    title: 'Booking studio mudah tanpa bolak-balik tanya admin',
+    description: 'Lihat jam kosong secara real-time, cek estimasi harga langsung, dan ajukan jadwal pilihan Anda dalam hitungan detik.',
+    ctaLabel: 'Cari Slot Kosong',
+    onAction: onOpenBook,
   };
 }
 
@@ -77,9 +137,21 @@ export default function ClientDashboardTab({
   bookingsError = '',
 }) {
   const bookingDataUnavailable = bookingsLoading || Boolean(bookingsError);
+  const nextAction = getNextActionRecommendation({
+    upcomingBooking,
+    stats,
+    onOpenBook,
+    onOpenPayments,
+    handleBookingBlockClick,
+  });
 
   return (
-    <div className="client-home-dashboard">
+    <motion.div
+      animate={{ opacity: 1, y: 0 }}
+      className="client-home-dashboard"
+      initial={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+    >
       <header className="client-home-heading">
         <div>
           <span>
@@ -104,7 +176,7 @@ export default function ClientDashboardTab({
           }
         >
           <CalendarDays
-            size={17}
+            size={18}
           />
 
           <span>
@@ -112,10 +184,66 @@ export default function ClientDashboardTab({
           </span>
 
           <ChevronRight
-            size={15}
+            size={16}
           />
         </button>
       </header>
+
+      {!bookingDataUnavailable ? (
+        <section
+          aria-label="Rekomendasi langkah berikutnya"
+          className={`client-home-next-action ${nextAction.tone}`}
+        >
+          <div className="client-home-next-action-icon" aria-hidden="true">
+            {nextAction.tone === 'is-payment' ? (
+              <CreditCard size={20} />
+            ) : nextAction.tone === 'is-ready' ? (
+              <CheckCircle2 size={20} />
+            ) : nextAction.tone === 'is-review' ? (
+              <ShieldCheck size={20} />
+            ) : (
+              <Sparkles size={20} />
+            )}
+          </div>
+          <div className="client-home-next-action-copy">
+            <span>{nextAction.eyebrow}</span>
+            <strong>{nextAction.title}</strong>
+            <p>{nextAction.description}</p>
+          </div>
+          <button
+            className="client-home-next-action-cta"
+            type="button"
+            onClick={nextAction.onAction}
+          >
+            <span>{nextAction.ctaLabel}</span>
+            <ArrowRight size={15} />
+          </button>
+        </section>
+      ) : null}
+
+      <div aria-label="Alur booking studio" className="client-home-flow-strip">
+        <div>
+          <b>1</b>
+          <span>
+            <strong>Pilih Slot Kosong</strong>
+            <small>Cek kalender mingguan atau daftar jam tersedia</small>
+          </span>
+        </div>
+        <div>
+          <b>2</b>
+          <span>
+            <strong>Kirim Request</strong>
+            <small>Pilih layanan, durasi, &amp; lihat estimasi harga</small>
+          </span>
+        </div>
+        <div>
+          <b>3</b>
+          <span>
+            <strong>Konfirmasi &amp; Bayar</strong>
+            <small>Admin menyetujui jadwal lalu verifikasi pembayaran</small>
+          </span>
+        </div>
+      </div>
 
       <div className="client-home-grid">
         <section className="client-home-session-panel">
@@ -594,6 +722,6 @@ export default function ClientDashboardTab({
           </a>
         </aside>
       </div>
-    </div>
+    </motion.div>
   );
 }

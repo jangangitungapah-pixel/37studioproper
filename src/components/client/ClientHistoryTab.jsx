@@ -1,4 +1,5 @@
 import { CalendarDays, ChevronRight, Clock3, Copy, Search, Volume2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
 import {
   BOOKING_PAYMENT_STATUS_META,
@@ -36,11 +37,18 @@ export default function ClientHistoryTab({
   bookingsError = '',
 }) {
   return (
-    <section className="client-history-tab" aria-labelledby="client-history-title">
+    <motion.section
+      animate={{ opacity: 1, y: 0 }}
+      className="client-history-tab"
+      aria-labelledby="client-history-title"
+      initial={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+    >
       <header className="client-history-heading">
         <div>
-          <span>Arsip sesi</span>
+          <span>Arsip &amp; status sesi</span>
           <h3 id="client-history-title">Booking Anda</h3>
+          <p className="client-history-subtitle">Ketuk kartu booking untuk melihat invoice, progres konfirmasi, atau chat admin.</p>
         </div>
         <strong>{filteredHistoryBookings.length} booking</strong>
       </header>
@@ -153,6 +161,6 @@ export default function ClientHistoryTab({
           })}
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }

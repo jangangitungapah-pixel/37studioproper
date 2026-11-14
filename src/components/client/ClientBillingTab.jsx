@@ -1,4 +1,5 @@
 import { CheckCircle2, Copy, Info, Landmark, MessageCircle, Receipt, UploadCloud } from 'lucide-react';
+import { motion } from 'motion/react';
 import { formatRupiah } from '../../settings/pricingSettings.js';
 import { getBookingOutstandingAmount } from '../../utils/bookingPaymentUtils.js';
 import { getPaymentProofStatusLabel } from '../../services/paymentProofRepository.js';
@@ -21,15 +22,36 @@ export default function ClientBillingTab({
   bookingsError = '',
 }) {
   return (
-    <section className="client-billing-tab" aria-labelledby="client-billing-title">
+    <motion.section
+      animate={{ opacity: 1, y: 0 }}
+      className="client-billing-tab"
+      aria-labelledby="client-billing-title"
+      initial={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+    >
       <header className="client-billing-summary-card">
         <div>
           <span>Pembayaran aktif</span>
           <h3 id="client-billing-title">Sisa tagihan</h3>
-          <p>Transfer sesuai nominal booking, lalu kirim bukti untuk direview admin.</p>
+          <p>Transfer sesuai nominal booking, lalu kirim kode referensi untuk direview admin.</p>
         </div>
         <strong>{bookingsLoading || bookingsError ? '—' : formatRupiah(stats.unpaidAmount)}</strong>
       </header>
+
+      <div aria-label="Cara verifikasi pembayaran" className="client-billing-how-it-works">
+        <div>
+          <b>1</b>
+          <span>Transfer ke rekening studio di bawah atau bayar via QRIS</span>
+        </div>
+        <div>
+          <b>2</b>
+          <span>Klik tombol <strong>Kirim bukti</strong> dan masukkan nomor referensi bank</span>
+        </div>
+        <div>
+          <b>3</b>
+          <span>Admin memverifikasi transaksi dan status otomatis menjadi lunas</span>
+        </div>
+      </div>
 
       {bookingsLoading ? (
         <div className="client-billing-clear" role="status">
@@ -142,6 +164,6 @@ export default function ClientBillingTab({
           </ol>
         </aside>
       </div>
-    </section>
+    </motion.section>
   );
 }

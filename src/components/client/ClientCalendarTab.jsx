@@ -12,6 +12,7 @@ import {
   MoveHorizontal,
   Plus,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import {
   getLegacyBookingPaymentStatus,
 } from '../../domain/booking/bookingSelectors.js';
@@ -426,8 +427,39 @@ export default function ClientCalendarTab({
     );
   }
 
+  const quickDaySummaries = weekDays.map((day) => {
+    const dayIso = toIsoDate(day);
+    const busyCount = businessHours.filter((hour) =>
+      Boolean(getBlockForSlot(bookingBlocks, dayIso, Number(hour.start))),
+    ).length;
+
+    return {
+      day,
+      dayIso,
+      freeCount: Math.max(0, businessHours.length - busyCount),
+      isToday: isSameDay(day, today),
+      isSelected: isSameDay(day, calendarSelectedDate),
+    };
+  });
+
+  const activeQuickDay =
+    quickDaySummaries.find((item) => item.isSelected) || quickDaySummaries[0];
+
+  const activeDayHeading = activeQuickDay
+    ? new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }).format(activeQuickDay.day)
+    : '';
+
   return (
-    <section className="client-booking-board">
+    <motion.section
+      animate={{ opacity: 1, y: 0 }}
+      className="client-booking-board"
+      initial={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+    >
       <header className="client-booking-board-heading">
         <div>
           <span>
@@ -435,11 +467,11 @@ export default function ClientCalendarTab({
           </span>
 
           <h2>
-            Kalender Studio
+            Pilih Jadwal Studio
           </h2>
 
           <p>
-            Pilih slot kosong pada kalender. Jadwal client lain tetap privat dan hanya ditandai sebagai terisi.
+            Ketuk tanggal &amp; jam kosong di bawah untuk langsung mengajukan booking, atau jelajahi kalender mingguan.
           </p>
         </div>
 
@@ -474,6 +506,140 @@ export default function ClientCalendarTab({
           <button onClick={onRetryCalendarSlots} type="button">Coba lagi</button>
         </div>
       ) : null}
+
+      <section
+        aria-label="Pilih cepat hari dan jam kosong"
+        className="client-calendar-quick-strip"
+      >
+        <div className="client-calendar-quick-head">
+          <div>
+            <span>Cara cepat</span>
+            <h3>1. Pilih Hari · 2. Ketuk Jam Kosong</h3>
+          </div>
+          <div className="client-calendar-quick-week-controls">
+            <button
+              aria-label="Minggu sebelumnya"
+              type="button"
+              onClick={previousWeek}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button type="button" onClick={goToday}>
+              Hari Ini
+            </button>
+            <button
+              aria-label="Minggu berikutnya"
+              type="button"
+              onClick={nextWeek}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="client-calendar-quick-days" role="listbox" aria-label="Tanggal dalam minggu">
+          {quickDaySummaries.map((item) => (
+            <button
+              aria-selected={item.isSelected}
+              className={
+                'client-calendar-quick-day' +
+                (item.isSelected ? ' is-selected' : '') +
+                (item.isToday ? ' is-today' : '')
+              }
+              key={item.dayIso}
+              role="option"
+              type="button"
+              onClick={() => setCalendarSelectedDate(startOfDay(item.day))}
+            >
+              <span>{dayNames[item.day.getDay()]}</span>
+              <strong>{item.day.getDate()}</strong>
+              <small>
+                {!calendarSlotsReady
+                  ? '—'
+                  : item.freeCount > 0
+                    ? `${item.freeCount} jam`
+                    : 'Penuh'}
+              </small>
+            </button>
+          ))}
+        </div>
+
+        {activeQuickDay ? (
+          <div className="client-calendar-day-hours-wrap">
+            <div className="client-calendar-day-hours-label">
+              <strong>{activeDayHeading}</strong>
+              <span>
+                {!calendarSlotsReady
+                  ? 'Menunggu data jadwal…'
+                  : activeQuickDay.freeCount > 0
+                    ? `${activeQuickDay.freeCount} slot jam siap dibooking`
+                    : 'Semua jam pada tanggal ini sudah terisi'}
+              </span>
+            </div>
+
+            <div className="client-calendar-day-hours">
+              {businessHours.map((hour) => {
+                const hourStart = Number(hour.start);
+                const block = getBlockForSlot(
+                  bookingBlocks,
+                  activeQuickDay.dayIso,
+                  hourStart,
+                );
+                const own = Boolean(block?.booking?.isOwnClientBooking);
+
+                if (block && own) {
+                  return (
+                    <button
+                      className="client-calendar-hour-chip is-own"
+                      key={`${activeQuickDay.dayIso}-${hour.key}`}
+                      type="button"
+                      onClick={() => handleBookingBlockClick(block.booking)}
+                    >
+                      <strong>{hour.label} WIB</strong>
+                      <span>Booking Anda</span>
+                    </button>
+                  );
+                }
+
+                if (block) {
+                  return (
+                    <span
+                      aria-label={`${hour.label} WIB sudah terisi`}
+                      className="client-calendar-hour-chip is-busy"
+                      key={`${activeQuickDay.dayIso}-${hour.key}`}
+                    >
+                      <strong>{hour.label}</strong>
+                      <span>
+                        <Lock size={12} aria-hidden="true" /> Terisi
+                      </span>
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    className="client-calendar-hour-chip is-available"
+                    disabled={!calendarSlotsReady}
+                    key={`${activeQuickDay.dayIso}-${hour.key}`}
+                    type="button"
+                    onClick={() =>
+                      handleSlotClick({
+                        date: activeQuickDay.dayIso,
+                        startHour: String(hour.start),
+                      })
+                    }
+                  >
+                    <strong>{hour.label} WIB</strong>
+                    <span>
+                      <Plus size={13} aria-hidden="true" /> Pilih
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       <div className="client-booking-calendar-shell">
         <div className="client-booking-toolbar">
@@ -977,6 +1143,6 @@ export default function ClientCalendarTab({
         </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

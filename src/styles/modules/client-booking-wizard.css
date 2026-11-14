@@ -91,7 +91,8 @@
 }
 
 .client-booking-wizard-progress small {
-  font-size: var(--studio-text-xs);
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .client-booking-wizard-progress > div.is-active {
@@ -152,7 +153,7 @@
 
 .client-booking-wizard label > span:first-child {
   color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
+  font-size: 0.78rem;
   font-weight: 680;
 }
 
@@ -167,9 +168,9 @@
   outline: 0;
   background: var(--auth-bg-control);
   color: var(--auth-text-main);
-  padding: 0 10px;
+  padding: 0 12px;
   font: inherit;
-  font-size: var(--studio-text-xs);
+  font-size: 0.88rem;
 }
 
 .client-booking-wizard textarea {
@@ -214,13 +215,53 @@
   color: #111;
 }
 
+.client-booking-wizard-quick-durations {
+  display: grid;
+  gap: 6px;
+}
+
+.client-booking-wizard-quick-durations > span {
+  color: var(--auth-text-muted);
+  font-size: 0.78rem;
+  font-weight: 680;
+}
+
+.client-booking-wizard-quick-durations > div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.client-booking-wizard-quick-durations button {
+  min-height: 40px;
+  border: 1px solid var(--auth-border);
+  border-radius: 10px;
+  background: var(--auth-bg-control);
+  color: var(--auth-text-main);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.client-booking-wizard-quick-durations button:hover {
+  border-color: color-mix(in srgb, var(--auth-accent) 45%, var(--auth-border));
+}
+
+.client-booking-wizard-quick-durations button.is-active {
+  border-color: var(--auth-accent);
+  background: var(--auth-accent-soft);
+  color: var(--auth-accent);
+}
+
 .client-booking-wizard-estimate {
   display: grid;
-  gap: 7px;
+  gap: 9px;
   border: 1px solid var(--auth-border);
   border-radius: var(--studio-radius-lg);
   background: var(--auth-bg-soft);
-  padding: 12px;
+  padding: 14px;
 }
 
 .client-booking-wizard-estimate > div {
@@ -228,7 +269,7 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--auth-text-muted);
-  font-size: var(--studio-text-xs);
+  font-size: 0.82rem;
 }
 
 .client-booking-wizard-estimate strong {
@@ -242,12 +283,12 @@
 
 .client-booking-wizard-estimate .is-total {
   border-top: 1px solid var(--auth-border);
-  padding-top: 8px;
+  padding-top: 10px;
 }
 
 .client-booking-wizard-estimate .is-total strong {
   color: var(--auth-accent);
-  font-size: var(--studio-text-sm);
+  font-size: 1.05rem;
 }
 
 .client-booking-wizard-proof {
@@ -530,7 +571,11 @@
   }
 
   .client-booking-wizard-progress small {
-    display: none;
+    font-size: 0.72rem;
+  }
+
+  .client-booking-wizard-quick-durations > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .client-booking-wizard.is-confirmation {

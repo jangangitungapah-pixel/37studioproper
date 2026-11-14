@@ -10,6 +10,7 @@ import {
   CalendarPlus,
   Copy,
   Check,
+  Landmark,
   MessageCircle,
   Moon,
   CreditCard,
@@ -17,6 +18,8 @@ import {
   Bell,
   X
 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { firebaseAuth } from '../lib/firebase.js';
 import { createRepositoryRequestId } from '../lib/firestoreRepositoryFoundation.js';
@@ -60,6 +63,7 @@ import {
 import { useInvoiceSettings } from '../settings/invoiceSettings.js';
 import {
   defaultStudioSettings,
+  formatBankAccountNumber,
   getStudioPaymentTerms,
   useStudioSettings,
 } from '../settings/studioSettings.js';
@@ -71,6 +75,7 @@ import {
   paymentProofRepository,
 } from '../services/paymentProofRepository.js';
 import { businessHours, statusFilters } from '../constants/scheduleConfig.js';
+import StudioToaster from '../components/ui/StudioToaster.jsx';
 import BookingConversationPanel from '../components/booking/BookingConversationPanel.jsx';
 import ClientDashboardTab from '../components/client/ClientDashboardTab.jsx';
 import ClientCalendarTab from '../components/client/ClientCalendarTab.jsx';
@@ -177,6 +182,41 @@ function getBookingStatus(booking) {
 }
 function getStatusLabel(status) {
   return statusFilters.find((item) => item.key === status)?.label || status;
+}
+function getClientBookingLifecycleSteps(booking) {
+  const reqStatus = getBookingRequestStatus(booking);
+  const payStatus = getBookingPaymentStatus(booking);
+  const sessStatus = getBookingSessionStatus(booking);
+  const isCancelledState = ['rejected', 'cancelled'].includes(reqStatus) || ['cancelled', 'void'].includes(payStatus) || sessStatus === 'cancelled';
+
+  const step2State = isCancelledState
+    ? 'is-cancelled'
+    : reqStatus === 'confirmed'
+      ? 'is-done'
+      : 'is-current';
+
+  const step3State = isCancelledState
+    ? 'is-cancelled'
+    : payStatus === 'paid'
+      ? 'is-done'
+      : reqStatus === 'confirmed'
+        ? 'is-current'
+        : 'is-upcoming';
+
+  const step4State = isCancelledState
+    ? 'is-cancelled'
+    : sessStatus === 'completed'
+      ? 'is-done'
+      : sessStatus === 'active' || (reqStatus === 'confirmed' && payStatus === 'paid')
+        ? 'is-current'
+        : 'is-upcoming';
+
+  return [
+    { key: 'request', num: '1', label: 'Request Terkirim', state: 'is-done' },
+    { key: 'confirm', num: '2', label: reqStatus === 'confirmed' ? 'Terkonfirmasi' : isCancelledState ? 'Dibatalkan' : 'Review Admin', state: step2State },
+    { key: 'payment', num: '3', label: payStatus === 'paid' ? 'Lunas' : payStatus === 'partial' ? 'DP Tercatat' : 'Pembayaran', state: step3State },
+    { key: 'session', num: '4', label: sessStatus === 'completed' ? 'Sesi Selesai' : 'Sesi Studio', state: step4State },
+  ];
 }
 // Block lane solver (identical to admin layout logic)
 function getVisibleBookingBlocks(bookings, visibleDays) {
@@ -1076,10 +1116,12 @@ export default function ClientPortalPage() {
 
       setSelectedProofBooking(null);
       resetStandaloneProofForm();
+      toast.success('Referensi pembayaran berhasil dikirim. Menunggu review admin.');
       setActionFeedback('Referensi pembayaran berhasil dikirim. Menunggu review admin.');
       window.setTimeout(() => setActionFeedback(''), 4200);
     } catch (error) {
       console.error('Gagal mengirim referensi pembayaran:', error);
+      toast.error(error?.message || 'Referensi pembayaran gagal dikirim.');
       setActionFeedback(error?.message || 'Referensi pembayaran gagal dikirim.');
       window.setTimeout(() => setActionFeedback(''), 5200);
     } finally {
@@ -1279,6 +1321,7 @@ export default function ClientPortalPage() {
       }
 
       resetSimulatorProofForm();
+      toast.success('Request booking berhasil dikirim ke admin.');
 
       return {
         booking: createdBooking,
@@ -1319,6 +1362,7 @@ export default function ClientPortalPage() {
           ? 'Request ditolak oleh rules database. Deploy Firestore rules terbaru lalu coba lagi.'
           : 'Permintaan booking gagal disimpan. Silakan coba lagi.';
 
+      toast.error(friendlyMessage);
       setActionFeedback(friendlyMessage);
       window.setTimeout(() => setActionFeedback(''), 5200);
 
@@ -1358,6 +1402,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   const showActionFeedback = (message) => {
     setActionFeedback(message);
+    toast(message);
     window.setTimeout(() => setActionFeedback(''), 2400);
   };
 
@@ -1499,6 +1544,7 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
 
   return (
     <div className="client-portal-page theme-container">
+      <StudioToaster />
       <a className="client-portal-skip-link" href="#client-portal-main">
         Lewati navigasi client
       </a>
@@ -1889,11 +1935,35 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
       {/* Booking Detail Modal (To view invoices, receipts, and DP breakdown) */}
       {selectedBookingDetail && (
         <div className="client-detail-modal-backdrop">
-          <div className="client-detail-modal">
-            <h3 className="client-detail-modal-title">
-              <Receipt size={18} className="text-[#ff8a2a]" />
-              <span>Detail Invoice Booking</span>
-            </h3>
+          <motion.div
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="client-detail-modal"
+            initial={{ opacity: 0, scale: 0.98, y: 12 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            <div className="client-detail-modal-head">
+              <h3 className="client-detail-modal-title">
+                <Receipt size={18} />
+                <span>Detail Invoice Booking</span>
+              </h3>
+              <button
+                aria-label="Tutup detail booking"
+                className="client-detail-close-icon"
+                type="button"
+                onClick={() => setSelectedBookingDetail(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <ol aria-label="Progres status booking" className="client-detail-lifecycle-stepper">
+              {getClientBookingLifecycleSteps(selectedBookingDetail).map((item) => (
+                <li className={item.state} key={item.key}>
+                  <span>{item.num}</span>
+                  <small>{item.label}</small>
+                </li>
+              ))}
+            </ol>
 
             {getBookingRequestStatusMeta(selectedBookingDetail) ? (
               <section className={'client-request-state is-' + getBookingRequestStatusMeta(selectedBookingDetail).tone}>
@@ -2029,6 +2099,26 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
               ) : null}
             </div>
 
+            {!paymentProofsLoading && !paymentProofsError && isBookingPaymentOpen(selectedBookingDetail) ? (
+              <section aria-label="Rekening transfer studio" className="client-detail-bank-box">
+                <div>
+                  <span>
+                    <Landmark size={14} aria-hidden="true" />
+                    {' '}
+                    {studioSettings.bankName || defaultStudioSettings.bankName}
+                  </span>
+                  <strong>{formatBankAccountNumber(transferAccountNumber)}</strong>
+                  <small>a.n. {studioSettings.bankAccountHolder || defaultStudioSettings.bankAccountHolder}</small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyText(transferAccountNumber, 'Nomor rekening disalin.')}
+                >
+                  <Copy size={13} /> Salin Rekening
+                </button>
+              </section>
+            ) : null}
+
             <div className="client-detail-modal-actions">
               <button
                 type="button"
@@ -2047,12 +2137,12 @@ Saya sudah melakukan transfer. Berikut bukti transfer pembayarannya.`;
                   }}
                   className="is-primary"
                 >
-                  <CreditCard size={12} />
+                  <CreditCard size={14} />
                   <span>Kirim Referensi</span>
                 </button>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
