@@ -134,7 +134,9 @@
       allow delete: if isOwner();
     }
     match /settings/operatorFees {
-      allow read, create, update, delete: if isOwner();
+      allow read: if isApproved();
+      allow create, update: if isOwner() || hasPermission('operator-fee') || hasPermission('settings');
+      allow delete: if isOwner();
     }
     match /operatorFeeEntries/{entryId} {
       allow read: if canManageOperatorFees();

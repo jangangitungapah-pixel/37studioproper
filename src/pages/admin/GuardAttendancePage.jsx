@@ -27,6 +27,7 @@ import {
   GUARD_ATTENDANCE_STATUSES,
   GUARD_MEAL_BOOKKEEPING_STATUSES,
   approveGuardAttendanceSession,
+  postGuardMealToBookkeeping,
   rejectGuardAttendanceSession,
   subscribeGuardAttendanceSessions,
   voidGuardAttendanceSession,
@@ -397,6 +398,7 @@ function GuardReviewPriority({
                     {formatTime(session.clockInAt)}–{session.clockOutAt ? formatTime(session.clockOutAt) : 'aktif'}
                     {' · '}
                     {formatDuration(session.durationHours)}
+                    {session.note ? ` · Catatan: "${session.note}"` : ''}
                   </small>
                 </span>
 
@@ -548,6 +550,7 @@ function GuardReviewMealCell({ session }) {
 function GuardReviewActions({
   busyId,
   onApprove,
+  onPostMeal,
   onReject,
   onVoid,
   session,
@@ -563,6 +566,13 @@ function GuardReviewActions({
   const isMealPosted =
     session.mealBookkeepingStatus ===
     GUARD_MEAL_BOOKKEEPING_STATUSES.POSTED;
+  const isMealReadyToPost =
+    isApproved &&
+    !isMealPosted &&
+    !isVoid &&
+    session.status === GUARD_ATTENDANCE_STATUSES.CLOSED &&
+    session.mealEligible === true &&
+    Number(session.mealAmount || 0) > 0;
 
   if (isVoid) {
     return (
@@ -608,6 +618,21 @@ function GuardReviewActions({
 
       {isApproved && !isMealPosted && !isVoid ? (
         <>
+          {isMealReadyToPost && onPostMeal ? (
+            <button
+              className="is-primary"
+              disabled={isBusy}
+              type="button"
+              onClick={() => onPostMeal(session)}
+            >
+              {isBusy ? (
+                <LoaderCircle className="auth-spin" size={13} aria-hidden="true" />
+              ) : (
+                <Utensils size={13} aria-hidden="true" />
+              )}
+              Post Meal
+            </button>
+          ) : null}
           <button disabled={isBusy} type="button" onClick={() => onReject(session)}>
             <XCircle size={13} aria-hidden="true" />
             Reject
@@ -657,6 +682,7 @@ function GuardReviewActions({
 function GuardReviewRow({
   busyId,
   onApprove,
+  onPostMeal,
   onReject,
   onVoid,
   session,
@@ -702,6 +728,12 @@ function GuardReviewRow({
 
       <span className="guard-review-decision">
         <GuardReviewStatus meta={reviewMeta} />
+        {session.approvedByName && session.approvalStatus === GUARD_ATTENDANCE_APPROVAL_STATUSES.APPROVED ? (
+          <small>By: {session.approvedByName}</small>
+        ) : null}
+        {session.adminNote ? (
+          <small>Note: {session.adminNote}</small>
+        ) : null}
         {session.rejectionReason ? (
           <small>Reject: {session.rejectionReason}</small>
         ) : null}
@@ -713,6 +745,7 @@ function GuardReviewRow({
       <GuardReviewActions
         busyId={busyId}
         onApprove={onApprove}
+        onPostMeal={onPostMeal}
         onReject={onReject}
         onVoid={onVoid}
         session={session}
@@ -726,6 +759,7 @@ function GuardReviewLedger({
   isLoading,
   loadError,
   onApprove,
+  onPostMeal,
   onReject,
   onVoid,
   resultCount,
@@ -763,6 +797,7 @@ function GuardReviewLedger({
               busyId={busyId}
               key={session.id}
               onApprove={onApprove}
+              onPostMeal={onPostMeal}
               onReject={onReject}
               onVoid={onVoid}
               session={session}
@@ -827,8 +862,26 @@ function GuardReviewActionDialog({
             </Dialog.Close>
           </header>
 
+          {session?.note ? (
+            <div
+              style={{
+                background: 'rgba(148, 163, 184, 0.08)',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                borderRadius: '0.65rem',
+                fontSize: '0.82rem',
+                marginBottom: '0.75rem',
+                padding: '0.65rem 0.85rem',
+              }}
+            >
+              <strong style={{ display: 'block', fontSize: '0.75rem', opacity: 0.8 }}>
+                Catatan Shift dari Guard:
+              </strong>
+              <span>{session.note}</span>
+            </div>
+          ) : null}
+
           <label className="guard-review-reason-field">
-            <span>Alasan keputusan</span>
+            <span>Alasan keputusan (dikirim ke Guard Portal)</span>
             <textarea
               autoFocus
               rows={4}
@@ -999,11 +1052,34 @@ export default function GuardAttendancePage({ currentUser }) {
     try {
       await approveGuardAttendanceSession(session, currentUser);
       showFeedback(
-        'Attendance ' + session.guardName + ' disetujui. Eligibility fee mengikuti lifecycle canonical.',
+        'Attendance ' + session.guardName + ' disetujui & notifikasi dikirim ke Guard.',
       );
     } catch (error) {
       console.error('[guard-attendance-owner] Approve gagal:', error);
       showFeedback(error?.message || 'Approve attendance gagal.', 'error');
+    } finally {
+      setBusyId('');
+    }
+  }
+
+  async function postMealForSession(session) {
+    setBusyId(session.id);
+    setFeedback(null);
+
+    try {
+      await postGuardMealToBookkeeping(session, currentUser, {
+        paymentMethod: 'cash',
+      });
+      showFeedback(
+        'Uang makan ' +
+          session.guardName +
+          ' (' +
+          session.date +
+          ') berhasil dicairkan ke Pembukuan & notifikasi dikirim ke Guard.',
+      );
+    } catch (error) {
+      console.error('[guard-attendance-owner] Post meal gagal:', error);
+      showFeedback(error?.message || 'Posting uang makan gagal.', 'error');
     } finally {
       setBusyId('');
     }
@@ -1104,6 +1180,7 @@ export default function GuardAttendancePage({ currentUser }) {
         isLoading={isLoading}
         loadError={loadError}
         onApprove={approveSession}
+        onPostMeal={postMealForSession}
         onReject={(session) => openReasonDialog('reject', session)}
         onVoid={(session) => openReasonDialog('void', session)}
         resultCount={filteredSessions.length}

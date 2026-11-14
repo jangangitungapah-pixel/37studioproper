@@ -123,11 +123,29 @@ service cloud.firestore {
           isStudioGuardAccount() &&
           resource.data.guardUid == request.auth.uid &&
           request.resource.data.guardUid == resource.data.guardUid &&
-          resource.data.clockOutAt == '' &&
-          request.resource.data.status == 'closed' &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'clockOutAt', 'clockOutByUid', 'closedAt', 'durationHours', 'status', 'updatedAt'
-          ])
+          (
+            (
+              resource.data.clockOutAt == '' &&
+              request.resource.data.status == 'closed' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'clockOutAt', 'clockOutByUid', 'closedAt', 'durationHours', 'note', 'status', 'updatedAt'
+              ])
+            ) ||
+            (
+              request.resource.data.status == resource.data.status &&
+              request.resource.data.approvalStatus == resource.data.approvalStatus &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'note', 'updatedAt'
+              ])
+            ) ||
+            (
+              resource.data.approvalStatus == 'rejected' &&
+              resource.data.status != 'void' &&
+              resource.data.mealBookkeepingStatus != 'posted' &&
+              request.resource.data.status == 'pending_approval' &&
+              request.resource.data.approvalStatus == 'pending'
+            )
+          )
         ) || (
           (canManageGuardAttendance() || canManageOperatorFees()) &&
           request.resource.data.id == resource.data.id &&
@@ -378,7 +396,9 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
     match /settings/operatorFees {
-      allow read, create, update, delete: if isOwner();
+      allow read: if isApproved();
+      allow create, update: if isOwner() || hasPermission('operator-fee') || hasPermission('settings');
+      allow delete: if isOwner();
     }
     match /operatorFeeEntries/{entryId} {
       allow read: if canManageOperatorFees();
