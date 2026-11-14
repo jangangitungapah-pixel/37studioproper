@@ -445,7 +445,7 @@ function GuardAttendancePageContent() {
   const [sessions, setSessions] = useState([]);
   const [guardNotifications, setGuardNotifications] = useState([]);
   const [note, setNote] = useState('');
-  const [activeShiftNoteDraft, setActiveShiftNoteDraft] = useState('');
+  const [activeShiftNoteOverride, setActiveShiftNoteOverride] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [showCheckOutConfirm, setShowCheckOutConfirm] = useState(false);
   const [isReady, setIsReady] = useState(!isAuthAvailable);
@@ -627,9 +627,16 @@ function GuardAttendancePageContent() {
     [sessions]
   );
 
-  useEffect(() => {
-    setActiveShiftNoteDraft(currentSession?.note || '');
-  }, [currentSession?.id, currentSession?.note]);
+  const activeShiftSessionKey = `${currentSession?.id || ''}:${currentSession?.note || ''}`;
+  const activeShiftNoteDraft = activeShiftNoteOverride?.sessionKey === activeShiftSessionKey
+    ? activeShiftNoteOverride.value
+    : (currentSession?.note || '');
+  const setActiveShiftNoteDraft = (nextValue) => {
+    setActiveShiftNoteOverride({
+      sessionKey: activeShiftSessionKey,
+      value: typeof nextValue === 'function' ? nextValue(activeShiftNoteDraft) : nextValue,
+    });
+  };
 
   useEffect(() => {
     if (!currentSession?.clockInAt) {

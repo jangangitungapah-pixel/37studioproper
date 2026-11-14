@@ -14,5 +14,15 @@
     "APP_ENVIRONMENT": "production",
     "FIREBASE_PROJECT_ID": "studio-proper",
     "SITE_ORIGIN": "https://studio-37.web.app"
+  },
+  "env": {
+    "staging": {
+      "name": "studio37-admin-operations-worker-staging",
+      "vars": {
+        "APP_ENVIRONMENT": "staging",
+        "FIREBASE_PROJECT_ID": "",
+        "SITE_ORIGIN": ""
+      }
+    }
   }
 }

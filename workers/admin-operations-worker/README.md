@@ -19,6 +19,10 @@ The browser sends a current Firebase ID token and an `X-Idempotency-Key`. The Wo
 
 Run `npm install`, `npm run types`, then `npm run dev` inside this directory. The production values must be configured as Worker secrets; do not place them in `wrangler.jsonc` or in the Vite application.
 
+## Staging configuration
+
+An isolated `env.staging` block (`studio37-admin-operations-worker-staging`) is defined in `wrangler.jsonc` with empty `FIREBASE_PROJECT_ID` and `SITE_ORIGIN` defaults so staging deployments cannot accidentally inherit production values (`studio-proper` / `https://studio-37.web.app`). Copy root `.env.staging.example` for Vite and supply the staging `FIREBASE_PROJECT_ID`, `SITE_ORIGIN`, and secrets via Cloudflare Worker staging secrets (or `.dev.vars.staging` locally).
+
 ## Safety model
 
 - `SITE_ORIGIN` limits browser CORS; every protected route still requires Firebase authorization.

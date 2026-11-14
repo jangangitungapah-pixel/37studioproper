@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync as rawReadFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+function readFileSync(...args) {
+  const value = rawReadFileSync(...args);
+  return typeof value === 'string' ? value.replace(/\r\n?/g, '\n') : value;
+}
 
 const pageSource = readFileSync(
   resolve('src/pages/admin/GuardAttendancePage.jsx'),

@@ -48,6 +48,7 @@ export async function uploadImageFile(file, options = {}) {
   const {
     context = {},
     folder = '',
+    publicIdPrefix = folder,
     maxSizeBytes = MAX_GALLERY_IMAGE_SIZE_BYTES,
     tags = [],
   } = options;
@@ -58,8 +59,16 @@ export async function uploadImageFile(file, options = {}) {
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-  if (folder) {
-    formData.append('folder', folder);
+  const normalizedFolder = String(folder || '').replace(/^\/+|\/+$/g, '');
+  const normalizedPublicIdPrefix = String(publicIdPrefix || normalizedFolder)
+    .replace(/^\/+|\/+$/g, '');
+
+  if (normalizedFolder) {
+    formData.append('folder', normalizedFolder);
+  }
+
+  if (normalizedPublicIdPrefix) {
+    formData.append('public_id_prefix', normalizedPublicIdPrefix);
   }
 
   if (tags.length) {

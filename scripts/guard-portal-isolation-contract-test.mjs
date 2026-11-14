@@ -156,7 +156,7 @@ for (
     'PROFIL PENJAGA',
     'Approved Bulan Ini',
     'Menunggu Approval',
-    'Clock-in, clock-out, dan riwayat kehadiran penjaga.',
+    'Clock-in, clock-out, komunikasi dua arah dengan Admin/Owner, dan riwayat kehadiran penjaga.',
   ]
 ) {
   assert.equal(
