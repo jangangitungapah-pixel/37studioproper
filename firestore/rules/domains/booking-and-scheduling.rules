@@ -19,7 +19,6 @@
       );
       allow delete: if false;
     }
-
     function validPaymentProof(data, proofId) {
       return data.keys().hasOnly([
           'id', 'bookingId', 'bookingCode', 'invoiceNumber',
@@ -58,7 +57,6 @@
         validOptionalString(data, 'reviewDecision', 20) &&
         validOptionalString(data, 'reviewOperationId', 80);
     }
-
     function clientCreatesPaymentProof(data, proofId) {
       return isSignedIn() &&
         validPaymentProof(data, proofId) &&
@@ -83,7 +81,6 @@
         bookingData(data.bookingId).get('paymentStatusCanonical', '') != 'void' &&
         bookingData(data.bookingId).get('paymentStatusCanonical', '') != 'refunded';
     }
-
     function validBookingMessage(data, messageId) {
       return data.keys().hasOnly([
           'id', 'bookingId', 'clientUid', 'senderUid', 'senderRole',
@@ -101,16 +98,12 @@
         data.readByAdmin is bool &&
         data.readByClient is bool;
     }
-
     function bookingExists(bookingId) {
       return exists(/databases/$(database)/documents/bookings/$(bookingId));
     }
-
     function bookingData(bookingId) {
       return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
     }
-
-
     function approvedPaymentProofMatchesAfter(proofId) {
       let proof = request.resource.data;
       let bookingPath = /databases/$(database)/documents/bookings/$(proof.bookingId);
@@ -139,7 +132,6 @@
         ledgerAfter.amount == proof.approvedAmount &&
         ledgerAfter.paymentMethod == proof.approvedMethod;
     }
-
     function paymentProofReviewUpdateAllowed(proofId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let proof = request.resource.data;
@@ -184,7 +176,6 @@
           )
         );
     }
-
     match /paymentProofs/{proofId} {
       allow read: if (isApproved() && canAccessBookingData()) ||
         (isClientAccount() && resource.data.clientUid == request.auth.uid);
@@ -192,7 +183,6 @@
       allow update: if paymentProofReviewUpdateAllowed(proofId);
       allow delete: if false;
     }
-
     match /bookingMessages/{messageId} {
       allow read: if (isApproved() && canAccessBookingData()) ||
         (isClientAccount() && resource.data.clientUid == request.auth.uid);
@@ -235,7 +225,6 @@
       );
       allow delete: if isOwner();
     }
-
     match /bookingSessionEvents/{eventId} {
       allow read: if isApprovedScheduleAdmin();
       allow create: if isApprovedScheduleAdmin() &&
@@ -243,7 +232,6 @@
         bookingSessionEventReferencesBookingAfter(eventId);
       allow update, delete: if false;
     }
-
     function financeVoidScheduleSlotDeleteAllowed(bookingId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
       let bookingAfter = getAfter(bookingPath).data;
@@ -256,9 +244,7 @@
         !bookingRequiresPublicSlot(bookingAfter) &&
         financeBookingVoidScheduleMatchesAfter(bookingId, bookingAfter);
     }
-
     match /clientCalendarSlots/{slotId} {
-      // Public availability exposes generic occupied-slot metadata only.
       allow read: if true;
       allow create, update: if isApprovedScheduleAdmin() &&
         existsAfter(/databases/$(database)/documents/bookings/$(slotId)) &&
@@ -274,7 +260,6 @@
           )
         ) || financeVoidScheduleSlotDeleteAllowed(slotId);
     }
-
     function bookingDocumentChangesAfter(bookingId, updatedAt) {
       let bookingPath = /databases/$(database)/documents/bookings/$(bookingId);
       let bookingAfter = getAfter(bookingPath).data;
@@ -285,7 +270,6 @@
           get(bookingPath).data.updatedAt != updatedAt
         );
     }
-
     function financeVoidScheduleDayCompanionAllowed(dateId, dayData) {
       let bookingPath = /databases/$(database)/documents/bookings/$(dayData.lastBookingId);
       let bookingAfter = getAfter(bookingPath).data;
@@ -309,7 +293,6 @@
           dayData.lastBookingId
         );
     }
-
     match /bookingScheduleDays/{dateId} {
       allow read: if isApprovedAdmin() && (canManageBookingData() || hasPermission('billing'));
       allow create: if (
@@ -336,7 +319,6 @@
         );
       allow delete: if false;
     }
-
     function validCustomer(data, customerId) {
       return data.keys().hasOnly([
           'id', 'authUid', 'name', 'phone', 'phoneKey', 'email', 'instagram',
@@ -355,14 +337,12 @@
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
     }
-
     function isOwnClientProfile(customerId, data) {
       return isClientAccount() &&
         customerId == ('auth_' + request.auth.uid) &&
         data.authUid == request.auth.uid &&
         data.source == 'clientPortal';
     }
-
     function clientProfileIdentityMatches(data) {
       return (
           request.auth.token.email is string &&
@@ -374,7 +354,6 @@
           data.phone == request.auth.token.phone_number
         );
     }
-
     match /customers/{customerId} {
       allow read: if (isApproved() && canAccessCustomerData()) ||
         (isClientAccount() && customerId == ('auth_' + request.auth.uid));
@@ -402,7 +381,6 @@
       );
       allow delete: if isApproved() && canManageCustomerData();
     }
-
     function validStudioSettings(data) {
       return data.keys().hasOnly([
           'studioName', 'studioAddress', 'studioPhone',
@@ -421,7 +399,6 @@
         data.paymentTerms.size() <= 12 &&
         validOptionalString(data, 'updatedAt', 40);
     }
-
     function validPricingSettings(data) {
       return data.keys().hasOnly(['sessions', 'discounts', 'recordingTypes', 'packages']) &&
         data.sessions is list && data.sessions.size() > 0 && data.sessions.size() <= 50 &&
@@ -429,7 +406,6 @@
         data.recordingTypes is list && data.recordingTypes.size() <= 50 &&
         data.packages is list && data.packages.size() <= 100;
     }
-
     function validInvoiceSettings(data) {
       return data.keys().hasOnly(['studioName', 'subtitle', 'phone', 'address', 'footer', 'paperSize', 'updatedAt']) &&
         validString(data.studioName, 1, 120) &&
@@ -440,31 +416,25 @@
         data.paperSize in ['80mm', '58mm'] &&
         validOptionalString(data, 'updatedAt', 40);
     }
-
     match /settings/studio {
       allow read: if true;
       allow create, update: if isApprovedAdmin() && hasPermission('settings') && validStudioSettings(request.resource.data);
       allow delete: if isOwner();
     }
-
     match /settings/pricing {
       allow read: if true;
       allow create, update: if isApprovedAdmin() && hasPermission('settings') && validPricingSettings(request.resource.data);
       allow delete: if isOwner();
     }
-
     match /settings/invoice {
       allow read: if true;
       allow create, update: if isApprovedAdmin() && hasPermission('settings') && validInvoiceSettings(request.resource.data);
       allow delete: if isOwner();
     }
-
-    // >>> STUDIO37 OPERATOR FEE RULES START
     match /settings/operatorFees {
       allow read: if isOwner();
       allow create, update, delete: if isOwner();
     }
-
     function validOperatorFeeEntry(
       data,
       entryId
@@ -528,7 +498,6 @@
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
     }
-
     function operatorFeePostedFieldsAreClear(
       data
     ) {
@@ -536,7 +505,6 @@
         data.postedBookkeepingEntryId == '' &&
         data.postedByUid == '';
     }
-
     function operatorFeeCreatesNonPosted(
       entryId
     ) {
@@ -553,7 +521,6 @@
           request.resource.data
         );
     }
-
     function operatorFeeUpdatesNonPosted(
       entryId
     ) {
@@ -572,16 +539,13 @@
           request.resource.data
         );
     }
-
     function operatorFeeBookkeepingExistsAfter(
       entryId
     ) {
       let bookkeepingId =
         request.resource.data.postedBookkeepingEntryId;
-
       let bookkeepingPath =
         /databases/$(database)/documents/bookkeepingEntries/$(bookkeepingId);
-
       return bookkeepingId is string &&
         bookkeepingId.size() > 0 &&
         existsAfter(bookkeepingPath) &&
@@ -598,7 +562,6 @@
         getAfter(bookkeepingPath).data.amount ==
           resource.data.totalAmount;
     }
-
     function adminPostsOperatorFee(
       entryId
     ) {
@@ -627,15 +590,12 @@
           entryId
         );
     }
-
     match /operatorFeeEntries/{entryId} {
       allow read: if canManageOperatorFees();
-
       allow create:
         if operatorFeeCreatesNonPosted(
           entryId
         );
-
       allow update:
         if operatorFeeUpdatesNonPosted(
           entryId
@@ -643,13 +603,10 @@
         adminPostsOperatorFee(
           entryId
         );
-
       allow delete:
         if canManageOperatorFees() &&
         resource.data.status != 'posted';
     }
-    // <<< STUDIO37 OPERATOR FEE RULES END
-
     function validOperatorFeeBookkeepingSource(data) {
       return data.source != 'operatorFee' || (
         data.keys().hasAll([
@@ -668,7 +625,6 @@
         )
       );
     }
-
     function validGuardMealBookkeepingSource(data) {
       return data.source != 'guardAttendanceMeal' || (
         data.keys().hasAll([
@@ -681,7 +637,6 @@
         validString(data.sourceGuardPersonId, 1, 160)
       );
     }
-
     function validManualBookkeepingEntry(data, entryId) {
       return data.keys().hasOnly([
           'id', 'type', 'category', 'title', 'amount', 'date',
@@ -711,7 +666,6 @@
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
     }
-
     function validBookkeepingEntry(data, entryId) {
       return data.keys().hasOnly([
           'id', 'type', 'category', 'title', 'amount', 'date',
@@ -754,7 +708,6 @@
         validOperatorFeeBookkeepingSource(data) &&
         validGuardMealBookkeepingSource(data);
     }
-
     function isReconciledBookkeepingSource(
       data
     ) {
@@ -766,16 +719,13 @@
         'procurement-payment'
       ];
     }
-
     function operatorFeeBookkeepingBecomesPostedAfter(
       data
     ) {
       let feeEntryId =
         data.sourceFeeEntryId;
-
       let feePath =
         /databases/$(database)/documents/operatorFeeEntries/$(feeEntryId);
-
       return data.source != 'operatorFee' || (
         feeEntryId is string &&
         feeEntryId.size() > 0 &&
@@ -795,16 +745,13 @@
         )
       );
     }
-
     function guardMealBookkeepingBecomesPostedAfter(
       data
     ) {
       let attendanceId =
         data.sourceAttendanceId;
-
       let attendancePath =
         /databases/$(database)/documents/guardAttendanceSessions/$(attendanceId);
-
       return data.source != 'guardAttendanceMeal' || (
         attendanceId is string &&
         attendanceId.size() > 0 &&
@@ -830,7 +777,6 @@
         )
       );
     }
-
     function reconciledBookkeepingWriteAllowed(
       data
     ) {
@@ -841,14 +787,11 @@
           data
         );
     }
-
     function bookkeepingBusinessDateOpen(data) {
       let closingId = data.date + '__main';
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
       return !exists(closingPath) || get(closingPath).data.status != 'closed';
     }
-
-
     function validFinanceBookkeepingEntry(data, entryId) {
       return data.keys().hasOnly([
           'id', 'type', 'category', 'title', 'amount', 'date',
@@ -879,7 +822,6 @@
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
     }
-
     function financeBookingPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingAfter = getAfter(bookingPath).data;
@@ -895,7 +837,6 @@
         data.sourceAction == 'payment' &&
         data.actorUid == request.auth.uid;
     }
-
     function financeBookingRefundLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingAfter = getAfter(bookingPath).data;
@@ -925,7 +866,6 @@
         data.immutable == true &&
         data.actorUid == request.auth.uid;
     }
-
     function financeBookingLedgerCreateAllowed(data, entryId) {
       return hasApprovedAdminPermission('billing') &&
         validFinanceBookkeepingEntry(data, entryId) &&
@@ -939,7 +879,6 @@
               : false
         );
     }
-
     function manualBookkeepingCreateFenceMatchesAfter(entryId, operationId, businessDate) {
       let closingId = businessDate + '__main';
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
@@ -957,7 +896,6 @@
         entryAfter.operationId == operationId &&
         entryAfter.date == businessDate;
     }
-
     function manualBookkeepingFenceMatchesAfter(entryId, operationId, action, businessDate) {
       let closingId = businessDate + '__main';
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
@@ -978,7 +916,6 @@
                 (entryAfter.date == businessDate || (exists(entryPath) && entryBefore.date == businessDate)))
         );
     }
-
     function manualBookkeepingCreateOrUpdateAllowed(data, entryId, action) {
       return data.operationId is string &&
         (
@@ -1010,7 +947,6 @@
           )
         );
     }
-
     function manualBookkeepingDeleteAllowed(entryId) {
       let closingPath = /databases/$(database)/documents/cashClosingSessions/$(resource.data.date + '__main');
       let closingAfter = existsAfter(closingPath) ? getAfter(closingPath).data : {};
@@ -1028,7 +964,6 @@
           ''
         );
     }
-
     function bookingInitialPaymentLedgerPairMatchesAfter(data, entryId) {
       let bookingPath = /databases/$(database)/documents/bookings/$(data.sourceBookingId);
       let bookingBefore = get(bookingPath).data;
@@ -1048,10 +983,7 @@
         data.actorUid == payment.actorUid &&
         data.actorName == payment.actorName;
     }
-
     function bookingInitialPaymentLedgerCreateAllowed(data, entryId) {
-      // Cheap, document-local discriminator first. Generic manual/Worker-owned
-      // bookkeeping writes must not trigger a cross-document booking lookup.
       return data.source == 'booking-payment' &&
         data.sourceAction == 'payment' &&
         data.category == 'booking' &&
@@ -1072,7 +1004,6 @@
         data.updatedAt == data.createdAt &&
         bookingInitialPaymentLedgerPairMatchesAfter(data, entryId);
     }
-
     function validProcurementPaymentExpense(data, entryId) {
       return data is map &&
         data.keys().hasOnly([
@@ -1101,7 +1032,6 @@
         validIsoTimestampString(data.createdAt) &&
         validIsoTimestampString(data.updatedAt);
     }
-
     function procurementPaymentBookkeepingMatchesAfter(data, entryId) {
       let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.sourceProcurementPaymentId);
       let paymentExists = existsAfter(paymentPath);
@@ -1124,14 +1054,12 @@
         po.lastOperationAction == 'payment' &&
         po.paidAmount <= po.totalAmount;
     }
-
     function procurementPaymentLedgerCreateAllowed(data, entryId) {
       return hasProcurementBookkeepingPermission() &&
         validProcurementPaymentExpense(data, entryId) &&
         bookkeepingBusinessDateOpen(data) &&
         procurementPaymentBookkeepingMatchesAfter(data, entryId);
     }
-
     function procurementPaymentFenceCompanionMatchesAfter(data) {
       let paymentPath = /databases/$(database)/documents/procurementPayments/$(data.lastProcurementPaymentId);
       let paymentExists = existsAfter(paymentPath);
@@ -1150,7 +1078,6 @@
         po.lastOperationId == data.lastOperationId &&
         po.lastOperationAction == 'payment';
     }
-
     function validProcurementPaymentFence(data, closingId) {
       let fencePath = /databases/$(database)/documents/cashClosingSessions/$(closingId);
       let fenceExists = exists(fencePath);
@@ -1191,7 +1118,6 @@
         validString(data.lastProcurementPaymentId, 1, 160) &&
         validString(data.lastProcurementPurchaseOrderId, 1, 160);
     }
-
     function procurementPaymentFenceUpdateAllowed(closingId) {
       let data = request.resource.data;
       let fenceExists = exists(/databases/$(database)/documents/cashClosingSessions/$(closingId));
@@ -1206,8 +1132,6 @@
         ) &&
         procurementPaymentFenceCompanionMatchesAfter(data);
     }
-
-
     function validMaintenanceCostLedger(data, entryId) {
       return data is map &&
         data.keys().hasOnly([
@@ -1239,7 +1163,6 @@
         validIsoTimestampString(data.createdAt) &&
         data.updatedAt == data.createdAt;
     }
-
     function maintenanceCostLedgerMatchesAfter(data, entryId) {
       let workOrderPath = /databases/$(database)/documents/maintenanceWorkOrders/$(data.sourceWorkOrderId);
       let workOrderExists = existsAfter(workOrderPath);
@@ -1276,14 +1199,12 @@
         closing.lastActivityByUid == request.auth.uid &&
         closing.updatedAt == data.createdAt;
     }
-
     function maintenanceCostLedgerCreateAllowed(data, entryId) {
       return hasApprovedAdminPermission('bookkeeping') &&
         validMaintenanceCostLedger(data, entryId) &&
         bookkeepingBusinessDateOpen(data) &&
         maintenanceCostLedgerMatchesAfter(data, entryId);
     }
-
     function bookkeepingEntryCreateAllowed(data, entryId) {
       let source = data.get('source', '');
       return source == 'booking-payment'
@@ -1304,8 +1225,6 @@
                 hasApprovedAdminPermission('bookkeeping') &&
                 validManualBookkeepingEntry(data, entryId) &&
                 data.actorUid == request.auth.uid &&
-                // The companion activity-fence rule already rejects closed dates
-                // and only permits open/reopened sessions for manual writes.
                 manualBookkeepingCreateOrUpdateAllowed(data, entryId, 'manual-create')
               )
             : source in ['operatorFee', 'guardAttendanceMeal']
@@ -1318,4 +1237,3 @@
                 )
               : false;
     }
-

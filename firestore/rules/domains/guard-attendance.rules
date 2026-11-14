@@ -59,7 +59,6 @@
         validString(data.voidedByUid, 0, 128) &&
         validString(data.voidReason, 0, 1000);
     }
-
     function getCurrentGuardPersonId() {
       return getUserData().guardId;
     }
@@ -81,12 +80,10 @@
           data.mealPostedByUid == ''
         );
     }
-
     function guardMealNotPosted(data) {
       return !data.keys().hasAny(['mealBookkeepingStatus']) ||
         data.mealBookkeepingStatus != 'posted';
     }
-
     function guardCreatesOwnAttendance(data, attendanceId) {
       return isStudioGuardAccount() &&
         hasCanonicalGuardId(getUserData()) &&
@@ -107,7 +104,6 @@
         data.voidedAt == '' &&
         data.voidedByUid == '';
     }
-
     function validGuardSelfCheckoutPatch() {
       return validIsoTimestampString(
           request.resource.data.clockOutAt
@@ -131,7 +127,6 @@
           request.resource.data.updatedAt
         );
     }
-
     function guardClosesOwnAttendance() {
       return isStudioGuardAccount() &&
         validGuardSelfCheckoutPatch() &&
@@ -155,7 +150,6 @@
           'updatedAt'
         ]);
     }
-
     function guardAttendanceCoreIdentityUnchanged() {
       return request.resource.data.id == resource.data.id &&
         request.resource.data.guardUid == resource.data.guardUid &&
@@ -167,7 +161,6 @@
         request.resource.data.createdAt == resource.data.createdAt &&
         request.resource.data.source == resource.data.source;
     }
-
     function validGuardAttendanceOwnerReviewAuditFields() {
       return validIsoTimestampString(
           request.resource.data.updatedAt
@@ -175,7 +168,6 @@
         request.resource.data.ownerActionRequired is bool &&
         request.resource.data.mealEligible is bool;
     }
-
     function validGuardAttendanceOwnerApprovePatch() {
       return validGuardAttendanceOwnerReviewAuditFields() &&
         validIsoTimestampString(
@@ -212,7 +204,6 @@
           1000
         );
     }
-
     function validGuardAttendanceOwnerRejectPatch() {
       return validGuardAttendanceOwnerReviewAuditFields() &&
         validIsoTimestampString(
@@ -234,7 +225,6 @@
           1000
         );
     }
-
     function validGuardAttendanceOwnerVoidPatch() {
       return validGuardAttendanceOwnerReviewAuditFields() &&
         validIsoTimestampString(
@@ -251,7 +241,6 @@
           1000
         );
     }
-
     function adminApprovesGuardAttendance() {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
@@ -290,7 +279,6 @@
           'updatedAt'
         ]);
     }
-
     function adminRejectsGuardAttendance() {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
@@ -316,7 +304,6 @@
           'updatedAt'
         ]);
     }
-
     function adminVoidsGuardAttendance() {
       return canManageGuardAttendance() &&
         guardAttendanceCoreIdentityUnchanged() &&
@@ -338,14 +325,11 @@
           'voidedByUid'
         ]);
     }
-
     function guardMealBookkeepingExistsAfter() {
       let entryId =
         request.resource.data.mealBookkeepingEntryId;
-
       let entryPath =
         /databases/$(database)/documents/bookkeepingEntries/$(entryId);
-
       return entryId is string &&
         entryId.size() > 0 &&
         existsAfter(entryPath) &&
@@ -357,7 +341,6 @@
         getAfter(entryPath).data.sourceGuardPersonId == resource.data.guardPersonId &&
         getAfter(entryPath).data.amount == resource.data.mealAmount;
     }
-
     function adminPostsGuardMeal() {
       return isApprovedAdmin() &&
         (
@@ -386,17 +369,11 @@
         ]) &&
         guardMealBookkeepingExistsAfter();
     }
-
     function adminReviewsGuardAttendance() {
-      // Put the terminal Void transition first. Each review validator is
-      // intentionally strict and expensive; evaluating Approve + Reject before
-      // Void can exceed Firestore's 1,000-expression request limit and surface
-      // as a misleading missing-permission error.
       return adminVoidsGuardAttendance() ||
         adminRejectsGuardAttendance() ||
         adminApprovesGuardAttendance();
     }
-
     match /guardAttendanceSessions/{attendanceId} {
       allow read: if
         canManageGuardAttendance() ||
@@ -405,13 +382,11 @@
           isStudioGuardAccount() &&
           resource.data.guardUid == request.auth.uid
         );
-
       allow create: if validGuardAttendanceSession(request.resource.data, attendanceId) &&
         guardCreatesOwnAttendance(
           request.resource.data,
           attendanceId
         );
-
       allow update: if guardClosesOwnAttendance() ||
         adminReviewsGuardAttendance() || (
           validGuardAttendanceSession(
@@ -420,8 +395,5 @@
           ) &&
           adminPostsGuardMeal()
         );
-
       allow delete: if isOwner();
     }
-    // <<< STUDIO37 GUARD ATTENDANCE RULES END
-
