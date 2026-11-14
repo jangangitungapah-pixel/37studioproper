@@ -4,7 +4,6 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-
     function userDocExists() {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
@@ -194,115 +193,6 @@ service cloud.firestore {
 
     function validIsoTimestampString(value) {
       return value is string && value.size() >= 10 && value.size() <= 40;
-    }
-    function validPermissions(data) {
-      return data is map &&
-        data.keys().hasOnly([
-          'dashboard', 'schedule', 'customers', 'billing', 'bookkeeping',
-          'operator-fee', 'guard-attendance', 'inventory', 'gallery', 'settings',
-          'notifications'
-        ]) &&
-        data.dashboard is bool && data.schedule is bool &&
-        data.customers is bool && data.billing is bool &&
-        (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] is bool) &&
-        (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] is bool) &&
-        (!data.keys().hasAny(['notifications']) || data.notifications is bool) &&
-        data.bookkeeping is bool && data.inventory is bool &&
-        data.gallery is bool && data.settings is bool;
-    }
-    function hasNoAdminPermissions(data) {
-      return validPermissions(data) &&
-        data.dashboard == false && data.schedule == false &&
-        data.customers == false && data.billing == false &&
-        data.bookkeeping == false &&
-        (!data.keys().hasAny(['operator-fee']) || data['operator-fee'] == false) &&
-        (!data.keys().hasAny(['guard-attendance']) || data['guard-attendance'] == false) &&
-        (!data.keys().hasAny(['notifications']) || data.notifications == false) &&
-        data.inventory == false &&
-        data.gallery == false && data.settings == false;
-    }
-    function hasOnlyGuardPortalPermissions(data) {
-      return hasNoAdminPermissions(data);
-    }
-    function validPreferences(data) {
-      return data is map &&
-        data.keys().hasOnly(['accountNote', 'defaultLandingKey', 'notificationLevel', 'preferredContact', 'theme']) &&
-        validString(data.accountNote, 0, 240) &&
-        data.defaultLandingKey in [
-          'dashboard', 'schedule', 'billing', 'bookkeeping', 'operator-fee',
-          'guard-attendance', 'inventory', 'settings'
-        ] &&
-        data.notificationLevel in ['important', 'standard', 'proactive'] &&
-        data.preferredContact in ['email', 'phone', 'none'] &&
-        (!data.keys().hasAny(['theme']) || data.theme in ['light', 'dark', 'system']);
-    }
-    function validUser(data, userId) {
-      return data.keys().hasOnly([
-          'uid', 'email', 'phoneNumber', 'displayName', 'provider', 'permissions',
-          'preferences', 'role', 'status', 'createdAt', 'updatedAt',
-          'ownershipTransferredInAt', 'ownershipTransferredOutAt',
-          'adminRequestCancelledAt', 'isGuard', 'guardId'
-        ]) &&
-        data.uid == userId &&
-        validString(data.email, 0, 254) &&
-        validString(data.phoneNumber, 0, 32) &&
-        validString(data.displayName, 1, 120) &&
-        validString(data.provider, 1, 80) &&
-        data.role in ['owner', 'admin', 'client', 'studio_guard'] &&
-        data.status in ['active', 'pending', 'approved', 'rejected'] &&
-        validPermissions(data.permissions) &&
-        (
-          (data.role == 'owner' && data.status == 'approved') ||
-          (data.role == 'admin' && data.status in ['pending', 'approved', 'rejected']) ||
-          (data.role == 'client' && data.status == 'active' && hasNoAdminPermissions(data.permissions)) ||
-          (data.role == 'studio_guard' && data.status == 'approved' && hasOnlyGuardPortalPermissions(data.permissions) && hasCanonicalGuardId(data))
-        ) &&
-        (!data.keys().hasAny(['preferences']) || validPreferences(data.preferences)) &&
-        validIsoTimestampString(data.createdAt) &&
-        validIsoTimestampString(data.updatedAt) &&
-        validOptionalString(data, 'ownershipTransferredInAt', 40) &&
-        validOptionalString(data, 'ownershipTransferredOutAt', 40) &&
-        validOptionalString(data, 'adminRequestCancelledAt', 40) &&
-        (!data.keys().hasAny(['isGuard']) || data.isGuard == null || data.isGuard == false) &&
-        (!data.keys().hasAny(['guardId']) || data.guardId == null || (data.guardId is string && data.guardId.size() <= 160));
-    }
-    function authIdentityMatches(data) {
-      return (
-          request.auth.token.email is string &&
-          data.email.lower() == request.auth.token.email.lower()
-        ) || (
-          request.auth.token.phone_number is string &&
-          data.phoneNumber == request.auth.token.phone_number
-        );
-    }
-    function isSafeAccountSelfCreate(data) {
-      return (
-          isBootstrapOwnerEmail() &&
-          data.role == 'owner' &&
-          data.status == 'approved'
-        ) || (
-          !isBootstrapOwnerEmail() &&
-          data.role == 'admin' &&
-          data.status == 'pending'
-        ) || (
-          !isBootstrapOwnerEmail() &&
-          data.role == 'client' &&
-          data.status == 'active' &&
-          hasNoAdminPermissions(data.permissions)
-        );
-    }
-    function isSafeAdminRequestToClientTransition(userId) {
-      return isSignedIn() &&
-        request.auth.uid == userId &&
-        resource.data.role == 'admin' &&
-        resource.data.status in ['pending', 'rejected'] &&
-        request.resource.data.role == 'client' &&
-        request.resource.data.status == 'active' &&
-        hasNoAdminPermissions(request.resource.data.permissions) &&
-        validIsoTimestampString(request.resource.data.adminRequestCancelledAt) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'role', 'status', 'permissions', 'adminRequestCancelledAt', 'updatedAt'
-        ]);
     }
     function validPermissions(data) {
       return data is map &&
