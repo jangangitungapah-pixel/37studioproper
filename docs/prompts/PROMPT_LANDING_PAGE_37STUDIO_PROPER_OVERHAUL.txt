@@ -1,0 +1,611 @@
+PROMPT OVERHAUL LANDING PAGE 37STUDIO PROPER
+PUBLIC WEBSITE / MARKETING LANDING PAGE
+TARGET AUDIENCE: ALL SEGMENTS, WITH MILLENNIALS AND GEN Z AS PRIMARY FOCUS
+OUTPUT: IMPLEMENTATION LANGSUNG PADA CODEBASE AKTUAL
+
+======================================================================
+1. ROLE, CONTEXT, DAN OBJECTIVE
+======================================================================
+
+Bertindak sebagai Principal Product Designer, Brand Experience Designer, Conversion Rate Optimization (CRO) Specialist, dan Senior Frontend Engineer.
+
+Lakukan audit dan overhaul menyeluruh terhadap PUBLIC LANDING PAGE 37STUDIO PROPER pada repository:
+https://github.com/jangangitungapah-pixel/37studioproper
+
+Tujuan:
+Membangun landing page yang sangat menarik secara visual, modern, relevan dengan tren desain digital terkini, memorable, dan mampu mengubah pengunjung menjadi calon customer yang melakukan booking atau menghubungi studio.
+
+Target audience mencakup semua kalangan yang membutuhkan layanan studio musik, dengan prioritas komunikasi dan daya tarik untuk:
+- Gen Z: visual-first, mobile-first, ekspresif, cepat memahami value, menyukai pengalaman digital yang intuitif, autentik, dan mudah dibagikan.
+- Millennials: menghargai kualitas layanan, kenyamanan, transparansi harga/informasi, efisiensi booking, kredibilitas, dan pengalaman yang konsisten.
+- Musisi, band, solo artist, content creator, komunitas, pelajar/mahasiswa, pekerja kreatif, hingga customer umum yang ingin berlatih, recording, atau memproduksi karya musik.
+
+Jangan membuat tampilan yang hanya cocok untuk Gen Z dan mengasingkan kelompok usia lain. Buat brand experience yang fresh dan berkarakter, tetapi tetap mudah dipahami, profesional, inklusif, dan dapat dipercaya oleh semua kalangan.
+
+Prinsip utama:
+"Make people feel the studio before they even walk in."
+
+Landing page harus menjual pengalaman, kualitas, kreativitas, dan kemudahan menggunakan layanan studio, bukan hanya menampilkan daftar fitur.
+
+Jangan berhenti pada rekomendasi atau mockup. Audit code aktual, implementasikan desain, integrasikan dengan route dan data yang memang tersedia, lalu lakukan validasi.
+
+======================================================================
+2. PRODUCT DISCOVERY DAN AUDIT SEBELUM IMPLEMENTASI
+======================================================================
+
+Sebelum mengubah kode, audit repository untuk memahami produk sebenarnya.
+
+Identifikasi:
+- Entry point dan route landing page publik.
+- Struktur layout, navbar, footer, dan komponen global.
+- Brand identity, logo, warna, font, design tokens, dan aset yang sudah tersedia.
+- Layanan aktual yang ditawarkan studio.
+- Jenis studio, paket, session, fasilitas, dan pricing yang memang tersedia.
+- Alur booking publik yang sudah ada.
+- Halaman detail layanan atau studio yang sudah ada.
+- Kontak resmi, alamat, social media, WhatsApp, jam operasional, dan CTA yang valid.
+- Gallery atau media visual yang sudah tersedia.
+- Review/testimoni dan social proof yang benar-benar berasal dari data atau sumber sah.
+- SEO metadata, sitemap, robots, analytics, dan integrasi yang sudah ada.
+- Dependency UI, animation, carousel, icon, image, dan form yang sudah terpasang.
+- Responsive behavior dan performa saat ini.
+
+Gunakan repository dan data aktual sebagai sumber kebenaran.
+
+Jangan mengarang:
+- Jumlah customer, jumlah booking, rating, angka kepuasan, atau statistik.
+- Testimoni, nama band, logo partner, endorsement, atau review.
+- Fasilitas, peralatan musik, spesifikasi ruang, kapasitas studio, atau layanan yang belum terbukti tersedia.
+- Harga, promo, diskon, alamat, nomor telepon, dan jam operasional.
+- Klaim seperti "studio terbaik", "nomor satu", "terbesar", atau "profesional bersertifikat" tanpa bukti.
+
+Jika informasi belum tersedia, jangan mengisi dengan data fiktif. Gunakan konten yang netral dan benar, atau buat bagian tersebut hanya jika ada sumber data valid.
+
+Jangan mengganti brand, identitas, nama produk, atau positioning bisnis tanpa alasan yang kuat.
+
+======================================================================
+3. BRAND DIRECTION DAN VISUAL CONCEPT
+======================================================================
+
+Arah desain:
+CONTEMPORARY MUSIC CULTURE MEETS PREMIUM CREATIVE STUDIO.
+
+Buat visual yang:
+- Modern dan berani, tetapi tidak norak.
+- Premium, tetapi tidak terasa eksklusif atau mahal secara intimidatif.
+- Enerjik, kreatif, hangat, dan memiliki karakter musik.
+- Editorial dan visual-led, dengan storytelling yang kuat.
+- Familiar bagi Millennials dan Gen Z, tetapi tetap jelas untuk pengunjung dari kalangan lain.
+- Memiliki identitas yang mudah diingat, bukan template landing page generik.
+
+Eksplorasi kombinasi:
+- Typography editorial dengan headline kuat.
+- Layout asimetris yang tetap memiliki grid dan alignment rapi.
+- Image-led hero dengan foto studio/musisi yang autentik.
+- Layering, depth, subtle grain/texture, dan ambient accent secukupnya.
+- Warna brand yang konsisten dengan identitas aktual 37Studio Proper.
+- Accent warna yang berkarakter untuk CTA dan highlight.
+- Card dan section dengan variasi komposisi, bukan semua konten dijadikan card identik.
+- Micro-interaction ringan untuk memberi kesan hidup.
+
+Jangan terjebak pada tren visual yang cepat terasa usang:
+- Jangan memakai gradient neon di semua section.
+- Jangan menggunakan glassmorphism pada setiap card.
+- Jangan menjejalkan blur, glow, shadow, floating shape, dan animasi tanpa tujuan.
+- Jangan membuat layout terlalu padat atau terlalu banyak whitespace.
+- Jangan menggunakan font display ekstrem untuk body text.
+- Jangan meniru mentah-mentah landing page brand lain.
+
+Landing page harus terasa seperti identitas studio musik yang nyata, bukan template AI-generated SaaS.
+
+Gunakan foto dan visual yang relevan dengan musik dan studio. Prioritaskan aset asli 37Studio Proper. Jika aset belum cukup, gunakan aset pengganti hanya jika lisensi/sumbernya jelas dan tidak disajikan seolah-olah foto fasilitas asli 37Studio Proper. Jangan membuat klaim visual palsu tentang peralatan atau ruangan yang tidak dimiliki studio.
+
+======================================================================
+4. INFORMATION ARCHITECTURE DAN SECTION LANDING PAGE
+======================================================================
+
+Susun landing page berdasarkan storytelling dan user journey. Urutan akhir boleh disesuaikan setelah audit, tetapi pertimbangkan struktur berikut.
+
+A. NAVIGATION / HEADER
+- Logo 37Studio Proper dengan ukuran dan clear space yang tepat.
+- Navigasi ringkas ke section penting.
+- CTA utama untuk Booking / Reservasi yang mengarah ke alur booking aktual.
+- Navigasi mobile yang mudah digunakan dengan menu yang jelas.
+- Header dapat sticky atau berubah style saat scroll bila membantu usability.
+- Jangan memenuhi navbar dengan terlalu banyak menu.
+- Pastikan seluruh link menuju tujuan yang benar.
+
+B. HERO SECTION: FIRST IMPRESSION
+Hero harus menjadi bagian paling kuat dan memorable.
+
+Tujuan dalam beberapa detik pertama:
+1. Pengunjung memahami bahwa ini adalah studio musik.
+2. Pengunjung memahami layanan utama yang ditawarkan.
+3. Pengunjung menangkap karakter dan kualitas pengalaman 37Studio Proper.
+4. Pengunjung tahu langkah berikutnya: melihat layanan atau booking.
+
+Persyaratan:
+- Headline singkat, kuat, emosional, dan mudah diingat.
+- Supporting copy yang jelas, tidak menggunakan jargon berlebihan.
+- Primary CTA: booking / reservasi sesuai route aktual.
+- Secondary CTA: lihat studio, layanan, atau gallery.
+- Hero image/video menggunakan visual yang relevan dan berkualitas.
+- Berikan focal point yang kuat dan komposisi yang seimbang.
+- Hero harus tetap menarik ketika dibuka di mobile.
+- Jangan membuat CTA tenggelam di atas foto yang terlalu ramai.
+- Jangan memakai copy generik seperti "Welcome to our website".
+
+Eksplorasi tagline dan copy berdasarkan positioning aktual. Jangan menetapkan klaim yang tidak didukung produk.
+
+C. QUICK VALUE / KEY BENEFITS
+Tampilkan alasan praktis memilih 37Studio Proper dalam beberapa poin singkat.
+Pilih benefit yang benar-benar dapat dibuktikan dari layanan atau operasional aktual, misalnya kemudahan booking, jenis layanan, fleksibilitas session, atau hal lain yang memang tersedia.
+Gunakan icon/visual secukupnya dan copy yang mudah dipindai.
+
+D. SERVICES / WHAT YOU CAN CREATE
+Tampilkan layanan aktual yang tersedia, misalnya Rehearsal, Recording, Mixing/Mastering, atau layanan lain yang ditemukan dari repository/data aktual.
+
+Untuk setiap layanan:
+- Nama layanan.
+- Deskripsi pendek yang menjelaskan manfaat dan pengalaman.
+- Visual yang relevan.
+- CTA menuju detail atau booking dengan layanan yang sesuai bila flow mendukung.
+- Informasi harga hanya jika datanya aktual dan aman ditampilkan.
+
+Jangan sekadar menampilkan grid 3-4 card generik. Buat komposisi visual yang membantu pengunjung membedakan karakter tiap layanan.
+
+E. STUDIO EXPERIENCE / SPACE
+Tampilkan pengalaman menggunakan ruang studio.
+- Gunakan gallery foto aktual yang tersedia.
+- Buat visual hierarchy yang kuat.
+- Jika terdapat lebih dari satu studio/ruang, tampilkan perbedaannya berdasarkan data aktual.
+- Gunakan caption singkat yang informatif.
+- Sediakan link untuk melihat gallery lengkap bila tersedia.
+- Optimalkan gambar dengan ukuran/resolusi yang sesuai.
+
+Jangan mengarang nama ruangan, fasilitas, alat musik, atau detail teknis.
+
+F. HOW BOOKING WORKS
+Jelaskan cara booking secara ringkas, visual, dan tidak mengintimidasi.
+Contoh alur konseptual:
+1. Pilih layanan / kebutuhan.
+2. Tentukan jadwal yang tersedia.
+3. Lengkapi data booking.
+4. Konfirmasi sesuai proses aktual.
+
+Sesuaikan urutan dan istilah dengan booking flow yang benar-benar digunakan di aplikasi. Jangan menyederhanakan hingga membuat user salah paham mengenai pembayaran atau konfirmasi.
+
+CTA harus mengarah ke flow booking aktual.
+
+G. PRICING / PACKAGES
+Tampilkan section harga/paket hanya jika informasi harga tersedia, konsisten, dan memang boleh ditampilkan ke publik.
+- Buat informasi mudah dibandingkan.
+- Jelaskan apa yang termasuk dalam harga jika sumber datanya mendukung.
+- Hindari biaya tersembunyi atau klaim "all inclusive" tanpa dasar.
+- Jangan menampilkan harga dummy.
+- Bila harga bergantung pada jenis session atau pilihan tertentu, arahkan pengguna untuk melihat detail atau melakukan booking.
+- Pastikan nominal di landing page tidak berbeda dengan sumber pricing aktual aplikasi.
+
+H. SOCIAL PROOF / COMMUNITY
+Bangun kepercayaan melalui bukti yang nyata.
+Prioritaskan:
+- Testimoni aktual yang dapat diverifikasi.
+- Foto aktivitas/customer yang memang memiliki izin penggunaan.
+- Nama band/komunitas/artist yang memang pernah bekerja sama jika boleh dipublikasikan.
+- Rating/review aktual yang sumbernya jelas.
+
+Jika belum ada bukti yang cukup, jangan membuat carousel testimoni palsu atau angka statistik dekoratif. Lebih baik gunakan penjelasan proses layanan, gallery autentik, atau value proposition yang benar.
+
+I. FAQ
+Buat FAQ berdasarkan pertanyaan yang relevan dengan layanan dan data operasional aktual:
+- Bagaimana cara booking?
+- Layanan apa yang tersedia?
+- Bagaimana memilih session/durasi?
+- Bagaimana pembayaran dan konfirmasi?
+- Bagaimana ketentuan perubahan jadwal atau pembatalan jika kebijakannya tersedia?
+- Informasi lokasi, jam operasional, atau kontak jika tersedia.
+
+Jawaban harus konsisten dengan kebijakan aplikasi dan bisnis. Jangan membuat kebijakan baru melalui copywriting.
+
+J. FINAL CTA
+Buat penutup yang emosional tetapi jelas.
+- Headline yang mengajak pengunjung memulai sesi atau mewujudkan ide musiknya.
+- Primary CTA booking.
+- Secondary CTA kontak bila tersedia dan valid.
+- Visual penutup yang konsisten dengan hero, tanpa mengulang layout hero secara mentah.
+
+K. FOOTER
+- Logo dan deskripsi brand singkat.
+- Navigasi penting.
+- Layanan.
+- Kontak dan lokasi yang aktual.
+- Social media resmi yang benar.
+- Copyright.
+- Informasi legal/policy bila memang tersedia.
+- Layout mobile yang ringkas dan mudah dipindai.
+
+Tidak semua section wajib dipaksakan. Hilangkan section yang tidak punya informasi cukup atau tidak memberi nilai pada user journey. Prioritaskan alur yang kuat daripada panjang halaman.
+
+======================================================================
+5. COPYWRITING DAN BRAND VOICE
+======================================================================
+
+Gunakan Bahasa Indonesia yang natural, modern, komunikatif, dan mudah dipahami.
+
+Brand voice:
+- Percaya diri, kreatif, hangat, dan welcoming.
+- Tidak terlalu formal seperti korporasi.
+- Tidak terlalu slang sehingga cepat terasa basi.
+- Tidak memaksakan bahasa Gen Z seperti penggunaan slang berlebihan.
+- Tetap nyaman dibaca oleh orang tua, keluarga, dan customer umum.
+- Fokus pada manfaat nyata, bukan kata sifat kosong.
+
+Gunakan headline yang spesifik, copy pendek, CTA yang jelas, dan microcopy yang membantu keputusan.
+
+Hindari:
+- Lorem ipsum.
+- Placeholder copy yang tertinggal di production.
+- Klaim bombastis tanpa bukti.
+- Repetisi kata "premium", "terbaik", "terdepan", dan "nomor satu".
+- Paragraf panjang yang tidak dipindai.
+- Bahasa Inggris hanya untuk terlihat keren jika Bahasa Indonesia lebih jelas.
+
+Semua konten harus konsisten secara istilah. Contohnya, jangan berganti-ganti menggunakan "reservasi", "booking", dan "order" tanpa alasan.
+
+======================================================================
+6. INTERACTION DAN CONVERSION OPTIMIZATION
+======================================================================
+
+Setiap interaksi harus memiliki tujuan yang jelas.
+
+- Primary CTA harus terlihat pada momen yang tepat.
+- CTA hero mengarah ke alur booking aktual.
+- CTA layanan dapat meneruskan pilihan layanan ke booking jika aplikasi memang mendukung.
+- Gunakan sticky mobile CTA hanya jika tidak mengganggu konten dan tidak menutupi elemen lain.
+- Navigation anchor harus scroll ke section yang benar dan memperhitungkan sticky header.
+- Gallery harus mudah digunakan dengan keyboard dan touch.
+- Accordion FAQ harus memiliki state dan accessibility yang benar.
+- Hover effect tidak boleh menjadi satu-satunya cara mengakses informasi.
+- Gunakan loading, empty, error, dan success state bila ada data dinamis.
+- Jangan memasang popup yang mengganggu user baru.
+- Hindari autoplay audio.
+- Video autoplay harus mempertimbangkan bandwidth, muted behavior, dan prefers-reduced-motion.
+- Jangan membuat carousel yang bergerak otomatis terlalu cepat.
+- Jangan menyembunyikan informasi harga/kontak di balik interaksi yang tidak perlu.
+
+Pastikan tidak ada dead button, anchor kosong, href "#", atau CTA yang hanya dekorasi.
+
+======================================================================
+7. RESPONSIVE DESIGN: MOBILE FIRST
+======================================================================
+
+Mayoritas first impression dapat terjadi melalui smartphone. Karena itu, mobile bukan versi sekunder dari desktop.
+
+Uji sekurangnya:
+- 320px
+- 360px
+- 375px
+- 390px
+- 402px
+- 430px
+- Tablet portrait dan landscape
+- Desktop laptop
+- Desktop layar lebar
+
+Persyaratan:
+- Tidak ada horizontal overflow.
+- Hero headline tidak terpotong.
+- CTA mudah disentuh dan memiliki ukuran memadai.
+- Navbar mobile tidak menutupi konten.
+- Section tidak terlalu panjang karena ukuran typography/padding yang berlebihan.
+- Grid berubah menjadi komposisi mobile yang disengaja, bukan sekadar menumpuk card tanpa penyesuaian.
+- Foto menggunakan crop/focal point yang tepat pada mobile.
+- Teks tetap terbaca di atas background.
+- Sticky CTA tidak menutupi footer atau konten.
+- Safe area diperhatikan untuk elemen fixed.
+- Tidak ada layout shift mencolok saat image/font/data dimuat.
+- Konten penting tetap tersedia tanpa hover.
+
+Buat desktop tetap istimewa dengan komposisi yang lebih luas, tetapi jangan mengorbankan mobile demi screenshot desktop.
+
+======================================================================
+8. MOTION DAN MICRO-INTERACTION
+======================================================================
+
+Gunakan animasi untuk memperkuat storytelling dan feedback, bukan sebagai hiasan tanpa tujuan.
+
+Contoh:
+- Hero reveal yang ringan.
+- Scroll reveal yang halus dan tidak berlebihan.
+- Subtle image parallax hanya jika performa mendukung.
+- Hover/focus interaction pada CTA dan service item.
+- Smooth anchor navigation.
+- Transition pada accordion dan gallery.
+
+Aturan:
+- Hormati prefers-reduced-motion.
+- Jangan mengunci scroll karena animasi.
+- Hindari animasi berat pada mobile.
+- Hindari layout shift akibat animasi.
+- Hindari penggunaan banyak library animasi sekaligus.
+- Jangan membuat seluruh section masuk dengan animasi yang sama secara monoton.
+- Pastikan konten tetap terlihat jika animasi gagal atau JavaScript tidak mendukung efek tertentu.
+
+======================================================================
+9. IMAGE, VIDEO, DAN ASSET STRATEGY
+======================================================================
+
+Visual adalah komponen penting landing page studio musik.
+
+Prioritas aset:
+1. Foto asli ruang studio dan aktivitas 37Studio Proper.
+2. Foto artist/customer yang memiliki izin publikasi.
+3. Foto produk/alat yang benar-benar tersedia.
+4. Aset pengganti berlisensi jelas dan tidak diklaim sebagai fasilitas asli.
+
+Implementasi:
+- Gunakan ukuran gambar responsif.
+- Gunakan format modern seperti WebP/AVIF bila pipeline proyek mendukung.
+- Optimalkan hero image untuk LCP.
+- Lazy-load image di bawah fold.
+- Berikan width/height atau aspect ratio agar layout tidak bergeser.
+- Tulis alt text deskriptif untuk gambar informatif.
+- Decorative image dapat menggunakan alt kosong.
+- Hindari file gambar besar yang tidak perlu.
+- Jangan mengandalkan remote image provider yang tidak stabil.
+- Periksa source URL, CORS, caching, dan fallback.
+
+Jika proyek memakai Cloudinary untuk Gallery, ikuti implementasi dan batasan existing. Sesuai arsitektur yang berlaku, jangan memperkenalkan Firebase Storage atau mengubah kebijakan backend hanya demi kebutuhan gambar landing page.
+
+Jangan membuat visual palsu dengan AI lalu menampilkannya seolah-olah foto aktual fasilitas studio. Visual konsep hanya boleh digunakan sebagai dekorasi/ilustrasi yang tidak menyesatkan dan harus dibedakan dari dokumentasi fasilitas.
+
+======================================================================
+10. DEPENDENCY DAN FRONTEND ENGINEERING
+======================================================================
+
+Gunakan dependency modern dengan versi stable terbaru yang kompatibel dengan repository pada saat implementasi.
+
+Sebelum menambah atau memperbarui dependency:
+1. Audit package.json dan lockfile.
+2. Identifikasi versi React, Vite, Tailwind, UI primitives, animation, icon, routing, image, dan carousel yang sudah ada.
+3. Verifikasi versi stable terbaru melalui package registry dan dokumentasi resmi.
+4. Periksa peer dependencies, browser support, engine requirements, dan breaking changes.
+5. Hindari alpha, beta, canary, nightly, rc, dan prerelease untuk production.
+6. Jangan melakukan upgrade massal dependency yang tidak terkait landing page.
+7. Jangan memasang library baru jika komponen existing dapat memenuhi kebutuhan secara baik.
+8. Pertahankan lockfile yang sesuai package manager proyek.
+
+Gunakan pola stack yang memang aktif di repository. Pertimbangkan library existing seperti:
+- React.
+- Tailwind CSS v4 bila sudah aktif.
+- shadcn/ui / Base UI bila sudah dipakai.
+- Motion bila sudah tersedia dan sesuai.
+- Lucide React untuk icon.
+- Komponen carousel/gallery yang telah digunakan.
+
+Daftar tersebut bukan instruksi untuk menginstal semuanya. Audit dan pilih seperlunya.
+
+Engineering requirements:
+- Komponen reusable dan bertanggung jawab jelas.
+- Hindari satu file landing page raksasa yang sulit dirawat.
+- Pisahkan data konten dari markup bila pola proyek mendukung.
+- Gunakan design tokens yang konsisten.
+- Jangan menambahkan global CSS yang merusak halaman lain.
+- Jangan membuat duplikasi navbar/footer jika sudah ada shared layout yang benar.
+- Hindari dependency bloat.
+- Pastikan semantic HTML dan React key yang stabil.
+- Hindari hydration/runtime warning bila proyek menggunakan SSR.
+- Hindari console error dan broken asset.
+- Jangan melakukan refactor besar di luar scope.
+
+======================================================================
+11. ARSITEKTUR BACKEND DAN BATASAN PROYEK
+======================================================================
+
+Pertahankan keputusan arsitektur 37Studio Proper yang berlaku:
+- Firebase Authentication.
+- Cloud Firestore.
+- Firebase Hosting.
+- Firebase Spark/free tier sebagai target.
+- Cloudinary hanya untuk binary foto Gallery sesuai implementasi existing.
+- Metadata Gallery tetap mengikuti penyimpanan Firestore yang sudah ditetapkan.
+
+Jangan:
+- Mengaktifkan Cloud Billing atau Blaze.
+- Menambahkan Cloud Functions.
+- Menambahkan Firebase Storage.
+- Menambahkan Firebase Extensions.
+- Menghidupkan kembali Cloudflare Workers ke operational request path.
+- Memindahkan backend atau membuat backend baru.
+- Mengubah Firestore rules, schema, atau index tanpa kebutuhan langsung yang jelas.
+- Membuat integrasi berbayar baru tanpa persetujuan.
+
+Landing page sebaiknya memanfaatkan route, data, dan service yang sudah ada. Jika memerlukan konten marketing statis, gunakan pendekatan paling sederhana yang konsisten dengan proyek.
+
+Jangan mengakses data privat atau admin untuk ditampilkan ke publik. Pastikan hanya data yang memang boleh dipublikasikan yang tampil.
+
+======================================================================
+12. SEO, DISCOVERABILITY, DAN SOCIAL SHARING
+======================================================================
+
+Audit dan optimalkan SEO teknis serta metadata landing page.
+
+Periksa:
+- Unique title dan meta description yang sesuai brand dan layanan.
+- Canonical URL jika domain production sudah diketahui.
+- Open Graph metadata.
+- Twitter/X card metadata.
+- Favicon dan brand assets.
+- Heading hierarchy yang semantik.
+- Alt text gambar.
+- Internal links yang benar.
+- Sitemap dan robots jika sudah menjadi bagian proyek.
+- Structured data hanya jika sesuai dan seluruh nilainya benar.
+- Informasi LocalBusiness / MusicVenue hanya jika jenis bisnis dan datanya benar-benar sesuai.
+- Metadata untuk social preview.
+
+Jangan menambahkan alamat, geo coordinate, business hours, price range, rating, review, atau social profile palsu.
+
+Copy SEO harus natural dan mengutamakan manusia. Jangan keyword stuffing.
+
+======================================================================
+13. PERFORMANCE DAN ACCESSIBILITY
+======================================================================
+
+Targetkan pengalaman cepat, ringan, dan nyaman.
+
+Performance:
+- Prioritaskan Core Web Vitals.
+- Minimalkan JavaScript yang tidak perlu.
+- Optimalkan LCP hero image.
+- Cegah CLS dengan dimensi image/font/layout yang jelas.
+- Lazy-load konten visual yang jauh di bawah fold.
+- Hindari autoplay video berat di mobile.
+- Gunakan font loading strategy yang tepat.
+- Hindari animasi yang memicu layout recalculation berlebihan.
+- Periksa bundle impact dari dependency tambahan.
+
+Accessibility:
+- Semantic landmarks: header, nav, main, section, footer.
+- Heading hierarchy yang masuk akal.
+- Keyboard navigation.
+- Focus indicator yang terlihat.
+- Alt text untuk gambar informatif.
+- Accessible name untuk icon-only buttons.
+- Kontras teks dan CTA yang memadai.
+- Form label yang benar.
+- FAQ accordion dengan aria state yang benar.
+- Gallery tidak boleh hanya bisa digunakan dengan mouse.
+- Motion reduction support.
+- Jangan menyampaikan status hanya melalui warna.
+
+Targetkan WCAG 2.2 AA sejauh dapat diterapkan pada halaman publik.
+
+======================================================================
+14. WORKFLOW IMPLEMENTASI
+======================================================================
+
+FASE A - AUDIT
+- Petakan halaman publik dan struktur komponen.
+- Identifikasi data dan layanan aktual.
+- Audit asset, brand, routing, SEO, dependency, dan responsive behavior.
+- Catat masalah UX, visual, performance, dan conversion.
+- Jangan mengubah kode sebelum memahami alur booking dan route yang tersedia.
+
+FASE B - DESIGN DIRECTION
+- Tentukan art direction yang khas 37Studio Proper.
+- Rancang information architecture.
+- Tentukan hero concept, typography, color roles, grid, image treatment, spacing, dan CTA hierarchy.
+- Pastikan desain relevan untuk Millennials dan Gen Z tetapi tetap inklusif.
+- Susun mobile-first layout dan desktop composition.
+
+FASE C - IMPLEMENTATION
+- Implementasikan landing page aktual.
+- Gunakan data serta link yang valid.
+- Sambungkan semua CTA ke alur aplikasi yang benar.
+- Implementasikan responsive navigation dan section interaction.
+- Optimalkan aset visual.
+- Pertahankan admin dashboard dan fitur booking yang tidak termasuk scope.
+- Jangan meninggalkan placeholder atau unfinished interaction.
+
+FASE D - VALIDATION
+Lakukan verifikasi minimum tetapi terarah:
+1. Production build berhasil.
+2. Landing page dapat dibuka pada route publik.
+3. Seluruh navigasi dan anchor link benar.
+4. Seluruh CTA memiliki tujuan dan berfungsi.
+5. Booking CTA terhubung ke flow aktual.
+6. Gallery/media bekerja dan fallback tersedia.
+7. Responsive layout lolos ukuran mobile dan desktop.
+8. Tidak ada horizontal overflow.
+9. Tidak ada broken image, console error, atau dead button.
+10. SEO metadata ter-render dengan benar.
+11. Tidak ada regresi pada route admin dan booking.
+12. Firebase/backend architecture tetap sesuai batasan.
+
+Jika browser/device automation tersedia, inspeksi visual di beberapa viewport dan ambil screenshot hasil. Jika tidak tersedia, jangan mengklaim visual QA telah dilakukan.
+
+Jangan menjalankan test suite besar berulang kali jika tidak ada perubahan relevan. Fokus pada validasi build dan alur kritis.
+
+======================================================================
+15. ACCEPTANCE CRITERIA
+======================================================================
+
+DESIGN & BRAND
+- Landing page punya identitas visual yang kuat dan mudah diingat.
+- Kesan pertama menarik dalam beberapa detik.
+- Terasa modern, premium, kreatif, dan relevan dengan budaya musik.
+- Millennial dan Gen Z menjadi target utama tanpa membuat segmen lain merasa tidak relevan.
+- Tidak terlihat seperti template generik.
+- Visual, typography, spacing, dan warna konsisten.
+- Tidak ada overlapping, clipping, atau section yang berantakan.
+
+CONTENT
+- Value proposition mudah dipahami.
+- Semua copy natural dan tidak berlebihan.
+- Layanan dan informasi benar-benar sesuai produk.
+- Tidak ada data, testimoni, harga, fasilitas, atau klaim fiktif.
+- CTA jelas dan konsisten.
+
+CONVERSION
+- Pengunjung dapat memahami layanan dan cara booking.
+- Primary CTA mudah ditemukan.
+- Jalur booking berfungsi dan tidak membingungkan.
+- Informasi penting tidak disembunyikan secara tidak perlu.
+
+RESPONSIVE
+- Mobile-first.
+- Tidak ada horizontal overflow.
+- Navbar, hero, service section, gallery, FAQ, CTA, dan footer bekerja di berbagai ukuran.
+- Mobile bukan sekadar versi desktop yang diperkecil.
+
+ENGINEERING
+- Tidak ada dead interaction.
+- Dependency tetap terkendali dan kompatibel.
+- Build berhasil.
+- Backend, auth, booking, dan admin tidak rusak.
+- SEO dan accessibility dasar terpenuhi.
+- Tidak ada code yang menggantung.
+
+======================================================================
+16. OUTPUT DAN LAPORAN PENYELESAIAN
+======================================================================
+
+Setelah implementasi selesai, berikan laporan:
+1. Temuan audit landing page lama.
+2. Konsep desain dan alasan keputusan visual.
+3. Struktur section yang dibuat/diperbarui.
+4. File yang diubah dan tujuan tiap perubahan.
+5. Dependency baru/upgrade beserta versi dan alasan, jika ada.
+6. Integrasi CTA, route, data, dan asset yang digunakan.
+7. Hasil validasi aktual.
+8. Batasan yang belum dapat diverifikasi.
+9. Screenshot hasil akhir mobile dan desktop jika environment mendukung.
+10. Command PowerShell untuk pengguna melakukan git pull dan verifikasi lokal.
+
+Workflow:
+- Implementasikan kode pada branch kerja yang sesuai.
+- Jangan merge pull request tanpa izin eksplisit pengguna.
+- Jangan mengklaim tes atau screenshot yang tidak benar-benar dilakukan.
+- Jika verifikasi lokal dilakukan oleh pengguna, sediakan command PowerShell yang menyimpan seluruh stdout dan stderr ke satu file .txt bertimestamp serta mencatat exit code setiap tahap.
+- Jangan melakukan perubahan di luar scope tanpa alasan teknis yang jelas.
+
+======================================================================
+17. FINAL INSTRUCTION
+======================================================================
+
+Lakukan overhaul landing page 37Studio Proper dengan standar kualitas produk digital dan brand experience kelas atas.
+
+Buat pengunjung berpikir:
+- "Studio ini punya karakter."
+- "Layanannya jelas dan sesuai kebutuhan gue."
+- "Tempatnya terlihat menarik dan meyakinkan."
+- "Booking-nya gampang."
+- "Gue pengin coba datang dan bikin sesuatu di sini."
+
+Jangan membuat halaman yang hanya cantik di screenshot tetapi lambat, sulit dibaca, sulit dinavigasi, atau tidak menghasilkan booking.
+
+Keseimbangan yang wajib dicapai:
+VISUAL IMPACT + BRAND PERSONALITY + CLARITY + TRUST + CONVERSION + PERFORMANCE.
+
+Mulai dengan audit repository aktual, lanjutkan langsung ke implementasi, lalu validasi hasilnya secara jujur.
