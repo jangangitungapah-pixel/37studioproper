@@ -12,78 +12,28 @@
           'updatedAt', 'voidedAt', 'voidedByUid', 'voidReason'
         ]) &&
         data.id == attendanceId &&
-        validOptionalString(data, 'adminNote', 1000) &&
         data.approvalStatus in ['pending', 'approved', 'rejected'] &&
-        validString(data.approvedAt, 0, 40) &&
-        validString(data.approvedByName, 0, 120) &&
-        validString(data.approvedByUid, 0, 128) &&
-        (data.closedAt == '' || validIsoTimestampString(data.closedAt)) &&
         validIsoTimestampString(data.clockInAt) &&
-        validOptionalString(data, 'clockInByUid', 128) &&
-        (data.clockOutAt == '' || validIsoTimestampString(data.clockOutAt)) &&
-        validOptionalString(data, 'clockOutByUid', 128) &&
-        validIsoTimestampString(data.createdAt) &&
-        validIsoDate(data.date) &&
-        validNumber(data.durationHours, 0, 48) &&
-        validString(data.guardEmail, 0, 254) &&
-        validString(data.guardName, 1, 120) &&
-        validString(data.guardPersonId, 1, 160) &&
-        validString(data.guardUid, 1, 128) &&
-        validNumber(data.mealAmount, 0, 1000000) &&
-        data.mealEligible is bool &&
-        (
-          !data.keys().hasAny(['mealBookkeepingEntryId']) ||
-          validString(data.mealBookkeepingEntryId, 0, 200)
-        ) &&
-        (
-          !data.keys().hasAny(['mealBookkeepingStatus']) ||
-          data.mealBookkeepingStatus in ['not_posted', 'posted']
-        ) &&
-        (
-          !data.keys().hasAny(['mealPostedAt']) ||
-          validString(data.mealPostedAt, 0, 40)
-        ) &&
-        (
-          !data.keys().hasAny(['mealPostedByUid']) ||
-          validString(data.mealPostedByUid, 0, 128)
-        ) &&
-        validString(data.note, 0, 1000) &&
-        data.ownerActionRequired is bool &&
-        validString(data.rejectedAt, 0, 40) &&
-        validString(data.rejectedByName, 0, 120) &&
-        validString(data.rejectedByUid, 0, 128) &&
-        validString(data.rejectionReason, 0, 1000) &&
+        validIsoTimestampString(data.createdAt) && validIsoDate(data.date) &&
+        data.durationHours is number && data.durationHours >= 0 && data.durationHours <= 48 &&
+        data.mealAmount is number && data.mealAmount >= 0 && data.mealAmount <= 1000000 &&
+        data.mealEligible is bool && data.ownerActionRequired is bool &&
+        data.get('mealBookkeepingStatus', 'not_posted') in ['not_posted', 'posted'] &&
         data.source == 'guardAttendance' &&
         data.status in ['pending_approval', 'active', 'closed', 'rejected', 'void'] &&
-        validIsoTimestampString(data.updatedAt) &&
-        validString(data.voidedAt, 0, 40) &&
-        validString(data.voidedByUid, 0, 128) &&
-        validString(data.voidReason, 0, 1000);
+        validIsoTimestampString(data.updatedAt);
     }
     function getCurrentGuardPersonId() {
       return getUserData().guardId;
     }
     function guardMealStartsUnposted(data) {
-      return (
-          !data.keys().hasAny(['mealBookkeepingStatus']) ||
-          data.mealBookkeepingStatus == 'not_posted'
-        ) &&
-        (
-          !data.keys().hasAny(['mealBookkeepingEntryId']) ||
-          data.mealBookkeepingEntryId == ''
-        ) &&
-        (
-          !data.keys().hasAny(['mealPostedAt']) ||
-          data.mealPostedAt == ''
-        ) &&
-        (
-          !data.keys().hasAny(['mealPostedByUid']) ||
-          data.mealPostedByUid == ''
-        );
+      return data.get('mealBookkeepingStatus', 'not_posted') == 'not_posted' &&
+        data.get('mealBookkeepingEntryId', '') == '' &&
+        data.get('mealPostedAt', '') == '' &&
+        data.get('mealPostedByUid', '') == '';
     }
     function guardMealNotPosted(data) {
-      return !data.keys().hasAny(['mealBookkeepingStatus']) ||
-        data.mealBookkeepingStatus != 'posted';
+      return data.get('mealBookkeepingStatus', '') != 'posted';
     }
     function guardCreatesOwnAttendance(data, attendanceId) {
       return isStudioGuardAccount() &&
@@ -106,32 +56,12 @@
         data.voidedByUid == '';
     }
     function validGuardSelfCheckoutPatch() {
-      return validIsoTimestampString(
-          request.resource.data.clockOutAt
-        ) &&
-        validIsoTimestampString(
-          request.resource.data.closedAt
-        ) &&
-        request.resource.data.closedAt ==
-          request.resource.data.clockOutAt &&
-        validString(
-          request.resource.data.clockOutByUid,
-          1,
-          128
-        ) &&
-        validNumber(
-          request.resource.data.durationHours,
-          0,
-          48
-        ) &&
-        validOptionalString(
-          request.resource.data,
-          'note',
-          1000
-        ) &&
-        validIsoTimestampString(
-          request.resource.data.updatedAt
-        );
+      return validIsoTimestampString(request.resource.data.clockOutAt) &&
+        request.resource.data.closedAt == request.resource.data.clockOutAt &&
+        request.resource.data.clockOutByUid == request.auth.uid &&
+        request.resource.data.durationHours is number && request.resource.data.durationHours >= 0 && request.resource.data.durationHours <= 48 &&
+        (!('note' in request.resource.data) || request.resource.data.note is string) &&
+        validIsoTimestampString(request.resource.data.updatedAt);
     }
     function guardClosesOwnAttendance() {
       return isStudioGuardAccount() &&
@@ -144,9 +74,6 @@
         resource.data.clockOutAt == '' &&
         resource.data.status in ['active', 'pending_approval'] &&
         request.resource.data.status == 'closed' &&
-        request.resource.data.clockOutAt != '' &&
-        request.resource.data.closedAt == request.resource.data.clockOutAt &&
-        request.resource.data.clockOutByUid == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'clockOutAt',
           'clockOutByUid',
@@ -158,146 +85,61 @@
         ]);
     }
     function guardUpdatesOwnNote() {
-      return isStudioGuardAccount() &&
-        resource.data.guardUid == request.auth.uid &&
-        request.resource.data.guardUid == resource.data.guardUid &&
-        request.resource.data.status == resource.data.status &&
+      return request.resource.data.status == resource.data.status &&
         request.resource.data.approvalStatus == resource.data.approvalStatus &&
-        validOptionalString(request.resource.data, 'note', 1000) &&
-        validIsoTimestampString(request.resource.data.updatedAt) &&
+        (!('note' in request.resource.data) || request.resource.data.note is string) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'note',
           'updatedAt'
         ]);
     }
     function guardResubmitsOwnAttendance() {
-      return isStudioGuardAccount() &&
-        hasCanonicalGuardId(getUserData()) &&
-        resource.data.guardUid == request.auth.uid &&
-        request.resource.data.guardUid == resource.data.guardUid &&
-        request.resource.data.guardPersonId == resource.data.guardPersonId &&
-        request.resource.data.date == resource.data.date &&
-        request.resource.data.source == resource.data.source &&
-        resource.data.approvalStatus == 'rejected' &&
-        resource.data.status != 'void' &&
-        guardMealNotPosted(resource.data) &&
-        guardMealStartsUnposted(request.resource.data) &&
-        request.resource.data.status == 'pending_approval' &&
-        request.resource.data.approvalStatus == 'pending' &&
-        request.resource.data.mealEligible == false &&
-        request.resource.data.ownerActionRequired == true &&
-        request.resource.data.clockInByUid == request.auth.uid &&
-        request.resource.data.clockOutAt == '' &&
-        request.resource.data.clockOutByUid == '' &&
-        validOptionalString(request.resource.data, 'note', 1000) &&
-        validOptionalString(request.resource.data, 'adminNote', 1000) &&
-        validIsoTimestampString(request.resource.data.updatedAt);
+      let d = request.resource.data;
+      let r = resource.data;
+      return hasCanonicalGuardId(getUserData()) &&
+        d.guardPersonId == r.guardPersonId &&
+        d.date == r.date &&
+        d.source == r.source &&
+        r.approvalStatus == 'rejected' &&
+        r.status != 'void' &&
+        guardMealNotPosted(r) &&
+        guardMealStartsUnposted(d) &&
+        d.status == 'pending_approval' &&
+        d.approvalStatus == 'pending' &&
+        d.mealEligible == false &&
+        d.ownerActionRequired == true &&
+        d.clockInByUid == request.auth.uid &&
+        d.clockOutAt == '' &&
+        d.clockOutByUid == '';
     }
     function guardAttendanceCoreIdentityUnchanged() {
       return request.resource.data.id == resource.data.id &&
-        request.resource.data.guardUid == resource.data.guardUid &&
-        request.resource.data.guardPersonId == resource.data.guardPersonId &&
-        request.resource.data.guardEmail == resource.data.guardEmail &&
-        request.resource.data.guardName == resource.data.guardName &&
-        request.resource.data.date == resource.data.date &&
-        request.resource.data.clockInAt == resource.data.clockInAt &&
-        request.resource.data.createdAt == resource.data.createdAt &&
-        request.resource.data.source == resource.data.source;
+        request.resource.data.guardUid == resource.data.guardUid;
     }
     function validGuardAttendanceOwnerReviewAuditFields() {
       return validIsoTimestampString(
           request.resource.data.updatedAt
         ) &&
-        request.resource.data.ownerActionRequired is bool &&
         request.resource.data.mealEligible is bool;
     }
     function validGuardAttendanceOwnerApprovePatch() {
-      return validGuardAttendanceOwnerReviewAuditFields() &&
-        validOptionalString(
-          request.resource.data,
-          'adminNote',
-          1000
-        ) &&
-        validIsoTimestampString(
-          request.resource.data.approvedAt
-        ) &&
-        validString(
-          request.resource.data.approvedByName,
-          0,
-          120
-        ) &&
-        validString(
-          request.resource.data.approvedByUid,
-          1,
-          128
-        ) &&
-        validString(
-          request.resource.data.rejectedAt,
-          0,
-          40
-        ) &&
-        validString(
-          request.resource.data.rejectedByName,
-          0,
-          120
-        ) &&
-        validString(
-          request.resource.data.rejectedByUid,
-          0,
-          128
-        ) &&
-        validString(
-          request.resource.data.rejectionReason,
-          0,
-          1000
-        );
+      return validIsoTimestampString(request.resource.data.approvedAt) &&
+        request.resource.data.approvedByUid is string && request.resource.data.approvedByUid.size() > 0;
     }
     function validGuardAttendanceOwnerRejectPatch() {
-      return validGuardAttendanceOwnerReviewAuditFields() &&
-        validIsoTimestampString(
-          request.resource.data.rejectedAt
-        ) &&
-        validString(
-          request.resource.data.rejectedByName,
-          0,
-          120
-        ) &&
-        validString(
-          request.resource.data.rejectedByUid,
-          1,
-          128
-        ) &&
-        validString(
-          request.resource.data.rejectionReason,
-          1,
-          1000
-        );
+      return validIsoTimestampString(request.resource.data.rejectedAt) &&
+        request.resource.data.rejectedByUid is string && request.resource.data.rejectedByUid.size() > 0 &&
+        request.resource.data.rejectionReason is string && request.resource.data.rejectionReason.size() > 0;
     }
     function validGuardAttendanceOwnerVoidPatch() {
-      return validGuardAttendanceOwnerReviewAuditFields() &&
-        validIsoTimestampString(
-          request.resource.data.voidedAt
-        ) &&
-        validString(
-          request.resource.data.voidedByUid,
-          1,
-          128
-        ) &&
-        validString(
-          request.resource.data.voidReason,
-          1,
-          1000
-        );
+      return validIsoTimestampString(request.resource.data.voidedAt) &&
+        request.resource.data.voidedByUid is string && request.resource.data.voidedByUid.size() > 0 &&
+        request.resource.data.voidReason is string && request.resource.data.voidReason.size() > 0;
     }
     function adminApprovesGuardAttendance() {
-      return canManageGuardAttendance() &&
-        guardAttendanceCoreIdentityUnchanged() &&
-        validGuardAttendanceOwnerApprovePatch() &&
-        resource.data.status != 'void' &&
+      return validGuardAttendanceOwnerApprovePatch() &&
         resource.data.approvalStatus in ['pending', 'rejected'] &&
         request.resource.data.approvalStatus == 'approved' &&
-        request.resource.data.approvedAt != '' &&
-        request.resource.data.approvedByUid != '' &&
         request.resource.data.ownerActionRequired == false &&
         request.resource.data.rejectedAt == '' &&
         request.resource.data.rejectedByUid == '' &&
@@ -329,17 +171,12 @@
         ]);
     }
     function adminRejectsGuardAttendance() {
-      return canManageGuardAttendance() &&
-        guardAttendanceCoreIdentityUnchanged() &&
-        validGuardAttendanceOwnerRejectPatch() &&
-        resource.data.status != 'void' &&
+      return validGuardAttendanceOwnerRejectPatch() &&
         guardMealNotPosted(resource.data) &&
         resource.data.approvalStatus in ['pending', 'approved'] &&
         request.resource.data.approvalStatus == 'rejected' &&
         request.resource.data.mealEligible == false &&
         request.resource.data.ownerActionRequired == false &&
-        request.resource.data.rejectedAt != '' &&
-        request.resource.data.rejectedByUid != '' &&
         request.resource.data.status == 'rejected' &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'approvalStatus',
@@ -354,10 +191,7 @@
         ]);
     }
     function adminVoidsGuardAttendance() {
-      return canManageGuardAttendance() &&
-        guardAttendanceCoreIdentityUnchanged() &&
-        validGuardAttendanceOwnerVoidPatch() &&
-        resource.data.status != 'void' &&
+      return validGuardAttendanceOwnerVoidPatch() &&
         guardMealNotPosted(resource.data) &&
         request.resource.data.mealEligible == false &&
         request.resource.data.ownerActionRequired == false &&
@@ -379,34 +213,24 @@
         request.resource.data.mealBookkeepingEntryId;
       let entryPath =
         /databases/$(database)/documents/bookkeepingEntries/$(entryId);
+      let entryAfter = getAfter(entryPath).data;
       return entryId is string &&
         entryId.size() > 0 &&
         existsAfter(entryPath) &&
-        getAfter(entryPath).data.id == entryId &&
-        getAfter(entryPath).data.type == 'expense' &&
         getAfter(entryPath).data.source == 'guardAttendanceMeal' &&
-        getAfter(entryPath).data.sourceAttendanceId == resource.data.id &&
-        getAfter(entryPath).data.sourceAttendanceDate == resource.data.date &&
-        getAfter(entryPath).data.sourceGuardPersonId == resource.data.guardPersonId &&
-        getAfter(entryPath).data.amount == resource.data.mealAmount;
+        entryAfter.sourceAttendanceId == resource.data.id &&
+        entryAfter.sourceAttendanceDate == resource.data.date &&
+        entryAfter.sourceGuardPersonId == resource.data.guardPersonId &&
+        entryAfter.amount == resource.data.mealAmount;
     }
     function adminPostsGuardMeal() {
-      return isApprovedAdmin() &&
-        (
-          hasPermission('operator-fee') ||
-          canManageGuardAttendance()
-        ) &&
-        guardAttendanceCoreIdentityUnchanged() &&
+      return actorCanManageGuardOrOperatorFees() &&
         resource.data.approvalStatus == 'approved' &&
         resource.data.status == 'closed' &&
         resource.data.mealEligible == true &&
         resource.data.mealAmount > 0 &&
         guardMealNotPosted(resource.data) &&
-        request.resource.data.approvalStatus == resource.data.approvalStatus &&
-        request.resource.data.status == resource.data.status &&
-        request.resource.data.mealEligible == resource.data.mealEligible &&
         request.resource.data.mealBookkeepingStatus == 'posted' &&
-        request.resource.data.mealBookkeepingEntryId != '' &&
         request.resource.data.mealPostedAt != '' &&
         request.resource.data.mealPostedByUid == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -419,15 +243,19 @@
         guardMealBookkeepingExistsAfter();
     }
     function adminReviewsGuardAttendance() {
-      return adminVoidsGuardAttendance() ||
-        adminRejectsGuardAttendance() ||
-        adminApprovesGuardAttendance();
+      return canManageGuardAttendance() &&
+        guardAttendanceCoreIdentityUnchanged() &&
+        validGuardAttendanceOwnerReviewAuditFields() &&
+        resource.data.status != 'void' &&
+        (
+          adminVoidsGuardAttendance() ||
+          adminRejectsGuardAttendance() ||
+          adminApprovesGuardAttendance()
+        );
     }
     match /guardAttendanceSessions/{attendanceId} {
-      allow read: if
-        canManageGuardAttendance() ||
-        canManageOperatorFees() ||
-        (
+      allow read: if canManageGuardAttendance() ||
+        canManageOperatorFees() || (
           isStudioGuardAccount() &&
           resource.data.guardUid == request.auth.uid
         );
@@ -443,7 +271,13 @@
             attendanceId
           ) &&
           adminPostsGuardMeal()
-        ) || guardUpdatesOwnNote() || guardResubmitsOwnAttendance();
-      allow delete: if isOwner();
+        ) || (
+          isStudioGuardAccount() &&
+          resource.data.guardUid == request.auth.uid &&
+          request.resource.data.guardUid == resource.data.guardUid &&
+          validIsoTimestampString(request.resource.data.updatedAt) &&
+          (guardUpdatesOwnNote() || guardResubmitsOwnAttendance())
+        );
+      allow delete: if actorIsOwnerOnly();
     }
     // <<< STUDIO37 GUARD ATTENDANCE RULES END
